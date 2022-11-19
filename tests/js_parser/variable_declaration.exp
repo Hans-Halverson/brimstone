@@ -1,0 +1,90 @@
+{
+  type: "Program",
+  body:     {
+      type: "VariableDeclaration",
+      kind: "var",
+      declarations:         {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "x",
+          },
+          id: {
+            type: "Identifier",
+            name: "a",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      kind: "var",
+      declarations:         {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "x",
+          },
+          id: {
+            type: "Identifier",
+            name: "a",
+          },
+        },
+        {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "y",
+          },
+          id: {
+            type: "Identifier",
+            name: "b",
+          },
+        },
+        {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "z",
+          },
+          id: {
+            type: "Identifier",
+            name: "c",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      kind: "let",
+      declarations:         {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "x",
+          },
+          id: {
+            type: "Identifier",
+            name: "a",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      kind: "const",
+      declarations:         {
+          type: "VariableDeclarator",
+          id: {
+            type: "Identifier",
+            name: "x",
+          },
+          id: {
+            type: "Identifier",
+            name: "",
+          },
+        },
+      ],
+    },
+  ],
+}

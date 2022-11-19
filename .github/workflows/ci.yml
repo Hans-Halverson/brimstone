@@ -1,0 +1,11 @@
+name: Build and Test
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: "Build and Test"
+    steps:
+      - name: Test
+        run: cargo test

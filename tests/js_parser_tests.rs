@@ -2,7 +2,7 @@ use brimstone::js;
 
 use std::cmp::min;
 use std::path::Path;
-use std::{env, error, fs, io};
+use std::{env, error, fs};
 
 type GenericResult = Result<(), Box<dyn error::Error>>;
 

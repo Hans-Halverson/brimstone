@@ -7,5 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "Build and Test"
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Test
         run: cargo test

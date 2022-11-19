@@ -1,9 +1,11 @@
 use std::error::Error;
+use std::rc::Rc;
 use std::{fmt, io};
 
 use super::ast;
 use super::lexer::Lexer;
-use super::loc::{Loc, EMPTY_LOC};
+use super::loc::{find_line_col_for_pos, Loc, EMPTY_LOC};
+use super::source::Source;
 use super::token::Token;
 
 #[derive(Debug)]
@@ -14,55 +16,91 @@ pub enum ParseError {
     ExpectedToken(Token, Token),
 }
 
-impl Error for ParseError {}
+pub struct LocalizedParseError {
+    pub error: ParseError,
+    pub source_loc: Option<(Loc, Rc<Source>)>,
+}
 
-impl fmt::Display for ParseError {
+impl LocalizedParseError {
+    fn new_without_loc(error: ParseError) -> LocalizedParseError {
+        LocalizedParseError {
+            error,
+            source_loc: None,
+        }
+    }
+}
+
+impl Error for LocalizedParseError {}
+
+impl fmt::Display for LocalizedParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ParseError::Io(io_error) => io_error.fmt(f),
-            ParseError::UnknownToken(token) => write!(f, "Unknown token {}", token),
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),
+        let message = match &self.error {
+            ParseError::Io(io_error) => return io_error.fmt(f),
+            ParseError::UnknownToken(token) => format!("Unknown token {}", token),
+            ParseError::UnexpectedToken(token) => format!("Unexpected token {}", token),
             ParseError::ExpectedToken(actual, expected) => {
-                write!(f, "Unexpected token {}, expected {}", actual, expected)
+                format!("Unexpected token {}, expected {}", actual, expected)
+            }
+        };
+
+        match &self.source_loc {
+            None => write!(f, "{}", message),
+            Some((loc, source)) => {
+                let offsets = source.line_offsets();
+                let (line, col) = find_line_col_for_pos(loc.start, offsets);
+                write!(f, "{}:{}:{} {}", source.file_path, line, col, message)
             }
         }
     }
 }
 
-pub type ParseResult<T> = Result<T, ParseError>;
-
-impl From<io::Error> for ParseError {
-    fn from(err: io::Error) -> ParseError {
-        ParseError::Io(err)
+impl fmt::Debug for LocalizedParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <LocalizedParseError as fmt::Display>::fmt(self, f)
     }
 }
 
-fn error_unexpected_token<T>(token: &Token) -> ParseResult<T> {
-    Err(ParseError::UnexpectedToken(token.clone()))
+pub type ParseResult<T> = Result<T, LocalizedParseError>;
+
+impl From<io::Error> for LocalizedParseError {
+    fn from(error: io::Error) -> LocalizedParseError {
+        LocalizedParseError::new_without_loc(ParseError::Io(error))
+    }
 }
 
 fn p<T>(node: T) -> ast::P<T> {
     Box::new(node)
 }
 
-struct Parser {
-    lexer: Lexer,
+struct Parser<'a> {
+    lexer: Lexer<'a>,
     token: Token,
     loc: Loc,
+    prev_loc: Loc,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     // Must prime parser by calling advance before using.
-    fn new(lexer: Lexer) -> Parser {
+    fn new(lexer: Lexer<'a>) -> Parser<'a> {
         Parser {
             lexer,
             token: Token::Eof,
             loc: EMPTY_LOC,
+            prev_loc: EMPTY_LOC,
         }
+    }
+
+    pub fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
+        let source = (*self.lexer.source).clone();
+        Err(LocalizedParseError {
+            error,
+            source_loc: Some((loc, source)),
+        })
     }
 
     fn advance(&mut self) -> ParseResult<()> {
         let (token, loc) = self.lexer.next()?;
+        self.prev_loc = self.loc;
         self.token = token;
         self.loc = loc;
 
@@ -71,17 +109,24 @@ impl Parser {
 
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
-            return Err(ParseError::ExpectedToken(self.token.clone(), token));
+            return self.error(
+                self.loc,
+                ParseError::ExpectedToken(self.token.clone(), token),
+            );
         }
 
         self.advance()?;
         Ok(())
     }
 
+    fn error_unexpected_token<T>(&self, loc: Loc, token: &Token) -> ParseResult<T> {
+        self.error(loc, ParseError::UnexpectedToken(token.clone()))
+    }
+
     fn mark_loc(&self, start_loc: Loc) -> Loc {
         Loc {
             start: start_loc.start,
-            end: self.loc.end,
+            end: self.prev_loc.end,
         }
     }
 
@@ -109,7 +154,7 @@ impl Parser {
             Token::Var | Token::Let | Token::Const => {
                 Ok(ast::Statement::VarDecl(self.parse_variable_declaration()?))
             }
-            other => error_unexpected_token(other),
+            other => self.error_unexpected_token(self.loc, other),
         }
     }
 
@@ -163,7 +208,7 @@ impl Parser {
                 let loc = self.mark_loc(start_loc);
                 Ok(ast::Expression::Id(ast::Identifier { loc, name }))
             }
-            other => error_unexpected_token(other),
+            other => self.error_unexpected_token(self.loc, other),
         }
     }
 
@@ -176,14 +221,14 @@ impl Parser {
                 let loc = self.mark_loc(start_loc);
                 Ok(ast::Pattern::Id(ast::Identifier { loc, name }))
             }
-            other => error_unexpected_token(other),
+            other => self.error_unexpected_token(self.loc, other),
         }
     }
 }
 
-pub fn parse_file(file_name: &str) -> ParseResult<ast::Program> {
+pub fn parse_file(source: &Rc<Source>) -> ParseResult<ast::Program> {
     // Create and prime parser
-    let lexer = Lexer::new(file_name)?;
+    let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
     parser.advance()?;
 

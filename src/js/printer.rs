@@ -1,15 +1,18 @@
-use super::ast;
+use super::{ast, source::Source};
+use super::loc::{Loc, find_line_col_for_pos};
 
-struct Printer {
+struct Printer<'a> {
     buf: String,
     indent: usize,
+    source: & 'a Source,
 }
 
-impl Printer {
-    fn new() -> Printer {
+impl <'a> Printer<'a> {
+    fn new(source: &'a Source) -> Printer<'a> {
         Printer {
             buf: String::new(),
             indent: 0,
+            source,
         }
     }
 
@@ -57,11 +60,20 @@ impl Printer {
         self.string("null")
     }
 
-    fn start_node(&mut self, name: &str) {
+    fn start_node(&mut self, name: &str, loc: &Loc) {
         self.string("{\n");
         self.inc_indent();
 
         self.property("type", name, Printer::print_str);
+
+        // Calculate line/column offsets for loc
+        let line_offsets = self.source.line_offsets();
+        let (start_line, start_col) = find_line_col_for_pos(loc.start, line_offsets);
+        let (end_line, end_col) = find_line_col_for_pos(loc.end, line_offsets);
+
+        // Write loc as string in concise format
+        self.indent();
+        self.string(&format!("loc: \"{}:{}-{}:{}\",\n", start_line, start_col, end_line, end_col));
     }
 
     fn end_node(&mut self) {
@@ -92,6 +104,7 @@ impl Printer {
         if values.is_empty() {
             self.string("[],\n")
         } else {
+            self.string("[\n");
             self.inc_indent();
 
             for value in values {
@@ -107,7 +120,7 @@ impl Printer {
     }
 
     fn print_program(&mut self, program: &ast::Program) {
-        self.start_node("Program");
+        self.start_node("Program", &program.loc);
         self.array_property("body", &program.toplevels, Printer::print_toplevel);
         self.end_node();
     }
@@ -125,7 +138,7 @@ impl Printer {
     }
 
     fn print_variable_declaration(&mut self, var_decl: &ast::VariableDeclaration) {
-        self.start_node("VariableDeclaration");
+        self.start_node("VariableDeclaration", &var_decl.loc);
         self.property("kind", &var_decl.kind, Printer::print_var_kind);
         self.array_property(
             "declarations",
@@ -145,7 +158,7 @@ impl Printer {
     }
 
     fn print_variable_declarator(&mut self, var_decl: &ast::VariableDeclarator) {
-        self.start_node("VariableDeclarator");
+        self.start_node("VariableDeclarator", &var_decl.loc);
         self.property("id", &(*var_decl.id), Printer::print_pattern);
         if let Some(ref init) = var_decl.init {
             self.property("id", (*init).as_ref(), Printer::print_expression);
@@ -166,7 +179,7 @@ impl Printer {
             ast::Expression::Call(call) => self.print_call_expression(call),
             ast::Expression::New(new) => self.print_new_expression(new),
             ast::Expression::Sequence(seq) => self.print_sequence_expression(seq),
-            ast::Expression::This(_) => self.print_this_expression(),
+            ast::Expression::This(loc) => self.print_this_expression(&loc),
             ast::Expression::Array(arr) => self.print_array_expression(arr),
             ast::Expression::Await(expr) => self.print_await_expression(expr),
             ast::Expression::Yield(expr) => self.print_yield_expression(expr),
@@ -201,7 +214,7 @@ impl Printer {
     }
 
     fn print_unary_expression(&mut self, unary: &ast::UnaryExpression) {
-        self.start_node("UnaryExpression");
+        self.start_node("UnaryExpression", &unary.loc);
         self.property("operator", &unary.operator, Printer::print_unary_operator);
         self.property(
             "argument",
@@ -240,7 +253,7 @@ impl Printer {
     }
 
     fn print_binary_expression(&mut self, binary: &ast::BinaryExpression) {
-        self.start_node("BinaryExpression");
+        self.start_node("BinaryExpression", &binary.loc);
         self.property("operator", &binary.operator, Printer::print_binary_operator);
         self.property("left", binary.left.as_ref(), Printer::print_expression);
         self.property("right", binary.right.as_ref(), Printer::print_expression);
@@ -257,7 +270,7 @@ impl Printer {
     }
 
     fn print_logical_expression(&mut self, logical: &ast::LogicalExpression) {
-        self.start_node("LogicalExpression");
+        self.start_node("LogicalExpression", &logical.loc);
         self.property(
             "operator",
             &logical.operator,
@@ -288,7 +301,7 @@ impl Printer {
     }
 
     fn print_assignment_expression(&mut self, assign: &ast::AssignmentExpression) {
-        self.start_node("AssignmentExpression");
+        self.start_node("AssignmentExpression", &assign.loc);
         self.property(
             "operator",
             &assign.operator,
@@ -308,7 +321,7 @@ impl Printer {
     }
 
     fn print_update_expression(&mut self, update: &ast::UpdateExpression) {
-        self.start_node("UpdateExpression");
+        self.start_node("UpdateExpression", &update.loc);
         self.property("operator", &update.operator, Printer::print_update_operator);
         self.property(
             "argument",
@@ -320,7 +333,7 @@ impl Printer {
     }
 
     fn print_member_expression(&mut self, member: &ast::MemberExpression) {
-        self.start_node("MemberExpression");
+        self.start_node("MemberExpression", &member.loc);
         self.property("object", member.object.as_ref(), Printer::print_expression);
         self.property(
             "property",
@@ -333,7 +346,7 @@ impl Printer {
     }
 
     fn print_conditional_expression(&mut self, cond: &ast::ConditionalExpression) {
-        self.start_node("ConditionalExpression");
+        self.start_node("ConditionalExpression", &cond.loc);
         self.property("test", cond.test.as_ref(), Printer::print_expression);
         self.property("alternate", cond.altern.as_ref(), Printer::print_expression);
         self.property(
@@ -345,7 +358,7 @@ impl Printer {
     }
 
     fn print_call_expression(&mut self, call: &ast::CallExpression) {
-        self.start_node("CallExpression");
+        self.start_node("CallExpression", &call.loc);
         self.property("callee", call.callee.as_ref(), Printer::print_expression);
         self.array_property(
             "arguments",
@@ -357,7 +370,7 @@ impl Printer {
     }
 
     fn print_new_expression(&mut self, new: &ast::NewExpression) {
-        self.start_node("NewExpression");
+        self.start_node("NewExpression", &new.loc);
         self.property("callee", new.callee.as_ref(), Printer::print_expression);
         self.array_property(
             "arguments",
@@ -368,7 +381,7 @@ impl Printer {
     }
 
     fn print_sequence_expression(&mut self, seq: &ast::SequenceExpression) {
-        self.start_node("SequenceExpression");
+        self.start_node("SequenceExpression", &seq.loc);
         self.array_property(
             "expressions",
             seq.expressions.as_ref(),
@@ -377,13 +390,13 @@ impl Printer {
         self.end_node();
     }
 
-    fn print_this_expression(&mut self) {
-        self.start_node("ThisExpression");
+    fn print_this_expression(&mut self, loc: &Loc) {
+        self.start_node("ThisExpression", loc);
         self.end_node();
     }
 
     fn print_array_expression(&mut self, arr: &ast::ArrayExpression) {
-        self.start_node("ArrayExpression");
+        self.start_node("ArrayExpression", &arr.loc);
         self.array_property(
             "elements",
             arr.elements.as_ref(),
@@ -393,7 +406,7 @@ impl Printer {
     }
 
     fn print_await_expression(&mut self, expr: &ast::AwaitExpression) {
-        self.start_node("AwaitExpression");
+        self.start_node("AwaitExpression", &expr.loc);
         self.property(
             "argument",
             expr.argument.as_ref(),
@@ -403,7 +416,7 @@ impl Printer {
     }
 
     fn print_yield_expression(&mut self, expr: &ast::YieldExpression) {
-        self.start_node("YieldExpression");
+        self.start_node("YieldExpression", &expr.loc);
         self.property(
             "argument",
             expr.argument.as_ref(),
@@ -420,15 +433,15 @@ impl Printer {
     }
 
     fn print_identifier(&mut self, id: &ast::Identifier) {
-        self.start_node("Identifier");
+        self.start_node("Identifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);
         self.end_node();
     }
 }
 
 // Prints JSON in ESTree format
-pub fn print_program(program: &ast::Program) -> String {
-    let mut printer = Printer::new();
+pub fn print_program(program: &ast::Program, source: &Source) -> String {
+    let mut printer = Printer::new(source);
     printer.print_program(program);
     printer.finish()
 }

@@ -27,8 +27,9 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         return Err(Box::new(CLIError::Usage));
     }
 
-    let ast = js::parser::parse_file(&args[1])?;
-    println!("{}", js::printer::print_program(&ast));
+    let source = js::source::Source::new(&args[1])?;
+    let ast = js::parser::parse_file(&source)?;
+    println!("{}", js::printer::print_program(&ast, &source));
 
     return Ok(());
 }

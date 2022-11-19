@@ -1,12 +1,13 @@
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::rc::Rc;
 
 use super::loc::{Loc, Pos};
-use super::parser::{ParseError, ParseResult};
+use super::parser::{LocalizedParseError, ParseError, ParseResult};
+use super::source::Source;
 use super::token::Token;
 
-pub struct Lexer {
-    buf: String,
+pub struct Lexer<'a> {
+    pub source: &'a Rc<Source>,
+    buf: &'a str,
     current: char,
     pos: Pos,
 }
@@ -32,25 +33,21 @@ fn is_id_part_char(char: char) -> bool {
     }
 }
 
-impl Lexer {
-    pub fn new(file_name: &str) -> ParseResult<Lexer> {
-        let file = File::open(file_name)?;
-        let mut reader = BufReader::new(file);
-
-        let mut buf = String::new();
-        reader.read_to_string(&mut buf)?;
-
+impl<'a> Lexer<'a> {
+    pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
+        let buf = &source.contents;
         let current = if buf.len() == 0 {
             EOF_CHAR
         } else {
             buf.as_bytes()[0].into()
         };
 
-        Ok(Lexer {
-            buf,
+        Lexer {
+            source: &source,
+            buf: &source.contents,
             current,
             pos: 0,
-        })
+        }
     }
 
     fn advance(&mut self) {
@@ -59,16 +56,27 @@ impl Lexer {
             self.current = self.buf.as_bytes()[self.pos].into();
         } else {
             self.current = EOF_CHAR;
-            self.pos -= 1;
+            self.pos = self.buf.len();
+        }
+    }
+
+    fn mark_loc(&self, start_pos: Pos) -> Loc {
+        Loc {
+            start: start_pos,
+            end: self.pos,
         }
     }
 
     fn emit(&self, token: Token, start_pos: Pos) -> LexResult {
-        let loc = Loc {
-            start: start_pos,
-            end: self.pos,
-        };
-        Ok((token, loc))
+        Ok((token, self.mark_loc(start_pos)))
+    }
+
+    fn error(&self, loc: Loc, error: ParseError) -> LexResult {
+        let source = (*self.source).clone();
+        Err(LocalizedParseError {
+            error,
+            source_loc: Some((loc, source)),
+        })
     }
 
     pub fn next(&mut self) -> LexResult {
@@ -110,7 +118,11 @@ impl Lexer {
             char if is_id_start_char(char) => self.lex_identifier(start_pos),
             other => {
                 self.advance();
-                Err(ParseError::UnknownToken(((other as u8) as char).into()))
+                let loc = self.mark_loc(start_pos);
+                self.error(
+                    loc,
+                    ParseError::UnknownToken(((other as u8) as char).into()),
+                )
             }
         }
     }

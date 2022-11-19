@@ -52,8 +52,9 @@ fn visit_directory(env: &mut TestEnv, path: &Path) -> GenericResult {
 fn process_snapshot_test_file(env: &mut TestEnv, path: &Path) -> GenericResult {
     let exp_path = path.with_extension("exp");
 
-    let ast = js::parser::parse_file(path.to_str().unwrap())?;
-    let actual = js::printer::print_program(&ast);
+    let source = js::source::Source::new(path.to_str().unwrap())?;
+    let ast = js::parser::parse_file(&source)?;
+    let actual = js::printer::print_program(&ast, &source);
 
     let expected = if exp_path.exists() {
         fs::read_to_string(&exp_path)?
@@ -66,7 +67,8 @@ fn process_snapshot_test_file(env: &mut TestEnv, path: &Path) -> GenericResult {
             fs::write(&exp_path, &actual)?;
         }
 
-        env.errors.push(find_diff_snippet(&path, &actual, &expected))
+        env.errors
+            .push(find_diff_snippet(&path, &actual, &expected))
     }
 
     Ok(())

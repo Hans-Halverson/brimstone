@@ -1,4 +1,5 @@
 {
   type: "Program",
+  loc: "1:0-1:0",
   body: [],
 }

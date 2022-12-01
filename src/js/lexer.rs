@@ -50,33 +50,45 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn advance(&mut self) {
-        self.pos += 1;
+    #[inline]
+    fn advance_n(&mut self, n: usize) {
+        self.pos += n;
         if self.pos < self.buf.len() {
             self.current = self.buf.as_bytes()[self.pos].into();
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
         }
+    }
+
+    fn advance(&mut self) {
+        self.advance_n(1);
     }
 
     fn advance2(&mut self) {
-        self.pos += 2;
-        if self.pos < self.buf.len() {
-            self.current = self.buf.as_bytes()[self.pos].into();
-        } else {
-            self.current = EOF_CHAR;
-            self.pos = self.buf.len();
-        }
+        self.advance_n(2);
     }
 
-    fn peek(&self) -> char {
-        let next_pos = self.pos + 1;
+    fn advance3(&mut self) {
+        self.advance_n(3);
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> char {
+        let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
             self.buf.as_bytes()[next_pos].into()
         } else {
             EOF_CHAR
         }
+    }
+
+    fn peek(&mut self) -> char {
+        self.peek_n(1)
+    }
+
+    fn peek2(&mut self) -> char {
+        self.peek_n(2)
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
@@ -155,6 +167,52 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.emit(Token::Remainder, start_pos)
             }
+            '&' => {
+                self.advance();
+                self.emit(Token::BitwiseAnd, start_pos)
+            }
+            '|' => {
+                self.advance();
+                self.emit(Token::BitwiseOr, start_pos)
+            }
+            '^' => {
+                self.advance();
+                self.emit(Token::BitwiseXor, start_pos)
+            }
+            '>' => match self.peek() {
+                '>' => match self.peek2() {
+                    '>' => {
+                        self.advance3();
+                        self.emit(Token::ShiftRightLogical, start_pos)
+                    }
+                    _ => {
+                        self.advance2();
+                        self.emit(Token::ShiftRightArithmetic, start_pos)
+                    }
+                },
+                _ => {
+                    self.advance();
+                    self.emit(Token::GreaterThan, start_pos)
+                }
+            },
+            '<' => match self.peek() {
+                '<' => {
+                    self.advance2();
+                    self.emit(Token::ShiftLeft, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::LessThan, start_pos)
+                }
+            },
+            '!' => {
+                self.advance();
+                self.emit(Token::LogicalNot, start_pos)
+            }
+            '~' => {
+                self.advance();
+                self.emit(Token::BitwiseNot, start_pos)
+            }
             '=' => {
                 self.advance();
                 self.emit(Token::Equals, start_pos)
@@ -191,6 +249,11 @@ impl<'a> Lexer<'a> {
             "var" => self.emit(Token::Var, start_pos),
             "let" => self.emit(Token::Let, start_pos),
             "const" => self.emit(Token::Const, start_pos),
+            "in" => self.emit(Token::In, start_pos),
+            "instanceof" => self.emit(Token::InstanceOf, start_pos),
+            "typeof" => self.emit(Token::Typeof, start_pos),
+            "void" => self.emit(Token::Void, start_pos),
+            "delete" => self.emit(Token::Delete, start_pos),
             id => self.emit(Token::Identifier(id.to_owned()), start_pos),
         }
     }

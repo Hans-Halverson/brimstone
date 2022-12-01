@@ -268,6 +268,13 @@ impl<'a> Parser<'a> {
             }
             Token::Increment => self.parse_update_expression_prefix(ast::UpdateOperator::Increment),
             Token::Decrement => self.parse_update_expression_prefix(ast::UpdateOperator::Decrement),
+            Token::Plus => self.parse_unary_expression(ast::UnaryOperator::Plus),
+            Token::Minus => self.parse_unary_expression(ast::UnaryOperator::Minus),
+            Token::LogicalNot => self.parse_unary_expression(ast::UnaryOperator::LogicalNot),
+            Token::BitwiseNot => self.parse_unary_expression(ast::UnaryOperator::BitwiseNot),
+            Token::Typeof => self.parse_unary_expression(ast::UnaryOperator::TypeOf),
+            Token::Void => self.parse_unary_expression(ast::UnaryOperator::Void),
+            Token::Delete => self.parse_unary_expression(ast::UnaryOperator::Delete),
             other => self.error_unexpected_token(self.loc, other),
         }
     }
@@ -321,6 +328,63 @@ impl<'a> Parser<'a> {
                     ast::BinaryOperator::Exponent,
                     // Right associative, so lower precedence
                     Precedence::Multiplication,
+                ),
+            Token::BitwiseAnd if precedence.is_weaker_than(Precedence::BitwiseAnd) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::And,
+                    Precedence::BitwiseAnd,
+                ),
+            Token::BitwiseOr if precedence.is_weaker_than(Precedence::BitwiseOr) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Or,
+                    Precedence::BitwiseOr,
+                ),
+            Token::BitwiseXor if precedence.is_weaker_than(Precedence::BitwiseXor) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Xor,
+                    Precedence::BitwiseXor,
+                ),
+            Token::ShiftLeft if precedence.is_weaker_than(Precedence::Shift) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::ShiftLeft,
+                    Precedence::Shift,
+                ),
+            Token::ShiftRightArithmetic if precedence.is_weaker_than(Precedence::Shift) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::ShiftRightArithmetic,
+                    Precedence::Shift,
+                ),
+            Token::ShiftRightLogical if precedence.is_weaker_than(Precedence::Shift) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::ShiftRightLogical,
+                    Precedence::Shift,
+                ),
+
+            Token::In if precedence.is_weaker_than(Precedence::Relational) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::In,
+                    Precedence::Relational,
+                ),
+            Token::InstanceOf if precedence.is_weaker_than(Precedence::Relational) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::InstanceOf,
+                    Precedence::Relational,
                 ),
             Token::Increment if precedence.is_weaker_than(Precedence::PostfixUpdate) => self
                 .parse_update_expression_postfix(left, start_loc, ast::UpdateOperator::Increment),
@@ -380,6 +444,22 @@ impl<'a> Parser<'a> {
             operator,
             argument,
             is_prefix: false,
+        })))
+    }
+
+    fn parse_unary_expression(
+        &mut self,
+        operator: ast::UnaryOperator,
+    ) -> ParseResult<P<ast::Expression>> {
+        let start_loc = self.loc;
+        self.advance()?;
+        let argument = self.parse_exression_with_precedence(Precedence::Unary)?;
+        let loc = self.mark_loc(start_loc);
+
+        Ok(p(ast::Expression::Unary(ast::UnaryExpression {
+            loc,
+            operator,
+            argument,
         })))
     }
 

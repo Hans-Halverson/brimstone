@@ -358,12 +358,12 @@ impl<'a> Printer<'a> {
     fn print_conditional_expression(&mut self, cond: &ast::ConditionalExpression) {
         self.start_node("ConditionalExpression", &cond.loc);
         self.property("test", cond.test.as_ref(), Printer::print_expression);
-        self.property("alternate", cond.altern.as_ref(), Printer::print_expression);
         self.property(
             "consequent",
             cond.conseq.as_ref(),
             Printer::print_expression,
         );
+        self.property("alternate", cond.altern.as_ref(), Printer::print_expression);
         self.end_node();
     }
 

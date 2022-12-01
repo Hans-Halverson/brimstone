@@ -30,44 +30,52 @@
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "3:4-3:9",
+          loc: "3:4-3:23",
           id: {
             type: "Identifier",
             loc: "3:4-3:5",
             name: "x",
           },
           id: {
-            type: "Identifier",
-            loc: "3:8-3:9",
-            name: "a",
-          },
-        },
-        {
-          type: "VariableDeclarator",
-          loc: "3:11-3:16",
-          id: {
-            type: "Identifier",
-            loc: "3:11-3:12",
-            name: "y",
-          },
-          id: {
-            type: "Identifier",
-            loc: "3:15-3:16",
-            name: "b",
-          },
-        },
-        {
-          type: "VariableDeclarator",
-          loc: "3:18-3:23",
-          id: {
-            type: "Identifier",
-            loc: "3:18-3:19",
-            name: "z",
-          },
-          id: {
-            type: "Identifier",
-            loc: "3:22-3:23",
-            name: "c",
+            type: "SequenceExpression",
+            loc: "3:8-3:23",
+            expressions: [
+              {
+                type: "Identifier",
+                loc: "3:8-3:9",
+                name: "a",
+              },
+              {
+                type: "AssignmentExpression",
+                loc: "3:11-3:16",
+                operator: "=",
+                left: {
+                  type: "Identifier",
+                  loc: "3:11-3:12",
+                  name: "y",
+                },
+                right: {
+                  type: "Identifier",
+                  loc: "3:15-3:16",
+                  name: "b",
+                },
+              },
+              {
+                type: "AssignmentExpression",
+                loc: "3:18-3:23",
+                operator: "=",
+                left: {
+                  type: "Identifier",
+                  loc: "3:18-3:19",
+                  name: "z",
+                },
+                right: {
+                  type: "Identifier",
+                  loc: "3:22-3:23",
+                  name: "c",
+                },
+              },
+            ],
           },
         },
       ],

@@ -1,0 +1,195 @@
+{
+  type: "Program",
+  loc: "1:0-9:18",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:10",
+      kind: {
+        type: "ConditionalExpression",
+        loc: "1:0-1:9",
+        test: {
+          type: "Identifier",
+          loc: "1:0-1:1",
+          name: "a",
+        },
+        consequent: {
+          type: "Identifier",
+          loc: "1:4-1:5",
+          name: "b",
+        },
+        alternate: {
+          type: "Identifier",
+          loc: "1:8-1:9",
+          name: "c",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:18",
+      kind: {
+        type: "ConditionalExpression",
+        loc: "3:0-3:17",
+        test: {
+          type: "Identifier",
+          loc: "3:0-3:1",
+          name: "a",
+        },
+        consequent: {
+          type: "Identifier",
+          loc: "3:4-3:5",
+          name: "b",
+        },
+        alternate: {
+          type: "ConditionalExpression",
+          loc: "3:8-3:17",
+          test: {
+            type: "Identifier",
+            loc: "3:8-3:9",
+            name: "c",
+          },
+          consequent: {
+            type: "Identifier",
+            loc: "3:12-3:13",
+            name: "d",
+          },
+          alternate: {
+            type: "Identifier",
+            loc: "3:16-3:17",
+            name: "e",
+          },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:18",
+      kind: {
+        type: "ConditionalExpression",
+        loc: "5:0-5:17",
+        test: {
+          type: "Identifier",
+          loc: "5:0-5:1",
+          name: "a",
+        },
+        consequent: {
+          type: "ConditionalExpression",
+          loc: "5:4-5:13",
+          test: {
+            type: "Identifier",
+            loc: "5:4-5:5",
+            name: "b",
+          },
+          consequent: {
+            type: "Identifier",
+            loc: "5:8-5:9",
+            name: "c",
+          },
+          alternate: {
+            type: "Identifier",
+            loc: "5:12-5:13",
+            name: "d",
+          },
+        },
+        alternate: {
+          type: "Identifier",
+          loc: "5:16-5:17",
+          name: "e",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:22",
+      kind: {
+        type: "ConditionalExpression",
+        loc: "7:0-7:21",
+        test: {
+          type: "BinaryExpression",
+          loc: "7:0-7:5",
+          operator: "+",
+          left: {
+            type: "Identifier",
+            loc: "7:0-7:1",
+            name: "a",
+          },
+          right: {
+            type: "Identifier",
+            loc: "7:4-7:5",
+            name: "b",
+          },
+        },
+        consequent: {
+          type: "BinaryExpression",
+          loc: "7:8-7:13",
+          operator: "+",
+          left: {
+            type: "Identifier",
+            loc: "7:8-7:9",
+            name: "c",
+          },
+          right: {
+            type: "Identifier",
+            loc: "7:12-7:13",
+            name: "d",
+          },
+        },
+        alternate: {
+          type: "BinaryExpression",
+          loc: "7:16-7:21",
+          operator: "+",
+          left: {
+            type: "Identifier",
+            loc: "7:16-7:17",
+            name: "e",
+          },
+          right: {
+            type: "Identifier",
+            loc: "7:20-7:21",
+            name: "f",
+          },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:18",
+      kind: {
+        type: "SequenceExpression",
+        loc: "9:0-9:17",
+        expressions: [
+          {
+            type: "Identifier",
+            loc: "9:0-9:1",
+            name: "a",
+          },
+          {
+            type: "ConditionalExpression",
+            loc: "9:4-9:13",
+            test: {
+              type: "Identifier",
+              loc: "9:4-9:5",
+              name: "b",
+            },
+            consequent: {
+              type: "Identifier",
+              loc: "9:8-9:9",
+              name: "c",
+            },
+            alternate: {
+              type: "Identifier",
+              loc: "9:12-9:13",
+              name: "d",
+            },
+          },
+          {
+            type: "Identifier",
+            loc: "9:16-9:17",
+            name: "e",
+          },
+        ],
+      },
+    },
+  ],
+}

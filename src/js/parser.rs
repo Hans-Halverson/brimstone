@@ -241,10 +241,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> ParseResult<P<ast::Expression>> {
-        self.parse_exression_with_precedence(Precedence::None)
+        self.parse_expression_with_precedence(Precedence::None)
     }
 
-    fn parse_exression_with_precedence(
+    fn parse_expression_with_precedence(
         &mut self,
         precedence: Precedence,
     ) -> ParseResult<P<ast::Expression>> {
@@ -521,6 +521,24 @@ impl<'a> Parser<'a> {
                     start_pos,
                     ast::AssignmentOperator::ShiftRightLogical,
                 ),
+
+            // Member expressions
+            Token::Period if precedence.is_weaker_than(Precedence::Call) => {
+                self.parse_member_expression(left, start_pos)
+            }
+            Token::LeftBrace if precedence.is_weaker_than(Precedence::Call) => {
+                self.parse_computed_member_expression(left, start_pos)
+            }
+
+            // Other infix expressions
+            Token::Question if precedence.is_weaker_than(Precedence::Assignment) => {
+                self.parse_conditional_expression(left, start_pos)
+            }
+            Token::Comma if precedence.is_weaker_than(Precedence::Sequence) => {
+                self.parse_sequence_expression(left, start_pos)
+            }
+
+            // No infix expression
             _ => Ok(left),
         }
     }
@@ -533,7 +551,7 @@ impl<'a> Parser<'a> {
         precedence: Precedence,
     ) -> ParseResult<P<ast::Expression>> {
         self.advance()?;
-        let right = self.parse_exression_with_precedence(precedence)?;
+        let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(ast::Expression::Binary(ast::BinaryExpression {
@@ -552,7 +570,7 @@ impl<'a> Parser<'a> {
         precedence: Precedence,
     ) -> ParseResult<P<ast::Expression>> {
         self.advance()?;
-        let right = self.parse_exression_with_precedence(precedence)?;
+        let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(ast::Expression::Logical(ast::LogicalExpression {
@@ -569,7 +587,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<ast::Expression>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
-        let argument = self.parse_exression_with_precedence(Precedence::Unary)?;
+        let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(ast::Expression::Update(ast::UpdateExpression {
@@ -603,7 +621,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<ast::Expression>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
-        let argument = self.parse_exression_with_precedence(Precedence::Unary)?;
+        let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(ast::Expression::Unary(ast::UnaryExpression {
@@ -621,7 +639,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<ast::Expression>> {
         self.advance()?;
         // Right associative, so lower precedence
-        let right = self.parse_exression_with_precedence(Precedence::Sequence)?;
+        let right = self.parse_expression_with_precedence(Precedence::Sequence)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(ast::Expression::Assign(ast::AssignmentExpression {
@@ -629,6 +647,84 @@ impl<'a> Parser<'a> {
             left,
             right,
             operator,
+        })))
+    }
+
+    fn parse_member_expression(
+        &mut self,
+        object: P<ast::Expression>,
+        start_pos: Pos,
+    ) -> ParseResult<P<ast::Expression>> {
+        self.advance()?;
+        let property = self.parse_expression_with_precedence(Precedence::Call)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(ast::Expression::Member(ast::MemberExpression {
+            loc,
+            object,
+            property,
+            is_computed: false,
+            is_optional: false,
+        })))
+    }
+
+    fn parse_computed_member_expression(
+        &mut self,
+        object: P<ast::Expression>,
+        start_pos: Pos,
+    ) -> ParseResult<P<ast::Expression>> {
+        self.advance()?;
+        let property = self.parse_expression()?;
+        self.expect(Token::RightBrace)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(ast::Expression::Member(ast::MemberExpression {
+            loc,
+            object,
+            property,
+            is_computed: true,
+            is_optional: false,
+        })))
+    }
+
+    fn parse_conditional_expression(
+        &mut self,
+        test: P<ast::Expression>,
+        start_pos: Pos,
+    ) -> ParseResult<P<ast::Expression>> {
+        self.advance()?;
+        let conseq = self.parse_expression()?;
+        self.expect(Token::Colon)?;
+        // Right associative, so lower precedence
+        let altern = self.parse_expression_with_precedence(Precedence::Sequence)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(ast::Expression::Conditional(
+            ast::ConditionalExpression {
+                loc,
+                test,
+                conseq,
+                altern,
+            },
+        )))
+    }
+
+    fn parse_sequence_expression(
+        &mut self,
+        first: P<ast::Expression>,
+        start_pos: Pos,
+    ) -> ParseResult<P<ast::Expression>> {
+        let mut expressions = vec![*first];
+        while self.token == Token::Comma {
+            self.advance()?;
+            expressions.push(*self.parse_expression_with_precedence(Precedence::Sequence)?);
+        }
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(ast::Expression::Sequence(ast::SequenceExpression {
+            loc,
+            expressions,
         })))
     }
 

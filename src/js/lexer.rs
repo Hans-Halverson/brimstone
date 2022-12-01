@@ -339,6 +339,14 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::LogicalNot, start_pos)
                 }
             },
+            '[' => {
+                self.advance();
+                self.emit(Token::LeftBrace, start_pos)
+            }
+            ']' => {
+                self.advance();
+                self.emit(Token::RightBrace, start_pos)
+            }
             ';' => {
                 self.advance();
                 self.emit(Token::Semicolon, start_pos)
@@ -346,6 +354,14 @@ impl<'a> Lexer<'a> {
             ',' => {
                 self.advance();
                 self.emit(Token::Comma, start_pos)
+            }
+            '.' => {
+                self.advance();
+                self.emit(Token::Period, start_pos)
+            }
+            ':' => {
+                self.advance();
+                self.emit(Token::Colon, start_pos)
             }
             EOF_CHAR => self.emit(Token::Eof, start_pos),
             char if is_id_start_char(char) => self.lex_identifier(start_pos),

@@ -4,10 +4,10 @@
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:39",
+      loc: "1:0-1:43",
       kind: {
         type: "BinaryExpression",
-        loc: "1:0-1:38",
+        loc: "1:0-1:42",
         operator: "|",
         left: {
           type: "Identifier",
@@ -16,7 +16,7 @@
         },
         right: {
           type: "BinaryExpression",
-          loc: "1:4-1:38",
+          loc: "1:4-1:42",
           operator: "^",
           left: {
             type: "Identifier",
@@ -25,7 +25,7 @@
           },
           right: {
             type: "BinaryExpression",
-            loc: "1:8-1:38",
+            loc: "1:8-1:42",
             operator: "&",
             left: {
               type: "Identifier",
@@ -34,8 +34,8 @@
             },
             right: {
               type: "BinaryExpression",
-              loc: "1:12-1:38",
-              operator: "in",
+              loc: "1:12-1:42",
+              operator: "==",
               left: {
                 type: "Identifier",
                 loc: "1:12-1:13",
@@ -43,8 +43,8 @@
               },
               right: {
                 type: "BinaryExpression",
-                loc: "1:17-1:38",
-                operator: ">>",
+                loc: "1:17-1:42",
+                operator: "<",
                 left: {
                   type: "Identifier",
                   loc: "1:17-1:18",
@@ -52,17 +52,17 @@
                 },
                 right: {
                   type: "BinaryExpression",
-                  loc: "1:22-1:38",
-                  operator: "+",
+                  loc: "1:21-1:42",
+                  operator: ">>",
                   left: {
                     type: "Identifier",
-                    loc: "1:22-1:23",
+                    loc: "1:21-1:22",
                     name: "f",
                   },
                   right: {
                     type: "BinaryExpression",
-                    loc: "1:26-1:38",
-                    operator: "*",
+                    loc: "1:26-1:42",
+                    operator: "+",
                     left: {
                       type: "Identifier",
                       loc: "1:26-1:27",
@@ -70,23 +70,33 @@
                     },
                     right: {
                       type: "BinaryExpression",
-                      loc: "1:30-1:38",
-                      operator: "**",
+                      loc: "1:30-1:42",
+                      operator: "*",
                       left: {
                         type: "Identifier",
                         loc: "1:30-1:31",
                         name: "h",
                       },
                       right: {
-                        type: "UpdateExpression",
-                        loc: "1:35-1:38",
-                        operator: "++",
-                        argument: {
+                        type: "BinaryExpression",
+                        loc: "1:34-1:42",
+                        operator: "**",
+                        left: {
                           type: "Identifier",
-                          loc: "1:35-1:36",
+                          loc: "1:34-1:35",
                           name: "i",
                         },
-                        prefix: false,
+                        right: {
+                          type: "UpdateExpression",
+                          loc: "1:39-1:42",
+                          operator: "++",
+                          argument: {
+                            type: "Identifier",
+                            loc: "1:39-1:40",
+                            name: "j",
+                          },
+                          prefix: false,
+                        },
                       },
                     },
                   },
@@ -99,96 +109,106 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "3:0-3:39",
+      loc: "3:0-3:43",
       kind: {
         type: "BinaryExpression",
-        loc: "3:0-3:38",
+        loc: "3:0-3:42",
         operator: "|",
         left: {
           type: "BinaryExpression",
-          loc: "3:0-3:34",
+          loc: "3:0-3:38",
           operator: "^",
           left: {
             type: "BinaryExpression",
-            loc: "3:0-3:30",
+            loc: "3:0-3:34",
             operator: "&",
             left: {
               type: "BinaryExpression",
-              loc: "3:0-3:26",
-              operator: "in",
+              loc: "3:0-3:30",
+              operator: "==",
               left: {
                 type: "BinaryExpression",
-                loc: "3:0-3:21",
-                operator: ">>",
+                loc: "3:0-3:25",
+                operator: "<",
                 left: {
                   type: "BinaryExpression",
-                  loc: "3:0-3:16",
-                  operator: "+",
+                  loc: "3:0-3:21",
+                  operator: ">>",
                   left: {
                     type: "BinaryExpression",
-                    loc: "3:0-3:12",
-                    operator: "*",
+                    loc: "3:0-3:16",
+                    operator: "+",
                     left: {
                       type: "BinaryExpression",
-                      loc: "3:0-3:8",
-                      operator: "**",
+                      loc: "3:0-3:12",
+                      operator: "*",
                       left: {
-                        type: "UpdateExpression",
-                        loc: "3:0-3:3",
-                        operator: "++",
-                        argument: {
-                          type: "Identifier",
-                          loc: "3:2-3:3",
-                          name: "a",
+                        type: "BinaryExpression",
+                        loc: "3:0-3:8",
+                        operator: "**",
+                        left: {
+                          type: "UpdateExpression",
+                          loc: "3:0-3:3",
+                          operator: "++",
+                          argument: {
+                            type: "Identifier",
+                            loc: "3:2-3:3",
+                            name: "a",
+                          },
+                          prefix: true,
                         },
-                        prefix: true,
+                        right: {
+                          type: "Identifier",
+                          loc: "3:7-3:8",
+                          name: "b",
+                        },
                       },
                       right: {
                         type: "Identifier",
-                        loc: "3:7-3:8",
-                        name: "b",
+                        loc: "3:11-3:12",
+                        name: "c",
                       },
                     },
                     right: {
                       type: "Identifier",
-                      loc: "3:11-3:12",
-                      name: "c",
+                      loc: "3:15-3:16",
+                      name: "d",
                     },
                   },
                   right: {
                     type: "Identifier",
-                    loc: "3:15-3:16",
-                    name: "d",
+                    loc: "3:20-3:21",
+                    name: "e",
                   },
                 },
                 right: {
                   type: "Identifier",
-                  loc: "3:20-3:21",
-                  name: "e",
+                  loc: "3:24-3:25",
+                  name: "f",
                 },
               },
               right: {
                 type: "Identifier",
-                loc: "3:25-3:26",
-                name: "f",
+                loc: "3:29-3:30",
+                name: "g",
               },
             },
             right: {
               type: "Identifier",
-              loc: "3:29-3:30",
-              name: "g",
+              loc: "3:33-3:34",
+              name: "h",
             },
           },
           right: {
             type: "Identifier",
-            loc: "3:33-3:34",
-            name: "h",
+            loc: "3:37-3:38",
+            name: "i",
           },
         },
         right: {
           type: "Identifier",
-          loc: "3:37-3:38",
-          name: "i",
+          loc: "3:41-3:42",
+          name: "j",
         },
       },
     },

@@ -1,0 +1,263 @@
+{
+  type: "Program",
+  loc: "1:0-25:9",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:10",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "1:0-1:9",
+        operator: "=",
+        left: {
+          type: "Identifier",
+          loc: "1:0-1:1",
+          name: "a",
+        },
+        right: {
+          type: "AssignmentExpression",
+          loc: "1:4-1:9",
+          operator: "=",
+          left: {
+            type: "Identifier",
+            loc: "1:4-1:5",
+            name: "b",
+          },
+          right: {
+            type: "Identifier",
+            loc: "1:8-1:9",
+            name: "c",
+          },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "3:0-3:6",
+        operator: "+=",
+        left: {
+          type: "Identifier",
+          loc: "3:0-3:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "3:5-3:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "5:0-5:6",
+        operator: "-=",
+        left: {
+          type: "Identifier",
+          loc: "5:0-5:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "5:5-5:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "7:0-7:6",
+        operator: "*=",
+        left: {
+          type: "Identifier",
+          loc: "7:0-7:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "7:5-7:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "9:0-9:6",
+        operator: "/=",
+        left: {
+          type: "Identifier",
+          loc: "9:0-9:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "9:5-9:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "11:0-11:6",
+        operator: "%=",
+        left: {
+          type: "Identifier",
+          loc: "11:0-11:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "11:5-11:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "13:0-13:7",
+        operator: "**=",
+        left: {
+          type: "Identifier",
+          loc: "13:0-13:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "13:6-13:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "15:0-15:6",
+        operator: "&=",
+        left: {
+          type: "Identifier",
+          loc: "15:0-15:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "15:5-15:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "17:0-17:6",
+        operator: "|=",
+        left: {
+          type: "Identifier",
+          loc: "17:0-17:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "17:5-17:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:7",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "19:0-19:6",
+        operator: "^=",
+        left: {
+          type: "Identifier",
+          loc: "19:0-19:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "19:5-19:6",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:0-21:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "21:0-21:7",
+        operator: "<<=",
+        left: {
+          type: "Identifier",
+          loc: "21:0-21:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "21:6-21:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:0-23:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "23:0-23:7",
+        operator: ">>=",
+        left: {
+          type: "Identifier",
+          loc: "23:0-23:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "23:6-23:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "25:0-25:9",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "25:0-25:8",
+        operator: ">>>=",
+        left: {
+          type: "Identifier",
+          loc: "25:0-25:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "25:7-25:8",
+          name: "b",
+        },
+      },
+    },
+  ],
+}

@@ -73,6 +73,10 @@ impl<'a> Lexer<'a> {
         self.advance_n(3);
     }
 
+    fn advance4(&mut self) {
+        self.advance_n(4);
+    }
+
     #[inline]
     fn peek_n(&self, n: usize) -> char {
         let next_pos = self.pos + n;
@@ -89,6 +93,10 @@ impl<'a> Lexer<'a> {
 
     fn peek2(&mut self) -> char {
         self.peek_n(2)
+    }
+
+    fn peek3(&mut self) -> char {
+        self.peek_n(3)
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
@@ -134,6 +142,10 @@ impl<'a> Lexer<'a> {
                     self.advance2();
                     self.emit(Token::Increment, start_pos)
                 }
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::AddEq, start_pos)
+                }
                 _ => {
                     self.advance();
                     self.emit(Token::Plus, start_pos)
@@ -144,79 +156,171 @@ impl<'a> Lexer<'a> {
                     self.advance2();
                     self.emit(Token::Decrement, start_pos)
                 }
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::SubtractEq, start_pos)
+                }
                 _ => {
                     self.advance();
                     self.emit(Token::Minus, start_pos)
                 }
             },
             '*' => match self.peek() {
-                '*' => {
+                '*' => match self.peek2() {
+                    '=' => {
+                        self.advance3();
+                        self.emit(Token::ExponentEq, start_pos)
+                    }
+                    _ => {
+                        self.advance2();
+                        self.emit(Token::Exponent, start_pos)
+                    }
+                },
+                '=' => {
                     self.advance2();
-                    self.emit(Token::Exponent, start_pos)
+                    self.emit(Token::MultiplyEq, start_pos)
                 }
                 _ => {
                     self.advance();
                     self.emit(Token::Multiply, start_pos)
                 }
             },
-            '/' => {
-                self.advance();
-                self.emit(Token::Divide, start_pos)
-            }
-            '%' => {
-                self.advance();
-                self.emit(Token::Remainder, start_pos)
-            }
-            '&' => {
-                self.advance();
-                self.emit(Token::BitwiseAnd, start_pos)
-            }
-            '|' => {
-                self.advance();
-                self.emit(Token::BitwiseOr, start_pos)
-            }
-            '^' => {
-                self.advance();
-                self.emit(Token::BitwiseXor, start_pos)
-            }
+            '/' => match self.peek() {
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::DivideEq, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Divide, start_pos)
+                }
+            },
+            '%' => match self.peek() {
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::RemainderEq, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Remainder, start_pos)
+                }
+            },
+            '&' => match self.peek() {
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::AndEq, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::BitwiseAnd, start_pos)
+                }
+            },
+            '|' => match self.peek() {
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::OrEq, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::BitwiseOr, start_pos)
+                }
+            },
+            '^' => match self.peek() {
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::XorEq, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::BitwiseXor, start_pos)
+                }
+            },
             '>' => match self.peek() {
                 '>' => match self.peek2() {
-                    '>' => {
+                    '>' => match self.peek3() {
+                        '=' => {
+                            self.advance4();
+                            self.emit(Token::ShiftRightLogicalEq, start_pos)
+                        }
+                        _ => {
+                            self.advance3();
+                            self.emit(Token::ShiftRightLogical, start_pos)
+                        }
+                    },
+                    '=' => {
                         self.advance3();
-                        self.emit(Token::ShiftRightLogical, start_pos)
+                        self.emit(Token::ShiftRightArithmeticEq, start_pos)
                     }
                     _ => {
                         self.advance2();
                         self.emit(Token::ShiftRightArithmetic, start_pos)
                     }
                 },
+                '=' => {
+                    self.advance2();
+                    self.emit(Token::GreaterThanOrEqual, start_pos)
+                }
                 _ => {
                     self.advance();
                     self.emit(Token::GreaterThan, start_pos)
                 }
             },
             '<' => match self.peek() {
-                '<' => {
+                '<' => match self.peek2() {
+                    '=' => {
+                        self.advance3();
+                        self.emit(Token::ShiftLeftEq, start_pos)
+                    }
+                    _ => {
+                        self.advance2();
+                        self.emit(Token::ShiftLeft, start_pos)
+                    }
+                },
+                '=' => {
                     self.advance2();
-                    self.emit(Token::ShiftLeft, start_pos)
+                    self.emit(Token::LessThanOrEqual, start_pos)
                 }
                 _ => {
                     self.advance();
                     self.emit(Token::LessThan, start_pos)
                 }
             },
-            '!' => {
-                self.advance();
-                self.emit(Token::LogicalNot, start_pos)
-            }
             '~' => {
                 self.advance();
                 self.emit(Token::BitwiseNot, start_pos)
             }
-            '=' => {
-                self.advance();
-                self.emit(Token::Equals, start_pos)
-            }
+            '=' => match self.peek() {
+                '=' => match self.peek2() {
+                    '=' => {
+                        self.advance3();
+                        self.emit(Token::EqEqEq, start_pos)
+                    }
+                    _ => {
+                        self.advance2();
+                        self.emit(Token::EqEq, start_pos)
+                    }
+                },
+                _ => {
+                    self.advance();
+                    self.emit(Token::Equals, start_pos)
+                }
+            },
+            '!' => match self.peek() {
+                '=' => match self.peek2() {
+                    '=' => {
+                        self.advance3();
+                        self.emit(Token::NotEqEq, start_pos)
+                    }
+                    _ => {
+                        self.advance2();
+                        self.emit(Token::NotEq, start_pos)
+                    }
+                },
+                _ => {
+                    self.advance();
+                    self.emit(Token::LogicalNot, start_pos)
+                }
+            },
             ';' => {
                 self.advance();
                 self.emit(Token::Semicolon, start_pos)

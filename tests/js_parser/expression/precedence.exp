@@ -1,0 +1,96 @@
+{
+  type: "Program",
+  loc: "1:0-3:17",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:17",
+      kind: {
+        type: "BinaryExpression",
+        loc: "1:0-1:16",
+        operator: "+",
+        left: {
+          type: "Identifier",
+          loc: "1:0-1:1",
+          name: "a",
+        },
+        right: {
+          type: "BinaryExpression",
+          loc: "1:4-1:16",
+          operator: "*",
+          left: {
+            type: "Identifier",
+            loc: "1:4-1:5",
+            name: "b",
+          },
+          right: {
+            type: "BinaryExpression",
+            loc: "1:8-1:16",
+            operator: "**",
+            left: {
+              type: "Identifier",
+              loc: "1:8-1:9",
+              name: "c",
+            },
+            right: {
+              type: "UpdateExpression",
+              loc: "1:13-1:16",
+              operator: "++",
+              argument: {
+                type: "Identifier",
+                loc: "1:13-1:14",
+                name: "d",
+              },
+              prefix: false,
+            },
+          },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:17",
+      kind: {
+        type: "BinaryExpression",
+        loc: "3:0-3:16",
+        operator: "+",
+        left: {
+          type: "BinaryExpression",
+          loc: "3:0-3:12",
+          operator: "*",
+          left: {
+            type: "BinaryExpression",
+            loc: "3:0-3:8",
+            operator: "**",
+            left: {
+              type: "UpdateExpression",
+              loc: "3:0-3:3",
+              operator: "++",
+              argument: {
+                type: "Identifier",
+                loc: "3:2-3:3",
+                name: "a",
+              },
+              prefix: true,
+            },
+            right: {
+              type: "Identifier",
+              loc: "3:7-3:8",
+              name: "b",
+            },
+          },
+          right: {
+            type: "Identifier",
+            loc: "3:11-3:12",
+            name: "c",
+          },
+        },
+        right: {
+          type: "Identifier",
+          loc: "3:15-3:16",
+          name: "d",
+        },
+      },
+    },
+  ],
+}

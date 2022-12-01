@@ -1,13 +1,13 @@
+use super::loc::{find_line_col_for_pos, Loc};
 use super::{ast, source::Source};
-use super::loc::{Loc, find_line_col_for_pos};
 
 struct Printer<'a> {
     buf: String,
     indent: usize,
-    source: & 'a Source,
+    source: &'a Source,
 }
 
-impl <'a> Printer<'a> {
+impl<'a> Printer<'a> {
     fn new(source: &'a Source) -> Printer<'a> {
         Printer {
             buf: String::new(),
@@ -73,7 +73,10 @@ impl <'a> Printer<'a> {
 
         // Write loc as string in concise format
         self.indent();
-        self.string(&format!("loc: \"{}:{}-{}:{}\",\n", start_line, start_col, end_line, end_col));
+        self.string(&format!(
+            "loc: \"{}:{}-{}:{}\",\n",
+            start_line, start_col, end_line, end_col
+        ));
     }
 
     fn end_node(&mut self) {
@@ -134,6 +137,7 @@ impl <'a> Printer<'a> {
     fn print_statement(&mut self, stmt: &ast::Statement) {
         match stmt {
             ast::Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
+            ast::Statement::Expr(expr) => self.print_expression_statement(expr),
         }
     }
 
@@ -145,6 +149,12 @@ impl <'a> Printer<'a> {
             var_decl.declarations.as_ref(),
             Printer::print_variable_declarator,
         );
+        self.end_node();
+    }
+
+    fn print_expression_statement(&mut self, expr: &ast::ExpressionStatement) {
+        self.start_node("ExpressionStatement", &expr.loc);
+        self.property("kind", expr.expr.as_ref(), Printer::print_expression);
         self.end_node();
     }
 

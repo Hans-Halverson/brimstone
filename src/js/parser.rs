@@ -2,7 +2,7 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use super::ast;
+use super::ast::{self, P};
 use super::lexer::Lexer;
 use super::loc::{find_line_col_for_pos, Loc, EMPTY_LOC};
 use super::source::Source;
@@ -68,7 +68,36 @@ impl From<io::Error> for LocalizedParseError {
     }
 }
 
-fn p<T>(node: T) -> ast::P<T> {
+/// Expression operator precedence. A lower number binds tighter than a larger number.
+#[derive(Clone, Copy)]
+enum Precedence {
+    Call = 0, // Includes member access, new with argments
+    New = 1,  // Without arguments
+    PostfixUpdate = 2,
+    Unary = 3, // Includes prefix update
+    Exponentiation = 4,
+    Multiplication = 5,
+    Addition = 6,
+    Shift = 7,
+    Relational = 8, // Includes in and instanceof
+    Equality = 9,
+    BitwiseAnd = 10,
+    BitwiseXor = 11,
+    BitwiseOr = 12,
+    LogicalAnd = 13,
+    LogicalOr = 14,  // Includes nullish coalescing
+    Assignment = 15, // Includes conditional, arrow, yield
+    Sequence = 16,
+    None = 17,
+}
+
+impl Precedence {
+    fn is_weaker_than(self, other: Precedence) -> bool {
+        (self as i32) > (other as i32)
+    }
+}
+
+fn p<T>(node: T) -> P<T> {
     Box::new(node)
 }
 
@@ -154,7 +183,15 @@ impl<'a> Parser<'a> {
             Token::Var | Token::Let | Token::Const => {
                 Ok(ast::Statement::VarDecl(self.parse_variable_declaration()?))
             }
-            other => self.error_unexpected_token(self.loc, other),
+            // Anything else must be an expression statement
+            _ => {
+                let start_loc = self.loc;
+                let expr = self.parse_expression()?;
+                self.expect(Token::Semicolon)?;
+                let loc = self.mark_loc(start_loc);
+
+                Ok(ast::Statement::Expr(ast::ExpressionStatement { loc, expr }))
+            }
         }
     }
 
@@ -180,7 +217,7 @@ impl<'a> Parser<'a> {
             declarations.push(ast::VariableDeclarator {
                 loc,
                 id: p(id),
-                init: Some(p(init)),
+                init: Some(init),
             });
 
             if self.token == Token::Comma {
@@ -199,17 +236,151 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_expression(&mut self) -> ParseResult<ast::Expression> {
+    fn parse_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        self.parse_exression_with_precedence(Precedence::None)
+    }
+
+    fn parse_exression_with_precedence(
+        &mut self,
+        precedence: Precedence,
+    ) -> ParseResult<P<ast::Expression>> {
         let start_loc = self.loc;
+        let mut current_expr = self.parse_expression_prefix()?;
+        loop {
+            let current_expr_ref = current_expr.as_ref() as *const ast::Expression;
+            let next_expr = self.parse_expression_infix(current_expr, precedence, start_loc)?;
+            if std::ptr::eq(current_expr_ref, next_expr.as_ref()) {
+                return Ok(next_expr);
+            }
+
+            current_expr = next_expr;
+        }
+    }
+
+    fn parse_expression_prefix(&mut self) -> ParseResult<P<ast::Expression>> {
         match &self.token {
             Token::Identifier(name) => {
+                let start_loc = self.loc;
                 let name = name.clone();
                 self.advance()?;
                 let loc = self.mark_loc(start_loc);
-                Ok(ast::Expression::Id(ast::Identifier { loc, name }))
+                Ok(p(ast::Expression::Id(ast::Identifier { loc, name })))
             }
+            Token::Increment => self.parse_update_expression_prefix(ast::UpdateOperator::Increment),
+            Token::Decrement => self.parse_update_expression_prefix(ast::UpdateOperator::Decrement),
             other => self.error_unexpected_token(self.loc, other),
         }
+    }
+
+    fn parse_expression_infix(
+        &mut self,
+        left: P<ast::Expression>,
+        precedence: Precedence,
+        start_loc: Loc,
+    ) -> ParseResult<P<ast::Expression>> {
+        match &self.token {
+            Token::Plus if precedence.is_weaker_than(Precedence::Addition) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Add,
+                    Precedence::Addition,
+                ),
+            Token::Minus if precedence.is_weaker_than(Precedence::Addition) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Subtract,
+                    Precedence::Addition,
+                ),
+            Token::Multiply if precedence.is_weaker_than(Precedence::Multiplication) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Multiply,
+                    Precedence::Multiplication,
+                ),
+            Token::Divide if precedence.is_weaker_than(Precedence::Multiplication) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Divide,
+                    Precedence::Multiplication,
+                ),
+            Token::Remainder if precedence.is_weaker_than(Precedence::Multiplication) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Remainder,
+                    Precedence::Multiplication,
+                ),
+            Token::Exponent if precedence.is_weaker_than(Precedence::Exponentiation) => self
+                .parse_binary_expression(
+                    left,
+                    start_loc,
+                    ast::BinaryOperator::Exponent,
+                    // Right associative, so lower precedence
+                    Precedence::Multiplication,
+                ),
+            Token::Increment if precedence.is_weaker_than(Precedence::PostfixUpdate) => self
+                .parse_update_expression_postfix(left, start_loc, ast::UpdateOperator::Increment),
+            Token::Decrement if precedence.is_weaker_than(Precedence::PostfixUpdate) => self
+                .parse_update_expression_postfix(left, start_loc, ast::UpdateOperator::Decrement),
+            _ => Ok(left),
+        }
+    }
+
+    fn parse_binary_expression(
+        &mut self,
+        left: P<ast::Expression>,
+        start_loc: Loc,
+        operator: ast::BinaryOperator,
+        precedence: Precedence,
+    ) -> ParseResult<P<ast::Expression>> {
+        self.advance()?;
+        let right = self.parse_exression_with_precedence(precedence)?;
+        let loc = self.mark_loc(start_loc);
+
+        Ok(p(ast::Expression::Binary(ast::BinaryExpression {
+            loc,
+            left,
+            right,
+            operator,
+        })))
+    }
+
+    fn parse_update_expression_prefix(
+        &mut self,
+        operator: ast::UpdateOperator,
+    ) -> ParseResult<P<ast::Expression>> {
+        let start_loc = self.loc;
+        self.advance()?;
+        let argument = self.parse_exression_with_precedence(Precedence::Unary)?;
+        let loc = self.mark_loc(start_loc);
+
+        Ok(p(ast::Expression::Update(ast::UpdateExpression {
+            loc,
+            operator,
+            argument,
+            is_prefix: true,
+        })))
+    }
+
+    fn parse_update_expression_postfix(
+        &mut self,
+        argument: P<ast::Expression>,
+        start_loc: Loc,
+        operator: ast::UpdateOperator,
+    ) -> ParseResult<P<ast::Expression>> {
+        self.advance()?;
+        let loc = self.mark_loc(start_loc);
+
+        Ok(p(ast::Expression::Update(ast::UpdateExpression {
+            loc,
+            operator,
+            argument,
+            is_prefix: false,
+        })))
     }
 
     fn parse_pattern(&mut self) -> ParseResult<ast::Pattern> {

@@ -60,6 +60,25 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn advance2(&mut self) {
+        self.pos += 2;
+        if self.pos < self.buf.len() {
+            self.current = self.buf.as_bytes()[self.pos].into();
+        } else {
+            self.current = EOF_CHAR;
+            self.pos = self.buf.len();
+        }
+    }
+
+    fn peek(&self) -> char {
+        let next_pos = self.pos + 1;
+        if next_pos < self.buf.len() {
+            self.buf.as_bytes()[next_pos].into()
+        } else {
+            EOF_CHAR
+        }
+    }
+
     fn mark_loc(&self, start_pos: Pos) -> Loc {
         Loc {
             start: start_pos,
@@ -98,9 +117,43 @@ impl<'a> Lexer<'a> {
         let start_pos = self.pos;
 
         match self.current {
-            '+' => {
+            '+' => match self.peek() {
+                '+' => {
+                    self.advance2();
+                    self.emit(Token::Increment, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Plus, start_pos)
+                }
+            },
+            '-' => match self.peek() {
+                '-' => {
+                    self.advance2();
+                    self.emit(Token::Decrement, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Minus, start_pos)
+                }
+            },
+            '*' => match self.peek() {
+                '*' => {
+                    self.advance2();
+                    self.emit(Token::Exponent, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Multiply, start_pos)
+                }
+            },
+            '/' => {
                 self.advance();
-                self.emit(Token::Plus, start_pos)
+                self.emit(Token::Divide, start_pos)
+            }
+            '%' => {
+                self.advance();
+                self.emit(Token::Remainder, start_pos)
             }
             '=' => {
                 self.advance();

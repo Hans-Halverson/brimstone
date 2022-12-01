@@ -18,6 +18,7 @@ pub struct Identifier {
 
 pub enum Statement {
     VarDecl(VariableDeclaration),
+    Expr(ExpressionStatement),
 }
 
 pub enum VarKind {
@@ -36,6 +37,11 @@ pub struct VariableDeclarator {
     pub loc: Loc,
     pub id: P<Pattern>,
     pub init: Option<P<Expression>>,
+}
+
+pub struct ExpressionStatement {
+    pub loc: Loc,
+    pub expr: P<Expression>,
 }
 
 pub enum Expression {

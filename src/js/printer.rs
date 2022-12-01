@@ -272,8 +272,8 @@ impl<'a> Printer<'a> {
 
     fn print_logical_operator(&mut self, op: &ast::LogicalOperator) {
         let str = match op {
-            ast::LogicalOperator::And => "&",
-            ast::LogicalOperator::Or => "|",
+            ast::LogicalOperator::And => "&&",
+            ast::LogicalOperator::Or => "||",
             ast::LogicalOperator::NullishCoalesce => "??",
         };
         self.print_str(str);

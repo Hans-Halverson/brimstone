@@ -206,6 +206,10 @@ impl<'a> Lexer<'a> {
                 }
             },
             '&' => match self.peek() {
+                '&' => {
+                    self.advance2();
+                    self.emit(Token::LogicalAnd, start_pos)
+                }
                 '=' => {
                     self.advance2();
                     self.emit(Token::AndEq, start_pos)
@@ -216,6 +220,10 @@ impl<'a> Lexer<'a> {
                 }
             },
             '|' => match self.peek() {
+                '|' => {
+                    self.advance2();
+                    self.emit(Token::LogicalOr, start_pos)
+                }
                 '=' => {
                     self.advance2();
                     self.emit(Token::OrEq, start_pos)
@@ -223,6 +231,16 @@ impl<'a> Lexer<'a> {
                 _ => {
                     self.advance();
                     self.emit(Token::BitwiseOr, start_pos)
+                }
+            },
+            '?' => match self.peek() {
+                '?' => {
+                    self.advance2();
+                    self.emit(Token::NullishCoalesce, start_pos)
+                }
+                _ => {
+                    self.advance();
+                    self.emit(Token::Question, start_pos)
                 }
             },
             '^' => match self.peek() {

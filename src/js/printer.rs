@@ -150,6 +150,12 @@ impl<'a> Printer<'a> {
             ast::Statement::If(stmt) => self.print_if_statement(stmt),
             ast::Statement::While(stmt) => self.print_while_statement(stmt),
             ast::Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
+            ast::Statement::With(stmt) => self.print_with_statement(stmt),
+            ast::Statement::Try(stmt) => self.print_try_statement(stmt),
+            ast::Statement::Throw(stmt) => self.print_throw_statement(stmt),
+            ast::Statement::Return(stmt) => self.print_return_statement(stmt),
+            ast::Statement::Break(stmt) => self.print_break_statement(stmt),
+            ast::Statement::Continue(stmt) => self.print_continue_statement(stmt),
             ast::Statement::Empty(stmt) => self.print_empty_statement(stmt),
             ast::Statement::Debugger(stmt) => self.print_debugger_statement(stmt),
         }
@@ -201,6 +207,80 @@ impl<'a> Printer<'a> {
         self.start_node("DoWhileStatement", &stmt.loc);
         self.property("test", stmt.test.as_ref(), Printer::print_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_with_statement(&mut self, stmt: &ast::WithStatement) {
+        self.start_node("WithStatement", &stmt.loc);
+        self.property("object", stmt.object.as_ref(), Printer::print_expression);
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_try_statement(&mut self, stmt: &ast::TryStatement) {
+        self.start_node("TryStatement", &stmt.loc);
+        self.property("block", stmt.block.as_ref(), Printer::print_block);
+        self.property("handler", stmt.handler.as_ref(), Printer::print_try_handler);
+        self.property(
+            "finalizer",
+            stmt.finalizer.as_ref(),
+            Printer::print_optional_block,
+        );
+        self.end_node();
+    }
+
+    fn print_try_handler(&mut self, handler: Option<&Box<ast::CatchClause>>) {
+        if let Some(handler) = handler {
+            self.start_node("CatchClause", &handler.loc);
+            self.property(
+                "param",
+                handler.param.as_ref(),
+                Printer::print_optional_pattern,
+            );
+            self.property("body", handler.body.as_ref(), Printer::print_block);
+            self.end_node();
+        } else {
+            self.print_null();
+        }
+    }
+
+    fn print_throw_statement(&mut self, stmt: &ast::ThrowStatement) {
+        self.start_node("ThrowStatement", &stmt.loc);
+        self.property(
+            "argument",
+            stmt.argument.as_ref(),
+            Printer::print_expression,
+        );
+        self.end_node();
+    }
+
+    fn print_return_statement(&mut self, stmt: &ast::ReturnStatement) {
+        self.start_node("ReturnStatement", &stmt.loc);
+        self.property(
+            "argument",
+            stmt.argument.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.end_node();
+    }
+
+    fn print_break_statement(&mut self, stmt: &ast::BreakStatement) {
+        self.start_node("BreakStatement", &stmt.loc);
+        self.property(
+            "label",
+            stmt.label.as_ref(),
+            Printer::print_optional_identifier,
+        );
+        self.end_node();
+    }
+
+    fn print_continue_statement(&mut self, stmt: &ast::ContinueStatement) {
+        self.start_node("ContinueStatement", &stmt.loc);
+        self.property(
+            "label",
+            stmt.label.as_ref(),
+            Printer::print_optional_identifier,
+        );
         self.end_node();
     }
 
@@ -278,27 +358,6 @@ impl<'a> Printer<'a> {
         self.start_node("Literal", &lit.loc);
         self.property("value", &lit.value, Printer::print_string);
         self.end_node();
-    }
-
-    fn print_optional_expression(&mut self, expr: Option<&ast::P<ast::Expression>>) {
-        match expr {
-            None => self.print_null(),
-            Some(expr) => self.print_expression(expr),
-        }
-    }
-
-    fn print_optional_expression_in_array(&mut self, expr: &Option<ast::Expression>) {
-        match expr {
-            None => self.print_null(),
-            Some(expr) => self.print_expression(expr),
-        }
-    }
-
-    fn print_optional_statement(&mut self, stmt: Option<&ast::P<ast::Statement>>) {
-        match stmt {
-            None => self.print_null(),
-            Some(stmt) => self.print_statement(stmt),
-        }
     }
 
     fn print_unary_operator(&mut self, op: &ast::UnaryOperator) {
@@ -537,6 +596,48 @@ impl<'a> Printer<'a> {
         self.start_node("Identifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);
         self.end_node();
+    }
+
+    fn print_optional_expression(&mut self, expr: Option<&ast::P<ast::Expression>>) {
+        match expr {
+            None => self.print_null(),
+            Some(expr) => self.print_expression(expr),
+        }
+    }
+
+    fn print_optional_expression_in_array(&mut self, expr: &Option<ast::Expression>) {
+        match expr {
+            None => self.print_null(),
+            Some(expr) => self.print_expression(expr),
+        }
+    }
+
+    fn print_optional_statement(&mut self, stmt: Option<&ast::P<ast::Statement>>) {
+        match stmt {
+            None => self.print_null(),
+            Some(stmt) => self.print_statement(stmt),
+        }
+    }
+
+    fn print_optional_identifier(&mut self, id: Option<&ast::P<ast::Identifier>>) {
+        match id {
+            None => self.print_null(),
+            Some(id) => self.print_identifier(id),
+        }
+    }
+
+    fn print_optional_block(&mut self, block: Option<&ast::P<ast::Block>>) {
+        match block {
+            None => self.print_null(),
+            Some(block) => self.print_block(block),
+        }
+    }
+
+    fn print_optional_pattern(&mut self, pattern: Option<&ast::P<ast::Pattern>>) {
+        match pattern {
+            None => self.print_null(),
+            Some(pattern) => self.print_pattern(pattern),
+        }
     }
 }
 

@@ -23,6 +23,12 @@ pub enum Statement {
     If(IfStatement),
     While(WhileStatement),
     DoWhile(DoWhileStatement),
+    With(WithStatement),
+    Try(TryStatement),
+    Throw(ThrowStatement),
+    Return(ReturnStatement),
+    Break(BreakStatement),
+    Continue(ContinueStatement),
     Empty(Loc),
     Debugger(Loc),
 }
@@ -72,6 +78,45 @@ pub struct DoWhileStatement {
     pub loc: Loc,
     pub test: P<Expression>,
     pub body: P<Statement>,
+}
+
+pub struct WithStatement {
+    pub loc: Loc,
+    pub object: P<Expression>,
+    pub body: P<Statement>,
+}
+
+pub struct TryStatement {
+    pub loc: Loc,
+    pub block: P<Block>,
+    pub handler: Option<P<CatchClause>>,
+    pub finalizer: Option<P<Block>>,
+}
+
+pub struct CatchClause {
+    pub loc: Loc,
+    pub param: Option<P<Pattern>>,
+    pub body: P<Block>,
+}
+
+pub struct ThrowStatement {
+    pub loc: Loc,
+    pub argument: P<Expression>,
+}
+
+pub struct ReturnStatement {
+    pub loc: Loc,
+    pub argument: Option<P<Expression>>,
+}
+
+pub struct BreakStatement {
+    pub loc: Loc,
+    pub label: Option<P<Identifier>>,
+}
+
+pub struct ContinueStatement {
+    pub loc: Loc,
+    pub label: Option<P<Identifier>>,
 }
 
 pub enum Expression {

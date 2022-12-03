@@ -1,8 +1,12 @@
+// Misc
+
 ;
 
 ;;;
 
 debugger;
+
+// Blocks 
 
 {}
 
@@ -10,3 +14,23 @@ debugger;
   a;
   b;
 }
+
+// With
+
+with (a) b;
+
+with (a) { b; }
+
+// Return, break, continue
+
+return;
+
+return a;
+
+break;
+
+break a;
+
+continue;
+
+continue a;

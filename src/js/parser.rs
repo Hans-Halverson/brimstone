@@ -154,6 +154,18 @@ impl<'a> Parser<'a> {
         self.error(loc, ParseError::UnexpectedToken(token.clone()))
     }
 
+    fn error_expected_token<T>(
+        &self,
+        loc: Loc,
+        actual: &Token,
+        expected: &Token,
+    ) -> ParseResult<T> {
+        self.error(
+            loc,
+            ParseError::ExpectedToken(actual.clone(), expected.clone()),
+        )
+    }
+
     #[inline]
     fn current_start_pos(&self) -> Pos {
         self.loc.start
@@ -190,9 +202,15 @@ impl<'a> Parser<'a> {
                 Ok(ast::Statement::VarDecl(self.parse_variable_declaration()?))
             }
             Token::LeftBrace => Ok(ast::Statement::Block(self.parse_block()?)),
-            Token::If => Ok(self.parse_if_statement()?),
-            Token::While => Ok(self.parse_while_statement()?),
-            Token::Do => Ok(self.parse_do_while_statement()?),
+            Token::If => self.parse_if_statement(),
+            Token::While => self.parse_while_statement(),
+            Token::Do => self.parse_do_while_statement(),
+            Token::With => self.parse_with_statement(),
+            Token::Try => self.parse_try_statement(),
+            Token::Throw => self.parse_throw_statement(),
+            Token::Return => self.parse_return_statement(),
+            Token::Break => self.parse_break_statement(),
+            Token::Continue => self.parse_continue_statement(),
             Token::Semicolon => {
                 let loc = self.loc;
                 self.advance()?;
@@ -338,6 +356,141 @@ impl<'a> Parser<'a> {
             loc,
             test,
             body,
+        }))
+    }
+
+    fn parse_with_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::LeftParen)?;
+        let object = self.parse_expression()?;
+        self.expect(Token::RightParen)?;
+
+        let body = p(self.parse_statement()?);
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::With(ast::WithStatement {
+            loc,
+            object,
+            body,
+        }))
+    }
+
+    fn parse_try_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let block = p(self.parse_block()?);
+
+        // Optional handler block
+        let handler = if self.token == Token::Catch {
+            let catch_start_pos = self.current_start_pos();
+            self.advance()?;
+
+            let param = if self.token == Token::LeftBrace {
+                None
+            } else {
+                // Handler optionally has a single pattern as the parameter
+                self.expect(Token::LeftParen)?;
+                let param = self.parse_pattern()?;
+                self.expect(Token::RightParen)?;
+                Some(p(param))
+            };
+
+            let body = p(self.parse_block()?);
+            let loc = self.mark_loc(catch_start_pos);
+
+            Some(p(ast::CatchClause { loc, param, body }))
+        } else {
+            None
+        };
+
+        let finalizer = if self.token == Token::Finally {
+            self.advance()?;
+            Some(p(self.parse_block()?))
+        } else {
+            None
+        };
+
+        // Must have at least one handler or finalizer
+        if handler.is_none() && finalizer.is_none() {
+            return self.error_expected_token(self.loc, &self.token, &Token::Catch);
+        }
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Try(ast::TryStatement {
+            loc,
+            block,
+            handler,
+            finalizer,
+        }))
+    }
+
+    fn parse_throw_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let argument = self.parse_expression()?;
+        self.expect(Token::Semicolon)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Throw(ast::ThrowStatement { loc, argument }))
+    }
+
+    fn parse_return_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let argument = if self.token == Token::Semicolon {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+
+        self.expect(Token::Semicolon)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Return(ast::ReturnStatement {
+            loc,
+            argument,
+        }))
+    }
+
+    fn parse_break_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let label = if self.token == Token::Semicolon {
+            None
+        } else {
+            Some(p(self.parse_identifier()?))
+        };
+
+        self.expect(Token::Semicolon)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Break(ast::BreakStatement { loc, label }))
+    }
+
+    fn parse_continue_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let label = if self.token == Token::Semicolon {
+            None
+        } else {
+            Some(p(self.parse_identifier()?))
+        };
+
+        self.expect(Token::Semicolon)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Continue(ast::ContinueStatement {
+            loc,
+            label,
         }))
     }
 

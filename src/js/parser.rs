@@ -771,6 +771,12 @@ impl<'a> Parser<'a> {
     fn parse_primary_expression(&mut self) -> ParseResult<P<ast::Expression>> {
         match &self.token {
             Token::Identifier(_) => Ok(p(ast::Expression::Id(self.parse_identifier()?))),
+            Token::This => {
+                let loc = self.loc;
+                self.advance()?;
+                Ok(p(ast::Expression::This(loc)))
+            }
+            Token::LeftBracket => self.parse_array_expression(),
             other => self.error_unexpected_token(self.loc, other),
         }
     }
@@ -785,6 +791,34 @@ impl<'a> Parser<'a> {
             }
             other => self.error_unexpected_token(self.loc, other),
         }
+    }
+
+    fn parse_array_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let mut elements = vec![];
+        while self.token != Token::RightBracket {
+            if self.token == Token::Comma {
+                self.advance()?;
+                elements.push(None);
+            } else {
+                elements.push(Some(*self.parse_assignment_expression()?));
+                if self.token == Token::Comma {
+                    self.advance()?;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        self.expect(Token::RightBracket)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(ast::Expression::Array(ast::ArrayExpression {
+            loc,
+            elements,
+        })))
     }
 
     fn parse_pattern(&mut self) -> ParseResult<ast::Pattern> {

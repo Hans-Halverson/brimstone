@@ -1,0 +1,60 @@
+{
+  type: "Program",
+  loc: "1:0-26:8",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:8",
+      kind: {
+        type: "Identifier",
+        loc: "3:0-3:7",
+        name: "marker1",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:8",
+      kind: {
+        type: "Identifier",
+        loc: "7:0-7:7",
+        name: "marker2",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "12:0-12:8",
+      kind: {
+        type: "Identifier",
+        loc: "12:0-12:7",
+        name: "marker3",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "16:0-16:8",
+      kind: {
+        type: "Identifier",
+        loc: "16:0-16:7",
+        name: "marker4",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:0-20:8",
+      kind: {
+        type: "Identifier",
+        loc: "20:0-20:7",
+        name: "marker5",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "26:0-26:8",
+      kind: {
+        type: "Identifier",
+        loc: "26:0-26:7",
+        name: "marker6",
+      },
+    },
+  ],
+}

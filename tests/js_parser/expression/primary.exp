@@ -1,0 +1,125 @@
+{
+  type: "Program",
+  loc: "1:0-15:14",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:5",
+      kind: {
+        type: "ThisExpression",
+        loc: "1:0-1:4",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:3",
+      kind: {
+        type: "ArrayExpression",
+        loc: "5:0-5:2",
+        elements: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:4",
+      kind: {
+        type: "ArrayExpression",
+        loc: "7:0-7:3",
+        elements: [
+          null,
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:6",
+      kind: {
+        type: "ArrayExpression",
+        loc: "9:0-9:5",
+        elements: [
+          null,
+          null,
+          null,
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:10",
+      kind: {
+        type: "ArrayExpression",
+        loc: "11:0-11:9",
+        elements: [
+          {
+            type: "Identifier",
+            loc: "11:1-11:2",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "11:4-11:5",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "11:7-11:8",
+            name: "c",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:11",
+      kind: {
+        type: "ArrayExpression",
+        loc: "13:0-13:10",
+        elements: [
+          {
+            type: "Identifier",
+            loc: "13:1-13:2",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "13:4-13:5",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "13:7-13:8",
+            name: "c",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:14",
+      kind: {
+        type: "ArrayExpression",
+        loc: "15:0-15:13",
+        elements: [
+          null,
+          {
+            type: "Identifier",
+            loc: "15:2-15:3",
+            name: "a",
+          },
+          null,
+          {
+            type: "Identifier",
+            loc: "15:6-15:7",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "15:9-15:10",
+            name: "c",
+          },
+          null,
+        ],
+      },
+    },
+  ],
+}

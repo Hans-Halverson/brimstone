@@ -186,6 +186,22 @@ impl<'a> Lexer<'a> {
                 }
             },
             '/' => match self.peek() {
+                '/' => {
+                    self.advance2();
+                    self.skip_line_comment();
+                    self.next()
+                }
+                '*' => {
+                    self.advance2();
+                    let result_opt = self.skip_block_comment();
+
+                    // Propagate result error up if one exists
+                    if let Some(result) = result_opt {
+                        result?;
+                    }
+
+                    self.next()
+                }
                 '=' => {
                     self.advance2();
                     self.emit(Token::DivideEq, start_pos)
@@ -384,6 +400,48 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn skip_line_comment(&mut self) {
+        loop {
+            match self.current {
+                '\n' | '\r' => {
+                    self.advance();
+                    return;
+                }
+                EOF_CHAR => return,
+                _ => self.advance(),
+            }
+        }
+    }
+
+    pub fn skip_block_comment(&mut self) -> Option<LexResult> {
+        loop {
+            match self.current {
+                '*' => match self.peek() {
+                    '/' => {
+                        self.advance2();
+                        break;
+                    }
+                    EOF_CHAR => {
+                        let loc = self.mark_loc(self.pos + 1);
+                        return Some(
+                            self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Divide)),
+                        );
+                    }
+                    _ => self.advance(),
+                },
+                EOF_CHAR => {
+                    let loc = self.mark_loc(self.pos);
+                    return Some(
+                        self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Multiply)),
+                    );
+                }
+                _ => self.advance(),
+            }
+        }
+
+        None
+    }
+
     pub fn lex_identifier(&mut self, start_pos: Pos) -> LexResult {
         self.advance();
 
@@ -395,6 +453,7 @@ impl<'a> Lexer<'a> {
             "var" => self.emit(Token::Var, start_pos),
             "let" => self.emit(Token::Let, start_pos),
             "const" => self.emit(Token::Const, start_pos),
+            "this" => self.emit(Token::This, start_pos),
             "in" => self.emit(Token::In, start_pos),
             "instanceof" => self.emit(Token::InstanceOf, start_pos),
             "new" => self.emit(Token::New, start_pos),

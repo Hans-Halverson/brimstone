@@ -56,6 +56,10 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn print_f64(&mut self, value: f64) {
+        self.string(&value.to_string())
+    }
+
     fn print_null(&mut self) {
         self.string("null")
     }
@@ -185,6 +189,7 @@ impl<'a> Printer<'a> {
             ast::Expression::Id(id) => self.print_identifier(id),
             ast::Expression::Null(lit) => self.print_null_literal(lit),
             ast::Expression::Boolean(lit) => self.print_boolean_literal(lit),
+            ast::Expression::Number(lit) => self.print_number_literal(lit),
             ast::Expression::String(lit) => self.print_string_literal(lit),
             ast::Expression::Unary(unary) => self.print_unary_expression(unary),
             ast::Expression::Binary(binary) => self.print_binary_expression(binary),
@@ -212,6 +217,12 @@ impl<'a> Printer<'a> {
     fn print_boolean_literal(&mut self, lit: &ast::BooleanLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", lit.value, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_number_literal(&mut self, lit: &ast::NumberLiteral) {
+        self.start_node("Literal", &lit.loc);
+        self.property("value", lit.value, Printer::print_f64);
         self.end_node();
     }
 

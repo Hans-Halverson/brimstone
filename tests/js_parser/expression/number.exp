@@ -1,0 +1,285 @@
+{
+  type: "Program",
+  loc: "1:0-68:9",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:2",
+      kind: {
+        type: "Literal",
+        loc: "2:0-2:1",
+        value: 0,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:0-4:2",
+      kind: {
+        type: "Literal",
+        loc: "4:0-4:1",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:0-6:11",
+      kind: {
+        type: "Literal",
+        loc: "6:0-6:10",
+        value: 1234567890,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "8:0-8:4",
+      kind: {
+        type: "Literal",
+        loc: "8:0-8:3",
+        value: 12,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:0-10:3",
+      kind: {
+        type: "Literal",
+        loc: "10:0-10:2",
+        value: 0,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "12:0-12:5",
+      kind: {
+        type: "Literal",
+        loc: "12:0-12:4",
+        value: 0.123,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:0-14:7",
+      kind: {
+        type: "Literal",
+        loc: "14:0-14:6",
+        value: 12.123,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "16:0-16:9",
+      kind: {
+        type: "Literal",
+        loc: "16:0-16:8",
+        value: 12.123,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "18:0-18:9",
+      kind: {
+        type: "Literal",
+        loc: "18:0-18:8",
+        value: 1212.3,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:0-20:10",
+      kind: {
+        type: "Literal",
+        loc: "20:0-20:9",
+        value: 121230000000000000000,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "22:0-22:10",
+      kind: {
+        type: "Literal",
+        loc: "22:0-22:9",
+        value: 0.12123,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "24:0-24:10",
+      kind: {
+        type: "Literal",
+        loc: "24:0-24:9",
+        value: 1212.3,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "28:0-28:4",
+      kind: {
+        type: "Literal",
+        loc: "28:0-28:3",
+        value: 0,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "30:0-30:4",
+      kind: {
+        type: "Literal",
+        loc: "30:0-30:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "32:0-32:4",
+      kind: {
+        type: "Literal",
+        loc: "32:0-32:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "34:0-34:7",
+      kind: {
+        type: "Literal",
+        loc: "34:0-34:6",
+        value: 10,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "36:0-36:8",
+      kind: {
+        type: "Literal",
+        loc: "36:0-36:7",
+        value: 10,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "40:0-40:4",
+      kind: {
+        type: "Literal",
+        loc: "40:0-40:3",
+        value: 0,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "42:0-42:4",
+      kind: {
+        type: "Literal",
+        loc: "42:0-42:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "44:0-44:4",
+      kind: {
+        type: "Literal",
+        loc: "44:0-44:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "46:0-46:4",
+      kind: {
+        type: "Literal",
+        loc: "46:0-46:3",
+        value: 7,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "48:0-48:7",
+      kind: {
+        type: "Literal",
+        loc: "48:0-48:6",
+        value: 961,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "50:0-50:11",
+      kind: {
+        type: "Literal",
+        loc: "50:0-50:10",
+        value: 342391,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "54:0-54:4",
+      kind: {
+        type: "Literal",
+        loc: "54:0-54:3",
+        value: 0,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "56:0-56:4",
+      kind: {
+        type: "Literal",
+        loc: "56:0-56:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "58:0-58:4",
+      kind: {
+        type: "Literal",
+        loc: "58:0-58:3",
+        value: 1,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "60:0-60:4",
+      kind: {
+        type: "Literal",
+        loc: "60:0-60:3",
+        value: 15,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "62:0-62:8",
+      kind: {
+        type: "Literal",
+        loc: "62:0-62:7",
+        value: 4660,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "64:0-64:8",
+      kind: {
+        type: "Literal",
+        loc: "64:0-64:7",
+        value: 354185,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "66:0-66:9",
+      kind: {
+        type: "Literal",
+        loc: "66:0-66:8",
+        value: 11259375,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "68:0-68:9",
+      kind: {
+        type: "Literal",
+        loc: "68:0-68:8",
+        value: 11259375,
+      },
+    },
+  ],
+}

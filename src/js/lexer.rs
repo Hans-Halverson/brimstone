@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::str::FromStr;
 
 use super::loc::{Loc, Pos};
 use super::parser::{LocalizedParseError, ParseError, ParseResult};
@@ -380,13 +381,24 @@ impl<'a> Lexer<'a> {
                 self.emit(Token::Comma, start_pos)
             }
             '.' => {
-                self.advance();
-                self.emit(Token::Period, start_pos)
+                if Lexer::is_decimal_digit(self.peek()) {
+                    self.lex_decimal_literal()
+                } else {
+                    self.advance();
+                    self.emit(Token::Period, start_pos)
+                }
             }
             ':' => {
                 self.advance();
                 self.emit(Token::Colon, start_pos)
             }
+            '0' => match self.peek() {
+                'b' | 'B' => self.lex_binary_literal(),
+                'o' | 'O' => self.lex_octal_literal(),
+                'x' | 'X' => self.lex_hex_literal(),
+                _ => self.lex_decimal_literal(),
+            },
+            '1'..='9' => self.lex_decimal_literal(),
             '"' | '\'' => self.lex_string_literal(),
             EOF_CHAR => self.emit(Token::Eof, start_pos),
             char if is_id_start_char(char) => self.lex_identifier(start_pos),
@@ -441,6 +453,117 @@ impl<'a> Lexer<'a> {
         }
 
         None
+    }
+
+    fn skip_decimal_digits(&mut self) {
+        while Lexer::is_decimal_digit(self.current) {
+            self.advance();
+        }
+    }
+
+    fn lex_decimal_literal(&mut self) -> LexResult {
+        let start_pos = self.pos;
+
+        // Read optional digits before the decimal point
+        self.skip_decimal_digits();
+
+        // Read optional decimal point with its optional following digits
+        if self.current == '.' {
+            self.advance();
+            self.skip_decimal_digits();
+        }
+
+        // Read optional exponent
+        if self.current == 'e' || self.current == 'E' {
+            self.advance();
+
+            // Exponent has optional sign
+            if self.current == '-' || self.current == '+' {
+                self.advance();
+            }
+
+            if !Lexer::is_decimal_digit(self.current) {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedNumericLiteral);
+            }
+
+            self.skip_decimal_digits();
+        }
+
+        // Parse float using rust stdlib
+        let end_pos = self.pos;
+        let value = f64::from_str(&self.buf[start_pos..end_pos]).unwrap();
+
+        self.emit(Token::NumberLiteral(value), start_pos)
+    }
+
+    fn lex_binary_literal(&mut self) -> LexResult {
+        let start_pos = self.pos;
+        self.advance2();
+
+        let mut value = 0;
+        let mut has_digit = false;
+
+        while let Some(digit) = Lexer::get_binary_value(self.current) {
+            value <<= 1;
+            value += digit;
+
+            has_digit = true;
+            self.advance();
+        }
+
+        if !has_digit {
+            let loc = self.mark_loc(start_pos);
+            self.error(loc, ParseError::MalformedNumericLiteral)
+        } else {
+            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+        }
+    }
+
+    fn lex_octal_literal(&mut self) -> LexResult {
+        let start_pos = self.pos;
+        self.advance2();
+
+        let mut value = 0;
+        let mut has_digit = false;
+
+        while let Some(digit) = Lexer::get_octal_value(self.current) {
+            value <<= 3;
+            value += digit;
+
+            has_digit = true;
+            self.advance();
+        }
+
+        if !has_digit {
+            let loc = self.mark_loc(start_pos);
+            self.error(loc, ParseError::MalformedNumericLiteral)
+        } else {
+            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+        }
+    }
+
+    fn lex_hex_literal(&mut self) -> LexResult {
+        let start_pos = self.pos;
+        self.advance2();
+
+        let mut value = 0;
+        let mut has_digit = false;
+
+        while let Some(digit) = Lexer::get_hex_value(self.current) {
+            value <<= 4;
+            value += digit;
+
+            has_digit = true;
+            self.advance();
+        }
+
+        if !has_digit {
+            let loc = self.mark_loc(start_pos);
+            self.error(loc, ParseError::MalformedNumericLiteral)
+        } else {
+            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+        }
     }
 
     fn lex_string_literal(&mut self) -> LexResult {
@@ -550,6 +673,25 @@ impl<'a> Lexer<'a> {
         self.advance();
 
         return self.emit(Token::StringLiteral(value), start_pos);
+    }
+
+    fn is_decimal_digit(char: char) -> bool {
+        '0' <= char && char <= '9'
+    }
+
+    fn get_binary_value(char: char) -> Option<u32> {
+        match char {
+            '0' => Some(0),
+            '1' => Some(1),
+            _ => None,
+        }
+    }
+
+    fn get_octal_value(char: char) -> Option<u32> {
+        match char {
+            '0'..='7' => Some(char as u32 - '0' as u32),
+            _ => None,
+        }
     }
 
     fn get_hex_value(char: char) -> Option<u32> {

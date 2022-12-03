@@ -48,6 +48,7 @@ pub enum Expression {
     Id(Identifier),
     Null(Loc),
     Boolean(BooleanLiteral),
+    Number(NumberLiteral),
     String(StringLiteral),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
@@ -77,6 +78,11 @@ pub enum Expression {
 pub struct BooleanLiteral {
     pub loc: Loc,
     pub value: bool,
+}
+
+pub struct NumberLiteral {
+    pub loc: Loc,
+    pub value: f64,
 }
 
 pub struct StringLiteral {

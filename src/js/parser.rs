@@ -16,6 +16,7 @@ pub enum ParseError {
     ExpectedToken(Token, Token),
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
+    MalformedNumericLiteral,
 }
 
 pub struct LocalizedParseError {
@@ -45,6 +46,7 @@ impl fmt::Display for LocalizedParseError {
             }
             ParseError::UnterminatedStringLiteral => format!("Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => format!("Malformed escape sequence"),
+            ParseError::MalformedNumericLiteral => format!("Malformed numeric literal"),
         };
 
         match &self.source_loc {
@@ -785,6 +787,15 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 self.advance()?;
                 Ok(p(ast::Expression::Boolean(ast::BooleanLiteral {
+                    loc,
+                    value,
+                })))
+            }
+            Token::NumberLiteral(value) => {
+                let loc = self.loc;
+                let value = value.clone();
+                self.advance()?;
+                Ok(p(ast::Expression::Number(ast::NumberLiteral {
                     loc,
                     value,
                 })))

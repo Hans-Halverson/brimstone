@@ -1,0 +1,189 @@
+{
+  type: "Program",
+  loc: "1:0-13:10",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:6",
+      kind: {
+        type: "CallExpression",
+        loc: "1:0-1:5",
+        callee: {
+          type: "Identifier",
+          loc: "1:0-1:3",
+          name: "foo",
+        },
+        arguments: [],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:8",
+      kind: {
+        type: "CallExpression",
+        loc: "3:0-3:7",
+        callee: {
+          type: "CallExpression",
+          loc: "3:0-3:5",
+          callee: {
+            type: "Identifier",
+            loc: "3:0-3:3",
+            name: "foo",
+          },
+          arguments: [],
+          optional: false,
+        },
+        arguments: [],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:7",
+      kind: {
+        type: "CallExpression",
+        loc: "5:0-5:6",
+        callee: {
+          type: "Identifier",
+          loc: "5:0-5:3",
+          name: "foo",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "5:4-5:5",
+            name: "a",
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:8",
+      kind: {
+        type: "CallExpression",
+        loc: "7:0-7:7",
+        callee: {
+          type: "Identifier",
+          loc: "7:0-7:3",
+          name: "foo",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "7:4-7:5",
+            name: "a",
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:13",
+      kind: {
+        type: "CallExpression",
+        loc: "9:0-9:12",
+        callee: {
+          type: "Identifier",
+          loc: "9:0-9:3",
+          name: "foo",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "9:4-9:5",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "9:7-9:8",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "9:10-9:11",
+            name: "c",
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:14",
+      kind: {
+        type: "CallExpression",
+        loc: "11:0-11:13",
+        callee: {
+          type: "Identifier",
+          loc: "11:0-11:3",
+          name: "foo",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "11:4-11:5",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "11:7-11:8",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "11:10-11:11",
+            name: "c",
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:10",
+      kind: {
+        type: "CallExpression",
+        loc: "13:0-13:9",
+        callee: {
+          type: "MemberExpression",
+          loc: "13:0-13:7",
+          object: {
+            type: "CallExpression",
+            loc: "13:0-13:5",
+            callee: {
+              type: "MemberExpression",
+              loc: "13:0-13:3",
+              object: {
+                type: "Identifier",
+                loc: "13:0-13:1",
+                name: "a",
+              },
+              property: {
+                type: "Identifier",
+                loc: "13:2-13:3",
+                name: "b",
+              },
+              computed: false,
+              optional: false,
+            },
+            arguments: [],
+            optional: false,
+          },
+          property: {
+            type: "Identifier",
+            loc: "13:6-13:7",
+            name: "c",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [],
+        optional: false,
+      },
+    },
+  ],
+}

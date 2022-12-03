@@ -71,24 +71,20 @@ impl From<io::Error> for LocalizedParseError {
 /// Expression operator precedence. A lower number binds tighter than a larger number.
 #[derive(Clone, Copy)]
 enum Precedence {
-    Call = 0, // Includes member access, new with argments
-    New = 1,  // Without arguments
-    PostfixUpdate = 2,
-    Unary = 3, // Includes prefix update
-    Exponentiation = 4,
-    Multiplication = 5,
-    Addition = 6,
-    Shift = 7,
-    Relational = 8, // Includes in and instanceof
-    Equality = 9,
-    BitwiseAnd = 10,
-    BitwiseXor = 11,
-    BitwiseOr = 12,
-    LogicalAnd = 13,
-    LogicalOr = 14,  // Includes nullish coalescing
-    Assignment = 15, // Includes conditional, arrow, yield
-    Sequence = 16,
-    None = 17,
+    PostfixUpdate = 0,
+    Unary = 1, // Includes prefix update
+    Exponentiation = 2,
+    Multiplication = 3,
+    Addition = 4,
+    Shift = 5,
+    Relational = 6, // Includes in and instanceof
+    Equality = 7,
+    BitwiseAnd = 8,
+    BitwiseXor = 9,
+    BitwiseOr = 10,
+    LogicalAnd = 11,
+    LogicalOr = 12, // Includes nullish coalescing
+    Conditional = 13,
 }
 
 impl Precedence {
@@ -215,7 +211,7 @@ impl<'a> Parser<'a> {
             let start_pos = self.current_start_pos();
             let id = self.parse_pattern()?;
             self.expect(Token::Equals)?;
-            let init = self.parse_expression()?;
+            let init = self.parse_assignment_expression()?;
             let loc = self.mark_loc(start_pos);
 
             declarations.push(ast::VariableDeclarator {
@@ -240,10 +236,95 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// 13.16 Expression
     fn parse_expression(&mut self) -> ParseResult<P<ast::Expression>> {
-        self.parse_expression_with_precedence(Precedence::None)
+        let start_pos = self.current_start_pos();
+        let expr = self.parse_assignment_expression()?;
+
+        if self.token == Token::Comma {
+            let mut expressions = vec![*expr];
+            while self.token == Token::Comma {
+                self.advance()?;
+                expressions.push(*self.parse_assignment_expression()?);
+            }
+
+            let loc = self.mark_loc(start_pos);
+
+            Ok(p(ast::Expression::Sequence(ast::SequenceExpression {
+                loc,
+                expressions,
+            })))
+        } else {
+            Ok(expr)
+        }
     }
 
+    /// 13.15 AssignmentExpression
+    fn parse_assignment_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        let start_pos = self.current_start_pos();
+        let expr = self.parse_conditional_expression()?;
+
+        let assignment_op = match self.token {
+            Token::Equals => Some(ast::AssignmentOperator::Equals),
+            Token::AddEq => Some(ast::AssignmentOperator::Add),
+            Token::SubtractEq => Some(ast::AssignmentOperator::Subtract),
+            Token::MultiplyEq => Some(ast::AssignmentOperator::Multiply),
+            Token::DivideEq => Some(ast::AssignmentOperator::Divide),
+            Token::RemainderEq => Some(ast::AssignmentOperator::Remainder),
+            Token::ExponentEq => Some(ast::AssignmentOperator::Exponent),
+            Token::AndEq => Some(ast::AssignmentOperator::And),
+            Token::OrEq => Some(ast::AssignmentOperator::Or),
+            Token::XorEq => Some(ast::AssignmentOperator::Xor),
+            Token::ShiftLeftEq => Some(ast::AssignmentOperator::ShiftLeft),
+            Token::ShiftRightArithmeticEq => Some(ast::AssignmentOperator::ShiftRightArithmetic),
+            Token::ShiftRightLogicalEq => Some(ast::AssignmentOperator::ShiftRightLogical),
+            _ => None,
+        };
+
+        match assignment_op {
+            None => Ok(expr),
+            Some(operator) => {
+                self.advance()?;
+                let right = self.parse_assignment_expression()?;
+                let loc = self.mark_loc(start_pos);
+
+                Ok(p(ast::Expression::Assign(ast::AssignmentExpression {
+                    loc,
+                    left: expr,
+                    right,
+                    operator,
+                })))
+            }
+        }
+    }
+
+    /// 13.14 ConditionalExpression
+    fn parse_conditional_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        let start_pos = self.current_start_pos();
+        let expr = self.parse_expression_with_precedence(Precedence::Conditional)?;
+
+        if self.token == Token::Question {
+            self.advance()?;
+            let conseq = self.parse_assignment_expression()?;
+            self.expect(Token::Colon)?;
+            let altern = self.parse_assignment_expression()?;
+            let loc = self.mark_loc(start_pos);
+
+            Ok(p(ast::Expression::Conditional(
+                ast::ConditionalExpression {
+                    loc,
+                    test: expr,
+                    conseq,
+                    altern,
+                },
+            )))
+        } else {
+            Ok(expr)
+        }
+    }
+
+    /// Precedence parsing for all binary operations and below.
+    /// Corresponds to 13.13 ShortCircuitExpression
     fn parse_expression_with_precedence(
         &mut self,
         precedence: Precedence,
@@ -263,15 +344,6 @@ impl<'a> Parser<'a> {
 
     fn parse_expression_prefix(&mut self) -> ParseResult<P<ast::Expression>> {
         match &self.token {
-            Token::Identifier(name) => {
-                let start_pos = self.current_start_pos();
-                let name = name.clone();
-                self.advance()?;
-                let loc = self.mark_loc(start_pos);
-                Ok(p(ast::Expression::Id(ast::Identifier { loc, name })))
-            }
-            Token::Increment => self.parse_update_expression_prefix(ast::UpdateOperator::Increment),
-            Token::Decrement => self.parse_update_expression_prefix(ast::UpdateOperator::Decrement),
             Token::Plus => self.parse_unary_expression(ast::UnaryOperator::Plus),
             Token::Minus => self.parse_unary_expression(ast::UnaryOperator::Minus),
             Token::LogicalNot => self.parse_unary_expression(ast::UnaryOperator::LogicalNot),
@@ -279,7 +351,9 @@ impl<'a> Parser<'a> {
             Token::Typeof => self.parse_unary_expression(ast::UnaryOperator::TypeOf),
             Token::Void => self.parse_unary_expression(ast::UnaryOperator::Void),
             Token::Delete => self.parse_unary_expression(ast::UnaryOperator::Delete),
-            other => self.error_unexpected_token(self.loc, other),
+            Token::Increment => self.parse_update_expression_prefix(ast::UpdateOperator::Increment),
+            Token::Decrement => self.parse_update_expression_prefix(ast::UpdateOperator::Decrement),
+            _ => self.parse_left_hand_side_expression(),
         }
     }
 
@@ -476,68 +550,6 @@ impl<'a> Parser<'a> {
             Token::Decrement if precedence.is_weaker_than(Precedence::PostfixUpdate) => self
                 .parse_update_expression_postfix(left, start_pos, ast::UpdateOperator::Decrement),
 
-            // Assignment expressions
-            Token::Equals if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Equals)
-            }
-            Token::AddEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Add)
-            }
-            Token::SubtractEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Subtract)
-            }
-            Token::MultiplyEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Multiply)
-            }
-            Token::DivideEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Divide)
-            }
-            Token::RemainderEq if precedence.is_weaker_than(Precedence::Assignment) => self
-                .parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Remainder),
-            Token::ExponentEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Exponent)
-            }
-            Token::AndEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::And)
-            }
-            Token::OrEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Or)
-            }
-            Token::XorEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(left, start_pos, ast::AssignmentOperator::Xor)
-            }
-            Token::ShiftLeftEq if precedence.is_weaker_than(Precedence::Assignment) => self
-                .parse_assignment_expression(left, start_pos, ast::AssignmentOperator::ShiftLeft),
-            Token::ShiftRightArithmeticEq if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_assignment_expression(
-                    left,
-                    start_pos,
-                    ast::AssignmentOperator::ShiftRightArithmetic,
-                )
-            }
-            Token::ShiftRightLogicalEq if precedence.is_weaker_than(Precedence::Assignment) => self
-                .parse_assignment_expression(
-                    left,
-                    start_pos,
-                    ast::AssignmentOperator::ShiftRightLogical,
-                ),
-
-            // Member expressions
-            Token::Period if precedence.is_weaker_than(Precedence::Call) => {
-                self.parse_member_expression(left, start_pos)
-            }
-            Token::LeftBrace if precedence.is_weaker_than(Precedence::Call) => {
-                self.parse_computed_member_expression(left, start_pos)
-            }
-
-            // Other infix expressions
-            Token::Question if precedence.is_weaker_than(Precedence::Assignment) => {
-                self.parse_conditional_expression(left, start_pos)
-            }
-            Token::Comma if precedence.is_weaker_than(Precedence::Sequence) => {
-                self.parse_sequence_expression(left, start_pos)
-            }
-
             // No infix expression
             _ => Ok(left),
         }
@@ -631,112 +643,153 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    fn parse_assignment_expression(
-        &mut self,
-        left: P<ast::Expression>,
-        start_pos: Pos,
-        operator: ast::AssignmentOperator,
-    ) -> ParseResult<P<ast::Expression>> {
-        self.advance()?;
-        // Right associative, so lower precedence
-        let right = self.parse_expression_with_precedence(Precedence::Sequence)?;
-        let loc = self.mark_loc(start_pos);
+    /// 13.3 LeftHandSideExpression
+    fn parse_left_hand_side_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        let start_pos = self.current_start_pos();
+        let expr = match &self.token {
+            Token::New => self.parse_new_expression()?,
+            _ => self.parse_primary_expression()?,
+        };
 
-        Ok(p(ast::Expression::Assign(ast::AssignmentExpression {
-            loc,
-            left,
-            right,
-            operator,
-        })))
+        self.parse_call_expression(expr, start_pos, true)
+    }
+
+    fn parse_call_expression(
+        &mut self,
+        expr: P<ast::Expression>,
+        start_pos: Pos,
+        allow_call: bool,
+    ) -> ParseResult<P<ast::Expression>> {
+        let expr = self.parse_member_expression(expr, start_pos, allow_call)?;
+        match self.token {
+            Token::LeftParen if allow_call => {
+                let arguments = self.parse_call_arguments()?;
+                let loc = self.mark_loc(start_pos);
+
+                let call_expr = p(ast::Expression::Call(ast::CallExpression {
+                    loc,
+                    callee: expr,
+                    arguments,
+                    is_optional: false,
+                }));
+
+                self.parse_call_expression(call_expr, start_pos, allow_call)
+            }
+            _ => Ok(expr),
+        }
     }
 
     fn parse_member_expression(
         &mut self,
-        object: P<ast::Expression>,
+        expr: P<ast::Expression>,
         start_pos: Pos,
+        allow_call: bool,
     ) -> ParseResult<P<ast::Expression>> {
-        self.advance()?;
-        let property = self.parse_expression_with_precedence(Precedence::Call)?;
-        let loc = self.mark_loc(start_pos);
+        match &self.token {
+            Token::Period => {
+                self.advance()?;
+                let property = self.parse_identifier()?;
+                let loc = self.mark_loc(start_pos);
 
-        Ok(p(ast::Expression::Member(ast::MemberExpression {
+                let member_expr = p(ast::Expression::Member(ast::MemberExpression {
+                    loc,
+                    object: expr,
+                    property: p(ast::Expression::Id(property)),
+                    is_computed: false,
+                    is_optional: false,
+                }));
+
+                self.parse_call_expression(member_expr, start_pos, allow_call)
+            }
+            Token::LeftBracket => {
+                self.advance()?;
+                let property = self.parse_expression()?;
+                self.expect(Token::RightBracket)?;
+                let loc = self.mark_loc(start_pos);
+
+                let member_expr = p(ast::Expression::Member(ast::MemberExpression {
+                    loc,
+                    object: expr,
+                    property,
+                    is_computed: true,
+                    is_optional: false,
+                }));
+
+                self.parse_call_expression(member_expr, start_pos, allow_call)
+            }
+            _ => Ok(expr),
+        }
+    }
+
+    fn parse_new_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let callee_start_pos = self.current_start_pos();
+        let callee = match self.token {
+            Token::New => self.parse_new_expression()?,
+            _ => self.parse_primary_expression()?,
+        };
+
+        // Disallow call since parenthesized arguments should be attached to this new instead
+        let callee = self.parse_member_expression(callee, callee_start_pos, false)?;
+
+        let arguments = if self.token == Token::LeftParen {
+            self.parse_call_arguments()?
+        } else {
+            vec![]
+        };
+
+        let loc = self.mark_loc(start_pos);
+        Ok(p(ast::Expression::New(ast::NewExpression {
             loc,
-            object,
-            property,
-            is_computed: false,
-            is_optional: false,
+            callee,
+            arguments,
         })))
     }
 
-    fn parse_computed_member_expression(
-        &mut self,
-        object: P<ast::Expression>,
-        start_pos: Pos,
-    ) -> ParseResult<P<ast::Expression>> {
-        self.advance()?;
-        let property = self.parse_expression()?;
-        self.expect(Token::RightBrace)?;
-        let loc = self.mark_loc(start_pos);
+    fn parse_call_arguments(&mut self) -> ParseResult<Vec<ast::Expression>> {
+        self.expect(Token::LeftParen)?;
 
-        Ok(p(ast::Expression::Member(ast::MemberExpression {
-            loc,
-            object,
-            property,
-            is_computed: true,
-            is_optional: false,
-        })))
-    }
+        let mut arguments = vec![];
+        while self.token != Token::RightParen {
+            arguments.push(*self.parse_assignment_expression()?);
 
-    fn parse_conditional_expression(
-        &mut self,
-        test: P<ast::Expression>,
-        start_pos: Pos,
-    ) -> ParseResult<P<ast::Expression>> {
-        self.advance()?;
-        let conseq = self.parse_expression()?;
-        self.expect(Token::Colon)?;
-        // Right associative, so lower precedence
-        let altern = self.parse_expression_with_precedence(Precedence::Sequence)?;
-        let loc = self.mark_loc(start_pos);
-
-        Ok(p(ast::Expression::Conditional(
-            ast::ConditionalExpression {
-                loc,
-                test,
-                conseq,
-                altern,
-            },
-        )))
-    }
-
-    fn parse_sequence_expression(
-        &mut self,
-        first: P<ast::Expression>,
-        start_pos: Pos,
-    ) -> ParseResult<P<ast::Expression>> {
-        let mut expressions = vec![*first];
-        while self.token == Token::Comma {
-            self.advance()?;
-            expressions.push(*self.parse_expression_with_precedence(Precedence::Sequence)?);
+            if self.token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
         }
 
-        let loc = self.mark_loc(start_pos);
+        self.expect(Token::RightParen)?;
 
-        Ok(p(ast::Expression::Sequence(ast::SequenceExpression {
-            loc,
-            expressions,
-        })))
+        Ok(arguments)
+    }
+
+    /// 13.2 PrimaryExpression
+    fn parse_primary_expression(&mut self) -> ParseResult<P<ast::Expression>> {
+        match &self.token {
+            Token::Identifier(_) => Ok(p(ast::Expression::Id(self.parse_identifier()?))),
+            other => self.error_unexpected_token(self.loc, other),
+        }
+    }
+
+    fn parse_identifier(&mut self) -> ParseResult<ast::Identifier> {
+        match &self.token {
+            Token::Identifier(name) => {
+                let loc = self.loc;
+                let name = name.clone();
+                self.advance()?;
+                Ok(ast::Identifier { loc, name })
+            }
+            other => self.error_unexpected_token(self.loc, other),
+        }
     }
 
     fn parse_pattern(&mut self) -> ParseResult<ast::Pattern> {
-        let start_pos = self.current_start_pos();
         match &self.token {
-            Token::Identifier(name) => {
-                let name = name.clone();
-                self.advance()?;
-                let loc = self.mark_loc(start_pos);
-                Ok(ast::Pattern::Id(ast::Identifier { loc, name }))
-            }
+            Token::Identifier(_) => Ok(ast::Pattern::Id(self.parse_identifier()?)),
             other => self.error_unexpected_token(self.loc, other),
         }
     }

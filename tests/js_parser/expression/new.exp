@@ -1,0 +1,295 @@
+{
+  type: "Program",
+  loc: "1:0-23:10",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:6",
+      kind: {
+        type: "NewExpression",
+        loc: "1:0-1:5",
+        callee: {
+          type: "Identifier",
+          loc: "1:4-1:5",
+          name: "a",
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:8",
+      kind: {
+        type: "NewExpression",
+        loc: "3:0-3:7",
+        callee: {
+          type: "Identifier",
+          loc: "3:4-3:5",
+          name: "a",
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:10",
+      kind: {
+        type: "NewExpression",
+        loc: "5:0-5:9",
+        callee: {
+          type: "Identifier",
+          loc: "5:4-5:5",
+          name: "a",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "5:6-5:7",
+            name: "b",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:15",
+      kind: {
+        type: "NewExpression",
+        loc: "7:0-7:14",
+        callee: {
+          type: "Identifier",
+          loc: "7:4-7:5",
+          name: "a",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "7:6-7:7",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "7:9-7:10",
+            name: "c",
+          },
+          {
+            type: "Identifier",
+            loc: "7:12-7:13",
+            name: "d",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:16",
+      kind: {
+        type: "NewExpression",
+        loc: "9:0-9:15",
+        callee: {
+          type: "Identifier",
+          loc: "9:4-9:5",
+          name: "a",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "9:6-9:7",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "9:9-9:10",
+            name: "c",
+          },
+          {
+            type: "Identifier",
+            loc: "9:12-9:13",
+            name: "d",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:10",
+      kind: {
+        type: "BinaryExpression",
+        loc: "11:0-11:9",
+        operator: "+",
+        left: {
+          type: "NewExpression",
+          loc: "11:0-11:5",
+          callee: {
+            type: "Identifier",
+            loc: "11:4-11:5",
+            name: "a",
+          },
+          arguments: [],
+        },
+        right: {
+          type: "Identifier",
+          loc: "11:8-11:9",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:8",
+      kind: {
+        type: "NewExpression",
+        loc: "13:0-13:7",
+        callee: {
+          type: "MemberExpression",
+          loc: "13:4-13:7",
+          object: {
+            type: "Identifier",
+            loc: "13:4-13:5",
+            name: "a",
+          },
+          property: {
+            type: "Identifier",
+            loc: "13:6-13:7",
+            name: "b",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:10",
+      kind: {
+        type: "NewExpression",
+        loc: "15:0-15:9",
+        callee: {
+          type: "MemberExpression",
+          loc: "15:4-15:7",
+          object: {
+            type: "Identifier",
+            loc: "15:4-15:5",
+            name: "a",
+          },
+          property: {
+            type: "Identifier",
+            loc: "15:6-15:7",
+            name: "b",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:15",
+      kind: {
+        type: "CallExpression",
+        loc: "17:0-17:14",
+        callee: {
+          type: "CallExpression",
+          loc: "17:0-17:11",
+          callee: {
+            type: "NewExpression",
+            loc: "17:0-17:8",
+            callee: {
+              type: "Identifier",
+              loc: "17:4-17:5",
+              name: "a",
+            },
+            arguments: [
+              {
+                type: "Identifier",
+                loc: "17:6-17:7",
+                name: "b",
+              },
+            ],
+          },
+          arguments: [
+            {
+              type: "Identifier",
+              loc: "17:9-17:10",
+              name: "c",
+            },
+          ],
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "17:12-17:13",
+            name: "d",
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:10",
+      kind: {
+        type: "NewExpression",
+        loc: "19:0-19:9",
+        callee: {
+          type: "NewExpression",
+          loc: "19:4-19:9",
+          callee: {
+            type: "Identifier",
+            loc: "19:8-19:9",
+            name: "a",
+          },
+          arguments: [],
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:0-21:12",
+      kind: {
+        type: "NewExpression",
+        loc: "21:0-21:11",
+        callee: {
+          type: "NewExpression",
+          loc: "21:4-21:11",
+          callee: {
+            type: "Identifier",
+            loc: "21:8-21:9",
+            name: "a",
+          },
+          arguments: [],
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:0-23:10",
+      kind: {
+        type: "MemberExpression",
+        loc: "23:0-23:9",
+        object: {
+          type: "NewExpression",
+          loc: "23:0-23:7",
+          callee: {
+            type: "Identifier",
+            loc: "23:4-23:5",
+            name: "a",
+          },
+          arguments: [],
+        },
+        property: {
+          type: "Identifier",
+          loc: "23:8-23:9",
+          name: "b",
+        },
+        computed: false,
+        optional: false,
+      },
+    },
+  ],
+}

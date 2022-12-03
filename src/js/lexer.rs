@@ -339,13 +339,21 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::LogicalNot, start_pos)
                 }
             },
+            '(' => {
+                self.advance();
+                self.emit(Token::LeftParen, start_pos)
+            }
+            ')' => {
+                self.advance();
+                self.emit(Token::RightParen, start_pos)
+            }
             '[' => {
                 self.advance();
-                self.emit(Token::LeftBrace, start_pos)
+                self.emit(Token::LeftBracket, start_pos)
             }
             ']' => {
                 self.advance();
-                self.emit(Token::RightBrace, start_pos)
+                self.emit(Token::RightBracket, start_pos)
             }
             ';' => {
                 self.advance();
@@ -389,6 +397,7 @@ impl<'a> Lexer<'a> {
             "const" => self.emit(Token::Const, start_pos),
             "in" => self.emit(Token::In, start_pos),
             "instanceof" => self.emit(Token::InstanceOf, start_pos),
+            "new" => self.emit(Token::New, start_pos),
             "typeof" => self.emit(Token::Typeof, start_pos),
             "void" => self.emit(Token::Void, start_pos),
             "delete" => self.emit(Token::Delete, start_pos),

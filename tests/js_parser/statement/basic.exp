@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-36:11",
+  loc: "1:0-42:17",
   body: [
     {
       type: "EmptyStatement",
@@ -133,6 +133,43 @@
         type: "Identifier",
         loc: "36:9-36:10",
         name: "a",
+      },
+    },
+    {
+      type: "LabeledStatement",
+      loc: "40:0-40:12",
+      label: {
+        type: "Identifier",
+        loc: "40:0-40:3",
+        name: "foo",
+      },
+      body: {
+        type: "ReturnStatement",
+        loc: "40:5-40:12",
+        argument: null,
+      },
+    },
+    {
+      type: "LabeledStatement",
+      loc: "42:0-42:17",
+      label: {
+        type: "Identifier",
+        loc: "42:0-42:3",
+        name: "foo",
+      },
+      body: {
+        type: "LabeledStatement",
+        loc: "42:5-42:17",
+        label: {
+          type: "Identifier",
+          loc: "42:5-42:8",
+          name: "bar",
+        },
+        body: {
+          type: "ReturnStatement",
+          loc: "42:10-42:17",
+          argument: null,
+        },
       },
     },
   ],

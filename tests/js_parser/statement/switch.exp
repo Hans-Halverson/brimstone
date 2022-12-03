@@ -1,0 +1,167 @@
+{
+  type: "Program",
+  loc: "1:0-14:1",
+  body: [
+    {
+      type: "SwitchStatement",
+      loc: "1:0-1:13",
+      discriminant: {
+        type: "Identifier",
+        loc: "1:8-1:9",
+        name: "a",
+      },
+      cases: [],
+    },
+    {
+      type: "SwitchStatement",
+      loc: "3:0-7:1",
+      discriminant: {
+        type: "Identifier",
+        loc: "3:8-3:9",
+        name: "a",
+      },
+      cases: [
+        {
+          type: "SwitchCase",
+          loc: "4:2-4:15",
+          test: {
+            type: "Literal",
+            loc: "4:7-4:8",
+            value: 1,
+          },
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "4:10-4:12",
+              kind: {
+                type: "Identifier",
+                loc: "4:10-4:11",
+                name: "a",
+              },
+            },
+            {
+              type: "ExpressionStatement",
+              loc: "4:13-4:15",
+              kind: {
+                type: "Identifier",
+                loc: "4:13-4:14",
+                name: "b",
+              },
+            },
+          ],
+        },
+        {
+          type: "SwitchCase",
+          loc: "5:2-5:15",
+          test: {
+            type: "Literal",
+            loc: "5:7-5:8",
+            value: 2,
+          },
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "5:10-5:12",
+              kind: {
+                type: "Identifier",
+                loc: "5:10-5:11",
+                name: "c",
+              },
+            },
+            {
+              type: "ExpressionStatement",
+              loc: "5:13-5:15",
+              kind: {
+                type: "Identifier",
+                loc: "5:13-5:14",
+                name: "d",
+              },
+            },
+          ],
+        },
+        {
+          type: "SwitchCase",
+          loc: "6:2-6:16",
+          test: null,
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "6:11-6:13",
+              kind: {
+                type: "Identifier",
+                loc: "6:11-6:12",
+                name: "e",
+              },
+            },
+            {
+              type: "ExpressionStatement",
+              loc: "6:14-6:16",
+              kind: {
+                type: "Identifier",
+                loc: "6:14-6:15",
+                name: "f",
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "SwitchStatement",
+      loc: "9:0-14:1",
+      discriminant: {
+        type: "Identifier",
+        loc: "9:8-9:9",
+        name: "a",
+      },
+      cases: [
+        {
+          type: "SwitchCase",
+          loc: "10:2-10:9",
+          test: {
+            type: "Identifier",
+            loc: "10:7-10:8",
+            name: "a",
+          },
+          body: [],
+        },
+        {
+          type: "SwitchCase",
+          loc: "11:2-11:9",
+          test: {
+            type: "Identifier",
+            loc: "11:7-11:8",
+            name: "b",
+          },
+          body: [],
+        },
+        {
+          type: "SwitchCase",
+          loc: "12:2-12:10",
+          test: null,
+          body: [],
+        },
+        {
+          type: "SwitchCase",
+          loc: "13:2-13:12",
+          test: {
+            type: "Identifier",
+            loc: "13:7-13:8",
+            name: "c",
+          },
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "13:10-13:12",
+              kind: {
+                type: "Identifier",
+                loc: "13:10-13:11",
+                name: "d",
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}

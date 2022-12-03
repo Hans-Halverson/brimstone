@@ -21,6 +21,7 @@ pub enum Statement {
     Expr(ExpressionStatement),
     Block(Block),
     If(IfStatement),
+    Switch(SwitchStatement),
     While(WhileStatement),
     DoWhile(DoWhileStatement),
     With(WithStatement),
@@ -29,6 +30,7 @@ pub enum Statement {
     Return(ReturnStatement),
     Break(BreakStatement),
     Continue(ContinueStatement),
+    Labeled(LabeledStatement),
     Empty(Loc),
     Debugger(Loc),
 }
@@ -66,6 +68,18 @@ pub struct IfStatement {
     pub test: P<Expression>,
     pub conseq: P<Statement>,
     pub altern: Option<P<Statement>>,
+}
+
+pub struct SwitchStatement {
+    pub loc: Loc,
+    pub discriminant: P<Expression>,
+    pub cases: Vec<SwitchCase>,
+}
+
+pub struct SwitchCase {
+    pub loc: Loc,
+    pub test: Option<P<Expression>>,
+    pub body: Vec<Statement>,
 }
 
 pub struct WhileStatement {
@@ -117,6 +131,12 @@ pub struct BreakStatement {
 pub struct ContinueStatement {
     pub loc: Loc,
     pub label: Option<P<Identifier>>,
+}
+
+pub struct LabeledStatement {
+    pub loc: Loc,
+    pub label: P<Identifier>,
+    pub body: P<Statement>,
 }
 
 pub enum Expression {

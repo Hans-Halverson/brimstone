@@ -148,6 +148,7 @@ impl<'a> Printer<'a> {
             ast::Statement::Expr(expr) => self.print_expression_statement(expr),
             ast::Statement::Block(stmt) => self.print_block(stmt),
             ast::Statement::If(stmt) => self.print_if_statement(stmt),
+            ast::Statement::Switch(stmt) => self.print_switch_statement(stmt),
             ast::Statement::While(stmt) => self.print_while_statement(stmt),
             ast::Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
             ast::Statement::With(stmt) => self.print_with_statement(stmt),
@@ -156,6 +157,7 @@ impl<'a> Printer<'a> {
             ast::Statement::Return(stmt) => self.print_return_statement(stmt),
             ast::Statement::Break(stmt) => self.print_break_statement(stmt),
             ast::Statement::Continue(stmt) => self.print_continue_statement(stmt),
+            ast::Statement::Labeled(stmt) => self.print_labeled_statement(stmt),
             ast::Statement::Empty(stmt) => self.print_empty_statement(stmt),
             ast::Statement::Debugger(stmt) => self.print_debugger_statement(stmt),
         }
@@ -193,6 +195,28 @@ impl<'a> Printer<'a> {
             stmt.altern.as_ref(),
             Printer::print_optional_statement,
         );
+        self.end_node();
+    }
+
+    fn print_switch_statement(&mut self, stmt: &ast::SwitchStatement) {
+        self.start_node("SwitchStatement", &stmt.loc);
+        self.property(
+            "discriminant",
+            stmt.discriminant.as_ref(),
+            Printer::print_expression,
+        );
+        self.array_property("cases", stmt.cases.as_ref(), Printer::print_switch_case);
+        self.end_node();
+    }
+
+    fn print_switch_case(&mut self, case: &ast::SwitchCase) {
+        self.start_node("SwitchCase", &case.loc);
+        self.property(
+            "test",
+            case.test.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.array_property("body", case.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
 
@@ -281,6 +305,13 @@ impl<'a> Printer<'a> {
             stmt.label.as_ref(),
             Printer::print_optional_identifier,
         );
+        self.end_node();
+    }
+
+    fn print_labeled_statement(&mut self, stmt: &ast::LabeledStatement) {
+        self.start_node("LabeledStatement", &stmt.loc);
+        self.property("label", stmt.label.as_ref(), Printer::print_identifier);
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
 

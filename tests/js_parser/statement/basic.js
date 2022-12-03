@@ -34,3 +34,9 @@ break a;
 continue;
 
 continue a;
+
+// Labeled
+
+foo: return;
+
+foo: bar: return;

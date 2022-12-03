@@ -203,6 +203,7 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => Ok(ast::Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
+            Token::Switch => self.parse_switch_statement(),
             Token::While => self.parse_while_statement(),
             Token::Do => self.parse_do_while_statement(),
             Token::With => self.parse_with_statement(),
@@ -224,10 +225,26 @@ impl<'a> Parser<'a> {
 
                 Ok(ast::Statement::Debugger(self.mark_loc(start_pos)))
             }
-            // Anything else must be an expression statement
             _ => {
                 let start_pos = self.current_start_pos();
                 let expr = self.parse_expression()?;
+
+                // Parse labeled statement
+                if self.token == Token::Colon {
+                    if let ast::Expression::Id(label) = *expr {
+                        self.advance()?;
+                        let body = self.parse_statement()?;
+                        let loc = self.mark_loc(start_pos);
+
+                        return Ok(ast::Statement::Labeled(ast::LabeledStatement {
+                            loc,
+                            label: p(label),
+                            body: p(body),
+                        }));
+                    }
+                }
+
+                // Otherwise must be an expression statement
                 self.expect(Token::Semicolon)?;
                 let loc = self.mark_loc(start_pos);
 
@@ -316,6 +333,58 @@ impl<'a> Parser<'a> {
             test,
             conseq,
             altern,
+        }))
+    }
+
+    fn parse_switch_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::LeftParen)?;
+        let discriminant = self.parse_expression()?;
+        self.expect(Token::RightParen)?;
+
+        let mut cases = vec![];
+        self.expect(Token::LeftBrace)?;
+
+        while self.token != Token::RightBrace {
+            match self.token {
+                Token::Case | Token::Default => {
+                    let case_start_pos = self.current_start_pos();
+                    let is_case = self.token == Token::Case;
+                    self.advance()?;
+
+                    let test = if is_case {
+                        Some(self.parse_expression()?)
+                    } else {
+                        None
+                    };
+                    self.expect(Token::Colon)?;
+
+                    // Parse statement list, which will be terminated by the start of another case
+                    // or the end of the switch.
+                    let mut body = vec![];
+                    while self.token != Token::Case
+                        && self.token != Token::Default
+                        && self.token != Token::RightBrace
+                    {
+                        body.push(self.parse_statement()?)
+                    }
+
+                    let loc = self.mark_loc(case_start_pos);
+                    cases.push(ast::SwitchCase { loc, test, body })
+                }
+                _ => return self.error_expected_token(self.loc, &self.token, &Token::Catch),
+            }
+        }
+
+        self.expect(Token::RightBrace)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::Switch(ast::SwitchStatement {
+            loc,
+            discriminant,
+            cases,
         }))
     }
 

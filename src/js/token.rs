@@ -52,6 +52,8 @@ pub enum Token {
     // Punctuation
     LeftParen,
     RightParen,
+    LeftBrace,
+    RightBrace,
     LeftBracket,
     RightBracket,
     Semicolon,
@@ -64,6 +66,10 @@ pub enum Token {
     Let,
     Const,
     This,
+    If,
+    Else,
+    While,
+    Do,
     Null,
     True,
     False,
@@ -73,6 +79,7 @@ pub enum Token {
     Typeof,
     Void,
     Delete,
+    Debugger,
 }
 
 impl fmt::Display for Token {
@@ -101,6 +108,8 @@ impl fmt::Display for Token {
             Token::Semicolon => ";",
             Token::LeftParen => "(",
             Token::RightParen => ")",
+            Token::LeftBrace => "{",
+            Token::RightBrace => "}",
             Token::LeftBracket => "[",
             Token::RightBracket => "]",
             Token::Comma => ",",
@@ -135,6 +144,10 @@ impl fmt::Display for Token {
             Token::Let => "let",
             Token::Const => "const",
             Token::This => "this",
+            Token::If => "if",
+            Token::Else => "else",
+            Token::While => "while",
+            Token::Do => "do",
             Token::Null => "null",
             Token::True => "true",
             Token::False => "false",
@@ -144,6 +157,7 @@ impl fmt::Display for Token {
             Token::Typeof => "typeof",
             Token::Void => "void",
             Token::Delete => "delete",
+            Token::Debugger => "debugger",
         };
 
         f.write_str(str)

@@ -146,6 +146,12 @@ impl<'a> Printer<'a> {
         match stmt {
             ast::Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
             ast::Statement::Expr(expr) => self.print_expression_statement(expr),
+            ast::Statement::Block(stmt) => self.print_block(stmt),
+            ast::Statement::If(stmt) => self.print_if_statement(stmt),
+            ast::Statement::While(stmt) => self.print_while_statement(stmt),
+            ast::Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
+            ast::Statement::Empty(stmt) => self.print_empty_statement(stmt),
+            ast::Statement::Debugger(stmt) => self.print_debugger_statement(stmt),
         }
     }
 
@@ -163,6 +169,48 @@ impl<'a> Printer<'a> {
     fn print_expression_statement(&mut self, expr: &ast::ExpressionStatement) {
         self.start_node("ExpressionStatement", &expr.loc);
         self.property("kind", expr.expr.as_ref(), Printer::print_expression);
+        self.end_node();
+    }
+
+    fn print_block(&mut self, block: &ast::Block) {
+        self.start_node("Block", &block.loc);
+        self.array_property("body", &block.body, Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_if_statement(&mut self, stmt: &ast::IfStatement) {
+        self.start_node("IfStatement", &stmt.loc);
+        self.property("test", stmt.test.as_ref(), Printer::print_expression);
+        self.property("consequent", stmt.conseq.as_ref(), Printer::print_statement);
+        self.property(
+            "alternate",
+            stmt.altern.as_ref(),
+            Printer::print_optional_statement,
+        );
+        self.end_node();
+    }
+
+    fn print_while_statement(&mut self, stmt: &ast::WhileStatement) {
+        self.start_node("WhileStatement", &stmt.loc);
+        self.property("test", stmt.test.as_ref(), Printer::print_expression);
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_do_while_statement(&mut self, stmt: &ast::DoWhileStatement) {
+        self.start_node("DoWhileStatement", &stmt.loc);
+        self.property("test", stmt.test.as_ref(), Printer::print_expression);
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_empty_statement(&mut self, loc: &Loc) {
+        self.start_node("EmptyStatement", loc);
+        self.end_node();
+    }
+
+    fn print_debugger_statement(&mut self, loc: &Loc) {
+        self.start_node("DebuggerStatement", loc);
         self.end_node();
     }
 
@@ -243,6 +291,13 @@ impl<'a> Printer<'a> {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_expression(expr),
+        }
+    }
+
+    fn print_optional_statement(&mut self, stmt: Option<&ast::P<ast::Statement>>) {
+        match stmt {
+            None => self.print_null(),
+            Some(stmt) => self.print_statement(stmt),
         }
     }
 

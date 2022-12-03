@@ -1,0 +1,90 @@
+{
+  type: "Program",
+  loc: "1:0-7:20",
+  body: [
+    {
+      type: "WhileStatement",
+      loc: "1:0-1:12",
+      test: {
+        type: "Identifier",
+        loc: "1:7-1:8",
+        name: "a",
+      },
+      body: {
+        type: "ExpressionStatement",
+        loc: "1:10-1:12",
+        kind: {
+          type: "Identifier",
+          loc: "1:10-1:11",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "WhileStatement",
+      loc: "3:0-3:16",
+      test: {
+        type: "Identifier",
+        loc: "3:7-3:8",
+        name: "a",
+      },
+      body: {
+        type: "Block",
+        loc: "3:10-3:16",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "3:12-3:14",
+            kind: {
+              type: "Identifier",
+              loc: "3:12-3:13",
+              name: "b",
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: "DoWhileStatement",
+      loc: "5:0-5:16",
+      test: {
+        type: "Identifier",
+        loc: "5:13-5:14",
+        name: "b",
+      },
+      body: {
+        type: "ExpressionStatement",
+        loc: "5:3-5:5",
+        kind: {
+          type: "Identifier",
+          loc: "5:3-5:4",
+          name: "a",
+        },
+      },
+    },
+    {
+      type: "DoWhileStatement",
+      loc: "7:0-7:20",
+      test: {
+        type: "Identifier",
+        loc: "7:17-7:18",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "7:3-7:9",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "7:5-7:7",
+            kind: {
+              type: "Identifier",
+              loc: "7:5-7:6",
+              name: "a",
+            },
+          },
+        ],
+      },
+    },
+  ],
+}

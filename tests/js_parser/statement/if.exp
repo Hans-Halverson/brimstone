@@ -1,0 +1,271 @@
+{
+  type: "Program",
+  loc: "1:0-29:1",
+  body: [
+    {
+      type: "IfStatement",
+      loc: "1:0-1:9",
+      test: {
+        type: "Identifier",
+        loc: "1:4-1:5",
+        name: "a",
+      },
+      consequent: {
+        type: "ExpressionStatement",
+        loc: "1:7-1:9",
+        kind: {
+          type: "Identifier",
+          loc: "1:7-1:8",
+          name: "b",
+        },
+      },
+      alternate: null,
+    },
+    {
+      type: "IfStatement",
+      loc: "3:0-3:17",
+      test: {
+        type: "Identifier",
+        loc: "3:4-3:5",
+        name: "a",
+      },
+      consequent: {
+        type: "ExpressionStatement",
+        loc: "3:7-3:9",
+        kind: {
+          type: "Identifier",
+          loc: "3:7-3:8",
+          name: "b",
+        },
+      },
+      alternate: {
+        type: "ExpressionStatement",
+        loc: "3:15-3:17",
+        kind: {
+          type: "Identifier",
+          loc: "3:15-3:16",
+          name: "c",
+        },
+      },
+    },
+    {
+      type: "IfStatement",
+      loc: "5:0-5:13",
+      test: {
+        type: "Identifier",
+        loc: "5:4-5:5",
+        name: "a",
+      },
+      consequent: {
+        type: "Block",
+        loc: "5:7-5:13",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "5:9-5:11",
+            kind: {
+              type: "Identifier",
+              loc: "5:9-5:10",
+              name: "b",
+            },
+          },
+        ],
+      },
+      alternate: null,
+    },
+    {
+      type: "IfStatement",
+      loc: "7:0-7:25",
+      test: {
+        type: "Identifier",
+        loc: "7:4-7:5",
+        name: "a",
+      },
+      consequent: {
+        type: "Block",
+        loc: "7:7-7:13",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "7:9-7:11",
+            kind: {
+              type: "Identifier",
+              loc: "7:9-7:10",
+              name: "b",
+            },
+          },
+        ],
+      },
+      alternate: {
+        type: "Block",
+        loc: "7:19-7:25",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "7:21-7:23",
+            kind: {
+              type: "Identifier",
+              loc: "7:21-7:22",
+              name: "c",
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: "IfStatement",
+      loc: "9:0-15:1",
+      test: {
+        type: "Identifier",
+        loc: "9:4-9:5",
+        name: "a",
+      },
+      consequent: {
+        type: "Block",
+        loc: "9:7-15:1",
+        body: [
+          {
+            type: "IfStatement",
+            loc: "10:2-14:3",
+            test: {
+              type: "Identifier",
+              loc: "10:6-10:7",
+              name: "b",
+            },
+            consequent: {
+              type: "Block",
+              loc: "10:9-12:3",
+              body: [
+                {
+                  type: "ExpressionStatement",
+                  loc: "11:4-11:6",
+                  kind: {
+                    type: "Identifier",
+                    loc: "11:4-11:5",
+                    name: "c",
+                  },
+                },
+              ],
+            },
+            alternate: {
+              type: "Block",
+              loc: "12:9-14:3",
+              body: [
+                {
+                  type: "ExpressionStatement",
+                  loc: "13:4-13:6",
+                  kind: {
+                    type: "Identifier",
+                    loc: "13:4-13:5",
+                    name: "d",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      alternate: null,
+    },
+    {
+      type: "IfStatement",
+      loc: "17:0-21:6",
+      test: {
+        type: "Identifier",
+        loc: "17:4-17:5",
+        name: "a",
+      },
+      consequent: {
+        type: "IfStatement",
+        loc: "18:2-21:6",
+        test: {
+          type: "Identifier",
+          loc: "18:6-18:7",
+          name: "b",
+        },
+        consequent: {
+          type: "ExpressionStatement",
+          loc: "19:4-19:6",
+          kind: {
+            type: "Identifier",
+            loc: "19:4-19:5",
+            name: "c",
+          },
+        },
+        alternate: {
+          type: "ExpressionStatement",
+          loc: "21:4-21:6",
+          kind: {
+            type: "Identifier",
+            loc: "21:4-21:5",
+            name: "d",
+          },
+        },
+      },
+      alternate: null,
+    },
+    {
+      type: "IfStatement",
+      loc: "23:0-29:1",
+      test: {
+        type: "Identifier",
+        loc: "23:4-23:5",
+        name: "a",
+      },
+      consequent: {
+        type: "Block",
+        loc: "23:7-25:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "24:2-24:4",
+            kind: {
+              type: "Identifier",
+              loc: "24:2-24:3",
+              name: "b",
+            },
+          },
+        ],
+      },
+      alternate: {
+        type: "IfStatement",
+        loc: "25:7-29:1",
+        test: {
+          type: "Identifier",
+          loc: "25:11-25:12",
+          name: "c",
+        },
+        consequent: {
+          type: "Block",
+          loc: "25:14-27:1",
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "26:2-26:4",
+              kind: {
+                type: "Identifier",
+                loc: "26:2-26:3",
+                name: "d",
+              },
+            },
+          ],
+        },
+        alternate: {
+          type: "Block",
+          loc: "27:7-29:1",
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "28:2-28:4",
+              kind: {
+                type: "Identifier",
+                loc: "28:2-28:3",
+                name: "e",
+              },
+            },
+          ],
+        },
+      },
+    },
+  ],
+}

@@ -189,6 +189,23 @@ impl<'a> Parser<'a> {
             Token::Var | Token::Let | Token::Const => {
                 Ok(ast::Statement::VarDecl(self.parse_variable_declaration()?))
             }
+            Token::LeftBrace => Ok(ast::Statement::Block(self.parse_block()?)),
+            Token::If => Ok(self.parse_if_statement()?),
+            Token::While => Ok(self.parse_while_statement()?),
+            Token::Do => Ok(self.parse_do_while_statement()?),
+            Token::Semicolon => {
+                let loc = self.loc;
+                self.advance()?;
+
+                Ok(ast::Statement::Empty(loc))
+            }
+            Token::Debugger => {
+                let start_pos = self.current_start_pos();
+                self.advance()?;
+                self.expect(Token::Semicolon)?;
+
+                Ok(ast::Statement::Debugger(self.mark_loc(start_pos)))
+            }
             // Anything else must be an expression statement
             _ => {
                 let start_pos = self.current_start_pos();
@@ -240,6 +257,88 @@ impl<'a> Parser<'a> {
             kind,
             declarations,
         })
+    }
+
+    fn parse_block(&mut self) -> ParseResult<ast::Block> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let mut body = vec![];
+        while self.token != Token::RightBrace {
+            body.push(self.parse_statement()?)
+        }
+
+        self.advance()?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Block { loc, body })
+    }
+
+    fn parse_if_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::LeftParen)?;
+        let test = self.parse_expression()?;
+        self.expect(Token::RightParen)?;
+
+        let conseq = p(self.parse_statement()?);
+
+        let altern = if self.token == Token::Else {
+            self.advance()?;
+            Some(p(self.parse_statement()?))
+        } else {
+            None
+        };
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::If(ast::IfStatement {
+            loc,
+            test,
+            conseq,
+            altern,
+        }))
+    }
+
+    fn parse_while_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::LeftParen)?;
+        let test = self.parse_expression()?;
+        self.expect(Token::RightParen)?;
+
+        let body = p(self.parse_statement()?);
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::While(ast::WhileStatement {
+            loc,
+            test,
+            body,
+        }))
+    }
+
+    fn parse_do_while_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let body = p(self.parse_statement()?);
+
+        self.expect(Token::While)?;
+        self.expect(Token::LeftParen)?;
+        let test = self.parse_expression()?;
+        self.expect(Token::RightParen)?;
+        self.expect(Token::Semicolon)?;
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::DoWhile(ast::DoWhileStatement {
+            loc,
+            test,
+            body,
+        }))
     }
 
     /// 13.16 Expression

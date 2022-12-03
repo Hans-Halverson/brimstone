@@ -19,6 +19,12 @@ pub struct Identifier {
 pub enum Statement {
     VarDecl(VariableDeclaration),
     Expr(ExpressionStatement),
+    Block(Block),
+    If(IfStatement),
+    While(WhileStatement),
+    DoWhile(DoWhileStatement),
+    Empty(Loc),
+    Debugger(Loc),
 }
 
 pub enum VarKind {
@@ -42,6 +48,30 @@ pub struct VariableDeclarator {
 pub struct ExpressionStatement {
     pub loc: Loc,
     pub expr: P<Expression>,
+}
+
+pub struct Block {
+    pub loc: Loc,
+    pub body: Vec<Statement>,
+}
+
+pub struct IfStatement {
+    pub loc: Loc,
+    pub test: P<Expression>,
+    pub conseq: P<Statement>,
+    pub altern: Option<P<Statement>>,
+}
+
+pub struct WhileStatement {
+    pub loc: Loc,
+    pub test: P<Expression>,
+    pub body: P<Statement>,
+}
+
+pub struct DoWhileStatement {
+    pub loc: Loc,
+    pub test: P<Expression>,
+    pub body: P<Statement>,
 }
 
 pub enum Expression {

@@ -46,6 +46,9 @@ pub struct ExpressionStatement {
 
 pub enum Expression {
     Id(Identifier),
+    Null(Loc),
+    Boolean(BooleanLiteral),
+    String(StringLiteral),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
     Logical(LogicalExpression),
@@ -69,6 +72,16 @@ pub enum Expression {
     // TODO: MetaProperty
     // TODO: ImportExpression
     // TODO: ChainExpression
+}
+
+pub struct BooleanLiteral {
+    pub loc: Loc,
+    pub value: bool,
+}
+
+pub struct StringLiteral {
+    pub loc: Loc,
+    pub value: String,
 }
 
 pub enum UnaryOperator {

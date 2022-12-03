@@ -60,6 +60,10 @@ impl<'a> Printer<'a> {
         self.string("null")
     }
 
+    fn print_null_in_property(&mut self, _: ()) {
+        self.print_null()
+    }
+
     fn start_node(&mut self, name: &str, loc: &Loc) {
         self.string("{\n");
         self.inc_indent();
@@ -179,6 +183,9 @@ impl<'a> Printer<'a> {
     fn print_expression(&mut self, expr: &ast::Expression) {
         match expr {
             ast::Expression::Id(id) => self.print_identifier(id),
+            ast::Expression::Null(lit) => self.print_null_literal(lit),
+            ast::Expression::Boolean(lit) => self.print_boolean_literal(lit),
+            ast::Expression::String(lit) => self.print_string_literal(lit),
             ast::Expression::Unary(unary) => self.print_unary_expression(unary),
             ast::Expression::Binary(binary) => self.print_binary_expression(binary),
             ast::Expression::Logical(logical) => self.print_logical_expression(logical),
@@ -194,6 +201,24 @@ impl<'a> Printer<'a> {
             ast::Expression::Await(expr) => self.print_await_expression(expr),
             ast::Expression::Yield(expr) => self.print_yield_expression(expr),
         }
+    }
+
+    fn print_null_literal(&mut self, loc: &Loc) {
+        self.start_node("Literal", loc);
+        self.property("value", (), Printer::print_null_in_property);
+        self.end_node();
+    }
+
+    fn print_boolean_literal(&mut self, lit: &ast::BooleanLiteral) {
+        self.start_node("Literal", &lit.loc);
+        self.property("value", lit.value, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_string_literal(&mut self, lit: &ast::StringLiteral) {
+        self.start_node("Literal", &lit.loc);
+        self.property("value", &lit.value, Printer::print_string);
+        self.end_node();
     }
 
     fn print_optional_expression(&mut self, expr: Option<&ast::P<ast::Expression>>) {

@@ -3,6 +3,7 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(String),
+    StringLiteral(String),
     Eof,
     // Operators
     Plus,
@@ -62,6 +63,9 @@ pub enum Token {
     Let,
     Const,
     This,
+    Null,
+    True,
+    False,
     In,
     InstanceOf,
     New,
@@ -74,6 +78,7 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match self {
             Token::Identifier(name) => name,
+            Token::StringLiteral(lit) => lit,
             Token::Plus => "+",
             Token::Minus => "-",
             Token::Multiply => "*",
@@ -128,6 +133,9 @@ impl fmt::Display for Token {
             Token::Let => "let",
             Token::Const => "const",
             Token::This => "this",
+            Token::Null => "null",
+            Token::True => "true",
+            Token::False => "false",
             Token::In => "in",
             Token::InstanceOf => "instanceof",
             Token::New => "new",

@@ -1,5 +1,13 @@
 this;
 
+// Literals
+
+null;
+
+true;
+
+false;
+
 // Array expressions
 
 [];

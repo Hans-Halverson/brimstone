@@ -387,6 +387,7 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.emit(Token::Colon, start_pos)
             }
+            '"' | '\'' => self.lex_string_literal(),
             EOF_CHAR => self.emit(Token::Eof, start_pos),
             char if is_id_start_char(char) => self.lex_identifier(start_pos),
             other => {
@@ -400,7 +401,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn skip_line_comment(&mut self) {
+    fn skip_line_comment(&mut self) {
         loop {
             match self.current {
                 '\n' | '\r' => {
@@ -413,7 +414,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn skip_block_comment(&mut self) -> Option<LexResult> {
+    fn skip_block_comment(&mut self) -> Option<LexResult> {
         loop {
             match self.current {
                 '*' => match self.peek() {
@@ -442,7 +443,125 @@ impl<'a> Lexer<'a> {
         None
     }
 
-    pub fn lex_identifier(&mut self, start_pos: Pos) -> LexResult {
+    fn lex_string_literal(&mut self) -> LexResult {
+        let quote_char = self.current;
+        let start_pos = self.pos;
+        self.advance();
+
+        let mut value = String::new();
+
+        while self.current != quote_char {
+            match self.current {
+                // Escape sequences
+                '\\' => match self.peek() {
+                    // Single character escapes
+                    'n' => {
+                        value.push('\n');
+                        self.advance2()
+                    }
+                    '\\' => {
+                        value.push('\\');
+                        self.advance2()
+                    }
+                    '\'' => {
+                        value.push('\'');
+                        self.advance2()
+                    }
+                    '"' => {
+                        value.push('"');
+                        self.advance2()
+                    }
+                    't' => {
+                        value.push('\t');
+                        self.advance2()
+                    }
+                    'r' => {
+                        value.push('\r');
+                        self.advance2()
+                    }
+                    'b' => {
+                        value.push('\x08');
+                        self.advance2()
+                    }
+                    'v' => {
+                        value.push('\x0B');
+                        self.advance2()
+                    }
+                    'f' => {
+                        value.push('\x0C');
+                        self.advance2()
+                    }
+                    '0' if self.peek2() < '0' || self.peek2() > '9' => {
+                        value.push('\x00');
+                        self.advance2()
+                    }
+                    // Hex escape sequence
+                    'x' => {
+                        self.advance2();
+
+                        if let Some(x1) = Lexer::get_hex_value(self.current) {
+                            if let Some(x2) = Lexer::get_hex_value(self.peek()) {
+                                let escaped_char = std::char::from_u32(x1 * 16 + x2).unwrap();
+                                value.push(escaped_char);
+                                self.advance2();
+                            } else {
+                                let loc = self.mark_loc(self.pos);
+                                self.advance();
+                                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                            }
+                        } else {
+                            let loc = self.mark_loc(self.pos);
+                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                        }
+                    }
+                    // Line continuations, either LF, CR, or CRLF
+                    '\n' => {
+                        value.push('\n');
+                        self.advance2()
+                    }
+                    '\r' => {
+                        value.push('\r');
+                        self.advance2();
+
+                        if self.current == '\n' {
+                            value.push('\n');
+                            self.advance()
+                        }
+                    }
+                    // Not an escape sequence, use '/' directly
+                    _ => {
+                        value.push('/');
+                        self.advance()
+                    }
+                },
+                // Unterminated string literal
+                '\n' | EOF_CHAR => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnterminatedStringLiteral);
+                }
+                quote if quote == quote_char => break,
+                other => {
+                    value.push(other);
+                    self.advance()
+                }
+            }
+        }
+
+        self.advance();
+
+        return self.emit(Token::StringLiteral(value), start_pos);
+    }
+
+    fn get_hex_value(char: char) -> Option<u32> {
+        match char {
+            '0'..='9' => Some(char as u32 - '0' as u32),
+            'a'..='f' => Some(char as u32 - 'a' as u32 + 10),
+            'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
+            _ => None,
+        }
+    }
+
+    fn lex_identifier(&mut self, start_pos: Pos) -> LexResult {
         self.advance();
 
         while is_id_part_char(self.current) {
@@ -454,6 +573,9 @@ impl<'a> Lexer<'a> {
             "let" => self.emit(Token::Let, start_pos),
             "const" => self.emit(Token::Const, start_pos),
             "this" => self.emit(Token::This, start_pos),
+            "null" => self.emit(Token::Null, start_pos),
+            "true" => self.emit(Token::True, start_pos),
+            "false" => self.emit(Token::False, start_pos),
             "in" => self.emit(Token::In, start_pos),
             "instanceof" => self.emit(Token::InstanceOf, start_pos),
             "new" => self.emit(Token::New, start_pos),

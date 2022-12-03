@@ -14,6 +14,8 @@ pub enum ParseError {
     UnknownToken(String),
     UnexpectedToken(Token),
     ExpectedToken(Token, Token),
+    UnterminatedStringLiteral,
+    MalformedEscapeSeqence,
 }
 
 pub struct LocalizedParseError {
@@ -41,6 +43,8 @@ impl fmt::Display for LocalizedParseError {
             ParseError::ExpectedToken(actual, expected) => {
                 format!("Unexpected token {}, expected {}", actual, expected)
             }
+            ParseError::UnterminatedStringLiteral => format!("Unterminated string literal"),
+            ParseError::MalformedEscapeSeqence => format!("Malformed escape sequence"),
         };
 
         match &self.source_loc {
@@ -771,6 +775,29 @@ impl<'a> Parser<'a> {
     fn parse_primary_expression(&mut self) -> ParseResult<P<ast::Expression>> {
         match &self.token {
             Token::Identifier(_) => Ok(p(ast::Expression::Id(self.parse_identifier()?))),
+            Token::Null => {
+                let loc = self.loc;
+                self.advance()?;
+                Ok(p(ast::Expression::Null(loc)))
+            }
+            Token::True | Token::False => {
+                let value = self.token == Token::True;
+                let loc = self.loc;
+                self.advance()?;
+                Ok(p(ast::Expression::Boolean(ast::BooleanLiteral {
+                    loc,
+                    value,
+                })))
+            }
+            Token::StringLiteral(value) => {
+                let loc = self.loc;
+                let value = value.clone();
+                self.advance()?;
+                Ok(p(ast::Expression::String(ast::StringLiteral {
+                    loc,
+                    value,
+                })))
+            }
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;

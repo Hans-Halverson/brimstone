@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-15:14",
+  loc: "1:0-23:14",
   body: [
     {
       type: "ExpressionStatement",
@@ -12,30 +12,57 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:3",
+      loc: "5:0-5:5",
       kind: {
-        type: "ArrayExpression",
-        loc: "5:0-5:2",
-        elements: [],
+        type: "Literal",
+        loc: "5:0-5:4",
+        value: null,
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "7:0-7:4",
+      loc: "7:0-7:5",
       kind: {
-        type: "ArrayExpression",
-        loc: "7:0-7:3",
-        elements: [
-          null,
-        ],
+        type: "Literal",
+        loc: "7:0-7:4",
+        value: true,
       },
     },
     {
       type: "ExpressionStatement",
       loc: "9:0-9:6",
       kind: {
-        type: "ArrayExpression",
+        type: "Literal",
         loc: "9:0-9:5",
+        value: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:3",
+      kind: {
+        type: "ArrayExpression",
+        loc: "13:0-13:2",
+        elements: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:4",
+      kind: {
+        type: "ArrayExpression",
+        loc: "15:0-15:3",
+        elements: [
+          null,
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:6",
+      kind: {
+        type: "ArrayExpression",
+        loc: "17:0-17:5",
         elements: [
           null,
           null,
@@ -45,24 +72,24 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:10",
+      loc: "19:0-19:10",
       kind: {
         type: "ArrayExpression",
-        loc: "11:0-11:9",
+        loc: "19:0-19:9",
         elements: [
           {
             type: "Identifier",
-            loc: "11:1-11:2",
+            loc: "19:1-19:2",
             name: "a",
           },
           {
             type: "Identifier",
-            loc: "11:4-11:5",
+            loc: "19:4-19:5",
             name: "b",
           },
           {
             type: "Identifier",
-            loc: "11:7-11:8",
+            loc: "19:7-19:8",
             name: "c",
           },
         ],
@@ -70,24 +97,24 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "13:0-13:11",
+      loc: "21:0-21:11",
       kind: {
         type: "ArrayExpression",
-        loc: "13:0-13:10",
+        loc: "21:0-21:10",
         elements: [
           {
             type: "Identifier",
-            loc: "13:1-13:2",
+            loc: "21:1-21:2",
             name: "a",
           },
           {
             type: "Identifier",
-            loc: "13:4-13:5",
+            loc: "21:4-21:5",
             name: "b",
           },
           {
             type: "Identifier",
-            loc: "13:7-13:8",
+            loc: "21:7-21:8",
             name: "c",
           },
         ],
@@ -95,26 +122,26 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "15:0-15:14",
+      loc: "23:0-23:14",
       kind: {
         type: "ArrayExpression",
-        loc: "15:0-15:13",
+        loc: "23:0-23:13",
         elements: [
           null,
           {
             type: "Identifier",
-            loc: "15:2-15:3",
+            loc: "23:2-23:3",
             name: "a",
           },
           null,
           {
             type: "Identifier",
-            loc: "15:6-15:7",
+            loc: "23:6-23:7",
             name: "b",
           },
           {
             type: "Identifier",
-            loc: "15:9-15:10",
+            loc: "23:9-23:10",
             name: "c",
           },
           null,

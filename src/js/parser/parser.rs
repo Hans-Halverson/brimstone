@@ -44,8 +44,8 @@ impl fmt::Display for LocalizedParseError {
         let message = match &self.error {
             ParseError::Io(io_error) => {
                 f.write_str("Error: ")?;
-                return io_error.fmt(f)
-            },
+                return io_error.fmt(f);
+            }
             ParseError::UnknownToken(token) => format!("Unknown token {}", token),
             ParseError::UnexpectedToken(token) => format!("Unexpected token {}", token),
             ParseError::ExpectedToken(actual, expected) => {
@@ -64,7 +64,11 @@ impl fmt::Display for LocalizedParseError {
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
                 let (line, col) = find_line_col_for_pos(loc.start, offsets);
-                write!(f, "SyntaxError: {}:{}:{} {}", source.file_path, line, col, message)
+                write!(
+                    f,
+                    "SyntaxError: {}:{}:{} {}",
+                    source.file_path, line, col, message
+                )
             }
         }
     }

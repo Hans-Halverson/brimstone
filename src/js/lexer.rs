@@ -722,6 +722,8 @@ impl<'a> Lexer<'a> {
             "var" => self.emit(Token::Var, start_pos),
             "let" => self.emit(Token::Let, start_pos),
             "const" => self.emit(Token::Const, start_pos),
+            "function" => self.emit(Token::Function, start_pos),
+            "async" => self.emit(Token::Async, start_pos),
             "this" => self.emit(Token::This, start_pos),
             "if" => self.emit(Token::If, start_pos),
             "else" => self.emit(Token::Else, start_pos),

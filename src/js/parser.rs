@@ -205,6 +205,9 @@ impl<'a> Parser<'a> {
             Token::Var | Token::Let | Token::Const => {
                 Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
             }
+            Token::Function | Token::Async | Token::Multiply => {
+                Ok(Statement::FuncDecl(self.parse_function(true)?))
+            }
             Token::LeftBrace => Ok(Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
@@ -310,6 +313,59 @@ impl<'a> Parser<'a> {
             loc,
             kind,
             declarations,
+        })
+    }
+
+    fn parse_function(&mut self, is_decl: bool) -> ParseResult<Function> {
+        let start_pos = self.current_start_pos();
+
+        // Function can be prefixed by async keyword
+        let is_async = self.token == Token::Async;
+        if is_async {
+            self.advance()?
+        }
+
+        self.expect(Token::Function)?;
+
+        // Function keyword can be suffixed by generator `*`
+        let is_generator = self.token == Token::Multiply;
+        if is_generator {
+            self.advance()?
+        }
+
+        // Id is optional only for function expresssions
+        let id = if self.token != Token::LeftParen || is_decl {
+            Some(p(self.parse_identifier()?))
+        } else {
+            None
+        };
+
+        // Read all function params between the parentheses
+        let mut params = vec![];
+        self.expect(Token::LeftParen)?;
+
+        while self.token != Token::RightParen {
+            params.push(self.parse_pattern()?);
+
+            if self.token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+
+        self.expect(Token::RightParen)?;
+
+        let body = p(FunctionBody::Block(self.parse_block()?));
+        let loc = self.mark_loc(start_pos);
+
+        Ok(Function {
+            loc,
+            id,
+            params,
+            body,
+            is_async,
+            is_generator,
         })
     }
 
@@ -1284,6 +1340,9 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
+            Token::Function | Token::Async | Token::Multiply => {
+                Ok(p(Expression::Function(self.parse_function(false)?)))
+            }
             other => self.error_unexpected_token(self.loc, other),
         }
     }

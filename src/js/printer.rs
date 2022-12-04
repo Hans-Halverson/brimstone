@@ -146,6 +146,7 @@ impl<'a> Printer<'a> {
     fn print_statement(&mut self, stmt: &Statement) {
         match stmt {
             Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
+            Statement::FuncDecl(func_decl) => self.print_function(func_decl, "FunctionDeclaration"),
             Statement::Expr(expr) => self.print_expression_statement(expr),
             Statement::Block(stmt) => self.print_block(stmt),
             Statement::If(stmt) => self.print_if_statement(stmt),
@@ -175,6 +176,23 @@ impl<'a> Printer<'a> {
             Printer::print_variable_declarator,
         );
         self.end_node();
+    }
+
+    fn print_function(&mut self, func: &Function, name: &str) {
+        self.start_node(name, &func.loc);
+        self.property("id", func.id.as_ref(), Printer::print_optional_identifier);
+        self.array_property("params", func.params.as_ref(), Printer::print_pattern);
+        self.property("body", func.body.as_ref(), Printer::print_function_body);
+        self.property("async", func.is_async, Printer::print_bool);
+        self.property("generator", func.is_generator, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_function_body(&mut self, body: &FunctionBody) {
+        match body {
+            FunctionBody::Block(block) => self.print_block(block),
+            FunctionBody::Expression(expr) => self.print_expression(&expr),
+        }
     }
 
     fn print_expression_statement(&mut self, expr: &ExpressionStatement) {
@@ -414,6 +432,7 @@ impl<'a> Printer<'a> {
             Expression::This(loc) => self.print_this_expression(&loc),
             Expression::Array(arr) => self.print_array_expression(arr),
             Expression::Object(arr) => self.print_object_expression(arr),
+            Expression::Function(func) => self.print_function(func, "FunctionExpression"),
             Expression::Await(expr) => self.print_await_expression(expr),
             Expression::Yield(expr) => self.print_yield_expression(expr),
         }
@@ -666,9 +685,9 @@ impl<'a> Printer<'a> {
             prop.value.as_ref(),
             Printer::print_optional_expression,
         );
-        self.property("is_computed", prop.is_computed, Printer::print_bool);
-        self.property("is_shorthand", prop.value.is_none(), Printer::print_bool);
-        self.property("is_method", prop.is_method, Printer::print_bool);
+        self.property("computed", prop.is_computed, Printer::print_bool);
+        self.property("shorthand", prop.value.is_none(), Printer::print_bool);
+        self.property("method", prop.is_method, Printer::print_bool);
         self.property("kind", prop.kind, Printer::print_property_kind);
         self.end_node();
     }

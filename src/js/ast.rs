@@ -18,6 +18,7 @@ pub struct Identifier {
 
 pub enum Statement {
     VarDecl(VariableDeclaration),
+    FuncDecl(Function),
     Expr(ExpressionStatement),
     Block(Block),
     If(IfStatement),
@@ -53,6 +54,20 @@ pub struct VariableDeclarator {
     pub loc: Loc,
     pub id: P<Pattern>,
     pub init: Option<P<Expression>>,
+}
+
+pub struct Function {
+    pub loc: Loc,
+    pub id: Option<P<Identifier>>,
+    pub params: Vec<Pattern>,
+    pub body: P<FunctionBody>,
+    pub is_async: bool,
+    pub is_generator: bool,
+}
+
+pub enum FunctionBody {
+    Block(Block),
+    Expression(Expression),
 }
 
 pub struct ExpressionStatement {
@@ -191,6 +206,7 @@ pub enum Expression {
     Sequence(SequenceExpression),
     Array(ArrayExpression),
     Object(ObjectExpression),
+    Function(Function),
     This(Loc),
     Await(AwaitExpression),
     Yield(YieldExpression),

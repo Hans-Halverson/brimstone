@@ -13,6 +13,12 @@ pub struct Lexer<'a> {
     pos: Pos,
 }
 
+/// A save point for the lexer, can be used to restore the lexer to a particular position.
+pub struct SavedLexerState {
+    current: char,
+    pos: Pos,
+}
+
 type LexResult = ParseResult<(Token, Loc)>;
 
 /// Character that marks an EOF. Not a valid unicode character.
@@ -49,6 +55,18 @@ impl<'a> Lexer<'a> {
             current,
             pos: 0,
         }
+    }
+
+    pub fn save(&self) -> SavedLexerState {
+        SavedLexerState {
+            current: self.current,
+            pos: self.pos,
+        }
+    }
+
+    pub fn restore(&mut self, save_state: &SavedLexerState) {
+        self.current = save_state.current;
+        self.pos = save_state.pos;
     }
 
     #[inline]
@@ -335,6 +353,10 @@ impl<'a> Lexer<'a> {
                         self.emit(Token::EqEq, start_pos)
                     }
                 },
+                '>' => {
+                    self.advance2();
+                    self.emit(Token::Arrow, start_pos)
+                }
                 _ => {
                     self.advance();
                     self.emit(Token::Equals, start_pos)

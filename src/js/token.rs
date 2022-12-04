@@ -61,6 +61,7 @@ pub enum Token {
     Period,
     Question,
     Colon,
+    Arrow,
     // Keywords
     Var,
     Let,
@@ -121,6 +122,7 @@ impl fmt::Display for Token {
             Token::Increment => "++",
             Token::Decrement => "--",
             Token::Semicolon => ";",
+            Token::Arrow => "=>",
             Token::LeftParen => "(",
             Token::RightParen => ")",
             Token::LeftBrace => "{",

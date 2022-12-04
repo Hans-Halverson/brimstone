@@ -207,11 +207,10 @@ pub enum Expression {
     Array(ArrayExpression),
     Object(ObjectExpression),
     Function(Function),
+    ArrowFunction(Function),
     This(Loc),
     Await(AwaitExpression),
     Yield(YieldExpression),
-    // TODO: FunctionExpression
-    // TODO: ArrowFunctionExpression
     // TODO: TemplateLiteral
     // TODO: TaggedTemplateExpression
     // TODO: ClassExpression

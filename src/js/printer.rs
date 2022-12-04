@@ -433,6 +433,7 @@ impl<'a> Printer<'a> {
             Expression::Array(arr) => self.print_array_expression(arr),
             Expression::Object(arr) => self.print_object_expression(arr),
             Expression::Function(func) => self.print_function(func, "FunctionExpression"),
+            Expression::ArrowFunction(func) => self.print_function(func, "ArrowFunctionExpression"),
             Expression::Await(expr) => self.print_await_expression(expr),
             Expression::Yield(expr) => self.print_yield_expression(expr),
         }

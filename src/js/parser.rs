@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use super::ast::*;
-use super::lexer::Lexer;
+use super::lexer::{Lexer, SavedLexerState};
 use super::loc::{find_line_col_for_pos, Loc, Pos, EMPTY_LOC};
 use super::source::Source;
 use super::token::Token;
@@ -19,6 +19,9 @@ pub enum ParseError {
     MalformedNumericLiteral,
     InvalidForLeftHandSide,
 }
+
+// Arbitrary error used to fail try parse
+const FAIL_TRY_PARSED_ERROR: ParseError = ParseError::MalformedNumericLiteral;
 
 pub struct LocalizedParseError {
     pub error: ParseError,
@@ -114,6 +117,14 @@ struct Parser<'a> {
     prev_loc: Loc,
 }
 
+/// A save point for the parser, can be used to restore the parser to a particular position.
+struct ParserSaveState {
+    saved_lexer_state: SavedLexerState,
+    token: Token,
+    loc: Loc,
+    prev_loc: Loc,
+}
+
 impl<'a> Parser<'a> {
     // Must prime parser by calling advance before using.
     fn new(lexer: Lexer<'a>) -> Parser<'a> {
@@ -131,6 +142,32 @@ impl<'a> Parser<'a> {
             error,
             source_loc: Some((loc, source)),
         })
+    }
+
+    fn save(&self) -> ParserSaveState {
+        ParserSaveState {
+            saved_lexer_state: self.lexer.save(),
+            token: self.token.clone(),
+            loc: self.loc,
+            prev_loc: self.prev_loc,
+        }
+    }
+
+    fn restore(&mut self, save_state: ParserSaveState) {
+        self.lexer.restore(&save_state.saved_lexer_state);
+        self.token = save_state.token;
+        self.loc = save_state.loc;
+        self.prev_loc = save_state.prev_loc;
+    }
+
+    /// Try parsing, restoring to state before this function was called if an error occurs.
+    fn try_parse<T>(&mut self, try_fn: fn(&mut Self) -> ParseResult<T>) -> ParseResult<T> {
+        let save_state = self.save();
+        let result = try_fn(self);
+        if let Err(_) = result {
+            self.restore(save_state);
+        }
+        result
     }
 
     fn advance(&mut self) -> ParseResult<()> {
@@ -201,12 +238,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> ParseResult<Statement> {
-        match &self.token {
+        match self.token {
             Token::Var | Token::Let | Token::Const => {
                 Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
-            }
-            Token::Function | Token::Async | Token::Multiply => {
-                Ok(Statement::FuncDecl(self.parse_function(true)?))
             }
             Token::LeftBrace => Ok(Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
@@ -234,6 +268,10 @@ impl<'a> Parser<'a> {
                 Ok(Statement::Debugger(self.mark_loc(start_pos)))
             }
             _ => {
+                if self.is_function_start()? {
+                    return Ok(Statement::FuncDecl(self.parse_function(true)?));
+                }
+
                 let start_pos = self.current_start_pos();
                 let expr = self.parse_expression()?;
 
@@ -258,6 +296,21 @@ impl<'a> Parser<'a> {
 
                 Ok(Statement::Expr(ExpressionStatement { loc, expr }))
             }
+        }
+    }
+
+    fn is_function_start(&mut self) -> ParseResult<bool> {
+        match self.token {
+            Token::Function => Ok(true),
+            Token::Async => {
+                let save_state = self.save();
+                self.advance()?;
+                let is_function = self.token == Token::Function;
+                self.restore(save_state);
+
+                Ok(is_function)
+            }
+            _ => Ok(false),
         }
     }
 
@@ -340,6 +393,21 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let params = self.parse_function_params()?;
+        let body = p(FunctionBody::Block(self.parse_block()?));
+        let loc = self.mark_loc(start_pos);
+
+        Ok(Function {
+            loc,
+            id,
+            params,
+            body,
+            is_async,
+            is_generator,
+        })
+    }
+
+    fn parse_function_params(&mut self) -> ParseResult<Vec<Pattern>> {
         // Read all function params between the parentheses
         let mut params = vec![];
         self.expect(Token::LeftParen)?;
@@ -356,17 +424,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightParen)?;
 
-        let body = p(FunctionBody::Block(self.parse_block()?));
-        let loc = self.mark_loc(start_pos);
-
-        Ok(Function {
-            loc,
-            id,
-            params,
-            body,
-            is_async,
-            is_generator,
-        })
+        Ok(params)
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -797,6 +855,19 @@ impl<'a> Parser<'a> {
 
     /// 13.15 AssignmentExpression
     fn parse_assignment_expression(&mut self) -> ParseResult<P<Expression>> {
+        // First try parsing as a non-arrow assignment
+        match self.try_parse(Parser::parse_non_arrow_assignment_expression) {
+            Ok(expr) => Ok(expr),
+            // Then try parsing as an arrow function if that doesn't succeed
+            Err(err) => match self.try_parse(Parser::parse_arrow_function) {
+                Ok(expr) => Ok(expr),
+                // Error as if parsing a non-arrow assignment if neither match
+                Err(_) => Err(err),
+            },
+        }
+    }
+
+    fn parse_non_arrow_assignment_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         let expr = self.parse_conditional_expression()?;
 
@@ -817,7 +888,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        match assignment_op {
+        let result = match assignment_op {
             None => Ok(expr),
             Some(operator) => {
                 self.advance()?;
@@ -831,6 +902,76 @@ impl<'a> Parser<'a> {
                     operator,
                 })))
             }
+        };
+
+        // Force parsing as an async function if we see an arrow
+        if self.token == Token::Arrow {
+            return self.error(self.loc, FAIL_TRY_PARSED_ERROR);
+        }
+
+        result
+    }
+
+    fn parse_arrow_function(&mut self) -> ParseResult<P<Expression>> {
+        let start_pos = self.current_start_pos();
+
+        let is_async = self.token == Token::Async;
+        if is_async {
+            let async_loc = self.loc;
+            self.advance()?;
+
+            // Special case for when async is actually the single parameter: async => body
+            if self.token == Token::Arrow {
+                self.advance()?;
+                let params = vec![Pattern::Id(Identifier {
+                    loc: async_loc,
+                    name: "async".to_owned(),
+                })];
+                let body = self.parse_arrow_function_body()?;
+                let loc = self.mark_loc(start_pos);
+
+                return Ok(p(Expression::ArrowFunction(Function {
+                    loc,
+                    id: None,
+                    params,
+                    body,
+                    is_async: false,
+                    is_generator: false,
+                })));
+            }
+        }
+
+        // Arrow function params can be either parenthesized function params or a single id
+        let params = match self.token {
+            Token::LeftParen => self.parse_function_params()?,
+            Token::Identifier(_) => {
+                let id = self.parse_identifier()?;
+                vec![Pattern::Id(id)]
+            }
+            _ => return self.error_unexpected_token(self.loc, &self.token),
+        };
+
+        self.expect(Token::Arrow)?;
+        let body = self.parse_arrow_function_body()?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(Expression::ArrowFunction(Function {
+            loc,
+            id: None,
+            params,
+            body,
+            is_async,
+            is_generator: false,
+        })))
+    }
+
+    fn parse_arrow_function_body(&mut self) -> ParseResult<P<FunctionBody>> {
+        if self.token == Token::LeftBrace {
+            Ok(p(FunctionBody::Block(self.parse_block()?)))
+        } else {
+            Ok(p(FunctionBody::Expression(
+                *self.parse_assignment_expression()?,
+            )))
         }
     }
 
@@ -1340,10 +1481,13 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
-            Token::Function | Token::Async | Token::Multiply => {
-                Ok(p(Expression::Function(self.parse_function(false)?)))
+            _ => {
+                if self.is_function_start()? {
+                    return Ok(p(Expression::Function(self.parse_function(false)?)));
+                }
+
+                self.error_unexpected_token(self.loc, &self.token)
             }
-            other => self.error_unexpected_token(self.loc, other),
         }
     }
 

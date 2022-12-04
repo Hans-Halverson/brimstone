@@ -16,3 +16,31 @@
 ({ a: b, c: d, e: f });
 
 ({ a: b, c: d, e: f, });
+
+// Methods
+
+({ a() {} });
+
+({ a(b,) {}, });
+
+({ async a() {}, *a() {}, async *a() {} });
+
+({ [a]() {}, 1() {}, "test"() {} });
+
+// Keywords as shorthand properties
+({ get, set, async });
+
+({ get: 1, set: 1, async: 1 });
+
+// Keywords as methods
+({ get() {}, set() {}, async() {} });
+
+// TODO: Add `async` function name test cases
+({ async get() {}, async set() {} });
+
+({ get a() {}, set a(b) {} });
+
+({ get [a]() {}, get 1() {}, get "a"() {} });
+
+({ get get() {}, get set() {}, set get(x) {}, set set(x) {} });
+

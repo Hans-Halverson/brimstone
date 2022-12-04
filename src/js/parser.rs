@@ -1552,18 +1552,159 @@ impl<'a> Parser<'a> {
     fn parse_property(&mut self) -> ParseResult<Property> {
         let start_pos = self.current_start_pos();
 
+        // Handle getters and setters
+        match self.token {
+            Token::Identifier(ref id) if id.eq("get") || id.eq("set") => {
+                let id_loc = self.loc;
+                let kind = if id.eq("get") {
+                    PropertyKind::Get
+                } else {
+                    PropertyKind::Set
+                };
+                let name = id.to_owned();
+
+                self.advance()?;
+
+                return match self.token {
+                    // Handle `get` or `set` as name of method
+                    Token::LeftParen => {
+                        let name = p(Expression::Id(Identifier { loc: id_loc, name }));
+                        self.parse_method_property(
+                            name,
+                            start_pos,
+                            PropertyKind::Init,
+                            false,
+                            false,
+                            false,
+                        )
+                    }
+                    // Handle `get` or `set` as shorthand or init property
+                    Token::Comma | Token::RightBrace | Token::Colon => {
+                        let name = p(Expression::Id(Identifier { loc: id_loc, name }));
+                        self.parse_init_property(name, start_pos, false, self.token != Token::Colon)
+                    }
+                    // Otherwise this is a getter or setter
+                    _ => match self.parse_property_name()? {
+                        (Some(name), is_computed, _) => self.parse_method_property(
+                            name,
+                            start_pos,
+                            kind,
+                            false,
+                            false,
+                            is_computed,
+                        ),
+                        _ => self.error_unexpected_token(self.loc, &self.token),
+                    },
+                };
+            }
+            _ => (),
+        }
+
+        match self.parse_property_name()? {
+            // Regular init and method properties
+            (Some(name), is_computed, is_shorthand) => match self.token {
+                Token::LeftParen => self.parse_method_property(
+                    name,
+                    start_pos,
+                    PropertyKind::Init,
+                    false,
+                    false,
+                    is_computed,
+                ),
+                _ => self.parse_init_property(name, start_pos, is_computed, is_shorthand),
+            },
+            _ => match self.token {
+                // Generator method
+                Token::Multiply => {
+                    self.advance()?;
+
+                    match self.parse_property_name()? {
+                        (Some(name), is_computed, _) => self.parse_method_property(
+                            name,
+                            start_pos,
+                            PropertyKind::Init,
+                            false,
+                            true,
+                            is_computed,
+                        ),
+                        _ => self.error_unexpected_token(self.loc, &self.token),
+                    }
+                }
+                // Async method (or method with name async)
+                Token::Async => {
+                    let async_loc = self.loc;
+                    self.advance()?;
+
+                    match self.token {
+                        // Handle `async` as name of method: `async() {}`
+                        Token::LeftParen => {
+                            let name = p(Expression::Id(Identifier {
+                                loc: async_loc,
+                                name: "async".to_owned(),
+                            }));
+                            return self.parse_method_property(
+                                name,
+                                start_pos,
+                                PropertyKind::Init,
+                                false,
+                                false,
+                                false,
+                            );
+                        }
+                        // Handle `async` as shorthand or init property
+                        Token::Comma | Token::RightBrace | Token::Colon => {
+                            let name = p(Expression::Id(Identifier {
+                                loc: async_loc,
+                                name: "async".to_owned(),
+                            }));
+                            return self.parse_init_property(
+                                name,
+                                start_pos,
+                                false,
+                                self.token != Token::Colon,
+                            );
+                        }
+                        _ => (),
+                    }
+
+                    // Async method may also be a generator
+                    let is_generator = self.token == Token::Multiply;
+                    if is_generator {
+                        self.advance()?;
+                    }
+
+                    match self.parse_property_name()? {
+                        (Some(name), is_computed, _) => self.parse_method_property(
+                            name,
+                            start_pos,
+                            PropertyKind::Init,
+                            true,
+                            is_generator,
+                            is_computed,
+                        ),
+                        _ => self.error_unexpected_token(self.loc, &self.token),
+                    }
+                }
+                ref other => self.error_unexpected_token(self.loc, other),
+            },
+        }
+    }
+
+    fn parse_property_name(&mut self) -> ParseResult<(Option<P<Expression>>, bool, bool)> {
         let mut is_computed = false;
         let mut is_shorthand = false;
 
-        let key = match self.token {
+        let expr = match self.token {
             Token::LeftBracket => {
                 self.advance()?;
                 let expr = self.parse_assignment_expression()?;
                 self.expect(Token::RightBracket)?;
                 is_computed = true;
-                expr
+                Some(expr)
             }
-            Token::NumberLiteral(_) | Token::StringLiteral(_) => self.parse_primary_expression()?,
+            Token::NumberLiteral(_) | Token::StringLiteral(_) => {
+                Some(self.parse_primary_expression()?)
+            }
             Token::Identifier(_) => {
                 let key = self.parse_identifier()?;
 
@@ -1571,11 +1712,21 @@ impl<'a> Parser<'a> {
                     is_shorthand = true;
                 }
 
-                p(Expression::Id(key))
+                Some(p(Expression::Id(key)))
             }
-            ref other => return self.error_unexpected_token(self.loc, other),
+            _ => None,
         };
 
+        Ok((expr, is_computed, is_shorthand))
+    }
+
+    fn parse_init_property(
+        &mut self,
+        key: P<Expression>,
+        start_pos: Pos,
+        is_computed: bool,
+        is_shorthand: bool,
+    ) -> ParseResult<Property> {
         let value = match self.token {
             _ if is_shorthand => None,
             Token::Colon => {
@@ -1594,6 +1745,38 @@ impl<'a> Parser<'a> {
             is_computed,
             is_method: false,
             kind: PropertyKind::Init,
+        })
+    }
+
+    fn parse_method_property(
+        &mut self,
+        key: P<Expression>,
+        start_pos: Pos,
+        kind: PropertyKind,
+        is_async: bool,
+        is_generator: bool,
+        is_computed: bool,
+    ) -> ParseResult<Property> {
+        let params = self.parse_function_params()?;
+        let body = p(FunctionBody::Block(self.parse_block()?));
+        let loc = self.mark_loc(start_pos);
+
+        // TODO: Error if getter or setter has wrong number of params
+
+        Ok(Property {
+            loc,
+            key,
+            is_computed,
+            is_method: true,
+            kind,
+            value: Some(p(Expression::Function(Function {
+                loc,
+                id: None,
+                params,
+                body,
+                is_async,
+                is_generator,
+            }))),
         })
     }
 

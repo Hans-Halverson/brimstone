@@ -1,0 +1,251 @@
+{
+  type: "Program",
+  loc: "1:0-17:8",
+  body: [
+    {
+      type: "VariableDeclaration",
+      loc: "1:0-1:10",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "1:4-1:9",
+          id: {
+            type: "Identifier",
+            loc: "1:4-1:5",
+            name: "x",
+          },
+          init: {
+            type: "Identifier",
+            loc: "1:8-1:9",
+            name: "a",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "3:0-3:24",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "3:4-3:9",
+          id: {
+            type: "Identifier",
+            loc: "3:4-3:5",
+            name: "x",
+          },
+          init: {
+            type: "Identifier",
+            loc: "3:8-3:9",
+            name: "a",
+          },
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "3:11-3:16",
+          id: {
+            type: "Identifier",
+            loc: "3:11-3:12",
+            name: "y",
+          },
+          init: {
+            type: "Identifier",
+            loc: "3:15-3:16",
+            name: "b",
+          },
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "3:18-3:23",
+          id: {
+            type: "Identifier",
+            loc: "3:18-3:19",
+            name: "z",
+          },
+          init: {
+            type: "Identifier",
+            loc: "3:22-3:23",
+            name: "c",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "5:0-5:10",
+      kind: "let",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "5:4-5:9",
+          id: {
+            type: "Identifier",
+            loc: "5:4-5:5",
+            name: "x",
+          },
+          init: {
+            type: "Identifier",
+            loc: "5:8-5:9",
+            name: "a",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "7:0-7:12",
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "7:6-7:11",
+          id: {
+            type: "Identifier",
+            loc: "7:6-7:7",
+            name: "x",
+          },
+          init: {
+            type: "Identifier",
+            loc: "7:10-7:11",
+            name: "a",
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "9:0-9:6",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "9:4-9:5",
+          id: {
+            type: "Identifier",
+            loc: "9:4-9:5",
+            name: "x",
+          },
+          init: null,
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "11:0-11:12",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "11:4-11:5",
+          id: {
+            type: "Identifier",
+            loc: "11:4-11:5",
+            name: "x",
+          },
+          init: null,
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "11:7-11:8",
+          id: {
+            type: "Identifier",
+            loc: "11:7-11:8",
+            name: "y",
+          },
+          init: null,
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "11:10-11:11",
+          id: {
+            type: "Identifier",
+            loc: "11:10-11:11",
+            name: "z",
+          },
+          init: null,
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "13:0-13:20",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "13:4-13:9",
+          id: {
+            type: "Identifier",
+            loc: "13:4-13:5",
+            name: "x",
+          },
+          init: {
+            type: "Literal",
+            loc: "13:8-13:9",
+            value: 1,
+          },
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "13:11-13:12",
+          id: {
+            type: "Identifier",
+            loc: "13:11-13:12",
+            name: "y",
+          },
+          init: null,
+        },
+        {
+          type: "VariableDeclarator",
+          loc: "13:14-13:19",
+          id: {
+            type: "Identifier",
+            loc: "13:14-13:15",
+            name: "z",
+          },
+          init: {
+            type: "Literal",
+            loc: "13:18-13:19",
+            value: 3,
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "15:0-15:6",
+      kind: "let",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "15:4-15:5",
+          id: {
+            type: "Identifier",
+            loc: "15:4-15:5",
+            name: "x",
+          },
+          init: null,
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "17:0-17:8",
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "17:6-17:7",
+          id: {
+            type: "Identifier",
+            loc: "17:6-17:7",
+            name: "x",
+          },
+          init: null,
+        },
+      ],
+    },
+  ],
+}

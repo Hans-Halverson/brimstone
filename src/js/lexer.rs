@@ -728,6 +728,8 @@ impl<'a> Lexer<'a> {
             "switch" => self.emit(Token::Switch, start_pos),
             "case" => self.emit(Token::Case, start_pos),
             "default" => self.emit(Token::Default, start_pos),
+            "for" => self.emit(Token::For, start_pos),
+            "of" => self.emit(Token::Of, start_pos),
             "while" => self.emit(Token::While, start_pos),
             "do" => self.emit(Token::Do, start_pos),
             "with" => self.emit(Token::With, start_pos),

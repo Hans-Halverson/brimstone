@@ -17,6 +17,7 @@ pub enum ParseError {
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
+    InvalidForLeftHandSide,
 }
 
 pub struct LocalizedParseError {
@@ -47,6 +48,9 @@ impl fmt::Display for LocalizedParseError {
             ParseError::UnterminatedStringLiteral => format!("Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => format!("Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => format!("Malformed numeric literal"),
+            ParseError::InvalidForLeftHandSide => {
+                format!("Invalid left hand side of for statement")
+            }
         };
 
         match &self.source_loc {
@@ -140,6 +144,7 @@ impl<'a> Parser<'a> {
 
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
+            panic!();
             return self.error(
                 self.loc,
                 ParseError::ExpectedToken(self.token.clone(), token),
@@ -198,12 +203,13 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> ParseResult<ast::Statement> {
         match &self.token {
-            Token::Var | Token::Let | Token::Const => {
-                Ok(ast::Statement::VarDecl(self.parse_variable_declaration()?))
-            }
+            Token::Var | Token::Let | Token::Const => Ok(ast::Statement::VarDecl(
+                self.parse_variable_declaration(false)?,
+            )),
             Token::LeftBrace => Ok(ast::Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
+            Token::For => self.parse_any_for_statement(),
             Token::While => self.parse_while_statement(),
             Token::Do => self.parse_do_while_statement(),
             Token::With => self.parse_with_statement(),
@@ -253,7 +259,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_variable_declaration(&mut self) -> ParseResult<ast::VariableDeclaration> {
+    fn parse_variable_declaration(
+        &mut self,
+        is_for_init: bool,
+    ) -> ParseResult<ast::VariableDeclaration> {
         let start_pos = self.current_start_pos();
         let kind = match &self.token {
             Token::Var => ast::VarKind::Var,
@@ -268,14 +277,21 @@ impl<'a> Parser<'a> {
         loop {
             let start_pos = self.current_start_pos();
             let id = self.parse_pattern()?;
-            self.expect(Token::Equals)?;
-            let init = self.parse_assignment_expression()?;
+
+            let init = match self.token {
+                Token::Equals => {
+                    self.advance()?;
+                    Some(self.parse_assignment_expression()?)
+                }
+                _ => None,
+            };
+
             let loc = self.mark_loc(start_pos);
 
             declarations.push(ast::VariableDeclarator {
                 loc,
                 id: p(id),
-                init: Some(init),
+                init,
             });
 
             if self.token == Token::Comma {
@@ -283,6 +299,10 @@ impl<'a> Parser<'a> {
             } else {
                 break;
             }
+        }
+
+        if !is_for_init {
+            self.expect(Token::Semicolon)?;
         }
 
         let loc = self.mark_loc(start_pos);
@@ -385,6 +405,158 @@ impl<'a> Parser<'a> {
             loc,
             discriminant,
             cases,
+        }))
+    }
+
+    fn parse_any_for_statement(&mut self) -> ParseResult<ast::Statement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::LeftParen)?;
+
+        // Init statement, if it exists
+        match self.token {
+            // Both for and for each loops can start with a variable declaration
+            // TODO: Restrict variable declaration inits in for each statements
+            Token::Var | Token::Let | Token::Const => {
+                let var_decl = self.parse_variable_declaration(true)?;
+                match self.token {
+                    Token::In | Token::Of => {
+                        let init = p(ast::ForEachInit::VarDecl(var_decl));
+                        self.parse_for_each_statement(init, start_pos)
+                    }
+                    _ => {
+                        let init = Some(p(ast::ForInit::VarDecl(var_decl)));
+                        self.expect(Token::Semicolon)?;
+                        self.parse_for_statement(init, start_pos)
+                    }
+                }
+            }
+            // Empty init, but we know this is a regular for loop
+            Token::Semicolon => {
+                self.advance()?;
+                self.parse_for_statement(None, start_pos)
+            }
+            _ => {
+                let expr_start_pos = self.current_start_pos();
+                let expr = self.parse_expression()?;
+                match (self.token.clone(), *expr) {
+                    // If this is a for each loop the parsed expression must actually be a pattern
+                    (Token::In, expr) | (Token::Of, expr) => {
+                        let pattern =
+                            self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
+                        let left = p(ast::ForEachInit::Pattern(pattern));
+                        self.parse_for_each_statement(left, start_pos)
+                    }
+                    // An in expression is actually `for (expr in right)`
+                    (
+                        _,
+                        ast::Expression::Binary(ast::BinaryExpression {
+                            operator: ast::BinaryOperator::In,
+                            left,
+                            right,
+                            ..
+                        }),
+                    ) => {
+                        self.expect(Token::RightParen)?;
+                        let pattern =
+                            self.reparse_expression_as_for_left_hand_side(*left, expr_start_pos)?;
+                        let left = p(ast::ForEachInit::Pattern(pattern));
+                        let body = p(self.parse_statement()?);
+                        let loc = self.mark_loc(start_pos);
+
+                        Ok(ast::Statement::ForEach(ast::ForEachStatement {
+                            loc,
+                            kind: ast::ForEachKind::In,
+                            left,
+                            right,
+                            body,
+                            is_await: false,
+                        }))
+                    }
+                    // Otherwise this is a regular for loop and the expression is used directly
+                    (_, expr) => {
+                        let init = Some(p(ast::ForInit::Expression(expr)));
+                        self.expect(Token::Semicolon)?;
+                        self.parse_for_statement(init, start_pos)
+                    }
+                }
+            }
+        }
+    }
+
+    fn reparse_expression_as_for_left_hand_side(
+        &self,
+        expr: ast::Expression,
+        start_pos: Pos,
+    ) -> ParseResult<ast::Pattern> {
+        match self.reparse_expression_as_pattern(expr) {
+            Some(pattern) => Ok(pattern),
+            None => {
+                let loc = self.mark_loc(start_pos);
+                self.error(loc, ParseError::InvalidForLeftHandSide)
+            }
+        }
+    }
+
+    fn parse_for_statement(
+        &mut self,
+        init: Option<P<ast::ForInit>>,
+        start_pos: Pos,
+    ) -> ParseResult<ast::Statement> {
+        let test = match self.token {
+            Token::Semicolon => None,
+            _ => Some(self.parse_expression()?),
+        };
+        self.expect(Token::Semicolon)?;
+
+        let update = match self.token {
+            Token::RightParen => None,
+            _ => Some(self.parse_expression()?),
+        };
+
+        self.expect(Token::RightParen)?;
+        let body = p(self.parse_statement()?);
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::For(ast::ForStatement {
+            loc,
+            init,
+            test,
+            update,
+            body,
+        }))
+    }
+
+    fn parse_for_each_statement(
+        &mut self,
+        left: P<ast::ForEachInit>,
+        start_pos: Pos,
+    ) -> ParseResult<ast::Statement> {
+        let kind = match self.token {
+            Token::In => ast::ForEachKind::In,
+            Token::Of => ast::ForEachKind::Of,
+            _ => unreachable!(),
+        };
+
+        self.advance()?;
+
+        let right = match kind {
+            ast::ForEachKind::In => self.parse_expression()?,
+            ast::ForEachKind::Of => self.parse_assignment_expression()?,
+        };
+
+        self.expect(Token::RightParen)?;
+        let body = p(self.parse_statement()?);
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ast::Statement::ForEach(ast::ForEachStatement {
+            loc,
+            kind,
+            left,
+            right,
+            body,
+            is_await: false,
         }))
     }
 
@@ -1184,6 +1356,13 @@ impl<'a> Parser<'a> {
         match &self.token {
             Token::Identifier(_) => Ok(ast::Pattern::Id(self.parse_identifier()?)),
             other => self.error_unexpected_token(self.loc, other),
+        }
+    }
+
+    fn reparse_expression_as_pattern(&self, expr: ast::Expression) -> Option<ast::Pattern> {
+        match expr {
+            ast::Expression::Id(id) => Some(ast::Pattern::Id(id)),
+            _ => None,
         }
     }
 }

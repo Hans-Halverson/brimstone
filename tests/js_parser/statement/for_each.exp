@@ -1,0 +1,215 @@
+{
+  type: "Program",
+  loc: "1:0-14:25",
+  body: [
+    {
+      type: "ForOfStatement",
+      loc: "1:0-1:19",
+      left: {
+        type: "VariableDeclaration",
+        loc: "1:5-1:10",
+        kind: "var",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "1:9-1:10",
+            id: {
+              type: "Identifier",
+              loc: "1:9-1:10",
+              name: "a",
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "Identifier",
+        loc: "1:14-1:15",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "1:17-1:19",
+        body: [],
+      },
+    },
+    {
+      type: "ForInStatement",
+      loc: "3:0-3:19",
+      left: {
+        type: "VariableDeclaration",
+        loc: "3:5-3:10",
+        kind: "var",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "3:9-3:10",
+            id: {
+              type: "Identifier",
+              loc: "3:9-3:10",
+              name: "a",
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "Identifier",
+        loc: "3:14-3:15",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "3:17-3:19",
+        body: [],
+      },
+    },
+    {
+      type: "ForOfStatement",
+      loc: "5:0-5:19",
+      left: {
+        type: "VariableDeclaration",
+        loc: "5:5-5:10",
+        kind: "let",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "5:9-5:10",
+            id: {
+              type: "Identifier",
+              loc: "5:9-5:10",
+              name: "a",
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "Identifier",
+        loc: "5:14-5:15",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "5:17-5:19",
+        body: [],
+      },
+    },
+    {
+      type: "ForOfStatement",
+      loc: "7:0-7:21",
+      left: {
+        type: "VariableDeclaration",
+        loc: "7:5-7:12",
+        kind: "const",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "7:11-7:12",
+            id: {
+              type: "Identifier",
+              loc: "7:11-7:12",
+              name: "a",
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "Identifier",
+        loc: "7:16-7:17",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "7:19-7:21",
+        body: [],
+      },
+    },
+    {
+      type: "ForOfStatement",
+      loc: "9:0-9:15",
+      left: {
+        type: "Identifier",
+        loc: "9:5-9:6",
+        name: "a",
+      },
+      right: {
+        type: "Identifier",
+        loc: "9:10-9:11",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "9:13-9:15",
+        body: [],
+      },
+    },
+    {
+      type: "ForInStatement",
+      loc: "11:0-11:15",
+      left: {
+        type: "Identifier",
+        loc: "11:5-11:6",
+        name: "a",
+      },
+      right: {
+        type: "Identifier",
+        loc: "11:10-11:11",
+        name: "b",
+      },
+      body: {
+        type: "Block",
+        loc: "11:13-11:15",
+        body: [],
+      },
+    },
+    {
+      type: "ForInStatement",
+      loc: "14:0-14:25",
+      left: {
+        type: "VariableDeclaration",
+        loc: "14:5-14:10",
+        kind: "var",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "14:9-14:10",
+            id: {
+              type: "Identifier",
+              loc: "14:9-14:10",
+              name: "a",
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "SequenceExpression",
+        loc: "14:14-14:21",
+        expressions: [
+          {
+            type: "Literal",
+            loc: "14:14-14:15",
+            value: 1,
+          },
+          {
+            type: "Literal",
+            loc: "14:17-14:18",
+            value: 2,
+          },
+          {
+            type: "Literal",
+            loc: "14:20-14:21",
+            value: 3,
+          },
+        ],
+      },
+      body: {
+        type: "Block",
+        loc: "14:23-14:25",
+        body: [],
+      },
+    },
+  ],
+}

@@ -22,6 +22,8 @@ pub enum Statement {
     Block(Block),
     If(IfStatement),
     Switch(SwitchStatement),
+    For(ForStatement),
+    ForEach(ForEachStatement),
     While(WhileStatement),
     DoWhile(DoWhileStatement),
     With(WithStatement),
@@ -80,6 +82,38 @@ pub struct SwitchCase {
     pub loc: Loc,
     pub test: Option<P<Expression>>,
     pub body: Vec<Statement>,
+}
+
+pub struct ForStatement {
+    pub loc: Loc,
+    pub init: Option<P<ForInit>>,
+    pub test: Option<P<Expression>>,
+    pub update: Option<P<Expression>>,
+    pub body: P<Statement>,
+}
+
+pub enum ForInit {
+    Expression(Expression),
+    VarDecl(VariableDeclaration),
+}
+
+pub struct ForEachStatement {
+    pub loc: Loc,
+    pub kind: ForEachKind,
+    pub left: P<ForEachInit>,
+    pub right: P<Expression>,
+    pub body: P<Statement>,
+    pub is_await: bool,
+}
+
+pub enum ForEachKind {
+    In,
+    Of,
+}
+
+pub enum ForEachInit {
+    VarDecl(VariableDeclaration),
+    Pattern(Pattern),
 }
 
 pub struct WhileStatement {

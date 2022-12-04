@@ -149,6 +149,8 @@ impl<'a> Printer<'a> {
             ast::Statement::Block(stmt) => self.print_block(stmt),
             ast::Statement::If(stmt) => self.print_if_statement(stmt),
             ast::Statement::Switch(stmt) => self.print_switch_statement(stmt),
+            ast::Statement::For(stmt) => self.print_for_statement(stmt),
+            ast::Statement::ForEach(stmt) => self.print_for_each_statement(stmt),
             ast::Statement::While(stmt) => self.print_while_statement(stmt),
             ast::Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
             ast::Statement::With(stmt) => self.print_with_statement(stmt),
@@ -218,6 +220,52 @@ impl<'a> Printer<'a> {
         );
         self.array_property("body", case.body.as_ref(), Printer::print_statement);
         self.end_node();
+    }
+
+    fn print_for_statement(&mut self, stmt: &ast::ForStatement) {
+        self.start_node("ForStatement", &stmt.loc);
+        self.property("init", stmt.init.as_ref(), Printer::print_for_init);
+        self.property(
+            "test",
+            stmt.test.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.property(
+            "update",
+            stmt.update.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_for_init(&mut self, init: Option<&ast::P<ast::ForInit>>) {
+        match init {
+            None => self.print_null(),
+            Some(init) => match init.as_ref() {
+                ast::ForInit::Expression(expr) => self.print_expression(&expr),
+                ast::ForInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+            },
+        }
+    }
+
+    fn print_for_each_statement(&mut self, stmt: &ast::ForEachStatement) {
+        let name = match stmt.kind {
+            ast::ForEachKind::In => "ForInStatement",
+            ast::ForEachKind::Of => "ForOfStatement",
+        };
+        self.start_node(name, &stmt.loc);
+        self.property("left", stmt.left.as_ref(), Printer::print_for_each_init);
+        self.property("right", stmt.right.as_ref(), Printer::print_expression);
+        self.property("body", stmt.body.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_for_each_init(&mut self, init: &ast::ForEachInit) {
+        match init {
+            ast::ForEachInit::Pattern(expr) => self.print_pattern(&expr),
+            ast::ForEachInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+        }
     }
 
     fn print_while_statement(&mut self, stmt: &ast::WhileStatement) {
@@ -336,10 +384,12 @@ impl<'a> Printer<'a> {
 
     fn print_variable_declarator(&mut self, var_decl: &ast::VariableDeclarator) {
         self.start_node("VariableDeclarator", &var_decl.loc);
-        self.property("id", &(*var_decl.id), Printer::print_pattern);
-        if let Some(ref init) = var_decl.init {
-            self.property("id", (*init).as_ref(), Printer::print_expression);
-        }
+        self.property("id", var_decl.id.as_ref(), Printer::print_pattern);
+        self.property(
+            "init",
+            var_decl.init.as_ref(),
+            Printer::print_optional_expression,
+        );
         self.end_node();
     }
 

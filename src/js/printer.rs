@@ -1,5 +1,6 @@
+use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
-use super::{ast, source::Source};
+use super::source::Source;
 
 struct Printer<'a> {
     buf: String,
@@ -130,42 +131,42 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_program(&mut self, program: &ast::Program) {
+    fn print_program(&mut self, program: &Program) {
         self.start_node("Program", &program.loc);
         self.array_property("body", &program.toplevels, Printer::print_toplevel);
         self.end_node();
     }
 
-    fn print_toplevel(&mut self, toplevel: &ast::Toplevel) {
+    fn print_toplevel(&mut self, toplevel: &Toplevel) {
         match toplevel {
-            ast::Toplevel::Statement(stmt) => self.print_statement(stmt),
+            Toplevel::Statement(stmt) => self.print_statement(stmt),
         }
     }
 
-    fn print_statement(&mut self, stmt: &ast::Statement) {
+    fn print_statement(&mut self, stmt: &Statement) {
         match stmt {
-            ast::Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
-            ast::Statement::Expr(expr) => self.print_expression_statement(expr),
-            ast::Statement::Block(stmt) => self.print_block(stmt),
-            ast::Statement::If(stmt) => self.print_if_statement(stmt),
-            ast::Statement::Switch(stmt) => self.print_switch_statement(stmt),
-            ast::Statement::For(stmt) => self.print_for_statement(stmt),
-            ast::Statement::ForEach(stmt) => self.print_for_each_statement(stmt),
-            ast::Statement::While(stmt) => self.print_while_statement(stmt),
-            ast::Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
-            ast::Statement::With(stmt) => self.print_with_statement(stmt),
-            ast::Statement::Try(stmt) => self.print_try_statement(stmt),
-            ast::Statement::Throw(stmt) => self.print_throw_statement(stmt),
-            ast::Statement::Return(stmt) => self.print_return_statement(stmt),
-            ast::Statement::Break(stmt) => self.print_break_statement(stmt),
-            ast::Statement::Continue(stmt) => self.print_continue_statement(stmt),
-            ast::Statement::Labeled(stmt) => self.print_labeled_statement(stmt),
-            ast::Statement::Empty(stmt) => self.print_empty_statement(stmt),
-            ast::Statement::Debugger(stmt) => self.print_debugger_statement(stmt),
+            Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
+            Statement::Expr(expr) => self.print_expression_statement(expr),
+            Statement::Block(stmt) => self.print_block(stmt),
+            Statement::If(stmt) => self.print_if_statement(stmt),
+            Statement::Switch(stmt) => self.print_switch_statement(stmt),
+            Statement::For(stmt) => self.print_for_statement(stmt),
+            Statement::ForEach(stmt) => self.print_for_each_statement(stmt),
+            Statement::While(stmt) => self.print_while_statement(stmt),
+            Statement::DoWhile(stmt) => self.print_do_while_statement(stmt),
+            Statement::With(stmt) => self.print_with_statement(stmt),
+            Statement::Try(stmt) => self.print_try_statement(stmt),
+            Statement::Throw(stmt) => self.print_throw_statement(stmt),
+            Statement::Return(stmt) => self.print_return_statement(stmt),
+            Statement::Break(stmt) => self.print_break_statement(stmt),
+            Statement::Continue(stmt) => self.print_continue_statement(stmt),
+            Statement::Labeled(stmt) => self.print_labeled_statement(stmt),
+            Statement::Empty(stmt) => self.print_empty_statement(stmt),
+            Statement::Debugger(stmt) => self.print_debugger_statement(stmt),
         }
     }
 
-    fn print_variable_declaration(&mut self, var_decl: &ast::VariableDeclaration) {
+    fn print_variable_declaration(&mut self, var_decl: &VariableDeclaration) {
         self.start_node("VariableDeclaration", &var_decl.loc);
         self.property("kind", &var_decl.kind, Printer::print_var_kind);
         self.array_property(
@@ -176,19 +177,19 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_expression_statement(&mut self, expr: &ast::ExpressionStatement) {
+    fn print_expression_statement(&mut self, expr: &ExpressionStatement) {
         self.start_node("ExpressionStatement", &expr.loc);
         self.property("kind", expr.expr.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
-    fn print_block(&mut self, block: &ast::Block) {
+    fn print_block(&mut self, block: &Block) {
         self.start_node("Block", &block.loc);
         self.array_property("body", &block.body, Printer::print_statement);
         self.end_node();
     }
 
-    fn print_if_statement(&mut self, stmt: &ast::IfStatement) {
+    fn print_if_statement(&mut self, stmt: &IfStatement) {
         self.start_node("IfStatement", &stmt.loc);
         self.property("test", stmt.test.as_ref(), Printer::print_expression);
         self.property("consequent", stmt.conseq.as_ref(), Printer::print_statement);
@@ -200,7 +201,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_switch_statement(&mut self, stmt: &ast::SwitchStatement) {
+    fn print_switch_statement(&mut self, stmt: &SwitchStatement) {
         self.start_node("SwitchStatement", &stmt.loc);
         self.property(
             "discriminant",
@@ -211,7 +212,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_switch_case(&mut self, case: &ast::SwitchCase) {
+    fn print_switch_case(&mut self, case: &SwitchCase) {
         self.start_node("SwitchCase", &case.loc);
         self.property(
             "test",
@@ -222,7 +223,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_for_statement(&mut self, stmt: &ast::ForStatement) {
+    fn print_for_statement(&mut self, stmt: &ForStatement) {
         self.start_node("ForStatement", &stmt.loc);
         self.property("init", stmt.init.as_ref(), Printer::print_for_init);
         self.property(
@@ -239,20 +240,20 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_for_init(&mut self, init: Option<&ast::P<ast::ForInit>>) {
+    fn print_for_init(&mut self, init: Option<&P<ForInit>>) {
         match init {
             None => self.print_null(),
             Some(init) => match init.as_ref() {
-                ast::ForInit::Expression(expr) => self.print_expression(&expr),
-                ast::ForInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+                ForInit::Expression(expr) => self.print_expression(&expr),
+                ForInit::VarDecl(decl) => self.print_variable_declaration(&decl),
             },
         }
     }
 
-    fn print_for_each_statement(&mut self, stmt: &ast::ForEachStatement) {
+    fn print_for_each_statement(&mut self, stmt: &ForEachStatement) {
         let name = match stmt.kind {
-            ast::ForEachKind::In => "ForInStatement",
-            ast::ForEachKind::Of => "ForOfStatement",
+            ForEachKind::In => "ForInStatement",
+            ForEachKind::Of => "ForOfStatement",
         };
         self.start_node(name, &stmt.loc);
         self.property("left", stmt.left.as_ref(), Printer::print_for_each_init);
@@ -261,35 +262,35 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_for_each_init(&mut self, init: &ast::ForEachInit) {
+    fn print_for_each_init(&mut self, init: &ForEachInit) {
         match init {
-            ast::ForEachInit::Pattern(expr) => self.print_pattern(&expr),
-            ast::ForEachInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+            ForEachInit::Pattern(expr) => self.print_pattern(&expr),
+            ForEachInit::VarDecl(decl) => self.print_variable_declaration(&decl),
         }
     }
 
-    fn print_while_statement(&mut self, stmt: &ast::WhileStatement) {
+    fn print_while_statement(&mut self, stmt: &WhileStatement) {
         self.start_node("WhileStatement", &stmt.loc);
         self.property("test", stmt.test.as_ref(), Printer::print_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
 
-    fn print_do_while_statement(&mut self, stmt: &ast::DoWhileStatement) {
+    fn print_do_while_statement(&mut self, stmt: &DoWhileStatement) {
         self.start_node("DoWhileStatement", &stmt.loc);
         self.property("test", stmt.test.as_ref(), Printer::print_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
 
-    fn print_with_statement(&mut self, stmt: &ast::WithStatement) {
+    fn print_with_statement(&mut self, stmt: &WithStatement) {
         self.start_node("WithStatement", &stmt.loc);
         self.property("object", stmt.object.as_ref(), Printer::print_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
 
-    fn print_try_statement(&mut self, stmt: &ast::TryStatement) {
+    fn print_try_statement(&mut self, stmt: &TryStatement) {
         self.start_node("TryStatement", &stmt.loc);
         self.property("block", stmt.block.as_ref(), Printer::print_block);
         self.property("handler", stmt.handler.as_ref(), Printer::print_try_handler);
@@ -301,7 +302,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_try_handler(&mut self, handler: Option<&Box<ast::CatchClause>>) {
+    fn print_try_handler(&mut self, handler: Option<&Box<CatchClause>>) {
         if let Some(handler) = handler {
             self.start_node("CatchClause", &handler.loc);
             self.property(
@@ -316,7 +317,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_throw_statement(&mut self, stmt: &ast::ThrowStatement) {
+    fn print_throw_statement(&mut self, stmt: &ThrowStatement) {
         self.start_node("ThrowStatement", &stmt.loc);
         self.property(
             "argument",
@@ -326,7 +327,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_return_statement(&mut self, stmt: &ast::ReturnStatement) {
+    fn print_return_statement(&mut self, stmt: &ReturnStatement) {
         self.start_node("ReturnStatement", &stmt.loc);
         self.property(
             "argument",
@@ -336,7 +337,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_break_statement(&mut self, stmt: &ast::BreakStatement) {
+    fn print_break_statement(&mut self, stmt: &BreakStatement) {
         self.start_node("BreakStatement", &stmt.loc);
         self.property(
             "label",
@@ -346,7 +347,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_continue_statement(&mut self, stmt: &ast::ContinueStatement) {
+    fn print_continue_statement(&mut self, stmt: &ContinueStatement) {
         self.start_node("ContinueStatement", &stmt.loc);
         self.property(
             "label",
@@ -356,7 +357,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_labeled_statement(&mut self, stmt: &ast::LabeledStatement) {
+    fn print_labeled_statement(&mut self, stmt: &LabeledStatement) {
         self.start_node("LabeledStatement", &stmt.loc);
         self.property("label", stmt.label.as_ref(), Printer::print_identifier);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
@@ -373,16 +374,16 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_var_kind(&mut self, kind: &ast::VarKind) {
+    fn print_var_kind(&mut self, kind: &VarKind) {
         let str = match kind {
-            ast::VarKind::Var => "var",
-            ast::VarKind::Let => "let",
-            ast::VarKind::Const => "const",
+            VarKind::Var => "var",
+            VarKind::Let => "let",
+            VarKind::Const => "const",
         };
         self.print_str(str);
     }
 
-    fn print_variable_declarator(&mut self, var_decl: &ast::VariableDeclarator) {
+    fn print_variable_declarator(&mut self, var_decl: &VariableDeclarator) {
         self.start_node("VariableDeclarator", &var_decl.loc);
         self.property("id", var_decl.id.as_ref(), Printer::print_pattern);
         self.property(
@@ -393,27 +394,28 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_expression(&mut self, expr: &ast::Expression) {
+    fn print_expression(&mut self, expr: &Expression) {
         match expr {
-            ast::Expression::Id(id) => self.print_identifier(id),
-            ast::Expression::Null(lit) => self.print_null_literal(lit),
-            ast::Expression::Boolean(lit) => self.print_boolean_literal(lit),
-            ast::Expression::Number(lit) => self.print_number_literal(lit),
-            ast::Expression::String(lit) => self.print_string_literal(lit),
-            ast::Expression::Unary(unary) => self.print_unary_expression(unary),
-            ast::Expression::Binary(binary) => self.print_binary_expression(binary),
-            ast::Expression::Logical(logical) => self.print_logical_expression(logical),
-            ast::Expression::Assign(assign) => self.print_assignment_expression(assign),
-            ast::Expression::Update(update) => self.print_update_expression(update),
-            ast::Expression::Member(member) => self.print_member_expression(member),
-            ast::Expression::Conditional(cond) => self.print_conditional_expression(cond),
-            ast::Expression::Call(call) => self.print_call_expression(call),
-            ast::Expression::New(new) => self.print_new_expression(new),
-            ast::Expression::Sequence(seq) => self.print_sequence_expression(seq),
-            ast::Expression::This(loc) => self.print_this_expression(&loc),
-            ast::Expression::Array(arr) => self.print_array_expression(arr),
-            ast::Expression::Await(expr) => self.print_await_expression(expr),
-            ast::Expression::Yield(expr) => self.print_yield_expression(expr),
+            Expression::Id(id) => self.print_identifier(id),
+            Expression::Null(lit) => self.print_null_literal(lit),
+            Expression::Boolean(lit) => self.print_boolean_literal(lit),
+            Expression::Number(lit) => self.print_number_literal(lit),
+            Expression::String(lit) => self.print_string_literal(lit),
+            Expression::Unary(unary) => self.print_unary_expression(unary),
+            Expression::Binary(binary) => self.print_binary_expression(binary),
+            Expression::Logical(logical) => self.print_logical_expression(logical),
+            Expression::Assign(assign) => self.print_assignment_expression(assign),
+            Expression::Update(update) => self.print_update_expression(update),
+            Expression::Member(member) => self.print_member_expression(member),
+            Expression::Conditional(cond) => self.print_conditional_expression(cond),
+            Expression::Call(call) => self.print_call_expression(call),
+            Expression::New(new) => self.print_new_expression(new),
+            Expression::Sequence(seq) => self.print_sequence_expression(seq),
+            Expression::This(loc) => self.print_this_expression(&loc),
+            Expression::Array(arr) => self.print_array_expression(arr),
+            Expression::Object(arr) => self.print_object_expression(arr),
+            Expression::Await(expr) => self.print_await_expression(expr),
+            Expression::Yield(expr) => self.print_yield_expression(expr),
         }
     }
 
@@ -423,38 +425,38 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_boolean_literal(&mut self, lit: &ast::BooleanLiteral) {
+    fn print_boolean_literal(&mut self, lit: &BooleanLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", lit.value, Printer::print_bool);
         self.end_node();
     }
 
-    fn print_number_literal(&mut self, lit: &ast::NumberLiteral) {
+    fn print_number_literal(&mut self, lit: &NumberLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", lit.value, Printer::print_f64);
         self.end_node();
     }
 
-    fn print_string_literal(&mut self, lit: &ast::StringLiteral) {
+    fn print_string_literal(&mut self, lit: &StringLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", &lit.value, Printer::print_string);
         self.end_node();
     }
 
-    fn print_unary_operator(&mut self, op: &ast::UnaryOperator) {
+    fn print_unary_operator(&mut self, op: &UnaryOperator) {
         let str = match op {
-            ast::UnaryOperator::Plus => "+",
-            ast::UnaryOperator::Minus => "-",
-            ast::UnaryOperator::LogicalNot => "!",
-            ast::UnaryOperator::BitwiseNot => "~",
-            ast::UnaryOperator::TypeOf => "typeof",
-            ast::UnaryOperator::Void => "void",
-            ast::UnaryOperator::Delete => "delete",
+            UnaryOperator::Plus => "+",
+            UnaryOperator::Minus => "-",
+            UnaryOperator::LogicalNot => "!",
+            UnaryOperator::BitwiseNot => "~",
+            UnaryOperator::TypeOf => "typeof",
+            UnaryOperator::Void => "void",
+            UnaryOperator::Delete => "delete",
         };
         self.print_str(str);
     }
 
-    fn print_unary_expression(&mut self, unary: &ast::UnaryExpression) {
+    fn print_unary_expression(&mut self, unary: &UnaryExpression) {
         self.start_node("UnaryExpression", &unary.loc);
         self.property("operator", &unary.operator, Printer::print_unary_operator);
         self.property(
@@ -465,35 +467,35 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_binary_operator(&mut self, op: &ast::BinaryOperator) {
+    fn print_binary_operator(&mut self, op: &BinaryOperator) {
         let str = match op {
-            ast::BinaryOperator::Add => "+",
-            ast::BinaryOperator::Subtract => "-",
-            ast::BinaryOperator::Multiply => "*",
-            ast::BinaryOperator::Divide => "/",
-            ast::BinaryOperator::Remainder => "%",
-            ast::BinaryOperator::Exponent => "**",
-            ast::BinaryOperator::EqEq => "==",
-            ast::BinaryOperator::EqEqEq => "===",
-            ast::BinaryOperator::NotEq => "!=",
-            ast::BinaryOperator::NotEqEq => "!==",
-            ast::BinaryOperator::LessThan => "<",
-            ast::BinaryOperator::LessThanOrEqual => "<=",
-            ast::BinaryOperator::GreaterThan => ">",
-            ast::BinaryOperator::GreaterThanOrEqual => ">=",
-            ast::BinaryOperator::And => "&",
-            ast::BinaryOperator::Or => "|",
-            ast::BinaryOperator::Xor => "^",
-            ast::BinaryOperator::ShiftLeft => "<<",
-            ast::BinaryOperator::ShiftRightArithmetic => ">>",
-            ast::BinaryOperator::ShiftRightLogical => ">>>",
-            ast::BinaryOperator::In => "in",
-            ast::BinaryOperator::InstanceOf => "instanceof",
+            BinaryOperator::Add => "+",
+            BinaryOperator::Subtract => "-",
+            BinaryOperator::Multiply => "*",
+            BinaryOperator::Divide => "/",
+            BinaryOperator::Remainder => "%",
+            BinaryOperator::Exponent => "**",
+            BinaryOperator::EqEq => "==",
+            BinaryOperator::EqEqEq => "===",
+            BinaryOperator::NotEq => "!=",
+            BinaryOperator::NotEqEq => "!==",
+            BinaryOperator::LessThan => "<",
+            BinaryOperator::LessThanOrEqual => "<=",
+            BinaryOperator::GreaterThan => ">",
+            BinaryOperator::GreaterThanOrEqual => ">=",
+            BinaryOperator::And => "&",
+            BinaryOperator::Or => "|",
+            BinaryOperator::Xor => "^",
+            BinaryOperator::ShiftLeft => "<<",
+            BinaryOperator::ShiftRightArithmetic => ">>",
+            BinaryOperator::ShiftRightLogical => ">>>",
+            BinaryOperator::In => "in",
+            BinaryOperator::InstanceOf => "instanceof",
         };
         self.print_str(str);
     }
 
-    fn print_binary_expression(&mut self, binary: &ast::BinaryExpression) {
+    fn print_binary_expression(&mut self, binary: &BinaryExpression) {
         self.start_node("BinaryExpression", &binary.loc);
         self.property("operator", &binary.operator, Printer::print_binary_operator);
         self.property("left", binary.left.as_ref(), Printer::print_expression);
@@ -501,16 +503,16 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_logical_operator(&mut self, op: &ast::LogicalOperator) {
+    fn print_logical_operator(&mut self, op: &LogicalOperator) {
         let str = match op {
-            ast::LogicalOperator::And => "&&",
-            ast::LogicalOperator::Or => "||",
-            ast::LogicalOperator::NullishCoalesce => "??",
+            LogicalOperator::And => "&&",
+            LogicalOperator::Or => "||",
+            LogicalOperator::NullishCoalesce => "??",
         };
         self.print_str(str);
     }
 
-    fn print_logical_expression(&mut self, logical: &ast::LogicalExpression) {
+    fn print_logical_expression(&mut self, logical: &LogicalExpression) {
         self.start_node("LogicalExpression", &logical.loc);
         self.property(
             "operator",
@@ -522,26 +524,26 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_assignment_operator(&mut self, op: &ast::AssignmentOperator) {
+    fn print_assignment_operator(&mut self, op: &AssignmentOperator) {
         let str = match op {
-            ast::AssignmentOperator::Equals => "=",
-            ast::AssignmentOperator::Add => "+=",
-            ast::AssignmentOperator::Subtract => "-=",
-            ast::AssignmentOperator::Multiply => "*=",
-            ast::AssignmentOperator::Divide => "/=",
-            ast::AssignmentOperator::Remainder => "%=",
-            ast::AssignmentOperator::Exponent => "**=",
-            ast::AssignmentOperator::And => "&=",
-            ast::AssignmentOperator::Or => "|=",
-            ast::AssignmentOperator::Xor => "^=",
-            ast::AssignmentOperator::ShiftLeft => "<<=",
-            ast::AssignmentOperator::ShiftRightArithmetic => ">>=",
-            ast::AssignmentOperator::ShiftRightLogical => ">>>=",
+            AssignmentOperator::Equals => "=",
+            AssignmentOperator::Add => "+=",
+            AssignmentOperator::Subtract => "-=",
+            AssignmentOperator::Multiply => "*=",
+            AssignmentOperator::Divide => "/=",
+            AssignmentOperator::Remainder => "%=",
+            AssignmentOperator::Exponent => "**=",
+            AssignmentOperator::And => "&=",
+            AssignmentOperator::Or => "|=",
+            AssignmentOperator::Xor => "^=",
+            AssignmentOperator::ShiftLeft => "<<=",
+            AssignmentOperator::ShiftRightArithmetic => ">>=",
+            AssignmentOperator::ShiftRightLogical => ">>>=",
         };
         self.print_str(str);
     }
 
-    fn print_assignment_expression(&mut self, assign: &ast::AssignmentExpression) {
+    fn print_assignment_expression(&mut self, assign: &AssignmentExpression) {
         self.start_node("AssignmentExpression", &assign.loc);
         self.property(
             "operator",
@@ -553,15 +555,15 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_update_operator(&mut self, op: &ast::UpdateOperator) {
+    fn print_update_operator(&mut self, op: &UpdateOperator) {
         let str = match op {
-            ast::UpdateOperator::Increment => "++",
-            ast::UpdateOperator::Decrement => "--",
+            UpdateOperator::Increment => "++",
+            UpdateOperator::Decrement => "--",
         };
         self.print_str(str);
     }
 
-    fn print_update_expression(&mut self, update: &ast::UpdateExpression) {
+    fn print_update_expression(&mut self, update: &UpdateExpression) {
         self.start_node("UpdateExpression", &update.loc);
         self.property("operator", &update.operator, Printer::print_update_operator);
         self.property(
@@ -573,7 +575,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_member_expression(&mut self, member: &ast::MemberExpression) {
+    fn print_member_expression(&mut self, member: &MemberExpression) {
         self.start_node("MemberExpression", &member.loc);
         self.property("object", member.object.as_ref(), Printer::print_expression);
         self.property(
@@ -586,7 +588,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_conditional_expression(&mut self, cond: &ast::ConditionalExpression) {
+    fn print_conditional_expression(&mut self, cond: &ConditionalExpression) {
         self.start_node("ConditionalExpression", &cond.loc);
         self.property("test", cond.test.as_ref(), Printer::print_expression);
         self.property(
@@ -598,7 +600,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_call_expression(&mut self, call: &ast::CallExpression) {
+    fn print_call_expression(&mut self, call: &CallExpression) {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", call.callee.as_ref(), Printer::print_expression);
         self.array_property(
@@ -610,7 +612,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_new_expression(&mut self, new: &ast::NewExpression) {
+    fn print_new_expression(&mut self, new: &NewExpression) {
         self.start_node("NewExpression", &new.loc);
         self.property("callee", new.callee.as_ref(), Printer::print_expression);
         self.array_property(
@@ -621,7 +623,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_sequence_expression(&mut self, seq: &ast::SequenceExpression) {
+    fn print_sequence_expression(&mut self, seq: &SequenceExpression) {
         self.start_node("SequenceExpression", &seq.loc);
         self.array_property(
             "expressions",
@@ -636,7 +638,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_array_expression(&mut self, arr: &ast::ArrayExpression) {
+    fn print_array_expression(&mut self, arr: &ArrayExpression) {
         self.start_node("ArrayExpression", &arr.loc);
         self.array_property(
             "elements",
@@ -646,7 +648,41 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_await_expression(&mut self, expr: &ast::AwaitExpression) {
+    fn print_object_expression(&mut self, obj: &ObjectExpression) {
+        self.start_node("ObjectExpression", &obj.loc);
+        self.array_property(
+            "properties",
+            obj.properties.as_ref(),
+            Printer::print_property,
+        );
+        self.end_node();
+    }
+
+    fn print_property(&mut self, prop: &Property) {
+        self.start_node("Property", &prop.loc);
+        self.property("key", prop.key.as_ref(), Printer::print_expression);
+        self.property(
+            "value",
+            prop.value.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.property("is_computed", prop.is_computed, Printer::print_bool);
+        self.property("is_shorthand", prop.value.is_none(), Printer::print_bool);
+        self.property("is_method", prop.is_method, Printer::print_bool);
+        self.property("kind", prop.kind, Printer::print_property_kind);
+        self.end_node();
+    }
+
+    fn print_property_kind(&mut self, kind: PropertyKind) {
+        let str = match kind {
+            PropertyKind::Init => "init",
+            PropertyKind::Get => "get",
+            PropertyKind::Set => "set",
+        };
+        self.print_str(str)
+    }
+
+    fn print_await_expression(&mut self, expr: &AwaitExpression) {
         self.start_node("AwaitExpression", &expr.loc);
         self.property(
             "argument",
@@ -656,7 +692,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_yield_expression(&mut self, expr: &ast::YieldExpression) {
+    fn print_yield_expression(&mut self, expr: &YieldExpression) {
         self.start_node("YieldExpression", &expr.loc);
         self.property(
             "argument",
@@ -667,54 +703,54 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_pattern(&mut self, pattern: &ast::Pattern) {
+    fn print_pattern(&mut self, pattern: &Pattern) {
         match pattern {
-            ast::Pattern::Id(id) => self.print_identifier(id),
+            Pattern::Id(id) => self.print_identifier(id),
         }
     }
 
-    fn print_identifier(&mut self, id: &ast::Identifier) {
+    fn print_identifier(&mut self, id: &Identifier) {
         self.start_node("Identifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);
         self.end_node();
     }
 
-    fn print_optional_expression(&mut self, expr: Option<&ast::P<ast::Expression>>) {
+    fn print_optional_expression(&mut self, expr: Option<&P<Expression>>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_expression(expr),
         }
     }
 
-    fn print_optional_expression_in_array(&mut self, expr: &Option<ast::Expression>) {
+    fn print_optional_expression_in_array(&mut self, expr: &Option<Expression>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_expression(expr),
         }
     }
 
-    fn print_optional_statement(&mut self, stmt: Option<&ast::P<ast::Statement>>) {
+    fn print_optional_statement(&mut self, stmt: Option<&P<Statement>>) {
         match stmt {
             None => self.print_null(),
             Some(stmt) => self.print_statement(stmt),
         }
     }
 
-    fn print_optional_identifier(&mut self, id: Option<&ast::P<ast::Identifier>>) {
+    fn print_optional_identifier(&mut self, id: Option<&P<Identifier>>) {
         match id {
             None => self.print_null(),
             Some(id) => self.print_identifier(id),
         }
     }
 
-    fn print_optional_block(&mut self, block: Option<&ast::P<ast::Block>>) {
+    fn print_optional_block(&mut self, block: Option<&P<Block>>) {
         match block {
             None => self.print_null(),
             Some(block) => self.print_block(block),
         }
     }
 
-    fn print_optional_pattern(&mut self, pattern: Option<&ast::P<ast::Pattern>>) {
+    fn print_optional_pattern(&mut self, pattern: Option<&P<Pattern>>) {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),
@@ -723,7 +759,7 @@ impl<'a> Printer<'a> {
 }
 
 // Prints JSON in ESTree format
-pub fn print_program(program: &ast::Program, source: &Source) -> String {
+pub fn print_program(program: &Program, source: &Source) -> String {
     let mut printer = Printer::new(source);
     printer.print_program(program);
     printer.finish()

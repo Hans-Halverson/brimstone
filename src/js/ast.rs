@@ -190,10 +190,10 @@ pub enum Expression {
     New(NewExpression),
     Sequence(SequenceExpression),
     Array(ArrayExpression),
+    Object(ObjectExpression),
     This(Loc),
     Await(AwaitExpression),
     Yield(YieldExpression),
-    // TODO: ObjectExpression
     // TODO: FunctionExpression
     // TODO: ArrowFunctionExpression
     // TODO: TemplateLiteral
@@ -351,6 +351,27 @@ pub struct SequenceExpression {
 pub struct ArrayExpression {
     pub loc: Loc,
     pub elements: Vec<Option<Expression>>,
+}
+
+pub struct ObjectExpression {
+    pub loc: Loc,
+    pub properties: Vec<Property>,
+}
+
+pub struct Property {
+    pub loc: Loc,
+    pub key: P<Expression>,
+    pub value: Option<P<Expression>>,
+    pub is_computed: bool,
+    pub is_method: bool,
+    pub kind: PropertyKind,
+}
+
+#[derive(Clone, Copy)]
+pub enum PropertyKind {
+    Init,
+    Get,
+    Set,
 }
 
 pub struct AwaitExpression {

@@ -402,4 +402,30 @@ pub struct YieldExpression {
 
 pub enum Pattern {
     Id(Identifier),
+    Array(ArrayPattern),
+    Object(ObjectPattern),
+    Assign(AssignmentPattern),
+}
+
+pub struct ArrayPattern {
+    pub loc: Loc,
+    pub elements: Vec<Option<Pattern>>,
+}
+
+pub struct ObjectPattern {
+    pub loc: Loc,
+    pub properties: Vec<ObjectPatternProperty>,
+}
+
+pub struct ObjectPatternProperty {
+    pub loc: Loc,
+    pub key: Option<P<Expression>>,
+    pub value: P<Pattern>,
+    pub is_computed: bool,
+}
+
+pub struct AssignmentPattern {
+    pub loc: Loc,
+    pub left: P<Pattern>,
+    pub right: P<Expression>,
 }

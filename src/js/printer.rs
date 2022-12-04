@@ -726,12 +726,50 @@ impl<'a> Printer<'a> {
     fn print_pattern(&mut self, pattern: &Pattern) {
         match pattern {
             Pattern::Id(id) => self.print_identifier(id),
+            Pattern::Array(patt) => self.print_array_pattern(patt),
+            Pattern::Object(patt) => self.print_object_pattern(patt),
+            Pattern::Assign(patt) => self.print_assign_pattern(patt),
         }
     }
 
     fn print_identifier(&mut self, id: &Identifier) {
         self.start_node("Identifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);
+        self.end_node();
+    }
+
+    fn print_array_pattern(&mut self, patt: &ArrayPattern) {
+        self.start_node("ArrayPattern", &patt.loc);
+        self.array_property(
+            "elements",
+            patt.elements.as_ref(),
+            Printer::print_optional_pattern_in_array,
+        );
+        self.end_node();
+    }
+
+    fn print_object_pattern(&mut self, patt: &ObjectPattern) {
+        self.start_node("ObjectPattern", &patt.loc);
+        self.array_property(
+            "properties",
+            patt.properties.as_ref(),
+            Printer::print_object_pattern_property,
+        );
+        self.end_node();
+    }
+
+    fn print_object_pattern_property(&mut self, prop: &ObjectPatternProperty) {
+        self.start_node("Property", &prop.loc);
+        self.property("key", prop.key.as_ref(), Printer::print_optional_expression);
+        self.property("value", prop.value.as_ref(), Printer::print_pattern);
+        self.property("computed", prop.is_computed, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_assign_pattern(&mut self, patt: &AssignmentPattern) {
+        self.start_node("AssignmentPattern", &patt.loc);
+        self.property("left", patt.left.as_ref(), Printer::print_pattern);
+        self.property("right", patt.right.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
@@ -771,6 +809,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_optional_pattern(&mut self, pattern: Option<&P<Pattern>>) {
+        match pattern {
+            None => self.print_null(),
+            Some(pattern) => self.print_pattern(pattern),
+        }
+    }
+
+    fn print_optional_pattern_in_array(&mut self, pattern: &Option<Pattern>) {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),

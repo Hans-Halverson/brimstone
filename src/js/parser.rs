@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::LeftParen)?;
 
         while self.token != Token::RightParen {
-            params.push(self.parse_pattern()?);
+            params.push(self.parse_pattern_including_assignment_pattern()?);
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -1708,7 +1708,11 @@ impl<'a> Parser<'a> {
             Token::Identifier(_) => {
                 let key = self.parse_identifier()?;
 
-                if self.token == Token::Comma || self.token == Token::RightBrace {
+                if self.token == Token::Comma
+                    || self.token == Token::RightBrace
+                    // Shorthand could be terminated by assignment pattern in pattern properties
+                    || self.token == Token::Equals
+                {
                     is_shorthand = true;
                 }
 
@@ -1783,7 +1787,119 @@ impl<'a> Parser<'a> {
     fn parse_pattern(&mut self) -> ParseResult<Pattern> {
         match &self.token {
             Token::Identifier(_) => Ok(Pattern::Id(self.parse_identifier()?)),
+            Token::LeftBracket => self.parse_array_pattern(),
+            Token::LeftBrace => self.parse_object_pattern(),
             other => self.error_unexpected_token(self.loc, other),
+        }
+    }
+
+    fn parse_pattern_including_assignment_pattern(&mut self) -> ParseResult<Pattern> {
+        let start_pos = self.current_start_pos();
+        let patt = self.parse_pattern()?;
+        self.parse_assignment_pattern(patt, start_pos)
+    }
+
+    /// Parse an assignment pattern if one exists, otherwise return left hand side
+    fn parse_assignment_pattern(&mut self, left: Pattern, start_pos: Pos) -> ParseResult<Pattern> {
+        // If followed by an equals sign, this is an assignment pattern
+        match self.token {
+            Token::Equals => {
+                self.advance()?;
+                let right = self.parse_assignment_expression()?;
+                let loc = self.mark_loc(start_pos);
+
+                Ok(Pattern::Assign(AssignmentPattern {
+                    loc,
+                    left: p(left),
+                    right,
+                }))
+            }
+            _ => Ok(left),
+        }
+    }
+
+    fn parse_array_pattern(&mut self) -> ParseResult<Pattern> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let mut elements = vec![];
+        while self.token != Token::RightBracket {
+            if self.token == Token::Comma {
+                self.advance()?;
+                elements.push(None);
+            } else {
+                elements.push(Some(self.parse_pattern_including_assignment_pattern()?));
+                if self.token == Token::Comma {
+                    self.advance()?;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        self.expect(Token::RightBracket)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(Pattern::Array(ArrayPattern { loc, elements }))
+    }
+
+    fn parse_object_pattern(&mut self) -> ParseResult<Pattern> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let mut properties = vec![];
+        while self.token != Token::RightBrace {
+            properties.push(self.parse_object_pattern_property()?);
+
+            if self.token == Token::RightBrace {
+                break;
+            }
+
+            self.expect(Token::Comma)?;
+        }
+
+        self.expect(Token::RightBrace)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(Pattern::Object(ObjectPattern { loc, properties }))
+    }
+
+    fn parse_object_pattern_property(&mut self) -> ParseResult<ObjectPatternProperty> {
+        let start_pos = self.current_start_pos();
+        match self.parse_property_name()? {
+            // Shorthand property
+            (Some(name), _, true) => {
+                let value = if let Expression::Id(id) = *name {
+                    Pattern::Id(id)
+                } else {
+                    unreachable!()
+                };
+
+                // Shorthand property may be followed by assignment pattern
+                let value = p(self.parse_assignment_pattern(value, start_pos)?);
+                let loc = self.mark_loc(start_pos);
+
+                Ok(ObjectPatternProperty {
+                    loc,
+                    key: None,
+                    value,
+                    is_computed: false,
+                })
+            }
+            // Regular properties
+            (Some(name), is_computed, false) => {
+                self.expect(Token::Colon)?;
+                let value = p(self.parse_pattern_including_assignment_pattern()?);
+                let loc = self.mark_loc(start_pos);
+
+                Ok(ObjectPatternProperty {
+                    loc,
+                    key: Some(name),
+                    value,
+                    is_computed,
+                })
+            }
+            (None, _, _) => return self.error_unexpected_token(self.loc, &self.token),
         }
     }
 

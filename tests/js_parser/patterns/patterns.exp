@@ -1,0 +1,196 @@
+{
+  type: "Program",
+  loc: "1:0-14:21",
+  body: [
+    {
+      type: "VariableDeclaration",
+      loc: "2:0-2:10",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "2:4-2:9",
+          id: {
+            type: "Identifier",
+            loc: "2:4-2:5",
+            name: "x",
+          },
+          init: {
+            type: "Literal",
+            loc: "2:8-2:9",
+            value: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "5:0-5:30",
+      id: {
+        type: "Identifier",
+        loc: "5:9-5:13",
+        name: "test",
+      },
+      params: [
+        {
+          type: "AssignmentPattern",
+          loc: "5:14-5:19",
+          left: {
+            type: "Identifier",
+            loc: "5:14-5:15",
+            name: "x",
+          },
+          right: {
+            type: "Literal",
+            loc: "5:18-5:19",
+            value: 1,
+          },
+        },
+        {
+          type: "AssignmentPattern",
+          loc: "5:21-5:26",
+          left: {
+            type: "Identifier",
+            loc: "5:21-5:22",
+            name: "y",
+          },
+          right: {
+            type: "Literal",
+            loc: "5:25-5:26",
+            value: 2,
+          },
+        },
+      ],
+      body: {
+        type: "Block",
+        loc: "5:28-5:30",
+        body: [],
+      },
+      async: false,
+      generator: false,
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "8:0-8:12",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "8:4-8:11",
+          id: {
+            type: "ArrayPattern",
+            loc: "8:4-8:7",
+            elements: [
+              {
+                type: "Identifier",
+                loc: "8:5-8:6",
+                name: "a",
+              },
+            ],
+          },
+          init: {
+            type: "Literal",
+            loc: "8:10-8:11",
+            value: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "10:0-10:20",
+      id: {
+        type: "Identifier",
+        loc: "10:9-10:12",
+        name: "foo",
+      },
+      params: [
+        {
+          type: "ArrayPattern",
+          loc: "10:13-10:16",
+          elements: [
+            {
+              type: "Identifier",
+              loc: "10:14-10:15",
+              name: "a",
+            },
+          ],
+        },
+      ],
+      body: {
+        type: "Block",
+        loc: "10:18-10:20",
+        body: [],
+      },
+      async: false,
+      generator: false,
+    },
+    {
+      type: "ForOfStatement",
+      loc: "12:0-12:21",
+      left: {
+        type: "VariableDeclaration",
+        loc: "12:5-12:12",
+        kind: "var",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "12:9-12:12",
+            id: {
+              type: "ArrayPattern",
+              loc: "12:9-12:12",
+              elements: [
+                {
+                  type: "Identifier",
+                  loc: "12:10-12:11",
+                  name: "a",
+                },
+              ],
+            },
+            init: null,
+          },
+        ],
+      },
+      right: {
+        type: "Literal",
+        loc: "12:16-12:17",
+        value: 1,
+      },
+      body: {
+        type: "Block",
+        loc: "12:19-12:21",
+        body: [],
+      },
+    },
+    {
+      type: "TryStatement",
+      loc: "14:0-14:21",
+      block: {
+        type: "Block",
+        loc: "14:4-14:6",
+        body: [],
+      },
+      handler: {
+        type: "CatchClause",
+        loc: "14:7-14:21",
+        param: {
+          type: "ArrayPattern",
+          loc: "14:14-14:17",
+          elements: [
+            {
+              type: "Identifier",
+              loc: "14:15-14:16",
+              name: "a",
+            },
+          ],
+        },
+        body: {
+          type: "Block",
+          loc: "14:19-14:21",
+          body: [],
+        },
+      },
+      finalizer: null,
+    },
+  ],
+}

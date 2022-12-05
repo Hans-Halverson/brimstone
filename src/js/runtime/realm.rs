@@ -1,8 +1,8 @@
 use std::{collections::HashMap, rc::Rc};
 
 use super::{
-    runtime::{Completion, ExecutionContext, LexicalEnvironment, ObjectValue},
-    Agent,
+    completion::Completion, environment::LexicalEnvironment, runtime::ExecutionContext,
+    value::ObjectValue, Agent,
 };
 
 // 8.2 Realm Record
@@ -20,7 +20,7 @@ impl Realm {
         // Realm record must be created before setting up instrinsics, as realm must be referenced
         // during instrinsic creation.
         let mut realm = Realm {
-            global_env: Rc::new(LexicalEnvironment::EMPTY),
+            global_env: Rc::new(LexicalEnvironment::placeholder()),
             global_obj: Rc::new(ObjectValue::EMPTY),
             instrinsics: HashMap::new(),
         };
@@ -59,8 +59,8 @@ pub fn initialize_host_defined_realm(agent: &mut Agent) -> Completion {
         program: None,
         realm: Realm::new(),
         function: None,
-        lexical_env: Rc::new(LexicalEnvironment::EMPTY),
-        variable_env: Rc::new(LexicalEnvironment::EMPTY),
+        lexical_env: Rc::new(LexicalEnvironment::placeholder()),
+        variable_env: Rc::new(LexicalEnvironment::placeholder()),
     };
 
     agent.push_execution_context(exec_ctx);
@@ -69,5 +69,5 @@ pub fn initialize_host_defined_realm(agent: &mut Agent) -> Completion {
     realm.set_global_object();
     realm.set_default_global_bindings();
 
-    Completion::Normal(None)
+    Completion::empty()
 }

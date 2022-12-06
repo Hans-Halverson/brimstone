@@ -68,11 +68,11 @@ impl Environment for GlobalEnvironment {
     // 8.1.1.4.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        name: String,
+        name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        if must_!(self.decl_env.has_binding(&name)) {
+        if must_!(self.decl_env.has_binding(name)) {
             return self.decl_env.set_mutable_binding(name, value, is_strict);
         }
 
@@ -148,7 +148,9 @@ impl GlobalEnvironment {
 
         return match existing_prop {
             Value::Undefined => false.into(),
-            Value::Object(ref prop_val) => (!PropertyDescriptor::is_configurable(prop_val)).into(),
+            Value::Object(prop_val) => {
+                (!PropertyDescriptor::is_configurable(&prop_val.borrow())).into()
+            }
             _ => unreachable!("GetOwnProperty returns only property descriptor or undefined"),
         };
     }
@@ -171,6 +173,7 @@ impl GlobalEnvironment {
         match existing_prop {
             Value::Undefined => return is_extensible(&global_object.borrow()).into(),
             Value::Object(ref prop_val) => {
+                let prop_val = &prop_val.borrow();
                 if PropertyDescriptor::is_configurable(prop_val) {
                     return true.into();
                 }
@@ -216,7 +219,7 @@ impl GlobalEnvironment {
         let existing_prop = maybe__!(global_object.borrow().get_own_property(&name));
         let is_complex_prop = match existing_prop {
             Value::Undefined => true,
-            Value::Object(ref object_val) => PropertyDescriptor::is_configurable(object_val),
+            Value::Object(object_val) => PropertyDescriptor::is_configurable(&object_val.borrow()),
             _ => unreachable!("GetOwnProperty returns only property descriptor or undefined"),
         };
 

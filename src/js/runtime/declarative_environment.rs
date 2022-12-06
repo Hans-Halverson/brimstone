@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::{
     completion::AbstractResult,
     environment::Environment,
-    error::{err_uninitialized_, reference_error_, type_error_},
+    error::{err_not_defined_, err_uninitialized_, type_error_},
     value::Value,
 };
 
@@ -64,22 +64,22 @@ impl Environment for DeclarativeEnvironment {
     // 8.1.1.1.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        name: String,
+        name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        match self.bindings.get_mut(&name) {
-            None if is_strict => reference_error_(&format!("{} is not defined", name)),
+        match self.bindings.get_mut(name) {
+            None if is_strict => err_not_defined_(name),
             None => {
                 self.create_mutable_binding(name.to_string(), true);
-                self.initialize_binding(&name, value);
+                self.initialize_binding(name, value);
                 ().into()
             }
             Some(binding) => {
                 let s = if binding.is_strict { true } else { is_strict };
 
                 if !binding.is_initialized {
-                    return err_uninitialized_(&name);
+                    return err_uninitialized_(name);
                 }
 
                 if binding.is_mutable {

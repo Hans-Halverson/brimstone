@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use super::completion::AbstractResult;
 
@@ -8,7 +8,7 @@ pub enum Value {
     Null,
     Bool(bool),
     Number(f64),
-    Object(Rc<ObjectValue>),
+    Object(Rc<RefCell<ObjectValue>>),
     String(Box<String>),
 }
 
@@ -46,6 +46,10 @@ impl ObjectValue {
     }
 
     pub fn get(&self, prop: &str) -> Value {
+        unimplemented!()
+    }
+
+    pub fn delete(&mut self, prop: &str) -> AbstractResult<bool> {
         unimplemented!()
     }
 }

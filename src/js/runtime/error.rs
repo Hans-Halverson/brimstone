@@ -27,6 +27,10 @@ pub fn reference_error_<T>(message: &str) -> AbstractResult<T> {
     AbstractResult::Throw(reference_error_value(message))
 }
 
+pub fn err_not_defined_<T>(name: &str) -> AbstractResult<T> {
+    reference_error_(&format!("{} is not defined", name))
+}
+
 pub fn err_uninitialized_<T>(name: &str) -> AbstractResult<T> {
     reference_error_(&format!("{} is not defined", name))
 }

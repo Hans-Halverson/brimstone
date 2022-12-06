@@ -28,6 +28,7 @@ impl LexicalEnvironment {
         let object_env = ObjectEnvironment {
             bindings: HashMap::new(),
             binding_obj: global_obj,
+            with_environment: false,
         };
         let decl_env = DeclarativeEnvironment {
             bindings: HashMap::new(),
@@ -67,7 +68,7 @@ pub trait Environment {
     fn initialize_binding(&mut self, name: &str, value: Value) -> AbstractResult<()>;
     fn set_mutable_binding(
         &mut self,
-        name: String,
+        name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()>;

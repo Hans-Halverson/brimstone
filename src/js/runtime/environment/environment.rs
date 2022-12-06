@@ -4,12 +4,14 @@ use std::{
     rc::Rc,
 };
 
-use super::{
+use crate::js::runtime::{
     completion::AbstractResult,
-    declarative_environment::DeclarativeEnvironment,
-    global_environment::GlobalEnvironment,
-    object_environment::ObjectEnvironment,
     value::{ObjectValue, Value},
+};
+
+use super::{
+    declarative_environment::DeclarativeEnvironment, global_environment::GlobalEnvironment,
+    object_environment::ObjectEnvironment,
 };
 
 // 8.1 Lexical Environment

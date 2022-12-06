@@ -32,5 +32,5 @@ pub fn err_not_defined_<T>(name: &str) -> AbstractResult<T> {
 }
 
 pub fn err_uninitialized_<T>(name: &str) -> AbstractResult<T> {
-    reference_error_(&format!("{} is not defined", name))
+    reference_error_(&format!("{} is not initialized", name))
 }

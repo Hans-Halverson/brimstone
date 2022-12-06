@@ -2,7 +2,9 @@ use crate::js::parser::ast;
 
 use std::{collections::HashSet, rc::Rc};
 
-use super::{completion::Completion, environment::LexicalEnvironment, realm::Realm, value::Value};
+use super::{completion::Completion, realm::Realm, value::Value};
+
+use crate::js::runtime::environment::environment::LexicalEnvironment;
 
 // 8.3 Execution Context
 pub struct ExecutionContext {

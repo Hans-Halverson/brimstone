@@ -1,18 +1,17 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
-use crate::{
-    js::runtime::abstract_operations::{define_property_or_throw, set},
-    maybe_, maybe__, must_,
+use crate::{maybe_, maybe__, must_};
+
+use crate::js::runtime::{
+    abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
+    completion::{AbstractResult, Completion},
+    error::type_error_,
+    value::{ObjectValue, PropertyDescriptor, Value},
 };
 
 use super::{
-    abstract_operations::{has_own_property, is_extensible},
-    completion::{AbstractResult, Completion},
-    declarative_environment::DeclarativeEnvironment,
-    environment::Environment,
-    error::type_error_,
+    declarative_environment::DeclarativeEnvironment, environment::Environment,
     object_environment::ObjectEnvironment,
-    value::{ObjectValue, PropertyDescriptor, Value},
 };
 
 // 8.1.1.4 Global Environment Record

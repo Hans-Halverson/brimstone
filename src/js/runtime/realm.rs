@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
-    completion::Completion, environment::LexicalEnvironment, runtime::ExecutionContext,
-    value::ObjectValue, Agent,
+    completion::Completion, environment::environment::LexicalEnvironment,
+    runtime::ExecutionContext, value::ObjectValue, Agent,
 };
 
 // 8.2 Realm Record

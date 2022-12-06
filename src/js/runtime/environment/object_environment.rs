@@ -1,14 +1,14 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::maybe_;
-
-use super::{
+use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, get, has_property, set, to_boolean},
     completion::AbstractResult,
-    environment::Environment,
     error::err_not_defined_,
     value::{ObjectValue, Value},
 };
+use crate::maybe_;
+
+use super::environment::Environment;
 
 pub struct Binding {
     pub is_initialized: bool,
@@ -61,7 +61,7 @@ impl Environment for ObjectEnvironment {
 
     // 8.1.1.2.3 CreateImmutableBinding
     fn create_immutable_binding(&mut self, name: String, is_strict: bool) -> AbstractResult<()> {
-        unreachable!("create_immutable_binding is never used in spec")
+        unreachable!("ObjectEnvironment::create_immutable_binding is never used in spec")
     }
 
     // 8.1.1.2.4 InitializeBinding

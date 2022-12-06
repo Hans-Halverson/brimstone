@@ -1,11 +1,12 @@
-use std::collections::HashMap;
+use super::environment::Environment;
 
-use super::{
+use crate::js::runtime::{
     completion::AbstractResult,
-    environment::Environment,
     error::{err_not_defined_, err_uninitialized_, type_error_},
     value::Value,
 };
+
+use std::collections::HashMap;
 
 pub struct Binding {
     value: Value,

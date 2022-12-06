@@ -52,6 +52,10 @@ impl ObjectValue {
     pub fn delete(&mut self, prop: &str) -> AbstractResult<bool> {
         unimplemented!()
     }
+
+    pub fn get_prototype_of(&self) -> AbstractResult<Value> {
+        unimplemented!()
+    }
 }
 
 pub struct PropertyDescriptor;

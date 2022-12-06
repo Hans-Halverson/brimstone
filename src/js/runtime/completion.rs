@@ -80,7 +80,7 @@ macro_rules! maybe_ {
     ($a:expr) => {
         match $a {
             AbstractResult::Ok(value) => value,
-            other => return other,
+            AbstractResult::Throw(value) => return AbstractResult::Throw(value),
         }
     };
 }
@@ -92,6 +92,17 @@ macro_rules! must_ {
         match $a {
             AbstractResult::Ok(value) => value,
             _ => panic!("Unexepcted abnormal completion"),
+        }
+    };
+}
+
+/// Unwrap an AbstractResult, returning a completion if throw
+#[macro_export]
+macro_rules! maybe__ {
+    ($a:expr) => {
+        match $a {
+            AbstractResult::Ok(value) => value,
+            AbstractResult::Throw(value) => return Completion::Throw(value),
         }
     };
 }

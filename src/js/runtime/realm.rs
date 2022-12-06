@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
     completion::Completion, environment::LexicalEnvironment, runtime::ExecutionContext,
@@ -8,7 +8,7 @@ use super::{
 // 8.2 Realm Record
 pub struct Realm {
     pub global_env: Rc<LexicalEnvironment>,
-    global_obj: Rc<ObjectValue>,
+    global_obj: Rc<RefCell<ObjectValue>>,
     instrinsics: Intrinsics,
 }
 
@@ -21,7 +21,7 @@ impl Realm {
         // during instrinsic creation.
         let mut realm = Realm {
             global_env: Rc::new(LexicalEnvironment::placeholder()),
-            global_obj: Rc::new(ObjectValue::EMPTY),
+            global_obj: Rc::new(RefCell::new(ObjectValue::EMPTY)),
             instrinsics: HashMap::new(),
         };
 
@@ -38,7 +38,7 @@ impl Realm {
     // 8.2.3 SetRealmGlobalObject
     fn set_global_object(&mut self) {
         // TODO: Create global object from OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]])
-        let global_obj = Rc::new(ObjectValue::EMPTY);
+        let global_obj = Rc::new(RefCell::new(ObjectValue::EMPTY));
         let this_val = global_obj.clone();
 
         self.global_obj = global_obj.clone();

@@ -1,18 +1,23 @@
+use std::{collections::HashMap, rc::Rc};
+
 use crate::js::runtime::{
     completion::AbstractResult,
     error::reference_error_,
     gc::Gc,
-    value::{ObjectValue, Value},
+    value::{FunctionValue, ObjectValue, ThisMode, Value},
     Context,
 };
 
-use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
+use super::{
+    declarative_environment::DeclarativeEnvironment,
+    environment::{Environment, LexicalEnvironment},
+};
 
 pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
     this_binding_status: ThisBindingStatus,
-    function_object: Gc<ObjectValue>,
+    function_object: Gc<FunctionValue>,
     home_object: Option<Gc<ObjectValue>>,
     new_target: Option<Gc<ObjectValue>>,
 }
@@ -23,6 +28,36 @@ pub enum ThisBindingStatus {
     Lexical,
     Initialized,
     Uninitialized,
+}
+
+impl FunctionEnvironment {
+    // 8.1.2.4 NewFunctionEnvironment
+    fn new(function_object: Gc<FunctionValue>, new_target: Gc<ObjectValue>) -> LexicalEnvironment {
+        let this_binding_status = if function_object.as_ref().this_mode == ThisMode::Lexical {
+            ThisBindingStatus::Lexical
+        } else {
+            ThisBindingStatus::Uninitialized
+        };
+
+        let decl_env = DeclarativeEnvironment {
+            bindings: HashMap::new(),
+        };
+
+        let func_env = FunctionEnvironment {
+            env: decl_env,
+            // This value is uninitialized on creation
+            this_value: Value::undefined(),
+            function_object,
+            this_binding_status,
+            home_object: function_object.as_ref().home_object,
+            new_target: Some(new_target),
+        };
+
+        LexicalEnvironment {
+            env: Rc::new(func_env),
+            outer: Some(function_object.as_ref().environment.clone()),
+        }
+    }
 }
 
 impl Environment for FunctionEnvironment {

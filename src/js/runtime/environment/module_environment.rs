@@ -1,9 +1,30 @@
+use std::{collections::HashMap, rc::Rc};
+
 use crate::js::runtime::{completion::AbstractResult, value::Value, Context};
 
-use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
+use super::{
+    declarative_environment::DeclarativeEnvironment,
+    environment::{Environment, LexicalEnvironment},
+};
 
 pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
+}
+
+impl ModuleEnvironment {
+    // 8.1.2.6 NewModuleEnvironment
+    fn new(outer: Rc<LexicalEnvironment>) -> LexicalEnvironment {
+        let module_env = ModuleEnvironment {
+            env: DeclarativeEnvironment {
+                bindings: HashMap::new(),
+            },
+        };
+
+        LexicalEnvironment {
+            env: Rc::new(module_env),
+            outer: Some(outer),
+        }
+    }
 }
 
 impl Environment for ModuleEnvironment {

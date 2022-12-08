@@ -1,16 +1,17 @@
-use std::collections::HashSet;
-
-use crate::js::runtime::gc::Gc;
-use crate::js::runtime::Context;
-use crate::{maybe_, maybe__, must_};
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
     completion::{AbstractResult, Completion},
     error::type_error_,
+    gc::Gc,
     value::{ObjectValue, PropertyDescriptor, Value},
+    Context,
 };
+use crate::{maybe_, maybe__, must_};
 
+use super::environment::LexicalEnvironment;
 use super::{
     declarative_environment::DeclarativeEnvironment, environment::Environment,
     object_environment::ObjectEnvironment,
@@ -21,12 +22,42 @@ pub struct GlobalEnvironment {
     // The global object. [[ObjectRecord]] in spec.
     pub object_env: ObjectEnvironment,
 
-    pub global_this_val: Gc<ObjectValue>,
-
     // Declarative environment. [[DeclarativeRecord]] in spec.
     pub decl_env: DeclarativeEnvironment,
 
+    pub global_this_value: Gc<ObjectValue>,
+
     pub var_names: HashSet<String>,
+}
+
+impl GlobalEnvironment {
+    // 8.1.2.5 NewGlobalEnvironment
+    pub fn new(
+        global_object: Gc<ObjectValue>,
+        global_this_value: Gc<ObjectValue>,
+    ) -> LexicalEnvironment {
+        let object_env = ObjectEnvironment {
+            binding_object: global_object,
+            with_environment: false,
+        };
+        let decl_env = DeclarativeEnvironment {
+            bindings: HashMap::new(),
+        };
+
+        let global_env = GlobalEnvironment {
+            object_env,
+            global_this_value,
+            decl_env,
+            var_names: HashSet::new(),
+        };
+
+        let env = LexicalEnvironment {
+            env: Rc::new(global_env),
+            outer: None,
+        };
+
+        env
+    }
 }
 
 impl Environment for GlobalEnvironment {
@@ -119,7 +150,7 @@ impl Environment for GlobalEnvironment {
             return self.decl_env.delete_binding(name);
         }
 
-        if maybe_!(has_own_property(self.object_env.binding_obj.as_ref(), name)) {
+        if maybe_!(has_own_property(self.object_env.binding_object, name)) {
             let status = maybe_!(self.object_env.delete_binding(name));
             if status {
                 self.var_names.remove(name);
@@ -150,7 +181,7 @@ impl Environment for GlobalEnvironment {
 impl GlobalEnvironment {
     // 8.1.1.4.11 GetThisBinding
     fn get_this_binding(&self) -> Gc<ObjectValue> {
-        self.global_this_val
+        self.global_this_value
     }
 
     // 8.1.1.4.12 HasVarDeclaration
@@ -165,7 +196,7 @@ impl GlobalEnvironment {
 
     // 8.1.1.4.14 HasRestrictedGlobalProperty
     fn has_restricted_global_property(&self, name: &str) -> AbstractResult<bool> {
-        let global_object = &self.object_env.binding_obj;
+        let global_object = &self.object_env.binding_object;
         let existing_prop = maybe_!(global_object.as_ref().get_own_property(name));
 
         if existing_prop.is_undefined() {
@@ -178,21 +209,21 @@ impl GlobalEnvironment {
 
     // 8.1.1.4.15 CanDeclareGlobalVar
     fn can_declare_global_var(&self, name: &str) -> AbstractResult<bool> {
-        let global_object = &self.object_env.binding_obj;
-        if maybe_!(has_own_property(global_object.as_ref(), name)) {
+        let global_object = self.object_env.binding_object;
+        if maybe_!(has_own_property(global_object, name)) {
             return true.into();
         }
 
-        is_extensible(global_object.as_ref()).into()
+        is_extensible(global_object).into()
     }
 
     // 8.1.1.4.16 CanDeclareGlobalFunction
     fn can_declare_global_function(&self, name: &str) -> AbstractResult<bool> {
-        let global_object = &self.object_env.binding_obj;
+        let global_object = self.object_env.binding_object;
         let existing_prop = maybe_!(global_object.as_ref().get_own_property(name));
 
         if existing_prop.is_undefined() {
-            is_extensible(global_object.as_ref()).into()
+            is_extensible(global_object).into()
         } else {
             let prop_val = existing_prop.as_object();
             let prop_val = prop_val.as_ref();
@@ -215,9 +246,9 @@ impl GlobalEnvironment {
         name: &str,
         can_delete: bool,
     ) -> Completion {
-        let global_object = &self.object_env.binding_obj;
-        let has_property = maybe__!(has_own_property(global_object.as_ref(), name));
-        let is_extensible = is_extensible(global_object.as_ref());
+        let global_object = self.object_env.binding_object;
+        let has_property = maybe__!(has_own_property(global_object, name));
+        let is_extensible = is_extensible(global_object);
 
         if !has_property && is_extensible {
             maybe__!(self
@@ -242,7 +273,7 @@ impl GlobalEnvironment {
         value: Value,
         can_delete: bool,
     ) -> Completion {
-        let global_object = &mut self.object_env.binding_obj;
+        let global_object = self.object_env.binding_object;
         let existing_prop = maybe__!(global_object.as_ref().get_own_property(&name));
 
         let is_complex_prop = if existing_prop.is_undefined() {
@@ -267,19 +298,8 @@ impl GlobalEnvironment {
             ObjectValue::new_with_value_1("value".to_string(), value.clone())
         };
 
-        maybe__!(define_property_or_throw(
-            global_object.as_mut(),
-            &name,
-            prop_desc
-        ));
-
-        self.object_env
-            .bindings
-            .get_mut(&name)
-            .unwrap()
-            .is_initialized = true;
-
-        maybe__!(set(global_object.as_mut(), &name, value, false));
+        maybe__!(define_property_or_throw(global_object, &name, prop_desc));
+        maybe__!(set(global_object, &name, value, false));
 
         if !(self.var_names.contains(&name)) {
             self.var_names.insert(name.to_string());

@@ -1,57 +1,20 @@
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
+use std::{collections::HashMap, rc::Rc};
+
+use crate::{
+    js::runtime::{completion::AbstractResult, value::Value, Context},
+    maybe_,
 };
 
-use crate::js::runtime::{
-    completion::AbstractResult,
-    gc::Gc,
-    value::{ObjectValue, Value},
-    Context,
-};
-
-use super::{
-    declarative_environment::DeclarativeEnvironment, global_environment::GlobalEnvironment,
-    object_environment::ObjectEnvironment,
-};
+use super::declarative_environment::DeclarativeEnvironment;
 
 // 8.1 Lexical Environment
 pub struct LexicalEnvironment {
-    env: Rc<dyn Environment>,
+    pub env: Rc<dyn Environment>,
     // Optional reference to the outer (parent) environment. If None this is the global environment.
-    outer: Option<Rc<LexicalEnvironment>>,
+    pub outer: Option<Rc<LexicalEnvironment>>,
 }
 
 impl LexicalEnvironment {
-    // 8.1.2.5 NewGlobalEnvironment
-    pub fn new_global_environment(
-        global_obj: Gc<ObjectValue>,
-        global_this_val: Gc<ObjectValue>,
-    ) -> LexicalEnvironment {
-        let object_env = ObjectEnvironment {
-            bindings: HashMap::new(),
-            binding_obj: global_obj,
-            with_environment: false,
-        };
-        let decl_env = DeclarativeEnvironment {
-            bindings: HashMap::new(),
-        };
-
-        let global_env = GlobalEnvironment {
-            object_env,
-            global_this_val,
-            decl_env,
-            var_names: HashSet::new(),
-        };
-
-        let env = LexicalEnvironment {
-            env: Rc::new(global_env),
-            outer: None,
-        };
-
-        env
-    }
-
     /// Create a placeholder, "undefined" value that should not be used
     pub fn placeholder() -> LexicalEnvironment {
         LexicalEnvironment {
@@ -101,4 +64,44 @@ pub trait Environment {
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Value;
+}
+
+pub struct Reference {
+    base: ReferenceBase,
+    name: String,
+    is_strict: bool,
+}
+
+enum ReferenceBase {
+    // Can only be undefined, an Object, a Boolean, a String, a Symbol, a Number, or a BigInt
+    Value(Value),
+    Env(Rc<dyn Environment>),
+}
+
+// 8.1.2.1 GetIdentifierReference
+pub fn get_identifier_reference(
+    env: Option<&LexicalEnvironment>,
+    name: &str,
+    is_strict: bool,
+) -> AbstractResult<Reference> {
+    match env {
+        None => Reference {
+            base: ReferenceBase::Value(Value::undefined()),
+            name: name.to_string(),
+            is_strict,
+        }
+        .into(),
+        Some(env) => {
+            if maybe_!(env.env.has_binding(name)) {
+                Reference {
+                    base: ReferenceBase::Env(env.env.clone()),
+                    name: name.to_string(),
+                    is_strict,
+                }
+                .into()
+            } else {
+                get_identifier_reference(env.outer.as_deref(), name, is_strict)
+            }
+        }
+    }
 }

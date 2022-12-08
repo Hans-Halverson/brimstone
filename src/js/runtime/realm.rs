@@ -1,8 +1,12 @@
 use std::{collections::HashMap, rc::Rc};
 
 use super::{
-    completion::Completion, environment::environment::LexicalEnvironment, gc::Gc,
-    runtime::ExecutionContext, value::ObjectValue, Context,
+    completion::Completion,
+    environment::{environment::LexicalEnvironment, global_environment::GlobalEnvironment},
+    gc::Gc,
+    runtime::ExecutionContext,
+    value::ObjectValue,
+    Context,
 };
 
 // 8.2 Realm Record
@@ -43,9 +47,7 @@ impl Realm {
         let this_val = global_obj;
 
         self.global_obj = global_obj;
-        self.global_env = Rc::new(LexicalEnvironment::new_global_environment(
-            global_obj, this_val,
-        ));
+        self.global_env = Rc::new(GlobalEnvironment::new(global_obj, this_val));
     }
 
     // 8.2.4 SetDefaultGlobalBindings

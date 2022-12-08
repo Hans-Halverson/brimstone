@@ -1,6 +1,6 @@
-mod declarative_environment;
+pub mod declarative_environment;
 pub mod environment;
-mod function_environment;
-mod global_environment;
-mod module_environment;
-mod object_environment;
+pub mod function_environment;
+pub mod global_environment;
+pub mod module_environment;
+pub mod object_environment;

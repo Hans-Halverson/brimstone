@@ -1,6 +1,6 @@
-use std::fmt;
+use std::{fmt, rc::Rc};
 
-use super::{completion::AbstractResult, gc::Gc};
+use super::{completion::AbstractResult, environment::environment::LexicalEnvironment, gc::Gc};
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
 /// packing implementation in SerenityOS's LibWeb.
@@ -232,6 +232,22 @@ impl ObjectValue {
     pub fn get_prototype_of(&self) -> AbstractResult<Value> {
         unimplemented!()
     }
+}
+
+#[derive(PartialEq)]
+pub enum ThisMode {
+    Lexical,
+    Strict,
+    Global,
+}
+
+pub struct FunctionValue {
+    // Object properties of this function
+    object: ObjectValue,
+    pub environment: Rc<LexicalEnvironment>,
+    pub this_mode: ThisMode,
+    is_strict: bool,
+    pub home_object: Option<Gc<ObjectValue>>,
 }
 
 pub struct PropertyDescriptor;

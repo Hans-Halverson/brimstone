@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, get, has_property, set, to_boolean},
@@ -10,35 +10,44 @@ use crate::js::runtime::{
 };
 use crate::maybe_;
 
-use super::environment::Environment;
-
-pub struct Binding {
-    pub is_initialized: bool,
-}
+use super::environment::{Environment, LexicalEnvironment};
 
 // 8.1.1.2 Object Environment Record
 pub struct ObjectEnvironment {
-    pub bindings: HashMap<String, Binding>,
-    pub binding_obj: Gc<ObjectValue>,
+    pub binding_object: Gc<ObjectValue>,
     pub with_environment: bool,
+}
+
+impl ObjectEnvironment {
+    // 8.1.2.3 NewObjectEnvironment
+    fn new(binding_object: Gc<ObjectValue>, outer: Rc<LexicalEnvironment>) -> LexicalEnvironment {
+        let obj_env = ObjectEnvironment {
+            binding_object,
+            with_environment: false,
+        };
+
+        LexicalEnvironment {
+            env: Rc::new(obj_env),
+            outer: Some(outer),
+        }
+    }
 }
 
 impl Environment for ObjectEnvironment {
     // 8.1.1.2.1 HasBinding
     fn has_binding(&self, name: &str) -> AbstractResult<bool> {
-        let bindings = &self.binding_obj;
-        if !maybe_!(has_property(bindings.as_ref(), name)) {
+        if !maybe_!(has_property(self.binding_object, name)) {
             return false.into();
         } else if !self.with_environment {
             return true.into();
         }
 
         // Ignore properties in @@unscopables
-        let unscopables = maybe_!(get(bindings.as_ref(), "@@unscopables"));
+        let unscopables = maybe_!(get(self.binding_object, "@@unscopables"));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe_!(get(unscopables.as_ref(), name));
+            let value = maybe_!(get(unscopables, name));
             let blocked = to_boolean(&value);
             if blocked {
                 return false.into();
@@ -66,7 +75,7 @@ impl Environment for ObjectEnvironment {
             can_delete.into(),
         );
 
-        define_property_or_throw(self.binding_obj.as_mut(), &name, prop_desc)
+        define_property_or_throw(self.binding_object, &name, prop_desc)
     }
 
     // 8.1.1.2.3 CreateImmutableBinding
@@ -86,7 +95,6 @@ impl Environment for ObjectEnvironment {
         name: &str,
         value: Value,
     ) -> AbstractResult<()> {
-        self.bindings.get_mut(name).unwrap().is_initialized = true;
         self.set_mutable_binding(cx, name, value, false)
     }
 
@@ -98,7 +106,7 @@ impl Environment for ObjectEnvironment {
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        maybe_!(set(self.binding_obj.as_mut(), name, value, is_strict));
+        maybe_!(set(self.binding_object, name, value, is_strict));
         ().into()
     }
 
@@ -109,7 +117,7 @@ impl Environment for ObjectEnvironment {
         name: &str,
         is_strict: bool,
     ) -> AbstractResult<Value> {
-        if !maybe_!(has_property(self.binding_obj.as_ref(), name)) {
+        if !maybe_!(has_property(self.binding_object, name)) {
             return if !is_strict {
                 Value::undefined().into()
             } else {
@@ -117,12 +125,12 @@ impl Environment for ObjectEnvironment {
             };
         }
 
-        get(self.binding_obj.as_ref(), name)
+        get(self.binding_object, name)
     }
 
     // 8.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
-        self.binding_obj.as_mut().delete(name)
+        self.binding_object.as_mut().delete(name)
     }
 
     // 8.1.1.2.8 HasThisBinding
@@ -138,7 +146,7 @@ impl Environment for ObjectEnvironment {
     // 8.1.1.2.10 WithBaseObject
     fn with_base_object(&self) -> Value {
         if self.with_environment {
-            return self.binding_obj.into();
+            return self.binding_object.into();
         }
 
         Value::undefined().into()

@@ -1,9 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::js::runtime::{
     completion::AbstractResult,
     error::reference_error_,
+    gc::Gc,
     value::{ObjectValue, Value},
+    Context,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
@@ -12,9 +12,9 @@ pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
     this_binding_status: ThisBindingStatus,
-    function_object: Rc<RefCell<ObjectValue>>,
-    home_object: Option<Rc<RefCell<ObjectValue>>>,
-    new_target: Option<Rc<RefCell<ObjectValue>>>,
+    function_object: Gc<ObjectValue>,
+    home_object: Option<Gc<ObjectValue>>,
+    new_target: Option<Gc<ObjectValue>>,
 }
 
 #[derive(PartialEq)]
@@ -46,29 +46,50 @@ impl Environment for FunctionEnvironment {
         self.env.has_binding(name)
     }
 
-    fn create_mutable_binding(&mut self, name: String, can_delete: bool) -> AbstractResult<()> {
-        self.env.create_mutable_binding(name, can_delete)
+    fn create_mutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        can_delete: bool,
+    ) -> AbstractResult<()> {
+        self.env.create_mutable_binding(cx, name, can_delete)
     }
 
-    fn create_immutable_binding(&mut self, name: String, is_strict: bool) -> AbstractResult<()> {
-        self.env.create_immutable_binding(name, is_strict)
+    fn create_immutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        is_strict: bool,
+    ) -> AbstractResult<()> {
+        self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(&mut self, name: &str, value: Value) -> AbstractResult<()> {
-        self.env.initialize_binding(name, value)
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        value: Value,
+    ) -> AbstractResult<()> {
+        self.env.initialize_binding(cx, name, value)
     }
 
     fn set_mutable_binding(
         &mut self,
+        cx: &mut Context,
         name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        self.env.set_mutable_binding(name, value, is_strict)
+        self.env.set_mutable_binding(cx, name, value, is_strict)
     }
 
-    fn get_binding_value(&self, name: &str, is_strict: bool) -> AbstractResult<Value> {
-        self.env.get_binding_value(name, is_strict)
+    fn get_binding_value(
+        &self,
+        cx: &mut Context,
+        name: &str,
+        is_strict: bool,
+    ) -> AbstractResult<Value> {
+        self.env.get_binding_value(cx, name, is_strict)
     }
 
     fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
@@ -82,9 +103,9 @@ impl Environment for FunctionEnvironment {
 
 impl FunctionEnvironment {
     // 8.1.1.3.1 BindThisValue
-    fn bind_this_value(&mut self, value: Value) -> AbstractResult<Value> {
+    fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
-            return reference_error_("this is already initialized");
+            return reference_error_(cx, "this is already initialized");
         }
 
         self.this_value = value.clone();
@@ -94,9 +115,9 @@ impl FunctionEnvironment {
     }
 
     // 8.1.1.3.4 GetThisBinding
-    fn get_this_binding(&self) -> AbstractResult<Value> {
+    fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Uninitialized {
-            return reference_error_("this is not initialized");
+            return reference_error_(cx, "this is not initialized");
         }
 
         return self.this_value.clone().into();
@@ -105,8 +126,8 @@ impl FunctionEnvironment {
     // 8.1.1.3.5 GetSuperBase
     fn get_super_base(&self) -> AbstractResult<Value> {
         match &self.home_object {
-            None => Value::Undefined.into(),
-            Some(home) => home.borrow().get_prototype_of(),
+            None => Value::undefined().into(),
+            Some(home) => home.as_ref().get_prototype_of(),
         }
     }
 }

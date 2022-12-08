@@ -1,4 +1,4 @@
-use crate::js::runtime::{completion::AbstractResult, value::Value};
+use crate::js::runtime::{completion::AbstractResult, value::Value, Context};
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
 
@@ -8,7 +8,12 @@ pub struct ModuleEnvironment {
 
 impl Environment for ModuleEnvironment {
     // 8.1.1.5.1 GetBindingValue
-    fn get_binding_value(&self, name: &str, is_strict: bool) -> AbstractResult<Value> {
+    fn get_binding_value(
+        &self,
+        cx: &mut Context,
+        name: &str,
+        is_strict: bool,
+    ) -> AbstractResult<Value> {
         unimplemented!()
     }
 
@@ -28,25 +33,41 @@ impl Environment for ModuleEnvironment {
         self.env.has_binding(name)
     }
 
-    fn create_mutable_binding(&mut self, name: String, can_delete: bool) -> AbstractResult<()> {
-        self.env.create_mutable_binding(name, can_delete)
+    fn create_mutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        can_delete: bool,
+    ) -> AbstractResult<()> {
+        self.env.create_mutable_binding(cx, name, can_delete)
     }
 
-    fn create_immutable_binding(&mut self, name: String, is_strict: bool) -> AbstractResult<()> {
-        self.env.create_immutable_binding(name, is_strict)
+    fn create_immutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        is_strict: bool,
+    ) -> AbstractResult<()> {
+        self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(&mut self, name: &str, value: Value) -> AbstractResult<()> {
-        self.env.initialize_binding(name, value)
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        value: Value,
+    ) -> AbstractResult<()> {
+        self.env.initialize_binding(cx, name, value)
     }
 
     fn set_mutable_binding(
         &mut self,
+        cx: &mut Context,
         name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        self.env.set_mutable_binding(name, value, is_strict)
+        self.env.set_mutable_binding(cx, name, value, is_strict)
     }
 
     fn has_super_binding(&self) -> bool {
@@ -61,7 +82,7 @@ impl Environment for ModuleEnvironment {
 impl ModuleEnvironment {
     // 8.1.1.5.4 GetThisBinding
     fn get_this_binding(&self) -> AbstractResult<Value> {
-        Value::Undefined.into()
+        Value::undefined().into()
     }
 
     // 8.1.1.5.5 CreateImportBinding

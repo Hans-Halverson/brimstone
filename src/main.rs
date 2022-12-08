@@ -25,8 +25,8 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         println!("{}", js::parser::print_program(&ast, &source));
     }
 
-    let mut agent = js::runtime::Agent::new();
-    js::runtime::evaluate(&mut agent, Rc::new(ast));
+    let mut cx = js::runtime::Context::new();
+    js::runtime::evaluate(&mut cx, Rc::new(ast));
 
     return Ok(());
 }

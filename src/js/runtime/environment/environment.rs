@@ -1,12 +1,13 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
 };
 
 use crate::js::runtime::{
     completion::AbstractResult,
+    gc::Gc,
     value::{ObjectValue, Value},
+    Context,
 };
 
 use super::{
@@ -24,8 +25,8 @@ pub struct LexicalEnvironment {
 impl LexicalEnvironment {
     // 8.1.2.5 NewGlobalEnvironment
     pub fn new_global_environment(
-        global_obj: Rc<RefCell<ObjectValue>>,
-        global_this_val: Rc<RefCell<ObjectValue>>,
+        global_obj: Gc<ObjectValue>,
+        global_this_val: Gc<ObjectValue>,
     ) -> LexicalEnvironment {
         let object_env = ObjectEnvironment {
             bindings: HashMap::new(),
@@ -65,16 +66,37 @@ impl LexicalEnvironment {
 // 8.1.1 Environment Record
 pub trait Environment {
     fn has_binding(&self, name: &str) -> AbstractResult<bool>;
-    fn create_mutable_binding(&mut self, name: String, can_delete: bool) -> AbstractResult<()>;
-    fn create_immutable_binding(&mut self, name: String, is_strict: bool) -> AbstractResult<()>;
-    fn initialize_binding(&mut self, name: &str, value: Value) -> AbstractResult<()>;
+    fn create_mutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        can_delete: bool,
+    ) -> AbstractResult<()>;
+    fn create_immutable_binding(
+        &mut self,
+        cx: &mut Context,
+        name: String,
+        is_strict: bool,
+    ) -> AbstractResult<()>;
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        value: Value,
+    ) -> AbstractResult<()>;
     fn set_mutable_binding(
         &mut self,
+        cx: &mut Context,
         name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()>;
-    fn get_binding_value(&self, name: &str, _is_strict: bool) -> AbstractResult<Value>;
+    fn get_binding_value(
+        &self,
+        cx: &mut Context,
+        name: &str,
+        _is_strict: bool,
+    ) -> AbstractResult<Value>;
     fn delete_binding(&mut self, name: &str) -> AbstractResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;

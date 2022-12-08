@@ -1,9 +1,9 @@
-use crate::js::parser::ast;
+use std::rc::Rc;
 
-use std::{collections::HashSet, rc::Rc};
-
+use super::Context;
 use super::{completion::Completion, realm::Realm, value::Value};
 
+use crate::js::parser::ast;
 use crate::js::runtime::environment::environment::LexicalEnvironment;
 
 // 8.3 Execution Context
@@ -16,47 +16,22 @@ pub struct ExecutionContext {
     pub variable_env: Rc<LexicalEnvironment>,
 }
 
-/// 8.6 Agent
-pub struct Agent {
-    execution_context_stack: Vec<ExecutionContext>,
-}
-
-impl Agent {
-    pub fn new() -> Agent {
-        Agent {
-            execution_context_stack: vec![],
-        }
-    }
-
-    pub fn push_execution_context(&mut self, exec_ctx: ExecutionContext) {
-        self.execution_context_stack.push(exec_ctx)
-    }
-
-    pub fn pop_execution_context(&mut self) {
-        self.execution_context_stack.pop();
-    }
-
-    pub fn current_execution_context(&mut self) -> &mut ExecutionContext {
-        self.execution_context_stack.last_mut().unwrap()
-    }
-}
-
 /// 15.1.10 ScriptEvaluation
-pub fn evaluate(agent: &mut Agent, program: Rc<ast::Program>) -> Completion {
+pub fn evaluate(cx: &mut Context, program: Rc<ast::Program>) -> Completion {
     // TODO: Figure out realm creation, create initial realm and use by default
-    let realm = Realm::new();
+    let realm = Realm::new(cx);
 
     let global_env = realm.global_env.clone();
 
-    let script_ctx = ExecutionContext {
+    let script_ctx = cx.heap.alloc(ExecutionContext {
         function: None,
         realm,
         program: Some(program.clone()),
         lexical_env: global_env.clone(),
         variable_env: global_env.clone(),
-    };
+    });
 
-    agent.push_execution_context(script_ctx);
+    cx.push_execution_context(script_ctx);
 
     let mut result = global_declaration_initialization(&program, &global_env);
 
@@ -65,10 +40,10 @@ pub fn evaluate(agent: &mut Agent, program: Rc<ast::Program>) -> Completion {
     }
 
     if let Completion::Normal(None) = result {
-        result = Completion::Normal(Some(Value::Undefined));
+        result = Completion::Normal(Some(Value::undefined()));
     }
 
-    agent.pop_execution_context();
+    cx.pop_execution_context();
 
     return result;
 }

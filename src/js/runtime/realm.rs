@@ -1,14 +1,14 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use super::{
-    completion::Completion, environment::environment::LexicalEnvironment,
-    runtime::ExecutionContext, value::ObjectValue, Agent,
+    completion::Completion, environment::environment::LexicalEnvironment, gc::Gc,
+    runtime::ExecutionContext, value::ObjectValue, Context,
 };
 
 // 8.2 Realm Record
 pub struct Realm {
     pub global_env: Rc<LexicalEnvironment>,
-    global_obj: Rc<RefCell<ObjectValue>>,
+    global_obj: Gc<ObjectValue>,
     instrinsics: Intrinsics,
 }
 
@@ -16,12 +16,13 @@ type Intrinsics = HashMap<String, ObjectValue>;
 
 impl Realm {
     // 8.2.1 CreateRealm
-    pub fn new() -> Realm {
+    pub fn new(cx: &mut Context) -> Realm {
         // Realm record must be created before setting up instrinsics, as realm must be referenced
         // during instrinsic creation.
         let mut realm = Realm {
             global_env: Rc::new(LexicalEnvironment::placeholder()),
-            global_obj: Rc::new(RefCell::new(ObjectValue::EMPTY)),
+            // TODO: Set to empty object instead of allocating
+            global_obj: cx.heap.alloc_object(),
             instrinsics: HashMap::new(),
         };
 
@@ -36,12 +37,12 @@ impl Realm {
     }
 
     // 8.2.3 SetRealmGlobalObject
-    fn set_global_object(&mut self) {
+    fn set_global_object(&mut self, cx: &mut Context) {
         // TODO: Create global object from OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]])
-        let global_obj = Rc::new(RefCell::new(ObjectValue::EMPTY));
-        let this_val = global_obj.clone();
+        let global_obj = cx.heap.alloc_object();
+        let this_val = global_obj;
 
-        self.global_obj = global_obj.clone();
+        self.global_obj = global_obj;
         self.global_env = Rc::new(LexicalEnvironment::new_global_environment(
             global_obj, this_val,
         ));
@@ -49,24 +50,25 @@ impl Realm {
 
     // 8.2.4 SetDefaultGlobalBindings
     fn set_default_global_bindings(&mut self) {
-        // TODO: Add global bindings to global object
+        unimplemented!()
     }
 }
 
 // 8.5 InitializeHostDefinedRealm
-pub fn initialize_host_defined_realm(agent: &mut Agent) -> Completion {
-    let exec_ctx = ExecutionContext {
+pub fn initialize_host_defined_realm(cx: &mut Context) -> Completion {
+    let realm = Realm::new(cx);
+    let mut exec_ctx = cx.heap.alloc(ExecutionContext {
         program: None,
-        realm: Realm::new(),
+        realm,
         function: None,
         lexical_env: Rc::new(LexicalEnvironment::placeholder()),
         variable_env: Rc::new(LexicalEnvironment::placeholder()),
-    };
+    });
 
-    agent.push_execution_context(exec_ctx);
+    cx.push_execution_context(exec_ctx);
 
-    let realm = &mut agent.current_execution_context().realm;
-    realm.set_global_object();
+    let realm = &mut exec_ctx.as_mut().realm;
+    realm.set_global_object(cx);
     realm.set_default_global_bindings();
 
     Completion::empty()

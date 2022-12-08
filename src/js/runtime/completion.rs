@@ -25,7 +25,7 @@ impl From<Value> for Completion {
 impl From<bool> for Completion {
     #[inline]
     fn from(value: bool) -> Self {
-        Completion::Normal(Some(Value::Bool(value)))
+        Completion::Normal(Some(Value::bool(value)))
     }
 }
 

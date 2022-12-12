@@ -1,39 +1,39 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::Context;
-use super::{completion::Completion, realm::Realm, value::Value};
+use super::environment::environment::to_trait_object;
+use super::environment::global_environment::GlobalEnvironment;
+use super::execution_context::{Script, ScriptOrModule};
+use super::gc::Gc;
+use super::{
+    completion::Completion, execution_context::ExecutionContext, realm::Realm, value::Value,
+    Context,
+};
 
 use crate::js::parser::ast;
-use crate::js::runtime::environment::environment::LexicalEnvironment;
-
-// 8.3 Execution Context
-pub struct ExecutionContext {
-    // Root AST node. Called script_or_module in spec.
-    pub program: Option<Rc<ast::Program>>,
-    pub realm: Realm,
-    pub function: Option<Value>,
-    pub lexical_env: Rc<LexicalEnvironment>,
-    pub variable_env: Rc<LexicalEnvironment>,
-}
 
 /// 15.1.10 ScriptEvaluation
-pub fn evaluate(cx: &mut Context, program: Rc<ast::Program>) -> Completion {
-    // TODO: Figure out realm creation, create initial realm and use by default
-    let realm = Realm::new(cx);
+pub fn evaluate_script(
+    cx: &mut Context,
+    program: Rc<ast::Program>,
+    realm: Rc<RefCell<Realm>>,
+) -> Completion {
+    let script = cx.heap.alloc(Script::new(program.clone(), realm.clone()));
 
-    let global_env = realm.global_env.clone();
+    let global_env = realm.borrow().global_env.clone();
+    let global_env_object = to_trait_object(global_env);
 
     let script_ctx = cx.heap.alloc(ExecutionContext {
         function: None,
         realm,
-        program: Some(program.clone()),
-        lexical_env: global_env.clone(),
-        variable_env: global_env.clone(),
+        script_or_module: Some(ScriptOrModule::Script(script)),
+        lexical_env: global_env_object,
+        variable_env: global_env_object,
     });
 
     cx.push_execution_context(script_ctx);
 
-    let mut result = global_declaration_initialization(&program, &global_env);
+    let mut result = global_declaration_initialization(&program, global_env);
 
     if let Completion::Normal(_) = result {
         result = evaluate_program(&program);
@@ -51,7 +51,7 @@ pub fn evaluate(cx: &mut Context, program: Rc<ast::Program>) -> Completion {
 /// 15.1.11 GlobalDeclarationInitialization
 pub fn global_declaration_initialization(
     script: &ast::Program,
-    env: &LexicalEnvironment,
+    env: Gc<GlobalEnvironment>,
 ) -> Completion {
     // First gather all toplevel names
     // let mut lex_names = HashSet::new();

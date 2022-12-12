@@ -1,4 +1,7 @@
-use super::value::Value;
+use super::{
+    gc::Gc,
+    value::{ObjectValue, Value},
+};
 
 /// 6.2.3 Completion Record
 pub enum Completion {
@@ -39,6 +42,13 @@ impl<T> From<T> for AbstractResult<T> {
     #[inline]
     fn from(value: T) -> Self {
         AbstractResult::Ok(value)
+    }
+}
+
+impl From<Gc<ObjectValue>> for AbstractResult<Value> {
+    #[inline]
+    fn from(value: Gc<ObjectValue>) -> Self {
+        AbstractResult::Ok(value.into())
     }
 }
 

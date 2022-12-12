@@ -1,11 +1,11 @@
 use std::ptr::NonNull;
 
 /// A pointer to a value in the GC heap.
-pub struct Gc<T> {
+pub struct Gc<T: ?Sized> {
     ptr: NonNull<T>,
 }
 
-impl<T> Gc<T> {
+impl<T: ?Sized> Gc<T> {
     pub const fn as_ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }
@@ -19,22 +19,22 @@ impl<T> Gc<T> {
     }
 }
 
-impl<T> AsRef<T> for Gc<T> {
+impl<T: ?Sized> AsRef<T> for Gc<T> {
     fn as_ref(&self) -> &T {
         unsafe { self.ptr.as_ref() }
     }
 }
 
-impl<T> AsMut<T> for Gc<T> {
+impl<T: ?Sized> AsMut<T> for Gc<T> {
     fn as_mut(&mut self) -> &mut T {
         unsafe { self.ptr.as_mut() }
     }
 }
 
-impl<T> Clone for Gc<T> {
+impl<T: ?Sized> Clone for Gc<T> {
     fn clone(&self) -> Self {
         Gc { ptr: self.ptr }
     }
 }
 
-impl<T> Copy for Gc<T> {}
+impl<T: ?Sized> Copy for Gc<T> {}

@@ -1,6 +1,6 @@
 use super::{
+    execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
-    runtime::ExecutionContext,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -29,5 +29,13 @@ impl Context {
 
     pub fn current_execution_context(&mut self) -> Gc<ExecutionContext> {
         self.execution_context_stack.last_mut().unwrap().clone()
+    }
+
+    // 8.3.1 GetActiveScriptOrModule
+    fn get_active_script_or_module(&self) -> Option<ScriptOrModule> {
+        self.execution_context_stack
+            .iter()
+            .rev()
+            .find_map(|exec_ctx| exec_ctx.as_ref().script_or_module)
     }
 }

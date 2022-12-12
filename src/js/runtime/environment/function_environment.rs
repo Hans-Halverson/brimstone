@@ -1,5 +1,3 @@
-use std::{collections::HashMap, rc::Rc};
-
 use crate::js::runtime::{
     completion::AbstractResult,
     error::reference_error_,
@@ -8,10 +6,7 @@ use crate::js::runtime::{
     Context,
 };
 
-use super::{
-    declarative_environment::DeclarativeEnvironment,
-    environment::{Environment, LexicalEnvironment},
-};
+use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
 
 pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
@@ -19,7 +14,7 @@ pub struct FunctionEnvironment {
     this_binding_status: ThisBindingStatus,
     function_object: Gc<FunctionValue>,
     home_object: Option<Gc<ObjectValue>>,
-    new_target: Option<Gc<ObjectValue>>,
+    pub new_target: Value,
 }
 
 #[derive(PartialEq)]
@@ -32,31 +27,34 @@ pub enum ThisBindingStatus {
 
 impl FunctionEnvironment {
     // 8.1.2.4 NewFunctionEnvironment
-    fn new(function_object: Gc<FunctionValue>, new_target: Gc<ObjectValue>) -> LexicalEnvironment {
+    fn new(
+        cx: &mut Context,
+        function_object: Gc<FunctionValue>,
+        new_target: Value,
+    ) -> Gc<FunctionEnvironment> {
         let this_binding_status = if function_object.as_ref().this_mode == ThisMode::Lexical {
             ThisBindingStatus::Lexical
         } else {
             ThisBindingStatus::Uninitialized
         };
 
-        let decl_env = DeclarativeEnvironment {
-            bindings: HashMap::new(),
-        };
+        // Inner decl env contains the outer environment pointer
+        let decl_env =
+            DeclarativeEnvironment::new(Some(function_object.as_ref().environment.clone()));
 
-        let func_env = FunctionEnvironment {
+        cx.heap.alloc(FunctionEnvironment {
             env: decl_env,
             // This value is uninitialized on creation
             this_value: Value::undefined(),
             function_object,
             this_binding_status,
             home_object: function_object.as_ref().home_object,
-            new_target: Some(new_target),
-        };
+            new_target,
+        })
+    }
 
-        LexicalEnvironment {
-            env: Rc::new(func_env),
-            outer: Some(function_object.as_ref().environment.clone()),
-        }
+    fn as_function_environment(&self) -> Option<&FunctionEnvironment> {
+        Some(self)
     }
 }
 
@@ -73,6 +71,15 @@ impl Environment for FunctionEnvironment {
         }
 
         !self.home_object.is_none()
+    }
+
+    // 8.1.1.3.4 GetThisBinding
+    fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value> {
+        if self.this_binding_status == ThisBindingStatus::Uninitialized {
+            return reference_error_(cx, "this is not initialized");
+        }
+
+        return self.this_value.clone().into();
     }
 
     // All other methods inherited from DeclarativeEnvironment
@@ -134,6 +141,10 @@ impl Environment for FunctionEnvironment {
     fn with_base_object(&self) -> Value {
         self.env.with_base_object()
     }
+
+    fn outer(&self) -> Option<Gc<dyn Environment>> {
+        self.env.outer()
+    }
 }
 
 impl FunctionEnvironment {
@@ -147,15 +158,6 @@ impl FunctionEnvironment {
         self.this_binding_status = ThisBindingStatus::Initialized;
 
         value.into()
-    }
-
-    // 8.1.1.3.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value> {
-        if self.this_binding_status == ThisBindingStatus::Uninitialized {
-            return reference_error_(cx, "this is not initialized");
-        }
-
-        return self.this_value.clone().into();
     }
 
     // 8.1.1.3.5 GetSuperBase

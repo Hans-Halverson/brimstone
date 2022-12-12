@@ -26,7 +26,8 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     }
 
     let mut cx = js::runtime::Context::new();
-    js::runtime::evaluate(&mut cx, Rc::new(ast));
+    let realm = js::runtime::initialize_host_defined_realm(&mut cx);
+    js::runtime::evaluate_script(&mut cx, Rc::new(ast), realm);
 
     return Ok(());
 }

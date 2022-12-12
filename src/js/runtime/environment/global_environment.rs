@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::collections::HashSet;
 
 use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
@@ -11,7 +10,6 @@ use crate::js::runtime::{
 };
 use crate::{maybe_, maybe__, must_};
 
-use super::environment::LexicalEnvironment;
 use super::{
     declarative_environment::DeclarativeEnvironment, environment::Environment,
     object_environment::ObjectEnvironment,
@@ -33,30 +31,23 @@ pub struct GlobalEnvironment {
 impl GlobalEnvironment {
     // 8.1.2.5 NewGlobalEnvironment
     pub fn new(
+        cx: &mut Context,
         global_object: Gc<ObjectValue>,
         global_this_value: Gc<ObjectValue>,
-    ) -> LexicalEnvironment {
+    ) -> Gc<GlobalEnvironment> {
         let object_env = ObjectEnvironment {
             binding_object: global_object,
             with_environment: false,
+            outer: None,
         };
-        let decl_env = DeclarativeEnvironment {
-            bindings: HashMap::new(),
-        };
+        let decl_env = DeclarativeEnvironment::new(None);
 
-        let global_env = GlobalEnvironment {
+        cx.heap.alloc(GlobalEnvironment {
             object_env,
             global_this_value,
             decl_env,
             var_names: HashSet::new(),
-        };
-
-        let env = LexicalEnvironment {
-            env: Rc::new(global_env),
-            outer: None,
-        };
-
-        env
+        })
     }
 }
 
@@ -176,14 +167,18 @@ impl Environment for GlobalEnvironment {
     fn with_base_object(&self) -> Value {
         Value::undefined()
     }
+
+    // 8.1.1.4.11 GetThisBinding
+    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+        self.global_this_value.into()
+    }
+
+    fn outer(&self) -> Option<Gc<dyn Environment>> {
+        self.decl_env.outer()
+    }
 }
 
 impl GlobalEnvironment {
-    // 8.1.1.4.11 GetThisBinding
-    fn get_this_binding(&self) -> Gc<ObjectValue> {
-        self.global_this_value
-    }
-
     // 8.1.1.4.12 HasVarDeclaration
     fn has_var_declaration(&self, name: &str) -> bool {
         self.var_names.contains(name)

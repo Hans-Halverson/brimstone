@@ -1,6 +1,6 @@
-use std::{fmt, rc::Rc};
+use std::fmt;
 
-use super::{completion::AbstractResult, environment::environment::LexicalEnvironment, gc::Gc};
+use super::{completion::AbstractResult, environment::environment::Environment, gc::Gc};
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
 /// packing implementation in SerenityOS's LibWeb.
@@ -197,8 +197,6 @@ impl fmt::Display for StringValue {
 pub struct ObjectValue {}
 
 impl ObjectValue {
-    pub const EMPTY: ObjectValue = ObjectValue {};
-
     pub fn new_with_value_1(prop1: String, value1: Value) -> ObjectValue {
         unimplemented!()
     }
@@ -244,7 +242,7 @@ pub enum ThisMode {
 pub struct FunctionValue {
     // Object properties of this function
     object: ObjectValue,
-    pub environment: Rc<LexicalEnvironment>,
+    pub environment: Gc<dyn Environment>,
     pub this_mode: ThisMode,
     is_strict: bool,
     pub home_object: Option<Gc<ObjectValue>>,

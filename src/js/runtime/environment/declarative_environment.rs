@@ -3,6 +3,7 @@ use super::environment::Environment;
 use crate::js::runtime::{
     completion::AbstractResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
+    gc::Gc,
     value::Value,
     Context,
 };
@@ -33,6 +34,16 @@ impl Binding {
 // 8.1.1.1 Declarative Environment Record
 pub struct DeclarativeEnvironment {
     pub bindings: HashMap<String, Binding>,
+    outer: Option<Gc<dyn Environment>>,
+}
+
+impl DeclarativeEnvironment {
+    pub fn new(outer: Option<Gc<dyn Environment>>) -> DeclarativeEnvironment {
+        DeclarativeEnvironment {
+            bindings: HashMap::new(),
+            outer,
+        }
+    }
 }
 
 impl Environment for DeclarativeEnvironment {
@@ -151,5 +162,13 @@ impl Environment for DeclarativeEnvironment {
     // 8.1.1.1.10 WithBaseObject
     fn with_base_object(&self) -> Value {
         Value::undefined()
+    }
+
+    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+        panic!("DeclarativeEnvironment::get_this_binding is never called in spec")
+    }
+
+    fn outer(&self) -> Option<Gc<dyn Environment>> {
+        self.outer
     }
 }

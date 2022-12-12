@@ -1,11 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+use crate::js::runtime::{completion::AbstractResult, gc::Gc, value::Value, Context};
 
-use crate::js::runtime::{completion::AbstractResult, value::Value, Context};
-
-use super::{
-    declarative_environment::DeclarativeEnvironment,
-    environment::{Environment, LexicalEnvironment},
-};
+use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
 
 pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
@@ -13,17 +8,11 @@ pub struct ModuleEnvironment {
 
 impl ModuleEnvironment {
     // 8.1.2.6 NewModuleEnvironment
-    fn new(outer: Rc<LexicalEnvironment>) -> LexicalEnvironment {
-        let module_env = ModuleEnvironment {
-            env: DeclarativeEnvironment {
-                bindings: HashMap::new(),
-            },
-        };
-
-        LexicalEnvironment {
-            env: Rc::new(module_env),
-            outer: Some(outer),
-        }
+    fn new(cx: &mut Context, outer: Gc<dyn Environment>) -> Gc<ModuleEnvironment> {
+        // Inner decl env contains the outer environment pointer
+        cx.heap.alloc(ModuleEnvironment {
+            env: DeclarativeEnvironment::new(Some(outer)),
+        })
     }
 }
 
@@ -46,6 +35,11 @@ impl Environment for ModuleEnvironment {
     // 8.1.1.5.3 HasThisBinding
     fn has_this_binding(&self) -> bool {
         true
+    }
+
+    // 8.1.1.5.4 GetThisBinding
+    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+        Value::undefined().into()
     }
 
     // All other methods inherited from DeclarativeEnvironment
@@ -98,14 +92,13 @@ impl Environment for ModuleEnvironment {
     fn with_base_object(&self) -> Value {
         self.env.with_base_object()
     }
+
+    fn outer(&self) -> Option<Gc<dyn Environment>> {
+        self.env.outer()
+    }
 }
 
 impl ModuleEnvironment {
-    // 8.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self) -> AbstractResult<Value> {
-        Value::undefined().into()
-    }
-
     // 8.1.1.5.5 CreateImportBinding
     fn create_import_binding(&self) -> AbstractResult<Value> {
         unimplemented!()

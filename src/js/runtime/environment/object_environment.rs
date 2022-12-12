@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, get, has_property, set, to_boolean},
     completion::AbstractResult,
@@ -10,26 +8,27 @@ use crate::js::runtime::{
 };
 use crate::maybe_;
 
-use super::environment::{Environment, LexicalEnvironment};
+use super::environment::Environment;
 
 // 8.1.1.2 Object Environment Record
 pub struct ObjectEnvironment {
     pub binding_object: Gc<ObjectValue>,
     pub with_environment: bool,
+    pub outer: Option<Gc<dyn Environment>>,
 }
 
 impl ObjectEnvironment {
     // 8.1.2.3 NewObjectEnvironment
-    fn new(binding_object: Gc<ObjectValue>, outer: Rc<LexicalEnvironment>) -> LexicalEnvironment {
-        let obj_env = ObjectEnvironment {
+    fn new(
+        cx: &mut Context,
+        binding_object: Gc<ObjectValue>,
+        outer: Gc<dyn Environment>,
+    ) -> Gc<ObjectEnvironment> {
+        cx.heap.alloc(ObjectEnvironment {
             binding_object,
             with_environment: false,
-        };
-
-        LexicalEnvironment {
-            env: Rc::new(obj_env),
             outer: Some(outer),
-        }
+        })
     }
 }
 
@@ -150,5 +149,13 @@ impl Environment for ObjectEnvironment {
         }
 
         Value::undefined().into()
+    }
+
+    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+        panic!("ObjectEnvironment::get_this_binding is never called in spec")
+    }
+
+    fn outer(&self) -> Option<Gc<dyn Environment>> {
+        self.outer
     }
 }

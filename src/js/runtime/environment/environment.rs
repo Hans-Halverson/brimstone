@@ -1,5 +1,10 @@
 use crate::{
-    js::runtime::{completion::AbstractResult, gc::Gc, value::Value, Context},
+    js::runtime::{
+        completion::AbstractResult,
+        gc::{Gc, GcDeref},
+        value::Value,
+        Context,
+    },
     maybe_,
 };
 
@@ -59,6 +64,8 @@ pub trait Environment {
     }
 }
 
+impl GcDeref for dyn Environment {}
+
 pub struct Reference {
     base: ReferenceBase,
     name: String,
@@ -85,7 +92,7 @@ pub fn get_identifier_reference(
         }
         .into(),
         Some(env) => {
-            if maybe_!(env.as_ref().has_binding(name)) {
+            if maybe_!(env.has_binding(name)) {
                 Reference {
                     base: ReferenceBase::Env(env),
                     name: name.to_string(),
@@ -93,7 +100,7 @@ pub fn get_identifier_reference(
                 }
                 .into()
             } else {
-                get_identifier_reference(env.as_ref().outer(), name, is_strict)
+                get_identifier_reference(env.outer(), name, is_strict)
             }
         }
     }

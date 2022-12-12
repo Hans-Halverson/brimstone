@@ -1,7 +1,7 @@
 use super::{
     completion::AbstractResult,
     environment::environment::Environment,
-    gc::Gc,
+    gc::{Gc, GcDeref},
     object::OrdinaryObject,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property_descriptor::PropertyDescriptor,
@@ -25,6 +25,8 @@ pub struct Function {
     pub environment: Gc<dyn Environment>,
     pub home_object: Option<Gc<ObjectValue>>,
 }
+
+impl GcDeref for Function {}
 
 const FUNCTION_VTABLE: *const () = extract_object_vtable::<Function>();
 

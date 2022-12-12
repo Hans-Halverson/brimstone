@@ -36,6 +36,6 @@ impl Context {
         self.execution_context_stack
             .iter()
             .rev()
-            .find_map(|exec_ctx| exec_ctx.as_ref().script_or_module)
+            .find_map(|exec_ctx| exec_ctx.script_or_module)
     }
 }

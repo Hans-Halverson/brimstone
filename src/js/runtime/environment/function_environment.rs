@@ -34,15 +34,14 @@ impl FunctionEnvironment {
         function_object: Gc<Function>,
         new_target: Value,
     ) -> Gc<FunctionEnvironment> {
-        let this_binding_status = if function_object.as_ref().this_mode == ThisMode::Lexical {
+        let this_binding_status = if function_object.this_mode == ThisMode::Lexical {
             ThisBindingStatus::Lexical
         } else {
             ThisBindingStatus::Uninitialized
         };
 
         // Inner decl env contains the outer environment pointer
-        let decl_env =
-            DeclarativeEnvironment::new(Some(function_object.as_ref().environment.clone()));
+        let decl_env = DeclarativeEnvironment::new(Some(function_object.environment.clone()));
 
         cx.heap.alloc(FunctionEnvironment {
             env: decl_env,
@@ -50,7 +49,7 @@ impl FunctionEnvironment {
             this_value: Value::undefined(),
             function_object,
             this_binding_status,
-            home_object: function_object.as_ref().home_object,
+            home_object: function_object.home_object,
             new_target,
         })
     }

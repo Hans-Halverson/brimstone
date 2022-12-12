@@ -1,4 +1,7 @@
-use std::ptr::NonNull;
+use std::{
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 
 /// A pointer to a value in the GC heap.
 pub struct Gc<T: ?Sized> {
@@ -46,3 +49,20 @@ impl<T: ?Sized> Clone for Gc<T> {
 }
 
 impl<T: ?Sized> Copy for Gc<T> {}
+
+/// Marker trait to allow generic autoderef of a particular type.
+pub trait GcDeref {}
+
+impl<T: GcDeref + ?Sized> Deref for Gc<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl<T: GcDeref + ?Sized> DerefMut for Gc<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut()
+    }
+}

@@ -5,7 +5,7 @@ use crate::js::parser::ast;
 use super::{
     completion::AbstractResult,
     environment::environment::{get_identifier_reference, Environment, Reference},
-    gc::Gc,
+    gc::{Gc, GcDeref},
     object_value::ObjectValue,
     realm::Realm,
     value::Value,
@@ -20,6 +20,8 @@ pub struct ExecutionContext {
     pub lexical_env: Gc<dyn Environment>,
     pub variable_env: Gc<dyn Environment>,
 }
+
+impl GcDeref for ExecutionContext {}
 
 #[derive(Clone, Copy)]
 pub enum ScriptOrModule {
@@ -52,7 +54,7 @@ fn resolve_binding(
 ) -> AbstractResult<Reference> {
     let env = match env {
         Some(env) => env,
-        None => cx.current_execution_context().as_ref().lexical_env,
+        None => cx.current_execution_context().lexical_env,
     };
 
     // TODO: Check if currently evaluating strict mode code
@@ -63,35 +65,31 @@ fn resolve_binding(
 
 // 8.3.2 GetThisEnvironment
 fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
-    let mut current_env = cx.current_execution_context().as_ref().lexical_env;
+    let mut current_env = cx.current_execution_context().lexical_env;
     loop {
-        if current_env.as_ref().has_this_binding() {
+        if current_env.has_this_binding() {
             return current_env;
         }
 
         // Guaranteed to not be None as because the top level environment is always the global
         // environment, which as "this" defined.
-        current_env = current_env.as_ref().outer().unwrap();
+        current_env = current_env.outer().unwrap();
     }
 }
 
 // 8.3.4 ResolveThisBinding
 fn resolve_this_binding(cx: &mut Context) -> AbstractResult<Value> {
-    get_this_environment(cx).as_ref().get_this_binding(cx)
+    get_this_environment(cx).get_this_binding(cx)
 }
 
 // 8.3.5 GetNewTarget
 fn get_new_target(cx: &mut Context) -> Value {
     let this_env = get_this_environment(cx);
-    let func_env = this_env.as_ref().as_function_environment().unwrap();
+    let func_env = this_env.as_function_environment().unwrap();
     func_env.new_target
 }
 
 // 8.3.6 GetGlobalObject
 fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
-    cx.current_execution_context()
-        .as_ref()
-        .realm
-        .borrow()
-        .global_object
+    cx.current_execution_context().realm.borrow().global_object
 }

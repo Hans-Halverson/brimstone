@@ -2,6 +2,7 @@ use crate::{
     js::runtime::{
         completion::AbstractResult,
         gc::{Gc, GcDeref},
+        reference::{Reference, ReferenceBase},
         value::Value,
         Context,
     },
@@ -66,18 +67,6 @@ pub trait Environment {
 
 impl GcDeref for dyn Environment {}
 
-pub struct Reference {
-    base: ReferenceBase,
-    name: String,
-    is_strict: bool,
-}
-
-enum ReferenceBase {
-    // Can only be undefined, an Object, a Boolean, a String, a Symbol, a Number, or a BigInt
-    Value(Value),
-    Env(Gc<dyn Environment>),
-}
-
 // 8.1.2.1 GetIdentifierReference
 pub fn get_identifier_reference(
     env: Option<Gc<dyn Environment>>,
@@ -85,20 +74,10 @@ pub fn get_identifier_reference(
     is_strict: bool,
 ) -> AbstractResult<Reference> {
     match env {
-        None => Reference {
-            base: ReferenceBase::Value(Value::undefined()),
-            name: name.to_string(),
-            is_strict,
-        }
-        .into(),
+        None => Reference::new_value(Value::undefined(), name.to_string(), is_strict).into(),
         Some(env) => {
             if maybe_!(env.has_binding(name)) {
-                Reference {
-                    base: ReferenceBase::Env(env),
-                    name: name.to_string(),
-                    is_strict,
-                }
-                .into()
+                Reference::new_env(env, name.to_string(), is_strict).into()
             } else {
                 get_identifier_reference(env.outer(), name, is_strict)
             }

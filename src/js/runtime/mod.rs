@@ -10,6 +10,7 @@ mod object;
 mod object_value;
 mod property_descriptor;
 mod realm;
+mod reference;
 mod runtime;
 mod type_utilities;
 mod value;

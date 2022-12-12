@@ -4,10 +4,11 @@ use crate::js::parser::ast;
 
 use super::{
     completion::AbstractResult,
-    environment::environment::{get_identifier_reference, Environment, Reference},
+    environment::environment::{get_identifier_reference, Environment},
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
     realm::Realm,
+    reference::Reference,
     value::Value,
     Context,
 };
@@ -90,6 +91,6 @@ fn get_new_target(cx: &mut Context) -> Value {
 }
 
 // 8.3.6 GetGlobalObject
-fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
+pub fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
     cx.current_execution_context().realm.borrow().global_object
 }

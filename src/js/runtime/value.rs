@@ -42,6 +42,8 @@ const BOOL_TAG: u16 = 0b000 | NAN_TAG;
 
 const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
 const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
+const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
+const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
 
 #[derive(Clone, Copy)]
 pub struct Value {
@@ -86,6 +88,16 @@ impl Value {
     #[inline]
     pub fn is_string(&self) -> bool {
         self.has_tag(STRING_TAG)
+    }
+
+    #[inline]
+    pub fn is_symbol(&self) -> bool {
+        self.has_tag(SYMBOL_TAG)
+    }
+
+    #[inline]
+    pub fn is_bigint(&self) -> bool {
+        self.has_tag(BIGINT_TAG)
     }
 
     // Type casts

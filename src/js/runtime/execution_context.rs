@@ -6,8 +6,9 @@ use super::{
     completion::AbstractResult,
     environment::environment::{get_identifier_reference, Environment, Reference},
     gc::Gc,
+    object_value::ObjectValue,
     realm::Realm,
-    value::{ObjectValue, Value},
+    value::Value,
     Context,
 };
 

@@ -1,10 +1,11 @@
-use std::{cell::RefCell, collections::HashMap, mem::MaybeUninit, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
     environment::{environment::placeholder_environment, global_environment::GlobalEnvironment},
     execution_context::ExecutionContext,
     gc::Gc,
-    value::ObjectValue,
+    object::OrdinaryObject,
+    object_value::ObjectValue,
     Context,
 };
 
@@ -24,8 +25,8 @@ impl Realm {
         // during instrinsic creation.
         let mut realm = Realm {
             // Initialized in set_global_object
-            global_env: unsafe { MaybeUninit::uninit().assume_init() },
-            global_object: unsafe { MaybeUninit::uninit().assume_init() },
+            global_env: Gc::uninit(),
+            global_object: Gc::uninit(),
             instrinsics: HashMap::new(),
         };
 
@@ -42,7 +43,7 @@ impl Realm {
     // 8.2.3 SetRealmGlobalObject
     fn set_global_object(&mut self, cx: &mut Context) {
         // TODO: Create global object from OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]])
-        let global_object = cx.heap.alloc_object();
+        let global_object: Gc<ObjectValue> = cx.heap.alloc(OrdinaryObject::new()).into();
         let this_val = global_object;
 
         self.global_object = global_object;

@@ -5,7 +5,9 @@ use crate::js::runtime::{
     completion::{AbstractResult, Completion},
     error::type_error_,
     gc::Gc,
-    value::{ObjectValue, PropertyDescriptor, Value},
+    object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor,
+    value::Value,
     Context,
 };
 use crate::{maybe_, maybe__, must_};
@@ -192,13 +194,11 @@ impl GlobalEnvironment {
     // 8.1.1.4.14 HasRestrictedGlobalProperty
     fn has_restricted_global_property(&self, name: &str) -> AbstractResult<bool> {
         let global_object = &self.object_env.binding_object;
-        let existing_prop = maybe_!(global_object.as_ref().get_own_property(name));
+        let existing_prop = maybe_!(global_object.get_own_property(name));
 
-        if existing_prop.is_undefined() {
-            false.into()
-        } else {
-            let prop_val = existing_prop.as_object();
-            (!PropertyDescriptor::is_configurable(prop_val.as_ref())).into()
+        match existing_prop {
+            None => false.into(),
+            Some(existing_prop) => (!existing_prop.is_configurable()).into(),
         }
     }
 
@@ -215,22 +215,21 @@ impl GlobalEnvironment {
     // 8.1.1.4.16 CanDeclareGlobalFunction
     fn can_declare_global_function(&self, name: &str) -> AbstractResult<bool> {
         let global_object = self.object_env.binding_object;
-        let existing_prop = maybe_!(global_object.as_ref().get_own_property(name));
+        let existing_prop = maybe_!(global_object.get_own_property(name));
 
-        if existing_prop.is_undefined() {
-            is_extensible(global_object).into()
-        } else {
-            let prop_val = existing_prop.as_object();
-            let prop_val = prop_val.as_ref();
-            if PropertyDescriptor::is_configurable(prop_val) {
-                return true.into();
+        match existing_prop {
+            None => is_extensible(global_object).into(),
+            Some(existing_prop) => {
+                if existing_prop.is_configurable() {
+                    return true.into();
+                }
+
+                let result = existing_prop.is_data_descriptor()
+                    && existing_prop.is_writable()
+                    && existing_prop.is_enumerable();
+
+                result.into()
             }
-
-            let result = PropertyDescriptor::is_data_descriptor(prop_val)
-                && PropertyDescriptor::is_writable(prop_val)
-                && PropertyDescriptor::is_enumerable(prop_val);
-
-            result.into()
         }
     }
 
@@ -269,28 +268,17 @@ impl GlobalEnvironment {
         can_delete: bool,
     ) -> Completion {
         let global_object = self.object_env.binding_object;
-        let existing_prop = maybe__!(global_object.as_ref().get_own_property(&name));
+        let existing_prop = maybe__!(global_object.get_own_property(&name));
 
-        let is_complex_prop = if existing_prop.is_undefined() {
-            true
-        } else {
-            let object_val = existing_prop.as_object();
-            PropertyDescriptor::is_configurable(object_val.as_ref())
+        let is_writable = match existing_prop {
+            None => true,
+            Some(existing_prop) => existing_prop.is_configurable(),
         };
 
-        let prop_desc = if is_complex_prop {
-            ObjectValue::new_with_value_4(
-                "value".to_string(),
-                value.clone(),
-                "writable".to_string(),
-                true.into(),
-                "enumerable".to_string(),
-                true.into(),
-                "configurable".to_string(),
-                can_delete.into(),
-            )
+        let prop_desc = if is_writable {
+            PropertyDescriptor::data(value, true, true, can_delete)
         } else {
-            ObjectValue::new_with_value_1("value".to_string(), value.clone())
+            PropertyDescriptor::data_value_only(value)
         };
 
         maybe__!(define_property_or_throw(global_object, &name, prop_desc));

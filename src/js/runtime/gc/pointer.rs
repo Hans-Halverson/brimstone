@@ -19,6 +19,14 @@ impl<T: ?Sized> Gc<T> {
     }
 }
 
+impl<T> Gc<T> {
+    pub fn uninit() -> Gc<T> {
+        Gc {
+            ptr: NonNull::dangling(),
+        }
+    }
+}
+
 impl<T: ?Sized> AsRef<T> for Gc<T> {
     fn as_ref(&self) -> &T {
         unsafe { self.ptr.as_ref() }

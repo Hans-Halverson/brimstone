@@ -1,7 +1,6 @@
 use super::{
-    completion::AbstractResult,
-    gc::Gc,
-    value::{ObjectValue, Value},
+    completion::AbstractResult, gc::Gc, object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor, value::Value,
 };
 
 pub fn has_own_property(object: Gc<ObjectValue>, prop: &str) -> AbstractResult<bool> {
@@ -19,7 +18,7 @@ pub fn is_extensible(object: Gc<ObjectValue>) -> bool {
 pub fn define_property_or_throw(
     object: Gc<ObjectValue>,
     prop: &str,
-    prop_desc: ObjectValue,
+    prop_desc: PropertyDescriptor,
 ) -> AbstractResult<()> {
     unimplemented!()
 }
@@ -34,9 +33,5 @@ pub fn set(
     value: Value,
     should_throw: bool,
 ) -> AbstractResult<bool> {
-    unimplemented!()
-}
-
-pub fn to_boolean(value: &Value) -> bool {
     unimplemented!()
 }

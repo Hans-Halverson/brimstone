@@ -1,9 +1,12 @@
 use crate::js::runtime::{
-    abstract_operations::{define_property_or_throw, get, has_property, set, to_boolean},
+    abstract_operations::{define_property_or_throw, get, has_property, set},
     completion::AbstractResult,
     error::err_not_defined_,
     gc::Gc,
-    value::{ObjectValue, Value},
+    object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor,
+    type_utilities::to_boolean,
+    value::Value,
     Context,
 };
 use crate::maybe_;
@@ -47,7 +50,7 @@ impl Environment for ObjectEnvironment {
             let unscopables = unscopables.as_object();
 
             let value = maybe_!(get(unscopables, name));
-            let blocked = to_boolean(&value);
+            let blocked = to_boolean(value);
             if blocked {
                 return false.into();
             }
@@ -63,17 +66,7 @@ impl Environment for ObjectEnvironment {
         name: String,
         can_delete: bool,
     ) -> AbstractResult<()> {
-        let prop_desc = ObjectValue::new_with_value_4(
-            "value".to_string(),
-            Value::undefined(),
-            "writable".to_string(),
-            true.into(),
-            "enumerable".to_string(),
-            true.into(),
-            "configurable".into(),
-            can_delete.into(),
-        );
-
+        let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
         define_property_or_throw(self.binding_object, &name, prop_desc)
     }
 
@@ -129,7 +122,7 @@ impl Environment for ObjectEnvironment {
 
     // 8.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
-        self.binding_object.as_mut().delete(name)
+        self.binding_object.delete(name)
     }
 
     // 8.1.1.2.8 HasThisBinding

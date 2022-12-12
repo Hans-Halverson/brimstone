@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{completion::AbstractResult, environment::environment::Environment, gc::Gc};
+use super::{function::Function, gc::Gc, object_value::ObjectValue};
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
 /// packing implementation in SerenityOS's LibWeb.
@@ -112,6 +112,11 @@ impl Value {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
+    // Casts
+    pub fn as_function(&self) -> Gc<Function> {
+        Gc::from_ptr(self.restore_pointer_bits())
+    }
+
     #[inline]
     pub fn as_string(&self) -> Gc<StringValue> {
         Gc::from_ptr(self.restore_pointer_bits())
@@ -168,9 +173,9 @@ impl From<bool> for Value {
     }
 }
 
-impl From<Gc<ObjectValue>> for Value {
-    fn from(value: Gc<ObjectValue>) -> Self {
-        Value::object(value)
+impl<T: Into<Gc<ObjectValue>>> From<T> for Value {
+    fn from(value: T) -> Self {
+        Value::object(value.into())
     }
 }
 
@@ -191,79 +196,5 @@ impl StringValue {
 impl fmt::Display for StringValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-pub struct ObjectValue {}
-
-impl ObjectValue {
-    pub fn new_with_value_1(prop1: String, value1: Value) -> ObjectValue {
-        unimplemented!()
-    }
-
-    pub fn new_with_value_4(
-        prop1: String,
-        value1: Value,
-        prop2: String,
-        value2: Value,
-        prop3: String,
-        value3: Value,
-        prop4: String,
-        value4: Value,
-    ) -> ObjectValue {
-        unimplemented!()
-    }
-
-    // Returns either a PropertyDescriptor or undefined
-    pub fn get_own_property(&self, prop: &str) -> AbstractResult<Value> {
-        unimplemented!()
-    }
-
-    pub fn get(&self, prop: &str) -> Value {
-        unimplemented!()
-    }
-
-    pub fn delete(&mut self, prop: &str) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    pub fn get_prototype_of(&self) -> AbstractResult<Value> {
-        unimplemented!()
-    }
-}
-
-#[derive(PartialEq)]
-pub enum ThisMode {
-    Lexical,
-    Strict,
-    Global,
-}
-
-pub struct FunctionValue {
-    // Object properties of this function
-    object: ObjectValue,
-    pub environment: Gc<dyn Environment>,
-    pub this_mode: ThisMode,
-    is_strict: bool,
-    pub home_object: Option<Gc<ObjectValue>>,
-}
-
-pub struct PropertyDescriptor;
-
-impl PropertyDescriptor {
-    pub fn is_configurable(prop: &ObjectValue) -> bool {
-        unimplemented!()
-    }
-
-    pub fn is_writable(prop: &ObjectValue) -> bool {
-        unimplemented!()
-    }
-
-    pub fn is_enumerable(prop: &ObjectValue) -> bool {
-        unimplemented!()
-    }
-
-    pub fn is_data_descriptor(prop: &ObjectValue) -> bool {
-        unimplemented!()
     }
 }

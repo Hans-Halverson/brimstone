@@ -1,8 +1,10 @@
 use crate::js::runtime::{
     completion::AbstractResult,
     error::reference_error_,
+    function::{Function, ThisMode},
     gc::Gc,
-    value::{FunctionValue, ObjectValue, ThisMode, Value},
+    object_value::ObjectValue,
+    value::Value,
     Context,
 };
 
@@ -12,7 +14,7 @@ pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
     this_binding_status: ThisBindingStatus,
-    function_object: Gc<FunctionValue>,
+    function_object: Gc<Function>,
     home_object: Option<Gc<ObjectValue>>,
     pub new_target: Value,
 }
@@ -29,7 +31,7 @@ impl FunctionEnvironment {
     // 8.1.2.4 NewFunctionEnvironment
     fn new(
         cx: &mut Context,
-        function_object: Gc<FunctionValue>,
+        function_object: Gc<Function>,
         new_target: Value,
     ) -> Gc<FunctionEnvironment> {
         let this_binding_status = if function_object.as_ref().this_mode == ThisMode::Lexical {
@@ -164,7 +166,7 @@ impl FunctionEnvironment {
     fn get_super_base(&self) -> AbstractResult<Value> {
         match &self.home_object {
             None => Value::undefined().into(),
-            Some(home) => home.as_ref().get_prototype_of(),
+            Some(home) => home.get_prototype_of(),
         }
     }
 }

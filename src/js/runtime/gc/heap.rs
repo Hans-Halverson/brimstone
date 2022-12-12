@@ -1,6 +1,6 @@
 use std::mem::{align_of, size_of};
 
-use crate::js::runtime::value::{ObjectValue, StringValue};
+use crate::js::runtime::value::StringValue;
 
 use super::pointer::Gc;
 
@@ -54,9 +54,5 @@ impl Heap {
 
     pub fn alloc_string(&mut self, str: String) -> Gc<StringValue> {
         self.alloc(StringValue::new(str))
-    }
-
-    pub fn alloc_object(&mut self) -> Gc<ObjectValue> {
-        self.alloc(ObjectValue {})
     }
 }

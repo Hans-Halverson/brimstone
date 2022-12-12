@@ -17,11 +17,11 @@ fn reference_error_value(cx: &mut Context, message: &str) -> Value {
 }
 
 pub fn type_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::Throw(reference_error_value(cx, message))
+    Completion::Throw(type_error_value(cx, message))
 }
 
 pub fn reference_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::Throw(type_error_value(cx, message))
+    Completion::Throw(reference_error_value(cx, message))
 }
 
 pub fn type_error_<T>(cx: &mut Context, message: &str) -> AbstractResult<T> {

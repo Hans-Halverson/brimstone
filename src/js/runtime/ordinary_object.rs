@@ -5,12 +5,11 @@ use crate::{maybe_, must_};
 use super::{
     abstract_operations::{call, create_data_property, get, get_function_realm},
     completion::AbstractResult,
-    function::Function,
-    gc::Gc,
+    gc::{Gc, GcDeref},
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property::Property,
     property_descriptor::PropertyDescriptor,
-    type_utilities::{same_function_value, same_object_value, same_opt_object_value, same_value},
+    type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
     Context,
 };
@@ -25,6 +24,8 @@ pub struct OrdinaryObject {
     properties: HashMap<String, Property>,
     is_extensible: bool,
 }
+
+impl GcDeref for OrdinaryObject {}
 
 const ORDINARY_OBJECT_VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
 
@@ -310,12 +311,12 @@ pub fn validate_and_apply_property_descriptor(
     } else {
         if !current_desc.is_configurable() {
             match desc.get {
-                Some(get) if !same_function_value(get, current_desc.get.unwrap()) => return false,
+                Some(get) if !same_object_value(get, current_desc.get.unwrap()) => return false,
                 _ => {}
             }
 
             match desc.set {
-                Some(set) if !same_function_value(set, current_desc.set.unwrap()) => return false,
+                Some(set) if !same_object_value(set, current_desc.set.unwrap()) => return false,
                 _ => {}
             }
 
@@ -490,7 +491,7 @@ pub fn ordinary_object_create(cx: &mut Context, proto: &str) -> Gc<OrdinaryObjec
 }
 
 pub fn ordinary_create_from_constructor(
-    constructor: Gc<Function>,
+    constructor: Gc<ObjectValue>,
     intrinsic_default_proto: &str,
 ) -> Gc<OrdinaryObject> {
     unimplemented!()
@@ -499,7 +500,7 @@ pub fn ordinary_create_from_constructor(
 // 9.1.14 GetPrototypeFromConstructor
 pub fn get_prototype_from_constructor(
     cx: &mut Context,
-    constructor: Gc<Function>,
+    constructor: Gc<ObjectValue>,
     intrinsic_default_proto: &str,
 ) -> AbstractResult<Gc<ObjectValue>> {
     let proto = maybe_!(get(cx, constructor.into(), "prototype"));

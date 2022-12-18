@@ -1,0 +1,12 @@
+[package]
+name = "wrap_ordinary_object"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+proc-macro2 = true
+
+[dependencies]
+syn = "1.0.106"
+quote = "1.0.22"

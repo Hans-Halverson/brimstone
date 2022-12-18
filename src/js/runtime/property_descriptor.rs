@@ -4,10 +4,9 @@ use super::{
     abstract_operations::{get, has_property},
     completion::AbstractResult,
     error::type_error_,
-    function::Function,
     gc::Gc,
-    object::{ordinary_object_create, OrdinaryObject},
     object_value::ObjectValue,
+    ordinary_object::{ordinary_object_create, OrdinaryObject},
     type_utilities::{is_callable, to_boolean},
     value::Value,
     Context,
@@ -21,8 +20,8 @@ pub struct PropertyDescriptor {
     pub is_writable: Option<bool>,
     pub is_enumerable: Option<bool>,
     pub is_configurable: Option<bool>,
-    pub get: Option<Gc<Function>>,
-    pub set: Option<Gc<Function>>,
+    pub get: Option<Gc<ObjectValue>>,
+    pub set: Option<Gc<ObjectValue>>,
 }
 
 impl PropertyDescriptor {
@@ -43,8 +42,8 @@ impl PropertyDescriptor {
     }
 
     pub fn accessor(
-        get: Option<Gc<Function>>,
-        set: Option<Gc<Function>>,
+        get: Option<Gc<ObjectValue>>,
+        set: Option<Gc<ObjectValue>>,
         is_enumerable: bool,
         is_configurable: bool,
     ) -> PropertyDescriptor {
@@ -140,7 +139,7 @@ impl PropertyDescriptor {
 
 // 6.2.5.4 FromPropertyDescriptor
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<OrdinaryObject> {
-    let mut object = ordinary_object_create(cx, "%Object.prototype%");
+    let object = ordinary_object_create(cx, "%Object.prototype%");
 
     if let Some(value) = desc.value {
         must_!(create_data_property_or_throw(
@@ -239,7 +238,7 @@ pub fn to_property_descriptor(
             return type_error_(cx, "getter is not callable");
         }
         desc.get = if is_function {
-            Some(get.as_function())
+            Some(get.as_object())
         } else {
             None
         };
@@ -252,7 +251,7 @@ pub fn to_property_descriptor(
             return type_error_(cx, "setter is not callable");
         }
         desc.set = if is_function {
-            Some(set.as_function())
+            Some(set.as_object())
         } else {
             None
         };

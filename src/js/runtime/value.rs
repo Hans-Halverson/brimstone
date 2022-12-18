@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{function::Function, gc::Gc, object_value::ObjectValue};
+use super::{gc::Gc, object_value::ObjectValue};
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
 /// packing implementation in SerenityOS's LibWeb.
@@ -131,11 +131,6 @@ impl Value {
     }
 
     #[inline]
-    pub fn as_function(&self) -> Gc<Function> {
-        Gc::from_ptr(self.restore_pointer_bits())
-    }
-
-    #[inline]
     pub fn as_string(&self) -> Gc<StringValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
@@ -236,6 +231,6 @@ impl fmt::Display for StringValue {
 }
 
 pub struct AccessorValue {
-    pub get: Option<Gc<Function>>,
-    pub set: Option<Gc<Function>>,
+    pub get: Option<Gc<ObjectValue>>,
+    pub set: Option<Gc<ObjectValue>>,
 }

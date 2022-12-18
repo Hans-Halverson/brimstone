@@ -1,9 +1,11 @@
+use wrap_ordinary_object::wrap_ordinary_object;
+
 use super::{
     completion::AbstractResult,
     environment::environment::Environment,
     gc::{Gc, GcDeref},
-    object::OrdinaryObject,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
+    ordinary_object::OrdinaryObject,
     property_descriptor::PropertyDescriptor,
     value::Value,
     Context,
@@ -31,59 +33,35 @@ impl GcDeref for Function {}
 
 const FUNCTION_VTABLE: *const () = extract_object_vtable::<Function>();
 
+impl Function {
+    #[inline]
+    fn object(&self) -> &OrdinaryObject {
+        &self.object
+    }
+
+    #[inline]
+    fn object_mut(&mut self) -> &mut OrdinaryObject {
+        &mut self.object
+    }
+}
+
+#[wrap_ordinary_object]
 impl Object for Function {
-    fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
+    fn call(
+        &self,
+        _: &mut Context,
+        _this_argument: Value,
+        _arguments: Vec<Value>,
+    ) -> AbstractResult<Value> {
         unimplemented!()
     }
 
-    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn is_extensible(&self) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn prevent_extensions(&mut self) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>> {
-        unimplemented!()
-    }
-
-    fn define_own_property(
-        &mut self,
-        cx: &mut Context,
-        key: &str,
-        desc: PropertyDescriptor,
-    ) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn has_property(&self, key: &str) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
-        unimplemented!()
-    }
-
-    fn set(
-        &mut self,
-        cx: &mut Context,
-        key: &str,
-        value: Value,
-        receiver: Value,
-    ) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn delete(&mut self, key: &str) -> AbstractResult<bool> {
-        unimplemented!()
-    }
-
-    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
+    fn construct(
+        &self,
+        _: &mut Context,
+        _arguments: Vec<Value>,
+        _new_target: Gc<ObjectValue>,
+    ) -> AbstractResult<Gc<ObjectValue>> {
         unimplemented!()
     }
 }

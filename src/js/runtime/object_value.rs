@@ -52,6 +52,24 @@ pub trait Object {
     fn delete(&mut self, key: &str) -> AbstractResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
+
+    fn call(
+        &self,
+        _: &mut Context,
+        _this_argument: Value,
+        _arguments: Vec<Value>,
+    ) -> AbstractResult<Value> {
+        panic!("[[Call]] not implemented for this object")
+    }
+
+    fn construct(
+        &self,
+        _: &mut Context,
+        _arguments: Vec<Value>,
+        _new_target: Gc<ObjectValue>,
+    ) -> AbstractResult<Gc<ObjectValue>> {
+        panic!("[[Construct]] not implemented for this object")
+    }
 }
 
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used

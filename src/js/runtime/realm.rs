@@ -4,8 +4,8 @@ use super::{
     environment::{environment::placeholder_environment, global_environment::GlobalEnvironment},
     execution_context::ExecutionContext,
     gc::Gc,
-    object::OrdinaryObject,
     object_value::ObjectValue,
+    ordinary_object::OrdinaryObject,
     Context,
 };
 

@@ -1,6 +1,4 @@
-use super::{
-    completion::AbstractResult, function::Function, gc::Gc, object_value::ObjectValue, value::Value,
-};
+use super::{completion::AbstractResult, gc::Gc, object_value::ObjectValue, value::Value};
 
 pub fn to_boolean(value: Value) -> bool {
     unimplemented!()
@@ -35,10 +33,4 @@ pub fn same_opt_object_value(
         (Some(value1), Some(value2)) => value1 == value2,
         _ => false,
     }
-}
-
-// Specialization of SameValue for functions, checks object identity
-#[inline]
-pub fn same_function_value(value1: Gc<Function>, value2: Gc<Function>) -> bool {
-    value1 == value2
 }

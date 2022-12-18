@@ -1,9 +1,8 @@
 use crate::maybe_;
 
 use super::{
-    completion::AbstractResult, error::type_error_, function::Function, gc::Gc,
-    object_value::ObjectValue, property_descriptor::PropertyDescriptor, realm::Realm, value::Value,
-    Context,
+    completion::AbstractResult, error::type_error_, gc::Gc, object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor, realm::Realm, value::Value, Context,
 };
 
 // 7.3.2 Get
@@ -81,14 +80,14 @@ pub fn has_own_property(object: Gc<ObjectValue>, key: &str) -> AbstractResult<bo
 
 pub fn call(
     cx: &mut Context,
-    func: Gc<Function>,
+    func: Gc<ObjectValue>,
     receiver: Value,
     arguments: Vec<Value>,
 ) -> AbstractResult<Value> {
     unimplemented!()
 }
 
-pub fn get_function_realm(func: Gc<Function>) -> AbstractResult<Realm> {
+pub fn get_function_realm(func: Gc<ObjectValue>) -> AbstractResult<Realm> {
     unimplemented!()
 }
 

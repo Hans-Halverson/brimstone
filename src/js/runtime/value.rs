@@ -46,6 +46,10 @@ const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
 const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
 const ACCESSOR_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
 
+// Mask that converts a null tag to an undefined tag, so that a nullish check can be performed with:
+// TAG & NULLISH_MASK == UNDEFINED_TAG
+const NULLISH_TAG_MASK: u16 = 0xFFFD;
+
 #[derive(Clone, Copy)]
 pub struct Value {
     // Used as raw bitfield
@@ -74,6 +78,11 @@ impl Value {
     #[inline]
     pub fn is_null(&self) -> bool {
         self.has_tag(NULL_TAG)
+    }
+
+    #[inline]
+    pub fn is_nullish(&self) -> bool {
+        (((self.raw_bits >> TAG_SHIFT) as u16) & NULLISH_TAG_MASK) == UNDEFINED_TAG
     }
 
     #[inline]
@@ -195,6 +204,12 @@ impl Value {
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::bool(value)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::number(value)
     }
 }
 

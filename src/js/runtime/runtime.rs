@@ -33,7 +33,7 @@ pub fn evaluate_script(
 
     cx.push_execution_context(script_ctx);
 
-    let mut result = global_declaration_initialization(&program, global_env);
+    let mut result = global_declaration_instantiation(&program, global_env);
 
     if let Completion::Normal(_) = result {
         result = evaluate_program(&program);
@@ -48,8 +48,8 @@ pub fn evaluate_script(
     return result;
 }
 
-/// 15.1.11 GlobalDeclarationInitialization
-pub fn global_declaration_initialization(
+/// 15.1.11 GlobalDeclarationInstantiation
+pub fn global_declaration_instantiation(
     script: &ast::Program,
     env: Gc<GlobalEnvironment>,
 ) -> Completion {

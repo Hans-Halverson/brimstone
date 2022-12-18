@@ -486,7 +486,7 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
         .collect()
 }
 
-pub fn ordinary_object_create(cx: &mut Context, proto: &str) -> Gc<OrdinaryObject> {
+pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> OrdinaryObject {
     unimplemented!()
 }
 

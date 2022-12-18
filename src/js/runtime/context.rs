@@ -1,6 +1,9 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
+    realm::Realm,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -31,8 +34,12 @@ impl Context {
         self.execution_context_stack.last_mut().unwrap().clone()
     }
 
+    pub fn current_realm(&mut self) -> Rc<RefCell<Realm>> {
+        self.current_execution_context().realm.clone()
+    }
+
     // 8.3.1 GetActiveScriptOrModule
-    fn get_active_script_or_module(&self) -> Option<ScriptOrModule> {
+    pub fn get_active_script_or_module(&self) -> Option<ScriptOrModule> {
         self.execution_context_stack
             .iter()
             .rev()

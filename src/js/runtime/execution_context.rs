@@ -84,8 +84,8 @@ fn resolve_this_binding(cx: &mut Context) -> AbstractResult<Value> {
 }
 
 // 8.3.5 GetNewTarget
-fn get_new_target(cx: &mut Context) -> Value {
-    let this_env = get_this_environment(cx);
+fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
+    let mut this_env = get_this_environment(cx);
     let func_env = this_env.as_function_environment().unwrap();
     func_env.new_target
 }

@@ -4,7 +4,7 @@ use crate::js::runtime::{
     abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
     completion::{AbstractResult, Completion},
     error::type_error_,
-    gc::Gc,
+    gc::{Gc, GcDeref},
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     value::Value,
@@ -29,6 +29,8 @@ pub struct GlobalEnvironment {
 
     pub var_names: HashSet<String>,
 }
+
+impl GcDeref for GlobalEnvironment {}
 
 impl GlobalEnvironment {
     // 8.1.2.5 NewGlobalEnvironment

@@ -16,7 +16,7 @@ pub struct FunctionEnvironment {
     this_binding_status: ThisBindingStatus,
     function_object: Gc<Function>,
     home_object: Option<Gc<ObjectValue>>,
-    pub new_target: Value,
+    pub new_target: Option<Gc<ObjectValue>>,
 }
 
 #[derive(PartialEq)]
@@ -29,10 +29,10 @@ pub enum ThisBindingStatus {
 
 impl FunctionEnvironment {
     // 8.1.2.4 NewFunctionEnvironment
-    fn new(
+    pub fn new(
         cx: &mut Context,
         function_object: Gc<Function>,
-        new_target: Value,
+        new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<FunctionEnvironment> {
         let this_binding_status = if function_object.this_mode == ThisMode::Lexical {
             ThisBindingStatus::Lexical
@@ -53,13 +53,13 @@ impl FunctionEnvironment {
             new_target,
         })
     }
-
-    fn as_function_environment(&self) -> Option<&FunctionEnvironment> {
-        Some(self)
-    }
 }
 
 impl Environment for FunctionEnvironment {
+    fn as_function_environment(&mut self) -> Option<&mut FunctionEnvironment> {
+        Some(self)
+    }
+
     // 8.1.1.3.2 HasThisBinding
     fn has_this_binding(&self) -> bool {
         self.this_binding_status != ThisBindingStatus::Lexical
@@ -150,7 +150,7 @@ impl Environment for FunctionEnvironment {
 
 impl FunctionEnvironment {
     // 8.1.1.3.1 BindThisValue
-    fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<Value> {
+    pub fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
             return reference_error_(cx, "this is already initialized");
         }

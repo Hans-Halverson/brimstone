@@ -139,7 +139,10 @@ impl PropertyDescriptor {
 
 // 6.2.5.4 FromPropertyDescriptor
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<OrdinaryObject> {
-    let object = ordinary_object_create(cx, "%Object.prototype%");
+    let realm = cx.current_realm();
+    let object_prototype = realm.borrow().get_instrinsic("%Object.prototype%");
+    let ordinary_object = ordinary_object_create(cx, object_prototype);
+    let object = cx.heap.alloc(ordinary_object);
 
     if let Some(value) = desc.value {
         must_!(create_data_property_or_throw(

@@ -60,7 +60,7 @@ pub trait Environment {
     fn outer(&self) -> Option<Gc<dyn Environment>>;
 
     // Downcasts
-    fn as_function_environment(&self) -> Option<&FunctionEnvironment> {
+    fn as_function_environment(&mut self) -> Option<&mut FunctionEnvironment> {
         None
     }
 }

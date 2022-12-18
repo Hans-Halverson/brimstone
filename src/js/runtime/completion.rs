@@ -3,7 +3,7 @@ use super::{gc::Gc, object_value::ObjectValue, value::Value};
 /// 6.2.3 Completion Record
 pub enum Completion {
     Normal(Option<Value>),
-    Return(Option<Value>),
+    Return(Value),
     Throw(Value),
     Break,
     Continue,

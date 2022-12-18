@@ -13,10 +13,10 @@ use super::{
 pub struct Realm {
     pub global_env: Gc<GlobalEnvironment>,
     pub global_object: Gc<ObjectValue>,
-    instrinsics: Intrinsics,
+    pub instrinsics: Intrinsics,
 }
 
-type Intrinsics = HashMap<String, ObjectValue>;
+type Intrinsics = HashMap<String, Gc<ObjectValue>>;
 
 impl Realm {
     // 8.2.1 CreateRealm
@@ -53,6 +53,10 @@ impl Realm {
     // 8.2.4 SetDefaultGlobalBindings
     fn set_default_global_bindings(&mut self) {
         // TODO: Create default global bindings in realm
+    }
+
+    pub fn get_instrinsic(&self, name: &str) -> Gc<ObjectValue> {
+        self.instrinsics.get(name).unwrap().clone()
     }
 }
 

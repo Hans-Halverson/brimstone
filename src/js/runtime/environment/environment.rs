@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         completion::AbstractResult,
         gc::{Gc, GcDeref},
-        reference::{Reference, ReferenceBase},
+        reference::Reference,
         value::Value,
         Context,
     },

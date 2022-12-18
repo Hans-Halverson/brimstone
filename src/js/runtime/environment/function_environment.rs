@@ -162,9 +162,11 @@ impl FunctionEnvironment {
     }
 
     // 8.1.1.3.5 GetSuperBase
-    fn get_super_base(&self) -> AbstractResult<Value> {
+    // Returns an optional object. None represents either null or undefined, which are both treated
+    // the same by the only caller: MakeSuperPropertyReference.
+    fn get_super_base(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
         match &self.home_object {
-            None => Value::undefined().into(),
+            None => None.into(),
             Some(home) => home.get_prototype_of(),
         }
     }

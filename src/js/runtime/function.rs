@@ -6,6 +6,7 @@ use super::{
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property_descriptor::PropertyDescriptor,
     value::Value,
+    Context,
 };
 
 #[derive(PartialEq)]
@@ -31,7 +32,7 @@ impl GcDeref for Function {}
 const FUNCTION_VTABLE: *const () = extract_object_vtable::<Function>();
 
 impl Object for Function {
-    fn get_prototype_of(&self) -> AbstractResult<Value> {
+    fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
         unimplemented!()
     }
 
@@ -43,7 +44,7 @@ impl Object for Function {
         unimplemented!()
     }
 
-    fn prevent_extensions(&self) -> AbstractResult<bool> {
+    fn prevent_extensions(&mut self) -> AbstractResult<bool> {
         unimplemented!()
     }
 
@@ -51,7 +52,12 @@ impl Object for Function {
         unimplemented!()
     }
 
-    fn define_own_property(&mut self, key: &str, desc: PropertyDescriptor) -> AbstractResult<bool> {
+    fn define_own_property(
+        &mut self,
+        cx: &mut Context,
+        key: &str,
+        desc: PropertyDescriptor,
+    ) -> AbstractResult<bool> {
         unimplemented!()
     }
 
@@ -63,7 +69,13 @@ impl Object for Function {
         unimplemented!()
     }
 
-    fn set(&mut self, key: &str, value: Value, receiver: Value) -> AbstractResult<bool> {
+    fn set(
+        &mut self,
+        cx: &mut Context,
+        key: &str,
+        value: Value,
+        receiver: Value,
+    ) -> AbstractResult<bool> {
         unimplemented!()
     }
 
@@ -71,7 +83,7 @@ impl Object for Function {
         unimplemented!()
     }
 
-    fn own_property_keys(&self) -> AbstractResult<Vec<Value>> {
+    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
         unimplemented!()
     }
 }

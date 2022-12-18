@@ -42,6 +42,12 @@ impl<T: ?Sized> AsMut<T> for Gc<T> {
     }
 }
 
+impl<T: ?Sized> PartialEq for Gc<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr == other.ptr
+    }
+}
+
 impl<T: ?Sized> Clone for Gc<T> {
     fn clone(&self) -> Self {
         Gc { ptr: self.ptr }

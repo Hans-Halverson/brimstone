@@ -15,6 +15,7 @@ use super::{
 
 // 6.2.5 Property Attributes
 // Direct translation of spec. Leaves room for optimization in the future.
+#[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
     pub value: Option<Value>,
     pub is_writable: Option<bool>,
@@ -38,6 +39,22 @@ impl PropertyDescriptor {
             is_configurable: Some(is_configurable),
             get: None,
             set: None,
+        }
+    }
+
+    pub fn accessor(
+        get: Option<Gc<Function>>,
+        set: Option<Gc<Function>>,
+        is_enumerable: bool,
+        is_configurable: bool,
+    ) -> PropertyDescriptor {
+        PropertyDescriptor {
+            get,
+            set,
+            is_enumerable: Some(is_enumerable),
+            is_configurable: Some(is_configurable),
+            value: None,
+            is_writable: None,
         }
     }
 
@@ -71,6 +88,15 @@ impl PropertyDescriptor {
             None => false,
             Some(is_configurable) => is_configurable,
         }
+    }
+
+    pub fn has_no_fields(&self) -> bool {
+        self.value.is_none()
+            && self.get.is_none()
+            && self.set.is_none()
+            && self.is_writable.is_none()
+            && self.is_enumerable.is_none()
+            && self.is_configurable.is_none()
     }
 
     // 6.2.5.1 IsAccessorDescriptor

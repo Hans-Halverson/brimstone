@@ -1,6 +1,7 @@
 use std::mem::{transmute, transmute_copy};
 use std::ops::{Deref, DerefMut};
 
+use super::Context;
 use super::{
     completion::AbstractResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
 };
@@ -19,27 +20,38 @@ pub struct ObjectValue {
 pub type ObjectValueVtable = *const ();
 
 pub trait Object {
-    fn get_prototype_of(&self) -> AbstractResult<Value>;
+    fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>>;
 
     fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> AbstractResult<bool>;
 
     fn is_extensible(&self) -> AbstractResult<bool>;
 
-    fn prevent_extensions(&self) -> AbstractResult<bool>;
+    fn prevent_extensions(&mut self) -> AbstractResult<bool>;
 
     fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>>;
 
-    fn define_own_property(&mut self, key: &str, desc: PropertyDescriptor) -> AbstractResult<bool>;
+    fn define_own_property(
+        &mut self,
+        cx: &mut Context,
+        key: &str,
+        desc: PropertyDescriptor,
+    ) -> AbstractResult<bool>;
 
     fn has_property(&self, key: &str) -> AbstractResult<bool>;
 
     fn get(&self, key: &str, receiver: Value) -> AbstractResult<Value>;
 
-    fn set(&mut self, key: &str, value: Value, receiver: Value) -> AbstractResult<bool>;
+    fn set(
+        &mut self,
+        cx: &mut Context,
+        key: &str,
+        value: Value,
+        receiver: Value,
+    ) -> AbstractResult<bool>;
 
     fn delete(&mut self, key: &str) -> AbstractResult<bool>;
 
-    fn own_property_keys(&self) -> AbstractResult<Vec<Value>>;
+    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
 }
 
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used

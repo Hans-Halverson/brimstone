@@ -129,7 +129,7 @@ impl Reference {
                 };
 
                 let succeeded =
-                    maybe_!(base.set(self.get_referenced_name(), value, self.get_this_value()));
+                    maybe_!(base.set(cx, self.get_referenced_name(), value, self.get_this_value()));
                 if !succeeded && self.is_strict_reference() {
                     return type_error_(cx, &format!("Can't assign property {}", self.name));
                 }

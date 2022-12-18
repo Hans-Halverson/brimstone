@@ -1,6 +1,6 @@
 use super::{
-    completion::AbstractResult, gc::Gc, object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor, value::Value,
+    completion::AbstractResult, function::Function, gc::Gc, object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor, realm::Realm, value::Value,
 };
 
 pub fn has_own_property(object: Gc<ObjectValue>, prop: &str) -> AbstractResult<bool> {
@@ -33,5 +33,21 @@ pub fn set(
     value: Value,
     should_throw: bool,
 ) -> AbstractResult<bool> {
+    unimplemented!()
+}
+
+pub fn call(func: Gc<Function>, receiver: Value, arguments: Vec<Value>) -> AbstractResult<Value> {
+    unimplemented!()
+}
+
+pub fn create_data_property(
+    object: Gc<ObjectValue>,
+    key: &str,
+    value: Value,
+) -> AbstractResult<bool> {
+    unimplemented!()
+}
+
+pub fn get_function_realm(func: Gc<Function>) -> AbstractResult<Realm> {
     unimplemented!()
 }

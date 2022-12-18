@@ -8,6 +8,7 @@ mod function;
 mod gc;
 mod object;
 mod object_value;
+mod property;
 mod property_descriptor;
 mod realm;
 mod reference;

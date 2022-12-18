@@ -44,6 +44,7 @@ const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
 const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
 const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
 const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
+const ACCESSOR_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
 
 #[derive(Clone, Copy)]
 pub struct Value {
@@ -100,6 +101,11 @@ impl Value {
         self.has_tag(BIGINT_TAG)
     }
 
+    #[inline]
+    pub fn is_accessor(&self) -> bool {
+        self.has_tag(ACCESSOR_TAG)
+    }
+
     // Type casts
 
     #[inline]
@@ -124,13 +130,18 @@ impl Value {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
-    // Casts
+    #[inline]
     pub fn as_function(&self) -> Gc<Function> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
     pub fn as_string(&self) -> Gc<StringValue> {
+        Gc::from_ptr(self.restore_pointer_bits())
+    }
+
+    #[inline]
+    pub fn as_accessor(&self) -> Gc<AccessorValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
@@ -177,6 +188,13 @@ impl Value {
             raw_bits: ((STRING_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
         }
     }
+
+    #[inline]
+    pub fn accessor(value: Gc<AccessorValue>) -> Value {
+        Value {
+            raw_bits: ((ACCESSOR_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
+        }
+    }
 }
 
 impl From<bool> for Value {
@@ -197,6 +215,12 @@ impl From<Gc<StringValue>> for Value {
     }
 }
 
+impl From<Gc<AccessorValue>> for Value {
+    fn from(value: Gc<AccessorValue>) -> Self {
+        Value::accessor(value)
+    }
+}
+
 pub struct StringValue(String);
 
 impl StringValue {
@@ -209,4 +233,9 @@ impl fmt::Display for StringValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
+}
+
+pub struct AccessorValue {
+    pub get: Option<Gc<Function>>,
+    pub set: Option<Gc<Function>>,
 }

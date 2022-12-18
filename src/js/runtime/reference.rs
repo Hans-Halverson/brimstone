@@ -98,7 +98,7 @@ impl Reference {
                     must_!(to_object(value))
                 };
 
-                base.get(self.get_referenced_name(), self.get_this_value())
+                base.get(cx, self.get_referenced_name(), self.get_this_value())
             }
             ReferenceBase::Env(env) => {
                 env.get_binding_value(cx, self.get_referenced_name(), self.is_strict_reference())
@@ -114,7 +114,13 @@ impl Reference {
             }
 
             let global_obj = get_global_object(cx);
-            maybe_!(set(global_obj, self.get_referenced_name(), value, false));
+            maybe_!(set(
+                cx,
+                global_obj,
+                self.get_referenced_name(),
+                value,
+                false
+            ));
 
             return ().into();
         }

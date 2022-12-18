@@ -85,8 +85,8 @@ impl Environment for FunctionEnvironment {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, name: &str) -> AbstractResult<bool> {
-        self.env.has_binding(name)
+    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        self.env.has_binding(cx, name)
     }
 
     fn create_mutable_binding(
@@ -135,8 +135,8 @@ impl Environment for FunctionEnvironment {
         self.env.get_binding_value(cx, name, is_strict)
     }
 
-    fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
-        self.env.delete_binding(name)
+    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        self.env.delete_binding(cx, name)
     }
 
     fn with_base_object(&self) -> Value {

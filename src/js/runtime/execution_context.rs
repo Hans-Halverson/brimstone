@@ -61,7 +61,7 @@ fn resolve_binding(
     // TODO: Check if currently evaluating strict mode code
     let is_strict = false;
 
-    get_identifier_reference(Some(env), name, is_strict)
+    get_identifier_reference(cx, Some(env), name, is_strict)
 }
 
 // 8.3.2 GetThisEnvironment

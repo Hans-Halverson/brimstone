@@ -38,14 +38,6 @@ impl OrdinaryObject {
             is_extensible: true,
         }
     }
-
-    pub fn create_data_property_or_throw(
-        &mut self,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()> {
-        unimplemented!()
-    }
 }
 
 impl Object for OrdinaryObject {
@@ -120,8 +112,8 @@ impl Object for OrdinaryObject {
     }
 
     // 9.1.8 [[Get]]
-    fn get(&self, key: &str, receiver: Value) -> AbstractResult<Value> {
-        ordinary_get(self, key, receiver)
+    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
+        ordinary_get(cx, self, key, receiver)
     }
 
     // 9.1.9 [[Set]]
@@ -386,21 +378,26 @@ pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> AbstractResu
 }
 
 // 9.1.8.1 OrdinaryGet
-pub fn ordinary_get(object: &OrdinaryObject, key: &str, receiver: Value) -> AbstractResult<Value> {
+pub fn ordinary_get(
+    cx: &mut Context,
+    object: &OrdinaryObject,
+    key: &str,
+    receiver: Value,
+) -> AbstractResult<Value> {
     let desc = maybe_!(object.get_own_property(key));
     match desc {
         None => {
             let parent = maybe_!(object.get_prototype_of());
             match parent {
                 None => Value::undefined().into(),
-                Some(parent) => parent.get(key, receiver),
+                Some(parent) => parent.get(cx, key, receiver),
             }
         }
         Some(desc) if desc.is_data_descriptor() => desc.value.unwrap().into(),
         Some(PropertyDescriptor { get: None, .. }) => Value::undefined().into(),
         Some(PropertyDescriptor {
             get: Some(getter), ..
-        }) => call(getter, receiver, vec![]),
+        }) => call(cx, getter, receiver, vec![]),
     }
 }
 
@@ -438,7 +435,7 @@ pub fn ordinary_set(
         let mut receiver = receiver.as_object();
         let existing_descriptor = maybe_!(receiver.get_own_property(key));
         match existing_descriptor {
-            None => create_data_property(receiver, key, value),
+            None => create_data_property(cx, receiver, key, value),
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
                 return false.into()
             }
@@ -455,7 +452,7 @@ pub fn ordinary_set(
         match own_desc.set {
             None => false.into(),
             Some(setter) => {
-                maybe_!(call(setter, receiver, vec![value]));
+                maybe_!(call(cx, setter, receiver, vec![value]));
                 true.into()
             }
         }
@@ -501,10 +498,11 @@ pub fn ordinary_create_from_constructor(
 
 // 9.1.14 GetPrototypeFromConstructor
 pub fn get_prototype_from_constructor(
+    cx: &mut Context,
     constructor: Gc<Function>,
     intrinsic_default_proto: &str,
 ) -> AbstractResult<Gc<ObjectValue>> {
-    let proto = maybe_!(get(constructor.into(), "prototype"));
+    let proto = maybe_!(get(cx, constructor.into(), "prototype"));
     if proto.is_object() {
         proto.as_object().into()
     } else {

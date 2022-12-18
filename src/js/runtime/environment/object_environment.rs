@@ -37,7 +37,7 @@ impl ObjectEnvironment {
 
 impl Environment for ObjectEnvironment {
     // 8.1.1.2.1 HasBinding
-    fn has_binding(&self, name: &str) -> AbstractResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
         if !maybe_!(has_property(self.binding_object, name)) {
             return false.into();
         } else if !self.with_environment {
@@ -45,11 +45,11 @@ impl Environment for ObjectEnvironment {
         }
 
         // Ignore properties in @@unscopables
-        let unscopables = maybe_!(get(self.binding_object, "@@unscopables"));
+        let unscopables = maybe_!(get(cx, self.binding_object, "@@unscopables"));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe_!(get(unscopables, name));
+            let value = maybe_!(get(cx, unscopables, name));
             let blocked = to_boolean(value);
             if blocked {
                 return false.into();
@@ -67,7 +67,7 @@ impl Environment for ObjectEnvironment {
         can_delete: bool,
     ) -> AbstractResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
-        define_property_or_throw(self.binding_object, &name, prop_desc)
+        define_property_or_throw(cx, self.binding_object, &name, prop_desc)
     }
 
     // 8.1.1.2.3 CreateImmutableBinding
@@ -93,12 +93,12 @@ impl Environment for ObjectEnvironment {
     // 8.1.1.2.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        _: &mut Context,
+        cx: &mut Context,
         name: &str,
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        maybe_!(set(self.binding_object, name, value, is_strict));
+        maybe_!(set(cx, self.binding_object, name, value, is_strict));
         ().into()
     }
 
@@ -117,11 +117,11 @@ impl Environment for ObjectEnvironment {
             };
         }
 
-        get(self.binding_object, name)
+        get(cx, self.binding_object, name)
     }
 
     // 8.1.1.2.7 DeleteBinding
-    fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         self.binding_object.delete(name)
     }
 

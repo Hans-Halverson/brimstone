@@ -39,7 +39,7 @@ pub trait Object {
 
     fn has_property(&self, key: &str) -> AbstractResult<bool>;
 
-    fn get(&self, key: &str, receiver: Value) -> AbstractResult<Value>;
+    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value>;
 
     fn set(
         &mut self,

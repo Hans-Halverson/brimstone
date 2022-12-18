@@ -28,7 +28,7 @@ impl Environment for ModuleEnvironment {
     }
 
     // 8.1.1.5.2 DeleteBinding
-    fn delete_binding(&mut self, _name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, _name: &str) -> AbstractResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
@@ -44,8 +44,8 @@ impl Environment for ModuleEnvironment {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, name: &str) -> AbstractResult<bool> {
-        self.env.has_binding(name)
+    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        self.env.has_binding(cx, name)
     }
 
     fn create_mutable_binding(

@@ -65,7 +65,7 @@ impl Object for Function {
         unimplemented!()
     }
 
-    fn get(&self, key: &str, receiver: Value) -> AbstractResult<Value> {
+    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
         unimplemented!()
     }
 

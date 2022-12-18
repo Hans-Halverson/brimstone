@@ -48,7 +48,7 @@ impl DeclarativeEnvironment {
 
 impl Environment for DeclarativeEnvironment {
     // 8.1.1.1.1 HasBinding
-    fn has_binding(&self, name: &str) -> AbstractResult<bool> {
+    fn has_binding(&self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         self.bindings.contains_key(name).into()
     }
 
@@ -138,7 +138,7 @@ impl Environment for DeclarativeEnvironment {
     }
 
     // 8.1.1.1.7 DeleteBinding
-    fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         let binding = self.bindings.get(name).unwrap();
         if !binding.can_delete {
             return false.into();

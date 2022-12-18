@@ -55,12 +55,12 @@ impl GlobalEnvironment {
 
 impl Environment for GlobalEnvironment {
     // 8.1.1.4.1 HasBinding
-    fn has_binding(&self, name: &str) -> AbstractResult<bool> {
-        if must_!(self.decl_env.has_binding(name)) {
+    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        if must_!(self.decl_env.has_binding(cx, name)) {
             return true.into();
         }
 
-        self.object_env.has_binding(name)
+        self.object_env.has_binding(cx, name)
     }
 
     // 8.1.1.4.2 CreateMutableBinding
@@ -70,7 +70,7 @@ impl Environment for GlobalEnvironment {
         name: String,
         can_delete: bool,
     ) -> AbstractResult<()> {
-        if must_!(self.decl_env.has_binding(&name)) {
+        if must_!(self.decl_env.has_binding(cx, &name)) {
             return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
@@ -84,7 +84,7 @@ impl Environment for GlobalEnvironment {
         name: String,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        if must_!(self.decl_env.has_binding(&name)) {
+        if must_!(self.decl_env.has_binding(cx, &name)) {
             return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
@@ -98,7 +98,7 @@ impl Environment for GlobalEnvironment {
         name: &str,
         value: Value,
     ) -> AbstractResult<()> {
-        if must_!(self.decl_env.has_binding(name)) {
+        if must_!(self.decl_env.has_binding(cx, name)) {
             return self.decl_env.initialize_binding(cx, name, value);
         }
 
@@ -113,7 +113,7 @@ impl Environment for GlobalEnvironment {
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
-        if must_!(self.decl_env.has_binding(name)) {
+        if must_!(self.decl_env.has_binding(cx, name)) {
             return self
                 .decl_env
                 .set_mutable_binding(cx, name, value, is_strict);
@@ -130,7 +130,7 @@ impl Environment for GlobalEnvironment {
         name: &str,
         is_strict: bool,
     ) -> AbstractResult<Value> {
-        if must_!(self.decl_env.has_binding(&name)) {
+        if must_!(self.decl_env.has_binding(cx, &name)) {
             return self.decl_env.get_binding_value(cx, name, is_strict);
         }
 
@@ -138,13 +138,13 @@ impl Environment for GlobalEnvironment {
     }
 
     // 8.1.1.4.7 DeleteBinding
-    fn delete_binding(&mut self, name: &str) -> AbstractResult<bool> {
-        if must_!(self.decl_env.has_binding(&name)) {
-            return self.decl_env.delete_binding(name);
+    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        if must_!(self.decl_env.has_binding(cx, &name)) {
+            return self.decl_env.delete_binding(cx, name);
         }
 
         if maybe_!(has_own_property(self.object_env.binding_object, name)) {
-            let status = maybe_!(self.object_env.delete_binding(name));
+            let status = maybe_!(self.object_env.delete_binding(cx, name));
             if status {
                 self.var_names.remove(name);
             }
@@ -187,8 +187,8 @@ impl GlobalEnvironment {
     }
 
     // 8.1.1.4.13 HasLexicalDeclaration
-    fn has_lexical_declaration(&self, name: &str) -> AbstractResult<bool> {
-        self.decl_env.has_binding(name)
+    fn has_lexical_declaration(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+        self.decl_env.has_binding(cx, name)
     }
 
     // 8.1.1.4.14 HasRestrictedGlobalProperty
@@ -263,6 +263,7 @@ impl GlobalEnvironment {
     // 8.1.1.4.18 CreateGlobalFunctionBinding
     fn create_global_function_binding(
         &mut self,
+        cx: &mut Context,
         name: String,
         value: Value,
         can_delete: bool,
@@ -281,8 +282,13 @@ impl GlobalEnvironment {
             PropertyDescriptor::data_value_only(value)
         };
 
-        maybe__!(define_property_or_throw(global_object, &name, prop_desc));
-        maybe__!(set(global_object, &name, value, false));
+        maybe__!(define_property_or_throw(
+            cx,
+            global_object,
+            &name,
+            prop_desc
+        ));
+        maybe__!(set(cx, global_object, &name, value, false));
 
         if !(self.var_names.contains(&name)) {
             self.var_names.insert(name.to_string());

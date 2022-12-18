@@ -16,7 +16,7 @@ use super::{
 // 8.1.1 Environment Record
 pub trait Environment {
     // Environment functions from spec
-    fn has_binding(&self, name: &str) -> AbstractResult<bool>;
+    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
@@ -48,7 +48,7 @@ pub trait Environment {
         name: &str,
         _is_strict: bool,
     ) -> AbstractResult<Value>;
-    fn delete_binding(&mut self, name: &str) -> AbstractResult<bool>;
+    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Value;
@@ -69,6 +69,7 @@ impl GcDeref for dyn Environment {}
 
 // 8.1.2.1 GetIdentifierReference
 pub fn get_identifier_reference(
+    cx: &mut Context,
     env: Option<Gc<dyn Environment>>,
     name: &str,
     is_strict: bool,
@@ -76,10 +77,10 @@ pub fn get_identifier_reference(
     match env {
         None => Reference::new_value(Value::undefined(), name.to_string(), is_strict).into(),
         Some(env) => {
-            if maybe_!(env.has_binding(name)) {
+            if maybe_!(env.has_binding(cx, name)) {
                 Reference::new_env(env, name.to_string(), is_strict).into()
             } else {
-                get_identifier_reference(env.outer(), name, is_strict)
+                get_identifier_reference(cx, env.outer(), name, is_strict)
             }
         }
     }

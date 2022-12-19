@@ -5,6 +5,7 @@ use super::{
     completion::AbstractResult,
     error::type_error_,
     gc::Gc,
+    intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     ordinary_object::{ordinary_object_create, OrdinaryObject},
     type_utilities::{is_callable, to_boolean},
@@ -140,7 +141,7 @@ impl PropertyDescriptor {
 // 6.2.5.4 FromPropertyDescriptor
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<OrdinaryObject> {
     let realm = cx.current_realm();
-    let object_prototype = realm.borrow().get_instrinsic("%Object.prototype%");
+    let object_prototype = realm.borrow().get_intrinsic(Intrinsic::ObjectPrototype);
     let ordinary_object = ordinary_object_create(cx, object_prototype);
     let object = cx.heap.alloc(ordinary_object);
 

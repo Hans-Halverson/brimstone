@@ -72,3 +72,32 @@ impl<T: GcDeref + ?Sized> DerefMut for Gc<T> {
         self.as_mut()
     }
 }
+
+#[macro_export]
+macro_rules! impl_gc_into {
+    ($from:ident, $into:ident) => {
+        impl Into<Gc<$into>> for Gc<$from> {
+            fn into(self) -> Gc<$into> {
+                Gc::from_ptr(self.as_ref() as *const _ as *mut $into)
+            }
+        }
+
+        impl<'a> Into<&'a $into> for &'a $from {
+            fn into(self) -> &'a $into {
+                unsafe { &*((self as *const _) as *const $into) }
+            }
+        }
+
+        impl Into<Gc<$into>> for &$from {
+            fn into(self) -> Gc<$into> {
+                Gc::from_ptr(self as *const _ as *mut $into)
+            }
+        }
+
+        impl Into<Gc<$into>> for &mut $from {
+            fn into(self) -> Gc<$into> {
+                Gc::from_ptr(self as *const _ as *mut $into)
+            }
+        }
+    };
+}

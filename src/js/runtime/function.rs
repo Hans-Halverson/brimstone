@@ -2,7 +2,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{js::parser::ast, maybe_, must_};
+use crate::{
+    impl_gc_into,
+    js::{parser::ast, runtime::intrinsics::intrinsics::Intrinsic},
+    maybe_, must_,
+};
 
 use super::{
     abstract_operations::define_property_or_throw,
@@ -57,7 +61,9 @@ pub struct Function {
 
 impl GcDeref for Function {}
 
-const FUNCTION_VTABLE: *const () = extract_object_vtable::<Function>();
+impl_gc_into!(Function, ObjectValue);
+
+const VTABLE: *const () = extract_object_vtable::<Function>();
 
 impl Function {
     #[inline]
@@ -233,7 +239,7 @@ pub fn ordinary_function_create(
     let argument_count = expected_argument_count(&func_node);
 
     let func = Function {
-        _vtable: FUNCTION_VTABLE,
+        _vtable: VTABLE,
         is_strict,
         is_class_constructor: false,
         has_construct: false,
@@ -270,7 +276,7 @@ fn make_constructor(
             let object_prototype = cx
                 .current_realm()
                 .borrow()
-                .get_instrinsic("%Object.prototype%");
+                .get_intrinsic(Intrinsic::ObjectPrototype);
             let ordinary_object = ordinary_object_create(cx, object_prototype);
             let prototype = cx.heap.alloc(ordinary_object).into();
 
@@ -319,26 +325,8 @@ fn expected_argument_count(func_node: &ast::Function) -> u32 {
     unimplemented!()
 }
 
-impl<'a> Into<&'a ObjectValue> for &'a Function {
-    fn into(self) -> &'a ObjectValue {
-        unsafe { &*((self as *const _) as *const ObjectValue) }
-    }
-}
-
-impl Into<Gc<ObjectValue>> for Gc<Function> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self.as_ref() as *const _ as *mut ObjectValue)
-    }
-}
-
 impl Into<Gc<Function>> for &Function {
     fn into(self) -> Gc<Function> {
         Gc::from_ptr(self as *const _ as *mut Function)
-    }
-}
-
-impl Into<Gc<ObjectValue>> for &Function {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
     }
 }

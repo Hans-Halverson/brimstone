@@ -1,11 +1,12 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use super::{
     environment::{environment::placeholder_environment, global_environment::GlobalEnvironment},
     execution_context::ExecutionContext,
     gc::Gc,
+    intrinsics::intrinsics::{Intrinsic, Intrinsics},
     object_value::ObjectValue,
-    ordinary_object::OrdinaryObject,
+    ordinary_object::ordinary_object_create,
     Context,
 };
 
@@ -13,37 +14,31 @@ use super::{
 pub struct Realm {
     pub global_env: Gc<GlobalEnvironment>,
     pub global_object: Gc<ObjectValue>,
-    pub instrinsics: Intrinsics,
+    pub intrinsics: Intrinsics,
 }
-
-type Intrinsics = HashMap<String, Gc<ObjectValue>>;
 
 impl Realm {
     // 8.2.1 CreateRealm
     pub fn new(cx: &mut Context) -> Realm {
-        // Realm record must be created before setting up instrinsics, as realm must be referenced
-        // during instrinsic creation.
+        // Realm record must be created before setting up intrinsics, as realm must be referenced
+        // during intrinsic creation.
         let mut realm = Realm {
             // Initialized in set_global_object
             global_env: Gc::uninit(),
             global_object: Gc::uninit(),
-            instrinsics: HashMap::new(),
+            intrinsics: Intrinsics::new_uninit(),
         };
 
-        realm.create_intrinsics();
+        realm.intrinsics.initialize(cx);
 
         realm
     }
 
-    // 8.2.2 CreateIntrinsics
-    fn create_intrinsics(&mut self) {
-        // TODO: Create intrinsics for realm
-    }
-
     // 8.2.3 SetRealmGlobalObject
     fn set_global_object(&mut self, cx: &mut Context) {
-        // TODO: Create global object from OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]])
-        let global_object: Gc<ObjectValue> = cx.heap.alloc(OrdinaryObject::new()).into();
+        let ordinary_object =
+            ordinary_object_create(cx, self.get_intrinsic(Intrinsic::ObjectPrototype));
+        let global_object: Gc<ObjectValue> = cx.heap.alloc(ordinary_object).into();
         let this_val = global_object;
 
         self.global_object = global_object;
@@ -55,8 +50,8 @@ impl Realm {
         // TODO: Create default global bindings in realm
     }
 
-    pub fn get_instrinsic(&self, name: &str) -> Gc<ObjectValue> {
-        self.instrinsics.get(name).unwrap().clone()
+    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+        self.intrinsics.get(intrinsic)
     }
 }
 

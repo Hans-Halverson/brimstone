@@ -1,6 +1,9 @@
 use std::mem::{transmute, transmute_copy};
 use std::ops::{Deref, DerefMut};
 
+use crate::maybe_;
+
+use super::type_utilities::same_opt_object_value;
 use super::Context;
 use super::{
     completion::AbstractResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
@@ -70,6 +73,15 @@ pub trait Object {
     ) -> AbstractResult<Gc<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
     }
+}
+
+// 9.4.7.2 SetImmutablePrototype
+pub fn set_immutable_prototype(
+    object: Gc<ObjectValue>,
+    proto: Option<Gc<ObjectValue>>,
+) -> AbstractResult<bool> {
+    let current_proto = maybe_!(object.get_prototype_of());
+    same_opt_object_value(proto, current_proto).into()
 }
 
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used

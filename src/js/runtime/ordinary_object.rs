@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{maybe_, must_};
+use crate::{impl_gc_into, maybe_, must_};
 
 use super::{
     abstract_operations::{call, create_data_property, get, get_function_realm},
@@ -27,16 +27,17 @@ pub struct OrdinaryObject {
 
 impl GcDeref for OrdinaryObject {}
 
-const ORDINARY_OBJECT_VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
+impl_gc_into!(OrdinaryObject, ObjectValue);
+
+const VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
 
 impl OrdinaryObject {
-    pub fn new() -> OrdinaryObject {
+    pub fn new(prototype: Option<Gc<ObjectValue>>, is_extensible: bool) -> OrdinaryObject {
         OrdinaryObject {
-            _vtable: ORDINARY_OBJECT_VTABLE,
-            // TODO: Correct values for the following properties
-            prototype: None,
+            _vtable: VTABLE,
+            prototype,
             properties: HashMap::new(),
-            is_extensible: true,
+            is_extensible,
         }
     }
 }
@@ -136,30 +137,6 @@ impl Object for OrdinaryObject {
     // 9.1.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
         ordinary_own_property_keys(cx, self)
-    }
-}
-
-impl<'a> Into<&'a ObjectValue> for &'a OrdinaryObject {
-    fn into(self) -> &'a ObjectValue {
-        unsafe { &*((self as *const _) as *const ObjectValue) }
-    }
-}
-
-impl Into<Gc<ObjectValue>> for Gc<OrdinaryObject> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self.as_ref() as *const _ as *mut ObjectValue)
-    }
-}
-
-impl Into<Gc<ObjectValue>> for &OrdinaryObject {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
-    }
-}
-
-impl Into<Gc<ObjectValue>> for &mut OrdinaryObject {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
     }
 }
 

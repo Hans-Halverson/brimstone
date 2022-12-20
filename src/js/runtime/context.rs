@@ -1,6 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
+    environment::{
+        declarative_environment::DeclarativeEnvironment,
+        environment::{to_trait_object, Environment},
+    },
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
     realm::Realm,
@@ -12,13 +16,20 @@ use super::{
 pub struct Context {
     execution_context_stack: Vec<Gc<ExecutionContext>>,
     pub heap: Heap,
+
+    // An empty environment to be used as an uninitialized value
+    pub uninit_environment: Gc<dyn Environment>,
 }
 
 impl Context {
     pub fn new() -> Context {
+        let mut heap = Heap::new();
+        let uninit_environment = to_trait_object(heap.alloc(DeclarativeEnvironment::new(None)));
+
         Context {
             execution_context_stack: vec![],
-            heap: Heap::new(),
+            heap,
+            uninit_environment,
         }
     }
 

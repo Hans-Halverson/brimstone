@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -10,11 +12,13 @@ use crate::{
         },
         ordinary_object::OrdinaryObject,
         property_descriptor::PropertyDescriptor,
+        realm::Realm,
         value::Value,
         Context,
     },
 };
 
+#[repr(C)]
 pub struct ObjectPrototype {
     _vtable: ObjectValueVtable,
     object: OrdinaryObject,
@@ -23,7 +27,7 @@ pub struct ObjectPrototype {
 const VTABLE: *const () = extract_object_vtable::<ObjectPrototype>();
 
 impl ObjectPrototype {
-    pub fn new(cx: &mut Context) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, _realm: Rc<RefCell<Realm>>) -> Gc<ObjectValue> {
         let ordinary_object = OrdinaryObject::new(None, true);
         let object_prototype = ObjectPrototype {
             _vtable: VTABLE,

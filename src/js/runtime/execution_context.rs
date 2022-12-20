@@ -15,7 +15,7 @@ use super::{
 
 // 8.3 Execution Context
 pub struct ExecutionContext {
-    pub function: Option<Value>,
+    pub function: Option<Gc<ObjectValue>>,
     pub realm: Rc<RefCell<Realm>>,
     pub script_or_module: Option<ScriptOrModule>,
     pub lexical_env: Gc<dyn Environment>,

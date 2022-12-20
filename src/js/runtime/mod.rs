@@ -1,4 +1,5 @@
 mod abstract_operations;
+mod builtin_function;
 mod completion;
 mod context;
 mod environment;

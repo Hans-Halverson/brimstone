@@ -9,9 +9,7 @@ use crate::{
     maybe_,
 };
 
-use super::{
-    declarative_environment::DeclarativeEnvironment, function_environment::FunctionEnvironment,
-};
+use super::function_environment::FunctionEnvironment;
 
 // 8.1.1 Environment Record
 pub trait Environment {
@@ -89,9 +87,4 @@ pub fn get_identifier_reference(
 // Convert an environment GC reference to a trait object
 pub fn to_trait_object<'a, T: Environment + 'a>(env: Gc<T>) -> Gc<dyn Environment + 'a> {
     Gc::from_ptr(env.as_ptr() as *mut dyn Environment)
-}
-
-pub fn placeholder_environment(cx: &mut Context) -> Gc<dyn Environment> {
-    let env = cx.heap.alloc(DeclarativeEnvironment::new(None));
-    to_trait_object(env)
 }

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    environment::{environment::placeholder_environment, global_environment::GlobalEnvironment},
+    environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::Gc,
     intrinsics::intrinsics::{Intrinsic, Intrinsics},
@@ -19,17 +19,17 @@ pub struct Realm {
 
 impl Realm {
     // 8.2.1 CreateRealm
-    pub fn new(cx: &mut Context) -> Realm {
+    pub fn new(cx: &mut Context) -> Rc<RefCell<Realm>> {
         // Realm record must be created before setting up intrinsics, as realm must be referenced
         // during intrinsic creation.
-        let mut realm = Realm {
+        let realm = Rc::new(RefCell::new(Realm {
             // Initialized in set_global_object
             global_env: Gc::uninit(),
             global_object: Gc::uninit(),
             intrinsics: Intrinsics::new_uninit(),
-        };
+        }));
 
-        realm.intrinsics.initialize(cx);
+        realm.borrow_mut().intrinsics.initialize(cx, realm.clone());
 
         realm
     }
@@ -57,14 +57,13 @@ impl Realm {
 
 // 8.5 InitializeHostDefinedRealm
 pub fn initialize_host_defined_realm(cx: &mut Context) -> Rc<RefCell<Realm>> {
-    let realm = Rc::new(RefCell::new(Realm::new(cx)));
-    let placeholder_env = placeholder_environment(cx);
+    let realm = Realm::new(cx);
     let exec_ctx = cx.heap.alloc(ExecutionContext {
         script_or_module: None,
         realm: realm.clone(),
         function: None,
-        lexical_env: placeholder_env,
-        variable_env: placeholder_env,
+        lexical_env: cx.uninit_environment,
+        variable_env: cx.uninit_environment,
     });
 
     cx.push_execution_context(exec_ctx);

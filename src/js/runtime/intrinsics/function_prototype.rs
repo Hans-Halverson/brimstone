@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -29,11 +27,9 @@ const VTABLE: *const () = extract_object_vtable::<FunctionPrototype>();
 impl_gc_into!(FunctionPrototype, ObjectValue);
 
 impl FunctionPrototype {
-    pub fn new(cx: &mut Context, realm: Rc<RefCell<Realm>>) -> Gc<ObjectValue> {
-        let ordinary_object = OrdinaryObject::new(
-            Some(realm.borrow().get_intrinsic(Intrinsic::ObjectPrototype)),
-            true,
-        );
+    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+        let ordinary_object =
+            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
         let func_prototype = FunctionPrototype {
             _vtable: VTABLE,
             object: ordinary_object,

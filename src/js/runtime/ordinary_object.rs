@@ -6,6 +6,7 @@ use super::{
     abstract_operations::{call, create_data_property, get, get_function_realm},
     completion::AbstractResult,
     gc::{Gc, GcDeref},
+    intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property::Property,
     property_descriptor::PropertyDescriptor,
@@ -463,29 +464,40 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
         .collect()
 }
 
-pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> OrdinaryObject {
-    unimplemented!()
+pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
+    OrdinaryObject {
+        _vtable: VTABLE,
+        prototype: Some(proto),
+        properties: HashMap::new(),
+        is_extensible: true,
+    }
 }
 
 pub fn ordinary_create_from_constructor(
+    cx: &mut Context,
     constructor: Gc<ObjectValue>,
-    intrinsic_default_proto: &str,
-) -> Gc<OrdinaryObject> {
-    unimplemented!()
+    intrinsic_default_proto: Intrinsic,
+) -> AbstractResult<Gc<OrdinaryObject>> {
+    let proto = maybe_!(get_prototype_from_constructor(
+        cx,
+        constructor,
+        intrinsic_default_proto
+    ));
+
+    cx.heap.alloc(ordinary_object_create(proto)).into()
 }
 
 // 9.1.14 GetPrototypeFromConstructor
 pub fn get_prototype_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
-    intrinsic_default_proto: &str,
+    intrinsic_default_proto: Intrinsic,
 ) -> AbstractResult<Gc<ObjectValue>> {
     let proto = maybe_!(get(cx, constructor.into(), "prototype"));
     if proto.is_object() {
         proto.as_object().into()
     } else {
         let realm = maybe_!(get_function_realm(constructor));
-        // TODO: Return realm's intrinsic object intrinscDefaultProto
-        unimplemented!()
+        realm.get_intrinsic(intrinsic_default_proto).into()
     }
 }

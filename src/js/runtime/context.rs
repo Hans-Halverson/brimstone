@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use super::{
     environment::{
         declarative_environment::DeclarativeEnvironment,
@@ -45,7 +43,7 @@ impl Context {
         self.execution_context_stack.last_mut().unwrap().clone()
     }
 
-    pub fn current_realm(&mut self) -> Rc<RefCell<Realm>> {
+    pub fn current_realm(&mut self) -> Gc<Realm> {
         self.current_execution_context().realm.clone()
     }
 

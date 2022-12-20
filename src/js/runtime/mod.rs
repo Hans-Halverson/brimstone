@@ -20,4 +20,4 @@ mod value;
 
 pub use context::Context;
 pub use realm::initialize_host_defined_realm;
-pub use runtime::evaluate_script;
+pub use runtime::evaluate;

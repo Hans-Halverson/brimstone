@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
     js::runtime::{
         abstract_operations::define_property_or_throw,
@@ -43,9 +41,10 @@ impl Intrinsics {
     }
 
     // 8.2.2 CreateIntrinsics
-    pub fn initialize(&mut self, cx: &mut Context, realm: Rc<RefCell<Realm>>) {
+    pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
         let intrinsics = &mut self.intrinsics;
         intrinsics.reserve_exact(Intrinsic::num_intrinsics());
+        unsafe { intrinsics.set_len(Intrinsic::num_intrinsics()) };
 
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
@@ -83,13 +82,9 @@ fn throw_type_error(
 }
 
 // 9.2.4.1 %ThrowTypeError%
-fn create_throw_type_error_intrinsic(
-    cx: &mut Context,
-    realm: Rc<RefCell<Realm>>,
-) -> Gc<BuiltinFunction> {
+fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
     let mut throw_type_error_func =
         BuiltinFunction::create(cx, throw_type_error, Some(realm), None);
-    throw_type_error_func.prevent_extensions();
 
     let length_desc = PropertyDescriptor::data(0.into(), false, false, false);
     must_!(define_property_or_throw(
@@ -99,16 +94,14 @@ fn create_throw_type_error_intrinsic(
         length_desc
     ));
 
+    throw_type_error_func.prevent_extensions();
+
     throw_type_error_func
 }
 
 // 9.2.4 AddRestrictedFunctionProperties
-fn add_restricted_function_properties(
-    cx: &mut Context,
-    func: Gc<ObjectValue>,
-    realm: Rc<RefCell<Realm>>,
-) {
-    let thrower_func = realm.borrow().get_intrinsic(Intrinsic::ThrowTypeError);
+fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, realm: Gc<Realm>) {
+    let thrower_func = realm.get_intrinsic(Intrinsic::ThrowTypeError);
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);

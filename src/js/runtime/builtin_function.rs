@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{impl_gc_into, maybe_};
@@ -22,7 +20,7 @@ use super::{
 pub struct BuiltinFunction {
     _vtable: ObjectValueVtable,
     object: OrdinaryObject,
-    realm: Rc<RefCell<Realm>>,
+    realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
     builtin_func: BuiltinFunctionPtr,
 }
@@ -56,12 +54,12 @@ impl BuiltinFunction {
     pub fn create(
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
-        realm: Option<Rc<RefCell<Realm>>>,
+        realm: Option<Gc<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
     ) -> Gc<BuiltinFunction> {
         let realm = realm.unwrap_or_else(|| cx.current_realm());
         let prototype =
-            prototype.unwrap_or_else(|| realm.borrow().get_intrinsic(Intrinsic::FunctionPrototype));
+            prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
         cx.heap.alloc(BuiltinFunction {
             _vtable: VTABLE,

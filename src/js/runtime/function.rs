@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -53,7 +51,7 @@ pub struct Function {
     // Object properties of this function
     object: OrdinaryObject,
     pub home_object: Option<Gc<ObjectValue>>,
-    realm: Rc<RefCell<Realm>>,
+    realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
     func_node: ast::Function,
     pub environment: Gc<dyn Environment>,
@@ -115,7 +113,14 @@ impl Object for Function {
     ) -> AbstractResult<Gc<ObjectValue>> {
         let this_argument: Option<Gc<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                Some(ordinary_create_from_constructor(new_target, "%Object.prototype%").into())
+                Some(
+                    maybe_!(ordinary_create_from_constructor(
+                        cx,
+                        new_target,
+                        Intrinsic::ObjectPrototype
+                    ))
+                    .into(),
+                )
             } else {
                 None
             };
@@ -196,7 +201,7 @@ impl Function {
             ThisMode::Strict => this_argument,
             ThisMode::Global => {
                 let object_value = if this_argument.is_nullish() {
-                    let global_env = self.realm.borrow().global_env;
+                    let global_env = self.realm.global_env;
                     global_env.global_this_value
                 } else {
                     maybe_!(to_object(this_argument))
@@ -235,7 +240,7 @@ pub fn ordinary_function_create(
     } else {
         ThisMode::Global
     };
-    let object = ordinary_object_create(cx, function_prototype);
+    let object = ordinary_object_create(function_prototype);
     let argument_count = expected_argument_count(&func_node);
 
     let func = Function {
@@ -273,11 +278,8 @@ fn make_constructor(
     let prototype = match prototype {
         Some(prototype) => prototype,
         None => {
-            let object_prototype = cx
-                .current_realm()
-                .borrow()
-                .get_intrinsic(Intrinsic::ObjectPrototype);
-            let ordinary_object = ordinary_object_create(cx, object_prototype);
+            let object_prototype = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+            let ordinary_object = ordinary_object_create(object_prototype);
             let prototype = cx.heap.alloc(ordinary_object).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);

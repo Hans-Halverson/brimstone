@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use crate::js::parser::ast;
 
@@ -16,7 +16,7 @@ use super::{
 // 8.3 Execution Context
 pub struct ExecutionContext {
     pub function: Option<Gc<ObjectValue>>,
-    pub realm: Rc<RefCell<Realm>>,
+    pub realm: Gc<Realm>,
     pub script_or_module: Option<ScriptOrModule>,
     pub lexical_env: Gc<dyn Environment>,
     pub variable_env: Gc<dyn Environment>,
@@ -32,13 +32,13 @@ pub enum ScriptOrModule {
 
 // 15.1.8 Script Record
 pub struct Script {
-    realm: Rc<RefCell<Realm>>,
+    realm: Gc<Realm>,
     env: Option<Gc<dyn Environment>>,
     script_node: Rc<ast::Program>,
 }
 
 impl Script {
-    pub fn new(script_node: Rc<ast::Program>, realm: Rc<RefCell<Realm>>) -> Script {
+    pub fn new(script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Script {
         Script {
             script_node,
             realm,
@@ -92,5 +92,5 @@ fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
 
 // 8.3.6 GetGlobalObject
 pub fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
-    cx.current_execution_context().realm.borrow().global_object
+    cx.current_execution_context().realm.global_object
 }

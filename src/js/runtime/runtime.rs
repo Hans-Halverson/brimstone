@@ -1,4 +1,5 @@
-use std::cell::RefCell;
+use std::error::Error;
+use std::fmt;
 use std::rc::Rc;
 
 use super::environment::environment::to_trait_object;
@@ -12,15 +13,45 @@ use super::{
 
 use crate::js::parser::ast;
 
-/// 15.1.10 ScriptEvaluation
-pub fn evaluate_script(
+#[derive(Debug)]
+pub struct EvalError {
+    message: String,
+}
+
+impl Error for EvalError {}
+
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+pub fn evaluate(
     cx: &mut Context,
     program: Rc<ast::Program>,
-    realm: Rc<RefCell<Realm>>,
-) -> Completion {
+    realm: Gc<Realm>,
+) -> Result<(), EvalError> {
+    let completion = evaluate_script(cx, program, realm);
+    if let Completion::Throw(value) = completion {
+        if value.is_string() {
+            return Err(EvalError {
+                message: value.as_string().to_string(),
+            });
+        } else {
+            return Err(EvalError {
+                message: "Evaluation threw value with non-string type".to_string(),
+            });
+        }
+    }
+
+    return Ok(());
+}
+
+/// 15.1.10 ScriptEvaluation
+fn evaluate_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
     let script = cx.heap.alloc(Script::new(program.clone(), realm.clone()));
 
-    let global_env = realm.borrow().global_env.clone();
+    let global_env = realm.global_env.clone();
     let global_env_object = to_trait_object(global_env);
 
     let script_ctx = cx.heap.alloc(ExecutionContext {
@@ -49,7 +80,7 @@ pub fn evaluate_script(
 }
 
 /// 15.1.11 GlobalDeclarationInstantiation
-pub fn global_declaration_instantiation(
+fn global_declaration_instantiation(
     script: &ast::Program,
     env: Gc<GlobalEnvironment>,
 ) -> Completion {
@@ -71,7 +102,7 @@ pub fn global_declaration_instantiation(
     Completion::empty()
 }
 
-pub fn evaluate_program(program: &ast::Program) -> Completion {
+fn evaluate_program(program: &ast::Program) -> Completion {
     // TODO: Evaluate program
     Completion::empty()
 }

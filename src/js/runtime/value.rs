@@ -1,6 +1,9 @@
 use std::fmt;
 
-use super::{gc::Gc, object_value::ObjectValue};
+use super::{
+    gc::{Gc, GcDeref},
+    object_value::ObjectValue,
+};
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
 /// packing implementation in SerenityOS's LibWeb.
@@ -244,6 +247,8 @@ impl StringValue {
         StringValue(str)
     }
 }
+
+impl GcDeref for StringValue {}
 
 impl fmt::Display for StringValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

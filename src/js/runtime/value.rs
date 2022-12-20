@@ -213,6 +213,12 @@ impl From<f64> for Value {
     }
 }
 
+impl From<i32> for Value {
+    fn from(value: i32) -> Self {
+        Value::number(value.into())
+    }
+}
+
 impl<T: Into<Gc<ObjectValue>>> From<T> for Value {
     fn from(value: T) -> Self {
         Value::object(value.into())

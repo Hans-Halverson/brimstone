@@ -7,7 +7,7 @@ use crate::{impl_gc_into, maybe_};
 use super::{
     completion::AbstractResult,
     execution_context::{ExecutionContext, ScriptOrModule},
-    gc::Gc,
+    gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::OrdinaryObject,
@@ -35,6 +35,8 @@ type BuiltinFunctionPtr = fn(
     new_target: Option<Gc<ObjectValue>>,
 ) -> AbstractResult<Value>;
 
+impl GcDeref for BuiltinFunction {}
+
 impl_gc_into!(BuiltinFunction, ObjectValue);
 
 const VTABLE: *const () = extract_object_vtable::<BuiltinFunction>();
@@ -51,7 +53,7 @@ impl BuiltinFunction {
     }
 
     // 9.3.3 CreateBuiltinFunction
-    fn create(
+    pub fn create(
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Rc<RefCell<Realm>>>,

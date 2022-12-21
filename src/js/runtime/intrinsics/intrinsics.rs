@@ -40,7 +40,7 @@ impl Intrinsics {
         }
     }
 
-    // 8.2.2 CreateIntrinsics
+    // 9.3.2 CreateIntrinsics
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
         let intrinsics = &mut self.intrinsics;
         intrinsics.reserve_exact(Intrinsic::num_intrinsics());
@@ -81,7 +81,7 @@ fn throw_type_error(
     type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
-// 9.2.4.1 %ThrowTypeError%
+// 10.2.4.1 %ThrowTypeError%
 fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
     let mut throw_type_error_func =
         BuiltinFunction::create(cx, throw_type_error, Some(realm), None);
@@ -94,12 +94,15 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
         length_desc
     ));
 
+    // TODO: Correctly set length and desc, as they should have is_configurable = false but
+    // BuiltinFunction::create sets is_confiruable = true.
+
     throw_type_error_func.prevent_extensions();
 
     throw_type_error_func
 }
 
-// 9.2.4 AddRestrictedFunctionProperties
+// 10.2.4 AddRestrictedFunctionProperties
 fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, realm: Gc<Realm>) {
     let thrower_func = realm.get_intrinsic(Intrinsic::ThrowTypeError);
 

@@ -87,6 +87,7 @@ impl Object for BuiltinFunction {
             script_or_module: self.script_or_module,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,
+            private_env: None,
         });
 
         cx.push_execution_context(callee_context);
@@ -110,6 +111,7 @@ impl Object for BuiltinFunction {
             script_or_module: self.script_or_module,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,
+            private_env: None,
         });
 
         cx.push_execution_context(callee_context);

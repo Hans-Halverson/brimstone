@@ -8,7 +8,7 @@ use super::{
     Context,
 };
 
-// 8.2 Realm Record
+// 9.3 Realm Record
 pub struct Realm {
     pub global_env: Gc<GlobalEnvironment>,
     pub global_object: Gc<ObjectValue>,
@@ -18,7 +18,7 @@ pub struct Realm {
 impl GcDeref for Realm {}
 
 impl Realm {
-    // 8.2.1 CreateRealm
+    // 9.3.1 CreateRealm
     pub fn new(cx: &mut Context) -> Gc<Realm> {
         // Realm record must be created before setting up intrinsics, as realm must be referenced
         // during intrinsic creation.
@@ -34,18 +34,26 @@ impl Realm {
         realm
     }
 
-    // 8.2.3 SetRealmGlobalObject
-    fn set_global_object(&mut self, cx: &mut Context) {
-        let ordinary_object =
-            ordinary_object_create(self.get_intrinsic(Intrinsic::ObjectPrototype));
-        let global_object: Gc<ObjectValue> = cx.heap.alloc(ordinary_object).into();
-        let this_val = global_object;
+    // 9.3.3 SetRealmGlobalObject
+    fn set_global_object(
+        &mut self,
+        cx: &mut Context,
+        global_object: Option<Gc<ObjectValue>>,
+        this_value: Option<Gc<ObjectValue>>,
+    ) {
+        let global_object = global_object.unwrap_or_else(|| {
+            let ordinary_object =
+                ordinary_object_create(self.get_intrinsic(Intrinsic::ObjectPrototype));
+            cx.heap.alloc(ordinary_object).into()
+        });
+
+        let this_value = this_value.unwrap_or(global_object);
 
         self.global_object = global_object;
-        self.global_env = GlobalEnvironment::new(cx, global_object, this_val);
+        self.global_env = GlobalEnvironment::new(cx, global_object, this_value);
     }
 
-    // 8.2.4 SetDefaultGlobalBindings
+    // 9.3.4 SetDefaultGlobalBindings
     fn set_default_global_bindings(&mut self) {
         // TODO: Create default global bindings in realm
     }
@@ -55,7 +63,7 @@ impl Realm {
     }
 }
 
-// 8.5 InitializeHostDefinedRealm
+// 9.6 InitializeHostDefinedRealm
 pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
     let mut realm = Realm::new(cx);
     let exec_ctx = cx.heap.alloc(ExecutionContext {
@@ -64,11 +72,12 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
         function: None,
         lexical_env: cx.uninit_environment,
         variable_env: cx.uninit_environment,
+        private_env: None,
     });
 
     cx.push_execution_context(exec_ctx);
 
-    realm.set_global_object(cx);
+    realm.set_global_object(cx, None, None);
     realm.set_default_global_bindings();
 
     realm

@@ -1,2 +1,2 @@
 pub mod evaluate;
-mod script;
+pub mod script;

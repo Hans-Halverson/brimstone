@@ -12,6 +12,7 @@ use super::{
     environment::{
         environment::{to_trait_object, Environment},
         function_environment::FunctionEnvironment,
+        private_environment::{self, PrivateEnvironment},
     },
     error::type_error_,
     execution_context::{ExecutionContext, ScriptOrModule},
@@ -55,6 +56,7 @@ pub struct Function {
     script_or_module: Option<ScriptOrModule>,
     func_node: ast::Function,
     pub environment: Gc<dyn Environment>,
+    pub private_environment: Option<Gc<PrivateEnvironment>>,
 }
 
 impl GcDeref for Function {}
@@ -176,17 +178,18 @@ impl Function {
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<ExecutionContext> {
         let func_env = to_trait_object(FunctionEnvironment::new(cx, self.into(), new_target));
-        let exec_ctx = cx.heap.alloc(ExecutionContext {
+        let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
-            realm: self.realm.clone(),
+            realm: self.realm,
             script_or_module: self.script_or_module,
             lexical_env: func_env,
             variable_env: func_env,
+            private_env: self.private_environment,
         });
 
-        cx.push_execution_context(exec_ctx);
+        cx.push_execution_context(callee_context);
 
-        exec_ctx
+        callee_context
     }
 
     // 9.2.1.2 OrdinaryCallBindThis
@@ -231,7 +234,8 @@ pub fn ordinary_function_create(
     cx: &mut Context,
     function_prototype: Gc<ObjectValue>,
     func_node: ast::Function,
-    scope: Gc<dyn Environment>,
+    environment: Gc<dyn Environment>,
+    private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     // TODO: Check if function is in strict mode
     let is_strict = false;
@@ -254,7 +258,8 @@ pub fn ordinary_function_create(
         home_object: None,
         realm: cx.current_realm(),
         script_or_module: cx.get_active_script_or_module(),
-        environment: scope,
+        environment,
+        private_environment,
         func_node,
     };
 

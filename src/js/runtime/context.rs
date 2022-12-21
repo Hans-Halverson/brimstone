@@ -47,7 +47,7 @@ impl Context {
         self.current_execution_context().realm.clone()
     }
 
-    // 8.3.1 GetActiveScriptOrModule
+    // 9.4.1 GetActiveScriptOrModule
     pub fn get_active_script_or_module(&self) -> Option<ScriptOrModule> {
         self.execution_context_stack
             .iter()

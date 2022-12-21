@@ -13,7 +13,7 @@ use super::{
     Context,
 };
 
-// 6.2.5 Property Attributes
+// 6.2.5 Property Descriptor
 // Direct translation of spec. Leaves room for optimization in the future.
 #[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
@@ -104,7 +104,7 @@ impl PropertyDescriptor {
         self.get.is_some() || self.set.is_some()
     }
 
-    // 6.2.5.1 IsAccessorDescriptor
+    // 6.2.5.1 IsDataDescriptor
     pub fn is_data_descriptor(&self) -> bool {
         self.value.is_some() || self.is_writable.is_some()
     }

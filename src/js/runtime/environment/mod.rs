@@ -4,3 +4,4 @@ pub mod function_environment;
 pub mod global_environment;
 pub mod module_environment;
 pub mod object_environment;
+pub mod private_environment;

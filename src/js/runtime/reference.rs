@@ -3,7 +3,7 @@ use crate::maybe_;
 use super::{
     abstract_operations::{private_get, private_set, set},
     completion::AbstractResult,
-    environment::environment::Environment,
+    environment::{environment::Environment, private_environment::PrivateNameId},
     error::{reference_error_, type_error_},
     execution_context::get_global_object,
     gc::Gc,
@@ -18,6 +18,7 @@ pub struct Reference {
     name: String,
     is_strict: bool,
     this_value: Option<Value>,
+    private_name: Option<PrivateNameId>,
 }
 
 pub enum ReferenceBase {
@@ -33,6 +34,7 @@ impl Reference {
             name,
             is_strict,
             this_value: None,
+            private_name: None,
         }
     }
 
@@ -42,6 +44,7 @@ impl Reference {
             name,
             is_strict,
             this_value: None,
+            private_name: None,
         }
     }
 
@@ -70,8 +73,7 @@ impl Reference {
 
     // 6.2.4.4 IsPrivateReference
     pub fn is_private_reference(&self) -> bool {
-        // TODO: Implement
-        false
+        self.private_name.is_some()
     }
 
     // 6.2.4.5 GetValue
@@ -152,7 +154,20 @@ impl Reference {
     }
 
     // 6.2.4.9 MakePrivateReference
-    pub fn make_private_reference(base_value: Value, private_identifier: &str) -> Reference {
-        unimplemented!()
+    pub fn make_private_reference(
+        cx: &mut Context,
+        base_value: Value,
+        private_identifier: String,
+    ) -> Reference {
+        let private_env = cx.current_execution_context().private_env.unwrap();
+        let private_name = private_env.resolve_private_identifier(&private_identifier);
+
+        Reference {
+            base: ReferenceBase::Value(base_value),
+            name: private_identifier,
+            is_strict: true,
+            this_value: None,
+            private_name: Some(private_name),
+        }
     }
 }

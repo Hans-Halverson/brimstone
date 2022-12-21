@@ -13,34 +13,34 @@ use crate::maybe_;
 
 use super::environment::Environment;
 
-// 8.1.1.2 Object Environment Record
+// 9.1.1.2 Object Environment Record
 pub struct ObjectEnvironment {
     pub binding_object: Gc<ObjectValue>,
-    pub with_environment: bool,
+    pub is_with_environment: bool,
     pub outer: Option<Gc<dyn Environment>>,
 }
 
 impl ObjectEnvironment {
-    // 8.1.2.3 NewObjectEnvironment
-    fn new(
-        cx: &mut Context,
+    // 9.1.2.3 NewObjectEnvironment
+    pub fn new(
         binding_object: Gc<ObjectValue>,
-        outer: Gc<dyn Environment>,
-    ) -> Gc<ObjectEnvironment> {
-        cx.heap.alloc(ObjectEnvironment {
+        is_with_environment: bool,
+        outer: Option<Gc<dyn Environment>>,
+    ) -> ObjectEnvironment {
+        ObjectEnvironment {
             binding_object,
-            with_environment: false,
-            outer: Some(outer),
-        })
+            is_with_environment,
+            outer,
+        }
     }
 }
 
 impl Environment for ObjectEnvironment {
-    // 8.1.1.2.1 HasBinding
+    // 9.1.1.2.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
         if !maybe_!(has_property(self.binding_object, name)) {
             return false.into();
-        } else if !self.with_environment {
+        } else if !self.is_with_environment {
             return true.into();
         }
 
@@ -59,7 +59,7 @@ impl Environment for ObjectEnvironment {
         true.into()
     }
 
-    // 8.1.1.2.1 CreateMutableBinding
+    // 9.1.1.2.1 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
@@ -70,17 +70,17 @@ impl Environment for ObjectEnvironment {
         define_property_or_throw(cx, self.binding_object, &name, prop_desc)
     }
 
-    // 8.1.1.2.3 CreateImmutableBinding
+    // 9.1.1.2.3 CreateImmutableBinding
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
-        name: String,
-        is_strict: bool,
+        _: &mut Context,
+        _: String,
+        _: bool,
     ) -> AbstractResult<()> {
         unreachable!("ObjectEnvironment::create_immutable_binding is never used in spec")
     }
 
-    // 8.1.1.2.4 InitializeBinding
+    // 9.1.1.2.4 InitializeBinding
     fn initialize_binding(
         &mut self,
         cx: &mut Context,
@@ -90,7 +90,7 @@ impl Environment for ObjectEnvironment {
         self.set_mutable_binding(cx, name, value, false)
     }
 
-    // 8.1.1.2.5 SetMutableBinding
+    // 9.1.1.2.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
@@ -98,11 +98,16 @@ impl Environment for ObjectEnvironment {
         value: Value,
         is_strict: bool,
     ) -> AbstractResult<()> {
+        let still_exists = maybe_!(has_property(self.binding_object, name));
+        if !still_exists && is_strict {
+            return err_not_defined_(cx, name);
+        }
+
         maybe_!(set(cx, self.binding_object, name, value, is_strict));
         ().into()
     }
 
-    // 8.1.1.2.6 GetBindingValue
+    // 9.1.1.2.6 GetBindingValue
     fn get_binding_value(
         &self,
         cx: &mut Context,
@@ -120,28 +125,28 @@ impl Environment for ObjectEnvironment {
         get(cx, self.binding_object, name)
     }
 
-    // 8.1.1.2.7 DeleteBinding
+    // 9.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         self.binding_object.delete(name)
     }
 
-    // 8.1.1.2.8 HasThisBinding
+    // 9.1.1.2.8 HasThisBinding
     fn has_this_binding(&self) -> bool {
         false
     }
 
-    // 8.1.1.2.9 HasSuperBinding
+    // 9.1.1.2.9 HasSuperBinding
     fn has_super_binding(&self) -> bool {
         false
     }
 
-    // 8.1.1.2.10 WithBaseObject
-    fn with_base_object(&self) -> Value {
-        if self.with_environment {
-            return self.binding_object.into();
+    // 9.1.1.2.10 WithBaseObject
+    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+        if self.is_with_environment {
+            return Some(self.binding_object);
         }
 
-        Value::undefined().into()
+        None
     }
 
     fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {

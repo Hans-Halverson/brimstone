@@ -2,6 +2,7 @@ use crate::{
     js::runtime::{
         completion::AbstractResult,
         gc::{Gc, GcDeref},
+        object_value::ObjectValue,
         reference::Reference,
         value::Value,
         Context,
@@ -11,7 +12,7 @@ use crate::{
 
 use super::function_environment::FunctionEnvironment;
 
-// 8.1.1 Environment Record
+// 9.1 Environment Record
 pub trait Environment {
     // Environment functions from spec
     fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
@@ -49,7 +50,7 @@ pub trait Environment {
     fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
-    fn with_base_object(&self) -> Value;
+    fn with_base_object(&self) -> Option<Gc<ObjectValue>>;
 
     fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value>;
 
@@ -73,7 +74,7 @@ pub fn get_identifier_reference(
     is_strict: bool,
 ) -> AbstractResult<Reference> {
     match env {
-        None => Reference::new_value(Value::undefined(), name.to_string(), is_strict).into(),
+        None => Reference::new_unresolvable(name.to_string(), is_strict).into(),
         Some(env) => {
             if maybe_!(env.has_binding(cx, name)) {
                 Reference::new_env(env, name.to_string(), is_strict).into()

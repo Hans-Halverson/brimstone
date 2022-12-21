@@ -4,6 +4,7 @@ use crate::js::runtime::{
     completion::AbstractResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
     gc::Gc,
+    object_value::ObjectValue,
     value::Value,
     Context,
 };
@@ -31,13 +32,14 @@ impl Binding {
     }
 }
 
-// 8.1.1.1 Declarative Environment Record
+// 9.1.1.1 Declarative Environment Record
 pub struct DeclarativeEnvironment {
     pub bindings: HashMap<String, Binding>,
     outer: Option<Gc<dyn Environment>>,
 }
 
 impl DeclarativeEnvironment {
+    // 9.1.2.2 NewDeclarativeEnvironment
     pub fn new(outer: Option<Gc<dyn Environment>>) -> DeclarativeEnvironment {
         DeclarativeEnvironment {
             bindings: HashMap::new(),
@@ -47,12 +49,12 @@ impl DeclarativeEnvironment {
 }
 
 impl Environment for DeclarativeEnvironment {
-    // 8.1.1.1.1 HasBinding
+    // 9.1.1.1.1 HasBinding
     fn has_binding(&self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         self.bindings.contains_key(name).into()
     }
 
-    // 8.1.1.1.2 CreateMutableBinding
+    // 9.1.1.1.2 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
         _: &mut Context,
@@ -64,7 +66,7 @@ impl Environment for DeclarativeEnvironment {
         ().into()
     }
 
-    // 8.1.1.1.3 CreateImmutableBinding
+    // 9.1.1.1.3 CreateImmutableBinding
     fn create_immutable_binding(
         &mut self,
         _: &mut Context,
@@ -76,7 +78,7 @@ impl Environment for DeclarativeEnvironment {
         ().into()
     }
 
-    // 8.1.1.1.4 InitializeBinding
+    // 9.1.1.1.4 InitializeBinding
     fn initialize_binding(
         &mut self,
         _: &mut Context,
@@ -89,7 +91,7 @@ impl Environment for DeclarativeEnvironment {
         ().into()
     }
 
-    // 8.1.1.1.5 SetMutableBinding
+    // 9.1.1.1.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
@@ -122,7 +124,7 @@ impl Environment for DeclarativeEnvironment {
         }
     }
 
-    // 8.1.1.1.6 GetBindingValue
+    // 9.1.1.1.6 GetBindingValue
     fn get_binding_value(
         &self,
         cx: &mut Context,
@@ -134,10 +136,10 @@ impl Environment for DeclarativeEnvironment {
             return err_uninitialized_(cx, name);
         }
 
-        binding.value.clone().into()
+        binding.value.into()
     }
 
-    // 8.1.1.1.7 DeleteBinding
+    // 9.1.1.1.7 DeleteBinding
     fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
         let binding = self.bindings.get(name).unwrap();
         if !binding.can_delete {
@@ -149,19 +151,19 @@ impl Environment for DeclarativeEnvironment {
         true.into()
     }
 
-    // 8.1.1.1.8 HasThisBinding
+    // 9.1.1.1.8 HasThisBinding
     fn has_this_binding(&self) -> bool {
         false
     }
 
-    // 8.1.1.1.9 HasSuperBinding
+    // 9.1.1.1.9 HasSuperBinding
     fn has_super_binding(&self) -> bool {
         false
     }
 
-    // 8.1.1.1.10 WithBaseObject
-    fn with_base_object(&self) -> Value {
-        Value::undefined()
+    // 9.1.1.1.10 WithBaseObject
+    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+        None
     }
 
     fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {

@@ -1,4 +1,6 @@
-use crate::js::runtime::{completion::AbstractResult, gc::Gc, value::Value, Context};
+use crate::js::runtime::{
+    completion::AbstractResult, gc::Gc, object_value::ObjectValue, value::Value, Context,
+};
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
 
@@ -6,8 +8,9 @@ pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
 }
 
+// 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
-    // 8.1.2.6 NewModuleEnvironment
+    // 9.1.2.6 NewModuleEnvironment
     fn new(cx: &mut Context, outer: Gc<dyn Environment>) -> Gc<ModuleEnvironment> {
         // Inner decl env contains the outer environment pointer
         cx.heap.alloc(ModuleEnvironment {
@@ -17,7 +20,7 @@ impl ModuleEnvironment {
 }
 
 impl Environment for ModuleEnvironment {
-    // 8.1.1.5.1 GetBindingValue
+    // 9.1.1.5.1 GetBindingValue
     fn get_binding_value(
         &self,
         cx: &mut Context,
@@ -27,17 +30,17 @@ impl Environment for ModuleEnvironment {
         unimplemented!()
     }
 
-    // 8.1.1.5.2 DeleteBinding
+    // 9.1.1.5.2 DeleteBinding
     fn delete_binding(&mut self, _: &mut Context, _name: &str) -> AbstractResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
-    // 8.1.1.5.3 HasThisBinding
+    // 9.1.1.5.3 HasThisBinding
     fn has_this_binding(&self) -> bool {
         true
     }
 
-    // 8.1.1.5.4 GetThisBinding
+    // 9.1.1.5.4 GetThisBinding
     fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
         Value::undefined().into()
     }
@@ -89,7 +92,7 @@ impl Environment for ModuleEnvironment {
         self.env.has_super_binding()
     }
 
-    fn with_base_object(&self) -> Value {
+    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
         self.env.with_base_object()
     }
 
@@ -99,7 +102,7 @@ impl Environment for ModuleEnvironment {
 }
 
 impl ModuleEnvironment {
-    // 8.1.1.5.5 CreateImportBinding
+    // 9.1.1.5.5 CreateImportBinding
     fn create_import_binding(&self) -> AbstractResult<Value> {
         unimplemented!()
     }

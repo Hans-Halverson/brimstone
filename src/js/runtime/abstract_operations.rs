@@ -94,3 +94,15 @@ pub fn get_function_realm(func: Gc<ObjectValue>) -> AbstractResult<Realm> {
 pub fn is_extensible(object: Gc<ObjectValue>) -> bool {
     unimplemented!()
 }
+
+pub fn private_get(object: Gc<ObjectValue>, private_name: &str) -> AbstractResult<Value> {
+    unimplemented!()
+}
+
+pub fn private_set(
+    object: Gc<ObjectValue>,
+    private_name: &str,
+    value: Value,
+) -> AbstractResult<()> {
+    unimplemented!()
+}

@@ -1,21 +1,24 @@
-use crate::js::runtime::{
-    completion::AbstractResult,
-    error::reference_error_,
-    function::{Function, ThisMode},
-    gc::Gc,
-    object_value::ObjectValue,
-    value::Value,
-    Context,
+use crate::{
+    js::runtime::{
+        completion::AbstractResult,
+        error::reference_error_,
+        function::{Function, ThisMode},
+        gc::Gc,
+        object_value::ObjectValue,
+        value::Value,
+        Context,
+    },
+    maybe_,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
 
+// 9.1.1.3 Function Environment Record
 pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
     this_binding_status: ThisBindingStatus,
     function_object: Gc<Function>,
-    home_object: Option<Gc<ObjectValue>>,
     pub new_target: Option<Gc<ObjectValue>>,
 }
 
@@ -28,7 +31,7 @@ pub enum ThisBindingStatus {
 }
 
 impl FunctionEnvironment {
-    // 8.1.2.4 NewFunctionEnvironment
+    // 9.1.2.4 NewFunctionEnvironment
     pub fn new(
         cx: &mut Context,
         function_object: Gc<Function>,
@@ -41,7 +44,7 @@ impl FunctionEnvironment {
         };
 
         // Inner decl env contains the outer environment pointer
-        let decl_env = DeclarativeEnvironment::new(Some(function_object.environment.clone()));
+        let decl_env = DeclarativeEnvironment::new(Some(function_object.environment));
 
         cx.heap.alloc(FunctionEnvironment {
             env: decl_env,
@@ -49,7 +52,6 @@ impl FunctionEnvironment {
             this_value: Value::undefined(),
             function_object,
             this_binding_status,
-            home_object: function_object.home_object,
             new_target,
         })
     }
@@ -60,21 +62,21 @@ impl Environment for FunctionEnvironment {
         Some(self)
     }
 
-    // 8.1.1.3.2 HasThisBinding
+    // 9.1.1.3.2 HasThisBinding
     fn has_this_binding(&self) -> bool {
         self.this_binding_status != ThisBindingStatus::Lexical
     }
 
-    // 8.1.1.3.3 HasSuperBinding
+    // 9.1.1.3.3 HasSuperBinding
     fn has_super_binding(&self) -> bool {
         if self.this_binding_status == ThisBindingStatus::Lexical {
             return false;
         }
 
-        !self.home_object.is_none()
+        self.function_object.home_object.is_some()
     }
 
-    // 8.1.1.3.4 GetThisBinding
+    // 9.1.1.3.4 GetThisBinding
     fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Uninitialized {
             return reference_error_(cx, "this is not initialized");
@@ -139,7 +141,7 @@ impl Environment for FunctionEnvironment {
         self.env.delete_binding(cx, name)
     }
 
-    fn with_base_object(&self) -> Value {
+    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
         self.env.with_base_object()
     }
 
@@ -149,25 +151,31 @@ impl Environment for FunctionEnvironment {
 }
 
 impl FunctionEnvironment {
-    // 8.1.1.3.1 BindThisValue
+    // 9.1.1.3.1 BindThisValue
     pub fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
             return reference_error_(cx, "this is already initialized");
         }
 
-        self.this_value = value.clone();
+        self.this_value = value;
         self.this_binding_status = ThisBindingStatus::Initialized;
 
         value.into()
     }
 
-    // 8.1.1.3.5 GetSuperBase
-    // Returns an optional object. None represents either null or undefined, which are both treated
-    // the same by the only caller: MakeSuperPropertyReference.
-    fn get_super_base(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
-        match &self.home_object {
-            None => None.into(),
-            Some(home) => home.get_prototype_of(),
+    // 9.1.1.3.5 GetSuperBase
+    fn get_super_base(&self) -> AbstractResult<Value> {
+        // Note that we can return either an object, undefined, or null, so we must convert from
+        // options to the correct undefined vs null value.
+        match &self.function_object.home_object {
+            None => Value::undefined().into(),
+            Some(home) => {
+                let prototype = maybe_!(home.get_prototype_of());
+                match prototype {
+                    None => Value::null().into(),
+                    Some(prototype) => prototype.into(),
+                }
+            }
         }
     }
 }

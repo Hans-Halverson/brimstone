@@ -1,4 +1,6 @@
+pub mod analyze;
 pub mod ast;
+mod ast_visitor;
 mod lexer;
 pub mod loc;
 mod parser;

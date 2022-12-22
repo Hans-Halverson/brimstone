@@ -20,6 +20,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     let source = js::parser::source::Source::new(&args.file)?;
     let ast = js::parser::parse_file(&source)?;
+    js::parser::analyze::analyze(&ast);
 
     if args.print_ast {
         println!("{}", js::parser::print_program(&ast, &source));

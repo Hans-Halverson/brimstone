@@ -12,7 +12,7 @@ use super::{
     environment::{
         environment::{to_trait_object, Environment},
         function_environment::FunctionEnvironment,
-        private_environment::{self, PrivateEnvironment},
+        private_environment::PrivateEnvironment,
     },
     error::type_error_,
     execution_context::{ExecutionContext, ScriptOrModule},
@@ -39,7 +39,7 @@ pub enum ConstructorKind {
     Derived,
 }
 
-// 9.2 ECMAScript Function Object
+// 10.2 ECMAScript Function Object
 #[repr(C)]
 pub struct Function {
     _vtable: ObjectValueVtable,
@@ -79,18 +79,23 @@ impl Function {
 
 #[wrap_ordinary_object]
 impl Object for Function {
-    // 9.2.1 [[Call]]
+    // 10.2.1 [[Call]]
     fn call(
         &self,
         cx: &mut Context,
         this_argument: Value,
         arguments: Vec<Value>,
     ) -> AbstractResult<Value> {
+        let callee_context = self.prepare_for_ordinary_call(cx, None);
+
         if self.is_class_constructor {
-            return type_error_(cx, &format!("Cannot call class constructor"));
+            // Ensure that error is created in callee's execution context
+            let error = type_error_(cx, &format!("Cannot call class constructor"));
+            cx.pop_execution_context();
+
+            return error;
         }
 
-        let callee_context = self.prepare_for_ordinary_call(cx, None);
         maybe_!(self.ordinary_call_bind_this(cx, callee_context, this_argument));
         let result = self.ordinary_call_evaluate_body(arguments);
 
@@ -171,7 +176,7 @@ impl Object for Function {
 }
 
 impl Function {
-    // 9.2.1.1 PrepareForOrdinaryCall
+    // 10.2.1.1 PrepareForOrdinaryCall
     fn prepare_for_ordinary_call(
         &self,
         cx: &mut Context,
@@ -192,7 +197,7 @@ impl Function {
         callee_context
     }
 
-    // 9.2.1.2 OrdinaryCallBindThis
+    // 10.2.1.2 OrdinaryCallBindThis
     fn ordinary_call_bind_this(
         &self,
         cx: &mut Context,
@@ -223,23 +228,26 @@ impl Function {
         ().into()
     }
 
-    // 9.2.1.3 OrdinaryCallEvaluateBody
+    // 10.2.1.4 OrdinaryCallEvaluateBody
     fn ordinary_call_evaluate_body(&self, arguments: Vec<Value>) -> Completion {
         unimplemented!()
     }
 }
 
-// 9.2.3 OrdinaryFunctionCreate
+// 10.2.3 OrdinaryFunctionCreate
 pub fn ordinary_function_create(
     cx: &mut Context,
     function_prototype: Gc<ObjectValue>,
     func_node: ast::Function,
+    is_lexical_this: bool,
     environment: Gc<dyn Environment>,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     // TODO: Check if function is in strict mode
     let is_strict = false;
-    let this_mode = if is_strict {
+    let this_mode = if is_lexical_this {
+        ThisMode::Lexical
+    } else if is_strict {
         ThisMode::Strict
     } else {
         ThisMode::Global
@@ -264,18 +272,20 @@ pub fn ordinary_function_create(
     };
 
     let func = cx.heap.alloc(func);
-    set_function_length(cx, func, argument_count);
+    set_function_length(cx, func.into(), argument_count);
 
     func
 }
 
-// 9.2.5 MakeConstructor
+// 10.2.5 MakeConstructor
 fn make_constructor(
     cx: &mut Context,
     mut func: Gc<Function>,
     writable_prototype: Option<bool>,
     prototype: Option<Gc<ObjectValue>>,
 ) {
+    // TODO: func may be a BuiltinFunction
+
     func.has_construct = true;
     func.constructor_kind = ConstructorKind::Base;
 
@@ -298,19 +308,30 @@ fn make_constructor(
     must_!(define_property_or_throw(cx, func.into(), "prototype", desc));
 }
 
-// 9.2.6 MakeClassConstructor
+// 10.2.6 MakeClassConstructor
 fn make_class_constructor(mut func: Gc<Function>) {
     func.is_class_constructor = true;
 }
 
-// 9.2.7 MakeMethod
+// 10.2.7 MakeMethod
 fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
     func.home_object = Some(home_object);
 }
 
-// 9.2.8 SetFunctionName
-fn set_function_name(cx: &mut Context, func: Gc<Function>, name: &str, prefix: Option<&str>) {
-    // TODO: Handle symbol names
+// 10.2.9 SetFunctionName
+pub fn set_function_name(
+    cx: &mut Context,
+    func: Gc<ObjectValue>,
+    name: &str,
+    prefix: Option<&str>,
+) {
+    // TODO: Handle symbol and private names
+
+    if let Some(mut builtin_func) = func.as_builtin_function_opt() {
+        // Choose to not add prefix, as this is optional in spec
+        builtin_func.initial_name = Some(name.to_string());
+    }
+
     let name = if let Some(prefix) = prefix {
         cx.heap.alloc_string(format!("{} {}", prefix, name))
     } else {
@@ -318,14 +339,14 @@ fn set_function_name(cx: &mut Context, func: Gc<Function>, name: &str, prefix: O
     };
 
     let desc = PropertyDescriptor::data(name.into(), false, false, true);
-    must_!(define_property_or_throw(cx, func.into(), "name", desc))
+    must_!(define_property_or_throw(cx, func, "name", desc))
 }
 
-// 9.2.9 SetFunctionLength
-fn set_function_length(cx: &mut Context, func: Gc<Function>, length: u32) {
+// 10.2.10 SetFunctionLength
+pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: u32) {
     let float_length: f64 = length.into();
     let desc = PropertyDescriptor::data(float_length.into(), false, false, true);
-    must_!(define_property_or_throw(cx, func.into(), "length", desc))
+    must_!(define_property_or_throw(cx, func, "length", desc))
 }
 
 fn expected_argument_count(func_node: &ast::Function) -> u32 {

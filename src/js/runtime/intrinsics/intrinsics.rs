@@ -84,7 +84,7 @@ fn throw_type_error(
 // 10.2.4.1 %ThrowTypeError%
 fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
     let mut throw_type_error_func =
-        BuiltinFunction::create(cx, throw_type_error, Some(realm), None);
+        BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
     let length_desc = PropertyDescriptor::data(0.into(), false, false, false);
     must_!(define_property_or_throw(
@@ -94,8 +94,15 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
         length_desc
     ));
 
-    // TODO: Correctly set length and desc, as they should have is_configurable = false but
-    // BuiltinFunction::create sets is_confiruable = true.
+    // Is anonymous function so name is empty
+    let name = cx.heap.alloc_string(String::new());
+    let name_desc = PropertyDescriptor::data(name.into(), false, false, false);
+    must_!(define_property_or_throw(
+        cx,
+        throw_type_error_func.into(),
+        "name",
+        name_desc
+    ));
 
     throw_type_error_func.prevent_extensions();
 

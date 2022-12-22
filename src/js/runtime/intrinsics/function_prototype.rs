@@ -57,7 +57,7 @@ impl Object for FunctionPrototype {
         _this_argument: Value,
         _arguments: Vec<Value>,
     ) -> AbstractResult<Value> {
-        // 19.2.3 Properties of the Function Prototype Object
+        // 20.2.3 Properties of the Function Prototype Object
         // Accepts any arguments and returns undefined when invoked
         Value::undefined().into()
     }

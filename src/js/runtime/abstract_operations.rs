@@ -17,13 +17,13 @@ pub fn set(
     key: &str,
     value: Value,
     should_throw: bool,
-) -> AbstractResult<bool> {
+) -> AbstractResult<()> {
     let success = maybe_!(object.clone().set(cx, key, value, object.into()));
     if !success && should_throw {
         return type_error_(cx, &format!("Cannot set property {}", key));
     }
 
-    success.into()
+    ().into()
 }
 
 // 7.3.5 CreateDataProperty
@@ -67,12 +67,12 @@ pub fn define_property_or_throw(
     ().into()
 }
 
-// 7.3.11 HasProperty
+// 7.3.12 HasProperty
 pub fn has_property(object: Gc<ObjectValue>, key: &str) -> AbstractResult<bool> {
     object.has_property(key)
 }
 
-// 7.3.12 HasOwnProperty
+// 7.3.13 HasOwnProperty
 pub fn has_own_property(object: Gc<ObjectValue>, key: &str) -> AbstractResult<bool> {
     let desc = maybe_!(object.get_own_property(key));
     desc.is_some().into()

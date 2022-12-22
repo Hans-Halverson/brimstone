@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::maybe_;
 
+use super::builtin_function::BuiltinFunction;
 use super::type_utilities::same_opt_object_value;
 use super::Context;
 use super::{
@@ -73,9 +74,14 @@ pub trait Object {
     ) -> AbstractResult<Gc<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
     }
+
+    // Type refinement functions
+    fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
+        None
+    }
 }
 
-// 9.4.7.2 SetImmutablePrototype
+// 10.4.7.2 SetImmutablePrototype
 pub fn set_immutable_prototype(
     object: Gc<ObjectValue>,
     proto: Option<Gc<ObjectValue>>,

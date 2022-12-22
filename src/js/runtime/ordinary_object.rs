@@ -44,14 +44,14 @@ impl OrdinaryObject {
 }
 
 impl Object for OrdinaryObject {
-    // 9.1.1 [[GetPrototypeOf]]
-    // 9.1.1.1 OrdinaryGetPrototypeOf
+    // 10.1.1 [[GetPrototypeOf]]
+    // 10.1.1.1 OrdinaryGetPrototypeOf
     fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
         self.prototype.into()
     }
 
-    // 9.1.2 [[SetPrototypeOf]]
-    // 9.1.2.1 OrdinarySetPrototypeOf
+    // 10.1.2 [[SetPrototypeOf]]
+    // 10.1.2.1 OrdinarySetPrototypeOf
     fn set_prototype_of(&mut self, new_prototype: Option<Gc<ObjectValue>>) -> AbstractResult<bool> {
         if same_opt_object_value(self.prototype, new_prototype) {
             return true.into();
@@ -81,25 +81,25 @@ impl Object for OrdinaryObject {
         return true.into();
     }
 
-    // 9.1.3 [[IsExtensible]]
-    // 9.1.3.1 OrdinaryIsExtensible
+    // 10.1.3 [[IsExtensible]]
+    // 10.1.3.1 OrdinaryIsExtensible
     fn is_extensible(&self) -> AbstractResult<bool> {
         self.is_extensible.into()
     }
 
-    // 9.1.4 [[PreventExtensions]]
-    // 9.1.4.1 OrdinaryPreventExtensions
+    // 10.1.4 [[PreventExtensions]]
+    // 10.1.4.1 OrdinaryPreventExtensions
     fn prevent_extensions(&mut self) -> AbstractResult<bool> {
         self.is_extensible = false;
         true.into()
     }
 
-    // 9.1.5 [[GetOwnProperty]]
+    // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self, key).into()
     }
 
-    // 9.1.6 [[DefineOwnProperty]]
+    // 10.1.6 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
         cx: &mut Context,
@@ -109,17 +109,17 @@ impl Object for OrdinaryObject {
         ordinary_define_own_property(cx, self, key, desc)
     }
 
-    // 9.1.7 [[HasProperty]]
+    // 10.1.7 [[HasProperty]]
     fn has_property(&self, key: &str) -> AbstractResult<bool> {
         ordinary_has_property(self, key)
     }
 
-    // 9.1.8 [[Get]]
+    // 10.1.8 [[Get]]
     fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
         ordinary_get(cx, self, key, receiver)
     }
 
-    // 9.1.9 [[Set]]
+    // 10.1.9 [[Set]]
     fn set(
         &mut self,
         cx: &mut Context,
@@ -130,18 +130,18 @@ impl Object for OrdinaryObject {
         ordinary_set(cx, self, key, value, receiver)
     }
 
-    // 9.1.10 [[Delete]]
+    // 10.1.10 [[Delete]]
     fn delete(&mut self, key: &str) -> AbstractResult<bool> {
         ordinary_delete(self, key)
     }
 
-    // 9.1.11 [[OwnPropertyKeys]]
+    // 10.1.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
         ordinary_own_property_keys(cx, self)
     }
 }
 
-// 9.1.5.1 OrdinaryGetOwnProperty
+// 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(object: &OrdinaryObject, key: &str) -> Option<PropertyDescriptor> {
     match object.properties.get(key) {
         None => None,
@@ -166,7 +166,7 @@ pub fn ordinary_get_own_property(object: &OrdinaryObject, key: &str) -> Option<P
     }
 }
 
-// 9.1.6.1 OrdinaryDefineOwnProperty
+// 10.1.6.1 OrdinaryDefineOwnProperty
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: &mut OrdinaryObject,
@@ -180,7 +180,7 @@ pub fn ordinary_define_own_property(
         .into()
 }
 
-// 9.1.6.2 IsCompatiblePropertyDescriptor
+// 10.1.6.2 IsCompatiblePropertyDescriptor
 pub fn is_compatible_property_descriptor(
     cx: &mut Context,
     is_extensible: bool,
@@ -190,7 +190,7 @@ pub fn is_compatible_property_descriptor(
     validate_and_apply_property_descriptor(cx, None, "", is_extensible, desc, current_desc)
 }
 
-// 9.1.6.3 ValidateAndApplyPropertyDescriptor
+// 10.1.6.3 ValidateAndApplyPropertyDescriptor
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<&mut OrdinaryObject>,
@@ -213,18 +213,18 @@ pub fn validate_and_apply_property_descriptor(
         let is_enumerable = desc.is_enumerable.unwrap_or(false);
         let is_configurable = desc.is_configurable.unwrap_or(false);
 
-        let property = if !desc.is_accessor_descriptor() {
-            let is_writable = desc.is_writable.unwrap_or(false);
-            let value = desc.value.unwrap_or_else(|| Value::undefined());
-
-            Property::data(value, is_enumerable, is_configurable, is_writable)
-        } else {
+        let property = if desc.is_accessor_descriptor() {
             let accessor_value = cx.heap.alloc(AccessorValue {
                 get: desc.get,
                 set: desc.set,
             });
 
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
+        } else {
+            let is_writable = desc.is_writable.unwrap_or(false);
+            let value = desc.value.unwrap_or_else(|| Value::undefined());
+
+            Property::data(value, is_enumerable, is_configurable, is_writable)
         };
 
         object.properties.insert(key.to_string(), property);
@@ -233,7 +233,7 @@ pub fn validate_and_apply_property_descriptor(
     }
 
     let current_desc = current_desc.unwrap();
-    if current_desc.has_no_fields() {
+    if desc.has_no_fields() {
         return true;
     }
 
@@ -342,7 +342,7 @@ pub fn validate_and_apply_property_descriptor(
     true
 }
 
-// 9.1.7.1 OrdinaryHasProperty
+// 10.1.7.1 OrdinaryHasProperty
 pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> AbstractResult<bool> {
     let own_property = maybe_!(object.get_own_property(key));
     if own_property.is_some() {
@@ -356,7 +356,7 @@ pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> AbstractResu
     }
 }
 
-// 9.1.8.1 OrdinaryGet
+// 10.1.8.1 OrdinaryGet
 pub fn ordinary_get(
     cx: &mut Context,
     object: &OrdinaryObject,
@@ -380,8 +380,8 @@ pub fn ordinary_get(
     }
 }
 
-// 9.1.9.1 OrdinarySet
-// 9.1.9.2 OrdinarySetWithOwnDescriptor
+// 10.1.9.1 OrdinarySet
+// 10.1.9.2 OrdinarySetWithOwnDescriptor
 pub fn ordinary_set(
     cx: &mut Context,
     object: &mut OrdinaryObject,
@@ -416,12 +416,12 @@ pub fn ordinary_set(
         match existing_descriptor {
             None => create_data_property(cx, receiver, key, value),
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
-                return false.into()
+                false.into()
             }
             Some(PropertyDescriptor {
                 is_writable: Some(false),
                 ..
-            }) => return false.into(),
+            }) => false.into(),
             Some(_) => {
                 let value_desc = PropertyDescriptor::data_value_only(value);
                 receiver.define_own_property(cx, key, value_desc)
@@ -438,7 +438,7 @@ pub fn ordinary_set(
     }
 }
 
-// 9.1.10.1 OrdinaryDelete
+// 10.1.10.1 OrdinaryDelete
 pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> AbstractResult<bool> {
     let desc = maybe_!(object.get_own_property(key));
     match desc {
@@ -454,9 +454,10 @@ pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> AbstractResult
     }
 }
 
-// 9.1.11.1 OrdinaryOwnPropertyKeys
+// 10.1.11.1 OrdinaryOwnPropertyKeys
 pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
     // TODO: Return keys in order of property creation
+    // TODO: Add array index and symbol keys
     object
         .properties
         .keys()
@@ -464,6 +465,7 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
         .collect()
 }
 
+// 10.1.12 OrdinaryObjectCreate
 pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
     OrdinaryObject {
         _vtable: VTABLE,
@@ -473,6 +475,7 @@ pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
     }
 }
 
+// 10.1.13 OrdinaryCreateFromConstructor
 pub fn ordinary_create_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
@@ -487,7 +490,7 @@ pub fn ordinary_create_from_constructor(
     cx.heap.alloc(ordinary_object_create(proto)).into()
 }
 
-// 9.1.14 GetPrototypeFromConstructor
+// 10.1.14 GetPrototypeFromConstructor
 pub fn get_prototype_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,

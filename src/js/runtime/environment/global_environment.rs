@@ -181,17 +181,17 @@ impl Environment for GlobalEnvironment {
 
 impl GlobalEnvironment {
     // 9.1.1.4.12 HasVarDeclaration
-    fn has_var_declaration(&self, name: &str) -> bool {
+    pub fn has_var_declaration(&self, name: &str) -> bool {
         self.var_names.contains(name)
     }
 
     // 9.1.1.4.13 HasLexicalDeclaration
-    fn has_lexical_declaration(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+    pub fn has_lexical_declaration(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
         self.decl_env.has_binding(cx, name)
     }
 
     // 9.1.1.4.14 HasRestrictedGlobalProperty
-    fn has_restricted_global_property(&self, name: &str) -> AbstractResult<bool> {
+    pub fn has_restricted_global_property(&self, name: &str) -> AbstractResult<bool> {
         let global_object = &self.object_env.binding_object;
         let existing_prop = maybe_!(global_object.get_own_property(name));
 
@@ -202,22 +202,22 @@ impl GlobalEnvironment {
     }
 
     // 9.1.1.4.15 CanDeclareGlobalVar
-    fn can_declare_global_var(&self, name: &str) -> AbstractResult<bool> {
+    pub fn can_declare_global_var(&self, name: &str) -> AbstractResult<bool> {
         let global_object = self.object_env.binding_object;
         if maybe_!(has_own_property(global_object, name)) {
             return true.into();
         }
 
-        is_extensible(global_object).into()
+        is_extensible(global_object)
     }
 
     // 9.1.1.4.16 CanDeclareGlobalFunction
-    fn can_declare_global_function(&self, name: &str) -> AbstractResult<bool> {
+    pub fn can_declare_global_function(&self, name: &str) -> AbstractResult<bool> {
         let global_object = self.object_env.binding_object;
         let existing_prop = maybe_!(global_object.get_own_property(name));
 
         match existing_prop {
-            None => is_extensible(global_object).into(),
+            None => is_extensible(global_object),
             Some(existing_prop) => {
                 if existing_prop.is_configurable() {
                     return true.into();
@@ -233,7 +233,7 @@ impl GlobalEnvironment {
     }
 
     // 9.1.1.4.17 CreateGlobalVarBinding
-    fn create_global_var_binding(
+    pub fn create_global_var_binding(
         &mut self,
         cx: &mut Context,
         name: &str,
@@ -241,7 +241,7 @@ impl GlobalEnvironment {
     ) -> AbstractResult<()> {
         let global_object = self.object_env.binding_object;
         let has_property = maybe_!(has_own_property(global_object, name));
-        let is_extensible = is_extensible(global_object);
+        let is_extensible = maybe_!(is_extensible(global_object));
 
         if !has_property && is_extensible {
             maybe_!(self
@@ -260,7 +260,7 @@ impl GlobalEnvironment {
     }
 
     // 9.1.1.4.18 CreateGlobalFunctionBinding
-    fn create_global_function_binding(
+    pub fn create_global_function_binding(
         &mut self,
         cx: &mut Context,
         name: String,

@@ -1,6 +1,6 @@
 mod abstract_operations;
 mod builtin_function;
-mod completion;
+pub mod completion;
 mod context;
 mod environment;
 mod error;

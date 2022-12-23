@@ -1,8 +1,25 @@
+use crate::{js::runtime::completion::AbstractResult, maybe_};
+
 use super::loc::Loc;
 
 pub type P<T> = Box<T>;
 
 pub type AstId = usize;
+
+/// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
+pub struct AstPtr<T> {
+    ptr: *const T,
+}
+
+impl<T> AstPtr<T> {
+    pub fn from_ref(value: &T) -> AstPtr<T> {
+        AstPtr { ptr: value }
+    }
+
+    pub fn as_ref(&self) -> &T {
+        unsafe { &*self.ptr }
+    }
+}
 
 pub struct Program {
     pub loc: Loc,
@@ -41,6 +58,7 @@ pub enum Statement {
     Debugger(Loc),
 }
 
+#[derive(PartialEq)]
 pub enum VarKind {
     Var,
     Let,
@@ -53,10 +71,32 @@ pub struct VariableDeclaration {
     pub declarations: Vec<VariableDeclarator>,
 }
 
+impl VariableDeclaration {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        for decl in &self.declarations {
+            maybe_!(decl.iter_bound_names(f))
+        }
+
+        ().into()
+    }
+}
+
 pub struct VariableDeclarator {
     pub loc: Loc,
     pub id: P<Pattern>,
     pub init: Option<P<Expression>>,
+}
+
+impl VariableDeclarator {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        self.id.iter_bound_names(f)
+    }
 }
 
 pub struct Function {
@@ -413,14 +453,58 @@ pub enum Pattern {
     Assign(AssignmentPattern),
 }
 
+impl Pattern {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        match &self {
+            Pattern::Id(id) => f(id),
+            Pattern::Array(patt) => patt.iter_bound_names(f),
+            Pattern::Object(patt) => patt.iter_bound_names(f),
+            Pattern::Assign(patt) => patt.iter_bound_names(f),
+        }
+    }
+}
+
 pub struct ArrayPattern {
     pub loc: Loc,
     pub elements: Vec<Option<Pattern>>,
 }
 
+impl ArrayPattern {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        for element in &self.elements {
+            if let Some(element) = element {
+                maybe_!(element.iter_bound_names(f))
+            }
+        }
+
+        ().into()
+    }
+}
+
 pub struct ObjectPattern {
     pub loc: Loc,
     pub properties: Vec<ObjectPatternProperty>,
+}
+
+impl ObjectPattern {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        for prop in &self.properties {
+            if !prop.is_computed {
+                maybe_!(prop.value.iter_bound_names(f))
+            }
+        }
+
+        ().into()
+    }
 }
 
 pub struct ObjectPatternProperty {
@@ -434,4 +518,13 @@ pub struct AssignmentPattern {
     pub loc: Loc,
     pub left: P<Pattern>,
     pub right: P<Expression>,
+}
+
+impl AssignmentPattern {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        self.left.iter_bound_names(f)
+    }
 }

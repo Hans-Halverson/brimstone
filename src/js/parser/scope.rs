@@ -1,6 +1,6 @@
 use super::{
-    ast::{self, AstId, Toplevel},
-    facts::{FactsCache, FactsPtr, LexDecl, VarDecl},
+    ast::{self, AstId, AstPtr},
+    facts::{FactsCache, LexDecl, VarDecl},
 };
 
 enum Scope {
@@ -56,9 +56,9 @@ impl ScopeBuilder {
         };
 
         if is_lex_decl {
-            self.insert_lex_scoped_decl(LexDecl::Var(FactsPtr::from_ref(var_decl)), facts)
+            self.insert_lex_scoped_decl(LexDecl::Var(AstPtr::from_ref(var_decl)), facts)
         } else {
-            self.insert_var_scoped_decl(VarDecl::Var(FactsPtr::from_ref(var_decl)), facts)
+            self.insert_var_scoped_decl(VarDecl::Var(AstPtr::from_ref(var_decl)), facts)
         }
     }
 
@@ -69,9 +69,9 @@ impl ScopeBuilder {
         facts: &mut FactsCache,
     ) {
         if is_lex_scoped_decl {
-            self.insert_lex_scoped_decl(LexDecl::Func(FactsPtr::from_ref(func)), facts)
+            self.insert_lex_scoped_decl(LexDecl::Func(AstPtr::from_ref(func)), facts)
         } else {
-            self.insert_var_scoped_decl(VarDecl::Func(FactsPtr::from_ref(func)), facts)
+            self.insert_var_scoped_decl(VarDecl::Func(AstPtr::from_ref(func)), facts)
         }
     }
 

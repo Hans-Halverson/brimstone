@@ -2,7 +2,10 @@ use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     impl_gc_into,
-    js::{parser::ast, runtime::intrinsics::intrinsics::Intrinsic},
+    js::{
+        parser::ast::{self, AstPtr},
+        runtime::intrinsics::intrinsics::Intrinsic,
+    },
     maybe_, must_,
 };
 
@@ -54,7 +57,7 @@ pub struct Function {
     pub home_object: Option<Gc<ObjectValue>>,
     realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
-    func_node: ast::Function,
+    func_node: AstPtr<ast::Function>,
     pub environment: Gc<dyn Environment>,
     pub private_environment: Option<Gc<PrivateEnvironment>>,
 }
@@ -238,7 +241,7 @@ impl Function {
 pub fn ordinary_function_create(
     cx: &mut Context,
     function_prototype: Gc<ObjectValue>,
-    func_node: ast::Function,
+    func_node: &ast::Function,
     is_lexical_this: bool,
     environment: Gc<dyn Environment>,
     private_environment: Option<Gc<PrivateEnvironment>>,
@@ -253,7 +256,7 @@ pub fn ordinary_function_create(
         ThisMode::Global
     };
     let object = ordinary_object_create(function_prototype);
-    let argument_count = expected_argument_count(&func_node);
+    let argument_count = expected_argument_count(func_node);
 
     let func = Function {
         _vtable: VTABLE,
@@ -268,7 +271,7 @@ pub fn ordinary_function_create(
         script_or_module: cx.get_active_script_or_module(),
         environment,
         private_environment,
-        func_node,
+        func_node: AstPtr::from_ref(func_node),
     };
 
     let func = cx.heap.alloc(func);
@@ -347,6 +350,44 @@ pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: u32)
     let float_length: f64 = length.into();
     let desc = PropertyDescriptor::data(float_length.into(), false, false, true);
     must_!(define_property_or_throw(cx, func, "length", desc))
+}
+
+// 8.5.1 InstantiateFunctionObject
+pub fn instantiate_function_object(
+    cx: &mut Context,
+    func_node: &ast::Function,
+    env: Gc<dyn Environment>,
+    private_env: Option<Gc<PrivateEnvironment>>,
+) -> Gc<Function> {
+    if func_node.is_async || func_node.is_generator {
+        unimplemented!("async and generator functions not yet implemented")
+    }
+
+    instantiate_ordinary_function_object(cx, func_node, env, private_env)
+}
+
+// 15.2.4 InstantiateOrdinaryFunctionObject
+pub fn instantiate_ordinary_function_object(
+    cx: &mut Context,
+    func_node: &ast::Function,
+    env: Gc<dyn Environment>,
+    private_env: Option<Gc<PrivateEnvironment>>,
+) -> Gc<Function> {
+    let name = match &func_node.id {
+        None => "default",
+        Some(id) => &id.name,
+    };
+
+    let function_prototype = cx
+        .current_realm()
+        .get_intrinsic(Intrinsic::FunctionPrototype);
+    let function_object =
+        ordinary_function_create(cx, function_prototype, func_node, false, env, private_env);
+
+    set_function_name(cx, function_object.into(), name, None);
+    make_constructor(cx, function_object, None, None);
+
+    function_object
 }
 
 fn expected_argument_count(func_node: &ast::Function) -> u32 {

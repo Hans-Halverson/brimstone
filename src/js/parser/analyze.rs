@@ -16,10 +16,17 @@ impl Analyzer {
             facts_cache: FactsCache::new(),
         }
     }
+
+    pub fn facts_cache(&self) -> &FactsCache {
+        &self.facts_cache
+    }
 }
 
 impl<'a> AstVisitor<'a> for Analyzer {
     fn visit_program(&mut self, program: &Program) {
+        // Always populate facts for the toplevel program
+        self.facts_cache.get_or_create_facts(program.ast_id);
+
         self.scope_builder.enter_toplevel_scope(program);
 
         for toplevel in &program.toplevels {

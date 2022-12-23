@@ -1,21 +1,8 @@
 use std::collections::HashMap;
 
-use super::ast::{self, AstId};
+use crate::js::runtime::completion::AbstractResult;
 
-/// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
-pub struct FactsPtr<T> {
-    ptr: *const T,
-}
-
-impl<T> FactsPtr<T> {
-    pub fn from_ref(value: &T) -> FactsPtr<T> {
-        FactsPtr { ptr: value }
-    }
-
-    pub fn as_ref(&self) -> &T {
-        unsafe { &*self.ptr }
-    }
-}
+use super::ast::{self, AstId, AstPtr};
 
 pub struct Facts {
     // 8.1.7 VarScopedDeclarations
@@ -25,13 +12,37 @@ pub struct Facts {
 }
 
 pub enum VarDecl {
-    Func(FactsPtr<ast::Function>),
-    Var(FactsPtr<ast::VariableDeclaration>),
+    Func(AstPtr<ast::Function>),
+    Var(AstPtr<ast::VariableDeclaration>),
 }
 
 pub enum LexDecl {
-    Func(FactsPtr<ast::Function>),
-    Var(FactsPtr<ast::VariableDeclaration>),
+    Func(AstPtr<ast::Function>),
+    Var(AstPtr<ast::VariableDeclaration>),
+}
+
+impl VarDecl {
+    pub fn iter_bound_names<F: FnMut(&ast::Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        match &self {
+            VarDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
+            VarDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
+        }
+    }
+}
+
+impl LexDecl {
+    pub fn iter_bound_names<F: FnMut(&ast::Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        match &self {
+            LexDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
+            LexDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
+        }
+    }
 }
 
 impl Facts {
@@ -40,6 +51,14 @@ impl Facts {
             var_decls: vec![],
             lex_decls: vec![],
         }
+    }
+
+    pub fn var_decls(&self) -> &[VarDecl] {
+        &self.var_decls
+    }
+
+    pub fn lex_decls(&self) -> &[LexDecl] {
+        &self.lex_decls
     }
 
     pub fn add_var_decl(&mut self, var_decl: VarDecl) {

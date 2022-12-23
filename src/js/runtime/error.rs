@@ -4,6 +4,12 @@ use super::{
     Context,
 };
 
+fn syntax_error_value(cx: &mut Context, message: &str) -> Value {
+    cx.heap
+        .alloc_string(format!("SyntaxError: {}", message))
+        .into()
+}
+
 fn type_error_value(cx: &mut Context, message: &str) -> Value {
     cx.heap
         .alloc_string(format!("TypeError: {}", message))
@@ -16,12 +22,20 @@ fn reference_error_value(cx: &mut Context, message: &str) -> Value {
         .into()
 }
 
+pub fn syntax_error(cx: &mut Context, message: &str) -> Completion {
+    Completion::Throw(syntax_error_value(cx, message))
+}
+
 pub fn type_error(cx: &mut Context, message: &str) -> Completion {
     Completion::Throw(type_error_value(cx, message))
 }
 
 pub fn reference_error(cx: &mut Context, message: &str) -> Completion {
     Completion::Throw(reference_error_value(cx, message))
+}
+
+pub fn syntax_error_<T>(cx: &mut Context, message: &str) -> AbstractResult<T> {
+    AbstractResult::Throw(syntax_error_value(cx, message))
 }
 
 pub fn type_error_<T>(cx: &mut Context, message: &str) -> AbstractResult<T> {

@@ -5,6 +5,12 @@ use super::{
     property_descriptor::PropertyDescriptor, realm::Realm, value::Value, Context,
 };
 
+// 7.2.5 IsExtensible
+#[inline]
+pub fn is_extensible(object: Gc<ObjectValue>) -> AbstractResult<bool> {
+    object.is_extensible()
+}
+
 // 7.3.2 Get
 pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: &str) -> AbstractResult<Value> {
     object.get(cx, key, object.into())
@@ -88,10 +94,6 @@ pub fn call(
 }
 
 pub fn get_function_realm(func: Gc<ObjectValue>) -> AbstractResult<Realm> {
-    unimplemented!()
-}
-
-pub fn is_extensible(object: Gc<ObjectValue>) -> bool {
     unimplemented!()
 }
 

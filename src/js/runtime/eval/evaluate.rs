@@ -5,7 +5,7 @@ use crate::js::{
     runtime::{completion::Completion, gc::Gc, realm::Realm, Context},
 };
 
-use super::script::evaluate_script;
+use super::script::eval_script;
 
 #[derive(Debug)]
 pub struct EvalError {
@@ -26,7 +26,7 @@ pub fn evaluate(
     analyzer: Rc<Analyzer>,
     realm: Gc<Realm>,
 ) -> Result<(), EvalError> {
-    let completion = evaluate_script(cx, program, analyzer, realm);
+    let completion = eval_script(cx, program, analyzer, realm);
     if let Completion::Throw(value) = completion {
         if value.is_string() {
             return Err(EvalError {

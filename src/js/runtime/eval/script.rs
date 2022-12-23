@@ -25,11 +25,13 @@ use crate::{
     maybe_, maybe__, must_,
 };
 
+use super::statement::eval_toplevel_list;
+
 // 16.1.4 Script Record
 pub struct Script {
     realm: Gc<Realm>,
     script_node: Rc<ast::Program>,
-    analyzer: Rc<Analyzer>,
+    pub analyzer: Rc<Analyzer>,
 }
 
 impl Script {
@@ -43,7 +45,7 @@ impl Script {
 }
 
 /// 16.1.6 ScriptEvaluation
-pub fn evaluate_script(
+pub fn eval_script(
     cx: &mut Context,
     program: Rc<ast::Program>,
     analyzer: Rc<Analyzer>,
@@ -70,10 +72,10 @@ pub fn evaluate_script(
     let mut result = global_declaration_instantiation(cx, &program, &analyzer, global_env);
 
     if let Completion::Normal(_) = result {
-        result = evaluate_program(&program);
+        result = eval_toplevel_list(cx, &program.toplevels);
     }
 
-    if let Completion::Normal(None) = result {
+    if result.is_empty() {
         result = Completion::Normal(Some(Value::undefined()));
     }
 

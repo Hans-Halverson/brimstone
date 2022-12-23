@@ -10,8 +10,16 @@ pub enum Completion {
 }
 
 impl Completion {
-    pub fn empty() -> Completion {
+    pub const fn empty() -> Completion {
         Completion::Normal(None)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Completion::Normal(None) => true,
+            _ => false,
+        }
     }
 }
 

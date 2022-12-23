@@ -3,7 +3,7 @@ use super::environment::Environment;
 use crate::js::runtime::{
     completion::AbstractResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
-    gc::Gc,
+    gc::{Gc, GcDeref},
     object_value::ObjectValue,
     value::Value,
     Context,
@@ -37,6 +37,8 @@ pub struct DeclarativeEnvironment {
     pub bindings: HashMap<String, Binding>,
     outer: Option<Gc<dyn Environment>>,
 }
+
+impl GcDeref for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment

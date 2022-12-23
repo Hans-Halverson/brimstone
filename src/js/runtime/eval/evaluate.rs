@@ -1,7 +1,7 @@
 use std::{error::Error, fmt, rc::Rc};
 
 use crate::js::{
-    parser::ast,
+    parser::{analyze::Analyzer, ast},
     runtime::{completion::Completion, gc::Gc, realm::Realm, Context},
 };
 
@@ -23,9 +23,10 @@ impl fmt::Display for EvalError {
 pub fn evaluate(
     cx: &mut Context,
     program: Rc<ast::Program>,
+    analyzer: Rc<Analyzer>,
     realm: Gc<Realm>,
 ) -> Result<(), EvalError> {
-    let completion = evaluate_script(cx, program, realm);
+    let completion = evaluate_script(cx, program, analyzer, realm);
     if let Completion::Throw(value) = completion {
         if value.is_string() {
             return Err(EvalError {

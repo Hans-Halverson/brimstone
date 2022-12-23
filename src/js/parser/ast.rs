@@ -2,8 +2,11 @@ use super::loc::Loc;
 
 pub type P<T> = Box<T>;
 
+pub type AstId = usize;
+
 pub struct Program {
     pub loc: Loc,
+    pub ast_id: AstId,
     pub toplevels: Vec<Toplevel>,
 }
 
@@ -58,6 +61,7 @@ pub struct VariableDeclarator {
 
 pub struct Function {
     pub loc: Loc,
+    pub ast_id: AstId,
     pub id: Option<P<Identifier>>,
     pub params: Vec<Pattern>,
     pub body: P<FunctionBody>,
@@ -77,6 +81,7 @@ pub struct ExpressionStatement {
 
 pub struct Block {
     pub loc: Loc,
+    pub ast_id: AstId,
     pub body: Vec<Statement>,
 }
 
@@ -89,6 +94,7 @@ pub struct IfStatement {
 
 pub struct SwitchStatement {
     pub loc: Loc,
+    pub ast_id: AstId,
     pub discriminant: P<Expression>,
     pub cases: Vec<SwitchCase>,
 }

@@ -122,6 +122,7 @@ struct Parser<'a> {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
+    next_ast_id: AstId,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -130,6 +131,7 @@ struct ParserSaveState {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
+    next_ast_id: AstId,
 }
 
 impl<'a> Parser<'a> {
@@ -140,6 +142,7 @@ impl<'a> Parser<'a> {
             token: Token::Eof,
             loc: EMPTY_LOC,
             prev_loc: EMPTY_LOC,
+            next_ast_id: 0,
         }
     }
 
@@ -157,6 +160,7 @@ impl<'a> Parser<'a> {
             token: self.token.clone(),
             loc: self.loc,
             prev_loc: self.prev_loc,
+            next_ast_id: self.next_ast_id,
         }
     }
 
@@ -165,6 +169,7 @@ impl<'a> Parser<'a> {
         self.token = save_state.token;
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
+        self.next_ast_id = save_state.next_ast_id;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -226,6 +231,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn next_ast_id(&mut self) -> AstId {
+        let next_ast_id = self.next_ast_id;
+        self.next_ast_id += 1;
+        next_ast_id
+    }
+
     fn parse_program(&mut self) -> ParseResult<Program> {
         let mut toplevels = vec![];
 
@@ -236,7 +247,11 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
-        Ok(Program { loc, toplevels })
+        Ok(Program {
+            loc,
+            ast_id: self.next_ast_id(),
+            toplevels,
+        })
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -406,6 +421,7 @@ impl<'a> Parser<'a> {
 
         Ok(Function {
             loc,
+            ast_id: self.next_ast_id(),
             id,
             params,
             body,
@@ -446,7 +462,11 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Block { loc, body })
+        Ok(Block {
+            loc,
+            ast_id: self.next_ast_id(),
+            body,
+        })
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Statement> {
@@ -523,6 +543,7 @@ impl<'a> Parser<'a> {
 
         Ok(Statement::Switch(SwitchStatement {
             loc,
+            ast_id: self.next_ast_id(),
             discriminant,
             cases,
         }))
@@ -939,6 +960,7 @@ impl<'a> Parser<'a> {
 
                 return Ok(p(Expression::ArrowFunction(Function {
                     loc,
+                    ast_id: self.next_ast_id(),
                     id: None,
                     params,
                     body,
@@ -964,6 +986,7 @@ impl<'a> Parser<'a> {
 
         Ok(p(Expression::ArrowFunction(Function {
             loc,
+            ast_id: self.next_ast_id(),
             id: None,
             params,
             body,
@@ -1782,6 +1805,7 @@ impl<'a> Parser<'a> {
             kind,
             value: Some(p(Expression::Function(Function {
                 loc,
+                ast_id: self.next_ast_id(),
                 id: None,
                 params,
                 body,

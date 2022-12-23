@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::js::{
-    parser::ast,
+    parser::{analyze::Analyzer, ast},
     runtime::{
         completion::Completion,
         environment::{environment::to_trait_object, global_environment::GlobalEnvironment},
@@ -17,11 +17,16 @@ use crate::js::{
 pub struct Script {
     realm: Gc<Realm>,
     script_node: Rc<ast::Program>,
+    analyzer: Rc<Analyzer>,
 }
 
 impl Script {
-    pub fn new(script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Script {
-        Script { script_node, realm }
+    pub fn new(script_node: Rc<ast::Program>, analyzer: Rc<Analyzer>, realm: Gc<Realm>) -> Script {
+        Script {
+            script_node,
+            analyzer,
+            realm,
+        }
     }
 }
 
@@ -29,9 +34,10 @@ impl Script {
 pub fn evaluate_script(
     cx: &mut Context,
     program: Rc<ast::Program>,
+    analyzer: Rc<Analyzer>,
     realm: Gc<Realm>,
 ) -> Completion {
-    let script = cx.heap.alloc(Script::new(program.clone(), realm));
+    let script = cx.heap.alloc(Script::new(program.clone(), analyzer, realm));
 
     let global_env = realm.global_env;
     let global_env_object = to_trait_object(global_env);

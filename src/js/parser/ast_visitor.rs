@@ -12,7 +12,7 @@ pub trait AstVisitor<'a>: Sized {
     fn visit_statement(&mut self, stmt: &Statement) {
         match stmt {
             Statement::VarDecl(var_decl) => self.visit_variable_declaration(var_decl),
-            Statement::FuncDecl(func_decl) => self.visit_function(func_decl),
+            Statement::FuncDecl(func_decl) => self.visit_function_declaration(func_decl),
             Statement::Expr(expr) => self.visit_expression_statement(expr),
             Statement::Block(stmt) => self.visit_block(stmt),
             Statement::If(stmt) => self.visit_if_statement(stmt),
@@ -53,8 +53,8 @@ pub trait AstVisitor<'a>: Sized {
             Expression::This(loc) => self.visit_this_expression(&loc),
             Expression::Array(arr) => self.visit_array_expression(arr),
             Expression::Object(arr) => self.visit_object_expression(arr),
-            Expression::Function(func) => self.visit_function(func),
-            Expression::ArrowFunction(func) => self.visit_function(func),
+            Expression::Function(func) => self.visit_function_expression(func),
+            Expression::ArrowFunction(func) => self.visit_arrow_function(func),
             Expression::Await(expr) => self.visit_await_expression(expr),
             Expression::Yield(expr) => self.visit_yield_expression(expr),
         }
@@ -77,6 +77,10 @@ pub trait AstVisitor<'a>: Sized {
 
     fn visit_variable_declarator(&mut self, decl: &VariableDeclarator) {
         default_visit_variable_declarator(self, decl)
+    }
+
+    fn visit_function_declaration(&mut self, func_decl: &Function) {
+        default_visit_function_declaration(self, func_decl)
     }
 
     fn visit_function(&mut self, func: &Function) {
@@ -225,6 +229,14 @@ pub trait AstVisitor<'a>: Sized {
         default_visit_property(self, prop)
     }
 
+    fn visit_function_expression(&mut self, func_decl: &Function) {
+        default_visit_function_expression(self, func_decl)
+    }
+
+    fn visit_arrow_function(&mut self, func_decl: &Function) {
+        default_visit_arrow_function(self, func_decl)
+    }
+
     fn visit_await_expression(&mut self, expr: &AwaitExpression) {
         default_visit_await_expression(self, expr)
     }
@@ -291,6 +303,10 @@ pub fn default_visit_variable_declarator<'a, V: AstVisitor<'a>>(
 ) {
     visitor.visit_pattern(&decl.id);
     visit_opt!(visitor, decl.init, visit_expression);
+}
+
+pub fn default_visit_function_declaration<'a, V: AstVisitor<'a>>(visitor: &mut V, func: &Function) {
+    visitor.visit_function(func);
 }
 
 pub fn default_visit_function<'a, V: AstVisitor<'a>>(visitor: &mut V, func: &Function) {
@@ -516,6 +532,14 @@ pub fn default_visit_object_expression<'a, V: AstVisitor<'a>>(
 pub fn default_visit_property<'a, V: AstVisitor<'a>>(visitor: &mut V, prop: &Property) {
     visitor.visit_expression(&prop.key);
     visit_opt!(visitor, prop.value, visit_expression);
+}
+
+pub fn default_visit_function_expression<'a, V: AstVisitor<'a>>(visitor: &mut V, func: &Function) {
+    visitor.visit_function(func);
+}
+
+pub fn default_visit_arrow_function<'a, V: AstVisitor<'a>>(visitor: &mut V, func: &Function) {
+    visitor.visit_function(func);
 }
 
 pub fn default_visit_await_expression<'a, V: AstVisitor<'a>>(

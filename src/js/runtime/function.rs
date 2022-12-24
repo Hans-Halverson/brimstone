@@ -18,6 +18,7 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     error::type_error_,
+    eval::function::instantiate_ordinary_function_object,
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, GcDeref},
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
@@ -281,7 +282,7 @@ pub fn ordinary_function_create(
 }
 
 // 10.2.5 MakeConstructor
-fn make_constructor(
+pub fn make_constructor(
     cx: &mut Context,
     mut func: Gc<Function>,
     writable_prototype: Option<bool>,
@@ -366,32 +367,18 @@ pub fn instantiate_function_object(
     instantiate_ordinary_function_object(cx, func_node, env, private_env)
 }
 
-// 15.2.4 InstantiateOrdinaryFunctionObject
-pub fn instantiate_ordinary_function_object(
-    cx: &mut Context,
-    func_node: &ast::Function,
-    env: Gc<dyn Environment>,
-    private_env: Option<Gc<PrivateEnvironment>>,
-) -> Gc<Function> {
-    let name = match &func_node.id {
-        None => "default",
-        Some(id) => &id.name,
-    };
-
-    let function_prototype = cx
-        .current_realm()
-        .get_intrinsic(Intrinsic::FunctionPrototype);
-    let function_object =
-        ordinary_function_create(cx, function_prototype, func_node, false, env, private_env);
-
-    set_function_name(cx, function_object.into(), name, None);
-    make_constructor(cx, function_object, None, None);
-
-    function_object
-}
-
+// 15.1.5 ExpectedArgumentCount
+// Count is the number of parameters to the left of the first initializer or rest parameter.
 fn expected_argument_count(func_node: &ast::Function) -> u32 {
-    unimplemented!()
+    let mut count = 0;
+    for param in &func_node.params {
+        match param {
+            ast::Pattern::Assign(_) => return count,
+            _ => count += 1,
+        }
+    }
+
+    count
 }
 
 impl Into<Gc<Function>> for &Function {

@@ -39,9 +39,11 @@ const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
 const NAN_TAG: u16 = 0x7FF8;
 const POINTER_TAG: u16 = 0x8000;
 
+const BOOL_TAG: u16 = 0b000 | NAN_TAG;
 const UNDEFINED_TAG: u16 = 0b001 | NAN_TAG;
 const NULL_TAG: u16 = 0b011 | NAN_TAG;
-const BOOL_TAG: u16 = 0b000 | NAN_TAG;
+// Empty value in a completion record. Can use instead of Option<Value> to fit into single word.
+const EMPTY_TAG: u16 = 0b010 | NAN_TAG;
 
 const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
 const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
@@ -91,6 +93,11 @@ impl Value {
     #[inline]
     pub fn is_bool(&self) -> bool {
         self.has_tag(BOOL_TAG)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.has_tag(EMPTY_TAG)
     }
 
     #[inline]
@@ -172,6 +179,13 @@ impl Value {
     pub const fn null() -> Value {
         Value {
             raw_bits: (NULL_TAG as u64) << TAG_SHIFT,
+        }
+    }
+
+    #[inline]
+    pub const fn empty() -> Value {
+        Value {
+            raw_bits: (EMPTY_TAG as u64) << TAG_SHIFT,
         }
     }
 

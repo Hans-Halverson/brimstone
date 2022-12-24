@@ -76,7 +76,7 @@ pub fn eval_script(
     }
 
     if result.is_empty() {
-        result = Completion::Normal(Some(Value::undefined()));
+        result = Completion::Normal(Value::undefined());
     }
 
     cx.pop_execution_context();

@@ -38,8 +38,8 @@ impl<'a> AstVisitor<'a> for Analyzer {
         self.scope_builder.exit_scope()
     }
 
-    fn visit_function(&mut self, func: &Function) {
-        self.visit_function_common(func, true)
+    fn visit_function_declaration(&mut self, func: &Function) {
+        self.visit_function_declaration_common(func, true)
     }
 
     fn visit_block(&mut self, block: &Block) {
@@ -70,7 +70,9 @@ impl Analyzer {
     fn visit_top_level_declaration_statement(&mut self, stmt: &Statement) {
         match stmt {
             // Toplevel function declarations are treated as var scoped decls
-            Statement::FuncDecl(func_decl) => self.visit_function_common(func_decl, false),
+            Statement::FuncDecl(func_decl) => {
+                self.visit_function_declaration_common(func_decl, false)
+            }
             // Find statement under labels, if it is a function it is a var scoped decl
             Statement::Labeled(ref labeled_stmt) => {
                 self.visit_label_definition(labeled_stmt);
@@ -82,17 +84,21 @@ impl Analyzer {
                 }
 
                 if let Statement::FuncDecl(func_decl) = inner_stmt {
-                    self.visit_function_common(func_decl, false)
+                    self.visit_function_declaration_common(func_decl, false)
                 }
             }
             _ => self.visit_statement(stmt),
         }
     }
 
-    fn visit_function_common(&mut self, func: &Function, is_lex_scoped_decl: bool) {
+    fn visit_function_declaration_common(&mut self, func: &Function, is_lex_scoped_decl: bool) {
         self.scope_builder
             .add_func_decl(func, is_lex_scoped_decl, &mut self.facts_cache);
 
+        self.visit_function_common(func);
+    }
+
+    fn visit_function_common(&mut self, func: &Function) {
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_pattern);
 

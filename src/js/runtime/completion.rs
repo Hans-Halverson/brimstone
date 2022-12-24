@@ -2,7 +2,7 @@ use super::{gc::Gc, object_value::ObjectValue, value::Value};
 
 /// 6.2.3 Completion Record
 pub enum Completion {
-    Normal(Option<Value>),
+    Normal(Value),
     Return(Value),
     Throw(Value),
     Break,
@@ -11,29 +11,22 @@ pub enum Completion {
 
 impl Completion {
     pub const fn empty() -> Completion {
-        Completion::Normal(None)
+        Completion::Normal(Value::empty())
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
         match self {
-            Completion::Normal(None) => true,
+            Completion::Normal(value) if value.is_empty() => true,
             _ => false,
         }
     }
 }
 
-impl From<Value> for Completion {
+impl<T: Into<Value>> From<T> for Completion {
     #[inline]
-    fn from(value: Value) -> Self {
-        Completion::Normal(Some(value))
-    }
-}
-
-impl From<bool> for Completion {
-    #[inline]
-    fn from(value: bool) -> Self {
-        Completion::Normal(Some(Value::bool(value)))
+    fn from(value: T) -> Self {
+        Completion::Normal(value.into())
     }
 }
 

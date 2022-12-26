@@ -1,7 +1,28 @@
-use super::{completion::AbstractResult, gc::Gc, object_value::ObjectValue, value::Value};
+use super::{
+    completion::AbstractResult,
+    gc::Gc,
+    object_value::ObjectValue,
+    value::{
+        Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
+    },
+};
 
+// 7.1.2 ToBoolean
 pub fn to_boolean(value: Value) -> bool {
-    unimplemented!()
+    if value.is_number() {
+        return value.as_number() != 0.0 && !value.is_nan();
+    }
+
+    match value.get_tag() {
+        BOOL_TAG => value.as_bool(),
+        NULL_TAG => false,
+        UNDEFINED_TAG => false,
+        OBJECT_TAG => true,
+        STRING_TAG => !value.as_string().is_empty(),
+        SYMBOL_TAG => true,
+        BIGINT_TAG => unimplemented!("BigInt"),
+        _ => unreachable!(),
+    }
 }
 
 pub fn to_object(value: Value) -> AbstractResult<Gc<ObjectValue>> {

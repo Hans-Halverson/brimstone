@@ -26,11 +26,15 @@ use super::{
 ///   Undefined:  0b001
 ///   Null:       0b011
 ///   Bool:       0b000, and the lowest bit of the mantissa stores the bool value
+///   Empty:      0b010
 ///
 /// Pointers use the top three bits with the following tags, leaving 48 bits to store the pointer:
 ///
-///   Object: 0b000
-///   String: 0b001
+///   Object:   0b000
+///   String:   0b001
+///   Symbol:   0b010
+///   BigInt:   0b011
+///   Accessor: 0b100
 
 const TAG_SHIFT: u64 = 48;
 const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
@@ -39,16 +43,16 @@ const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
 const NAN_TAG: u16 = 0x7FF8;
 const POINTER_TAG: u16 = 0x8000;
 
-const BOOL_TAG: u16 = 0b000 | NAN_TAG;
-const UNDEFINED_TAG: u16 = 0b001 | NAN_TAG;
-const NULL_TAG: u16 = 0b011 | NAN_TAG;
+pub const BOOL_TAG: u16 = 0b000 | NAN_TAG;
+pub const UNDEFINED_TAG: u16 = 0b001 | NAN_TAG;
+pub const NULL_TAG: u16 = 0b011 | NAN_TAG;
 // Empty value in a completion record. Can use instead of Option<Value> to fit into single word.
 const EMPTY_TAG: u16 = 0b010 | NAN_TAG;
 
-const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
-const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
-const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
-const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
+pub const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
+pub const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
+pub const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
+pub const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
 const ACCESSOR_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
 
 // Mask that converts a null tag to an undefined tag, so that a nullish check can be performed with:
@@ -65,14 +69,24 @@ impl Value {
     // Type checks
 
     #[inline]
+    pub fn get_tag(&self) -> u16 {
+        (self.raw_bits >> TAG_SHIFT) as u16
+    }
+
+    #[inline]
     fn has_tag(&self, tag: u16) -> bool {
-        (self.raw_bits >> TAG_SHIFT) as u16 == tag
+        self.get_tag() == tag
     }
 
     #[inline]
     pub fn is_number(&self) -> bool {
         // Make sure to check if this is the canonical NaN value
-        (self.raw_bits & NAN_MASK != 0) || (self.raw_bits == NAN_MASK)
+        (self.raw_bits & NAN_MASK != NAN_MASK) || self.is_nan()
+    }
+
+    #[inline]
+    pub fn is_nan(&self) -> bool {
+        self.raw_bits == NAN_MASK
     }
 
     #[inline]
@@ -87,7 +101,7 @@ impl Value {
 
     #[inline]
     pub fn is_nullish(&self) -> bool {
-        (((self.raw_bits >> TAG_SHIFT) as u16) & NULLISH_TAG_MASK) == UNDEFINED_TAG
+        (self.get_tag() & NULLISH_TAG_MASK) == UNDEFINED_TAG
     }
 
     #[inline]
@@ -259,6 +273,10 @@ pub struct StringValue(String);
 impl StringValue {
     pub fn new(str: String) -> StringValue {
         StringValue(str)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

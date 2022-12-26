@@ -72,7 +72,7 @@ fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
 }
 
 // 9.4.4 ResolveThisBinding
-fn resolve_this_binding(cx: &mut Context) -> AbstractResult<Value> {
+pub fn resolve_this_binding(cx: &mut Context) -> AbstractResult<Value> {
     get_this_environment(cx).get_this_binding(cx)
 }
 

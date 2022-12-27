@@ -38,6 +38,15 @@ impl Completion {
     }
 
     #[inline]
+    pub const fn return_(value: Value) -> Completion {
+        Completion {
+            kind: CompletionKind::Return,
+            label: EMPTY_LABEL,
+            value,
+        }
+    }
+
+    #[inline]
     pub const fn empty() -> Completion {
         Completion::normal(Value::empty())
     }

@@ -2,16 +2,20 @@ use crate::{
     js::{
         parser::{ast, facts::LexDecl},
         runtime::{
-            completion::{AbstractResult, Completion},
+            completion::{AbstractResult, Completion, CompletionKind},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
             },
-            eval::function::{
-                instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
+            eval::{
+                function::{
+                    instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
+                },
+                pattern::binding_initialization,
             },
             execution_context::resolve_binding,
             gc::Gc,
+            type_utilities::to_boolean,
             value::Value,
             Context,
         },
@@ -63,6 +67,10 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::FuncDecl(_) => eval_function_declaration(),
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
+        ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
+        ast::Statement::Try(stmt) => eval_try_statement(cx, stmt),
+        ast::Statement::Throw(stmt) => eval_throw_statement(cx, stmt),
+        ast::Statement::Return(stmt) => eval_return_statement(cx, stmt),
         ast::Statement::Empty(_) => eval_empty_statement(),
         ast::Statement::Debugger(_) => eval_debugger_statement(),
         _ => unimplemented!("statement evaluation"),
@@ -144,7 +152,11 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
 
                 maybe__!(id_reference.initialize_referenced_binding(cx, value));
             }
-            _ => unimplemented!("lexical declaration patterns"),
+            patt => {
+                let value = maybe!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                let env = cx.current_execution_context().lexical_env;
+                maybe__!(binding_initialization(cx, patt, value, Some(env))).into()
+            }
         }
     }
 
@@ -167,7 +179,10 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
                     maybe__!(id_reference.put_value(cx, value));
                 }
             }
-            _ => unimplemented!("variable declaration patterns"),
+            patt => {
+                let value = maybe!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                maybe__!(binding_initialization(cx, patt, value, None)).into()
+            }
         }
     }
 
@@ -199,6 +214,108 @@ fn eval_empty_statement() -> Completion {
 // 14.5.1 Expression Statement Evaluation
 fn eval_expression_statement(cx: &mut Context, stmt: &ast::ExpressionStatement) -> Completion {
     eval_expression(cx, &stmt.expr)
+}
+
+// 14.6.2 If Statement Evaluation
+fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
+    let test = maybe!(eval_expression(cx, &stmt.test));
+
+    let completion = if to_boolean(test) {
+        eval_statement(cx, &stmt.conseq)
+    } else {
+        if let Some(ref altern) = stmt.altern {
+            eval_statement(cx, altern)
+        } else {
+            return Value::undefined().into();
+        }
+    };
+
+    completion.update_if_empty(Value::undefined())
+}
+
+// 14.10.1 Return Statement Evaluation
+fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Completion {
+    let return_value = if let Some(ref argument) = stmt.argument {
+        maybe!(eval_expression(cx, argument))
+    } else {
+        Value::undefined()
+    };
+
+    // TODO: Check for generator
+
+    Completion::return_(return_value)
+}
+
+// 14.14.1 Throw Statement Evaluation
+fn eval_throw_statement(cx: &mut Context, stmt: &ast::ThrowStatement) -> Completion {
+    let value = maybe!(eval_expression(cx, &stmt.argument));
+    Completion::throw(value)
+}
+
+// 14.15.3 Try Statement Evaluation
+fn eval_try_statement(cx: &mut Context, stmt: &ast::TryStatement) -> Completion {
+    let block_result = eval_block(cx, &stmt.block);
+
+    let block_catch_result = if block_result.kind() == CompletionKind::Throw {
+        if let Some(ref catch) = stmt.handler {
+            eval_catch_clause(cx, catch, block_result.value())
+        } else {
+            block_result
+        }
+    } else {
+        block_result
+    };
+
+    let result = if let Some(ref finally) = stmt.finalizer {
+        let finally_result = eval_block(cx, finally);
+        if finally_result.is_normal() {
+            block_catch_result
+        } else {
+            finally_result
+        }
+    } else {
+        block_catch_result
+    };
+
+    result.update_if_empty(Value::undefined())
+}
+
+// 14.15.2 CatchClauseEvaluation
+fn eval_catch_clause(
+    cx: &mut Context,
+    catch: &ast::CatchClause,
+    thrown_value: Value,
+) -> Completion {
+    match catch.param {
+        None => eval_block(cx, &catch.body),
+        Some(ref param) => {
+            let mut current_context = cx.current_execution_context();
+            let old_env = cx.current_execution_context().lexical_env;
+            let mut catch_env =
+                to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env))));
+
+            must_!(param.iter_bound_names(&mut |id| {
+                catch_env.create_mutable_binding(cx, id.name.clone(), false)
+            }));
+
+            current_context.lexical_env = catch_env;
+
+            let binding_init_result =
+                binding_initialization(cx, param, thrown_value, Some(catch_env));
+
+            // Make sure to remove new environment if binding initialization fails
+            if let AbstractResult::Throw(throw_value) = binding_init_result {
+                current_context.lexical_env = old_env;
+                return Completion::throw(throw_value);
+            }
+
+            let result = eval_block(cx, &catch.body);
+
+            current_context.lexical_env = old_env;
+
+            result
+        }
+    }
 }
 
 // 14.16.1 Debugger Statement Evaluation

@@ -23,15 +23,15 @@ fn reference_error_value(cx: &mut Context, message: &str) -> Value {
 }
 
 pub fn syntax_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::Throw(syntax_error_value(cx, message))
+    Completion::throw(syntax_error_value(cx, message))
 }
 
 pub fn type_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::Throw(type_error_value(cx, message))
+    Completion::throw(type_error_value(cx, message))
 }
 
 pub fn reference_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::Throw(reference_error_value(cx, message))
+    Completion::throw(reference_error_value(cx, message))
 }
 
 pub fn syntax_error_<T>(cx: &mut Context, message: &str) -> AbstractResult<T> {

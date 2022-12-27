@@ -2,7 +2,7 @@ use std::{error::Error, fmt, rc::Rc};
 
 use crate::js::{
     parser::{analyze::Analyzer, ast},
-    runtime::{completion::Completion, gc::Gc, realm::Realm, Context},
+    runtime::{completion::CompletionKind, gc::Gc, realm::Realm, Context},
 };
 
 use super::script::eval_script;
@@ -27,7 +27,8 @@ pub fn evaluate(
     realm: Gc<Realm>,
 ) -> Result<(), EvalError> {
     let completion = eval_script(cx, program, analyzer, realm);
-    if let Completion::Throw(value) = completion {
+    if completion.kind() == CompletionKind::Throw {
+        let value = completion.value();
         if value.is_string() {
             return Err(EvalError {
                 message: value.as_string().to_string(),

@@ -71,12 +71,12 @@ pub fn eval_script(
 
     let mut result = global_declaration_instantiation(cx, &program, &analyzer, global_env);
 
-    if let Completion::Normal(_) = result {
+    if result.is_normal() {
         result = eval_toplevel_list(cx, &program.toplevels);
     }
 
     if result.is_empty() {
-        result = Completion::Normal(Value::undefined());
+        result = Value::undefined().into();
     }
 
     cx.pop_execution_context();

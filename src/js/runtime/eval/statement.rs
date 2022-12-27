@@ -24,33 +24,31 @@ use super::expression::eval_expression;
 // 14.2.2 StatementList Evaluation
 pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Completion {
     // Value of the statement list is the last non-empty completion
-    let mut value = Value::empty();
+    let mut result = Completion::empty();
     for stmt in stmts {
-        let new_value = maybe!(eval_statement(cx, stmt));
-        if !new_value.is_empty() {
-            value = new_value;
-        }
+        let new_result = eval_statement(cx, stmt);
+        maybe!(new_result);
+        result = new_result.update_if_empty(result.value());
     }
 
-    value.into()
+    result
 }
 
 // Equivalent to evaluating StatementList, but for toplevel items
 pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Completion {
     // Value of the statement list is the last non-empty completion
-    let mut value = Value::empty();
+    let mut result = Completion::empty();
     for toplevel in toplevels {
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
-                let new_value = maybe!(eval_statement(cx, stmt));
-                if !new_value.is_empty() {
-                    value = new_value;
-                }
+                let new_result = eval_statement(cx, stmt);
+                maybe!(new_result);
+                result = new_result.update_if_empty(result.value());
             }
         }
     }
 
-    value.into()
+    result
 }
 
 fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
@@ -62,7 +60,6 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
                 eval_lexical_declaration(cx, var_decl)
             }
         }
-        ast::Statement::VarDecl(var_decl) => eval_lexical_declaration(cx, var_decl),
         ast::Statement::FuncDecl(_) => eval_function_declaration(),
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),

@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     abstract_operations::define_property_or_throw,
-    completion::{AbstractResult, Completion},
+    completion::{AbstractResult, Completion, CompletionKind},
     environment::{
         environment::{to_trait_object, Environment},
         function_environment::FunctionEnvironment,
@@ -105,11 +105,11 @@ impl Object for Function {
 
         cx.pop_execution_context();
 
-        match result {
-            Completion::Return(value) => value.into(),
-            Completion::Normal(_) => Value::undefined().into(),
-            Completion::Throw(value) => AbstractResult::Throw(value),
-            Completion::Break | Completion::Continue => {
+        match result.kind() {
+            CompletionKind::Return => result.value().into(),
+            CompletionKind::Normal => Value::undefined().into(),
+            CompletionKind::Throw => AbstractResult::Throw(result.value().into()),
+            CompletionKind::Break | CompletionKind::Continue => {
                 panic!("Call completion cannot be Break or Continue")
             }
         }
@@ -149,8 +149,9 @@ impl Object for Function {
 
         cx.pop_execution_context();
 
-        match result {
-            Completion::Return(value) => {
+        match result.kind() {
+            CompletionKind::Return => {
+                let value = result.value();
                 if value.is_object() {
                     return value.as_object().into();
                 }
@@ -167,9 +168,9 @@ impl Object for Function {
                     );
                 }
             }
-            Completion::Normal(_) => {}
-            Completion::Throw(value) => return AbstractResult::Throw(value),
-            Completion::Break | Completion::Continue => {
+            CompletionKind::Normal => {}
+            CompletionKind::Throw => return AbstractResult::Throw(result.value()),
+            CompletionKind::Break | CompletionKind::Continue => {
                 panic!("Construct completion cannot be Break or Continue")
             }
         }

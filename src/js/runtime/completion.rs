@@ -1,32 +1,82 @@
 use super::{gc::Gc, object_value::ObjectValue, value::Value};
 
 /// 6.2.3 Completion Record
-pub enum Completion {
-    Normal(Value),
-    Return(Value),
-    Throw(Value),
+#[derive(Clone, Copy, PartialEq)]
+pub enum CompletionKind {
+    Normal,
+    Return,
+    Throw,
     Break,
     Continue,
 }
 
+pub struct Completion {
+    kind: CompletionKind,
+    label: u16,
+    value: Value,
+}
+
+const EMPTY_LABEL: u16 = 0;
+
 impl Completion {
+    #[inline]
+    pub const fn normal(value: Value) -> Completion {
+        Completion {
+            kind: CompletionKind::Normal,
+            label: EMPTY_LABEL,
+            value,
+        }
+    }
+
+    #[inline]
+    pub const fn throw(value: Value) -> Completion {
+        Completion {
+            kind: CompletionKind::Throw,
+            label: EMPTY_LABEL,
+            value,
+        }
+    }
+
+    #[inline]
     pub const fn empty() -> Completion {
-        Completion::Normal(Value::empty())
+        Completion::normal(Value::empty())
+    }
+
+    #[inline]
+    pub fn kind(&self) -> CompletionKind {
+        self.kind
+    }
+
+    #[inline]
+    pub fn value(&self) -> Value {
+        self.value
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        match self {
-            Completion::Normal(value) if value.is_empty() => true,
-            _ => false,
+        self.value.is_empty()
+    }
+
+    #[inline]
+    pub fn is_normal(&self) -> bool {
+        self.kind == CompletionKind::Normal
+    }
+
+    // 6.2.3.4 UpdateEmpty
+    #[inline]
+    pub fn update_if_empty(mut self, value: Value) -> Completion {
+        if self.is_empty() {
+            self.value = value;
         }
+
+        self
     }
 }
 
 impl<T: Into<Value>> From<T> for Completion {
     #[inline]
     fn from(value: T) -> Self {
-        Completion::Normal(value.into())
+        Completion::normal(value.into())
     }
 }
 
@@ -55,7 +105,7 @@ impl<T: Into<Completion>> From<AbstractResult<T>> for Completion {
     fn from(value: AbstractResult<T>) -> Self {
         match value {
             AbstractResult::Ok(value) => value.into(),
-            AbstractResult::Throw(value) => Completion::Throw(value),
+            AbstractResult::Throw(value) => Completion::throw(value),
         }
     }
 }
@@ -63,10 +113,11 @@ impl<T: Into<Completion>> From<AbstractResult<T>> for Completion {
 /// Unwrap a Completion record, returning if abornmal
 #[macro_export]
 macro_rules! maybe {
-    ($a:expr) => {
-        match $a {
-            Completion::Normal(value) => value,
-            other => return other,
+    ($completion:expr) => {
+        if $completion.is_normal() {
+            $completion.value()
+        } else {
+            return $completion;
         }
     };
 }
@@ -74,10 +125,11 @@ macro_rules! maybe {
 /// Unwrap a Completion record that must be normal
 #[macro_export]
 macro_rules! must {
-    ($a:expr) => {
-        match $a {
-            Completion::Normal(value) => value,
-            _ => panic!("Unexepcted abnormal completion"),
+    ($completion:expr) => {
+        if $completion.is_normal() {
+            $completion.value()
+        } else {
+            panic!("Unexepcted abnormal completion")
         }
     };
 }
@@ -110,7 +162,7 @@ macro_rules! maybe__ {
     ($a:expr) => {
         match $a {
             AbstractResult::Ok(value) => value,
-            AbstractResult::Throw(value) => return Completion::Throw(value),
+            AbstractResult::Throw(value) => return Completion::throw(value),
         }
     };
 }

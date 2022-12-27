@@ -190,7 +190,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
 }
 
 #[inline]
-fn eval_named_anonymous_function_or_expression(
+pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
     name: &str,

@@ -38,6 +38,16 @@ impl Reference {
         }
     }
 
+    pub fn new_value(value: Value, name: String, is_strict: bool) -> Reference {
+        Reference {
+            base: ReferenceBase::Value(value),
+            name,
+            is_strict,
+            this_value: None,
+            private_name: None,
+        }
+    }
+
     pub fn new_env(env: Gc<dyn Environment>, name: String, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Env(env),
@@ -46,6 +56,10 @@ impl Reference {
             this_value: None,
             private_name: None,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     // 6.2.4.1 IsPropertyReference
@@ -83,7 +97,7 @@ impl Reference {
                 reference_error_(cx, &format!("Could not resolve {}", self.name))
             }
             ReferenceBase::Value(value) => {
-                let base = maybe_!(to_object(value));
+                let base = maybe_!(to_object(cx, value));
                 if self.is_private_reference() {
                     return private_get(base, &self.name);
                 }
@@ -108,7 +122,7 @@ impl Reference {
                 return ().into();
             }
             ReferenceBase::Value(value) => {
-                let mut base = maybe_!(to_object(value));
+                let mut base = maybe_!(to_object(cx, value));
                 if self.is_private_reference() {
                     return private_set(base, &self.name, value);
                 }

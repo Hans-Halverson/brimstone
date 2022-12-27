@@ -1,10 +1,12 @@
 use super::{
     completion::AbstractResult,
+    error::type_error_,
     gc::Gc,
     object_value::ObjectValue,
     value::{
         Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
     },
+    Context,
 };
 
 // 7.1.2 ToBoolean
@@ -25,7 +27,26 @@ pub fn to_boolean(value: Value) -> bool {
     }
 }
 
-pub fn to_object(value: Value) -> AbstractResult<Gc<ObjectValue>> {
+// 7.1.18 ToObject
+pub fn to_object(cx: &mut Context, value: Value) -> AbstractResult<Gc<ObjectValue>> {
+    if value.is_object() {
+        return value.as_object().into();
+    } else if value.is_number() {
+        unimplemented!("number objects")
+    }
+
+    match value.get_tag() {
+        NULL_TAG => type_error_(cx, "null value cannot be converted to object"),
+        UNDEFINED_TAG => type_error_(cx, "null value cannot be converted to object"),
+        BOOL_TAG => unimplemented!("bool objects"),
+        STRING_TAG => unimplemented!("string objects"),
+        SYMBOL_TAG => unimplemented!("symbol objects"),
+        BIGINT_TAG => unimplemented!("BigInt objects"),
+        _ => unreachable!(),
+    }
+}
+
+pub fn to_property_key(value: Value) -> String {
     unimplemented!()
 }
 

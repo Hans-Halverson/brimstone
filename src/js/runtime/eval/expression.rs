@@ -1,10 +1,13 @@
+use std::cell::Ref;
+
 use crate::{
     js::{
         parser::ast,
         runtime::{
-            completion::{AbstractResult, Completion},
+            completion::{AbstractResult, Completion, CompletionKind},
             execution_context::{resolve_binding, resolve_this_binding},
-            type_utilities::to_boolean,
+            reference::Reference,
+            type_utilities::{to_boolean, to_object, to_property_key},
             value::Value,
             Context,
         },
@@ -12,8 +15,9 @@ use crate::{
     maybe, maybe__,
 };
 
-use super::function::{
-    instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
+use super::{
+    function::{instantiate_arrow_function_expression, instantiate_ordinary_function_expression},
+    statement::eval_named_anonymous_function_or_expression,
 };
 
 pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> Completion {
@@ -29,6 +33,8 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> Completion {
             _ => unimplemented!("unary expression evaluation"),
         },
         ast::Expression::Logical(expr) => eval_logical_expression(cx, expr),
+        ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
+        ast::Expression::Member(expr) => eval_member_expression(cx, expr),
         ast::Expression::Conditional(expr) => eval_conditional_expression(cx, expr),
         ast::Expression::Sequence(expr) => eval_sequence_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
@@ -45,6 +51,14 @@ pub fn eval_identifier(cx: &mut Context, id: &ast::Identifier) -> Completion {
     // Unlike the spec, greedily call GetValue here as all eval functions evaluate to a value.
     // TOOD: If a reference is needed provide another method to evaluate to a reference instead
     reference.get_value(cx).into()
+}
+
+// Same as eval_identifier, but returns a reference instead of a value
+fn eval_identifier_to_reference(
+    cx: &mut Context,
+    id: &ast::Identifier,
+) -> AbstractResult<Reference> {
+    resolve_binding(cx, &id.name, None)
 }
 
 // 13.2.1.1 This Expression Evaluation
@@ -67,6 +81,71 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> Completion {
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> Completion {
     Value::string(cx.heap.alloc_string(lit.value.clone())).into()
+}
+
+// 13.3.2.1 Member Expression Evaluation
+// Standard eval functions greedily call GetValue instead of returning a reference. This function
+// inlines the GetValue call.
+fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Completion {
+    let base_value = maybe!(eval_expression(cx, &expr.object));
+
+    if expr.is_computed {
+        let property_name_value = maybe!(eval_expression(cx, &expr.property));
+        let property_key = to_property_key(property_name_value);
+
+        let base = maybe__!(to_object(cx, base_value));
+        base.get(cx, &property_key, base.into()).into()
+    } else {
+        let property_name = match *expr.property {
+            ast::Expression::Id(ref id) => &id.name,
+            _ => unreachable!(),
+        };
+
+        let base = maybe__!(to_object(cx, base_value));
+        base.get(cx, property_name, base.into()).into()
+    }
+}
+
+// Same as eval_member_expression, but returns a reference instead of a value
+fn eval_member_expression_to_reference(
+    cx: &mut Context,
+    expr: &ast::MemberExpression,
+) -> AbstractResult<Reference> {
+    let base_completion = eval_expression(cx, &expr.object);
+    let base_value = match base_completion.kind() {
+        CompletionKind::Normal => base_completion.value(),
+        CompletionKind::Throw => return AbstractResult::Throw(base_completion.value()),
+        CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
+            unreachable!("expression cannot have non-throw abnormal completions")
+        }
+    };
+
+    // TODO: Check if we are currently in strict mode
+    let is_strict = false;
+
+    if expr.is_computed {
+        let property_name_completion = eval_expression(cx, &expr.property);
+        let property_name_value = match property_name_completion.kind() {
+            CompletionKind::Normal => property_name_completion.value(),
+            CompletionKind::Throw => {
+                return AbstractResult::Throw(property_name_completion.value())
+            }
+            CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
+                unreachable!("expression cannot have non-throw abnormal completions")
+            }
+        };
+
+        let property_key = to_property_key(property_name_value);
+
+        Reference::new_value(base_value, property_key, is_strict).into()
+    } else {
+        let property_name = match *expr.property {
+            ast::Expression::Id(ref id) => &id.name,
+            _ => unreachable!(),
+        };
+
+        Reference::new_value(base_value, property_name.to_owned(), is_strict).into()
+    }
 }
 
 // 13.5.2.1 Void Expression Evaluation
@@ -119,6 +198,32 @@ fn eval_conditional_expression(cx: &mut Context, expr: &ast::ConditionalExpressi
     } else {
         eval_expression(cx, &expr.altern)
     }
+}
+
+// 13.15.2 Assignment Expression Evaluation
+fn eval_assignment_expression(cx: &mut Context, expr: &ast::AssignmentExpression) -> Completion {
+    let mut reference = match expr.left.as_ref() {
+        ast::Expression::Id(id) => maybe__!(eval_identifier_to_reference(cx, &id)),
+        ast::Expression::Member(expr) => maybe__!(eval_member_expression_to_reference(cx, &expr)),
+        ast::Expression::Object(_) => unimplemented!("object patterns"),
+        ast::Expression::Array(_) => unimplemented!("array patterns"),
+        _ => unreachable!("invalid assigment left hand side"),
+    };
+
+    match expr.operator {
+        ast::AssignmentOperator::Equals => {}
+        _ => unimplemented!("assignment operators"),
+    }
+
+    let right_value = maybe!(eval_named_anonymous_function_or_expression(
+        cx,
+        &expr.right,
+        reference.name()
+    ));
+
+    maybe__!(reference.put_value(cx, right_value));
+
+    right_value.into()
 }
 
 // 13.16.1 Sequence Expression Evaluation

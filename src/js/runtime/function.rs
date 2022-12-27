@@ -217,7 +217,7 @@ impl Function {
                     let global_env = self.realm.global_env;
                     global_env.global_this_value
                 } else {
-                    maybe_!(to_object(this_argument))
+                    maybe_!(to_object(cx, this_argument))
                 };
 
                 object_value.into()

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{impl_gc_into, maybe_, must_};
 
 use super::{
-    abstract_operations::{call, create_data_property, get, get_function_realm},
+    abstract_operations::{call_object, create_data_property, get, get_function_realm},
     completion::AbstractResult,
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
@@ -376,7 +376,7 @@ pub fn ordinary_get(
         Some(PropertyDescriptor { get: None, .. }) => Value::undefined().into(),
         Some(PropertyDescriptor {
             get: Some(getter), ..
-        }) => call(cx, getter, receiver, vec![]),
+        }) => call_object(cx, getter, receiver, vec![]),
     }
 }
 
@@ -431,7 +431,7 @@ pub fn ordinary_set(
         match own_desc.set {
             None => false.into(),
             Some(setter) => {
-                maybe_!(call(cx, setter, receiver, vec![value]));
+                maybe_!(call_object(cx, setter, receiver, vec![value]));
                 true.into()
             }
         }

@@ -75,6 +75,14 @@ pub trait Object {
         panic!("[[Construct]] not implemented for this object")
     }
 
+    fn is_callable(&self) -> bool {
+        false
+    }
+
+    fn is_constructor(&self) -> bool {
+        false
+    }
+
     // Type refinement functions
     fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
         None

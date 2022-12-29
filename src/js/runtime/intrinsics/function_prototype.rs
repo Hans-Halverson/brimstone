@@ -61,4 +61,8 @@ impl Object for FunctionPrototype {
         // Accepts any arguments and returns undefined when invoked
         Value::undefined().into()
     }
+
+    fn is_callable(&self) -> bool {
+        true
+    }
 }

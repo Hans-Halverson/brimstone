@@ -178,6 +178,14 @@ impl Object for Function {
         let this_binding = maybe_!(constructor_env.get_this_binding(cx));
         this_binding.as_object().into()
     }
+
+    fn is_callable(&self) -> bool {
+        true
+    }
+
+    fn is_constructor(&self) -> bool {
+        self.has_construct
+    }
 }
 
 impl Function {

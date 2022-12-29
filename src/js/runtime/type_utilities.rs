@@ -46,11 +46,29 @@ pub fn to_object(cx: &mut Context, value: Value) -> AbstractResult<Gc<ObjectValu
     }
 }
 
-pub fn to_property_key(value: Value) -> String {
-    unimplemented!()
+// 7.2.3 IsCallable
+pub fn is_callable(value: Value) -> bool {
+    if !value.is_object() {
+        return false;
+    }
+
+    is_callable_object(value.as_object())
 }
 
-pub fn is_callable(value: Value) -> bool {
+pub fn is_callable_object(value: Gc<ObjectValue>) -> bool {
+    value.is_callable()
+}
+
+// 7.2.4 IsConstructor
+pub fn is_constructor(value: Value) -> bool {
+    if !value.is_object() {
+        return false;
+    }
+
+    value.as_object().is_constructor()
+}
+
+pub fn to_property_key(value: Value) -> String {
     unimplemented!()
 }
 

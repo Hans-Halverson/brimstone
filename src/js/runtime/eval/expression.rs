@@ -1,13 +1,13 @@
-use std::cell::Ref;
-
 use crate::{
     js::{
         parser::ast,
         runtime::{
+            abstract_operations::{call, construct},
             completion::{AbstractResult, Completion, CompletionKind},
+            error::type_error,
             execution_context::{resolve_binding, resolve_this_binding},
-            reference::Reference,
-            type_utilities::{to_boolean, to_object, to_property_key},
+            reference::{Reference, ReferenceBase},
+            type_utilities::{is_callable, is_constructor, to_boolean, to_object, to_property_key},
             value::Value,
             Context,
         },
@@ -36,6 +36,8 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> Completion {
         ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
         ast::Expression::Member(expr) => eval_member_expression(cx, expr),
         ast::Expression::Conditional(expr) => eval_conditional_expression(cx, expr),
+        ast::Expression::Call(expr) => eval_call_expression(cx, expr),
+        ast::Expression::New(expr) => eval_new_expression(cx, expr),
         ast::Expression::Sequence(expr) => eval_sequence_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
@@ -146,6 +148,92 @@ fn eval_member_expression_to_reference(
 
         Reference::new_value(base_value, property_name.to_owned(), is_strict).into()
     }
+}
+
+// 13.3.5.1 New Expression Evaluation
+// 13.3.5.1.1 EvaluateNew
+fn eval_new_expression(cx: &mut Context, expr: &ast::NewExpression) -> Completion {
+    let constructor = maybe!(eval_expression(cx, &expr.callee));
+    let arg_values = maybe__!(eval_argument_list(cx, &expr.arguments));
+
+    if !is_constructor(constructor) {
+        return type_error(cx, "value is not a constructor");
+    }
+
+    construct(cx, constructor.as_object(), arg_values, None).into()
+}
+
+// 13.3.6.1 Call Expression Evaluation
+fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> Completion {
+    let callee_reference = match expr.callee.as_ref() {
+        ast::Expression::Id(id) => Some(maybe__!(eval_identifier_to_reference(cx, &id))),
+        ast::Expression::Member(expr) => {
+            Some(maybe__!(eval_member_expression_to_reference(cx, &expr)))
+        }
+        _ => None,
+    };
+
+    let (func_value, this_value) = match callee_reference {
+        Some(reference) => {
+            let func_value = maybe__!(reference.get_value(cx));
+
+            // TODO: Check for direct call to eval
+
+            let this_value = match reference.base() {
+                ReferenceBase::Value(_) => reference.get_this_value(),
+                ReferenceBase::Env(env) => match env.with_base_object() {
+                    Some(base_object) => base_object.into(),
+                    None => Value::undefined(),
+                },
+                _ => unreachable!(),
+            };
+
+            (func_value, this_value)
+        }
+        None => {
+            let func_value = maybe!(eval_expression(cx, &expr.callee));
+            (func_value, Value::undefined())
+        }
+    };
+
+    eval_call(cx, func_value, this_value, &expr.arguments)
+}
+
+// 13.3.6.2 EvaluateCall
+// Modified to take the function value and this value instead of a reference.
+fn eval_call(
+    cx: &mut Context,
+    func_value: Value,
+    this_value: Value,
+    arguments: &[ast::Expression],
+) -> Completion {
+    let arg_values = maybe__!(eval_argument_list(cx, arguments));
+    if !is_callable(func_value) {
+        return type_error(cx, "value is not a function");
+    }
+
+    call(cx, func_value, this_value, arg_values).into()
+}
+
+// 13.3.8.1 ArgumentListEvaluation
+fn eval_argument_list(
+    cx: &mut Context,
+    arguments: &[ast::Expression],
+) -> AbstractResult<Vec<Value>> {
+    let mut arg_values = vec![];
+
+    for arg in arguments {
+        let arg_completion = eval_expression(cx, arg);
+        match arg_completion.kind() {
+            CompletionKind::Normal => arg_values.push(arg_completion.value()),
+            CompletionKind::Throw => return AbstractResult::Throw(arg_completion.value()),
+            CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
+                unreachable!("expression cannot have non-throw abnormal completions")
+            }
+        };
+    }
+
+    arg_values.into()
 }
 
 // 13.5.2.1 Void Expression Evaluation

@@ -149,6 +149,10 @@ impl Object for BuiltinFunction {
     fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
         Some(self.into())
     }
+
+    fn is_callable(&self) -> bool {
+        true
+    }
 }
 
 impl Into<Gc<BuiltinFunction>> for &BuiltinFunction {

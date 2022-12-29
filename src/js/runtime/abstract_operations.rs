@@ -1,8 +1,15 @@
 use crate::maybe_;
 
 use super::{
-    completion::AbstractResult, error::type_error_, gc::Gc, object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor, realm::Realm, value::Value, Context,
+    completion::AbstractResult,
+    error::type_error_,
+    gc::Gc,
+    object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor,
+    realm::Realm,
+    type_utilities::{is_callable, is_callable_object},
+    value::Value,
+    Context,
 };
 
 // 7.2.5 IsExtensible
@@ -84,13 +91,42 @@ pub fn has_own_property(object: Gc<ObjectValue>, key: &str) -> AbstractResult<bo
     desc.is_some().into()
 }
 
+// 7.3.14 Call
 pub fn call(
+    cx: &mut Context,
+    func: Value,
+    receiver: Value,
+    arguments: Vec<Value>,
+) -> AbstractResult<Value> {
+    if !is_callable(func) {
+        return type_error_(cx, "value is not a function");
+    }
+
+    func.as_object().call(cx, receiver, arguments)
+}
+
+pub fn call_object(
     cx: &mut Context,
     func: Gc<ObjectValue>,
     receiver: Value,
     arguments: Vec<Value>,
 ) -> AbstractResult<Value> {
-    unimplemented!()
+    if !is_callable_object(func) {
+        return type_error_(cx, "value is not a function");
+    }
+
+    func.call(cx, receiver, arguments)
+}
+
+// 7.3.15 Construct
+pub fn construct(
+    cx: &mut Context,
+    func: Gc<ObjectValue>,
+    arguments: Vec<Value>,
+    new_target: Option<Gc<ObjectValue>>,
+) -> AbstractResult<Gc<ObjectValue>> {
+    let new_target = new_target.unwrap_or(func);
+    func.construct(cx, arguments, new_target)
 }
 
 pub fn get_function_realm(func: Gc<ObjectValue>) -> AbstractResult<Realm> {

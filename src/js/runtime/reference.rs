@@ -58,6 +58,10 @@ impl Reference {
         }
     }
 
+    pub fn base(&self) -> &ReferenceBase {
+        &self.base
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashSet, rc::Rc};
 
 use crate::{visit_opt, visit_vec};
 
@@ -54,6 +54,17 @@ impl<'a> AstVisitor for Analyzer {
         self.visit_label_definition(stmt);
         default_visit_labeled_statement(self, stmt);
     }
+
+    fn visit_function_expression(&mut self, func: &mut Function) {
+        self.visit_function_common(func)
+    }
+
+    fn visit_arrow_function(&mut self, func: &mut Function) {
+        // Arrow functions do not provide an arguments object
+        func.is_arguments_object_needed = false;
+
+        self.visit_function_common(func);
+    }
 }
 
 impl Analyzer {
@@ -91,6 +102,7 @@ impl Analyzer {
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_pattern);
 
+        // Visit body inside a new function scope
         self.scope_builder.enter_function_scope(func);
 
         match *func.body {
@@ -102,7 +114,73 @@ impl Analyzer {
             FunctionBody::Expression(ref mut expr) => self.visit_expression(expr),
         }
 
-        self.scope_builder.exit_scope()
+        self.scope_builder.exit_scope();
+
+        // Static analysis of parameters and other function properties once body has been visited
+        let mut has_parameter_expressions = false;
+        let mut has_binding_patterns = false;
+        let mut has_duplicate_parameters = false;
+        // TODO: Initialize as false if function body does not contain "arguments" or "eval"
+        let mut is_arguments_object_needed = func.is_arguments_object_needed && false;
+        let mut parameter_names = HashSet::new();
+
+        for param in &func.params {
+            param.iter_patterns(&mut |patt| match patt {
+                Pattern::Id(id) => {
+                    if parameter_names.contains(&id.name) {
+                        has_duplicate_parameters = true;
+                    } else {
+                        parameter_names.insert(&id.name);
+                    }
+
+                    // Arguments object is not needed if "arguments" is a bound name in the
+                    // function parameters.
+                    if id.name == "arguments" {
+                        is_arguments_object_needed = false;
+                    }
+                }
+                Pattern::Array(_) | Pattern::Object(_) => {
+                    has_binding_patterns = true;
+                }
+                Pattern::Assign(_) => {
+                    has_parameter_expressions = true;
+                }
+            });
+        }
+
+        // Arguments object is not needed if "arguments" appears in the lexically declared names, or
+        // as a function var declared name.
+        if is_arguments_object_needed {
+            for var_decl in func.var_decls() {
+                match var_decl {
+                    VarDecl::Func(_) => {
+                        var_decl.iter_bound_names(&mut |id| {
+                            if id.name == "arguments" {
+                                is_arguments_object_needed = false;
+                            }
+
+                            ().into()
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            for lex_decl in func.lex_decls() {
+                lex_decl.iter_bound_names(&mut |id| {
+                    if id.name == "arguments" {
+                        is_arguments_object_needed = false;
+                    }
+
+                    ().into()
+                });
+            }
+        }
+
+        func.has_parameter_expressions = has_parameter_expressions;
+        func.has_simple_parameter_list = !has_binding_patterns && !has_parameter_expressions;
+        func.has_duplicate_parameters = has_duplicate_parameters;
+        func.is_arguments_object_needed = is_arguments_object_needed;
     }
 
     fn visit_label_definition(&mut self, _: &mut LabeledStatement) {

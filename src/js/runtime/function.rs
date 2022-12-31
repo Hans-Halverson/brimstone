@@ -2,11 +2,8 @@ use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     impl_gc_into,
-    js::{
-        parser::ast::{self, AstPtr},
-        runtime::intrinsics::intrinsics::Intrinsic,
-    },
-    maybe_, must_,
+    js::parser::ast::{self, AstPtr},
+    maybe, maybe_, must_,
 };
 
 use super::{
@@ -18,9 +15,14 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     error::type_error_,
-    eval::function::instantiate_ordinary_function_object,
+    eval::{
+        expression::eval_expression,
+        function::{function_declaration_instantiation, instantiate_ordinary_function_object},
+        statement::eval_statement_list,
+    },
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, GcDeref},
+    intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::{ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject},
     property_descriptor::PropertyDescriptor,
@@ -58,7 +60,7 @@ pub struct Function {
     pub home_object: Option<Gc<ObjectValue>>,
     realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
-    func_node: AstPtr<ast::Function>,
+    pub func_node: AstPtr<ast::Function>,
     pub environment: Gc<dyn Environment>,
     pub private_environment: Option<Gc<PrivateEnvironment>>,
 }
@@ -101,7 +103,7 @@ impl Object for Function {
         }
 
         maybe_!(self.ordinary_call_bind_this(cx, callee_context, this_argument));
-        let result = self.ordinary_call_evaluate_body(arguments);
+        let result = self.ordinary_call_evaluate_body(cx, &arguments);
 
         cx.pop_execution_context();
 
@@ -145,7 +147,7 @@ impl Object for Function {
         }
 
         let constructor_env = callee_context.lexical_env;
-        let result = self.ordinary_call_evaluate_body(arguments);
+        let result = self.ordinary_call_evaluate_body(cx, &arguments);
 
         cx.pop_execution_context();
 
@@ -242,8 +244,23 @@ impl Function {
     }
 
     // 10.2.1.4 OrdinaryCallEvaluateBody
-    fn ordinary_call_evaluate_body(&self, arguments: Vec<Value>) -> Completion {
-        unimplemented!()
+    // 10.2.1.3 EvaluateBody
+    fn ordinary_call_evaluate_body(&self, cx: &mut Context, arguments: &[Value]) -> Completion {
+        let func_node = self.func_node.as_ref();
+        if func_node.is_async || func_node.is_generator {
+            unimplemented!("async and generator functions not yet implemented")
+        }
+
+        // 15.2.3 EvaluateFunctionBody
+        // 15.3.3 EvaluateConciseBody
+        maybe!(function_declaration_instantiation(cx, self, arguments));
+        match func_node.body.as_ref() {
+            ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
+            ast::FunctionBody::Expression(expr) => {
+                let value = maybe!(eval_expression(cx, expr));
+                Completion::return_(value)
+            }
+        }
     }
 }
 

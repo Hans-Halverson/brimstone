@@ -36,8 +36,8 @@ pub enum LexDecl {
 }
 
 impl VarDecl {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         match &self {
@@ -48,8 +48,8 @@ impl VarDecl {
 }
 
 impl LexDecl {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         match &self {
@@ -151,8 +151,8 @@ pub struct VariableDeclaration {
 }
 
 impl VariableDeclaration {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         for decl in &self.declarations {
@@ -170,8 +170,8 @@ pub struct VariableDeclarator {
 }
 
 impl VariableDeclarator {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         self.id.iter_bound_names(f)
@@ -188,6 +188,12 @@ pub struct Function {
 
     pub var_decls: Vec<VarDecl>,
     pub lex_decls: Vec<LexDecl>,
+    pub has_simple_parameter_list: bool,
+    pub has_parameter_expressions: bool,
+    pub has_duplicate_parameters: bool,
+    // False only if we can statically prove that the arguments object is not needed. If true the
+    // arguments object may be needed.
+    pub is_arguments_object_needed: bool,
 }
 
 impl Function {
@@ -208,6 +214,10 @@ impl Function {
             is_generator,
             var_decls: vec![],
             lex_decls: vec![],
+            has_simple_parameter_list: false,
+            has_parameter_expressions: false,
+            has_duplicate_parameters: false,
+            is_arguments_object_needed: true,
         }
     }
 }
@@ -634,8 +644,29 @@ pub enum Pattern {
 }
 
 impl Pattern {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
+        f(self);
+
+        match &self {
+            Pattern::Id(_) => {}
+            Pattern::Array(patt) => {
+                for element in &patt.elements {
+                    if let Some(element) = element {
+                        element.iter_patterns(f)
+                    }
+                }
+            }
+            Pattern::Object(patt) => {
+                for prop in &patt.properties {
+                    prop.value.iter_patterns(f)
+                }
+            }
+            Pattern::Assign(patt) => patt.left.iter_patterns(f),
+        }
+    }
+
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         match &self {
@@ -653,8 +684,8 @@ pub struct ArrayPattern {
 }
 
 impl ArrayPattern {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         for element in &self.elements {
@@ -673,14 +704,12 @@ pub struct ObjectPattern {
 }
 
 impl ObjectPattern {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         for prop in &self.properties {
-            if !prop.is_computed {
-                maybe_!(prop.value.iter_bound_names(f))
-            }
+            maybe_!(prop.value.iter_bound_names(f))
         }
 
         ().into()
@@ -701,8 +730,8 @@ pub struct AssignmentPattern {
 }
 
 impl AssignmentPattern {
-    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
-        &self,
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+        &'a self,
         f: &mut F,
     ) -> AbstractResult<()> {
         self.left.iter_bound_names(f)

@@ -1,21 +1,251 @@
+use std::collections::HashSet;
+
 use crate::{
     js::{
-        parser::ast,
+        parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
-            completion::AbstractResult,
+            completion::{AbstractResult, Completion},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
                 private_environment::PrivateEnvironment,
             },
-            function::{make_constructor, ordinary_function_create, set_function_name, Function},
+            execution_context::resolve_binding,
+            function::{
+                instantiate_function_object, make_constructor, ordinary_function_create,
+                set_function_name, Function,
+            },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
+            value::Value,
             Context,
         },
     },
-    must_,
+    maybe, maybe__, must_,
 };
+
+use super::statement::eval_named_anonymous_function_or_expression;
+
+// 10.2.11 FunctionDeclarationInstantiation
+pub fn function_declaration_instantiation(
+    cx: &mut Context,
+    func: &Function,
+    arguments: &[Value],
+) -> Completion {
+    let func_node = func.func_node.as_ref();
+
+    let mut function_names = HashSet::new();
+    // Functions to initialize are in reverse order from spec
+    let mut functions_to_initialize = vec![];
+
+    // Visit functions in reverse order, if functions have the same name only the last is used.
+    for var_decl in func_node.var_decls().iter().rev() {
+        if let VarDecl::Func(func_ptr) = var_decl {
+            let func = func_ptr.as_ref();
+            let name = &func.id.as_deref().unwrap().name;
+
+            function_names.insert(name);
+            functions_to_initialize.push(func);
+        }
+    }
+
+    // TODO: Check if function is in strict mode
+    let is_strict = false;
+
+    let mut callee_context = cx.current_execution_context();
+
+    // A new environment is needed so that direct eval calls in parameter expressions are outside
+    // the environment where parameters are declared.
+    let mut env = if is_strict || !func_node.has_parameter_expressions {
+        callee_context.lexical_env
+    } else {
+        let new_env = DeclarativeEnvironment::new(Some(callee_context.lexical_env));
+        callee_context.lexical_env = to_trait_object(cx.heap.alloc(new_env));
+        callee_context.lexical_env
+    };
+
+    let mut parameter_names: HashSet<&str> = HashSet::new();
+
+    for param in &func_node.params {
+        must_!(param.iter_bound_names(&mut |id| {
+            parameter_names.insert(&id.name);
+
+            let already_declared = must_!(env.has_binding(cx, &id.name));
+            if !already_declared {
+                must_!(env.create_mutable_binding(cx, id.name.clone(), false));
+                if func_node.has_duplicate_parameters {
+                    must_!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                }
+            }
+
+            ().into()
+        }));
+    }
+
+    // Set up arguments object if needed
+    if func_node.is_arguments_object_needed {
+        let arguments_object = if is_strict || !func_node.has_simple_parameter_list {
+            create_unmapped_arguments_object(cx, &arguments)
+        } else {
+            create_mapped_arguments_object(cx, func_node, &arguments, env)
+        };
+
+        if is_strict {
+            must_!(env.create_immutable_binding(cx, "arguments".to_owned(), false))
+        } else {
+            must_!(env.create_mutable_binding(cx, "arguments".to_owned(), false))
+        }
+
+        must_!(env.initialize_binding(cx, "arguments", arguments_object));
+
+        parameter_names.insert("arguments");
+    }
+
+    let binding_init_env = if func_node.has_duplicate_parameters {
+        None
+    } else {
+        Some(env)
+    };
+
+    // Perform inlined IteratorBindingInitialization instead of creating an actual iterator object
+    let mut arg_index = 0;
+    for param in &func_node.params {
+        let (patt, init) = match param {
+            ast::Pattern::Assign(patt) => (patt.left.as_ref(), Some(patt.right.as_ref())),
+            _ => (param, None),
+        };
+
+        match patt {
+            ast::Pattern::Id(id) => {
+                let mut reference = maybe__!(resolve_binding(cx, &id.name, binding_init_env));
+                let mut value = if arg_index < arguments.len() {
+                    let argument = arguments[arg_index];
+                    arg_index += 1;
+                    argument
+                } else {
+                    Value::undefined()
+                };
+
+                if let Some(init) = init {
+                    if value.is_undefined() {
+                        value = maybe!(eval_named_anonymous_function_or_expression(
+                            cx, init, &id.name
+                        ));
+                    }
+                }
+
+                if binding_init_env.is_none() {
+                    maybe__!(reference.put_value(cx, value));
+                } else {
+                    maybe__!(reference.initialize_referenced_binding(cx, value));
+                }
+            }
+            ast::Pattern::Array(_) => unimplemented!("array patterns"),
+            ast::Pattern::Object(_) => unimplemented!("object patterns"),
+            ast::Pattern::Assign(_) => panic!("Cannot have nested assignment patterns"),
+        }
+    }
+
+    // Create bindings for var decls in function body
+    let mut var_env = if !func_node.has_parameter_expressions {
+        let mut instantiated_var_names = parameter_names;
+
+        for var_decl in func_node.var_decls() {
+            must_!(var_decl.iter_bound_names(&mut |id| {
+                if instantiated_var_names.insert(&id.name) {
+                    must_!(env.create_immutable_binding(cx, id.name.clone(), false));
+                    must_!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                }
+
+                ().into()
+            }));
+        }
+
+        env
+    } else {
+        // A separate Environment Record is needed to ensure that closures created by expressions in
+        // the formal parameter list do not have visibility of declarations in the function body.
+        callee_context.variable_env =
+            to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(env))));
+        let mut var_env = callee_context.variable_env;
+
+        let mut instantiated_var_names = HashSet::new();
+
+        for var_decl in func_node.var_decls() {
+            must_!(var_decl.iter_bound_names(&mut |id| {
+                if instantiated_var_names.insert(&id.name) {
+                    must_!(env.create_mutable_binding(cx, id.name.clone(), false));
+
+                    let initial_value = if !parameter_names.contains(id.name.as_str())
+                        || function_names.contains(&id.name)
+                    {
+                        Value::undefined()
+                    } else {
+                        must_!(env.get_binding_value(cx, &id.name, false))
+                    };
+
+                    must_!(var_env.initialize_binding(cx, &id.name, initial_value));
+
+                    ().into()
+                }
+
+                ().into()
+            }));
+        }
+
+        var_env
+    };
+
+    let lex_env = if !is_strict {
+        // Non-strict functions use a separate Environment Record for top-level lexical declarations
+        // so that a direct eval can determine whether any var scoped declarations introduced by the
+        // eval code conflict with pre-existing top-level lexically scoped declarations.
+        to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(var_env))))
+    } else {
+        var_env
+    };
+
+    callee_context.lexical_env = lex_env;
+
+    // Create bindings for lex decls in function body
+    for lex_decl in func_node.lex_decls() {
+        match lex_decl {
+            LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
+                must_!(lex_decl.iter_bound_names(&mut |id| {
+                    env.create_immutable_binding(cx, id.name.clone(), true)
+                }))
+            }
+            _ => {
+                must_!(lex_decl.iter_bound_names(&mut |id| {
+                    env.create_mutable_binding(cx, id.name.clone(), false)
+                }))
+            }
+        }
+    }
+
+    // Initialize toplevel function objects
+    let private_env = callee_context.private_env;
+    for func in functions_to_initialize {
+        let func_id = func.id.as_deref().unwrap();
+        let func_object = instantiate_function_object(cx, func, lex_env, private_env);
+        must_!(var_env.set_mutable_binding(cx, &func_id.name, func_object.into(), false));
+    }
+
+    Completion::empty()
+}
+
+fn create_unmapped_arguments_object(cx: &mut Context, arguments: &[Value]) -> Value {
+    unimplemented!("arguments object")
+}
+
+fn create_mapped_arguments_object(
+    cx: &mut Context,
+    func_node: &ast::Function,
+    arguments: &[Value],
+    env: Gc<dyn Environment>,
+) -> Value {
+    unimplemented!("arguments object")
+}
 
 // 15.2.4 InstantiateOrdinaryFunctionObject
 pub fn instantiate_ordinary_function_object(

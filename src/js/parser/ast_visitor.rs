@@ -229,12 +229,12 @@ pub trait AstVisitor: Sized {
         default_visit_property(self, prop)
     }
 
-    fn visit_function_expression(&mut self, func_decl: &mut Function) {
-        default_visit_function_expression(self, func_decl)
+    fn visit_function_expression(&mut self, func: &mut Function) {
+        default_visit_function_expression(self, func)
     }
 
-    fn visit_arrow_function(&mut self, func_decl: &mut Function) {
-        default_visit_arrow_function(self, func_decl)
+    fn visit_arrow_function(&mut self, func: &mut Function) {
+        default_visit_arrow_function(self, func)
     }
 
     fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {

@@ -109,19 +109,16 @@ fn global_declaration_instantiation(
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
     for var_decl in script.var_decls().iter().rev() {
-        match var_decl {
-            VarDecl::Func(func_ptr) => {
-                let func = func_ptr.as_ref();
-                let name = &func.id.as_deref().unwrap().name;
+        if let VarDecl::Func(func_ptr) = var_decl {
+            let func = func_ptr.as_ref();
+            let name = &func.id.as_deref().unwrap().name;
 
-                if !maybe__!(env.can_declare_global_function(name)) {
-                    return type_error(cx, &format!("cannot declare global function {}", name));
-                }
-
-                declared_function_names.insert(name);
-                functions_to_initialize.push(func);
+            if !maybe__!(env.can_declare_global_function(name)) {
+                return type_error(cx, &format!("cannot declare global function {}", name));
             }
-            VarDecl::Var(_) => {}
+
+            declared_function_names.insert(name);
+            functions_to_initialize.push(func);
         }
     }
 

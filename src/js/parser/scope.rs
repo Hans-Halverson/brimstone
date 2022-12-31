@@ -1,21 +1,10 @@
-use super::{
-    ast::{self, AstId, AstPtr},
-    facts::{FactsCache, LexDecl, VarDecl},
-};
+use super::ast::{self, AstPtr, LexDecl, VarDecl, WithDecls};
 
 enum Scope {
-    Toplevel(AstId),
-    Function(AstId),
+    Toplevel(AstPtr<dyn WithDecls>),
+    Function(AstPtr<dyn WithDecls>),
     // Block-like scope, also includes switch scope
-    Block(AstId),
-}
-
-impl Scope {
-    fn ast_id(&self) -> AstId {
-        match self {
-            Scope::Toplevel(ast_id) | Scope::Function(ast_id) | Scope::Block(ast_id) => *ast_id,
-        }
-    }
+    Block(AstPtr<dyn WithDecls>),
 }
 
 pub struct ScopeBuilder {
@@ -34,63 +23,63 @@ impl ScopeBuilder {
     }
 
     pub fn enter_toplevel_scope(&mut self, program: &ast::Program) {
-        self.scope_stack.push(Scope::Toplevel(program.ast_id))
+        self.scope_stack
+            .push(Scope::Toplevel(AstPtr::from_ref(program)))
     }
 
     pub fn enter_function_scope(&mut self, func: &ast::Function) {
-        self.scope_stack.push(Scope::Function(func.ast_id))
+        self.scope_stack
+            .push(Scope::Function(AstPtr::from_ref(func)))
     }
 
-    pub fn enter_block_scope(&mut self, ast_id: AstId) {
-        self.scope_stack.push(Scope::Block(ast_id))
+    pub fn enter_block_scope(&mut self, block: &ast::Block) {
+        self.scope_stack.push(Scope::Block(AstPtr::from_ref(block)))
     }
 
-    fn current_scope(&self) -> &Scope {
-        self.scope_stack.last().unwrap()
+    pub fn enter_switch_scope(&mut self, stmt: &ast::SwitchStatement) {
+        self.scope_stack.push(Scope::Block(AstPtr::from_ref(stmt)))
     }
 
-    pub fn add_var_decl(&mut self, var_decl: &ast::VariableDeclaration, facts: &mut FactsCache) {
+    fn current_scope_mut(&mut self) -> &mut Scope {
+        self.scope_stack.last_mut().unwrap()
+    }
+
+    pub fn add_var_decl(&mut self, var_decl: &ast::VariableDeclaration) {
         let is_lex_decl = match var_decl.kind {
             ast::VarKind::Var => false,
             ast::VarKind::Const | ast::VarKind::Let => true,
         };
 
         if is_lex_decl {
-            self.insert_lex_scoped_decl(LexDecl::Var(AstPtr::from_ref(var_decl)), facts)
+            self.insert_lex_scoped_decl(LexDecl::Var(AstPtr::from_ref(var_decl)))
         } else {
-            self.insert_var_scoped_decl(VarDecl::Var(AstPtr::from_ref(var_decl)), facts)
+            self.insert_var_scoped_decl(VarDecl::Var(AstPtr::from_ref(var_decl)))
         }
     }
 
-    pub fn add_func_decl(
-        &mut self,
-        func: &ast::Function,
-        is_lex_scoped_decl: bool,
-        facts: &mut FactsCache,
-    ) {
+    pub fn add_func_decl(&mut self, func: &ast::Function, is_lex_scoped_decl: bool) {
         if is_lex_scoped_decl {
-            self.insert_lex_scoped_decl(LexDecl::Func(AstPtr::from_ref(func)), facts)
+            self.insert_lex_scoped_decl(LexDecl::Func(AstPtr::from_ref(func)))
         } else {
-            self.insert_var_scoped_decl(VarDecl::Func(AstPtr::from_ref(func)), facts)
+            self.insert_var_scoped_decl(VarDecl::Func(AstPtr::from_ref(func)))
         }
     }
 
-    fn insert_var_scoped_decl(&mut self, decl: VarDecl, facts: &mut FactsCache) {
+    fn insert_var_scoped_decl(&mut self, decl: VarDecl) {
         // Variables are hoisted to closest function or toplevel scope
-        for scope in self.scope_stack.iter().rev() {
-            if let Scope::Toplevel(_) | Scope::Function(_) = scope {
-                let ast_id = scope.ast_id();
-                let facts = facts.get_or_create_facts(ast_id);
-                facts.add_var_decl(decl);
-
+        for scope in self.scope_stack.iter_mut().rev() {
+            if let Scope::Toplevel(with_decls) | Scope::Function(with_decls) = scope {
+                with_decls.as_mut().add_var_decl(decl);
                 return;
             }
         }
     }
 
-    fn insert_lex_scoped_decl(&mut self, decl: LexDecl, facts: &mut FactsCache) {
-        let ast_id = self.current_scope().ast_id();
-        let facts = facts.get_or_create_facts(ast_id);
-        facts.add_lex_decl(decl)
+    fn insert_lex_scoped_decl(&mut self, decl: LexDecl) {
+        match self.current_scope_mut() {
+            Scope::Toplevel(with_decls)
+            | Scope::Function(with_decls)
+            | Scope::Block(with_decls) => with_decls.as_mut().add_lex_decl(decl),
+        }
     }
 }

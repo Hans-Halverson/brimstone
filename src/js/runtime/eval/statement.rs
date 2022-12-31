@@ -1,6 +1,6 @@
 use crate::{
     js::{
-        parser::{ast, facts::LexDecl},
+        parser::ast::{self, LexDecl, WithDecls},
         runtime::{
             completion::{AbstractResult, Completion, CompletionKind},
             environment::{
@@ -93,7 +93,7 @@ fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
     let old_env = current_context.lexical_env;
     let block_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
 
-    block_declaration_instantiation(cx, block.ast_id, block_env);
+    block_declaration_instantiation(cx, block.lex_decls(), block_env);
 
     current_context.lexical_env = to_trait_object(block_env);
     let block_value = eval_statement_list(cx, &block.body);
@@ -105,19 +105,10 @@ fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
 // 14.2.3 BlockDeclarationInstantiation
 fn block_declaration_instantiation(
     cx: &mut Context,
-    ast_id: ast::AstId,
+    lex_decls: &[ast::LexDecl],
     mut env: Gc<DeclarativeEnvironment>,
 ) {
-    let script_or_module = cx.get_active_script_or_module().unwrap();
-    let analyzer = script_or_module.analyzer();
-    let facts = analyzer.facts_cache().get_facts(ast_id);
-
-    let facts = match facts {
-        None => return,
-        Some(facts) => facts,
-    };
-
-    for lex_decl in facts.lex_decls() {
+    for lex_decl in lex_decls {
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 must_!(lex_decl.iter_bound_names(&mut |id| {

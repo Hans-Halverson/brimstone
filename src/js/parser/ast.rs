@@ -4,14 +4,12 @@ use super::loc::Loc;
 
 pub type P<T> = Box<T>;
 
-pub type AstId = usize;
-
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
-pub struct AstPtr<T> {
+pub struct AstPtr<T: ?Sized> {
     ptr: *const T,
 }
 
-impl<T> AstPtr<T> {
+impl<T: ?Sized> AstPtr<T> {
     pub fn from_ref(value: &T) -> AstPtr<T> {
         AstPtr { ptr: value }
     }
@@ -19,12 +17,93 @@ impl<T> AstPtr<T> {
     pub fn as_ref(&self) -> &T {
         unsafe { &*self.ptr }
     }
+
+    pub fn as_mut(&self) -> &mut T {
+        unsafe { &mut *self.ptr.cast_mut() }
+    }
+}
+
+// An element of 8.1.7 VarScopedDeclarations
+pub enum VarDecl {
+    Func(AstPtr<Function>),
+    Var(AstPtr<VariableDeclaration>),
+}
+
+// An element of 8.1.5 LexicallyScopedDeclarations
+pub enum LexDecl {
+    Func(AstPtr<Function>),
+    Var(AstPtr<VariableDeclaration>),
+}
+
+impl VarDecl {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        match &self {
+            VarDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
+            VarDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
+        }
+    }
+}
+
+impl LexDecl {
+    pub fn iter_bound_names<F: FnMut(&Identifier) -> AbstractResult<()>>(
+        &self,
+        f: &mut F,
+    ) -> AbstractResult<()> {
+        match &self {
+            LexDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
+            LexDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
+        }
+    }
+}
+
+pub trait WithDecls {
+    fn var_decls(&self) -> &[VarDecl];
+
+    fn lex_decls(&self) -> &[LexDecl];
+
+    fn add_var_decl(&mut self, var_decl: VarDecl);
+
+    fn add_lex_decl(&mut self, lex_decl: LexDecl);
 }
 
 pub struct Program {
     pub loc: Loc,
-    pub ast_id: AstId,
     pub toplevels: Vec<Toplevel>,
+
+    pub var_decls: Vec<VarDecl>,
+    pub lex_decls: Vec<LexDecl>,
+}
+
+impl Program {
+    pub fn new(loc: Loc, toplevels: Vec<Toplevel>) -> Program {
+        Program {
+            loc,
+            toplevels,
+            var_decls: vec![],
+            lex_decls: vec![],
+        }
+    }
+}
+
+impl WithDecls for Program {
+    fn var_decls(&self) -> &[VarDecl] {
+        &self.var_decls
+    }
+
+    fn lex_decls(&self) -> &[LexDecl] {
+        &self.lex_decls
+    }
+
+    fn add_var_decl(&mut self, var_decl: VarDecl) {
+        self.var_decls.push(var_decl)
+    }
+
+    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
+        self.lex_decls.push(lex_decl)
+    }
 }
 
 pub enum Toplevel {
@@ -101,12 +180,54 @@ impl VariableDeclarator {
 
 pub struct Function {
     pub loc: Loc,
-    pub ast_id: AstId,
     pub id: Option<P<Identifier>>,
     pub params: Vec<Pattern>,
     pub body: P<FunctionBody>,
     pub is_async: bool,
     pub is_generator: bool,
+
+    pub var_decls: Vec<VarDecl>,
+    pub lex_decls: Vec<LexDecl>,
+}
+
+impl Function {
+    pub fn new(
+        loc: Loc,
+        id: Option<P<Identifier>>,
+        params: Vec<Pattern>,
+        body: P<FunctionBody>,
+        is_async: bool,
+        is_generator: bool,
+    ) -> Function {
+        Function {
+            loc,
+            id,
+            params,
+            body,
+            is_async,
+            is_generator,
+            var_decls: vec![],
+            lex_decls: vec![],
+        }
+    }
+}
+
+impl WithDecls for Function {
+    fn var_decls(&self) -> &[VarDecl] {
+        &self.var_decls
+    }
+
+    fn lex_decls(&self) -> &[LexDecl] {
+        &self.lex_decls
+    }
+
+    fn add_var_decl(&mut self, var_decl: VarDecl) {
+        self.var_decls.push(var_decl)
+    }
+
+    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
+        self.lex_decls.push(lex_decl)
+    }
 }
 
 pub enum FunctionBody {
@@ -121,8 +242,37 @@ pub struct ExpressionStatement {
 
 pub struct Block {
     pub loc: Loc,
-    pub ast_id: AstId,
     pub body: Vec<Statement>,
+
+    pub lex_decls: Vec<LexDecl>,
+}
+
+impl Block {
+    pub fn new(loc: Loc, body: Vec<Statement>) -> Block {
+        Block {
+            loc,
+            body,
+            lex_decls: vec![],
+        }
+    }
+}
+
+impl WithDecls for Block {
+    fn var_decls(&self) -> &[VarDecl] {
+        panic!("Blocks do not have var decls")
+    }
+
+    fn lex_decls(&self) -> &[LexDecl] {
+        &self.lex_decls
+    }
+
+    fn add_var_decl(&mut self, _: VarDecl) {
+        panic!("Blocks do not have var decls")
+    }
+
+    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
+        self.lex_decls.push(lex_decl)
+    }
 }
 
 pub struct IfStatement {
@@ -134,9 +284,39 @@ pub struct IfStatement {
 
 pub struct SwitchStatement {
     pub loc: Loc,
-    pub ast_id: AstId,
     pub discriminant: P<Expression>,
     pub cases: Vec<SwitchCase>,
+
+    pub lex_decls: Vec<LexDecl>,
+}
+
+impl SwitchStatement {
+    pub fn new(loc: Loc, discriminant: P<Expression>, cases: Vec<SwitchCase>) -> SwitchStatement {
+        SwitchStatement {
+            loc,
+            discriminant,
+            cases,
+            lex_decls: vec![],
+        }
+    }
+}
+
+impl WithDecls for SwitchStatement {
+    fn var_decls(&self) -> &[VarDecl] {
+        panic!("SwitchStatements do not have var decls")
+    }
+
+    fn lex_decls(&self) -> &[LexDecl] {
+        &self.lex_decls
+    }
+
+    fn add_var_decl(&mut self, _: VarDecl) {
+        panic!("SwitchStatements do not have var decls")
+    }
+
+    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
+        self.lex_decls.push(lex_decl)
+    }
 }
 
 pub struct SwitchCase {

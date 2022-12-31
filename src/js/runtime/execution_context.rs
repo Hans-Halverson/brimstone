@@ -1,5 +1,3 @@
-use crate::js::parser::analyze::Analyzer;
-
 use super::{
     completion::AbstractResult,
     environment::{
@@ -30,14 +28,6 @@ impl GcDeref for ExecutionContext {}
 #[derive(Clone, Copy)]
 pub enum ScriptOrModule {
     Script(Gc<Script>),
-}
-
-impl ScriptOrModule {
-    pub fn analyzer(&self) -> &Analyzer {
-        match self {
-            ScriptOrModule::Script(script) => script.as_ref().analyzer.as_ref(),
-        }
-    }
 }
 
 // 9.4.2 ResolveBinding

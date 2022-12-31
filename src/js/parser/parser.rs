@@ -122,7 +122,6 @@ struct Parser<'a> {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
-    next_ast_id: AstId,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -131,7 +130,6 @@ struct ParserSaveState {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
-    next_ast_id: AstId,
 }
 
 impl<'a> Parser<'a> {
@@ -142,7 +140,6 @@ impl<'a> Parser<'a> {
             token: Token::Eof,
             loc: EMPTY_LOC,
             prev_loc: EMPTY_LOC,
-            next_ast_id: 0,
         }
     }
 
@@ -160,7 +157,6 @@ impl<'a> Parser<'a> {
             token: self.token.clone(),
             loc: self.loc,
             prev_loc: self.prev_loc,
-            next_ast_id: self.next_ast_id,
         }
     }
 
@@ -169,7 +165,6 @@ impl<'a> Parser<'a> {
         self.token = save_state.token;
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
-        self.next_ast_id = save_state.next_ast_id;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -231,12 +226,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn next_ast_id(&mut self) -> AstId {
-        let next_ast_id = self.next_ast_id;
-        self.next_ast_id += 1;
-        next_ast_id
-    }
-
     fn parse_program(&mut self) -> ParseResult<Program> {
         let mut toplevels = vec![];
 
@@ -247,11 +236,7 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
-        Ok(Program {
-            loc,
-            ast_id: self.next_ast_id(),
-            toplevels,
-        })
+        Ok(Program::new(loc, toplevels))
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -419,15 +404,7 @@ impl<'a> Parser<'a> {
         let body = p(FunctionBody::Block(self.parse_block()?));
         let loc = self.mark_loc(start_pos);
 
-        Ok(Function {
-            loc,
-            ast_id: self.next_ast_id(),
-            id,
-            params,
-            body,
-            is_async,
-            is_generator,
-        })
+        Ok(Function::new(loc, id, params, body, is_async, is_generator))
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<Pattern>> {
@@ -462,11 +439,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Block {
-            loc,
-            ast_id: self.next_ast_id(),
-            body,
-        })
+        Ok(Block::new(loc, body))
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Statement> {
@@ -541,12 +514,11 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::Switch(SwitchStatement {
+        Ok(Statement::Switch(SwitchStatement::new(
             loc,
-            ast_id: self.next_ast_id(),
             discriminant,
             cases,
-        }))
+        )))
     }
 
     fn parse_any_for_statement(&mut self) -> ParseResult<Statement> {
@@ -958,15 +930,10 @@ impl<'a> Parser<'a> {
                 let body = self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
-                return Ok(p(Expression::ArrowFunction(Function {
-                    loc,
-                    ast_id: self.next_ast_id(),
-                    id: None,
-                    params,
-                    body,
-                    is_async: false,
-                    is_generator: false,
-                })));
+                return Ok(p(Expression::ArrowFunction(Function::new(
+                    loc, /* id */ None, params, body, /* is_async */ false,
+                    /* is_generator */ false,
+                ))));
             }
         }
 
@@ -984,15 +951,9 @@ impl<'a> Parser<'a> {
         let body = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::ArrowFunction(Function {
-            loc,
-            ast_id: self.next_ast_id(),
-            id: None,
-            params,
-            body,
-            is_async,
-            is_generator: false,
-        })))
+        Ok(p(Expression::ArrowFunction(Function::new(
+            loc, /* id */ None, params, body, is_async, /* is_generator */ false,
+        ))))
     }
 
     fn parse_arrow_function_body(&mut self) -> ParseResult<P<FunctionBody>> {
@@ -1803,15 +1764,14 @@ impl<'a> Parser<'a> {
             is_computed,
             is_method: true,
             kind,
-            value: Some(p(Expression::Function(Function {
+            value: Some(p(Expression::Function(Function::new(
                 loc,
-                ast_id: self.next_ast_id(),
-                id: None,
+                /* id */ None,
                 params,
                 body,
                 is_async,
                 is_generator,
-            }))),
+            )))),
         })
     }
 

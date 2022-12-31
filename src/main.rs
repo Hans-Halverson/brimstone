@@ -19,8 +19,10 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let source = js::parser::source::Source::new(&args.file)?;
-    let ast = Rc::new(js::parser::parse_file(&source)?);
-    let analyzer = js::parser::analyze::analyze(&ast);
+    let mut ast = js::parser::parse_file(&source)?;
+    let analyzer = js::parser::analyze::analyze(&mut ast);
+
+    let ast = Rc::new(ast);
 
     if args.print_ast {
         println!("{}", js::parser::print_program(&ast, &source));
@@ -28,7 +30,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     let mut cx = js::runtime::Context::new();
     let realm = js::runtime::initialize_host_defined_realm(&mut cx);
-    js::runtime::evaluate(&mut cx, ast, analyzer, realm)?;
+    js::runtime::evaluate(&mut cx, ast, realm)?;
 
     return Ok(());
 }

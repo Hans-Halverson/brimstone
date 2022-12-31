@@ -2,11 +2,7 @@ use std::{collections::HashSet, rc::Rc};
 
 use crate::{
     js::{
-        parser::{
-            analyze::Analyzer,
-            ast::{self},
-            facts::{LexDecl, VarDecl},
-        },
+        parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
             completion::{AbstractResult, Completion},
             environment::{
@@ -31,29 +27,17 @@ use super::statement::eval_toplevel_list;
 pub struct Script {
     realm: Gc<Realm>,
     script_node: Rc<ast::Program>,
-    pub analyzer: Rc<Analyzer>,
 }
 
 impl Script {
-    pub fn new(script_node: Rc<ast::Program>, analyzer: Rc<Analyzer>, realm: Gc<Realm>) -> Script {
-        Script {
-            script_node,
-            analyzer,
-            realm,
-        }
+    pub fn new(script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Script {
+        Script { script_node, realm }
     }
 }
 
 /// 16.1.6 ScriptEvaluation
-pub fn eval_script(
-    cx: &mut Context,
-    program: Rc<ast::Program>,
-    analyzer: Rc<Analyzer>,
-    realm: Gc<Realm>,
-) -> Completion {
-    let script = cx
-        .heap
-        .alloc(Script::new(program.clone(), analyzer.clone(), realm));
+pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
+    let script = cx.heap.alloc(Script::new(program.clone(), realm));
 
     let global_env = realm.global_env;
     let global_env_object = to_trait_object(global_env);
@@ -69,7 +53,7 @@ pub fn eval_script(
 
     cx.push_execution_context(script_ctx);
 
-    let mut result = global_declaration_instantiation(cx, &program, &analyzer, global_env);
+    let mut result = global_declaration_instantiation(cx, &program, global_env);
 
     if result.is_normal() {
         result = eval_toplevel_list(cx, &program.toplevels);
@@ -88,12 +72,9 @@ pub fn eval_script(
 fn global_declaration_instantiation(
     cx: &mut Context,
     script: &ast::Program,
-    analyzer: &Analyzer,
     mut env: Gc<GlobalEnvironment>,
 ) -> Completion {
-    let script_facts = analyzer.facts_cache().get_facts(script.ast_id).unwrap();
-
-    for lex_decl in script_facts.lex_decls() {
+    for lex_decl in script.lex_decls() {
         maybe__!(lex_decl.iter_bound_names(&mut |id| {
             let name = &id.name;
             if env.has_var_declaration(name) || must_!(env.has_lexical_declaration(cx, name)) {
@@ -111,7 +92,7 @@ fn global_declaration_instantiation(
         }));
     }
 
-    for var_decl in script_facts.var_decls() {
+    for var_decl in script.var_decls() {
         maybe__!(var_decl.iter_bound_names(&mut |id| {
             let name = &id.name;
             if must_!(env.has_lexical_declaration(cx, name)) {
@@ -127,7 +108,7 @@ fn global_declaration_instantiation(
     let mut functions_to_initialize = vec![];
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
-    for var_decl in script_facts.var_decls().iter().rev() {
+    for var_decl in script.var_decls().iter().rev() {
         match var_decl {
             VarDecl::Func(func_ptr) => {
                 let func = func_ptr.as_ref();
@@ -147,7 +128,7 @@ fn global_declaration_instantiation(
     // Order does not matter for declared var names, despite ordering in spec
     let mut declared_var_names: HashSet<String> = HashSet::new();
 
-    for var_decl in script_facts.var_decls() {
+    for var_decl in script.var_decls() {
         match var_decl {
             VarDecl::Var(var_decl) => {
                 maybe__!(var_decl.as_ref().iter_bound_names(&mut |id| {
@@ -167,7 +148,7 @@ fn global_declaration_instantiation(
         }
     }
 
-    for lex_decl in script_facts.lex_decls() {
+    for lex_decl in script.lex_decls() {
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 maybe__!(lex_decl.iter_bound_names(&mut |id| {

@@ -20,7 +20,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     let source = js::parser::source::Source::new(&args.file)?;
     let mut ast = js::parser::parse_file(&source)?;
-    let analyzer = js::parser::analyze::analyze(&mut ast);
+    js::parser::analyze::analyze(&mut ast);
 
     let ast = Rc::new(ast);
 

@@ -1,3 +1,5 @@
+use crate::maybe_;
+
 use super::{
     completion::AbstractResult,
     error::type_error_,
@@ -8,6 +10,11 @@ use super::{
     },
     Context,
 };
+
+// 7.1.1 ToPrimitive
+fn to_primitive(cx: &mut Context, value: Value) -> AbstractResult<Value> {
+    unimplemented!()
+}
 
 // 7.1.2 ToBoolean
 pub fn to_boolean(value: Value) -> bool {
@@ -27,6 +34,38 @@ pub fn to_boolean(value: Value) -> bool {
     }
 }
 
+// 7.1.4 ToNumber
+fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
+    if value.is_number() {
+        return value.into();
+    }
+
+    match value.get_tag() {
+        NULL_TAG => Value::number(0.0).into(),
+        UNDEFINED_TAG => Value::nan().into(),
+        BOOL_TAG => {
+            if value.as_bool() {
+                Value::number(1.0).into()
+            } else {
+                Value::number(0.0).into()
+            }
+        }
+        STRING_TAG => string_to_number(value).into(),
+        OBJECT_TAG => {
+            let primitive_value = maybe_!(to_primitive(cx, value));
+            to_number(cx, primitive_value)
+        }
+        SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to number"),
+        BIGINT_TAG => type_error_(cx, "BigInt cannot be converted to number"),
+        _ => unreachable!(),
+    }
+}
+
+// 7.1.4.1.1 StringToNumber
+fn string_to_number(value: Value) -> Value {
+    unimplemented!()
+}
+
 // 7.1.18 ToObject
 pub fn to_object(cx: &mut Context, value: Value) -> AbstractResult<Gc<ObjectValue>> {
     if value.is_object() {
@@ -36,8 +75,8 @@ pub fn to_object(cx: &mut Context, value: Value) -> AbstractResult<Gc<ObjectValu
     }
 
     match value.get_tag() {
-        NULL_TAG => type_error_(cx, "null value cannot be converted to object"),
-        UNDEFINED_TAG => type_error_(cx, "null value cannot be converted to object"),
+        NULL_TAG => type_error_(cx, "null cannot be converted to object"),
+        UNDEFINED_TAG => type_error_(cx, "undefined cannot be converted to object"),
         BOOL_TAG => unimplemented!("bool objects"),
         STRING_TAG => unimplemented!("string objects"),
         SYMBOL_TAG => unimplemented!("symbol objects"),
@@ -66,6 +105,121 @@ pub fn is_constructor(value: Value) -> bool {
     }
 
     value.as_object().is_constructor()
+}
+
+// 7.1.14 StringToBigInt
+fn string_to_big_int(value: Value) -> Value {
+    unimplemented!()
+}
+
+// 7.2.15 IsLooselyEqual
+pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> AbstractResult<bool> {
+    // If values have the same type, then use (inlined) is_strictly_equal.
+    //
+    // All type combinations from spec are broken up here and in the match expression at the end of
+    // this function.
+    if v1.is_number() {
+        if v2.is_number() {
+            return (v1.as_number() == v2.as_number()).into();
+        }
+
+        return match v2.get_tag() {
+            STRING_TAG => {
+                let number_v2 = string_to_number(v2);
+                (v1.as_number() == number_v2.as_number()).into()
+            }
+            OBJECT_TAG => {
+                let primitive_v2 = maybe_!(to_primitive(cx, v2));
+                is_loosely_equal(cx, v1, primitive_v2)
+            }
+            BIGINT_TAG => unimplemented!("BigInt"),
+            _ => false.into(),
+        };
+    }
+
+    let tag1 = v1.get_tag();
+    let tag2 = v2.get_tag();
+    if tag1 == tag2 {
+        return match tag1 {
+            STRING_TAG => (v1.as_string().as_ref() == v2.as_string().as_ref()).into(),
+            BIGINT_TAG => unimplemented!("BigInt"),
+            // Null, Undefined, and Bool all have a single canonical bit representation for each value,
+            // so the bits can be compared directly. For Objects and Symbols there is a single
+            // representation for a unique pointer, so can directly compare bits as well.
+            _ => (v1.as_raw_bits() == v2.as_raw_bits()).into(),
+        };
+    }
+
+    match (tag1, tag2) {
+        (NULL_TAG, UNDEFINED_TAG) | (UNDEFINED_TAG, NULL_TAG) => true.into(),
+        (STRING_TAG, _) if v2.is_number() => {
+            let v1_number = string_to_number(v1);
+            (v1_number.as_number() == v2.as_number()).into()
+        }
+        (STRING_TAG, BIGINT_TAG) => {
+            let v1_bigint = string_to_big_int(v1);
+            if v1_bigint.is_undefined() {
+                false.into()
+            } else {
+                unimplemented!("BigInt")
+            }
+        }
+        (BOOL_TAG, _) => {
+            let v1_number = maybe_!(to_number(cx, v1));
+            is_loosely_equal(cx, v1_number, v2)
+        }
+        (_, BOOL_TAG) => {
+            let v2_number = maybe_!(to_number(cx, v2));
+            is_loosely_equal(cx, v1, v2_number)
+        }
+        (BIGINT_TAG, _) if v2.is_number() => unimplemented!("BigInt"),
+        (BIGINT_TAG, STRING_TAG) => {
+            let v2_bigint = string_to_big_int(v2);
+            if v2_bigint.is_undefined() {
+                false.into()
+            } else {
+                unimplemented!("BigInt")
+            }
+        }
+        (OBJECT_TAG, _) if v2.is_number() => {
+            let v1_primitive = maybe_!(to_primitive(cx, v1));
+            is_loosely_equal(cx, v1_primitive, v2)
+        }
+        (OBJECT_TAG, STRING_TAG | BIGINT_TAG | SYMBOL_TAG) => {
+            let v1_primitive = maybe_!(to_primitive(cx, v1));
+            is_loosely_equal(cx, v1_primitive, v2)
+        }
+        (STRING_TAG | BIGINT_TAG | SYMBOL_TAG, OBJECT_TAG) => {
+            let primitive_v2 = maybe_!(to_primitive(cx, v2));
+            is_loosely_equal(cx, v1, primitive_v2)
+        }
+        _ => false.into(),
+    }
+}
+
+// 7.2.16 IsStrictlyEqual
+pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
+    if v1.is_number() {
+        if v2.is_number() {
+            return v1.as_number() == v2.as_number();
+        } else {
+            return false;
+        }
+    }
+
+    let tag1 = v1.get_tag();
+    if tag1 != v2.get_tag() {
+        return false;
+    }
+
+    match tag1 {
+        STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
+        BIGINT_TAG => unimplemented!("BigInt"),
+        // Null, Undefined, and Bool all have a single canonical bit representation for each value,
+        // so the bits can be compared directly. For Objects and Symbols there is a single
+        // representation for a unique pointer, so can directly compare bits as well.
+        _ => v1.as_raw_bits() == v2.as_raw_bits(),
+    }
 }
 
 pub fn to_property_key(value: Value) -> String {

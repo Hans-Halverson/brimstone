@@ -69,77 +69,82 @@ impl Value {
     // Type checks
 
     #[inline]
-    pub fn get_tag(&self) -> u16 {
+    pub const fn get_tag(&self) -> u16 {
         (self.raw_bits >> TAG_SHIFT) as u16
     }
 
     #[inline]
-    fn has_tag(&self, tag: u16) -> bool {
+    const fn has_tag(&self, tag: u16) -> bool {
         self.get_tag() == tag
     }
 
     #[inline]
-    pub fn is_number(&self) -> bool {
+    pub const fn is_number(&self) -> bool {
         // Make sure to check if this is the canonical NaN value
         (self.raw_bits & NAN_MASK != NAN_MASK) || self.is_nan()
     }
 
     #[inline]
-    pub fn is_nan(&self) -> bool {
+    pub const fn is_nan(&self) -> bool {
         self.raw_bits == NAN_MASK
     }
 
     #[inline]
-    pub fn is_undefined(&self) -> bool {
+    pub const fn is_undefined(&self) -> bool {
         self.has_tag(UNDEFINED_TAG)
     }
 
     #[inline]
-    pub fn is_null(&self) -> bool {
+    pub const fn is_null(&self) -> bool {
         self.has_tag(NULL_TAG)
     }
 
     #[inline]
-    pub fn is_nullish(&self) -> bool {
+    pub const fn is_nullish(&self) -> bool {
         (self.get_tag() & NULLISH_TAG_MASK) == UNDEFINED_TAG
     }
 
     #[inline]
-    pub fn is_bool(&self) -> bool {
+    pub const fn is_bool(&self) -> bool {
         self.has_tag(BOOL_TAG)
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.has_tag(EMPTY_TAG)
     }
 
     #[inline]
-    pub fn is_object(&self) -> bool {
+    pub const fn is_object(&self) -> bool {
         self.has_tag(OBJECT_TAG)
     }
 
     #[inline]
-    pub fn is_string(&self) -> bool {
+    pub const fn is_string(&self) -> bool {
         self.has_tag(STRING_TAG)
     }
 
     #[inline]
-    pub fn is_symbol(&self) -> bool {
+    pub const fn is_symbol(&self) -> bool {
         self.has_tag(SYMBOL_TAG)
     }
 
     #[inline]
-    pub fn is_bigint(&self) -> bool {
+    pub const fn is_bigint(&self) -> bool {
         self.has_tag(BIGINT_TAG)
     }
 
     #[inline]
-    pub fn is_accessor(&self) -> bool {
+    pub const fn is_accessor(&self) -> bool {
         self.has_tag(ACCESSOR_TAG)
     }
 
     // Type casts
+
+    #[inline]
+    pub const fn as_raw_bits(&self) -> u64 {
+        self.raw_bits
+    }
 
     #[inline]
     pub fn as_number(&self) -> f64 {
@@ -147,29 +152,29 @@ impl Value {
     }
 
     #[inline]
-    pub fn as_bool(&self) -> bool {
+    pub const fn as_bool(&self) -> bool {
         (self.raw_bits & 1) != 0
     }
 
     // In x86_64 pointers must be in "canonical form", meaning the top 16 bits must be the same a
     // the highest pointer bit (bit 47).
     #[inline]
-    fn restore_pointer_bits<T>(&self) -> *mut T {
+    const fn restore_pointer_bits<T>(&self) -> *mut T {
         ((self.raw_bits << 16) >> 16) as *mut T
     }
 
     #[inline]
-    pub fn as_object(&self) -> Gc<ObjectValue> {
+    pub const fn as_object(&self) -> Gc<ObjectValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub fn as_string(&self) -> Gc<StringValue> {
+    pub const fn as_string(&self) -> Gc<StringValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub fn as_accessor(&self) -> Gc<AccessorValue> {
+    pub const fn as_accessor(&self) -> Gc<AccessorValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
 
@@ -204,7 +209,7 @@ impl Value {
     }
 
     #[inline]
-    pub fn bool(value: bool) -> Value {
+    pub const fn bool(value: bool) -> Value {
         Value {
             raw_bits: (((BOOL_TAG as u64) << TAG_SHIFT) | (value as u64)),
         }
@@ -229,6 +234,11 @@ impl Value {
         Value {
             raw_bits: ((ACCESSOR_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
         }
+    }
+
+    #[inline]
+    pub const fn nan() -> Value {
+        Value { raw_bits: NAN_MASK }
     }
 }
 
@@ -285,6 +295,12 @@ impl GcDeref for StringValue {}
 impl fmt::Display for StringValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl PartialEq for StringValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 

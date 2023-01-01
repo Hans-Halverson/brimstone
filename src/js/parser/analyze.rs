@@ -1,4 +1,4 @@
-use std::{collections::HashSet, rc::Rc};
+use std::collections::HashSet;
 
 use crate::{visit_opt, visit_vec};
 
@@ -188,9 +188,7 @@ impl Analyzer {
     }
 }
 
-pub fn analyze(program: &mut Program) -> Rc<Analyzer> {
+pub fn analyze(program: &mut Program) {
     let mut analyzer = Analyzer::new();
     analyzer.visit_program(program);
-
-    Rc::new(analyzer)
 }

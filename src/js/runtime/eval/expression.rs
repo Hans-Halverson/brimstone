@@ -7,7 +7,10 @@ use crate::{
             error::type_error,
             execution_context::{resolve_binding, resolve_this_binding},
             reference::{Reference, ReferenceBase},
-            type_utilities::{is_callable, is_constructor, to_boolean, to_object, to_property_key},
+            type_utilities::{
+                is_callable, is_constructor, is_loosely_equal, is_strictly_equal, to_boolean,
+                to_object, to_property_key,
+            },
             value::Value,
             Context,
         },
@@ -32,6 +35,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> Completion {
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
             _ => unimplemented!("unary expression evaluation"),
         },
+        ast::Expression::Binary(expr) => eval_binary_expression(cx, expr),
         ast::Expression::Logical(expr) => eval_logical_expression(cx, expr),
         ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
         ast::Expression::Member(expr) => eval_member_expression(cx, expr),
@@ -246,6 +250,21 @@ fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Comple
 fn eval_logical_not_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Completion {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
     (!to_boolean(expr_value)).into()
+}
+
+fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Completion {
+    let left_value = maybe!(eval_expression(cx, &expr.left));
+    let right_value = maybe!(eval_expression(cx, &expr.right));
+
+    match expr.operator {
+        ast::BinaryOperator::EqEq => is_loosely_equal(cx, left_value, right_value).into(),
+        ast::BinaryOperator::NotEq => {
+            (!maybe__!(is_loosely_equal(cx, left_value, right_value))).into()
+        }
+        ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
+        ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
+        _ => unimplemented!("binary operator"),
+    }
 }
 
 // 13.13.1 Logical Expression Evaluation

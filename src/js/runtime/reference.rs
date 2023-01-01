@@ -125,8 +125,8 @@ impl Reference {
 
                 return ().into();
             }
-            ReferenceBase::Value(value) => {
-                let mut base = maybe_!(to_object(cx, value));
+            ReferenceBase::Value(base_value) => {
+                let mut base = maybe_!(to_object(cx, base_value));
                 if self.is_private_reference() {
                     return private_set(base, &self.name, value);
                 }

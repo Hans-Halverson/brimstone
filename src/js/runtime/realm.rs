@@ -1,10 +1,15 @@
+use crate::{js::runtime::value::Value, maybe_};
+
 use super::{
+    abstract_operations::define_property_or_throw,
+    completion::AbstractResult,
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::{Intrinsic, Intrinsics},
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
+    property_descriptor::PropertyDescriptor,
     Context,
 };
 
@@ -54,8 +59,42 @@ impl Realm {
     }
 
     // 9.3.4 SetDefaultGlobalBindings
-    fn set_default_global_bindings(&mut self) {
-        // TODO: Create default global bindings in realm
+    fn set_default_global_bindings(&mut self, cx: &mut Context) -> AbstractResult<()> {
+        macro_rules! value_prop {
+            ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
+                maybe_!(define_property_or_throw(
+                    cx,
+                    self.global_object,
+                    $name,
+                    PropertyDescriptor::data(
+                        $value,
+                        $is_writable,
+                        $is_enumerable,
+                        $is_configurable
+                    )
+                ));
+            };
+        }
+
+        // 19.1 Value Properties of the Global Object
+        value_prop!(
+            "globalThis",
+            self.global_env.global_this_value.into(),
+            true,
+            false,
+            true
+        );
+        value_prop!(
+            "Infinity",
+            Value::number(f64::INFINITY),
+            false,
+            false,
+            false
+        );
+        value_prop!("NaN", Value::nan(), false, false, false);
+        value_prop!("undefined", Value::undefined(), false, false, false);
+
+        ().into()
     }
 
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
@@ -78,7 +117,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
     cx.push_execution_context(exec_ctx);
 
     realm.set_global_object(cx, None, None);
-    realm.set_default_global_bindings();
+    realm.set_default_global_bindings(cx);
 
     realm
 }

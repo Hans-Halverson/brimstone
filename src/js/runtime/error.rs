@@ -1,25 +1,20 @@
 use super::{
     completion::{AbstractResult, Completion},
+    intrinsics::native_error::{ReferenceError, SyntaxError, TypeError},
     value::Value,
     Context,
 };
 
 fn syntax_error_value(cx: &mut Context, message: &str) -> Value {
-    cx.heap
-        .alloc_string(format!("SyntaxError: {}", message))
-        .into()
+    SyntaxError::new_with_message(cx, message.to_owned()).into()
 }
 
 fn type_error_value(cx: &mut Context, message: &str) -> Value {
-    cx.heap
-        .alloc_string(format!("TypeError: {}", message))
-        .into()
+    TypeError::new_with_message(cx, message.to_owned()).into()
 }
 
 fn reference_error_value(cx: &mut Context, message: &str) -> Value {
-    cx.heap
-        .alloc_string(format!("ReferenceError: {}", message))
-        .into()
+    ReferenceError::new_with_message(cx, message.to_owned()).into()
 }
 
 pub fn syntax_error(cx: &mut Context, message: &str) -> Completion {

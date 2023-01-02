@@ -43,6 +43,15 @@ macro_rules! create_native_error {
                 }
             }
 
+            pub fn new_with_message(cx: &mut Context, message: String) -> Gc<$native_error> {
+                let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
+                let mut object = OrdinaryObject::new(Some(prototype), true);
+
+                object.intrinsic_data_prop("message", cx.heap.alloc_string(message).into());
+
+                cx.heap.alloc(Self::new(object))
+            }
+
             #[inline]
             fn object(&self) -> &OrdinaryObject {
                 &self.object

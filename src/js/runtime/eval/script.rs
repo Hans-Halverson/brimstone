@@ -177,8 +177,3 @@ fn global_declaration_instantiation(
 
     Completion::empty()
 }
-
-fn evaluate_program(program: &ast::Program) -> Completion {
-    // TODO: Evaluate program
-    Completion::empty()
-}

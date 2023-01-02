@@ -9,6 +9,7 @@ use crate::{
             error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
             function_prototype::FunctionPrototype, native_error::*,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
+            string_constructor::StringConstructor,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -32,6 +33,8 @@ pub enum Intrinsic {
     RangeErrorPrototype,
     ReferenceErrorConstructor,
     ReferenceErrorPrototype,
+    StringConstructor,
+    StringPrototype,
     SyntaxErrorConstructor,
     SyntaxErrorPrototype,
     ThrowTypeError,
@@ -107,13 +110,8 @@ impl Intrinsics {
             Intrinsic::ObjectConstructor,
         );
 
-        register_intrinsic!(ErrorPrototype, ErrorPrototype);
-        register_intrinsic!(ErrorConstructor, ErrorConstructor);
-        self.add_constructor_to_prototype(
-            cx,
-            Intrinsic::ErrorPrototype,
-            Intrinsic::ErrorConstructor,
-        );
+        register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);
+        register_intrinsic!(StringConstructor, StringConstructor);
 
         // Native errors
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);

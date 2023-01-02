@@ -25,8 +25,8 @@ use super::{
 ///
 ///   Undefined:  0b001
 ///   Null:       0b011
-///   Bool:       0b000, and the lowest bit of the mantissa stores the bool value
 ///   Empty:      0b010
+///   Bool:       0b100, and the lowest bit of the mantissa stores the bool value
 ///
 /// Pointers use the top three bits with the following tags, leaving 48 bits to store the pointer:
 ///
@@ -43,17 +43,17 @@ const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
 const NAN_TAG: u16 = 0x7FF8;
 const POINTER_TAG: u16 = 0x8000;
 
-pub const BOOL_TAG: u16 = 0b000 | NAN_TAG;
 pub const UNDEFINED_TAG: u16 = 0b001 | NAN_TAG;
 pub const NULL_TAG: u16 = 0b011 | NAN_TAG;
 // Empty value in a completion record. Can use instead of Option<Value> to fit into single word.
 const EMPTY_TAG: u16 = 0b010 | NAN_TAG;
+pub const BOOL_TAG: u16 = 0b100 | NAN_TAG;
 
-pub const OBJECT_TAG: u16 = 0b000 | POINTER_TAG | NAN_TAG;
-pub const STRING_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
-pub const SYMBOL_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
-pub const BIGINT_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
-const ACCESSOR_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
+pub const OBJECT_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
+pub const STRING_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
+pub const SYMBOL_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
+pub const BIGINT_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
+const ACCESSOR_TAG: u16 = 0b101 | POINTER_TAG | NAN_TAG;
 
 // Mask that converts a null tag to an undefined tag, so that a nullish check can be performed with:
 // TAG & NULLISH_MASK == UNDEFINED_TAG
@@ -294,13 +294,16 @@ impl StringValue {
     pub fn new(str: String) -> StringValue {
         StringValue(str)
     }
+}
 
+impl Gc<StringValue> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn str(&self) -> &str {
-        &self.0
+    pub fn str<'a, 'b>(&'a self) -> &'b str {
+        // Intentionally break lifetime, as StringValues are managed by the Gc heap
+        unsafe { std::mem::transmute(self.0.as_str()) }
     }
 }
 

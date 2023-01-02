@@ -1,4 +1,7 @@
-use crate::{js::runtime::value::Value, maybe_};
+use crate::{
+    js::runtime::{console::ConsoleObject, value::Value},
+    maybe_,
+};
 
 use super::{
     abstract_operations::define_property_or_throw,
@@ -107,13 +110,19 @@ impl Realm {
         value_prop!("undefined", Value::undefined(), false, false, false);
 
         // 19.3 Constructor Properties of the Global Object
+        intrinsic_prop!("Error", ErrorConstructor);
         intrinsic_prop!("EvalError", EvalErrorConstructor);
         intrinsic_prop!("Object", ObjectConstructor);
         intrinsic_prop!("RangeError", RangeErrorConstructor);
         intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
+        intrinsic_prop!("String", StringConstructor);
         intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);
         intrinsic_prop!("TypeError", TypeErrorConstructor);
         intrinsic_prop!("URIError", URIErrorConstructor);
+
+        // Non-standard, environment specific properties of global object
+        let console_object = ConsoleObject::new(cx, Gc::from_ptr(self)).into();
+        value_prop!("console", console_object, true, false, true);
 
         ().into()
     }

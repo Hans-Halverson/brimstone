@@ -1,8 +1,11 @@
+use core::panic;
 use std::{error::Error, fmt, rc::Rc};
 
 use crate::js::{
     parser::ast,
-    runtime::{completion::CompletionKind, gc::Gc, realm::Realm, Context},
+    runtime::{
+        completion::CompletionKind, console::to_console_string, gc::Gc, realm::Realm, Context,
+    },
 };
 
 use super::script::eval_script;
@@ -26,18 +29,19 @@ pub fn evaluate(
     realm: Gc<Realm>,
 ) -> Result<(), EvalError> {
     let completion = eval_script(cx, program, realm);
-    if completion.kind() == CompletionKind::Throw {
-        let value = completion.value();
-        if value.is_string() {
+
+    match completion.kind() {
+        CompletionKind::Normal => Ok(()),
+        CompletionKind::Throw => {
+            let value = completion.value();
+            let string_value = to_console_string(cx, value);
+
             return Err(EvalError {
-                message: value.as_string().to_string(),
-            });
-        } else {
-            return Err(EvalError {
-                message: "Evaluation threw value with non-string type".to_string(),
+                message: string_value,
             });
         }
+        CompletionKind::Return => panic!("Cannot return at top level"),
+        CompletionKind::Break => panic!("Cannot break at top level"),
+        CompletionKind::Continue => panic!("Cannot continue at top level"),
     }
-
-    return Ok(());
 }

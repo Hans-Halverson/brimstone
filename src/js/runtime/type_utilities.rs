@@ -14,14 +14,14 @@ use super::{
 };
 
 #[derive(PartialEq)]
-enum ToPrimitivePreferredType {
+pub enum ToPrimitivePreferredType {
     None,
     String,
     Number,
 }
 
 // 7.1.1 ToPrimitive
-fn to_primitive(
+pub fn to_primitive(
     cx: &mut Context,
     value: Value,
     mut preferred_type: ToPrimitivePreferredType,
@@ -107,8 +107,18 @@ pub fn to_boolean(value: Value) -> bool {
     }
 }
 
+// 7.1.3 ToNumeric
+pub fn to_numeric(cx: &mut Context, value: Value) -> AbstractResult<Value> {
+    let prim_value = maybe_!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+    if prim_value.is_bigint() {
+        return prim_value.into();
+    }
+
+    to_number(cx, value)
+}
+
 // 7.1.4 ToNumber
-fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
+pub fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
     if value.is_number() {
         return value.into();
     }

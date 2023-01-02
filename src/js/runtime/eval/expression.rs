@@ -9,7 +9,8 @@ use crate::{
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_loosely_equal, is_strictly_equal, to_boolean,
-                to_object, to_property_key,
+                to_number, to_numeric, to_object, to_primitive, to_property_key, to_string,
+                ToPrimitivePreferredType,
             },
             value::Value,
             Context,
@@ -31,6 +32,8 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> Completion {
         ast::Expression::Number(lit) => eval_number_literal(lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
         ast::Expression::Unary(expr) => match expr.operator {
+            ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
+            ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
             ast::UnaryOperator::Void => eval_void_expression(cx, expr),
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
             _ => unimplemented!("unary expression evaluation"),
@@ -246,6 +249,24 @@ fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Comple
     Value::undefined().into()
 }
 
+// 13.5.4.1 Unary Plus Evaluation
+fn eval_unary_plus(cx: &mut Context, expr: &ast::UnaryExpression) -> Completion {
+    let value = maybe!(eval_expression(cx, &expr.argument));
+    to_number(cx, value).into()
+}
+
+// 13.5.5.1 Unary Minus Evaluation
+fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> Completion {
+    let value = maybe!(eval_expression(cx, &expr.argument));
+    let value = maybe__!(to_numeric(cx, value));
+
+    if value.is_bigint() {
+        unimplemented!("BigInt")
+    } else {
+        Value::number(-value.as_number()).into()
+    }
+}
+
 // 13.5.7.1 Logical Not Expression Evaluation
 fn eval_logical_not_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Completion {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
@@ -257,6 +278,10 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Com
     let right_value = maybe!(eval_expression(cx, &expr.right));
 
     match expr.operator {
+        ast::BinaryOperator::Add => eval_add(cx, left_value, right_value),
+        ast::BinaryOperator::Subtract => eval_subtract(cx, left_value, right_value),
+        ast::BinaryOperator::Multiply => eval_multiply(cx, left_value, right_value),
+        ast::BinaryOperator::Divide => eval_divide(cx, left_value, right_value),
         ast::BinaryOperator::EqEq => is_loosely_equal(cx, left_value, right_value).into(),
         ast::BinaryOperator::NotEq => {
             (!maybe__!(is_loosely_equal(cx, left_value, right_value))).into()
@@ -264,6 +289,86 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Com
         ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
         ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
         _ => unimplemented!("binary operator"),
+    }
+}
+
+fn eval_add(cx: &mut Context, left_value: Value, right_value: Value) -> Completion {
+    let left_prim = maybe__!(to_primitive(cx, left_value, ToPrimitivePreferredType::None));
+    let right_prim = maybe__!(to_primitive(
+        cx,
+        right_value,
+        ToPrimitivePreferredType::None
+    ));
+    if left_prim.is_string() || right_prim.is_string() {
+        let left_string = maybe__!(to_string(cx, left_prim));
+        let right_string = maybe__!(to_string(cx, right_prim));
+
+        return cx
+            .heap
+            .alloc_string(format!("{}{}", left_string.str(), right_string.str()))
+            .into();
+    }
+
+    let left_num = maybe__!(to_numeric(cx, left_value));
+    let right_num = maybe__!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(left_num.as_number() + right_num.as_number()).into();
+    }
+}
+
+fn eval_subtract(cx: &mut Context, left_value: Value, right_value: Value) -> Completion {
+    let left_num = maybe__!(to_numeric(cx, left_value));
+    let right_num = maybe__!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(left_num.as_number() - right_num.as_number()).into();
+    }
+}
+
+fn eval_multiply(cx: &mut Context, left_value: Value, right_value: Value) -> Completion {
+    let left_num = maybe__!(to_numeric(cx, left_value));
+    let right_num = maybe__!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(left_num.as_number() * right_num.as_number()).into();
+    }
+}
+
+fn eval_divide(cx: &mut Context, left_value: Value, right_value: Value) -> Completion {
+    let left_num = maybe__!(to_numeric(cx, left_value));
+    let right_num = maybe__!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(left_num.as_number() / right_num.as_number()).into();
     }
 }
 
@@ -317,20 +422,40 @@ fn eval_assignment_expression(cx: &mut Context, expr: &ast::AssignmentExpression
         _ => unreachable!("invalid assigment left hand side"),
     };
 
-    match expr.operator {
-        ast::AssignmentOperator::Equals => {}
+    let result_value = match expr.operator {
+        ast::AssignmentOperator::Equals => {
+            maybe!(eval_named_anonymous_function_or_expression(
+                cx,
+                &expr.right,
+                reference.name()
+            ))
+        }
+        ast::AssignmentOperator::Add => {
+            let left_value = maybe__!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_add(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Subtract => {
+            let left_value = maybe__!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_subtract(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Multiply => {
+            let left_value = maybe__!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_multiply(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Divide => {
+            let left_value = maybe__!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_divide(cx, left_value, right_value))
+        }
         _ => unimplemented!("assignment operators"),
-    }
+    };
 
-    let right_value = maybe!(eval_named_anonymous_function_or_expression(
-        cx,
-        &expr.right,
-        reference.name()
-    ));
+    maybe__!(reference.put_value(cx, result_value));
 
-    maybe__!(reference.put_value(cx, right_value));
-
-    right_value.into()
+    result_value.into()
 }
 
 // 13.16.1 Sequence Expression Evaluation

@@ -44,6 +44,7 @@ impl Environment for ObjectEnvironment {
             return true.into();
         }
 
+        // TODO: Change to symbol once symbols are implemented
         // Ignore properties in @@unscopables
         let unscopables = maybe_!(get(cx, self.binding_object, "@@unscopables"));
         if unscopables.is_object() {

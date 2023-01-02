@@ -3,4 +3,5 @@ mod error_prototype;
 mod function_prototype;
 pub mod intrinsics;
 mod native_error;
+mod object_constructor;
 mod object_prototype;

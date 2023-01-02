@@ -7,7 +7,7 @@ use super::{
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     realm::Realm,
-    type_utilities::{is_callable, is_callable_object},
+    type_utilities::{is_callable, is_callable_object, to_object},
     value::Value,
     Context,
 };
@@ -21,6 +21,12 @@ pub fn is_extensible(object: Gc<ObjectValue>) -> AbstractResult<bool> {
 // 7.3.2 Get
 pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: &str) -> AbstractResult<Value> {
     object.get(cx, key, object.into())
+}
+
+// 7.3.3 GetV
+pub fn get_v(cx: &mut Context, value: Value, key: &str) -> AbstractResult<Value> {
+    let object = maybe_!(to_object(cx, value));
+    object.get(cx, key, value)
 }
 
 // 7.3.4 Set
@@ -89,6 +95,24 @@ pub fn define_property_or_throw(
     }
 
     ().into()
+}
+
+// 7.3.11 GetMethod
+pub fn get_method(
+    cx: &mut Context,
+    value: Value,
+    key: &str,
+) -> AbstractResult<Option<Gc<ObjectValue>>> {
+    let func = maybe_!(get_v(cx, value, key));
+    if func.is_nullish() {
+        return None.into();
+    }
+
+    if !is_callable(func) {
+        return type_error_(cx, "value is not a function");
+    }
+
+    (Some(func.as_object())).into()
 }
 
 // 7.3.12 HasProperty

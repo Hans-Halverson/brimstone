@@ -88,7 +88,31 @@ pub trait Object {
         None
     }
 
+    fn is_array(&self) -> bool {
+        false
+    }
+
     fn is_error(&self) -> bool {
+        false
+    }
+
+    fn is_bool_object(&self) -> bool {
+        false
+    }
+
+    fn is_number_object(&self) -> bool {
+        false
+    }
+
+    fn is_string_object(&self) -> bool {
+        false
+    }
+
+    fn is_date_object(&self) -> bool {
+        false
+    }
+
+    fn is_regexp_object(&self) -> bool {
         false
     }
 }

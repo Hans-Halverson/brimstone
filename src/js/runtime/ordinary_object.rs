@@ -44,6 +44,15 @@ impl OrdinaryObject {
         }
     }
 
+    pub fn new_uninit() -> OrdinaryObject {
+        OrdinaryObject {
+            _vtable: VTABLE,
+            prototype: None,
+            properties: HashMap::new(),
+            is_extensible: false,
+        }
+    }
+
     pub fn set_property(&mut self, key: String, value: Property) {
         self.properties.insert(key, value);
     }

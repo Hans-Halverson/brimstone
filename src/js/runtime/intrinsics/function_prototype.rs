@@ -4,7 +4,7 @@ use crate::{
     impl_gc_into,
     js::runtime::{
         completion::AbstractResult,
-        gc::Gc,
+        gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::OrdinaryObject,
         property_descriptor::PropertyDescriptor,
@@ -22,20 +22,26 @@ pub struct FunctionPrototype {
     object: OrdinaryObject,
 }
 
-const VTABLE: *const () = extract_object_vtable::<FunctionPrototype>();
+impl GcDeref for FunctionPrototype {}
 
 impl_gc_into!(FunctionPrototype, ObjectValue);
 
 impl FunctionPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-        let ordinary_object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+    const VTABLE: *const () = extract_object_vtable::<FunctionPrototype>();
+
+    // Start out uninitialized and then initialize later to break dependency cycles.
+    pub fn new_uninit(cx: &mut Context) -> Gc<FunctionPrototype> {
         let func_prototype = FunctionPrototype {
-            _vtable: VTABLE,
-            object: ordinary_object,
+            _vtable: Self::VTABLE,
+            object: OrdinaryObject::new_uninit(),
         };
 
-        cx.heap.alloc(func_prototype).into()
+        cx.heap.alloc(func_prototype)
+    }
+
+    pub fn initialize(&mut self, realm: Gc<Realm>) {
+        self.object =
+            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
     }
 
     #[inline]

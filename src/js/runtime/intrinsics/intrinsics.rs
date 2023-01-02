@@ -8,7 +8,7 @@ use crate::{
         intrinsics::{
             error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
             function_prototype::FunctionPrototype, native_error::*,
-            object_prototype::ObjectPrototype,
+            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -26,6 +26,7 @@ pub enum Intrinsic {
     EvalErrorConstructor,
     EvalErrorPrototype,
     FunctionPrototype,
+    ObjectConstructor,
     ObjectPrototype,
     RangeErrorConstructor,
     RangeErrorPrototype,
@@ -87,8 +88,24 @@ impl Intrinsics {
             };
         }
 
-        register_intrinsic!(ObjectPrototype, ObjectPrototype);
-        register_intrinsic!(FunctionPrototype, FunctionPrototype);
+        // Intrinsics which are used by many other intrinsics during creation. These intrinsics
+        // form depenency cycles, so first create uninitialized and then initialize later.
+        let mut object_prototype = ObjectPrototype::new_uninit(cx);
+        let mut function_prototype = FunctionPrototype::new_uninit(cx);
+
+        register_existing_intrinsic!(ObjectPrototype, object_prototype.into());
+        register_existing_intrinsic!(FunctionPrototype, function_prototype.into());
+
+        object_prototype.initialize(cx, realm);
+        function_prototype.initialize(realm);
+
+        // Normal intrinsic creation
+        register_intrinsic!(ObjectConstructor, ObjectConstructor);
+        self.add_constructor_to_prototype(
+            cx,
+            Intrinsic::ObjectPrototype,
+            Intrinsic::ObjectConstructor,
+        );
 
         register_intrinsic!(ErrorPrototype, ErrorPrototype);
         register_intrinsic!(ErrorConstructor, ErrorConstructor);

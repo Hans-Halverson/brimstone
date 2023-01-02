@@ -108,6 +108,7 @@ impl Realm {
 
         // 19.3 Constructor Properties of the Global Object
         intrinsic_prop!("EvalError", EvalErrorConstructor);
+        intrinsic_prop!("Object", ObjectConstructor);
         intrinsic_prop!("RangeError", RangeErrorConstructor);
         intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
         intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);

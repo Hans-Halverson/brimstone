@@ -131,7 +131,7 @@ pub fn call(
     cx: &mut Context,
     func: Value,
     receiver: Value,
-    arguments: Vec<Value>,
+    arguments: &[Value],
 ) -> AbstractResult<Value> {
     if !is_callable(func) {
         return type_error_(cx, "value is not a function");
@@ -144,7 +144,7 @@ pub fn call_object(
     cx: &mut Context,
     func: Gc<ObjectValue>,
     receiver: Value,
-    arguments: Vec<Value>,
+    arguments: &[Value],
 ) -> AbstractResult<Value> {
     if !is_callable_object(func) {
         return type_error_(cx, "value is not a function");
@@ -157,7 +157,7 @@ pub fn call_object(
 pub fn construct(
     cx: &mut Context,
     func: Gc<ObjectValue>,
-    arguments: Vec<Value>,
+    arguments: &[Value],
     new_target: Option<Gc<ObjectValue>>,
 ) -> AbstractResult<Gc<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);

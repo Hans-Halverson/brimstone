@@ -41,7 +41,7 @@ pub fn to_primitive(
             };
             let hint_value: Value = cx.heap.alloc_string(hint_str.to_owned()).into();
 
-            let result = maybe_!(call_object(cx, exotic_prim, value, vec![hint_value]));
+            let result = maybe_!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
                 return type_error_(cx, "object cannot be converted to primitive");
             }
@@ -70,7 +70,7 @@ fn ordinary_to_primitive(
         ($method_name:expr) => {
             let method = maybe_!(get(cx, object, $method_name));
             if is_callable(method) {
-                let result = maybe_!(call_object(cx, method.as_object(), object_value, vec![]));
+                let result = maybe_!(call_object(cx, method.as_object(), object_value, &[]));
                 if !result.is_object() {
                     return result.into();
                 }
@@ -218,6 +218,43 @@ pub fn is_constructor(value: Value) -> bool {
     value.as_object().is_constructor()
 }
 
+// 7.2.11 SameValue
+pub fn same_value(v1: Value, v2: Value) -> bool {
+    // Same as is_strictly_equal, but treats NaN as equal to itself, and does not treat differently
+    // signed zeros as equal.
+    if v1.is_number() {
+        if v2.is_number() {
+            if v1.is_nan() && v2.is_nan() {
+                return true;
+            }
+
+            if v1.is_positive_zero() && v2.is_negative_zero()
+                || v1.is_negative_zero() && v2.is_positive_zero()
+            {
+                return false;
+            }
+
+            return v1.as_number() == v2.as_number();
+        } else {
+            return false;
+        }
+    }
+
+    let tag1 = v1.get_tag();
+    if tag1 != v2.get_tag() {
+        return false;
+    }
+
+    match tag1 {
+        STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
+        BIGINT_TAG => unimplemented!("BigInt"),
+        // Null, Undefined, and Bool all have a single canonical bit representation for each value,
+        // so the bits can be compared directly. For Objects and Symbols there is a single
+        // representation for a unique pointer, so can directly compare bits as well.
+        _ => v1.as_raw_bits() == v2.as_raw_bits(),
+    }
+}
+
 // 7.1.14 StringToBigInt
 fn string_to_big_int(value: Value) -> Value {
     unimplemented!()
@@ -334,10 +371,6 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
 }
 
 pub fn to_property_key(value: Value) -> String {
-    unimplemented!()
-}
-
-pub fn same_value(value1: Value, value2: Value) -> bool {
     unimplemented!()
 }
 

@@ -428,7 +428,7 @@ pub fn ordinary_get(
         Some(PropertyDescriptor { get: None, .. }) => Value::undefined().into(),
         Some(PropertyDescriptor {
             get: Some(getter), ..
-        }) => call_object(cx, getter, receiver, vec![]),
+        }) => call_object(cx, getter, receiver, &[]),
     }
 }
 
@@ -483,7 +483,7 @@ pub fn ordinary_set(
         match own_desc.set {
             None => false.into(),
             Some(setter) => {
-                maybe_!(call_object(cx, setter, receiver, vec![value]));
+                maybe_!(call_object(cx, setter, receiver, &[value]));
                 true.into()
             }
         }

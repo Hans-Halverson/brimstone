@@ -97,7 +97,7 @@ impl Intrinsics {
         register_existing_intrinsic!(FunctionPrototype, function_prototype.into());
 
         object_prototype.initialize(cx, realm);
-        function_prototype.initialize(realm);
+        function_prototype.initialize(cx, realm);
 
         // Normal intrinsic creation
         register_intrinsic!(ObjectConstructor, ObjectConstructor);
@@ -153,7 +153,7 @@ impl Intrinsics {
 fn throw_type_error(
     cx: &mut Context,
     _: Value,
-    _: Vec<Value>,
+    _: &[Value],
     _: Option<Gc<ObjectValue>>,
 ) -> AbstractResult<Value> {
     type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")

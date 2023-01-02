@@ -59,7 +59,7 @@ impl ObjectPrototype {
     fn to_string(
         cx: &mut Context,
         this_value: Value,
-        _: Vec<Value>,
+        _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> AbstractResult<Value> {
         if this_value.is_undefined() {

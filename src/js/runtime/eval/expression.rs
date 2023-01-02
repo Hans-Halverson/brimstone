@@ -167,7 +167,7 @@ fn eval_new_expression(cx: &mut Context, expr: &ast::NewExpression) -> Completio
         return type_error(cx, "value is not a constructor");
     }
 
-    construct(cx, constructor.as_object(), arg_values, None).into()
+    construct(cx, constructor.as_object(), &arg_values, None).into()
 }
 
 // 13.3.6.1 Call Expression Evaluation
@@ -219,7 +219,7 @@ fn eval_call(
         return type_error(cx, "value is not a function");
     }
 
-    call(cx, func_value, this_value, arg_values).into()
+    call(cx, func_value, this_value, &arg_values).into()
 }
 
 // 13.3.8.1 ArgumentListEvaluation

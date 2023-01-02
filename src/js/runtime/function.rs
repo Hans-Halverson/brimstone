@@ -90,7 +90,7 @@ impl Object for Function {
         &self,
         cx: &mut Context,
         this_argument: Value,
-        arguments: Vec<Value>,
+        arguments: &[Value],
     ) -> AbstractResult<Value> {
         let callee_context = self.prepare_for_ordinary_call(cx, None);
 
@@ -121,7 +121,7 @@ impl Object for Function {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: Vec<Value>,
+        arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> AbstractResult<Gc<ObjectValue>> {
         let this_argument: Option<Gc<ObjectValue>> =

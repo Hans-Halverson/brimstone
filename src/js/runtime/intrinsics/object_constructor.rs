@@ -43,7 +43,7 @@ impl ObjectConstructor {
     fn construct(
         cx: &mut Context,
         _: Value,
-        arguments: Vec<Value>,
+        arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
     ) -> AbstractResult<Value> {
         if let Some(new_target) = new_target {
@@ -58,7 +58,7 @@ impl ObjectConstructor {
             }
         }
 
-        let value = get_argument(&arguments, 0);
+        let value = get_argument(arguments, 0);
         if value.is_nullish() {
             let new_object = ordinary_object_create(
                 cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype),

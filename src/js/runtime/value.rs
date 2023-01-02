@@ -90,6 +90,16 @@ impl Value {
     }
 
     #[inline]
+    pub fn is_positive_zero(&self) -> bool {
+        self.raw_bits == f64::to_bits(0.0)
+    }
+
+    #[inline]
+    pub fn is_negative_zero(&self) -> bool {
+        self.raw_bits == f64::to_bits(-0.0)
+    }
+
+    #[inline]
     pub const fn is_undefined(&self) -> bool {
         self.has_tag(UNDEFINED_TAG)
     }

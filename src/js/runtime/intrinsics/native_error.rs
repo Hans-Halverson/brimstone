@@ -95,7 +95,7 @@ macro_rules! create_native_error {
             fn construct(
                 cx: &mut Context,
                 _: Value,
-                arguments: Vec<Value>,
+                arguments: &[Value],
                 new_target: Option<Gc<ObjectValue>>,
             ) -> AbstractResult<Value> {
                 let new_target = if let Some(new_target) = new_target {
@@ -112,7 +112,7 @@ macro_rules! create_native_error {
                 let object: Gc<ObjectValue> =
                     cx.heap.alloc($native_error::new(ordinary_object)).into();
 
-                let message = get_argument(&arguments, 0);
+                let message = get_argument(arguments, 0);
                 if !message.is_undefined() {
                     let message_string = maybe_!(to_string(cx, message));
                     create_non_enumerable_data_property_or_throw(
@@ -123,7 +123,7 @@ macro_rules! create_native_error {
                     );
                 }
 
-                maybe_!(install_error_cause(cx, object, get_argument(&arguments, 1)));
+                maybe_!(install_error_cause(cx, object, get_argument(arguments, 1)));
 
                 object.into()
             }

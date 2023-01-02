@@ -61,7 +61,7 @@ pub trait Object {
         &self,
         _: &mut Context,
         _this_argument: Value,
-        _arguments: Vec<Value>,
+        _arguments: &[Value],
     ) -> AbstractResult<Value> {
         panic!("[[Call]] not implemented for this object")
     }
@@ -69,7 +69,7 @@ pub trait Object {
     fn construct(
         &self,
         _: &mut Context,
-        _arguments: Vec<Value>,
+        _arguments: &[Value],
         _new_target: Gc<ObjectValue>,
     ) -> AbstractResult<Gc<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")

@@ -33,7 +33,7 @@ pub struct BuiltinFunction {
 pub type BuiltinFunctionPtr = fn(
     cx: &mut Context,
     this_value: Value,
-    arguments: Vec<Value>,
+    arguments: &[Value],
     new_target: Option<Gc<ObjectValue>>,
 ) -> AbstractResult<Value>;
 
@@ -109,7 +109,7 @@ impl Object for BuiltinFunction {
         &self,
         cx: &mut Context,
         this_argument: Value,
-        arguments: Vec<Value>,
+        arguments: &[Value],
     ) -> AbstractResult<Value> {
         let realm = cx.current_realm();
         let callee_context = cx.heap.alloc(ExecutionContext {
@@ -132,7 +132,7 @@ impl Object for BuiltinFunction {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: Vec<Value>,
+        arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> AbstractResult<Gc<ObjectValue>> {
         let realm = cx.current_realm();

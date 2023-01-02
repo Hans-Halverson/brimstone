@@ -1,10 +1,9 @@
 use crate::{
     js::runtime::{
-        builtin_function::BuiltinFunction, completion::AbstractResult, function::get_argument,
-        gc::Gc, object_value::ObjectValue, realm::Realm, type_utilities::to_string, value::Value,
-        Context,
+        builtin_function::BuiltinFunction, completion::EvalResult, function::get_argument, gc::Gc,
+        object_value::ObjectValue, realm::Realm, type_utilities::to_string, value::Value, Context,
     },
-    maybe_,
+    maybe,
 };
 
 pub struct StringConstructor;
@@ -26,7 +25,7 @@ impl StringConstructor {
         _: Value,
         arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let string_value = if arguments.is_empty() {
             cx.heap.alloc_string(String::new()).into()
         } else {
@@ -35,7 +34,7 @@ impl StringConstructor {
                 unimplemented!("Symbols")
             }
 
-            maybe_!(to_string(cx, value))
+            maybe!(to_string(cx, value))
         };
 
         match new_target {

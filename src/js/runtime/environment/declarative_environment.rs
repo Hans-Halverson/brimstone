@@ -1,7 +1,7 @@
 use super::environment::Environment;
 
 use crate::js::runtime::{
-    completion::AbstractResult,
+    completion::EvalResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
@@ -52,7 +52,7 @@ impl DeclarativeEnvironment {
 
 impl Environment for DeclarativeEnvironment {
     // 9.1.1.1.1 HasBinding
-    fn has_binding(&self, _: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn has_binding(&self, _: &mut Context, name: &str) -> EvalResult<bool> {
         self.bindings.contains_key(name).into()
     }
 
@@ -62,7 +62,7 @@ impl Environment for DeclarativeEnvironment {
         _: &mut Context,
         name: String,
         can_delete: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         let binding = Binding::new(true, false, can_delete);
         self.bindings.insert(name.to_string(), binding);
         ().into()
@@ -74,19 +74,14 @@ impl Environment for DeclarativeEnvironment {
         _: &mut Context,
         name: String,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         let binding = Binding::new(false, is_strict, false);
         self.bindings.insert(name.to_string(), binding);
         ().into()
     }
 
     // 9.1.1.1.4 InitializeBinding
-    fn initialize_binding(
-        &mut self,
-        _: &mut Context,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()> {
+    fn initialize_binding(&mut self, _: &mut Context, name: &str, value: Value) -> EvalResult<()> {
         let binding = self.bindings.get_mut(name).unwrap();
         binding.value = value;
         binding.is_initialized = true;
@@ -100,7 +95,7 @@ impl Environment for DeclarativeEnvironment {
         name: &str,
         value: Value,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         match self.bindings.get_mut(name) {
             None if is_strict => err_not_defined_(cx, name),
             None => {
@@ -132,7 +127,7 @@ impl Environment for DeclarativeEnvironment {
         cx: &mut Context,
         name: &str,
         _is_strict: bool,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let binding = self.bindings.get(name).unwrap();
         if !binding.is_initialized {
             return err_uninitialized_(cx, name);
@@ -142,7 +137,7 @@ impl Environment for DeclarativeEnvironment {
     }
 
     // 9.1.1.1.7 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, name: &str) -> EvalResult<bool> {
         let binding = self.bindings.get(name).unwrap();
         if !binding.can_delete {
             return false.into();
@@ -168,7 +163,7 @@ impl Environment for DeclarativeEnvironment {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
         panic!("DeclarativeEnvironment::get_this_binding is never called in spec")
     }
 

@@ -1,4 +1,4 @@
-use crate::{js::runtime::completion::AbstractResult, maybe_};
+use crate::{js::runtime::completion::EvalResult, maybe};
 
 use super::loc::Loc;
 
@@ -36,10 +36,10 @@ pub enum LexDecl {
 }
 
 impl VarDecl {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         match &self {
             VarDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
             VarDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
@@ -48,10 +48,10 @@ impl VarDecl {
 }
 
 impl LexDecl {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         match &self {
             LexDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
             LexDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
@@ -151,12 +151,12 @@ pub struct VariableDeclaration {
 }
 
 impl VariableDeclaration {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         for decl in &self.declarations {
-            maybe_!(decl.iter_bound_names(f))
+            maybe!(decl.iter_bound_names(f))
         }
 
         ().into()
@@ -170,10 +170,10 @@ pub struct VariableDeclarator {
 }
 
 impl VariableDeclarator {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.id.iter_bound_names(f)
     }
 }
@@ -665,10 +665,10 @@ impl Pattern {
         }
     }
 
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         match &self {
             Pattern::Id(id) => f(id),
             Pattern::Array(patt) => patt.iter_bound_names(f),
@@ -684,13 +684,13 @@ pub struct ArrayPattern {
 }
 
 impl ArrayPattern {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         for element in &self.elements {
             if let Some(element) = element {
-                maybe_!(element.iter_bound_names(f))
+                maybe!(element.iter_bound_names(f))
             }
         }
 
@@ -704,12 +704,12 @@ pub struct ObjectPattern {
 }
 
 impl ObjectPattern {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         for prop in &self.properties {
-            maybe_!(prop.value.iter_bound_names(f))
+            maybe!(prop.value.iter_bound_names(f))
         }
 
         ().into()
@@ -730,10 +730,10 @@ pub struct AssignmentPattern {
 }
 
 impl AssignmentPattern {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> AbstractResult<()>>(
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.left.iter_bound_names(f)
     }
 }

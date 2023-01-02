@@ -1,8 +1,8 @@
-use crate::{js::runtime::abstract_operations::create_data_property_or_throw, maybe_, must_};
+use crate::{js::runtime::abstract_operations::create_data_property_or_throw, maybe, must};
 
 use super::{
     abstract_operations::{get, has_property},
-    completion::AbstractResult,
+    completion::EvalResult,
     error::type_error_,
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
@@ -146,56 +146,56 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
     let object = cx.heap.alloc(ordinary_object);
 
     if let Some(value) = desc.value {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "value",
-            value
+            value,
         ));
     }
 
     if let Some(is_writable) = desc.is_writable {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "writable",
-            is_writable.into()
+            is_writable.into(),
         ));
     }
 
     if let Some(get) = desc.get {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "get",
-            get.into()
+            get.into(),
         ));
     }
 
     if let Some(set) = desc.set {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "set",
-            set.into()
+            set.into(),
         ));
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "enumerable",
-            is_enumerable.into()
+            is_enumerable.into(),
         ));
     }
 
     if let Some(is_configurable) = desc.is_configurable {
-        must_!(create_data_property_or_throw(
+        must!(create_data_property_or_throw(
             cx,
             object.into(),
             "configurable",
-            is_configurable.into()
+            is_configurable.into(),
         ));
     }
 
@@ -206,7 +206,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
 pub fn to_property_descriptor(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-) -> AbstractResult<PropertyDescriptor> {
+) -> EvalResult<PropertyDescriptor> {
     let mut desc = PropertyDescriptor {
         value: None,
         is_writable: None,
@@ -216,27 +216,27 @@ pub fn to_property_descriptor(
         set: None,
     };
 
-    if maybe_!(has_property(object, "enumerable")) {
-        let enumerable = maybe_!(get(cx, object, "enumerable"));
+    if maybe!(has_property(object, "enumerable")) {
+        let enumerable = maybe!(get(cx, object, "enumerable"));
         desc.is_enumerable = Some(to_boolean(enumerable));
     }
 
-    if maybe_!(has_property(object, "configurable")) {
-        let configurable = maybe_!(get(cx, object, "configurable"));
+    if maybe!(has_property(object, "configurable")) {
+        let configurable = maybe!(get(cx, object, "configurable"));
         desc.is_configurable = Some(to_boolean(configurable));
     }
 
-    if maybe_!(has_property(object, "value")) {
-        desc.value = Some(maybe_!(get(cx, object, "value")));
+    if maybe!(has_property(object, "value")) {
+        desc.value = Some(maybe!(get(cx, object, "value")));
     }
 
-    if maybe_!(has_property(object, "writable")) {
-        let writable = maybe_!(get(cx, object, "writable"));
+    if maybe!(has_property(object, "writable")) {
+        let writable = maybe!(get(cx, object, "writable"));
         desc.is_writable = Some(to_boolean(writable));
     }
 
-    if maybe_!(has_property(object, "get")) {
-        let get = maybe_!(get(cx, object, "get"));
+    if maybe!(has_property(object, "get")) {
+        let get = maybe!(get(cx, object, "get"));
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
             return type_error_(cx, "getter is not callable");
@@ -248,8 +248,8 @@ pub fn to_property_descriptor(
         };
     }
 
-    if maybe_!(has_property(object, "set")) {
-        let set = maybe_!(get(cx, object, "set"));
+    if maybe!(has_property(object, "set")) {
+        let set = maybe!(get(cx, object, "set"));
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
             return type_error_(cx, "setter is not callable");

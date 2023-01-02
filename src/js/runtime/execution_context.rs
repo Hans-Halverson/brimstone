@@ -1,5 +1,5 @@
 use super::{
-    completion::AbstractResult,
+    completion::EvalResult,
     environment::{
         environment::{get_identifier_reference, Environment},
         private_environment::PrivateEnvironment,
@@ -35,7 +35,7 @@ pub fn resolve_binding(
     cx: &mut Context,
     name: &str,
     env: Option<Gc<dyn Environment>>,
-) -> AbstractResult<Reference> {
+) -> EvalResult<Reference> {
     let env = match env {
         Some(env) => env,
         None => cx.current_execution_context().lexical_env,
@@ -62,7 +62,7 @@ fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
 }
 
 // 9.4.4 ResolveThisBinding
-pub fn resolve_this_binding(cx: &mut Context) -> AbstractResult<Value> {
+pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Value> {
     get_this_environment(cx).get_this_binding(cx)
 }
 

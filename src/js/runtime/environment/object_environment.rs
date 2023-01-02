@@ -1,15 +1,17 @@
-use crate::js::runtime::{
-    abstract_operations::{define_property_or_throw, get, has_property, set},
-    completion::AbstractResult,
-    error::err_not_defined_,
-    gc::Gc,
-    object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor,
-    type_utilities::to_boolean,
-    value::Value,
-    Context,
+use crate::{
+    js::runtime::{
+        abstract_operations::{define_property_or_throw, get, has_property, set},
+        completion::EvalResult,
+        error::err_not_defined_,
+        gc::Gc,
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        type_utilities::to_boolean,
+        value::Value,
+        Context,
+    },
+    maybe,
 };
-use crate::maybe_;
 
 use super::environment::Environment;
 
@@ -37,8 +39,8 @@ impl ObjectEnvironment {
 
 impl Environment for ObjectEnvironment {
     // 9.1.1.2.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
-        if !maybe_!(has_property(self.binding_object, name)) {
+    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
+        if !maybe!(has_property(self.binding_object, name)) {
             return false.into();
         } else if !self.is_with_environment {
             return true.into();
@@ -46,11 +48,11 @@ impl Environment for ObjectEnvironment {
 
         // TODO: Change to symbol once symbols are implemented
         // Ignore properties in @@unscopables
-        let unscopables = maybe_!(get(cx, self.binding_object, "@@unscopables"));
+        let unscopables = maybe!(get(cx, self.binding_object, "@@unscopables"));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe_!(get(cx, unscopables, name));
+            let value = maybe!(get(cx, unscopables, name));
             let blocked = to_boolean(value);
             if blocked {
                 return false.into();
@@ -66,28 +68,18 @@ impl Environment for ObjectEnvironment {
         cx: &mut Context,
         name: String,
         can_delete: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
         define_property_or_throw(cx, self.binding_object, &name, prop_desc)
     }
 
     // 9.1.1.2.3 CreateImmutableBinding
-    fn create_immutable_binding(
-        &mut self,
-        _: &mut Context,
-        _: String,
-        _: bool,
-    ) -> AbstractResult<()> {
+    fn create_immutable_binding(&mut self, _: &mut Context, _: String, _: bool) -> EvalResult<()> {
         unreachable!("ObjectEnvironment::create_immutable_binding is never used in spec")
     }
 
     // 9.1.1.2.4 InitializeBinding
-    fn initialize_binding(
-        &mut self,
-        cx: &mut Context,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()> {
+    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
         self.set_mutable_binding(cx, name, value, false)
     }
 
@@ -98,13 +90,13 @@ impl Environment for ObjectEnvironment {
         name: &str,
         value: Value,
         is_strict: bool,
-    ) -> AbstractResult<()> {
-        let still_exists = maybe_!(has_property(self.binding_object, name));
+    ) -> EvalResult<()> {
+        let still_exists = maybe!(has_property(self.binding_object, name));
         if !still_exists && is_strict {
             return err_not_defined_(cx, name);
         }
 
-        maybe_!(set(cx, self.binding_object, name, value, is_strict));
+        maybe!(set(cx, self.binding_object, name, value, is_strict));
         ().into()
     }
 
@@ -114,8 +106,8 @@ impl Environment for ObjectEnvironment {
         cx: &mut Context,
         name: &str,
         is_strict: bool,
-    ) -> AbstractResult<Value> {
-        if !maybe_!(has_property(self.binding_object, name)) {
+    ) -> EvalResult<Value> {
+        if !maybe!(has_property(self.binding_object, name)) {
             return if !is_strict {
                 Value::undefined().into()
             } else {
@@ -127,7 +119,7 @@ impl Environment for ObjectEnvironment {
     }
 
     // 9.1.1.2.7 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, name: &str) -> EvalResult<bool> {
         self.binding_object.delete(name)
     }
 
@@ -150,7 +142,7 @@ impl Environment for ObjectEnvironment {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
         panic!("ObjectEnvironment::get_this_binding is never called in spec")
     }
 

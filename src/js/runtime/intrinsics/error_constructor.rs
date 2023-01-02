@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
-        completion::AbstractResult,
+        completion::EvalResult,
         function::get_argument,
         gc::Gc,
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
@@ -17,7 +17,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe_,
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -86,14 +86,14 @@ impl ErrorConstructor {
         _: Value,
         arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
             cx.current_execution_context().function.unwrap()
         };
 
-        let ordinary_object = maybe_!(ordinary_create_from_constructor(
+        let ordinary_object = maybe!(ordinary_create_from_constructor(
             cx,
             new_target,
             Intrinsic::ErrorPrototype
@@ -102,7 +102,7 @@ impl ErrorConstructor {
 
         let message = get_argument(arguments, 0);
         if !message.is_undefined() {
-            let message_string = maybe_!(to_string(cx, message));
+            let message_string = maybe!(to_string(cx, message));
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object,
@@ -111,7 +111,7 @@ impl ErrorConstructor {
             );
         }
 
-        maybe_!(install_error_cause(cx, object, get_argument(arguments, 1)));
+        maybe!(install_error_cause(cx, object, get_argument(arguments, 1)));
 
         object.into()
     }
@@ -122,11 +122,11 @@ pub fn install_error_cause(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     options: Value,
-) -> AbstractResult<()> {
+) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
-        if maybe_!(has_property(options, "cause")) {
-            let cause = maybe_!(get(cx, options, "cause"));
+        if maybe!(has_property(options, "cause")) {
+            let cause = maybe!(get(cx, options, "cause"));
             create_non_enumerable_data_property_or_throw(cx, object, "cause", cause);
         }
     }

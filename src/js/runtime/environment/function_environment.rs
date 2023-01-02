@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        completion::AbstractResult,
+        completion::EvalResult,
         error::reference_error_,
         function::{Function, ThisMode},
         gc::Gc,
@@ -8,7 +8,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe_,
+    maybe,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
@@ -77,7 +77,7 @@ impl Environment for FunctionEnvironment {
     }
 
     // 9.1.1.3.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value> {
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Uninitialized {
             return reference_error_(cx, "this is not initialized");
         }
@@ -87,7 +87,7 @@ impl Environment for FunctionEnvironment {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
         self.env.has_binding(cx, name)
     }
 
@@ -96,7 +96,7 @@ impl Environment for FunctionEnvironment {
         cx: &mut Context,
         name: String,
         can_delete: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.create_mutable_binding(cx, name, can_delete)
     }
 
@@ -105,16 +105,11 @@ impl Environment for FunctionEnvironment {
         cx: &mut Context,
         name: String,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(
-        &mut self,
-        cx: &mut Context,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()> {
+    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
         self.env.initialize_binding(cx, name, value)
     }
 
@@ -124,7 +119,7 @@ impl Environment for FunctionEnvironment {
         name: &str,
         value: Value,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.set_mutable_binding(cx, name, value, is_strict)
     }
 
@@ -133,11 +128,11 @@ impl Environment for FunctionEnvironment {
         cx: &mut Context,
         name: &str,
         is_strict: bool,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         self.env.get_binding_value(cx, name, is_strict)
     }
 
-    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> EvalResult<bool> {
         self.env.delete_binding(cx, name)
     }
 
@@ -152,7 +147,7 @@ impl Environment for FunctionEnvironment {
 
 impl FunctionEnvironment {
     // 9.1.1.3.1 BindThisValue
-    pub fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<Value> {
+    pub fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> EvalResult<Value> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
             return reference_error_(cx, "this is already initialized");
         }
@@ -164,13 +159,13 @@ impl FunctionEnvironment {
     }
 
     // 9.1.1.3.5 GetSuperBase
-    fn get_super_base(&self) -> AbstractResult<Value> {
+    fn get_super_base(&self) -> EvalResult<Value> {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
         match &self.function_object.home_object {
             None => Value::undefined().into(),
             Some(home) => {
-                let prototype = maybe_!(home.get_prototype_of());
+                let prototype = maybe!(home.get_prototype_of());
                 match prototype {
                     None => Value::null().into(),
                     Some(prototype) => prototype.into(),

@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    completion::AbstractResult, gc::Gc, object_value::ObjectValue, value::Value, Context,
+    completion::EvalResult, gc::Gc, object_value::ObjectValue, value::Value, Context,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
@@ -26,12 +26,12 @@ impl Environment for ModuleEnvironment {
         cx: &mut Context,
         name: &str,
         is_strict: bool,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         unimplemented!()
     }
 
     // 9.1.1.5.2 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, _name: &str) -> AbstractResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, _name: &str) -> EvalResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
@@ -41,13 +41,13 @@ impl Environment for ModuleEnvironment {
     }
 
     // 9.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> AbstractResult<Value> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
         Value::undefined().into()
     }
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
         self.env.has_binding(cx, name)
     }
 
@@ -56,7 +56,7 @@ impl Environment for ModuleEnvironment {
         cx: &mut Context,
         name: String,
         can_delete: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.create_mutable_binding(cx, name, can_delete)
     }
 
@@ -65,16 +65,11 @@ impl Environment for ModuleEnvironment {
         cx: &mut Context,
         name: String,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(
-        &mut self,
-        cx: &mut Context,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()> {
+    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
         self.env.initialize_binding(cx, name, value)
     }
 
@@ -84,7 +79,7 @@ impl Environment for ModuleEnvironment {
         name: &str,
         value: Value,
         is_strict: bool,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         self.env.set_mutable_binding(cx, name, value, is_strict)
     }
 
@@ -103,7 +98,7 @@ impl Environment for ModuleEnvironment {
 
 impl ModuleEnvironment {
     // 9.1.1.5.5 CreateImportBinding
-    fn create_import_binding(&self) -> AbstractResult<Value> {
+    fn create_import_binding(&self) -> EvalResult<Value> {
         unimplemented!()
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     js::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
-            completion::{AbstractResult, Completion},
+            completion::{Completion, EvalResult},
             environment::{
                 environment::{to_trait_object, Environment},
                 global_environment::GlobalEnvironment,
@@ -18,7 +18,7 @@ use crate::{
             Context,
         },
     },
-    maybe_, maybe__, must_,
+    maybe, maybe__, must,
 };
 
 use super::statement::eval_toplevel_list;
@@ -77,11 +77,11 @@ fn global_declaration_instantiation(
     for lex_decl in script.lex_decls() {
         maybe__!(lex_decl.iter_bound_names(&mut |id| {
             let name = &id.name;
-            if env.has_var_declaration(name) || must_!(env.has_lexical_declaration(cx, name)) {
+            if env.has_var_declaration(name) || must!(env.has_lexical_declaration(cx, name)) {
                 return syntax_error_(cx, &format!("redeclaration of {}", name));
             }
 
-            if maybe_!(env.has_restricted_global_property(name)) {
+            if maybe!(env.has_restricted_global_property(name)) {
                 return syntax_error_(
                     cx,
                     &format!("cannot redeclare restricted global property {}", name),
@@ -95,7 +95,7 @@ fn global_declaration_instantiation(
     for var_decl in script.var_decls() {
         maybe__!(var_decl.iter_bound_names(&mut |id| {
             let name = &id.name;
-            if must_!(env.has_lexical_declaration(cx, name)) {
+            if must!(env.has_lexical_declaration(cx, name)) {
                 return syntax_error_(cx, &format!("redeclaration of {}", name));
             }
 
@@ -131,7 +131,7 @@ fn global_declaration_instantiation(
                 maybe__!(var_decl.as_ref().iter_bound_names(&mut |id| {
                     let name = &id.name;
                     if !declared_function_names.contains(name) {
-                        if !maybe_!(env.can_declare_global_var(name)) {
+                        if !maybe!(env.can_declare_global_var(name)) {
                             return type_error_(cx, &format!("cannot declare global var {}", name));
                         }
 

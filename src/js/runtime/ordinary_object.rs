@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{impl_gc_into, maybe_, must_};
+use crate::{impl_gc_into, maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
-    completion::AbstractResult,
+    completion::EvalResult,
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
@@ -98,13 +98,13 @@ impl OrdinaryObject {
 impl Object for OrdinaryObject {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
-    fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
+    fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
         self.prototype.into()
     }
 
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
-    fn set_prototype_of(&mut self, new_prototype: Option<Gc<ObjectValue>>) -> AbstractResult<bool> {
+    fn set_prototype_of(&mut self, new_prototype: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype, new_prototype) {
             return true.into();
         }
@@ -123,7 +123,7 @@ impl Object for OrdinaryObject {
                     }
 
                     // TODO: Check if p is a Proxy object
-                    current_prototype = must_!(current_proto.get_prototype_of());
+                    current_prototype = must!(current_proto.get_prototype_of());
                 }
             }
         }
@@ -135,19 +135,19 @@ impl Object for OrdinaryObject {
 
     // 10.1.3 [[IsExtensible]]
     // 10.1.3.1 OrdinaryIsExtensible
-    fn is_extensible(&self) -> AbstractResult<bool> {
+    fn is_extensible(&self) -> EvalResult<bool> {
         self.is_extensible.into()
     }
 
     // 10.1.4 [[PreventExtensions]]
     // 10.1.4.1 OrdinaryPreventExtensions
-    fn prevent_extensions(&mut self) -> AbstractResult<bool> {
+    fn prevent_extensions(&mut self) -> EvalResult<bool> {
         self.is_extensible = false;
         true.into()
     }
 
     // 10.1.5 [[GetOwnProperty]]
-    fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>> {
+    fn get_own_property(&self, key: &str) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self, key).into()
     }
 
@@ -157,17 +157,17 @@ impl Object for OrdinaryObject {
         cx: &mut Context,
         key: &str,
         desc: PropertyDescriptor,
-    ) -> AbstractResult<bool> {
+    ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self, key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, key: &str) -> AbstractResult<bool> {
+    fn has_property(&self, key: &str) -> EvalResult<bool> {
         ordinary_has_property(self, key)
     }
 
     // 10.1.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
+    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> EvalResult<Value> {
         ordinary_get(cx, self, key, receiver)
     }
 
@@ -178,12 +178,12 @@ impl Object for OrdinaryObject {
         key: &str,
         value: Value,
         receiver: Value,
-    ) -> AbstractResult<bool> {
+    ) -> EvalResult<bool> {
         ordinary_set(cx, self, key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, key: &str) -> AbstractResult<bool> {
+    fn delete(&mut self, key: &str) -> EvalResult<bool> {
         ordinary_delete(self, key)
     }
 
@@ -224,9 +224,9 @@ pub fn ordinary_define_own_property(
     object: &mut OrdinaryObject,
     key: &str,
     desc: PropertyDescriptor,
-) -> AbstractResult<bool> {
-    let current_desc = maybe_!(object.get_own_property(key));
-    let is_extensible = maybe_!(object.is_extensible());
+) -> EvalResult<bool> {
+    let current_desc = maybe!(object.get_own_property(key));
+    let is_extensible = maybe!(object.is_extensible());
 
     validate_and_apply_property_descriptor(cx, Some(object), key, is_extensible, desc, current_desc)
         .into()
@@ -395,13 +395,13 @@ pub fn validate_and_apply_property_descriptor(
 }
 
 // 10.1.7.1 OrdinaryHasProperty
-pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> AbstractResult<bool> {
-    let own_property = maybe_!(object.get_own_property(key));
+pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> EvalResult<bool> {
+    let own_property = maybe!(object.get_own_property(key));
     if own_property.is_some() {
         return true.into();
     }
 
-    let parent = maybe_!(object.get_prototype_of());
+    let parent = maybe!(object.get_prototype_of());
     match parent {
         Some(parent) => parent.has_property(key),
         None => false.into(),
@@ -414,11 +414,11 @@ pub fn ordinary_get(
     object: &OrdinaryObject,
     key: &str,
     receiver: Value,
-) -> AbstractResult<Value> {
-    let desc = maybe_!(object.get_own_property(key));
+) -> EvalResult<Value> {
+    let desc = maybe!(object.get_own_property(key));
     match desc {
         None => {
-            let parent = maybe_!(object.get_prototype_of());
+            let parent = maybe!(object.get_prototype_of());
             match parent {
                 None => Value::undefined().into(),
                 Some(parent) => parent.get(cx, key, receiver),
@@ -440,11 +440,11 @@ pub fn ordinary_set(
     key: &str,
     value: Value,
     receiver: Value,
-) -> AbstractResult<bool> {
-    let own_desc = maybe_!(object.get_own_property(key));
+) -> EvalResult<bool> {
+    let own_desc = maybe!(object.get_own_property(key));
     let own_desc = match own_desc {
         None => {
-            let parent = maybe_!(object.get_prototype_of());
+            let parent = maybe!(object.get_prototype_of());
             match parent {
                 None => PropertyDescriptor::data(Value::undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
@@ -464,7 +464,7 @@ pub fn ordinary_set(
         }
 
         let mut receiver = receiver.as_object();
-        let existing_descriptor = maybe_!(receiver.get_own_property(key));
+        let existing_descriptor = maybe!(receiver.get_own_property(key));
         match existing_descriptor {
             None => create_data_property(cx, receiver, key, value),
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
@@ -483,7 +483,7 @@ pub fn ordinary_set(
         match own_desc.set {
             None => false.into(),
             Some(setter) => {
-                maybe_!(call_object(cx, setter, receiver, &[value]));
+                maybe!(call_object(cx, setter, receiver, &[value]));
                 true.into()
             }
         }
@@ -491,8 +491,8 @@ pub fn ordinary_set(
 }
 
 // 10.1.10.1 OrdinaryDelete
-pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> AbstractResult<bool> {
-    let desc = maybe_!(object.get_own_property(key));
+pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> EvalResult<bool> {
+    let desc = maybe!(object.get_own_property(key));
     match desc {
         None => true.into(),
         Some(desc) => {
@@ -532,8 +532,8 @@ pub fn ordinary_create_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
-) -> AbstractResult<OrdinaryObject> {
-    let proto = maybe_!(get_prototype_from_constructor(
+) -> EvalResult<OrdinaryObject> {
+    let proto = maybe!(get_prototype_from_constructor(
         cx,
         constructor,
         intrinsic_default_proto
@@ -547,12 +547,12 @@ pub fn get_prototype_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
-) -> AbstractResult<Gc<ObjectValue>> {
-    let proto = maybe_!(get(cx, constructor.into(), "prototype"));
+) -> EvalResult<Gc<ObjectValue>> {
+    let proto = maybe!(get(cx, constructor.into(), "prototype"));
     if proto.is_object() {
         proto.as_object().into()
     } else {
-        let realm = maybe_!(get_function_realm(constructor));
+        let realm = maybe!(get_function_realm(constructor));
         realm.get_intrinsic(intrinsic_default_proto).into()
     }
 }

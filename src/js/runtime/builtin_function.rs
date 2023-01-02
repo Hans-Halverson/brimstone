@@ -1,9 +1,9 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{impl_gc_into, maybe_};
+use crate::impl_gc_into;
 
 use super::{
-    completion::AbstractResult,
+    completion::EvalResult,
     execution_context::{ExecutionContext, ScriptOrModule},
     function::{set_function_length, set_function_name},
     gc::{Gc, GcDeref},
@@ -35,7 +35,7 @@ pub type BuiltinFunctionPtr = fn(
     this_value: Value,
     arguments: &[Value],
     new_target: Option<Gc<ObjectValue>>,
-) -> AbstractResult<Value>;
+) -> EvalResult<Value>;
 
 impl GcDeref for BuiltinFunction {}
 
@@ -110,7 +110,7 @@ impl Object for BuiltinFunction {
         cx: &mut Context,
         this_argument: Value,
         arguments: &[Value],
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let realm = cx.current_realm();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
@@ -134,7 +134,7 @@ impl Object for BuiltinFunction {
         cx: &mut Context,
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
-    ) -> AbstractResult<Gc<ObjectValue>> {
+    ) -> EvalResult<Gc<ObjectValue>> {
         let realm = cx.current_realm();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
@@ -146,7 +146,7 @@ impl Object for BuiltinFunction {
         });
 
         cx.push_execution_context(callee_context);
-        let result = maybe_!((self.builtin_func)(
+        let result = crate::maybe!((self.builtin_func)(
             cx,
             Value::undefined(),
             arguments,

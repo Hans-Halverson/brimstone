@@ -1,13 +1,13 @@
 use std::mem::{transmute, transmute_copy};
 use std::ops::{Deref, DerefMut};
 
-use crate::maybe_;
+use crate::maybe;
 
 use super::builtin_function::BuiltinFunction;
 use super::type_utilities::same_opt_object_value;
 use super::Context;
 use super::{
-    completion::AbstractResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
+    completion::EvalResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
 };
 
 /// Generic object type encompassing ordinary objects and all forms of exotic objects.
@@ -24,26 +24,26 @@ pub struct ObjectValue {
 pub type ObjectValueVtable = *const ();
 
 pub trait Object {
-    fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>>;
+    fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>>;
 
-    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> AbstractResult<bool>;
+    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool>;
 
-    fn is_extensible(&self) -> AbstractResult<bool>;
+    fn is_extensible(&self) -> EvalResult<bool>;
 
-    fn prevent_extensions(&mut self) -> AbstractResult<bool>;
+    fn prevent_extensions(&mut self) -> EvalResult<bool>;
 
-    fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>>;
+    fn get_own_property(&self, key: &str) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
         key: &str,
         desc: PropertyDescriptor,
-    ) -> AbstractResult<bool>;
+    ) -> EvalResult<bool>;
 
-    fn has_property(&self, key: &str) -> AbstractResult<bool>;
+    fn has_property(&self, key: &str) -> EvalResult<bool>;
 
-    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value>;
+    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> EvalResult<Value>;
 
     fn set(
         &mut self,
@@ -51,9 +51,9 @@ pub trait Object {
         key: &str,
         value: Value,
         receiver: Value,
-    ) -> AbstractResult<bool>;
+    ) -> EvalResult<bool>;
 
-    fn delete(&mut self, key: &str) -> AbstractResult<bool>;
+    fn delete(&mut self, key: &str) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
 
@@ -62,7 +62,7 @@ pub trait Object {
         _: &mut Context,
         _this_argument: Value,
         _arguments: &[Value],
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         panic!("[[Call]] not implemented for this object")
     }
 
@@ -71,7 +71,7 @@ pub trait Object {
         _: &mut Context,
         _arguments: &[Value],
         _new_target: Gc<ObjectValue>,
-    ) -> AbstractResult<Gc<ObjectValue>> {
+    ) -> EvalResult<Gc<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
     }
 
@@ -121,8 +121,8 @@ pub trait Object {
 pub fn set_immutable_prototype(
     object: Gc<ObjectValue>,
     proto: Option<Gc<ObjectValue>>,
-) -> AbstractResult<bool> {
-    let current_proto = maybe_!(object.get_prototype_of());
+) -> EvalResult<bool> {
+    let current_proto = maybe!(object.get_prototype_of());
     same_opt_object_value(proto, current_proto).into()
 }
 

@@ -2,7 +2,7 @@ use crate::{
     js::{
         parser::ast::{self, LexDecl, WithDecls},
         runtime::{
-            completion::{AbstractResult, Completion, CompletionKind},
+            completion::{Completion, CompletionKind, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
@@ -20,7 +20,7 @@ use crate::{
             Context,
         },
     },
-    maybe, maybe__, must_,
+    maybe_, maybe__, must,
 };
 
 use super::expression::eval_expression;
@@ -31,7 +31,7 @@ pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Comple
     let mut result = Completion::empty();
     for stmt in stmts {
         let new_result = eval_statement(cx, stmt);
-        maybe!(new_result);
+        maybe_!(new_result);
         result = new_result.update_if_empty(result.value());
     }
 
@@ -46,7 +46,7 @@ pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Comp
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
                 let new_result = eval_statement(cx, stmt);
-                maybe!(new_result);
+                maybe_!(new_result);
                 result = new_result.update_if_empty(result.value());
             }
         }
@@ -111,15 +111,13 @@ fn block_declaration_instantiation(
     for lex_decl in lex_decls {
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                must_!(lex_decl.iter_bound_names(&mut |id| {
+                must!(lex_decl.iter_bound_names(&mut |id| {
                     env.create_immutable_binding(cx, id.name.to_string(), true)
                 }))
             }
-            _ => {
-                must_!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_mutable_binding(cx, id.name.to_string(), false)
-                }))
-            }
+            _ => must!(lex_decl.iter_bound_names(&mut |id| {
+                env.create_mutable_binding(cx, id.name.to_string(), false)
+            })),
         }
     }
 }
@@ -132,7 +130,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
                 let mut id_reference = maybe__!(resolve_binding(cx, &id.name, None));
 
                 let value = if let Some(init) = &decl.init {
-                    maybe!(eval_named_anonymous_function_or_expression(
+                    maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
                         &id.name
@@ -144,7 +142,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
                 maybe__!(id_reference.initialize_referenced_binding(cx, value));
             }
             patt => {
-                let value = maybe!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
                 let env = cx.current_execution_context().lexical_env;
                 maybe__!(binding_initialization(cx, patt, value, Some(env))).into()
             }
@@ -161,7 +159,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
             ast::Pattern::Id(id) => {
                 if let Some(init) = &decl.init {
                     let mut id_reference = maybe__!(resolve_binding(cx, &id.name, None));
-                    let value = maybe!(eval_named_anonymous_function_or_expression(
+                    let value = maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
                         &id.name
@@ -171,8 +169,8 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
                 }
             }
             patt => {
-                let value = maybe!(eval_expression(cx, decl.init.as_deref().unwrap()));
-                maybe__!(binding_initialization(cx, patt, value, None)).into()
+                let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                maybe__!(binding_initialization(cx, patt, value, None));
             }
         }
     }
@@ -185,7 +183,7 @@ pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
     name: &str,
-) -> Completion {
+) -> EvalResult<Value> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
             instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
@@ -204,12 +202,12 @@ fn eval_empty_statement() -> Completion {
 
 // 14.5.1 Expression Statement Evaluation
 fn eval_expression_statement(cx: &mut Context, stmt: &ast::ExpressionStatement) -> Completion {
-    eval_expression(cx, &stmt.expr)
+    eval_expression(cx, &stmt.expr).into()
 }
 
 // 14.6.2 If Statement Evaluation
 fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
-    let test = maybe!(eval_expression(cx, &stmt.test));
+    let test = maybe__!(eval_expression(cx, &stmt.test));
 
     let completion = if to_boolean(test) {
         eval_statement(cx, &stmt.conseq)
@@ -227,7 +225,7 @@ fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
 // 14.10.1 Return Statement Evaluation
 fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Completion {
     let return_value = if let Some(ref argument) = stmt.argument {
-        maybe!(eval_expression(cx, argument))
+        maybe__!(eval_expression(cx, argument))
     } else {
         Value::undefined()
     };
@@ -239,7 +237,7 @@ fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Compl
 
 // 14.14.1 Throw Statement Evaluation
 fn eval_throw_statement(cx: &mut Context, stmt: &ast::ThrowStatement) -> Completion {
-    let value = maybe!(eval_expression(cx, &stmt.argument));
+    let value = maybe__!(eval_expression(cx, &stmt.argument));
     Completion::throw(value)
 }
 
@@ -285,7 +283,7 @@ fn eval_catch_clause(
             let mut catch_env =
                 to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env))));
 
-            must_!(param.iter_bound_names(&mut |id| {
+            must!(param.iter_bound_names(&mut |id| {
                 catch_env.create_mutable_binding(cx, id.name.clone(), false)
             }));
 
@@ -295,7 +293,7 @@ fn eval_catch_clause(
                 binding_initialization(cx, param, thrown_value, Some(catch_env));
 
             // Make sure to remove new environment if binding initialization fails
-            if let AbstractResult::Throw(throw_value) = binding_init_result {
+            if let EvalResult::Throw(throw_value) = binding_init_result {
                 current_context.lexical_env = old_env;
                 return Completion::throw(throw_value);
             }

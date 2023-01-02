@@ -1,8 +1,8 @@
-use crate::maybe_;
+use crate::maybe;
 
 use super::{
     abstract_operations::{private_get, private_set, set},
-    completion::AbstractResult,
+    completion::EvalResult,
     environment::{environment::Environment, private_environment::PrivateNameId},
     error::{reference_error_, type_error_},
     execution_context::get_global_object,
@@ -95,13 +95,13 @@ impl Reference {
     }
 
     // 6.2.4.5 GetValue
-    pub fn get_value(&self, cx: &mut Context) -> AbstractResult<Value> {
+    pub fn get_value(&self, cx: &mut Context) -> EvalResult<Value> {
         match self.base {
             ReferenceBase::Unresolvable => {
                 reference_error_(cx, &format!("Could not resolve {}", self.name))
             }
             ReferenceBase::Value(value) => {
-                let base = maybe_!(to_object(cx, value));
+                let base = maybe!(to_object(cx, value));
                 if self.is_private_reference() {
                     return private_get(base, &self.name);
                 }
@@ -113,7 +113,7 @@ impl Reference {
     }
 
     // 6.2.4.6 PutValue
-    pub fn put_value(&mut self, cx: &mut Context, value: Value) -> AbstractResult<()> {
+    pub fn put_value(&mut self, cx: &mut Context, value: Value) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Unresolvable => {
                 if self.is_strict {
@@ -121,17 +121,17 @@ impl Reference {
                 }
 
                 let global_obj = get_global_object(cx);
-                maybe_!(set(cx, global_obj, &self.name, value, false));
+                maybe!(set(cx, global_obj, &self.name, value, false));
 
                 return ().into();
             }
             ReferenceBase::Value(base_value) => {
-                let mut base = maybe_!(to_object(cx, base_value));
+                let mut base = maybe!(to_object(cx, base_value));
                 if self.is_private_reference() {
                     return private_set(base, &self.name, value);
                 }
 
-                let succeeded = maybe_!(base.set(cx, &self.name, value, self.get_this_value()));
+                let succeeded = maybe!(base.set(cx, &self.name, value, self.get_this_value()));
                 if !succeeded && self.is_strict {
                     return type_error_(cx, &format!("Can't assign property {}", self.name));
                 }
@@ -162,7 +162,7 @@ impl Reference {
         &mut self,
         cx: &mut Context,
         value: Value,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Env(mut env) => env.initialize_binding(cx, &self.name, value),
             ReferenceBase::Value(_) | ReferenceBase::Unresolvable => {

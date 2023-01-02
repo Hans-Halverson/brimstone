@@ -4,7 +4,7 @@ use crate::{
     impl_gc_into,
     js::runtime::{
         abstract_operations::get,
-        completion::AbstractResult,
+        completion::EvalResult,
         gc::{Gc, GcDeref},
         object_value::{
             extract_object_vtable, set_immutable_prototype, Object, ObjectValue, ObjectValueVtable,
@@ -16,7 +16,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe_,
+    maybe,
 };
 
 #[repr(C)]
@@ -61,17 +61,17 @@ impl ObjectPrototype {
         this_value: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         if this_value.is_undefined() {
             return cx.heap.alloc_string("[object Undefined]".to_owned()).into();
         } else if this_value.is_null() {
             return cx.heap.alloc_string("[object Null]".to_owned()).into();
         }
 
-        let object = maybe_!(to_object(cx, this_value));
+        let object = maybe!(to_object(cx, this_value));
 
         // TODO: Change to symbol once symbols are implemented
-        let tag = maybe_!(get(cx, object, "@@toStringTag"));
+        let tag = maybe!(get(cx, object, "@@toStringTag"));
 
         let tag_string = if tag.is_string() {
             return cx
@@ -106,7 +106,7 @@ impl ObjectPrototype {
 
 #[wrap_ordinary_object]
 impl Object for ObjectPrototype {
-    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> AbstractResult<bool> {
+    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
         set_immutable_prototype(self.into(), proto)
     }
 }

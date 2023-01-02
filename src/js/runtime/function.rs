@@ -3,12 +3,12 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     impl_gc_into,
     js::parser::ast::{self, AstPtr},
-    maybe, maybe_, must_,
+    maybe, maybe_, maybe__, must,
 };
 
 use super::{
     abstract_operations::define_property_or_throw,
-    completion::{AbstractResult, Completion, CompletionKind},
+    completion::{Completion, CompletionKind, EvalResult},
     environment::{
         environment::{to_trait_object, Environment},
         function_environment::FunctionEnvironment,
@@ -91,7 +91,7 @@ impl Object for Function {
         cx: &mut Context,
         this_argument: Value,
         arguments: &[Value],
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let callee_context = self.prepare_for_ordinary_call(cx, None);
 
         if self.is_class_constructor {
@@ -102,7 +102,7 @@ impl Object for Function {
             return error;
         }
 
-        maybe_!(self.ordinary_call_bind_this(cx, callee_context, this_argument));
+        maybe!(self.ordinary_call_bind_this(cx, callee_context, this_argument));
         let result = self.ordinary_call_evaluate_body(cx, &arguments);
 
         cx.pop_execution_context();
@@ -110,7 +110,7 @@ impl Object for Function {
         match result.kind() {
             CompletionKind::Return => result.value().into(),
             CompletionKind::Normal => Value::undefined().into(),
-            CompletionKind::Throw => AbstractResult::Throw(result.value().into()),
+            CompletionKind::Throw => EvalResult::Throw(result.value().into()),
             CompletionKind::Break | CompletionKind::Continue => {
                 panic!("Call completion cannot be Break or Continue")
             }
@@ -123,10 +123,10 @@ impl Object for Function {
         cx: &mut Context,
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
-    ) -> AbstractResult<Gc<ObjectValue>> {
+    ) -> EvalResult<Gc<ObjectValue>> {
         let this_argument: Option<Gc<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                let object = maybe_!(ordinary_create_from_constructor(
+                let object = maybe!(ordinary_create_from_constructor(
                     cx,
                     new_target,
                     Intrinsic::ObjectPrototype
@@ -140,7 +140,7 @@ impl Object for Function {
         let callee_context = self.prepare_for_ordinary_call(cx, Some(new_target));
         match this_argument {
             Some(this_argument) => {
-                maybe_!(self.ordinary_call_bind_this(cx, callee_context, this_argument.into()))
+                maybe!(self.ordinary_call_bind_this(cx, callee_context, this_argument.into()))
             }
             None => {}
         }
@@ -170,13 +170,13 @@ impl Object for Function {
                 }
             }
             CompletionKind::Normal => {}
-            CompletionKind::Throw => return AbstractResult::Throw(result.value()),
+            CompletionKind::Throw => return EvalResult::Throw(result.value()),
             CompletionKind::Break | CompletionKind::Continue => {
                 panic!("Construct completion cannot be Break or Continue")
             }
         }
 
-        let this_binding = maybe_!(constructor_env.get_this_binding(cx));
+        let this_binding = maybe!(constructor_env.get_this_binding(cx));
         this_binding.as_object().into()
     }
 
@@ -217,7 +217,7 @@ impl Function {
         cx: &mut Context,
         mut callee_context: Gc<ExecutionContext>,
         this_argument: Value,
-    ) -> AbstractResult<()> {
+    ) -> EvalResult<()> {
         let this_value = match self.this_mode {
             ThisMode::Lexical => return ().into(),
             ThisMode::Strict => this_argument,
@@ -226,7 +226,7 @@ impl Function {
                     let global_env = self.realm.global_env;
                     global_env.global_this_value
                 } else {
-                    maybe_!(to_object(cx, this_argument))
+                    maybe!(to_object(cx, this_argument))
                 };
 
                 object_value.into()
@@ -237,7 +237,7 @@ impl Function {
             .lexical_env
             .as_function_environment()
             .unwrap();
-        maybe_!(local_func_env.bind_this_value(cx, this_value));
+        maybe!(local_func_env.bind_this_value(cx, this_value));
 
         ().into()
     }
@@ -252,11 +252,11 @@ impl Function {
 
         // 15.2.3 EvaluateFunctionBody
         // 15.3.3 EvaluateConciseBody
-        maybe!(function_declaration_instantiation(cx, self, arguments));
+        maybe_!(function_declaration_instantiation(cx, self, arguments));
         match func_node.body.as_ref() {
             ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
             ast::FunctionBody::Expression(expr) => {
-                let value = maybe!(eval_expression(cx, expr));
+                let value = maybe__!(eval_expression(cx, expr));
                 Completion::return_(value)
             }
         }
@@ -327,14 +327,14 @@ pub fn make_constructor(
             let prototype = cx.heap.alloc(ordinary_object).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
-            must_!(define_property_or_throw(cx, prototype, "constructor", desc));
+            must!(define_property_or_throw(cx, prototype, "constructor", desc));
 
             prototype
         }
     };
 
     let desc = PropertyDescriptor::data(prototype.into(), writable_prototype, false, false);
-    must_!(define_property_or_throw(cx, func.into(), "prototype", desc));
+    must!(define_property_or_throw(cx, func.into(), "prototype", desc));
 }
 
 // 10.2.6 MakeClassConstructor
@@ -368,14 +368,14 @@ pub fn set_function_name(
     };
 
     let desc = PropertyDescriptor::data(name.into(), false, false, true);
-    must_!(define_property_or_throw(cx, func, "name", desc))
+    must!(define_property_or_throw(cx, func, "name", desc))
 }
 
 // 10.2.10 SetFunctionLength
 pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: u32) {
     let float_length: f64 = length.into();
     let desc = PropertyDescriptor::data(float_length.into(), false, false, true);
-    must_!(define_property_or_throw(cx, func, "length", desc))
+    must!(define_property_or_throw(cx, func, "length", desc))
 }
 
 // 8.5.1 InstantiateFunctionObject

@@ -1,13 +1,13 @@
 use crate::{
     js::runtime::{
-        completion::AbstractResult,
+        completion::EvalResult,
         gc::{Gc, GcDeref},
         object_value::ObjectValue,
         reference::Reference,
         value::Value,
         Context,
     },
-    maybe_,
+    maybe,
 };
 
 use super::function_environment::FunctionEnvironment;
@@ -15,44 +15,39 @@ use super::function_environment::FunctionEnvironment;
 // 9.1 Environment Record
 pub trait Environment {
     // Environment functions from spec
-    fn has_binding(&self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
+    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool>;
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
         name: String,
         can_delete: bool,
-    ) -> AbstractResult<()>;
+    ) -> EvalResult<()>;
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
         name: String,
         is_strict: bool,
-    ) -> AbstractResult<()>;
-    fn initialize_binding(
-        &mut self,
-        cx: &mut Context,
-        name: &str,
-        value: Value,
-    ) -> AbstractResult<()>;
+    ) -> EvalResult<()>;
+    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()>;
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
         name: &str,
         value: Value,
         is_strict: bool,
-    ) -> AbstractResult<()>;
+    ) -> EvalResult<()>;
     fn get_binding_value(
         &self,
         cx: &mut Context,
         name: &str,
         _is_strict: bool,
-    ) -> AbstractResult<Value>;
-    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> AbstractResult<bool>;
+    ) -> EvalResult<Value>;
+    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> EvalResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Option<Gc<ObjectValue>>;
 
-    fn get_this_binding(&self, cx: &mut Context) -> AbstractResult<Value>;
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Value>;
 
     // Optional reference to the outer (parent) environment. If None this is the global environment.
     // Implements section 8.1 Lexical Environment, but embedded in each environment record.
@@ -72,11 +67,11 @@ pub fn get_identifier_reference(
     env: Option<Gc<dyn Environment>>,
     name: &str,
     is_strict: bool,
-) -> AbstractResult<Reference> {
+) -> EvalResult<Reference> {
     match env {
         None => Reference::new_unresolvable(name.to_string(), is_strict).into(),
         Some(env) => {
-            if maybe_!(env.has_binding(cx, name)) {
+            if maybe!(env.has_binding(cx, name)) {
                 Reference::new_env(env, name.to_string(), is_strict).into()
             } else {
                 get_identifier_reference(cx, env.outer(), name, is_strict)

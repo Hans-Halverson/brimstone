@@ -93,46 +93,75 @@ impl<T: Into<Value>> From<T> for Completion {
     }
 }
 
-/// AbstractResult is for functions which are either sucessful or throw a value.
-pub enum AbstractResult<T> {
+/// EvalResult is for functions which are either sucessful or throw a value.
+pub enum EvalResult<T> {
     Ok(T),
     Throw(Value),
 }
 
-impl<T> From<T> for AbstractResult<T> {
+impl<T> From<T> for EvalResult<T> {
     #[inline]
     fn from(value: T) -> Self {
-        AbstractResult::Ok(value)
+        EvalResult::Ok(value)
     }
 }
 
-impl From<Gc<ObjectValue>> for AbstractResult<Value> {
+impl From<bool> for EvalResult<Value> {
     #[inline]
-    fn from(value: Gc<ObjectValue>) -> Self {
-        AbstractResult::Ok(value.into())
+    fn from(value: bool) -> Self {
+        EvalResult::Ok(value.into())
     }
 }
 
-impl From<Gc<StringValue>> for AbstractResult<Value> {
+impl From<Gc<StringValue>> for EvalResult<Value> {
     #[inline]
     fn from(value: Gc<StringValue>) -> Self {
-        AbstractResult::Ok(value.into())
+        EvalResult::Ok(value.into())
     }
 }
 
-impl<T: Into<Completion>> From<AbstractResult<T>> for Completion {
+impl<T: Into<Gc<ObjectValue>>> From<T> for EvalResult<Value> {
     #[inline]
-    fn from(value: AbstractResult<T>) -> Self {
+    fn from(value: T) -> Self {
+        EvalResult::Ok(value.into().into())
+    }
+}
+
+impl<T: Into<Completion>> From<EvalResult<T>> for Completion {
+    #[inline]
+    fn from(value: EvalResult<T>) -> Self {
         match value {
-            AbstractResult::Ok(value) => value.into(),
-            AbstractResult::Throw(value) => Completion::throw(value),
+            EvalResult::Ok(value) => value.into(),
+            EvalResult::Throw(value) => Completion::throw(value),
         }
     }
 }
 
-/// Unwrap a Completion record, returning if abornmal
+/// Unwrap an EvalResult, returning if throw
 #[macro_export]
 macro_rules! maybe {
+    ($a:expr) => {
+        match $a {
+            EvalResult::Ok(value) => value,
+            EvalResult::Throw(value) => return EvalResult::Throw(value),
+        }
+    };
+}
+
+/// Unwrap an EvalResult that must never throw
+#[macro_export]
+macro_rules! must {
+    ($a:expr) => {
+        match $a {
+            EvalResult::Ok(value) => value,
+            _ => panic!("Unexepcted abnormal completion"),
+        }
+    };
+}
+
+/// Unwrap a Completion record, returning if abornmal
+#[macro_export]
+macro_rules! maybe_ {
     ($completion:expr) => {
         if $completion.is_normal() {
             $completion.value()
@@ -144,7 +173,7 @@ macro_rules! maybe {
 
 /// Unwrap a Completion record that must be normal
 #[macro_export]
-macro_rules! must {
+macro_rules! must_ {
     ($completion:expr) => {
         if $completion.is_normal() {
             $completion.value()
@@ -154,35 +183,13 @@ macro_rules! must {
     };
 }
 
-/// Unwrap an AbstractResult, returning if throw
-#[macro_export]
-macro_rules! maybe_ {
-    ($a:expr) => {
-        match $a {
-            AbstractResult::Ok(value) => value,
-            AbstractResult::Throw(value) => return AbstractResult::Throw(value),
-        }
-    };
-}
-
-/// Unwrap an AbstractResult that must never throw
-#[macro_export]
-macro_rules! must_ {
-    ($a:expr) => {
-        match $a {
-            AbstractResult::Ok(value) => value,
-            _ => panic!("Unexepcted abnormal completion"),
-        }
-    };
-}
-
-/// Unwrap an AbstractResult, returning a completion if throw
+/// Unwrap an EvalResult, returning a completion if throw
 #[macro_export]
 macro_rules! maybe__ {
     ($a:expr) => {
         match $a {
-            AbstractResult::Ok(value) => value,
-            AbstractResult::Throw(value) => return Completion::throw(value),
+            EvalResult::Ok(value) => value,
+            EvalResult::Throw(value) => return Completion::throw(value),
         }
     };
 }

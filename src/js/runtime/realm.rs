@@ -1,11 +1,11 @@
 use crate::{
     js::runtime::{console::ConsoleObject, value::Value},
-    maybe_,
+    maybe,
 };
 
 use super::{
     abstract_operations::define_property_or_throw,
-    completion::AbstractResult,
+    completion::EvalResult,
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::{Gc, GcDeref},
@@ -62,10 +62,10 @@ impl Realm {
     }
 
     // 9.3.4 SetDefaultGlobalBindings
-    fn set_default_global_bindings(&mut self, cx: &mut Context) -> AbstractResult<()> {
+    fn set_default_global_bindings(&mut self, cx: &mut Context) -> EvalResult<()> {
         macro_rules! value_prop {
             ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
-                maybe_!(define_property_or_throw(
+                maybe!(define_property_or_throw(
                     cx,
                     self.global_object,
                     $name,
@@ -82,7 +82,7 @@ impl Realm {
         macro_rules! intrinsic_prop {
             ($name:expr, $intrinsic:ident) => {
                 let value = self.get_intrinsic(Intrinsic::$intrinsic);
-                maybe_!(define_property_or_throw(
+                maybe!(define_property_or_throw(
                     cx,
                     self.global_object,
                     $name,

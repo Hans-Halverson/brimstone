@@ -4,7 +4,7 @@ use crate::{
     js::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
-            completion::{AbstractResult, Completion},
+            completion::{Completion, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
@@ -21,7 +21,7 @@ use crate::{
             Context,
         },
     },
-    maybe, maybe__, must_,
+    maybe__, must,
 };
 
 use super::statement::eval_named_anonymous_function_or_expression;
@@ -67,14 +67,14 @@ pub fn function_declaration_instantiation(
     let mut parameter_names: HashSet<&str> = HashSet::new();
 
     for param in &func_node.params {
-        must_!(param.iter_bound_names(&mut |id| {
+        must!(param.iter_bound_names(&mut |id| {
             parameter_names.insert(&id.name);
 
-            let already_declared = must_!(env.has_binding(cx, &id.name));
+            let already_declared = must!(env.has_binding(cx, &id.name));
             if !already_declared {
-                must_!(env.create_mutable_binding(cx, id.name.clone(), false));
+                must!(env.create_mutable_binding(cx, id.name.clone(), false));
                 if func_node.has_duplicate_parameters {
-                    must_!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                    must!(env.initialize_binding(cx, &id.name, Value::undefined()));
                 }
             }
 
@@ -91,12 +91,12 @@ pub fn function_declaration_instantiation(
         };
 
         if is_strict {
-            must_!(env.create_immutable_binding(cx, "arguments".to_owned(), false))
+            must!(env.create_immutable_binding(cx, "arguments".to_owned(), false))
         } else {
-            must_!(env.create_mutable_binding(cx, "arguments".to_owned(), false))
+            must!(env.create_mutable_binding(cx, "arguments".to_owned(), false))
         }
 
-        must_!(env.initialize_binding(cx, "arguments", arguments_object));
+        must!(env.initialize_binding(cx, "arguments", arguments_object));
 
         parameter_names.insert("arguments");
     }
@@ -128,7 +128,7 @@ pub fn function_declaration_instantiation(
 
                 if let Some(init) = init {
                     if value.is_undefined() {
-                        value = maybe!(eval_named_anonymous_function_or_expression(
+                        value = maybe__!(eval_named_anonymous_function_or_expression(
                             cx, init, &id.name
                         ));
                     }
@@ -151,10 +151,10 @@ pub fn function_declaration_instantiation(
         let mut instantiated_var_names = parameter_names;
 
         for var_decl in func_node.var_decls() {
-            must_!(var_decl.iter_bound_names(&mut |id| {
+            must!(var_decl.iter_bound_names(&mut |id| {
                 if instantiated_var_names.insert(&id.name) {
-                    must_!(env.create_immutable_binding(cx, id.name.clone(), false));
-                    must_!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                    must!(env.create_immutable_binding(cx, id.name.clone(), false));
+                    must!(env.initialize_binding(cx, &id.name, Value::undefined()));
                 }
 
                 ().into()
@@ -172,19 +172,19 @@ pub fn function_declaration_instantiation(
         let mut instantiated_var_names = HashSet::new();
 
         for var_decl in func_node.var_decls() {
-            must_!(var_decl.iter_bound_names(&mut |id| {
+            must!(var_decl.iter_bound_names(&mut |id| {
                 if instantiated_var_names.insert(&id.name) {
-                    must_!(env.create_mutable_binding(cx, id.name.clone(), false));
+                    must!(env.create_mutable_binding(cx, id.name.clone(), false));
 
                     let initial_value = if !parameter_names.contains(id.name.as_str())
                         || function_names.contains(&id.name)
                     {
                         Value::undefined()
                     } else {
-                        must_!(env.get_binding_value(cx, &id.name, false))
+                        must!(env.get_binding_value(cx, &id.name, false))
                     };
 
-                    must_!(var_env.initialize_binding(cx, &id.name, initial_value));
+                    must!(var_env.initialize_binding(cx, &id.name, initial_value));
 
                     ().into()
                 }
@@ -211,15 +211,13 @@ pub fn function_declaration_instantiation(
     for lex_decl in func_node.lex_decls() {
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                must_!(lex_decl.iter_bound_names(&mut |id| {
+                must!(lex_decl.iter_bound_names(&mut |id| {
                     env.create_immutable_binding(cx, id.name.clone(), true)
                 }))
             }
-            _ => {
-                must_!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_mutable_binding(cx, id.name.clone(), false)
-                }))
-            }
+            _ => must!(lex_decl.iter_bound_names(&mut |id| {
+                env.create_mutable_binding(cx, id.name.clone(), false)
+            })),
         }
     }
 
@@ -228,7 +226,7 @@ pub fn function_declaration_instantiation(
     for func in functions_to_initialize {
         let func_id = func.id.as_deref().unwrap();
         let func_object = instantiate_function_object(cx, func, lex_env, private_env);
-        must_!(var_env.set_mutable_binding(cx, &func_id.name, func_object.into(), false));
+        must!(var_env.set_mutable_binding(cx, &func_id.name, func_object.into(), false));
     }
 
     Completion::empty()
@@ -304,7 +302,7 @@ pub fn instantiate_ordinary_function_expression(
             let mut func_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(
                 current_context.lexical_env,
             )));
-            must_!(func_env.create_immutable_binding(cx, name.to_string(), false));
+            must!(func_env.create_immutable_binding(cx, name.to_string(), false));
 
             let closure = ordinary_function_create(
                 cx,
@@ -318,7 +316,7 @@ pub fn instantiate_ordinary_function_expression(
             set_function_name(cx, closure.into(), name, None);
             make_constructor(cx, closure, None, None);
 
-            must_!(func_env.initialize_binding(cx, name, closure.into()));
+            must!(func_env.initialize_binding(cx, name, closure.into()));
 
             closure
         }

@@ -2,11 +2,11 @@ use crate::{
     js::{
         parser::ast,
         runtime::{
-            completion::AbstractResult, environment::environment::Environment,
+            completion::EvalResult, environment::environment::Environment,
             execution_context::resolve_binding, gc::Gc, value::Value, Context,
         },
     },
-    maybe_, must_,
+    maybe, must,
 };
 
 // 8.5.2 BindingInitialization
@@ -15,7 +15,7 @@ pub fn binding_initialization(
     patt: &ast::Pattern,
     value: Value,
     env: Option<Gc<dyn Environment>>,
-) -> AbstractResult<()> {
+) -> EvalResult<()> {
     match patt {
         ast::Pattern::Id(id) => initialize_bound_name(cx, &id.name, value, env),
         ast::Pattern::Array(_) => unimplemented!("array patterns"),
@@ -30,14 +30,14 @@ fn initialize_bound_name(
     name: &str,
     value: Value,
     env: Option<Gc<dyn Environment>>,
-) -> AbstractResult<()> {
+) -> EvalResult<()> {
     match env {
         Some(mut env) => {
-            must_!(env.initialize_binding(cx, name, value));
+            must!(env.initialize_binding(cx, name, value));
             ().into()
         }
         None => {
-            let mut reference = maybe_!(resolve_binding(cx, name, env));
+            let mut reference = maybe!(resolve_binding(cx, name, env));
             reference.put_value(cx, value)
         }
     }

@@ -1,6 +1,6 @@
 use super::{
     abstract_operations::get,
-    completion::AbstractResult,
+    completion::EvalResult,
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
@@ -27,7 +27,7 @@ impl ConsoleObject {
         this_value: Value,
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         let formatted = arguments
             .iter()
             .map(|argument| to_console_string(cx, *argument))
@@ -66,17 +66,15 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
 
     if object.is_error() {
         let name = match get(cx, object, "name") {
-            AbstractResult::Ok(name_value) if name_value.is_string() => {
-                name_value.as_string().str()
-            }
+            EvalResult::Ok(name_value) if name_value.is_string() => name_value.as_string().str(),
             _ => "Error",
         };
 
         match get(cx, object, "message") {
-            AbstractResult::Ok(message_value) => {
+            EvalResult::Ok(message_value) => {
                 format!("{}: {}", name, to_console_string(cx, message_value))
             }
-            AbstractResult::Throw(_) => name.to_owned(),
+            EvalResult::Throw(_) => name.to_owned(),
         }
     } else if object.is_callable() {
         "[Function]".to_owned()

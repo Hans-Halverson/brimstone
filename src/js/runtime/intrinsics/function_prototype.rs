@@ -4,7 +4,7 @@ use crate::{
     impl_gc_into,
     js::runtime::{
         abstract_operations::call_object,
-        completion::AbstractResult,
+        completion::EvalResult,
         error::type_error_,
         function::get_argument,
         gc::{Gc, GcDeref},
@@ -70,7 +70,7 @@ impl FunctionPrototype {
         this_value: Value,
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         if !is_callable(this_value) {
             return type_error_(cx, "value is not a function");
         }
@@ -91,7 +91,7 @@ impl Object for FunctionPrototype {
         _: &mut Context,
         _this_argument: Value,
         _arguments: &[Value],
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         // 20.2.3 Properties of the Function Prototype Object
         // Accepts any arguments and returns undefined when invoked
         Value::undefined().into()

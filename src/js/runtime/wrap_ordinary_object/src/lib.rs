@@ -31,35 +31,35 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get_prototype_of",
-        fn get_prototype_of(&self) -> AbstractResult<Option<Gc<ObjectValue>>> {
+        fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
             self.object().get_prototype_of()
         }
     );
 
     implement_if_undefined!(
         "set_prototype_of",
-        fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> AbstractResult<bool> {
+        fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
             self.object_mut().set_prototype_of(proto)
         }
     );
 
     implement_if_undefined!(
         "is_extensible",
-        fn is_extensible(&self) -> AbstractResult<bool> {
+        fn is_extensible(&self) -> EvalResult<bool> {
             self.object().is_extensible()
         }
     );
 
     implement_if_undefined!(
         "prevent_extensions",
-        fn prevent_extensions(&mut self) -> AbstractResult<bool> {
+        fn prevent_extensions(&mut self) -> EvalResult<bool> {
             self.object_mut().prevent_extensions()
         }
     );
 
     implement_if_undefined!(
         "get_own_property",
-        fn get_own_property(&self, key: &str) -> AbstractResult<Option<PropertyDescriptor>> {
+        fn get_own_property(&self, key: &str) -> EvalResult<Option<PropertyDescriptor>> {
             self.object().get_own_property(key)
         }
     );
@@ -71,21 +71,21 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             cx: &mut Context,
             key: &str,
             desc: PropertyDescriptor,
-        ) -> AbstractResult<bool> {
+        ) -> EvalResult<bool> {
             self.object_mut().define_own_property(cx, key, desc)
         }
     );
 
     implement_if_undefined!(
         "has_property",
-        fn has_property(&self, key: &str) -> AbstractResult<bool> {
+        fn has_property(&self, key: &str) -> EvalResult<bool> {
             self.object().has_property(key)
         }
     );
 
     implement_if_undefined!(
         "get",
-        fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> AbstractResult<Value> {
+        fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> EvalResult<Value> {
             self.object().get(cx, key, receiver)
         }
     );
@@ -98,14 +98,14 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             key: &str,
             value: Value,
             receiver: Value,
-        ) -> AbstractResult<bool> {
+        ) -> EvalResult<bool> {
             self.object_mut().set(cx, key, value, receiver)
         }
     );
 
     implement_if_undefined!(
         "delete",
-        fn delete(&mut self, key: &str) -> AbstractResult<bool> {
+        fn delete(&mut self, key: &str) -> EvalResult<bool> {
             self.object_mut().delete(key)
         }
     );

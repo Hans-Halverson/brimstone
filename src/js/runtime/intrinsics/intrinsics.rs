@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::define_property_or_throw,
         builtin_function::BuiltinFunction,
-        completion::AbstractResult,
+        completion::EvalResult,
         error::type_error_,
         gc::Gc,
         intrinsics::{
@@ -17,7 +17,7 @@ use crate::{
         value::Value,
         Context,
     },
-    must_,
+    must,
 };
 
 #[repr(u8)]
@@ -144,7 +144,7 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);
-        must_!(prototype_object.define_own_property(cx, "constructor", constructor_desc));
+        must!(prototype_object.define_own_property(cx, "constructor", constructor_desc));
     }
 }
 
@@ -153,7 +153,7 @@ fn throw_type_error(
     _: Value,
     _: &[Value],
     _: Option<Gc<ObjectValue>>,
-) -> AbstractResult<Value> {
+) -> EvalResult<Value> {
     type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
@@ -163,21 +163,21 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
         BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
     let length_desc = PropertyDescriptor::data(0.into(), false, false, false);
-    must_!(define_property_or_throw(
+    must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
         "length",
-        length_desc
+        length_desc,
     ));
 
     // Is anonymous function so name is empty
     let name = cx.heap.alloc_string(String::new());
     let name_desc = PropertyDescriptor::data(name.into(), false, false, false);
-    must_!(define_property_or_throw(
+    must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
         "name",
-        name_desc
+        name_desc,
     ));
 
     throw_type_error_func.prevent_extensions();
@@ -191,14 +191,14 @@ fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, r
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must_!(define_property_or_throw(cx, func, "caller", caller_desc));
+    must!(define_property_or_throw(cx, func, "caller", caller_desc));
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must_!(define_property_or_throw(
+    must!(define_property_or_throw(
         cx,
         func,
         "arguments",
-        arguments_desc
+        arguments_desc,
     ));
 }

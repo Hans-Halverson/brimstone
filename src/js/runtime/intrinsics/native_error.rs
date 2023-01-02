@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::create_non_enumerable_data_property_or_throw,
         builtin_function::BuiltinFunction,
-        completion::AbstractResult,
+        completion::EvalResult,
         function::get_argument,
         gc::Gc,
         intrinsics::error_constructor::install_error_cause,
@@ -18,7 +18,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe_,
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -106,14 +106,14 @@ macro_rules! create_native_error {
                 _: Value,
                 arguments: &[Value],
                 new_target: Option<Gc<ObjectValue>>,
-            ) -> AbstractResult<Value> {
+            ) -> EvalResult<Value> {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
                     cx.current_execution_context().function.unwrap()
                 };
 
-                let ordinary_object = maybe_!(ordinary_create_from_constructor(
+                let ordinary_object = maybe!(ordinary_create_from_constructor(
                     cx,
                     new_target,
                     Intrinsic::$prototype
@@ -123,7 +123,7 @@ macro_rules! create_native_error {
 
                 let message = get_argument(arguments, 0);
                 if !message.is_undefined() {
-                    let message_string = maybe_!(to_string(cx, message));
+                    let message_string = maybe!(to_string(cx, message));
                     create_non_enumerable_data_property_or_throw(
                         cx,
                         object,
@@ -132,7 +132,7 @@ macro_rules! create_native_error {
                     );
                 }
 
-                maybe_!(install_error_cause(cx, object, get_argument(arguments, 1)));
+                maybe!(install_error_cause(cx, object, get_argument(arguments, 1)));
 
                 object.into()
             }

@@ -1,8 +1,8 @@
-use crate::maybe_;
+use crate::maybe;
 
 use super::{
     abstract_operations::{call_object, get, get_method},
-    completion::AbstractResult,
+    completion::EvalResult,
     error::type_error_,
     gc::Gc,
     object_value::ObjectValue,
@@ -25,13 +25,13 @@ pub fn to_primitive(
     cx: &mut Context,
     value: Value,
     mut preferred_type: ToPrimitivePreferredType,
-) -> AbstractResult<Value> {
+) -> EvalResult<Value> {
     if !value.is_object() {
         return value.into();
     }
 
     // TODO: Change to symbol once symbols are implemented
-    let exotic_prim = maybe_!(get_method(cx, value, "@@toPrimitive"));
+    let exotic_prim = maybe!(get_method(cx, value, "@@toPrimitive"));
     match exotic_prim {
         Some(exotic_prim) => {
             let hint_str = match preferred_type {
@@ -41,7 +41,7 @@ pub fn to_primitive(
             };
             let hint_value: Value = cx.heap.alloc_string(hint_str.to_owned()).into();
 
-            let result = maybe_!(call_object(cx, exotic_prim, value, &[hint_value]));
+            let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
                 return type_error_(cx, "object cannot be converted to primitive");
             }
@@ -63,14 +63,14 @@ fn ordinary_to_primitive(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     preferred_type: ToPrimitivePreferredType,
-) -> AbstractResult<Value> {
+) -> EvalResult<Value> {
     let object_value: Value = object.into();
 
     macro_rules! call_method {
         ($method_name:expr) => {
-            let method = maybe_!(get(cx, object, $method_name));
+            let method = maybe!(get(cx, object, $method_name));
             if is_callable(method) {
-                let result = maybe_!(call_object(cx, method.as_object(), object_value, &[]));
+                let result = maybe!(call_object(cx, method.as_object(), object_value, &[]));
                 if !result.is_object() {
                     return result.into();
                 }
@@ -108,8 +108,8 @@ pub fn to_boolean(value: Value) -> bool {
 }
 
 // 7.1.3 ToNumeric
-pub fn to_numeric(cx: &mut Context, value: Value) -> AbstractResult<Value> {
-    let prim_value = maybe_!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+pub fn to_numeric(cx: &mut Context, value: Value) -> EvalResult<Value> {
+    let prim_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
     if prim_value.is_bigint() {
         return prim_value.into();
     }
@@ -118,7 +118,7 @@ pub fn to_numeric(cx: &mut Context, value: Value) -> AbstractResult<Value> {
 }
 
 // 7.1.4 ToNumber
-pub fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
+pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
     if value.is_number() {
         return value.into();
     }
@@ -135,8 +135,7 @@ pub fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
         }
         STRING_TAG => string_to_number(value).into(),
         OBJECT_TAG => {
-            let primitive_value =
-                maybe_!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+            let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
             to_number(cx, primitive_value)
         }
         SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to number"),
@@ -151,7 +150,7 @@ fn string_to_number(value: Value) -> Value {
 }
 
 // 7.1.17 ToString
-pub fn to_string(cx: &mut Context, value: Value) -> AbstractResult<Gc<StringValue>> {
+pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> {
     if value.is_string() {
         return value.as_string().into();
     } else if value.is_number() {
@@ -167,8 +166,7 @@ pub fn to_string(cx: &mut Context, value: Value) -> AbstractResult<Gc<StringValu
             cx.heap.alloc_string(str.to_owned()).into()
         }
         OBJECT_TAG => {
-            let primitive_value =
-                maybe_!(to_primitive(cx, value, ToPrimitivePreferredType::String));
+            let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
             to_string(cx, primitive_value)
         }
         BIGINT_TAG => unimplemented!("BigInts"),
@@ -178,7 +176,7 @@ pub fn to_string(cx: &mut Context, value: Value) -> AbstractResult<Gc<StringValu
 }
 
 // 7.1.18 ToObject
-pub fn to_object(cx: &mut Context, value: Value) -> AbstractResult<Gc<ObjectValue>> {
+pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> {
     if value.is_object() {
         return value.as_object().into();
     } else if value.is_number() {
@@ -261,7 +259,7 @@ fn string_to_big_int(value: Value) -> Value {
 }
 
 // 7.2.15 IsLooselyEqual
-pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> AbstractResult<bool> {
+pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bool> {
     // If values have the same type, then use (inlined) is_strictly_equal.
     //
     // All type combinations from spec are broken up here and in the match expression at the end of
@@ -277,7 +275,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> AbstractResul
                 (v1.as_number() == number_v2.as_number()).into()
             }
             OBJECT_TAG => {
-                let primitive_v2 = maybe_!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
+                let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
                 is_loosely_equal(cx, v1, primitive_v2)
             }
             BIGINT_TAG => unimplemented!("BigInt"),
@@ -313,11 +311,11 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> AbstractResul
             }
         }
         (BOOL_TAG, _) => {
-            let v1_number = maybe_!(to_number(cx, v1));
+            let v1_number = maybe!(to_number(cx, v1));
             is_loosely_equal(cx, v1_number, v2)
         }
         (_, BOOL_TAG) => {
-            let v2_number = maybe_!(to_number(cx, v2));
+            let v2_number = maybe!(to_number(cx, v2));
             is_loosely_equal(cx, v1, v2_number)
         }
         (BIGINT_TAG, _) if v2.is_number() => unimplemented!("BigInt"),
@@ -330,15 +328,15 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> AbstractResul
             }
         }
         (OBJECT_TAG, _) if v2.is_number() => {
-            let v1_primitive = maybe_!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
+            let v1_primitive = maybe!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
             is_loosely_equal(cx, v1_primitive, v2)
         }
         (OBJECT_TAG, STRING_TAG | BIGINT_TAG | SYMBOL_TAG) => {
-            let v1_primitive = maybe_!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
+            let v1_primitive = maybe!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
             is_loosely_equal(cx, v1_primitive, v2)
         }
         (STRING_TAG | BIGINT_TAG | SYMBOL_TAG, OBJECT_TAG) => {
-            let primitive_v2 = maybe_!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
+            let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
             is_loosely_equal(cx, v1, primitive_v2)
         }
         _ => false.into(),

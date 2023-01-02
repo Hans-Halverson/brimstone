@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::AbstractResult,
+        completion::EvalResult,
         function::get_argument,
         gc::Gc,
         object_value::ObjectValue,
@@ -12,7 +12,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe_, must_,
+    maybe, must,
 };
 
 use super::intrinsics::Intrinsic;
@@ -45,10 +45,10 @@ impl ObjectConstructor {
         _: Value,
         arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         if let Some(new_target) = new_target {
             if cx.current_execution_context().function.unwrap() != new_target {
-                let new_object = maybe_!(ordinary_create_from_constructor(
+                let new_object = maybe!(ordinary_create_from_constructor(
                     cx,
                     new_target,
                     Intrinsic::ObjectConstructor
@@ -67,6 +67,6 @@ impl ObjectConstructor {
             return new_value.into();
         }
 
-        must_!(to_object(cx, value)).into()
+        must!(to_object(cx, value)).into()
     }
 }

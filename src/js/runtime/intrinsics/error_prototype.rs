@@ -1,10 +1,10 @@
 use crate::{
     js::runtime::{
-        abstract_operations::get, completion::AbstractResult, error::type_error_, gc::Gc,
+        abstract_operations::get, completion::EvalResult, error::type_error_, gc::Gc,
         object_value::ObjectValue, ordinary_object::OrdinaryObject, realm::Realm,
         type_utilities::to_string, value::Value, Context,
     },
-    maybe_,
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -31,25 +31,25 @@ impl ErrorPrototype {
         this_value: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
-    ) -> AbstractResult<Value> {
+    ) -> EvalResult<Value> {
         if !this_value.is_object() {
             return type_error_(cx, "expected object");
         }
 
         let this_object = this_value.as_object();
 
-        let name_value = maybe_!(get(cx, this_object, "name"));
+        let name_value = maybe!(get(cx, this_object, "name"));
         let name_string = if name_value.is_undefined() {
             cx.heap.alloc_string("Error".to_owned()).into()
         } else {
-            maybe_!(to_string(cx, name_value))
+            maybe!(to_string(cx, name_value))
         };
 
-        let message_value = maybe_!(get(cx, this_object, "message"));
+        let message_value = maybe!(get(cx, this_object, "message"));
         let message_string = if message_value.is_undefined() {
             cx.heap.alloc_string(String::new()).into()
         } else {
-            maybe_!(to_string(cx, message_value))
+            maybe!(to_string(cx, message_value))
         };
 
         if name_string.is_empty() {

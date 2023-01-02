@@ -6,7 +6,8 @@ use super::{
     gc::Gc,
     object_value::ObjectValue,
     value::{
-        Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
+        StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
+        UNDEFINED_TAG,
     },
     Context,
 };
@@ -64,6 +65,32 @@ fn to_number(cx: &mut Context, value: Value) -> AbstractResult<Value> {
 // 7.1.4.1.1 StringToNumber
 fn string_to_number(value: Value) -> Value {
     unimplemented!()
+}
+
+// 7.1.17 ToString
+pub fn to_string(cx: &mut Context, value: Value) -> AbstractResult<Gc<StringValue>> {
+    if value.is_string() {
+        return value.as_string().into();
+    } else if value.is_number() {
+        // TODO: Implement Number::toString from spec
+        return cx.heap.alloc_string(value.as_number().to_string()).into();
+    }
+
+    match value.get_tag() {
+        NULL_TAG => cx.heap.alloc_string("null".to_owned()).into(),
+        UNDEFINED_TAG => cx.heap.alloc_string("undefined".to_owned()).into(),
+        BOOL_TAG => {
+            let str = if value.as_bool() { "true" } else { "false" };
+            cx.heap.alloc_string(str.to_owned()).into()
+        }
+        OBJECT_TAG => {
+            let primitive_value = maybe_!(to_primitive(cx, value));
+            to_string(cx, primitive_value)
+        }
+        BIGINT_TAG => unimplemented!("BigInts"),
+        SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to string"),
+        _ => unreachable!(),
+    }
 }
 
 // 7.1.18 ToObject

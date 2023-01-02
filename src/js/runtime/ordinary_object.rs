@@ -4,12 +4,14 @@ use crate::{impl_gc_into, maybe_, must_};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
+    builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     completion::AbstractResult,
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property::Property,
     property_descriptor::PropertyDescriptor,
+    realm::Realm,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
     Context,
@@ -40,6 +42,47 @@ impl OrdinaryObject {
             properties: HashMap::new(),
             is_extensible,
         }
+    }
+
+    pub fn set_property(&mut self, key: String, value: Property) {
+        self.properties.insert(key, value);
+    }
+
+    pub fn intrinsic_data_prop(&mut self, key: &str, value: Value) {
+        self.set_property(key.to_owned(), Property::data(value, true, false, true))
+    }
+
+    pub fn instrinsic_length_prop(&mut self, length: f64) {
+        self.set_property(
+            "length".to_owned(),
+            Property::data(Value::number(length), false, false, true),
+        )
+    }
+
+    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
+        self.set_property(
+            "name".to_owned(),
+            Property::data(
+                Value::string(cx.heap.alloc_string(name.to_owned())),
+                true,
+                false,
+                true,
+            ),
+        )
+    }
+
+    pub fn intrinsic_func(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        func: BuiltinFunctionPtr,
+        length: u32,
+        realm: Gc<Realm>,
+    ) {
+        self.intrinsic_data_prop(
+            name,
+            BuiltinFunction::create(cx, func, 0, name, Some(realm), None, None).into(),
+        );
     }
 }
 
@@ -480,14 +523,14 @@ pub fn ordinary_create_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
-) -> AbstractResult<Gc<OrdinaryObject>> {
+) -> AbstractResult<OrdinaryObject> {
     let proto = maybe_!(get_prototype_from_constructor(
         cx,
         constructor,
         intrinsic_default_proto
     ));
 
-    cx.heap.alloc(ordinary_object_create(proto)).into()
+    ordinary_object_create(proto).into()
 }
 
 // 10.1.14 GetPrototypeFromConstructor

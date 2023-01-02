@@ -288,6 +288,10 @@ impl StringValue {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl GcDeref for StringValue {}

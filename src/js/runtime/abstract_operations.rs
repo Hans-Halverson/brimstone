@@ -1,4 +1,4 @@
-use crate::maybe_;
+use crate::{maybe_, must_};
 
 use super::{
     completion::AbstractResult,
@@ -63,6 +63,17 @@ pub fn create_data_property_or_throw(
     }
 
     ().into()
+}
+
+// 7.3.8 CreateNonEnumerableDataPropertyOrThrow
+pub fn create_non_enumerable_data_property_or_throw(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    key: &str,
+    value: Value,
+) {
+    let new_desc = PropertyDescriptor::data(value, true, false, true);
+    must_!(define_property_or_throw(cx, object, key, new_desc));
 }
 
 // 7.3.8 DefinePropertyOrThrow

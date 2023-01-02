@@ -76,6 +76,18 @@ impl Realm {
             };
         }
 
+        macro_rules! intrinsic_prop {
+            ($name:expr, $intrinsic:ident) => {
+                let value = self.get_intrinsic(Intrinsic::$intrinsic);
+                maybe_!(define_property_or_throw(
+                    cx,
+                    self.global_object,
+                    $name,
+                    PropertyDescriptor::data(value.into(), true, false, true)
+                ));
+            };
+        }
+
         // 19.1 Value Properties of the Global Object
         value_prop!(
             "globalThis",
@@ -94,6 +106,14 @@ impl Realm {
         value_prop!("NaN", Value::nan(), false, false, false);
         value_prop!("undefined", Value::undefined(), false, false, false);
 
+        // 19.3 Constructor Properties of the Global Object
+        intrinsic_prop!("EvalError", EvalErrorConstructor);
+        intrinsic_prop!("RangeError", RangeErrorConstructor);
+        intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
+        intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);
+        intrinsic_prop!("TypeError", TypeErrorConstructor);
+        intrinsic_prop!("URIError", URIErrorConstructor);
+
         ().into()
     }
 
@@ -107,7 +127,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
     let mut realm = Realm::new(cx);
     let exec_ctx = cx.heap.alloc(ExecutionContext {
         script_or_module: None,
-        realm: realm.clone(),
+        realm,
         function: None,
         lexical_env: cx.uninit_environment,
         variable_env: cx.uninit_environment,

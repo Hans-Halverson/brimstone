@@ -10,6 +10,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::OrdinaryObject,
+    property::Property,
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     value::Value,
@@ -25,10 +26,11 @@ pub struct BuiltinFunction {
     script_or_module: Option<ScriptOrModule>,
     pub initial_name: Option<String>,
     builtin_func: BuiltinFunctionPtr,
+    has_constructor: bool,
 }
 
 // Function pointer to a builtin function
-type BuiltinFunctionPtr = fn(
+pub type BuiltinFunctionPtr = fn(
     cx: &mut Context,
     this_value: Value,
     arguments: Vec<Value>,
@@ -87,7 +89,16 @@ impl BuiltinFunction {
             script_or_module: None,
             initial_name: None,
             builtin_func,
+            has_constructor: false,
         })
+    }
+
+    pub fn set_is_constructor(&mut self) {
+        self.has_constructor = true;
+    }
+
+    pub fn set_property(&mut self, key: String, value: Property) {
+        self.object.set_property(key, value);
     }
 }
 
@@ -152,6 +163,10 @@ impl Object for BuiltinFunction {
 
     fn is_callable(&self) -> bool {
         true
+    }
+
+    fn is_constructor(&self) -> bool {
+        self.has_constructor
     }
 }
 

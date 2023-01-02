@@ -87,6 +87,10 @@ pub trait Object {
     fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
         None
     }
+
+    fn is_error(&self) -> bool {
+        false
+    }
 }
 
 // 10.4.7.2 SetImmutablePrototype

@@ -1,4 +1,8 @@
-use super::{gc::Gc, object_value::ObjectValue, value::Value};
+use super::{
+    gc::Gc,
+    object_value::ObjectValue,
+    value::{StringValue, Value},
+};
 
 /// 6.2.3 Completion Record
 #[derive(Clone, Copy, PartialEq)]
@@ -105,6 +109,13 @@ impl<T> From<T> for AbstractResult<T> {
 impl From<Gc<ObjectValue>> for AbstractResult<Value> {
     #[inline]
     fn from(value: Gc<ObjectValue>) -> Self {
+        AbstractResult::Ok(value.into())
+    }
+}
+
+impl From<Gc<StringValue>> for AbstractResult<Value> {
+    #[inline]
+    fn from(value: Gc<StringValue>) -> Self {
         AbstractResult::Ok(value.into())
     }
 }

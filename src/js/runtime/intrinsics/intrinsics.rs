@@ -5,7 +5,11 @@ use crate::{
         completion::AbstractResult,
         error::type_error_,
         gc::Gc,
-        intrinsics::{function_prototype::FunctionPrototype, object_prototype::ObjectPrototype},
+        intrinsics::{
+            error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
+            function_prototype::FunctionPrototype, native_error::*,
+            object_prototype::ObjectPrototype,
+        },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
@@ -17,9 +21,23 @@ use crate::{
 
 #[repr(u8)]
 pub enum Intrinsic {
-    ObjectPrototype = 0,
+    ErrorConstructor = 0,
+    ErrorPrototype,
+    EvalErrorConstructor,
+    EvalErrorPrototype,
     FunctionPrototype,
+    ObjectPrototype,
+    RangeErrorConstructor,
+    RangeErrorPrototype,
+    ReferenceErrorConstructor,
+    ReferenceErrorPrototype,
+    SyntaxErrorConstructor,
+    SyntaxErrorPrototype,
     ThrowTypeError,
+    TypeErrorConstructor,
+    TypeErrorPrototype,
+    URIErrorConstructor,
+    URIErrorPrototype,
     Last,
 }
 
@@ -42,33 +60,76 @@ impl Intrinsics {
 
     // 9.3.2 CreateIntrinsics
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
-        let intrinsics = &mut self.intrinsics;
-        intrinsics.reserve_exact(Intrinsic::num_intrinsics());
-        unsafe { intrinsics.set_len(Intrinsic::num_intrinsics()) };
+        self.intrinsics.reserve_exact(Intrinsic::num_intrinsics());
+        unsafe { self.intrinsics.set_len(Intrinsic::num_intrinsics()) };
 
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
-                intrinsics[Intrinsic::$intrinsic_name as usize] = ($expr);
+                self.intrinsics[Intrinsic::$intrinsic_name as usize] = ($expr);
             };
         }
 
         macro_rules! register_intrinsic {
             ($intrinsic_name:ident, $struct_name:ident) => {
-                register_existing_intrinsic!($intrinsic_name, $struct_name::new(cx, realm.clone()))
+                register_existing_intrinsic!($intrinsic_name, $struct_name::new(cx, realm).into())
+            };
+        }
+
+        macro_rules! register_intrinsic_pair {
+            ($prototype:ident, $constructor:ident) => {
+                register_intrinsic!($prototype, $prototype);
+                register_intrinsic!($constructor, $constructor);
+                self.add_constructor_to_prototype(
+                    cx,
+                    Intrinsic::$prototype,
+                    Intrinsic::$constructor,
+                );
             };
         }
 
         register_intrinsic!(ObjectPrototype, ObjectPrototype);
         register_intrinsic!(FunctionPrototype, FunctionPrototype);
 
-        let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm.clone());
+        register_intrinsic!(ErrorPrototype, ErrorPrototype);
+        register_intrinsic!(ErrorConstructor, ErrorConstructor);
+        self.add_constructor_to_prototype(
+            cx,
+            Intrinsic::ErrorPrototype,
+            Intrinsic::ErrorConstructor,
+        );
+
+        // Native errors
+        register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);
+        register_intrinsic_pair!(RangeErrorPrototype, RangeErrorConstructor);
+        register_intrinsic_pair!(ReferenceErrorPrototype, ReferenceErrorConstructor);
+        register_intrinsic_pair!(SyntaxErrorPrototype, SyntaxErrorConstructor);
+        register_intrinsic_pair!(TypeErrorPrototype, TypeErrorConstructor);
+        register_intrinsic_pair!(URIErrorPrototype, URIErrorConstructor);
+
+        let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());
 
-        add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm)
+        add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
     }
 
     pub fn get(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
         self.intrinsics[intrinsic as usize]
+    }
+
+    // Intrinsic prototypes are created before their corresponding constructors, so we must add a
+    // constructor property after creation.
+    fn add_constructor_to_prototype(
+        &self,
+        cx: &mut Context,
+        prototype: Intrinsic,
+        constructor: Intrinsic,
+    ) {
+        let mut prototype_object = self.get(prototype);
+        let constructor_object = self.get(constructor);
+
+        let constructor_desc =
+            PropertyDescriptor::data(constructor_object.into(), true, false, true);
+        must_!(prototype_object.define_own_property(cx, "constructor", constructor_desc));
     }
 }
 

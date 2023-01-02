@@ -126,14 +126,13 @@ impl Object for Function {
     ) -> AbstractResult<Gc<ObjectValue>> {
         let this_argument: Option<Gc<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                Some(
-                    maybe_!(ordinary_create_from_constructor(
-                        cx,
-                        new_target,
-                        Intrinsic::ObjectPrototype
-                    ))
-                    .into(),
-                )
+                let object = maybe_!(ordinary_create_from_constructor(
+                    cx,
+                    new_target,
+                    Intrinsic::ObjectPrototype
+                ));
+
+                Some(cx.heap.alloc(object).into())
             } else {
                 None
             };
@@ -405,6 +404,14 @@ fn expected_argument_count(func_node: &ast::Function) -> u32 {
     }
 
     count
+}
+
+pub fn get_argument(arguments: &[Value], i: usize) -> Value {
+    if i < arguments.len() {
+        arguments[i]
+    } else {
+        Value::undefined()
+    }
 }
 
 impl Into<Gc<Function>> for &Function {

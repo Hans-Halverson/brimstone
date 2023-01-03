@@ -19,6 +19,11 @@ mod reference;
 mod type_utilities;
 mod value;
 
+pub use abstract_operations::get;
+pub use completion::{Completion, CompletionKind, EvalResult};
+pub use console::to_console_string;
 pub use context::Context;
-pub use eval::evaluate::evaluate;
-pub use realm::initialize_host_defined_realm;
+pub use eval::{evaluate::evaluate, script::eval_script};
+pub use gc::Gc;
+pub use realm::{initialize_host_defined_realm, Realm};
+pub use value::Value;

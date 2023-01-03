@@ -7,36 +7,36 @@ use std::{collections::HashMap, fs, path::Path};
 use crate::utils::{GenericError, GenericResult};
 
 /// A single test262 test file along with its metadata
-#[derive(Serialize, Deserialize)]
-struct Test {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Test {
     // Path to the test file. Relative to the test262/test directory.
-    path: String,
-    expected_result: ExpectedResult,
-    mode: TestMode,
+    pub path: String,
+    pub expected_result: ExpectedResult,
+    pub mode: TestMode,
     // Files that must be evaluated in the global scope prior to test execution. Paths are
     // relative to the test262/harness directory.
-    includes: Vec<String>,
+    pub includes: Vec<String>,
     // Tags for categorizing tests by feature, allows easy filtering by feature
-    features: Vec<String>,
+    pub features: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-enum ExpectedResult {
+#[derive(Clone, Serialize, Deserialize)]
+pub enum ExpectedResult {
     // Test that are expected to succeed without throwing an exception
     Positive,
     // Tests that are expected to throw an uncaught exception
     Negative { phase: TestPhase, type_: String },
 }
 
-#[derive(Serialize, Deserialize)]
-enum TestPhase {
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub enum TestPhase {
     Parse,
     Resolution,
     Runtime,
 }
 
-#[derive(Serialize, Deserialize)]
-enum TestMode {
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub enum TestMode {
     // Run test as script, both in strict and non-strict mode
     Script,
     // Run test as script in strict mode only
@@ -50,13 +50,30 @@ enum TestMode {
     Raw,
 }
 
-#[derive(Serialize, Deserialize)]
+impl ExpectedResult {
+    pub fn to_string(&self) -> String {
+        match self {
+            ExpectedResult::Positive => String::from("no exception to be thrown"),
+            ExpectedResult::Negative { phase, type_ } => {
+                let phase_string = match phase {
+                    TestPhase::Parse => "parsing",
+                    TestPhase::Resolution => "module resolution",
+                    TestPhase::Runtime => "evaluation",
+                };
+
+                format!("{} error to be thrown during {}", type_, phase_string)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TestIndex {
     // Tests indexed by test path
-    tests: HashMap<String, Test>,
+    pub tests: HashMap<String, Test>,
 
     // Path to the test262 repo
-    test262_root: String,
+    pub test262_root: String,
 }
 
 impl TestIndex {
@@ -73,7 +90,7 @@ impl TestIndex {
     }
 
     pub fn write_to_file(&self, index_path: &Path) -> GenericResult {
-        let index_string = serde_json::to_string(self).unwrap();
+        let index_string = serde_json::to_string_pretty(self).unwrap();
         fs::write(index_path, &index_string)?;
 
         Ok(())
@@ -95,7 +112,7 @@ impl TestIndex {
                 self.visit_directory(&path)?
             } else if path.is_file() {
                 let path_string = path.to_str().unwrap();
-                if path_string.ends_with(".js") && !path_string.ends_with("FIXTURE.js") {
+                if path_string.ends_with(".js") && !path_string.contains("_FIXTURE") {
                     self.index_test_file(&path)?;
                 }
             }

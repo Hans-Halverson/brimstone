@@ -9,5 +9,5 @@ mod scope;
 pub mod source;
 mod token;
 
-pub use parser::parse_file;
+pub use parser::{parse_file, ParseError, ParseResult};
 pub use printer::print_program;

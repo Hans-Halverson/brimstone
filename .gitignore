@@ -1,3 +1,4 @@
 target
 node_modules
-test262
+tests/test262/test262
+test_index.json

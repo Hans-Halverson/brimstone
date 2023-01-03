@@ -1,0 +1,11 @@
+[package]
+name = "brimstone-test262"
+version = "0.1.0"
+authors = ["hanshalverson <hansghalverson@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+clap = { version = "4.0.29", features = ["derive"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.91"
+yaml-rust = "0.4.5"

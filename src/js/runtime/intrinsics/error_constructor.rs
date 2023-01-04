@@ -23,19 +23,19 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 #[repr(C)]
-pub struct Error {
+pub struct ErrorObject {
     _vtable: ObjectValueVtable,
     object: OrdinaryObject,
 }
 
-const VTABLE: *const () = extract_object_vtable::<Error>();
+impl_gc_into!(ErrorObject, ObjectValue);
 
-impl_gc_into!(Error, ObjectValue);
+impl ErrorObject {
+    const VTABLE: *const () = extract_object_vtable::<ErrorObject>();
 
-impl Error {
-    fn new(object: OrdinaryObject) -> Error {
-        Error {
-            _vtable: VTABLE,
+    fn new(object: OrdinaryObject) -> ErrorObject {
+        ErrorObject {
+            _vtable: Self::VTABLE,
             object,
         }
     }
@@ -52,7 +52,7 @@ impl Error {
 }
 
 #[wrap_ordinary_object]
-impl Object for Error {
+impl Object for ErrorObject {
     fn is_error(&self) -> bool {
         true
     }
@@ -98,7 +98,7 @@ impl ErrorConstructor {
             new_target,
             Intrinsic::ErrorPrototype
         ));
-        let object: Gc<ObjectValue> = cx.heap.alloc(Error::new(ordinary_object)).into();
+        let object: Gc<ObjectValue> = cx.heap.alloc(ErrorObject::new(ordinary_object)).into();
 
         let message = get_argument(arguments, 0);
         if !message.is_undefined() {

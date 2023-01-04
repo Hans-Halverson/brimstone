@@ -126,6 +126,13 @@ pub fn set_immutable_prototype(
     same_opt_object_value(proto, current_proto).into()
 }
 
+// Allow downcasting from Gc<ObjectValue> to any Object type
+impl Gc<ObjectValue> {
+    pub fn cast<T: Object>(&self) -> Gc<T> {
+        Gc::from_ptr(self.as_ptr() as *mut T)
+    }
+}
+
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used
 // to properly type our custom trait object creation.
 #[repr(C)]

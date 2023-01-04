@@ -1,3 +1,5 @@
+mod boolean_constructor;
+mod boolean_prototype;
 mod error_constructor;
 mod error_prototype;
 mod function_prototype;

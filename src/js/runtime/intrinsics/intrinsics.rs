@@ -6,6 +6,7 @@ use crate::{
         error::type_error_,
         gc::Gc,
         intrinsics::{
+            boolean_constructor::BooleanConstructor, boolean_prototype::BooleanPrototype,
             error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
             function_prototype::FunctionPrototype, native_error::*,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
@@ -22,7 +23,9 @@ use crate::{
 
 #[repr(u8)]
 pub enum Intrinsic {
-    ErrorConstructor = 0,
+    BooleanConstructor = 0,
+    BooleanPrototype,
+    ErrorConstructor,
     ErrorPrototype,
     EvalErrorConstructor,
     EvalErrorPrototype,
@@ -111,6 +114,7 @@ impl Intrinsics {
         );
 
         register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);
+        register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);
         register_intrinsic!(StringConstructor, StringConstructor);
 
         // Native errors

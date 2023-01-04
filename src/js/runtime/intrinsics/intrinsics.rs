@@ -9,6 +9,7 @@ use crate::{
             boolean_constructor::BooleanConstructor, boolean_prototype::BooleanPrototype,
             error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
             function_prototype::FunctionPrototype, native_error::*,
+            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
             string_constructor::StringConstructor, string_prototype::StringPrototype,
         },
@@ -30,6 +31,8 @@ pub enum Intrinsic {
     EvalErrorConstructor,
     EvalErrorPrototype,
     FunctionPrototype,
+    NumberConstructor,
+    NumberPrototype,
     ObjectConstructor,
     ObjectPrototype,
     RangeErrorConstructor,
@@ -115,6 +118,7 @@ impl Intrinsics {
 
         register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);
         register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);
+        register_intrinsic_pair!(NumberPrototype, NumberConstructor);
         register_intrinsic_pair!(StringPrototype, StringConstructor);
 
         // Native errors

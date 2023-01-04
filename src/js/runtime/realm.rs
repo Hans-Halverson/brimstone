@@ -113,6 +113,7 @@ impl Realm {
         intrinsic_prop!("Boolean", BooleanConstructor);
         intrinsic_prop!("Error", ErrorConstructor);
         intrinsic_prop!("EvalError", EvalErrorConstructor);
+        intrinsic_prop!("Number", NumberConstructor);
         intrinsic_prop!("Object", ObjectConstructor);
         intrinsic_prop!("RangeError", RangeErrorConstructor);
         intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);

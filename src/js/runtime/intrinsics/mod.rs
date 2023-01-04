@@ -5,6 +5,8 @@ mod error_prototype;
 mod function_prototype;
 pub mod intrinsics;
 pub mod native_error;
+pub mod number_constructor;
+mod number_prototype;
 mod object_constructor;
 mod object_prototype;
 pub mod string_constructor;

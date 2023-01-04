@@ -113,6 +113,13 @@ impl From<bool> for EvalResult<Value> {
     }
 }
 
+impl From<f64> for EvalResult<Value> {
+    #[inline]
+    fn from(value: f64) -> Self {
+        EvalResult::Ok(value.into())
+    }
+}
+
 impl From<Gc<StringValue>> for EvalResult<Value> {
     #[inline]
     fn from(value: Gc<StringValue>) -> Self {

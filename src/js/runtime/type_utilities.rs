@@ -5,7 +5,10 @@ use super::{
     completion::EvalResult,
     error::type_error_,
     gc::Gc,
-    intrinsics::{boolean_constructor::BooleanObject, string_constructor::StringObject},
+    intrinsics::{
+        boolean_constructor::BooleanObject, number_constructor::NumberObject,
+        string_constructor::StringObject,
+    },
     object_value::ObjectValue,
     value::{
         StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -181,7 +184,8 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
     if value.is_object() {
         return value.as_object().into();
     } else if value.is_number() {
-        unimplemented!("number objects")
+        let object: Gc<ObjectValue> = NumberObject::new_from_value(cx, value.as_number()).into();
+        return object.into();
     }
 
     match value.get_tag() {

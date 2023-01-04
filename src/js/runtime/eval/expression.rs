@@ -105,7 +105,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = to_property_key(property_name_value);
 
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, &property_key, base.into())
+        base.get(cx, property_key.str(), base.into())
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,
@@ -131,7 +131,7 @@ fn eval_member_expression_to_reference(
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
         let property_key = to_property_key(property_name_value);
 
-        Reference::new_value(base_value, property_key, is_strict).into()
+        Reference::new_value(base_value, String::from(property_key.str()), is_strict).into()
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,

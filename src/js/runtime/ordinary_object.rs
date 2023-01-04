@@ -90,7 +90,7 @@ impl OrdinaryObject {
     ) {
         self.intrinsic_data_prop(
             name,
-            BuiltinFunction::create(cx, func, 0, name, Some(realm), None, None).into(),
+            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
         );
     }
 }

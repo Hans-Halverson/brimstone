@@ -203,10 +203,13 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
 }
 
 // 6.2.5.5 ToPropertyDescriptor
-pub fn to_property_descriptor(
-    cx: &mut Context,
-    object: Gc<ObjectValue>,
-) -> EvalResult<PropertyDescriptor> {
+pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<PropertyDescriptor> {
+    if !value.is_object() {
+        return type_error_(cx, "property descriptor must be an object");
+    }
+
+    let object = value.as_object();
+
     let mut desc = PropertyDescriptor {
         value: None,
         is_writable: None,

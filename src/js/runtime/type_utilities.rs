@@ -270,6 +270,15 @@ fn string_to_big_int(value: Value) -> Value {
     unimplemented!()
 }
 
+// 7.1.19 ToPropertyKey
+pub fn to_property_key(value: Value) -> Gc<StringValue> {
+    if value.is_string() {
+        return value.as_string();
+    }
+
+    unimplemented!("Non-string property keys")
+}
+
 // 7.2.15 IsLooselyEqual
 pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bool> {
     // If values have the same type, then use (inlined) is_strictly_equal.
@@ -378,10 +387,6 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
         // representation for a unique pointer, so can directly compare bits as well.
         _ => v1.as_raw_bits() == v2.as_raw_bits(),
     }
-}
-
-pub fn to_property_key(value: Value) -> String {
-    unimplemented!()
 }
 
 // Specialization of SameValue for objects, checks object identity

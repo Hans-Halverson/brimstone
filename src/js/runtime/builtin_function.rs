@@ -100,6 +100,17 @@ impl BuiltinFunction {
     pub fn set_property(&mut self, key: String, value: Property) {
         self.object.set_property(key, value);
     }
+
+    pub fn intrinsic_func(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        func: BuiltinFunctionPtr,
+        length: u32,
+        realm: Gc<Realm>,
+    ) {
+        self.object.intrinsic_func(cx, name, func, length, realm);
+    }
 }
 
 #[wrap_ordinary_object]

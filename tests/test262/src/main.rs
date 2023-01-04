@@ -60,7 +60,7 @@ fn main_impl() -> GenericResult {
     let mut runner = TestRunner::new(index, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);
 
-    results.print_to_console();
+    results.print_to_console(&test262_root);
 
     if let Some(result_files_path) = args.save_result_files {
         results.save_to_result_files(result_files_path)?;

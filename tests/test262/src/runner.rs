@@ -66,9 +66,21 @@ impl TestRunner {
 
                 match panic_result {
                     Ok(result) => sender.send(result).unwrap(),
-                    Err(_) => sender
-                        .send(TestResult::failure(&test, String::from("Thread panicked")))
-                        .unwrap(),
+                    Err(err) => {
+                        // Attempt to extract string message from panic
+                        let message = err.downcast_ref::<String>();
+                        let message = match message {
+                            Some(message) => message.clone(),
+                            None => String::from("<panic message not found>"),
+                        };
+
+                        sender
+                            .send(TestResult::failure(
+                                &test,
+                                format!("Thread panicked:\n{}", message),
+                            ))
+                            .unwrap()
+                    }
                 }
             });
         }
@@ -146,7 +158,10 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
                     phase: TestPhase::Parse,
                     ..
                 } if is_parse_error => TestResult::success(test),
-                _ => TestResult::failure(test, format!("Unexpected {}", err.to_string())),
+                _ => TestResult::failure(
+                    test,
+                    format!("Unexpected error during parsing:\n{}", err.to_string()),
+                ),
             };
         }
     };
@@ -255,9 +270,9 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                     TestResult::failure(
                         test,
                         format!(
-                            "Test throw {} during runtime, but expected {}",
-                            thrown_string,
+                            "Test threw the following error during runtime, but expected {}:\n{}",
                             test.expected_result.to_string(),
+                            thrown_string,
                         ),
                     )
                 }
@@ -267,9 +282,9 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                 TestResult::failure(
                     test,
                     format!(
-                        "Test threw {} during runtime, but expected {}",
+                        "Test threw the following error during runtime, but expected {}:\n{}",
+                        other.to_string(),
                         thrown_string,
-                        other.to_string()
                     ),
                 )
             }
@@ -341,6 +356,9 @@ impl TestResults {
             }
         }
 
+        collated.failed.sort_by(|a, b| a.path.cmp(&b.path));
+        collated.succeeded.sort_by(|a, b| a.path.cmp(&b.path));
+
         collated
     }
 
@@ -348,12 +366,18 @@ impl TestResults {
         self.failed.is_empty()
     }
 
-    pub fn print_to_console(&self) {
+    pub fn print_to_console(&self, test262_root: &Path) {
+        let test262_prefix = test262_root.join("test");
+
         for failed in &self.failed {
             if let TestResultCompletion::Failure(message) = &failed.result {
+                // Strip file path from message to reduce length
+                let file_path = test262_prefix.join(&failed.path);
+                let cleaned_message = message.replace(file_path.to_str().unwrap(), "<file>");
+
                 println!(
                     "{}{}Failed{}: {}\n{}\n",
-                    BOLD, RED, RESET, failed.path, message
+                    BOLD, RED, RESET, failed.path, cleaned_message
                 );
             }
         }
@@ -373,13 +397,9 @@ impl TestResults {
     }
 
     pub fn save_to_result_files(&self, result_files_path: String) -> GenericResult {
-        let mut succeeded_paths: Vec<&String> =
+        let succeeded_paths: Vec<&String> =
             self.succeeded.iter().map(|result| &result.path).collect();
-        let mut failed_paths: Vec<&String> =
-            self.failed.iter().map(|result| &result.path).collect();
-
-        succeeded_paths.sort();
-        failed_paths.sort();
+        let failed_paths: Vec<&String> = self.failed.iter().map(|result| &result.path).collect();
 
         let succeeded_string = serde_json::to_string_pretty(&succeeded_paths).unwrap();
         let failed_string = serde_json::to_string_pretty(&failed_paths).unwrap();

@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
-use std::rc::Rc;
 
 use super::loc::calculate_line_offsets;
 use super::parser::ParseResult;

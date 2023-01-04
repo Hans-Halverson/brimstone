@@ -4,7 +4,7 @@ use crate::{
         runtime::{
             abstract_operations::{call, construct},
             completion::EvalResult,
-            error::type_error_,
+            error::{reference_error_, type_error_},
             execution_context::{resolve_binding, resolve_this_binding},
             reference::{Reference, ReferenceBase},
             type_utilities::{
@@ -12,7 +12,10 @@ use crate::{
                 to_number, to_numeric, to_object, to_primitive, to_property_key, to_string,
                 ToPrimitivePreferredType,
             },
-            value::Value,
+            value::{
+                Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
+                UNDEFINED_TAG,
+            },
             Context,
         },
     },
@@ -34,8 +37,10 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Unary(expr) => match expr.operator {
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
-            ast::UnaryOperator::Void => eval_void_expression(cx, expr),
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
+            ast::UnaryOperator::TypeOf => eval_typeof_expression(cx, expr),
+            ast::UnaryOperator::Delete => eval_delete_expression(cx, expr),
+            ast::UnaryOperator::Void => eval_void_expression(cx, expr),
             _ => unimplemented!("unary expression evaluation"),
         },
         ast::Expression::Binary(expr) => eval_binary_expression(cx, expr),
@@ -214,10 +219,85 @@ fn eval_argument_list(cx: &mut Context, arguments: &[ast::Expression]) -> EvalRe
     arg_values.into()
 }
 
+// 13.5.1.2 Delete Expression Evaluation
+fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
+    let reference = match expr.argument.as_ref() {
+        ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
+        ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
+        other => {
+            maybe!(eval_expression(cx, other));
+            return true.into();
+        }
+    };
+
+    match reference.base() {
+        ReferenceBase::Unresolvable => true.into(),
+        ReferenceBase::Value(base_value) => {
+            if reference.is_super_reference() {
+                return reference_error_(cx, "cannot delete super");
+            }
+
+            let base_object = maybe!(to_object(cx, base_value.clone()));
+            let delete_status = maybe!(base_object.clone().delete(reference.name()));
+            if !delete_status && reference.is_strict() {
+                return type_error_(cx, "cannot delete property");
+            }
+
+            delete_status.into()
+        }
+        ReferenceBase::Env(env) => {
+            let delete_status = maybe!(env.clone().delete_binding(cx, reference.name()));
+            delete_status.into()
+        }
+    }
+}
+
 // 13.5.2.1 Void Expression Evaluation
 fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
     maybe!(eval_expression(cx, &expr.argument));
     Value::undefined().into()
+}
+
+// 13.5.3.1 TypeOf Expression Evaluation
+fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
+    let value = match expr.argument.as_ref() {
+        ast::Expression::Id(id) => {
+            let reference = maybe!(eval_identifier_to_reference(cx, &id));
+            if reference.is_unresolvable_reference() {
+                return cx.heap.alloc_string(String::from("undefined")).into();
+            }
+
+            maybe!(reference.get_value(cx))
+        }
+        ast::Expression::Member(expr) => {
+            let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
+            if reference.is_unresolvable_reference() {
+                return cx.heap.alloc_string(String::from("undefined")).into();
+            }
+
+            maybe!(reference.get_value(cx))
+        }
+        other => maybe!(eval_expression(cx, other)),
+    };
+
+    let type_string = match value.get_tag() {
+        NULL_TAG => "object",
+        UNDEFINED_TAG => "undefined",
+        BOOL_TAG => "boolean",
+        STRING_TAG => "string",
+        OBJECT_TAG => {
+            if value.as_object().is_callable() {
+                "function"
+            } else {
+                "object"
+            }
+        }
+        SYMBOL_TAG => "symbol",
+        BIGINT_TAG => "bigint",
+        _ => "number",
+    };
+
+    cx.heap.alloc_string(String::from(type_string)).into()
 }
 
 // 13.5.4.1 Unary Plus Evaluation
@@ -238,7 +318,7 @@ fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
     }
 }
 
-// 13.5.7.1 Logical Not Expression Evaluation
+// 13.5.7.1 Logical Not Evaluation
 fn eval_logical_not_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
     (!to_boolean(expr_value)).into()

@@ -66,13 +66,8 @@ impl Reference {
         &self.name
     }
 
-    // 6.2.4.1 IsPropertyReference
-    // Can likely be removed by inlining directly at call sites.
-    pub fn is_property_reference(&self) -> bool {
-        match self.base {
-            ReferenceBase::Value(_) => true,
-            ReferenceBase::Unresolvable | ReferenceBase::Env(_) => false,
-        }
+    pub fn is_strict(&self) -> bool {
+        self.is_strict
     }
 
     // 6.2.4.2 IsUnresolvableReference

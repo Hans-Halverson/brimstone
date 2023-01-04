@@ -181,7 +181,7 @@ fn parse_and_analyze(
 
     // Manually insert use strict directive when forcing strict mode
     if force_strict_mode {
-        source.contents.insert_str(0, "use strict;\n");
+        source.contents.insert_str(0, "\"use strict\";\n");
     }
 
     let mut ast = js::parser::parse_file(&Rc::new(source))?;

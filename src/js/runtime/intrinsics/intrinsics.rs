@@ -10,7 +10,7 @@ use crate::{
             error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
             function_prototype::FunctionPrototype, native_error::*,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            string_constructor::StringConstructor,
+            string_constructor::StringConstructor, string_prototype::StringPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -115,7 +115,7 @@ impl Intrinsics {
 
         register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);
         register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);
-        register_intrinsic!(StringConstructor, StringConstructor);
+        register_intrinsic_pair!(StringPrototype, StringConstructor);
 
         // Native errors
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);

@@ -5,6 +5,7 @@ use super::{
     completion::EvalResult,
     error::type_error_,
     gc::Gc,
+    intrinsics::{boolean_constructor::BooleanObject, string_constructor::StringObject},
     object_value::ObjectValue,
     value::{
         StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -186,8 +187,15 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
     match value.get_tag() {
         NULL_TAG => type_error_(cx, "null has no properties"),
         UNDEFINED_TAG => type_error_(cx, "undefined has no properties"),
-        BOOL_TAG => unimplemented!("bool objects"),
-        STRING_TAG => unimplemented!("string objects"),
+        BOOL_TAG => {
+            let object: Gc<ObjectValue> = BooleanObject::new_from_value(cx, value.as_bool()).into();
+            object.into()
+        }
+        STRING_TAG => {
+            let object: Gc<ObjectValue> =
+                StringObject::new_from_value(cx, value.as_string()).into();
+            object.into()
+        }
         SYMBOL_TAG => unimplemented!("symbol objects"),
         BIGINT_TAG => unimplemented!("BigInt objects"),
         _ => unreachable!(),

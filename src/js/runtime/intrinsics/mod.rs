@@ -1,4 +1,4 @@
-mod boolean_constructor;
+pub mod boolean_constructor;
 mod boolean_prototype;
 mod error_constructor;
 mod error_prototype;
@@ -7,4 +7,5 @@ pub mod intrinsics;
 pub mod native_error;
 mod object_constructor;
 mod object_prototype;
-mod string_constructor;
+pub mod string_constructor;
+mod string_prototype;

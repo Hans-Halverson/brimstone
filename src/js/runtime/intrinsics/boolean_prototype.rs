@@ -59,7 +59,7 @@ fn this_boolean_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_bool_object() {
-            return object_value.cast::<BooleanObject>().value().into();
+            return object_value.cast::<BooleanObject>().boolean_data().into();
         }
     }
 

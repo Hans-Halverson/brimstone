@@ -8,7 +8,9 @@ use crate::{
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        ordinary_object::{
+            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
+        },
         property::Property,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
@@ -21,31 +23,41 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
+// 20.3 Boolean Objects
 #[repr(C)]
 pub struct BooleanObject {
     _vtable: ObjectValueVtable,
     object: OrdinaryObject,
-    value: bool,
+    // The boolean value wrapped by this object
+    boolean_data: bool,
 }
 
 impl GcDeref for BooleanObject {}
 
 impl_gc_into!(BooleanObject, ObjectValue);
 
-// 20.3 Boolean Objects
 impl BooleanObject {
     const VTABLE: *const () = extract_object_vtable::<BooleanObject>();
 
-    pub fn new(object: OrdinaryObject, value: bool) -> BooleanObject {
+    pub fn new(object: OrdinaryObject, boolean_data: bool) -> BooleanObject {
         BooleanObject {
             _vtable: Self::VTABLE,
             object,
-            value,
+            boolean_data,
         }
     }
 
-    pub fn value(&self) -> bool {
-        self.value
+    pub fn new_from_value(cx: &mut Context, boolean_data: bool) -> Gc<BooleanObject> {
+        let proto = cx
+            .current_realm()
+            .get_intrinsic(Intrinsic::BooleanPrototype);
+        let object = ordinary_object_create(proto);
+
+        cx.heap.alloc(BooleanObject::new(object, boolean_data))
+    }
+
+    pub fn boolean_data(&self) -> bool {
+        self.boolean_data
     }
 
     #[inline]

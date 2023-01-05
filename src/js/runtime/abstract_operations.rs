@@ -7,7 +7,7 @@ use super::{
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     realm::Realm,
-    type_utilities::{is_callable, is_callable_object, to_object},
+    type_utilities::{is_callable, is_callable_object, same_object_value, to_object},
     value::Value,
     Context,
 };
@@ -162,6 +162,46 @@ pub fn construct(
 ) -> EvalResult<Gc<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);
     func.construct(cx, arguments, new_target)
+}
+
+// 7.3.22 OrdinaryHasInstance
+pub fn ordinary_has_instance(
+    cx: &mut Context,
+    func: Gc<ObjectValue>,
+    object: Value,
+) -> EvalResult<bool> {
+    if !func.is_callable() {
+        return false.into();
+    }
+
+    if func.is_bound_function() {
+        unimplemented!("bound function objects")
+    }
+
+    if !object.is_object() {
+        return false.into();
+    }
+
+    let target_prototype = maybe!(get(cx, func, "prototype"));
+    if !target_prototype.is_object() {
+        return type_error_(cx, "prototype must be object");
+    }
+    let target_prototype = target_prototype.as_object();
+
+    // Walk prototype chain of object, looking for prototype of func
+    let mut current_object = object.as_object();
+    loop {
+        match maybe!(current_object.get_prototype_of()) {
+            None => return false.into(),
+            Some(current_prototype) => {
+                if same_object_value(target_prototype, current_prototype) {
+                    return true.into();
+                }
+
+                current_object = current_prototype;
+            }
+        }
+    }
 }
 
 pub fn get_function_realm(func: Gc<ObjectValue>) -> EvalResult<Realm> {

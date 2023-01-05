@@ -2,7 +2,10 @@ use crate::{
     js::{
         parser::ast,
         runtime::{
-            abstract_operations::{call, construct, create_data_property_or_throw},
+            abstract_operations::{
+                call, call_object, construct, create_data_property_or_throw, get_method,
+                has_property, ordinary_has_instance,
+            },
             completion::EvalResult,
             error::{reference_error_, type_error_},
             execution_context::{resolve_binding, resolve_this_binding},
@@ -440,6 +443,8 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
         }
         ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
         ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
+        ast::BinaryOperator::InstanceOf => eval_instanceof_expression(cx, left_value, right_value),
+        ast::BinaryOperator::In => eval_in_expression(cx, left_value, right_value),
         _ => unimplemented!("binary operator"),
     }
 }
@@ -522,6 +527,44 @@ fn eval_divide(cx: &mut Context, left_value: Value, right_value: Value) -> EvalR
     } else {
         return Value::number(left_num.as_number() / right_num.as_number()).into();
     }
+}
+
+// 13.10.2 InstanceofOperator
+fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> EvalResult<Value> {
+    if !target.is_object() {
+        return type_error_(cx, "invalid instanceof operand");
+    }
+
+    // TODO: Change to symbol once symbols are implemented
+    let instance_of_handler = maybe!(get_method(cx, target, "@@hasInstance"));
+    if let Some(instance_of_handler) = instance_of_handler {
+        let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
+        return to_boolean(result).into();
+    }
+
+    let target_object = target.as_object();
+    if !target_object.is_callable() {
+        return type_error_(cx, "invalid 'instanceof' operand");
+    }
+
+    let has_instance = maybe!(ordinary_has_instance(cx, target_object, value));
+    has_instance.into()
+}
+
+fn eval_in_expression(
+    cx: &mut Context,
+    left_value: Value,
+    right_value: Value,
+) -> EvalResult<Value> {
+    if !right_value.is_object() {
+        return type_error_(cx, "right side of 'in' must be an object");
+    }
+
+    // TODO: Handle private identifiers on left hand side
+    let property_key = to_property_key(left_value);
+
+    let has_property = maybe!(has_property(right_value.as_object(), property_key.str()));
+    has_property.into()
 }
 
 // 13.13.1 Logical Expression Evaluation

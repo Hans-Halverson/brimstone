@@ -206,6 +206,24 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
     }
 }
 
+// 7.2.2 IsArray
+pub fn is_array(value: Value) -> bool {
+    if !value.is_object() {
+        return false;
+    }
+
+    let object_value = value.as_object();
+    if object_value.is_array() {
+        return true;
+    }
+
+    if object_value.is_proxy() {
+        unimplemented!("proxy objects")
+    }
+
+    return false;
+}
+
 // 7.2.3 IsCallable
 pub fn is_callable(value: Value) -> bool {
     if !value.is_object() {

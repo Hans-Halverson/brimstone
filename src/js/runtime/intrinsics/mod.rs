@@ -1,3 +1,4 @@
+mod array_constructor;
 pub mod boolean_constructor;
 mod boolean_prototype;
 mod error_constructor;

@@ -110,6 +110,7 @@ impl Realm {
         value_prop!("undefined", Value::undefined(), false, false, false);
 
         // 19.3 Constructor Properties of the Global Object
+        intrinsic_prop!("Array", ArrayConstructor);
         intrinsic_prop!("Boolean", BooleanConstructor);
         intrinsic_prop!("Error", ErrorConstructor);
         intrinsic_prop!("EvalError", EvalErrorConstructor);

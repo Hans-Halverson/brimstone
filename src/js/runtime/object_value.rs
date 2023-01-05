@@ -115,6 +115,14 @@ pub trait Object {
     fn is_regexp_object(&self) -> bool {
         false
     }
+
+    fn is_proxy(&self) -> bool {
+        false
+    }
+
+    fn is_bound_function(&self) -> bool {
+        false
+    }
 }
 
 // 10.4.7.2 SetImmutablePrototype

@@ -6,12 +6,13 @@ use crate::{
         error::type_error_,
         gc::Gc,
         intrinsics::{
-            boolean_constructor::BooleanConstructor, boolean_prototype::BooleanPrototype,
-            error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
-            function_prototype::FunctionPrototype, native_error::*,
-            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
-            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            string_constructor::StringConstructor, string_prototype::StringPrototype,
+            array_constructor::ArrayConstructor, boolean_constructor::BooleanConstructor,
+            boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
+            error_prototype::ErrorPrototype, function_prototype::FunctionPrototype,
+            native_error::*, number_constructor::NumberConstructor,
+            number_prototype::NumberPrototype, object_constructor::ObjectConstructor,
+            object_prototype::ObjectPrototype, string_constructor::StringConstructor,
+            string_prototype::StringPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -24,7 +25,8 @@ use crate::{
 
 #[repr(u8)]
 pub enum Intrinsic {
-    BooleanConstructor = 0,
+    ArrayConstructor = 0,
+    BooleanConstructor,
     BooleanPrototype,
     ErrorConstructor,
     ErrorPrototype,
@@ -120,6 +122,7 @@ impl Intrinsics {
         register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);
         register_intrinsic_pair!(NumberPrototype, NumberConstructor);
         register_intrinsic_pair!(StringPrototype, StringConstructor);
+        register_intrinsic!(ArrayConstructor, ArrayConstructor);
 
         // Native errors
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);

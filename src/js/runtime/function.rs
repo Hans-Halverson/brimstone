@@ -343,8 +343,21 @@ fn make_class_constructor(mut func: Gc<Function>) {
 }
 
 // 10.2.7 MakeMethod
-fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
+pub fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
     func.home_object = Some(home_object);
+}
+
+// 10.2.8 DefineMethodProperty
+pub fn define_method_property(
+    cx: &mut Context,
+    home_object: Gc<ObjectValue>,
+    key: &str,
+    closure: Gc<Function>,
+    is_enumerable: bool,
+) {
+    // TOOD: Check if property_key is private name
+    let desc = PropertyDescriptor::data(closure.into(), true, is_enumerable, true);
+    must!(define_property_or_throw(cx, home_object, key, desc));
 }
 
 // 10.2.9 SetFunctionName

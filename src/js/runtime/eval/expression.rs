@@ -2,10 +2,13 @@ use crate::{
     js::{
         parser::ast,
         runtime::{
-            abstract_operations::{call, construct},
+            abstract_operations::{call, construct, create_data_property_or_throw},
             completion::EvalResult,
             error::{reference_error_, type_error_},
             execution_context::{resolve_binding, resolve_this_binding},
+            intrinsics::intrinsics::Intrinsic,
+            object_value::ObjectValue,
+            ordinary_object::ordinary_object_create,
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_loosely_equal, is_strictly_equal, to_boolean,
@@ -16,14 +19,17 @@ use crate::{
                 Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
                 UNDEFINED_TAG,
             },
-            Context,
+            Context, Gc,
         },
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{
-    function::{instantiate_arrow_function_expression, instantiate_ordinary_function_expression},
+    function::{
+        instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
+        method_definition_evaluation,
+    },
     statement::eval_named_anonymous_function_or_expression,
 };
 
@@ -51,6 +57,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Call(expr) => eval_call_expression(cx, expr),
         ast::Expression::New(expr) => eval_new_expression(cx, expr),
         ast::Expression::Sequence(expr) => eval_sequence_expression(cx, expr),
+        ast::Expression::Object(expr) => eval_object_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
         ast::Expression::This(_) => eval_this_expression(cx),
@@ -92,6 +99,101 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<Value> {
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Value> {
     Value::string(cx.heap.alloc_string(lit.value.clone())).into()
+}
+
+// 13.2.5.4 Object Initializer Evaluation
+fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> EvalResult<Value> {
+    let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+    let mut object: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(proto)).into();
+
+    for property in &expr.properties {
+        match property.value.as_ref() {
+            // Identifier shorthand property
+            None => {
+                if let ast::Expression::Id(id) = property.key.as_ref() {
+                    let prop_value = maybe!(eval_identifier(cx, id));
+                    must!(create_data_property_or_throw(
+                        cx, object, &id.name, prop_value
+                    ));
+                } else {
+                    unreachable!()
+                };
+            }
+            Some(_) if property.is_method => {
+                let property_key =
+                    maybe!(eval_property_name(cx, &property.key, property.is_computed));
+                let func = if let Some(ast::Expression::Function(func)) = property.value.as_deref()
+                {
+                    func
+                } else {
+                    unreachable!()
+                };
+
+                maybe!(method_definition_evaluation(
+                    cx,
+                    object,
+                    func,
+                    property_key,
+                    property.kind,
+                    /* is_enumerable */ true,
+                ))
+            }
+            Some(value) => {
+                let property_key =
+                    maybe!(eval_property_name(cx, &property.key, property.is_computed));
+
+                // TODO: Check if in JSON.parse
+                let is_proto_setter = property_key == "__proto__" && !property.is_computed;
+                if is_proto_setter {
+                    let prop_value = maybe!(eval_expression(cx, value));
+                    match prop_value.get_tag() {
+                        OBJECT_TAG => {
+                            must!(object.set_prototype_of(Some(prop_value.as_object())));
+                        }
+                        NULL_TAG => {
+                            must!(object.set_prototype_of(None));
+                        }
+                        _ => {}
+                    }
+                } else {
+                    let prop_value = maybe!(eval_named_anonymous_function_or_expression(
+                        cx,
+                        value,
+                        property_key
+                    ));
+
+                    must!(create_data_property_or_throw(
+                        cx,
+                        object,
+                        property_key,
+                        prop_value
+                    ));
+                }
+            }
+        }
+    }
+
+    object.into()
+}
+
+fn eval_property_name<'a>(
+    cx: &mut Context,
+    key: &'a ast::Expression,
+    is_computed: bool,
+) -> EvalResult<&'a str> {
+    let property_key = if is_computed {
+        let property_key_value = maybe!(eval_expression(cx, key));
+        to_property_key(property_key_value).str()
+    } else {
+        match key {
+            ast::Expression::Id(id) => id.name.as_str(),
+            ast::Expression::String(lit) => lit.value.as_str(),
+            ast::Expression::Number(_) => unimplemented!("numeric property keys"),
+            _ => unreachable!(),
+        }
+    };
+
+    property_key.into()
 }
 
 // 13.3.2.1 Member Expression Evaluation

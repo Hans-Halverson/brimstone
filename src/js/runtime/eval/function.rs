@@ -4,6 +4,7 @@ use crate::{
     js::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
+            abstract_operations::define_property_or_throw,
             completion::{Completion, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
@@ -12,11 +13,13 @@ use crate::{
             },
             execution_context::resolve_binding,
             function::{
-                instantiate_function_object, make_constructor, ordinary_function_create,
-                set_function_name, Function,
+                define_method_property, instantiate_function_object, make_constructor, make_method,
+                ordinary_function_create, set_function_name, Function,
             },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
+            object_value::ObjectValue,
+            property_descriptor::PropertyDescriptor,
             value::Value,
             Context,
         },
@@ -345,4 +348,83 @@ pub fn instantiate_arrow_function_expression(
     set_function_name(cx, closure.into(), name, None);
 
     closure
+}
+
+// 15.4.4 DefineMethod
+fn define_method(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    func_node: &ast::Function,
+    function_prototype: Option<Gc<ObjectValue>>,
+) -> Gc<Function> {
+    let current_execution_context = cx.current_execution_context();
+    let env = current_execution_context.lexical_env;
+    let private_env = current_execution_context.private_env;
+
+    let prototype = match function_prototype {
+        Some(prototype) => prototype,
+        None => current_execution_context
+            .realm
+            .get_intrinsic(Intrinsic::FunctionPrototype),
+    };
+
+    let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
+    make_method(closure, object);
+
+    closure
+}
+
+// 15.4.5 Runtime Semantics: MethodDefinitionEvaluation
+pub fn method_definition_evaluation(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    func_node: &ast::Function,
+    property_key: &str,
+    property_kind: ast::PropertyKind,
+    is_enumerable: bool,
+) -> EvalResult<()> {
+    if func_node.is_async || func_node.is_generator {
+        unimplemented!("async and generator functions")
+    }
+
+    // Handle regular method definitions
+    if property_kind == ast::PropertyKind::Init {
+        let closure = define_method(cx, object, func_node, None);
+        set_function_name(cx, closure.into(), property_key, None);
+        define_method_property(cx, object, property_key, closure, is_enumerable);
+
+        return ().into();
+    }
+
+    // Otherwise is a getter or setter
+    let current_execution_context = cx.current_execution_context();
+    let env = current_execution_context.lexical_env;
+    let private_env = current_execution_context.private_env;
+
+    let prototype = current_execution_context
+        .realm
+        .get_intrinsic(Intrinsic::FunctionPrototype);
+
+    let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
+    make_method(closure, object);
+
+    match property_kind {
+        ast::PropertyKind::Get => {
+            set_function_name(cx, closure.into(), property_key, Some("get"));
+
+            // TOOD: Check if property_key is private name
+            let desc =
+                PropertyDescriptor::accessor(Some(closure.into()), None, is_enumerable, true);
+            define_property_or_throw(cx, object, property_key, desc)
+        }
+        ast::PropertyKind::Set => {
+            set_function_name(cx, closure.into(), property_key, Some("set"));
+
+            // TOOD: Check if property_key is private name
+            let desc =
+                PropertyDescriptor::accessor(None, Some(closure.into()), is_enumerable, true);
+            define_property_or_throw(cx, object, property_key, desc)
+        }
+        _ => unreachable!(),
+    }
 }

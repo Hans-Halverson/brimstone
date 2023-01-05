@@ -111,7 +111,7 @@ impl PropertyDescriptor {
 
     // 6.2.5.3 IsGenericDescriptor
     pub fn is_generic_descriptor(&self) -> bool {
-        !self.is_data_descriptor() && !self.is_generic_descriptor()
+        !self.is_data_descriptor() && !self.is_accessor_descriptor()
     }
 
     // 6.2.5.6 CompletePropertyDescriptor

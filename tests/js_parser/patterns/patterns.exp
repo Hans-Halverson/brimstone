@@ -68,6 +68,7 @@
       },
       async: false,
       generator: false,
+      has_use_strict_directive: false,
     },
     {
       type: "VariableDeclaration",
@@ -124,6 +125,7 @@
       },
       async: false,
       generator: false,
+      has_use_strict_directive: false,
     },
     {
       type: "ForOfStatement",
@@ -193,4 +195,5 @@
       finalizer: null,
     },
   ],
+  has_use_strict_directive: false,
 }

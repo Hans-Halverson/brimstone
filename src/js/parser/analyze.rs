@@ -6,18 +6,37 @@ use super::{ast::*, ast_visitor::*, scope::ScopeBuilder};
 
 pub struct Analyzer {
     scope_builder: ScopeBuilder,
+    // Number of nested strict mode contexts the visitor is currently in
+    strict_mode_context_depth: u64,
 }
 
 impl<'a> Analyzer {
     pub fn new() -> Analyzer {
         Analyzer {
             scope_builder: ScopeBuilder::new(),
+            strict_mode_context_depth: 0,
         }
+    }
+
+    fn is_in_strict_mode_context(&self) -> bool {
+        self.strict_mode_context_depth > 0
+    }
+
+    fn enter_strict_mode_context(&mut self) {
+        self.strict_mode_context_depth += 1;
+    }
+
+    fn exit_strict_mode_context(&mut self) {
+        self.strict_mode_context_depth -= 1;
     }
 }
 
 impl<'a> AstVisitor for Analyzer {
     fn visit_program(&mut self, program: &mut Program) {
+        if program.has_use_strict_directive {
+            self.enter_strict_mode_context();
+        }
+
         self.scope_builder.enter_toplevel_scope(program);
 
         for toplevel in &mut program.toplevels {
@@ -26,7 +45,11 @@ impl<'a> AstVisitor for Analyzer {
             }
         }
 
-        self.scope_builder.exit_scope()
+        self.scope_builder.exit_scope();
+
+        if program.has_use_strict_directive {
+            self.exit_strict_mode_context();
+        }
     }
 
     fn visit_function_declaration(&mut self, func: &mut Function) {
@@ -102,6 +125,12 @@ impl Analyzer {
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_pattern);
 
+        // Enter strict mode context if applicable
+        if func.has_use_strict_directive {
+            self.enter_strict_mode_context();
+        }
+        func.is_strict_mode = self.is_in_strict_mode_context();
+
         // Visit body inside a new function scope
         self.scope_builder.enter_function_scope(func);
 
@@ -113,8 +142,6 @@ impl Analyzer {
             }
             FunctionBody::Expression(ref mut expr) => self.visit_expression(expr),
         }
-
-        self.scope_builder.exit_scope();
 
         // Static analysis of parameters and other function properties once body has been visited
         let mut has_parameter_expressions = false;
@@ -181,6 +208,12 @@ impl Analyzer {
         func.has_simple_parameter_list = !has_binding_patterns && !has_parameter_expressions;
         func.has_duplicate_parameters = has_duplicate_parameters;
         func.is_arguments_object_needed = is_arguments_object_needed;
+
+        self.scope_builder.exit_scope();
+
+        if func.has_use_strict_directive {
+            self.exit_strict_mode_context();
+        }
     }
 
     fn visit_label_definition(&mut self, _: &mut LabeledStatement) {

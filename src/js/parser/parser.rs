@@ -227,8 +227,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_program(&mut self) -> ParseResult<Program> {
-        let mut toplevels = vec![];
+        let has_use_strict_directive = self.parse_use_strict_directive()?;
 
+        let mut toplevels = vec![];
         while self.token != Token::Eof {
             toplevels.push(self.parse_toplevel()?);
         }
@@ -236,7 +237,29 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
-        Ok(Program::new(loc, toplevels))
+        Ok(Program::new(loc, toplevels, has_use_strict_directive))
+    }
+
+    fn parse_use_strict_directive(&mut self) -> ParseResult<bool> {
+        // Try to parse "use strict" directive
+        match &self.token {
+            Token::StringLiteral(str) if str == "use strict" => {
+                let saved_state = self.save();
+
+                self.advance()?;
+
+                // If "use strict" is followed by a semicolon we should use strict mode. Otherwise
+                // this is the start of an expression so restore to beginning.
+                if self.token == Token::Semicolon {
+                    self.advance()?;
+                    Ok(true)
+                } else {
+                    self.restore(saved_state);
+                    Ok(false)
+                }
+            }
+            _ => Ok(false),
+        }
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -401,10 +424,19 @@ impl<'a> Parser<'a> {
         };
 
         let params = self.parse_function_params()?;
-        let body = p(FunctionBody::Block(self.parse_block()?));
+        let (block, has_use_strict_directive) = self.parse_function_block_body()?;
+        let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
-        Ok(Function::new(loc, id, params, body, is_async, is_generator))
+        Ok(Function::new(
+            loc,
+            id,
+            params,
+            body,
+            is_async,
+            is_generator,
+            has_use_strict_directive,
+        ))
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<Pattern>> {
@@ -425,6 +457,23 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightParen)?;
 
         Ok(params)
+    }
+
+    fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool)> {
+        let start_pos = self.current_start_pos();
+        self.expect(Token::LeftBrace)?;
+
+        let has_use_strict_directive = self.parse_use_strict_directive()?;
+
+        let mut body = vec![];
+        while self.token != Token::RightBrace {
+            body.push(self.parse_statement()?)
+        }
+
+        self.advance()?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok((Block::new(loc, body), has_use_strict_directive))
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -927,12 +976,17 @@ impl<'a> Parser<'a> {
                     loc: async_loc,
                     name: "async".to_owned(),
                 })];
-                let body = self.parse_arrow_function_body()?;
+                let (body, has_use_strict_directive) = self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
                 return Ok(p(Expression::ArrowFunction(Function::new(
-                    loc, /* id */ None, params, body, /* is_async */ false,
+                    loc,
+                    /* id */ None,
+                    params,
+                    body,
+                    /* is_async */ false,
                     /* is_generator */ false,
+                    has_use_strict_directive,
                 ))));
             }
         }
@@ -948,21 +1002,31 @@ impl<'a> Parser<'a> {
         };
 
         self.expect(Token::Arrow)?;
-        let body = self.parse_arrow_function_body()?;
+        let (body, has_use_strict_directive) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(Expression::ArrowFunction(Function::new(
-            loc, /* id */ None, params, body, is_async, /* is_generator */ false,
+            loc,
+            /* id */ None,
+            params,
+            body,
+            is_async,
+            /* is_generator */ false,
+            has_use_strict_directive,
         ))))
     }
 
-    fn parse_arrow_function_body(&mut self) -> ParseResult<P<FunctionBody>> {
+    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, bool)> {
         if self.token == Token::LeftBrace {
-            Ok(p(FunctionBody::Block(self.parse_block()?)))
+            let (block, has_use_strict_directive) = self.parse_function_block_body()?;
+            Ok((p(FunctionBody::Block(block)), has_use_strict_directive))
         } else {
-            Ok(p(FunctionBody::Expression(
-                *self.parse_assignment_expression()?,
-            )))
+            Ok((
+                p(FunctionBody::Expression(
+                    *self.parse_assignment_expression()?,
+                )),
+                false,
+            ))
         }
     }
 
@@ -1753,7 +1817,8 @@ impl<'a> Parser<'a> {
         is_computed: bool,
     ) -> ParseResult<Property> {
         let params = self.parse_function_params()?;
-        let body = p(FunctionBody::Block(self.parse_block()?));
+        let (block, has_use_strict_directive) = self.parse_function_block_body()?;
+        let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
         // TODO: Error if getter or setter has wrong number of params
@@ -1771,6 +1836,7 @@ impl<'a> Parser<'a> {
                 body,
                 is_async,
                 is_generator,
+                has_use_strict_directive,
             )))),
         })
     }

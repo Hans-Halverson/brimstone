@@ -124,8 +124,7 @@ fn eval_member_expression_to_reference(
 ) -> EvalResult<Reference> {
     let base_value = maybe!(eval_expression(cx, &expr.object));
 
-    // TODO: Check if we are currently in strict mode
-    let is_strict = false;
+    let is_strict = cx.current_execution_context().is_strict_mode;
 
     if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));

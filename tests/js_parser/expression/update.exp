@@ -168,4 +168,5 @@
       },
     },
   ],
+  has_use_strict_directive: false,
 }

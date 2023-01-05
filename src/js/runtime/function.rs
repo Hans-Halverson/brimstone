@@ -204,6 +204,7 @@ impl Function {
             lexical_env: func_env,
             variable_env: func_env,
             private_env: self.private_environment,
+            is_strict_mode: self.func_node.as_ref().is_strict_mode,
         });
 
         cx.push_execution_context(callee_context);
@@ -272,8 +273,7 @@ pub fn ordinary_function_create(
     environment: Gc<dyn Environment>,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
-    // TODO: Check if function is in strict mode
-    let is_strict = false;
+    let is_strict = func_node.is_strict_mode;
     let this_mode = if is_lexical_this {
         ThisMode::Lexical
     } else if is_strict {

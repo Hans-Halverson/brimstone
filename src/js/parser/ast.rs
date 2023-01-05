@@ -72,16 +72,18 @@ pub trait WithDecls {
 pub struct Program {
     pub loc: Loc,
     pub toplevels: Vec<Toplevel>,
+    pub has_use_strict_directive: bool,
 
     pub var_decls: Vec<VarDecl>,
     pub lex_decls: Vec<LexDecl>,
 }
 
 impl Program {
-    pub fn new(loc: Loc, toplevels: Vec<Toplevel>) -> Program {
+    pub fn new(loc: Loc, toplevels: Vec<Toplevel>, has_use_strict_directive: bool) -> Program {
         Program {
             loc,
             toplevels,
+            has_use_strict_directive,
             var_decls: vec![],
             lex_decls: vec![],
         }
@@ -194,6 +196,11 @@ pub struct Function {
     // False only if we can statically prove that the arguments object is not needed. If true the
     // arguments object may be needed.
     pub is_arguments_object_needed: bool,
+
+    // Whether the function has a "use strict" directive
+    pub has_use_strict_directive: bool,
+    // Whether the function is in strict mode, which could be inherited from surrounding context
+    pub is_strict_mode: bool,
 }
 
 impl Function {
@@ -204,6 +211,7 @@ impl Function {
         body: P<FunctionBody>,
         is_async: bool,
         is_generator: bool,
+        has_use_strict_directive: bool,
     ) -> Function {
         Function {
             loc,
@@ -218,6 +226,8 @@ impl Function {
             has_parameter_expressions: false,
             has_duplicate_parameters: false,
             is_arguments_object_needed: true,
+            has_use_strict_directive,
+            is_strict_mode: false,
         }
     }
 }

@@ -144,6 +144,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
         lexical_env: cx.uninit_environment,
         variable_env: cx.uninit_environment,
         private_env: None,
+        is_strict_mode: false,
     });
 
     cx.push_execution_context(exec_ctx);

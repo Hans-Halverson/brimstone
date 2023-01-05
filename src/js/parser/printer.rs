@@ -134,6 +134,11 @@ impl<'a> Printer<'a> {
     fn print_program(&mut self, program: &Program) {
         self.start_node("Program", &program.loc);
         self.array_property("body", &program.toplevels, Printer::print_toplevel);
+        self.property(
+            "has_use_strict_directive",
+            program.has_use_strict_directive,
+            Printer::print_bool,
+        );
         self.end_node();
     }
 
@@ -185,6 +190,11 @@ impl<'a> Printer<'a> {
         self.property("body", func.body.as_ref(), Printer::print_function_body);
         self.property("async", func.is_async, Printer::print_bool);
         self.property("generator", func.is_generator, Printer::print_bool);
+        self.property(
+            "has_use_strict_directive",
+            func.has_use_strict_directive,
+            Printer::print_bool,
+        );
         self.end_node();
     }
 

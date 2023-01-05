@@ -28,6 +28,7 @@
       },
       async: false,
       generator: false,
+      has_use_strict_directive: false,
     },
     {
       type: "ExpressionStatement",
@@ -58,6 +59,7 @@
         },
         async: false,
         generator: false,
+        has_use_strict_directive: false,
       },
     },
     {
@@ -75,6 +77,7 @@
         },
         async: false,
         generator: false,
+        has_use_strict_directive: false,
       },
     },
     {
@@ -98,6 +101,7 @@
         },
         async: false,
         generator: false,
+        has_use_strict_directive: false,
       },
     },
     {
@@ -116,6 +120,7 @@
       },
       async: true,
       generator: false,
+      has_use_strict_directive: false,
     },
     {
       type: "FunctionDeclaration",
@@ -133,6 +138,7 @@
       },
       async: false,
       generator: true,
+      has_use_strict_directive: false,
     },
     {
       type: "FunctionDeclaration",
@@ -150,6 +156,7 @@
       },
       async: true,
       generator: true,
+      has_use_strict_directive: false,
     },
     {
       type: "ExpressionStatement",
@@ -170,6 +177,7 @@
         },
         async: true,
         generator: true,
+        has_use_strict_directive: false,
       },
     },
     {
@@ -187,6 +195,7 @@
         },
         async: true,
         generator: true,
+        has_use_strict_directive: false,
       },
     },
     {
@@ -221,6 +230,7 @@
       },
       async: false,
       generator: false,
+      has_use_strict_directive: false,
     },
     {
       type: "FunctionDeclaration",
@@ -254,6 +264,8 @@
       },
       async: false,
       generator: false,
+      has_use_strict_directive: false,
     },
   ],
+  has_use_strict_directive: false,
 }

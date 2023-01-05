@@ -49,6 +49,7 @@ pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>
         lexical_env: global_env_object,
         variable_env: global_env_object,
         private_env: None,
+        is_strict_mode: program.has_use_strict_directive,
     });
 
     cx.push_execution_context(script_ctx);

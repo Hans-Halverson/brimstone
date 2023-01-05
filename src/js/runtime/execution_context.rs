@@ -21,6 +21,7 @@ pub struct ExecutionContext {
     pub lexical_env: Gc<dyn Environment>,
     pub variable_env: Gc<dyn Environment>,
     pub private_env: Option<Gc<PrivateEnvironment>>,
+    pub is_strict_mode: bool,
 }
 
 impl GcDeref for ExecutionContext {}
@@ -41,8 +42,7 @@ pub fn resolve_binding(
         None => cx.current_execution_context().lexical_env,
     };
 
-    // TODO: Check if currently evaluating strict mode code
-    let is_strict = false;
+    let is_strict = cx.current_execution_context().is_strict_mode;
 
     get_identifier_reference(cx, Some(env), name, is_strict)
 }

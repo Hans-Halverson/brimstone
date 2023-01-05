@@ -1,0 +1,196 @@
+{
+  type: "Program",
+  loc: "1:0-32:1",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "4:0-4:13",
+      kind: {
+        type: "Literal",
+        loc: "4:0-4:12",
+        value: "use strict",
+      },
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "6:0-9:1",
+      id: {
+        type: "Identifier",
+        loc: "6:9-6:12",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "6:15-9:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "8:2-8:4",
+            kind: {
+              type: "Literal",
+              loc: "8:2-8:3",
+              value: 1,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: true,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "11:0-14:1",
+      id: {
+        type: "Identifier",
+        loc: "11:9-11:12",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "11:15-14:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "13:2-13:4",
+            kind: {
+              type: "Literal",
+              loc: "13:2-13:3",
+              value: 1,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: true,
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "16:0-19:2",
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "16:6-19:1",
+          id: {
+            type: "Identifier",
+            loc: "16:6-16:7",
+            name: "a",
+          },
+          init: {
+            type: "ArrowFunctionExpression",
+            loc: "16:10-19:1",
+            id: null,
+            params: [],
+            body: {
+              type: "Block",
+              loc: "16:16-19:1",
+              body: [
+                {
+                  type: "ExpressionStatement",
+                  loc: "18:2-18:4",
+                  kind: {
+                    type: "Literal",
+                    loc: "18:2-18:3",
+                    value: 1,
+                  },
+                },
+              ],
+            },
+            async: false,
+            generator: false,
+            has_use_strict_directive: true,
+          },
+        },
+      ],
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:0-26:3",
+      kind: {
+        type: "ObjectExpression",
+        loc: "21:1-26:1",
+        properties: [
+          {
+            type: "Property",
+            loc: "22:2-25:3",
+            key: {
+              type: "Identifier",
+              loc: "22:2-22:8",
+              name: "method",
+            },
+            value: {
+              type: "FunctionExpression",
+              loc: "22:2-25:3",
+              id: null,
+              params: [],
+              body: {
+                type: "Block",
+                loc: "22:11-25:3",
+                body: [
+                  {
+                    type: "ExpressionStatement",
+                    loc: "24:4-24:6",
+                    kind: {
+                      type: "Literal",
+                      loc: "24:4-24:5",
+                      value: 1,
+                    },
+                  },
+                ],
+              },
+              async: false,
+              generator: false,
+              has_use_strict_directive: true,
+            },
+            computed: false,
+            shorthand: false,
+            method: true,
+            kind: "init",
+          },
+        ],
+      },
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "29:0-32:1",
+      id: {
+        type: "Identifier",
+        loc: "29:9-29:12",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "29:15-32:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "30:2-30:4",
+            kind: {
+              type: "Literal",
+              loc: "30:2-30:3",
+              value: 1,
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "31:2-31:15",
+            kind: {
+              type: "Literal",
+              loc: "31:2-31:14",
+              value: "use strict",
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+  ],
+  has_use_strict_directive: true,
+}

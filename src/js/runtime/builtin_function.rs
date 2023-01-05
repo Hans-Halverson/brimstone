@@ -122,14 +122,15 @@ impl Object for BuiltinFunction {
         this_argument: Value,
         arguments: &[Value],
     ) -> EvalResult<Value> {
-        let realm = cx.current_realm();
+        let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
-            realm,
+            realm: current_execution_context.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,
             private_env: None,
+            is_strict_mode: current_execution_context.is_strict_mode,
         });
 
         cx.push_execution_context(callee_context);
@@ -146,14 +147,15 @@ impl Object for BuiltinFunction {
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let realm = cx.current_realm();
+        let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
-            realm,
+            realm: current_execution_context.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,
             private_env: None,
+            is_strict_mode: current_execution_context.is_strict_mode,
         });
 
         cx.push_execution_context(callee_context);

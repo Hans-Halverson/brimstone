@@ -44,7 +44,7 @@ impl Context {
     }
 
     pub fn current_realm(&mut self) -> Gc<Realm> {
-        self.current_execution_context().realm.clone()
+        self.current_execution_context().realm
     }
 
     // 9.4.1 GetActiveScriptOrModule

@@ -49,8 +49,7 @@ pub fn function_declaration_instantiation(
         }
     }
 
-    // TODO: Check if function is in strict mode
-    let is_strict = false;
+    let is_strict = func.func_node.as_ref().is_strict_mode;
 
     let mut callee_context = cx.current_execution_context();
 

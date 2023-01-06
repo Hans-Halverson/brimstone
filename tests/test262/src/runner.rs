@@ -141,9 +141,10 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         load_harness_test_file(&mut cx, realm, test262_root, include);
     }
 
-    let parse_result = parse_and_analyze(&test.path, test262_root, force_strict_mode);
-    let ast = match parse_result {
-        Ok(ast) => ast,
+    // Try to parse file
+    let parse_result = parse_file(&test.path, test262_root, force_strict_mode);
+    let mut ast_and_source = match parse_result {
+        Ok(ast_and_source) => ast_and_source,
         // An error during parse may be a success or failure depending on the expected result of
         // the test.
         Err(err) => {
@@ -166,15 +167,35 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         }
     };
 
-    let completion = eval_script(&mut cx, Rc::new(ast), realm);
+    // Perform static analysis on file
+    let analyze_result = js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1);
+    match analyze_result {
+        Ok(_) => {}
+        // An error during analysis may be a success or failure depending on the expected result of
+        // the test.
+        Err(err) => {
+            return match test.expected_result {
+                ExpectedResult::Negative {
+                    phase: TestPhase::Parse,
+                    ..
+                } => TestResult::success(test),
+                _ => TestResult::failure(
+                    test,
+                    format!("Unexpected error during analysis:\n{}", err.to_string()),
+                ),
+            };
+        }
+    }
+
+    let completion = eval_script(&mut cx, Rc::new(ast_and_source.0), realm);
     check_expected_completion(&mut cx, test, completion)
 }
 
-fn parse_and_analyze(
+fn parse_file(
     file: &str,
     test262_root: &str,
     force_strict_mode: bool,
-) -> js::parser::ParseResult<js::parser::ast::Program> {
+) -> js::parser::ParseResult<(js::parser::ast::Program, Rc<js::parser::source::Source>)> {
     let full_path = Path::new(test262_root).join("test").join(file);
 
     let mut source = js::parser::source::Source::new(full_path.to_str().unwrap())?;
@@ -184,21 +205,25 @@ fn parse_and_analyze(
         source.contents.insert_str(0, "\"use strict\";\n");
     }
 
-    let mut ast = js::parser::parse_file(&Rc::new(source))?;
-    js::parser::analyze::analyze(&mut ast);
+    let source = Rc::new(source);
+    let ast = js::parser::parse_file(&source)?;
 
-    Ok(ast)
+    Ok((ast, source))
 }
 
 fn load_harness_test_file(cx: &mut Context, realm: Gc<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let ast = parse_and_analyze(full_path.to_str().unwrap(), test262_root, false).expect(&format!(
-        "Failed to parse test harness file {}",
+    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), test262_root, false).expect(
+        &format!("Failed to parse test harness file {}", full_path.display()),
+    );
+
+    js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1).expect(&format!(
+        "Failed to prse test harness file {}",
         full_path.display()
     ));
 
-    let eval_result = eval_script(cx, Rc::new(ast), realm);
+    let eval_result = eval_script(cx, Rc::new(ast_and_source.0), realm);
 
     match eval_result.kind() {
         CompletionKind::Normal => {}

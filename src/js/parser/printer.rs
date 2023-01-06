@@ -367,29 +367,25 @@ impl<'a> Printer<'a> {
 
     fn print_break_statement(&mut self, stmt: &BreakStatement) {
         self.start_node("BreakStatement", &stmt.loc);
-        self.property(
-            "label",
-            stmt.label.as_ref(),
-            Printer::print_optional_identifier,
-        );
+        self.property("label", stmt.label.as_ref(), Printer::print_optional_label);
         self.end_node();
     }
 
     fn print_continue_statement(&mut self, stmt: &ContinueStatement) {
         self.start_node("ContinueStatement", &stmt.loc);
-        self.property(
-            "label",
-            stmt.label.as_ref(),
-            Printer::print_optional_identifier,
-        );
+        self.property("label", stmt.label.as_ref(), Printer::print_optional_label);
         self.end_node();
     }
 
     fn print_labeled_statement(&mut self, stmt: &LabeledStatement) {
         self.start_node("LabeledStatement", &stmt.loc);
-        self.property("label", stmt.label.as_ref(), Printer::print_identifier);
+        self.property("label", &stmt.label, Printer::print_label);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
+    }
+
+    fn print_label(&mut self, label: &Label) {
+        self.print_identifier(&label.label)
     }
 
     fn print_empty_statement(&mut self, loc: &Loc) {
@@ -808,6 +804,13 @@ impl<'a> Printer<'a> {
         match id {
             None => self.print_null(),
             Some(id) => self.print_identifier(id),
+        }
+    }
+
+    fn print_optional_label(&mut self, id: Option<&Label>) {
+        match id {
+            None => self.print_null(),
+            Some(label) => self.print_label(label),
         }
     }
 

@@ -1,20 +1,35 @@
-use std::collections::HashSet;
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use crate::{visit_opt, visit_vec};
 
-use super::{ast::*, ast_visitor::*, scope::ScopeBuilder};
+use super::{
+    ast::*, ast_visitor::*, loc::Loc, parser::LocalizedParseError, scope::ScopeBuilder,
+    source::Source, LocalizedParseErrors, ParseError,
+};
 
 pub struct Analyzer {
+    // Current source that is being analyzed
+    source: Rc<Source>,
     scope_builder: ScopeBuilder,
     // Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
+    // Set of labels defined where the visitor is currently in
+    current_labels: HashMap<String, LabelId>,
+    // Accumulator or errors reported during analysis
+    errors: Vec<LocalizedParseError>,
 }
 
 impl<'a> Analyzer {
-    pub fn new() -> Analyzer {
+    pub fn new(source: Rc<Source>) -> Analyzer {
         Analyzer {
+            source,
             scope_builder: ScopeBuilder::new(),
             strict_mode_context_depth: 0,
+            current_labels: HashMap::new(),
+            errors: Vec::new(),
         }
     }
 
@@ -28,6 +43,11 @@ impl<'a> Analyzer {
 
     fn exit_strict_mode_context(&mut self) {
         self.strict_mode_context_depth -= 1;
+    }
+
+    fn emit_error(&mut self, loc: Loc, error: ParseError) {
+        let source_loc = Some((loc, self.source.clone()));
+        self.errors.push(LocalizedParseError { error, source_loc })
     }
 }
 
@@ -74,8 +94,9 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_labeled_statement(&mut self, stmt: &mut LabeledStatement) {
-        self.visit_label_definition(stmt);
+        let is_duplicate = self.enter_label_scope(stmt);
         default_visit_labeled_statement(self, stmt);
+        self.exit_label_scope(&stmt.label.label.name, is_duplicate);
     }
 
     fn visit_function_expression(&mut self, func: &mut Function) {
@@ -88,6 +109,57 @@ impl<'a> AstVisitor for Analyzer {
 
         self.visit_function_common(func);
     }
+
+    fn visit_break_statement(&mut self, stmt: &mut BreakStatement) {
+        self.visit_label_use(stmt.label.as_mut())
+    }
+
+    fn visit_continue_statement(&mut self, stmt: &mut ContinueStatement) {
+        self.visit_label_use(stmt.label.as_mut())
+    }
+
+    fn visit_with_statement(&mut self, stmt: &mut WithStatement) {
+        if self.is_in_strict_mode_context() {
+            self.emit_error(stmt.loc, ParseError::WithInStrictMode);
+        }
+
+        self.check_for_labeled_function(&stmt.body);
+
+        default_visit_with_statement(self, stmt);
+    }
+
+    fn visit_if_statement(&mut self, stmt: &mut IfStatement) {
+        self.check_for_labeled_function(&stmt.conseq);
+        if let Some(altern) = stmt.altern.as_ref() {
+            self.check_for_labeled_function(altern);
+        }
+
+        default_visit_if_statement(self, stmt);
+    }
+
+    fn visit_while_statement(&mut self, stmt: &mut WhileStatement) {
+        self.check_for_labeled_function(&stmt.body);
+
+        default_visit_while_statement(self, stmt);
+    }
+
+    fn visit_do_while_statement(&mut self, stmt: &mut DoWhileStatement) {
+        self.check_for_labeled_function(&stmt.body);
+
+        default_visit_do_while_statement(self, stmt);
+    }
+
+    fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
+        self.check_for_labeled_function(&stmt.body);
+
+        default_visit_for_statement(self, stmt);
+    }
+
+    fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
+        self.check_for_labeled_function(&stmt.body);
+
+        default_visit_for_each_statement(self, stmt);
+    }
 }
 
 impl Analyzer {
@@ -99,16 +171,26 @@ impl Analyzer {
             }
             // Find statement under labels, if it is a function it is a var scoped decl
             Statement::Labeled(ref mut labeled_stmt) => {
-                self.visit_label_definition(labeled_stmt);
+                // Enter label scopes and collect labels as we descend
+                let mut labels = vec![];
+                let is_label_duplicate = self.enter_label_scope(labeled_stmt);
+                labels.push((labeled_stmt.label.label.name.clone(), is_label_duplicate));
 
                 let mut inner_stmt = labeled_stmt.body.as_mut();
                 while let Statement::Labeled(labeled_stmt) = inner_stmt {
-                    self.visit_label_definition(labeled_stmt);
+                    let is_label_duplicate = self.enter_label_scope(labeled_stmt);
+                    labels.push((labeled_stmt.label.label.name.clone(), is_label_duplicate));
+
                     inner_stmt = labeled_stmt.body.as_mut()
                 }
 
                 if let Statement::FuncDecl(func_decl) = inner_stmt {
                     self.visit_function_declaration_common(func_decl, false)
+                }
+
+                // Exit all label scopes in reverse order that they were entered
+                for (label_name, is_duplicate) in labels.iter().rev() {
+                    self.exit_label_scope(label_name, *is_duplicate)
                 }
             }
             _ => self.visit_statement(stmt),
@@ -216,12 +298,78 @@ impl Analyzer {
         }
     }
 
-    fn visit_label_definition(&mut self, _: &mut LabeledStatement) {
-        // TODO: Analyze labels
+    fn enter_label_scope(&mut self, stmt: &mut LabeledStatement) -> bool {
+        let label_name = &stmt.label.label.name;
+        let is_duplicate = self.current_labels.contains_key(label_name);
+
+        if is_duplicate {
+            self.emit_error(stmt.label.label.loc, ParseError::DuplicateLabel);
+        } else {
+            let label_id = self.current_labels.len() as u32;
+            self.current_labels.insert(label_name.clone(), label_id);
+
+            stmt.label.id = label_id;
+        }
+
+        // Annex B: Always error on labeled function declarations in strict mode
+        if self.is_in_strict_mode_context() {
+            if let Statement::FuncDecl(_) = stmt.body.as_ref() {
+                self.emit_error(
+                    stmt.label.label.loc,
+                    ParseError::InvalidLabeledFunction(true),
+                );
+            }
+        }
+
+        is_duplicate
+    }
+
+    // Annex B: Some labeled function declarations are always disallowed. Only error in
+    // non-strict mode as all labeled function declarations are disallowed in strict mode.
+    fn check_for_labeled_function(&mut self, stmt: &Statement) {
+        if let Statement::Labeled(labeled) = stmt {
+            // Descend past nested labels to labeled statement
+            let mut current_labeled = labeled;
+            while let Statement::Labeled(next_labeled) = current_labeled.body.as_ref() {
+                current_labeled = next_labeled;
+            }
+
+            if let Statement::FuncDecl(_) = current_labeled.body.as_ref() {
+                if !self.is_in_strict_mode_context() {
+                    self.emit_error(
+                        labeled.label.label.loc,
+                        ParseError::InvalidLabeledFunction(false),
+                    )
+                }
+            }
+        }
+    }
+
+    fn exit_label_scope(&mut self, label_name: &str, is_duplicate: bool) {
+        if !is_duplicate {
+            self.current_labels.remove(label_name);
+        }
+    }
+
+    fn visit_label_use(&mut self, label: Option<&mut Label>) {
+        if let Some(label) = label {
+            match self.current_labels.get(&label.label.name) {
+                None => self.emit_error(label.label.loc, ParseError::LabelNotFound),
+                Some(label_id) => {
+                    label.id = *label_id;
+                }
+            }
+        }
     }
 }
 
-pub fn analyze(program: &mut Program) {
-    let mut analyzer = Analyzer::new();
+pub fn analyze(program: &mut Program, source: Rc<Source>) -> Result<(), LocalizedParseErrors> {
+    let mut analyzer = Analyzer::new(source);
     analyzer.visit_program(program);
+
+    if analyzer.errors.is_empty() {
+        Ok(())
+    } else {
+        Err(LocalizedParseErrors::new(analyzer.errors))
+    }
 }

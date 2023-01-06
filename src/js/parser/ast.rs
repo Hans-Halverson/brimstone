@@ -420,18 +420,31 @@ pub struct ReturnStatement {
 
 pub struct BreakStatement {
     pub loc: Loc,
-    pub label: Option<P<Identifier>>,
+    pub label: Option<Label>,
 }
 
 pub struct ContinueStatement {
     pub loc: Loc,
-    pub label: Option<P<Identifier>>,
+    pub label: Option<Label>,
 }
 
 pub struct LabeledStatement {
     pub loc: Loc,
-    pub label: P<Identifier>,
+    pub label: Label,
     pub body: P<Statement>,
+}
+
+pub type LabelId = u32;
+
+pub struct Label {
+    pub label: P<Identifier>,
+    pub id: LabelId,
+}
+
+impl Label {
+    pub fn new(label: P<Identifier>) -> Label {
+        Label { label, id: 0 }
+    }
 }
 
 pub enum Expression {

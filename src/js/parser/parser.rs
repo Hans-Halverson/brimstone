@@ -18,6 +18,10 @@ pub enum ParseError {
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
     InvalidForLeftHandSide,
+    DuplicateLabel,
+    LabelNotFound,
+    WithInStrictMode,
+    InvalidLabeledFunction(bool),
 }
 
 // Arbitrary error used to fail try parse
@@ -57,6 +61,17 @@ impl fmt::Display for LocalizedParseError {
             ParseError::InvalidForLeftHandSide => {
                 format!("Invalid left hand side of for statement")
             }
+            ParseError::DuplicateLabel => String::from("Duplicate label"),
+            ParseError::LabelNotFound => String::from("Label not found"),
+            ParseError::WithInStrictMode => {
+                String::from("Strict mode code may not contain 'with' statements")
+            }
+            ParseError::InvalidLabeledFunction(true) => {
+                String::from("functions cannot be labelled")
+            }
+            ParseError::InvalidLabeledFunction(false) => {
+                String::from("functions can only be labelled inside blocks")
+            }
         };
 
         match &self.source_loc {
@@ -80,12 +95,73 @@ impl fmt::Debug for LocalizedParseError {
     }
 }
 
-pub type ParseResult<T> = Result<T, LocalizedParseError>;
-
 impl From<io::Error> for LocalizedParseError {
     fn from(error: io::Error) -> LocalizedParseError {
         LocalizedParseError::new_without_loc(ParseError::Io(error))
     }
+}
+
+pub struct LocalizedParseErrors {
+    errors: Vec<LocalizedParseError>,
+}
+
+impl LocalizedParseErrors {
+    pub fn new(errors: Vec<LocalizedParseError>) -> Self {
+        LocalizedParseErrors { errors }
+    }
+}
+
+impl Error for LocalizedParseErrors {}
+
+impl fmt::Display for LocalizedParseErrors {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format_localized_parse_errors(&self.errors))
+    }
+}
+
+impl fmt::Debug for LocalizedParseErrors {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <LocalizedParseErrors as fmt::Display>::fmt(self, f)
+    }
+}
+
+pub type ParseResult<T> = Result<T, LocalizedParseError>;
+
+pub fn format_localized_parse_errors(errors: &[LocalizedParseError]) -> String {
+    // Separate errors into those with and without locs
+    let mut errors_without_loc = vec![];
+    let mut errors_with_loc = vec![];
+    for error in errors {
+        match &error.source_loc {
+            None => {
+                errors_without_loc.push(error);
+            }
+            Some((loc, source)) => {
+                let offsets = source.line_offsets();
+                let (line, col) = find_line_col_for_pos(loc.start, offsets);
+                errors_with_loc.push((error, source, line, col))
+            }
+        }
+    }
+
+    // Sort errors with locs
+    errors_with_loc.sort_by(|a, b| {
+        a.1.file_path
+            .cmp(&b.1.file_path)
+            .then_with(|| a.2.cmp(&b.2))
+            .then_with(|| a.3.cmp(&b.3))
+    });
+
+    let mut error_messages = vec![];
+    for error in errors_without_loc {
+        error_messages.push(format!("{}", error))
+    }
+
+    for (error, _, _, _) in errors_with_loc {
+        error_messages.push(format!("{}", error))
+    }
+
+    error_messages.join("\n\n")
 }
 
 /// Expression operator precedence. A lower number binds tighter than a larger number.
@@ -314,7 +390,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(Statement::Labeled(LabeledStatement {
                             loc,
-                            label: p(label),
+                            label: Label::new(p(label)),
                             body: p(body),
                         }));
                     }
@@ -854,7 +930,7 @@ impl<'a> Parser<'a> {
         let label = if self.token == Token::Semicolon {
             None
         } else {
-            Some(p(self.parse_identifier()?))
+            Some(Label::new(p(self.parse_identifier()?)))
         };
 
         self.expect(Token::Semicolon)?;
@@ -870,7 +946,7 @@ impl<'a> Parser<'a> {
         let label = if self.token == Token::Semicolon {
             None
         } else {
-            Some(p(self.parse_identifier()?))
+            Some(Label::new(p(self.parse_identifier()?)))
         };
 
         self.expect(Token::Semicolon)?;

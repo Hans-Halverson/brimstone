@@ -6,6 +6,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
+                object_environment::ObjectEnvironment,
             },
             eval::{
                 function::{
@@ -15,7 +16,7 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
-            type_utilities::to_boolean,
+            type_utilities::{to_boolean, to_object},
             value::Value,
             Context,
         },
@@ -68,12 +69,20 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
+        ast::Statement::Switch(_) => unimplemented!("switch statement"),
+        ast::Statement::For(_) => unimplemented!("for statement"),
+        ast::Statement::ForEach(_) => unimplemented!("for each statement"),
+        ast::Statement::While(_) => unimplemented!("while statement"),
+        ast::Statement::DoWhile(_) => unimplemented!("do while statement"),
+        ast::Statement::With(stmt) => eval_with_statement(cx, stmt),
         ast::Statement::Try(stmt) => eval_try_statement(cx, stmt),
         ast::Statement::Throw(stmt) => eval_throw_statement(cx, stmt),
         ast::Statement::Return(stmt) => eval_return_statement(cx, stmt),
+        ast::Statement::Break(_) => unimplemented!("break statement"),
+        ast::Statement::Continue(_) => unimplemented!("continue statement"),
+        ast::Statement::Labeled(_) => unimplemented!("labeled statement"),
         ast::Statement::Empty(_) => eval_empty_statement(),
         ast::Statement::Debugger(_) => eval_debugger_statement(),
-        _ => unimplemented!("statement evaluation"),
     }
 }
 
@@ -233,6 +242,25 @@ fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Compl
     // TODO: Check for generator
 
     Completion::return_(return_value)
+}
+
+// 14.11.2 With Statement Evaluation
+fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completion {
+    let value = maybe__!(eval_expression(cx, &stmt.object));
+    let object = maybe__!(to_object(cx, value));
+
+    let mut current_execution_context = cx.current_execution_context();
+    let old_env = current_execution_context.lexical_env;
+    let new_env = cx
+        .heap
+        .alloc(ObjectEnvironment::new(object, true, Some(old_env)));
+    current_execution_context.lexical_env = to_trait_object(new_env);
+
+    let completion = eval_statement(cx, &stmt.body);
+
+    current_execution_context.lexical_env = old_env;
+
+    completion.update_if_empty(Value::undefined())
 }
 
 // 14.14.1 Throw Statement Evaluation

@@ -1,6 +1,6 @@
 use crate::{
     js::{
-        parser::ast,
+        parser::ast::{self, UpdateOperator},
         runtime::{
             abstract_operations::{
                 call, call_object, construct, create_data_property_or_throw, get_method,
@@ -47,24 +47,27 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
+            ast::UnaryOperator::BitwiseNot => unimplemented!("bitwise not expression"),
             ast::UnaryOperator::TypeOf => eval_typeof_expression(cx, expr),
             ast::UnaryOperator::Delete => eval_delete_expression(cx, expr),
             ast::UnaryOperator::Void => eval_void_expression(cx, expr),
-            _ => unimplemented!("unary expression evaluation"),
         },
         ast::Expression::Binary(expr) => eval_binary_expression(cx, expr),
         ast::Expression::Logical(expr) => eval_logical_expression(cx, expr),
         ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
+        ast::Expression::Update(expr) => eval_update_expression(cx, expr),
         ast::Expression::Member(expr) => eval_member_expression(cx, expr),
         ast::Expression::Conditional(expr) => eval_conditional_expression(cx, expr),
         ast::Expression::Call(expr) => eval_call_expression(cx, expr),
         ast::Expression::New(expr) => eval_new_expression(cx, expr),
         ast::Expression::Sequence(expr) => eval_sequence_expression(cx, expr),
+        ast::Expression::Array(_) => unimplemented!("array expression"),
         ast::Expression::Object(expr) => eval_object_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
         ast::Expression::This(_) => eval_this_expression(cx),
-        _ => unimplemented!("expression evaluation"),
+        ast::Expression::Await(_) => unimplemented!("await expression"),
+        ast::Expression::Yield(_) => unimplemented!("yield expression"),
     }
 }
 
@@ -323,6 +326,45 @@ fn eval_argument_list(cx: &mut Context, arguments: &[ast::Expression]) -> EvalRe
     arg_values.into()
 }
 
+// 13.4.2.1 Postfix Increment Evaluation
+// 13.4.3.1 Postfix Decrement Evaluation
+// 13.4.4.1 Prefix Increment Evaluation
+// 13.4.5.1 Prefix Decrement Evaluation
+fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> EvalResult<Value> {
+    let mut argument_reference = match expr.argument.as_ref() {
+        ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
+        ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
+        _ => return reference_error_(cx, "expected a reference"),
+    };
+    let old_value = maybe!(argument_reference.get_value(cx));
+    let old_value = maybe!(to_numeric(cx, old_value));
+
+    let new_value = match expr.operator {
+        UpdateOperator::Increment => {
+            if old_value.is_bigint() {
+                unimplemented!("BigInts")
+            } else {
+                Value::number(old_value.as_number() + 1.0)
+            }
+        }
+        UpdateOperator::Decrement => {
+            if old_value.is_bigint() {
+                unimplemented!("BigInts")
+            } else {
+                Value::number(old_value.as_number() - 1.0)
+            }
+        }
+    };
+
+    maybe!(argument_reference.put_value(cx, new_value));
+
+    if expr.is_prefix {
+        new_value.into()
+    } else {
+        old_value.into()
+    }
+}
+
 // 13.5.1.2 Delete Expression Evaluation
 fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
     let reference = match expr.argument.as_ref() {
@@ -437,15 +479,30 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
         ast::BinaryOperator::Subtract => eval_subtract(cx, left_value, right_value),
         ast::BinaryOperator::Multiply => eval_multiply(cx, left_value, right_value),
         ast::BinaryOperator::Divide => eval_divide(cx, left_value, right_value),
+        ast::BinaryOperator::Remainder => eval_remainder(cx, left_value, right_value),
+        ast::BinaryOperator::Exponent => unimplemented!("exponent expression"),
         ast::BinaryOperator::EqEq => maybe!(is_loosely_equal(cx, left_value, right_value)).into(),
         ast::BinaryOperator::NotEq => {
             (!maybe!(is_loosely_equal(cx, left_value, right_value))).into()
         }
         ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
         ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
+        ast::BinaryOperator::LessThan => unimplemented!("less than expression"),
+        ast::BinaryOperator::LessThanOrEqual => unimplemented!("less than or equal expression"),
+        ast::BinaryOperator::GreaterThan => unimplemented!("greater than expression"),
+        ast::BinaryOperator::GreaterThanOrEqual => {
+            unimplemented!("greater than or equal expression")
+        }
+        ast::BinaryOperator::And => unimplemented!("bitwise and expression"),
+        ast::BinaryOperator::Or => unimplemented!("bitwise or expression"),
+        ast::BinaryOperator::Xor => unimplemented!("bitwise xor expression"),
+        ast::BinaryOperator::ShiftLeft => unimplemented!("left shift expression"),
+        ast::BinaryOperator::ShiftRightArithmetic => {
+            unimplemented!("arithmetic right shift expression")
+        }
+        ast::BinaryOperator::ShiftRightLogical => unimplemented!("logical right shift expression"),
         ast::BinaryOperator::InstanceOf => eval_instanceof_expression(cx, left_value, right_value),
         ast::BinaryOperator::In => eval_in_expression(cx, left_value, right_value),
-        _ => unimplemented!("binary operator"),
     }
 }
 
@@ -526,6 +583,22 @@ fn eval_divide(cx: &mut Context, left_value: Value, right_value: Value) -> EvalR
         unimplemented!("BigInt")
     } else {
         return Value::number(left_num.as_number() / right_num.as_number()).into();
+    }
+}
+
+fn eval_remainder(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left_num = maybe!(to_numeric(cx, left_value));
+    let right_num = maybe!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error_(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(left_num.as_number() % right_num.as_number()).into();
     }
 }
 
@@ -650,6 +723,11 @@ fn eval_assignment_expression(
             let left_value = maybe!(reference.get_value(cx));
             let right_value = maybe!(eval_expression(cx, &expr.right));
             maybe!(eval_divide(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Remainder => {
+            let left_value = maybe!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_remainder(cx, left_value, right_value))
         }
         _ => unimplemented!("assignment operators"),
     };

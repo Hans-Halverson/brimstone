@@ -297,6 +297,46 @@ pub fn to_property_key(value: Value) -> Gc<StringValue> {
     unimplemented!("Non-string property keys")
 }
 
+// 7.2.14 IsLessThan
+// ToPrimitive calls are inlined at call sites instead of passing LeftFirst argument
+pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
+    let x_tag = x.get_tag();
+    let y_tag = y.get_tag();
+    if x_tag == STRING_TAG {
+        if y_tag == STRING_TAG {
+            return (x.as_string().str() < y.as_string().str()).into();
+        } else if y_tag == BIGINT_TAG {
+            unimplemented!("BigInts")
+        }
+    }
+
+    if x_tag == BIGINT_TAG && y_tag == STRING_TAG {
+        unimplemented!("BigInts")
+    }
+
+    let num_x = maybe!(to_numeric(cx, x));
+    let num_y = maybe!(to_numeric(cx, y));
+
+    let x_is_bigint = num_x.is_bigint();
+    let y_is_bigint = num_y.is_bigint();
+    if x_is_bigint == y_is_bigint {
+        if x_is_bigint {
+            // Both are BigInt
+            unimplemented!("BigInts")
+        } else {
+            // Both are numbers
+            if x.is_nan() || y.is_nan() {
+                return Value::undefined().into();
+            }
+
+            (x.as_number() < y.as_number()).into()
+        }
+    } else {
+        // One number and one BigInt
+        unimplemented!("BigInts")
+    }
+}
+
 // 7.2.15 IsLooselyEqual
 pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bool> {
     // If values have the same type, then use (inlined) is_strictly_equal.

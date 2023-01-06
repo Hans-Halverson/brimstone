@@ -38,7 +38,6 @@ use super::{
 
 const TAG_SHIFT: u64 = 48;
 const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
-const NEGATIVE_INFINITY: u64 = 0xFFF0 << TAG_SHIFT;
 
 // Only the top 16 bits need to be checked as a tag, allowing for a right shift and check
 const NAN_TAG: u16 = 0x7FF8;
@@ -59,6 +58,11 @@ const ACCESSOR_TAG: u16 = 0b101 | POINTER_TAG | NAN_TAG;
 // Mask that converts a null tag to an undefined tag, so that a nullish check can be performed with:
 // TAG & NULLISH_MASK == UNDEFINED_TAG
 const NULLISH_TAG_MASK: u16 = 0xFFFD;
+
+// Bit patterns for known constants
+const NEGATIVE_INFINITY: u64 = 0xFFF0 << TAG_SHIFT;
+const TRUE: u64 = Value::bool(true).as_raw_bits();
+const FALSE: u64 = Value::bool(false).as_raw_bits();
 
 #[derive(Clone, Copy)]
 pub struct Value {
@@ -105,6 +109,16 @@ impl Value {
     #[inline]
     pub fn is_negative_zero(&self) -> bool {
         self.raw_bits == f64::to_bits(-0.0)
+    }
+
+    #[inline]
+    pub fn is_true(&self) -> bool {
+        self.raw_bits == TRUE
+    }
+
+    #[inline]
+    pub fn is_false(&self) -> bool {
+        self.raw_bits == FALSE
     }
 
     #[inline]

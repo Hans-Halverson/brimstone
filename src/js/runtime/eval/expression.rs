@@ -14,9 +14,9 @@ use crate::{
             ordinary_object::ordinary_object_create,
             reference::{Reference, ReferenceBase},
             type_utilities::{
-                is_callable, is_constructor, is_loosely_equal, is_strictly_equal, to_boolean,
-                to_number, to_numeric, to_object, to_primitive, to_property_key, to_string,
-                ToPrimitivePreferredType,
+                is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
+                to_boolean, to_number, to_numeric, to_object, to_primitive, to_property_key,
+                to_string, ToPrimitivePreferredType,
             },
             value::{
                 Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -487,11 +487,13 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
         }
         ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
         ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
-        ast::BinaryOperator::LessThan => unimplemented!("less than expression"),
-        ast::BinaryOperator::LessThanOrEqual => unimplemented!("less than or equal expression"),
-        ast::BinaryOperator::GreaterThan => unimplemented!("greater than expression"),
+        ast::BinaryOperator::LessThan => eval_less_than(cx, left_value, right_value),
+        ast::BinaryOperator::LessThanOrEqual => {
+            eval_less_than_or_equal(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::GreaterThan => eval_greater_than(cx, left_value, right_value),
         ast::BinaryOperator::GreaterThanOrEqual => {
-            unimplemented!("greater than or equal expression")
+            eval_greater_than_or_equal(cx, left_value, right_value)
         }
         ast::BinaryOperator::And => unimplemented!("bitwise and expression"),
         ast::BinaryOperator::Or => unimplemented!("bitwise or expression"),
@@ -600,6 +602,88 @@ fn eval_remainder(cx: &mut Context, left_value: Value, right_value: Value) -> Ev
     } else {
         return Value::number(left_num.as_number() % right_num.as_number()).into();
     }
+}
+
+fn eval_less_than(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left = maybe!(to_primitive(
+        cx,
+        left_value,
+        ToPrimitivePreferredType::Number
+    ));
+    let right = maybe!(to_primitive(
+        cx,
+        right_value,
+        ToPrimitivePreferredType::Number
+    ));
+
+    let result = maybe!(is_less_than(cx, left, right));
+    if result.is_undefined() {
+        false.into()
+    } else {
+        result.into()
+    }
+}
+
+fn eval_greater_than(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left = maybe!(to_primitive(
+        cx,
+        left_value,
+        ToPrimitivePreferredType::Number
+    ));
+    let right = maybe!(to_primitive(
+        cx,
+        right_value,
+        ToPrimitivePreferredType::Number
+    ));
+
+    // Intentionally flipped
+    let result = maybe!(is_less_than(cx, right, left));
+    if result.is_undefined() {
+        false.into()
+    } else {
+        result.into()
+    }
+}
+
+fn eval_less_than_or_equal(
+    cx: &mut Context,
+    left_value: Value,
+    right_value: Value,
+) -> EvalResult<Value> {
+    let left = maybe!(to_primitive(
+        cx,
+        left_value,
+        ToPrimitivePreferredType::Number
+    ));
+    let right = maybe!(to_primitive(
+        cx,
+        right_value,
+        ToPrimitivePreferredType::Number
+    ));
+
+    // Intentionally flipped
+    let result = maybe!(is_less_than(cx, right, left));
+    (result.is_false()).into()
+}
+
+fn eval_greater_than_or_equal(
+    cx: &mut Context,
+    left_value: Value,
+    right_value: Value,
+) -> EvalResult<Value> {
+    let left = maybe!(to_primitive(
+        cx,
+        left_value,
+        ToPrimitivePreferredType::Number
+    ));
+    let right = maybe!(to_primitive(
+        cx,
+        right_value,
+        ToPrimitivePreferredType::Number
+    ));
+
+    let result = maybe!(is_less_than(cx, left, right));
+    (result.is_false()).into()
 }
 
 // 13.10.2 InstanceofOperator

@@ -8,11 +8,11 @@ use crate::{
         intrinsics::{
             array_constructor::ArrayConstructor, boolean_constructor::BooleanConstructor,
             boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
-            error_prototype::ErrorPrototype, function_prototype::FunctionPrototype,
-            native_error::*, number_constructor::NumberConstructor,
-            number_prototype::NumberPrototype, object_constructor::ObjectConstructor,
-            object_prototype::ObjectPrototype, string_constructor::StringConstructor,
-            string_prototype::StringPrototype,
+            error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
+            function_prototype::FunctionPrototype, native_error::*,
+            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
+            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
+            string_constructor::StringConstructor, string_prototype::StringPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -32,6 +32,7 @@ pub enum Intrinsic {
     ErrorPrototype,
     EvalErrorConstructor,
     EvalErrorPrototype,
+    FunctionConstructor,
     FunctionPrototype,
     NumberConstructor,
     NumberPrototype,
@@ -116,6 +117,13 @@ impl Intrinsics {
             cx,
             Intrinsic::ObjectPrototype,
             Intrinsic::ObjectConstructor,
+        );
+
+        register_intrinsic!(FunctionConstructor, FunctionConstructor);
+        self.add_constructor_to_prototype(
+            cx,
+            Intrinsic::FunctionPrototype,
+            Intrinsic::FunctionConstructor,
         );
 
         register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);

@@ -38,6 +38,7 @@ use super::{
 
 const TAG_SHIFT: u64 = 48;
 const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
+const NEGATIVE_INFINITY: u64 = 0xFFF0 << TAG_SHIFT;
 
 // Only the top 16 bits need to be checked as a tag, allowing for a right shift and check
 const NAN_TAG: u16 = 0x7FF8;
@@ -87,6 +88,13 @@ impl Value {
     #[inline]
     pub const fn is_nan(&self) -> bool {
         self.raw_bits == NAN_MASK
+    }
+
+    /// Whether number is positive or negative infinity
+    #[inline]
+    pub const fn is_infinity(&self) -> bool {
+        // Set sign bit to check positive and negative infinity at the same time
+        self.raw_bits | (1 << 63) == NEGATIVE_INFINITY
     }
 
     #[inline]

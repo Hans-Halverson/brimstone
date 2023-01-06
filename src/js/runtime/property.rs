@@ -4,23 +4,23 @@ use super::value::Value;
 // then the value is an accessor property, which is a pointer to the get and set function pair.
 pub struct Property {
     value: Value,
+    is_writable: bool,
     is_enumerable: bool,
     is_configurable: bool,
-    is_writable: bool,
 }
 
 impl Property {
     pub fn data(
         value: Value,
+        is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
-        is_writable: bool,
     ) -> Property {
         Property {
             value,
+            is_writable,
             is_enumerable,
             is_configurable,
-            is_writable,
         }
     }
 

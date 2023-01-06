@@ -1,18 +1,13 @@
-use crate::{
-    js::runtime::{console::ConsoleObject, value::Value},
-    maybe,
-};
-
 use super::{
-    abstract_operations::define_property_or_throw,
-    completion::EvalResult,
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::{Gc, GcDeref},
-    intrinsics::intrinsics::{Intrinsic, Intrinsics},
+    intrinsics::{
+        global_object::set_default_global_bindings,
+        intrinsics::{Intrinsic, Intrinsics},
+    },
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
-    property_descriptor::PropertyDescriptor,
     Context,
 };
 
@@ -61,75 +56,6 @@ impl Realm {
         self.global_env = GlobalEnvironment::new(cx, global_object, this_value);
     }
 
-    // 9.3.4 SetDefaultGlobalBindings
-    fn set_default_global_bindings(&mut self, cx: &mut Context) -> EvalResult<()> {
-        macro_rules! value_prop {
-            ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
-                maybe!(define_property_or_throw(
-                    cx,
-                    self.global_object,
-                    $name,
-                    PropertyDescriptor::data(
-                        $value,
-                        $is_writable,
-                        $is_enumerable,
-                        $is_configurable
-                    )
-                ));
-            };
-        }
-
-        macro_rules! intrinsic_prop {
-            ($name:expr, $intrinsic:ident) => {
-                let value = self.get_intrinsic(Intrinsic::$intrinsic);
-                maybe!(define_property_or_throw(
-                    cx,
-                    self.global_object,
-                    $name,
-                    PropertyDescriptor::data(value.into(), true, false, true)
-                ));
-            };
-        }
-
-        // 19.1 Value Properties of the Global Object
-        value_prop!(
-            "globalThis",
-            self.global_env.global_this_value.into(),
-            true,
-            false,
-            true
-        );
-        value_prop!(
-            "Infinity",
-            Value::number(f64::INFINITY),
-            false,
-            false,
-            false
-        );
-        value_prop!("NaN", Value::nan(), false, false, false);
-        value_prop!("undefined", Value::undefined(), false, false, false);
-
-        // 19.3 Constructor Properties of the Global Object
-        intrinsic_prop!("Array", ArrayConstructor);
-        intrinsic_prop!("Boolean", BooleanConstructor);
-        intrinsic_prop!("Error", ErrorConstructor);
-        intrinsic_prop!("EvalError", EvalErrorConstructor);
-        intrinsic_prop!("Number", NumberConstructor);
-        intrinsic_prop!("Object", ObjectConstructor);
-        intrinsic_prop!("RangeError", RangeErrorConstructor);
-        intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
-        intrinsic_prop!("String", StringConstructor);
-        intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);
-        intrinsic_prop!("TypeError", TypeErrorConstructor);
-        intrinsic_prop!("URIError", URIErrorConstructor);
-
-        // Non-standard, environment specific properties of global object
-        let console_object = ConsoleObject::new(cx, Gc::from_ptr(self)).into();
-        value_prop!("console", console_object, true, false, true);
-
-        ().into()
-    }
-
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
         self.intrinsics.get(intrinsic)
     }
@@ -151,7 +77,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
     cx.push_execution_context(exec_ctx);
 
     realm.set_global_object(cx, None, None);
-    realm.set_default_global_bindings(cx);
+    set_default_global_bindings(cx, realm);
 
     realm
 }

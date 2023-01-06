@@ -73,7 +73,7 @@ impl OrdinaryObject {
             "name".to_owned(),
             Property::data(
                 Value::string(cx.heap.alloc_string(name.to_owned())),
-                true,
+                false,
                 false,
                 true,
             ),
@@ -276,7 +276,7 @@ pub fn validate_and_apply_property_descriptor(
             let is_writable = desc.is_writable.unwrap_or(false);
             let value = desc.value.unwrap_or_else(|| Value::undefined());
 
-            Property::data(value, is_enumerable, is_configurable, is_writable)
+            Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
         object.properties.insert(key.to_string(), property);

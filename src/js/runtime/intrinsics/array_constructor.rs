@@ -25,7 +25,7 @@ impl ArrayConstructor {
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        unimplemented!()
+        unimplemented!("array constructor")
     }
 
     // 23.1.2.2 Array.isArray

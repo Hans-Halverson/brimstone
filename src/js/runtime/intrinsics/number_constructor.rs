@@ -95,6 +95,42 @@ impl NumberConstructor {
             ),
         );
 
+        func.set_property(
+            "EPSILON".to_owned(),
+            Property::data(Value::number(f64::EPSILON), false, false, false),
+        );
+        func.set_property(
+            "MAX_SAFE_INTEGER".to_owned(),
+            Property::data(Value::number(9007199254740991.0), false, false, false),
+        );
+        func.set_property(
+            "MAX_VALUE".to_owned(),
+            Property::data(Value::number(f64::MAX), false, false, false),
+        );
+        func.set_property(
+            "MIN_SAFE_INTEGER".to_owned(),
+            Property::data(Value::number(-9007199254740991.0), false, false, false),
+        );
+        func.set_property(
+            "MIN_VALUE".to_owned(),
+            Property::data(Value::number(f64::MIN), false, false, false),
+        );
+        func.set_property(
+            "NaN".to_owned(),
+            Property::data(Value::nan(), false, false, false),
+        );
+        func.set_property(
+            "NEGATIVE_INFINITY".to_owned(),
+            Property::data(Value::number(f64::NEG_INFINITY), false, false, false),
+        );
+        func.set_property(
+            "POSITIVE_INFINITY".to_owned(),
+            Property::data(Value::number(f64::INFINITY), false, false, false),
+        );
+
+        func.intrinsic_func(cx, "isFinite", Self::is_finite, 1, realm);
+        func.intrinsic_func(cx, "isNaN", Self::is_nan, 1, realm);
+
         func
     }
 
@@ -130,5 +166,35 @@ impl NumberConstructor {
                     .into()
             }
         }
+    }
+
+    // 21.1.2.2 Number.isFinite
+    fn is_finite(
+        _: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !value.is_number() {
+            return false.into();
+        }
+
+        (!value.is_nan() && !value.is_infinity()).into()
+    }
+
+    // 21.1.2.4 Number.isNaN
+    fn is_nan(
+        _: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !value.is_number() {
+            return false.into();
+        }
+
+        value.is_nan().into()
     }
 }

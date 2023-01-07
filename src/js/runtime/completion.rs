@@ -172,56 +172,61 @@ impl<T: Into<Completion>> From<EvalResult<T>> for Completion {
 /// Unwrap an EvalResult, returning if throw
 #[macro_export]
 macro_rules! maybe {
-    ($a:expr) => {
-        match $a {
+    ($a:expr) => {{
+        let result = $a;
+        match result {
             EvalResult::Ok(value) => value,
             EvalResult::Throw(value) => return EvalResult::Throw(value),
         }
-    };
+    }};
 }
 
 /// Unwrap an EvalResult that must never throw
 #[macro_export]
 macro_rules! must {
-    ($a:expr) => {
-        match $a {
+    ($a:expr) => {{
+        let result = $a;
+        match result {
             EvalResult::Ok(value) => value,
             _ => panic!("Unexepcted abnormal completion"),
         }
-    };
+    }};
 }
 
 /// Unwrap a Completion record, returning if abornmal
 #[macro_export]
 macro_rules! maybe_ {
-    ($completion:expr) => {
-        if $completion.is_normal() {
-            $completion.value()
+    ($expr:expr) => {{
+        let completion = $expr;
+        if completion.is_normal() {
+            completion.value()
         } else {
-            return $completion;
+            return completion;
         }
-    };
+    }};
 }
 
 /// Unwrap a Completion record that must be normal
 #[macro_export]
 macro_rules! must_ {
-    ($completion:expr) => {
-        if $completion.is_normal() {
-            $completion.value()
+    ($expr:expr) => {{
+        let completion = $expr;
+        if completion.is_normal() {
+            completion.value()
         } else {
             panic!("Unexepcted abnormal completion")
         }
-    };
+    }};
 }
 
 /// Unwrap an EvalResult, returning a completion if throw
 #[macro_export]
 macro_rules! maybe__ {
-    ($a:expr) => {
-        match $a {
+    ($a:expr) => {{
+        let result = $a;
+        match result {
             EvalResult::Ok(value) => value,
             EvalResult::Throw(value) => return Completion::throw(value),
         }
-    };
+    }};
 }

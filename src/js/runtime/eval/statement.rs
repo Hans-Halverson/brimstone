@@ -16,12 +16,12 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
-            type_utilities::{to_boolean, to_object},
+            type_utilities::{is_strictly_equal, to_boolean, to_object},
             value::Value,
             Context,
         },
     },
-    maybe_, maybe__, must,
+    maybe, maybe__, must,
 };
 
 use super::expression::eval_expression;
@@ -32,7 +32,11 @@ pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Comple
     let mut result = Completion::empty();
     for stmt in stmts {
         let new_result = eval_statement(cx, stmt);
-        maybe_!(new_result);
+
+        if !new_result.is_normal() {
+            return new_result;
+        }
+
         result = new_result.update_if_empty(result.value());
     }
 
@@ -47,7 +51,11 @@ pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Comp
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
                 let new_result = eval_statement(cx, stmt);
-                maybe_!(new_result);
+
+                if !new_result.is_normal() {
+                    return new_result;
+                }
+
                 result = new_result.update_if_empty(result.value());
             }
         }
@@ -69,7 +77,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
-        ast::Statement::Switch(_) => unimplemented!("switch statement"),
+        ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::For(_) => unimplemented!("for statement"),
         ast::Statement::ForEach(_) => unimplemented!("for each statement"),
         ast::Statement::While(stmt) => eval_while_statement(cx, stmt, EMPTY_LABEL),
@@ -366,6 +374,138 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
     completion.update_if_empty(Value::undefined())
 }
 
+// 14.12.2 CaseBlockEvaluation
+fn eval_case_block(
+    cx: &mut Context,
+    stmt: &ast::SwitchStatement,
+    discriminant_value: Value,
+) -> Completion {
+    let mut v = Value::undefined();
+
+    macro_rules! eval_case {
+        ($case:expr) => {{
+            let completion = eval_statement_list(cx, &$case.body);
+
+            if !completion.is_empty() {
+                v = completion.value();
+            }
+
+            if !completion.is_normal() {
+                return completion.update_if_empty(v);
+            }
+        }};
+    }
+
+    let mut is_found = false;
+    let mut default_case_index = stmt.cases.len();
+
+    // Search all cases before the default case
+    for (i, case) in stmt.cases.iter().enumerate() {
+        // Check if this is the default case
+        let case_selector_value = match case.test.as_ref() {
+            None => {
+                default_case_index = i;
+                break;
+            }
+            Some(value) => value,
+        };
+
+        if !is_found {
+            is_found = maybe__!(is_case_clause_selected(
+                cx,
+                case_selector_value,
+                discriminant_value
+            ));
+        }
+
+        if is_found {
+            eval_case!(case);
+        }
+    }
+
+    // Check if there is no default case
+    if default_case_index >= stmt.cases.len() {
+        return v.into();
+    }
+
+    let mut is_found_after_default = false;
+    if !is_found {
+        // Search the remaining cases after the default case
+        for case in &stmt.cases[default_case_index + 1..] {
+            if !is_found_after_default {
+                let case_selector_value = case.test.as_deref().unwrap();
+                is_found_after_default = maybe__!(is_case_clause_selected(
+                    cx,
+                    case_selector_value,
+                    discriminant_value
+                ));
+            }
+
+            if is_found_after_default {
+                eval_case!(case);
+            }
+        }
+    }
+
+    if is_found_after_default {
+        return v.into();
+    }
+
+    // Evaluate the default case
+    let default_case = &stmt.cases[default_case_index];
+    eval_case!(default_case);
+
+    // Now evaluate all cases after the default case
+    for case in &stmt.cases[default_case_index + 1..] {
+        eval_case!(case);
+    }
+
+    v.into()
+}
+
+// 14.12.3 CaseClauseIsSelected
+fn is_case_clause_selected(
+    cx: &mut Context,
+    case_selector_value: &ast::Expression,
+    discriminant_value: Value,
+) -> EvalResult<bool> {
+    let case_selector_value = maybe!(eval_expression(cx, case_selector_value));
+    is_strictly_equal(discriminant_value, case_selector_value).into()
+}
+
+// 14.12.4 Switch Statement Evaluation
+fn eval_switch_statement(
+    cx: &mut Context,
+    stmt: &ast::SwitchStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    let discriminant_value = maybe__!(eval_expression(cx, &stmt.discriminant));
+
+    let mut current_execution_context = cx.current_execution_context();
+    let old_env = current_execution_context.lexical_env;
+    let block_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+
+    block_declaration_instantiation(cx, &stmt.lex_decls, block_env);
+
+    current_execution_context.lexical_env = to_trait_object(block_env);
+
+    let completion = eval_case_block(cx, stmt, discriminant_value);
+
+    current_execution_context.lexical_env = old_env;
+
+    // Inline labeled statement evaluation break handling
+    if completion.kind() == CompletionKind::Break {
+        let label = completion.label();
+        if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+            return Completion::normal(completion.value());
+        } else {
+            return completion;
+        }
+    }
+
+    completion
+}
+
 // 14.13.4 Labeled Statement Evaluation
 fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Completion {
     let label_id = stmt.label.id;
@@ -380,7 +520,7 @@ fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Com
         // Breakable statements handle break completion within statement evaluation
         ast::Statement::While(stmt) => eval_while_statement(cx, stmt, label_id),
         ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, label_id),
-        ast::Statement::Switch(_) => unimplemented!("switch statement"),
+        ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, label_id),
         ast::Statement::For(_) => unimplemented!("for statement"),
         ast::Statement::ForEach(_) => unimplemented!("for each statement"),
         _ => {

@@ -155,7 +155,7 @@ pub fn function_declaration_instantiation(
         for var_decl in func_node.var_decls() {
             must!(var_decl.iter_bound_names(&mut |id| {
                 if instantiated_var_names.insert(&id.name) {
-                    must!(env.create_immutable_binding(cx, id.name.clone(), false));
+                    must!(env.create_mutable_binding(cx, id.name.clone(), false));
                     must!(env.initialize_binding(cx, &id.name, Value::undefined()));
                 }
 

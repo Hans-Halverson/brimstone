@@ -18,13 +18,12 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
-            object_value::ObjectValue,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             value::Value,
             Context,
         },
     },
-    maybe, maybe_, maybe__, must,
+    maybe, maybe__, must,
 };
 
 use super::expression::{eval_expression, eval_identifier_to_reference};

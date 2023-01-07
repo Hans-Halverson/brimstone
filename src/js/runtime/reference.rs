@@ -70,6 +70,14 @@ impl Reference {
         self.is_strict
     }
 
+    // 6.2.4.1 IsPropertyReference
+    pub fn is_property_reference(&self) -> bool {
+        match self.base {
+            ReferenceBase::Value(_) => true,
+            _ => false,
+        }
+    }
+
     // 6.2.4.2 IsUnresolvableReference
     pub fn is_unresolvable_reference(&self) -> bool {
         match self.base {

@@ -1,9 +1,9 @@
 use crate::{
     js::runtime::{
         abstract_operations::define_property_or_throw, builtin_function::BuiltinFunction,
-        console::ConsoleObject, function::get_argument, object_value::ObjectValue,
-        property_descriptor::PropertyDescriptor, type_utilities::to_number, Context, EvalResult,
-        Gc, Realm, Value,
+        console::ConsoleObject, eval::eval::perform_eval, function::get_argument,
+        object_value::ObjectValue, property_descriptor::PropertyDescriptor,
+        type_utilities::to_number, Context, EvalResult, Gc, Realm, Value,
     },
     maybe,
 };
@@ -70,6 +70,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     value_prop!("undefined", Value::undefined(), false, false, false);
 
     // 19.2 Function Properties of the Global Object
+    intrinsic_prop!("eval", Eval);
     func_prop!("isNaN", is_nan, 1);
     func_prop!("isFinite", is_finite, 1);
 
@@ -93,6 +94,20 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     value_prop!("console", console_object, true, false, true);
 
     ().into()
+}
+
+pub fn create_eval(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    BuiltinFunction::create(cx, eval, 1, "eval", Some(realm), None, None)
+}
+
+// 19.2.1 eval
+fn eval(
+    cx: &mut Context,
+    _: Value,
+    arguments: &[Value],
+    _: Option<Gc<ObjectValue>>,
+) -> EvalResult<Value> {
+    perform_eval(cx, get_argument(arguments, 0), false, false)
 }
 
 // 19.2.2 isFinite

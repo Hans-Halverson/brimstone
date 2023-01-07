@@ -18,7 +18,7 @@ pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
     this_binding_status: ThisBindingStatus,
-    function_object: Gc<Function>,
+    pub function_object: Gc<Function>,
     pub new_target: Option<Gc<ObjectValue>>,
 }
 

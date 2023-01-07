@@ -30,6 +30,47 @@ pub enum ParseError {
 // Arbitrary error used to fail try parse
 const FAIL_TRY_PARSED_ERROR: ParseError = ParseError::MalformedNumericLiteral;
 
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ParseError::Io(io_error) => {
+                f.write_str("Error: ")?;
+                return io_error.fmt(f);
+            }
+            ParseError::UnknownToken(token) => write!(f, "Unknown token {}", token),
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),
+            ParseError::ExpectedToken(actual, expected) => {
+                write!(f, "Unexpected token {}, expected {}", actual, expected)
+            }
+            ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
+            ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
+            ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
+            ParseError::ThrowArgumentOnNewLine => {
+                write!(
+                    f,
+                    "No line break is allowed between 'throw' and its expression"
+                )
+            }
+            ParseError::InvalidForLeftHandSide => {
+                write!(f, "Invalid left hand side of for statement")
+            }
+            ParseError::DuplicateLabel => write!(f, "Duplicate label"),
+            ParseError::LabelNotFound => write!(f, "Label not found"),
+            ParseError::WithInStrictMode => {
+                write!(f, "Strict mode code may not contain 'with' statements")
+            }
+            ParseError::InvalidLabeledFunction(true) => write!(f, "Functions cannot be labeled"),
+            ParseError::InvalidLabeledFunction(false) => {
+                write!(f, "Functions can only be labeled inside blocks")
+            }
+            ParseError::ContinueOutsideIterable => write!(f, "Continue must be inside loop"),
+            ParseError::UnlabeledBreakOutsideBreakable => {
+                write!(f, "Unlabeled break must be inside loop or switch")
+            }
+        }
+    }
+}
+
 pub struct LocalizedParseError {
     pub error: ParseError,
     pub source_loc: Option<(Loc, Rc<Source>)>,
@@ -48,49 +89,15 @@ impl Error for LocalizedParseError {}
 
 impl fmt::Display for LocalizedParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message = match &self.error {
-            ParseError::Io(io_error) => {
-                f.write_str("Error: ")?;
-                return io_error.fmt(f);
-            }
-            ParseError::UnknownToken(token) => format!("Unknown token {}", token),
-            ParseError::UnexpectedToken(token) => format!("Unexpected token {}", token),
-            ParseError::ExpectedToken(actual, expected) => {
-                format!("Unexpected token {}, expected {}", actual, expected)
-            }
-            ParseError::UnterminatedStringLiteral => format!("Unterminated string literal"),
-            ParseError::MalformedEscapeSeqence => format!("Malformed escape sequence"),
-            ParseError::MalformedNumericLiteral => format!("Malformed numeric literal"),
-            ParseError::ThrowArgumentOnNewLine => {
-                format!("No line break is allowed between 'throw' and its expression")
-            }
-            ParseError::InvalidForLeftHandSide => {
-                format!("Invalid left hand side of for statement")
-            }
-            ParseError::DuplicateLabel => String::from("Duplicate label"),
-            ParseError::LabelNotFound => String::from("Label not found"),
-            ParseError::WithInStrictMode => {
-                String::from("Strict mode code may not contain 'with' statements")
-            }
-            ParseError::InvalidLabeledFunction(true) => String::from("Functions cannot be labeled"),
-            ParseError::InvalidLabeledFunction(false) => {
-                String::from("Functions can only be labeled inside blocks")
-            }
-            ParseError::ContinueOutsideIterable => String::from("Continue must be inside loop"),
-            ParseError::UnlabeledBreakOutsideBreakable => {
-                String::from("Unlabeled break must be inside loop or switch")
-            }
-        };
-
         match &self.source_loc {
-            None => write!(f, "SyntaxError: {}", message),
+            None => write!(f, "SyntaxError: {}", self.error),
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
                 let (line, col) = find_line_col_for_pos(loc.start, offsets);
                 write!(
                     f,
                     "SyntaxError: {}:{}:{} {}",
-                    source.file_path, line, col, message
+                    source.file_path, line, col, self.error
                 )
             }
         }
@@ -110,7 +117,7 @@ impl From<io::Error> for LocalizedParseError {
 }
 
 pub struct LocalizedParseErrors {
-    errors: Vec<LocalizedParseError>,
+    pub errors: Vec<LocalizedParseError>,
 }
 
 impl LocalizedParseErrors {
@@ -345,7 +352,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_program(&mut self) -> ParseResult<Program> {
+    fn parse_script(&mut self) -> ParseResult<Program> {
         let has_use_strict_directive = self.parse_use_strict_directive()?;
 
         let mut toplevels = vec![];
@@ -2104,11 +2111,11 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn parse_file(source: &Rc<Source>) -> ParseResult<Program> {
+pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
     parser.advance()?;
 
-    Ok(parser.parse_program()?)
+    Ok(parser.parse_script()?)
 }

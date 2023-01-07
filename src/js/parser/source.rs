@@ -12,7 +12,7 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(file_path: &str) -> ParseResult<Source> {
+    pub fn new_from_file(file_path: &str) -> ParseResult<Source> {
         // Read file to string
         let file = File::open(&file_path)?;
         let mut reader = BufReader::new(file);
@@ -20,13 +20,15 @@ impl Source {
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
 
-        let source = Source {
+        Ok(Source::new_from_string(file_path, contents))
+    }
+
+    pub fn new_from_string(file_path: &str, contents: String) -> Source {
+        Source {
             file_path: file_path.to_owned(),
             contents,
             line_offsets: RefCell::new(None),
-        };
-
-        Ok(source)
+        }
     }
 
     pub fn line_offsets(&self) -> &[usize] {

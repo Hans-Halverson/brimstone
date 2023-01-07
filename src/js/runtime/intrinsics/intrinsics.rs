@@ -9,7 +9,7 @@ use crate::{
             array_constructor::ArrayConstructor, boolean_constructor::BooleanConstructor,
             boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
-            function_prototype::FunctionPrototype, native_error::*,
+            function_prototype::FunctionPrototype, global_object::create_eval, native_error::*,
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
             string_constructor::StringConstructor, string_prototype::StringPrototype,
@@ -30,6 +30,7 @@ pub enum Intrinsic {
     BooleanPrototype,
     ErrorConstructor,
     ErrorPrototype,
+    Eval,
     EvalErrorConstructor,
     EvalErrorPrototype,
     FunctionConstructor,
@@ -139,6 +140,9 @@ impl Intrinsics {
         register_intrinsic_pair!(SyntaxErrorPrototype, SyntaxErrorConstructor);
         register_intrinsic_pair!(TypeErrorPrototype, TypeErrorConstructor);
         register_intrinsic_pair!(URIErrorPrototype, URIErrorConstructor);
+
+        // Builtin functions
+        register_existing_intrinsic!(Eval, create_eval(cx, realm).into());
 
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());

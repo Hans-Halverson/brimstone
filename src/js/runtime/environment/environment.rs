@@ -10,7 +10,10 @@ use crate::{
     maybe,
 };
 
-use super::function_environment::FunctionEnvironment;
+use super::{
+    function_environment::FunctionEnvironment, global_environment::GlobalEnvironment,
+    object_environment::ObjectEnvironment,
+};
 
 // 9.1 Environment Record
 pub trait Environment {
@@ -55,6 +58,14 @@ pub trait Environment {
 
     // Downcasts
     fn as_function_environment(&mut self) -> Option<&mut FunctionEnvironment> {
+        None
+    }
+
+    fn as_global_environment(&mut self) -> Option<&mut GlobalEnvironment> {
+        None
+    }
+
+    fn as_object_environment(&mut self) -> Option<&mut ObjectEnvironment> {
         None
     }
 }

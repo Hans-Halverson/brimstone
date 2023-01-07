@@ -1,3 +1,5 @@
+use crate::js::parser::ast;
+
 use super::{
     environment::{
         declarative_environment::DeclarativeEnvironment,
@@ -17,6 +19,10 @@ pub struct Context {
 
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: Gc<dyn Environment>,
+
+    // All ASTs produced by eval in this context. Saved here so that they are not freed while the
+    // context is still running, as they may be needed e.g. due to functions returned from an eval.
+    pub eval_asts: Vec<ast::Program>,
 }
 
 impl Context {
@@ -28,6 +34,7 @@ impl Context {
             execution_context_stack: vec![],
             heap,
             uninit_environment,
+            eval_asts: vec![],
         }
     }
 

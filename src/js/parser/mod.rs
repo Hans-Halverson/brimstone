@@ -9,5 +9,7 @@ mod scope;
 pub mod source;
 mod token;
 
-pub use parser::{parse_file, LocalizedParseError, LocalizedParseErrors, ParseError, ParseResult};
+pub use parser::{
+    parse_script, LocalizedParseError, LocalizedParseErrors, ParseError, ParseResult,
+};
 pub use printer::print_program;

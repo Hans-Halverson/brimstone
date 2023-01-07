@@ -15,8 +15,8 @@ use crate::{
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
-                to_boolean, to_number, to_numeric, to_object, to_primitive, to_property_key,
-                to_string, ToPrimitivePreferredType,
+                same_object_value, to_boolean, to_number, to_numeric, to_object, to_primitive,
+                to_property_key, to_string, ToPrimitivePreferredType,
             },
             value::{
                 Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -29,6 +29,7 @@ use crate::{
 };
 
 use super::{
+    eval::perform_eval,
     function::{
         instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
         method_definition_evaluation,
@@ -279,7 +280,23 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
         Some(reference) => {
             let func_value = maybe!(reference.get_value(cx));
 
-            // TODO: Check for direct call to eval
+            // Check for direct call to eval
+            let eval_func = cx.current_realm().get_intrinsic(Intrinsic::Eval);
+            if func_value.is_object()
+                && same_object_value(func_value.as_object(), eval_func)
+                && !reference.is_property_reference()
+                && reference.name() == "eval"
+            {
+                let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
+                if arg_values.is_empty() {
+                    return Value::undefined().into();
+                }
+
+                let eval_arg = &arg_values[0];
+                let is_strict_caller = cx.current_execution_context().is_strict_mode;
+
+                return perform_eval(cx, eval_arg.clone(), is_strict_caller, true);
+            }
 
             let this_value = match reference.base() {
                 ReferenceBase::Value(_) => reference.get_this_value(),

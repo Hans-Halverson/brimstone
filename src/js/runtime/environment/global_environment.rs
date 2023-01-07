@@ -53,6 +53,10 @@ impl GlobalEnvironment {
 }
 
 impl Environment for GlobalEnvironment {
+    fn as_global_environment(&mut self) -> Option<&mut GlobalEnvironment> {
+        Some(self)
+    }
+
     // 9.1.1.4.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
         if must!(self.decl_env.has_binding(cx, name)) {

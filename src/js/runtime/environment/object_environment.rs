@@ -38,6 +38,10 @@ impl ObjectEnvironment {
 }
 
 impl Environment for ObjectEnvironment {
+    fn as_object_environment(&mut self) -> Option<&mut ObjectEnvironment> {
+        Some(self)
+    }
+
     // 9.1.1.2.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
         if !maybe!(has_property(self.binding_object, name)) {

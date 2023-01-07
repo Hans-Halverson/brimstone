@@ -114,12 +114,13 @@ fn global_declaration_instantiation(
             let func = func_ptr.as_ref();
             let name = &func.id.as_deref().unwrap().name;
 
-            if !maybe__!(env.can_declare_global_function(name)) {
-                return type_error(cx, &format!("cannot declare global function {}", name));
-            }
+            if declared_function_names.insert(name) {
+                if !maybe__!(env.can_declare_global_function(name)) {
+                    return type_error(cx, &format!("cannot declare global function {}", name));
+                }
 
-            declared_function_names.insert(name);
-            functions_to_initialize.push(func);
+                functions_to_initialize.push(func);
+            }
         }
     }
 

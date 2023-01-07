@@ -53,7 +53,7 @@ pub struct Function {
     is_class_constructor: bool,
     // Whether this function has a [[Construct]] internal slot
     has_construct: bool,
-    constructor_kind: ConstructorKind,
+    pub constructor_kind: ConstructorKind,
     pub this_mode: ThisMode,
     // Object properties of this function
     object: OrdinaryObject,

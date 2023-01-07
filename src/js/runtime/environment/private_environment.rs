@@ -12,8 +12,8 @@ pub type PrivateNameId = NonZeroU64;
 
 // 9.2 Private Environment Record
 pub struct PrivateEnvironment {
-    names: HashMap<String, PrivateNameId>,
-    outer: Option<Gc<PrivateEnvironment>>,
+    pub names: HashMap<String, PrivateNameId>,
+    pub outer: Option<Gc<PrivateEnvironment>>,
 }
 
 impl GcDeref for PrivateEnvironment {}

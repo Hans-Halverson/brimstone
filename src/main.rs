@@ -18,8 +18,8 @@ struct Args {
 fn main_impl() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let source = Rc::new(js::parser::source::Source::new(&args.file)?);
-    let mut ast = js::parser::parse_file(&source)?;
+    let source = Rc::new(js::parser::source::Source::new_from_file(&args.file)?);
+    let mut ast = js::parser::parse_script(&source)?;
     js::parser::analyze::analyze(&mut ast, source.clone())?;
 
     let ast = Rc::new(ast);

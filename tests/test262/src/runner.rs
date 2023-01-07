@@ -207,7 +207,7 @@ fn parse_file(
 ) -> js::parser::ParseResult<(js::parser::ast::Program, Rc<js::parser::source::Source>)> {
     let full_path = Path::new(test262_root).join("test").join(file);
 
-    let mut source = js::parser::source::Source::new(full_path.to_str().unwrap())?;
+    let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
     // Manually insert use strict directive when forcing strict mode
     if force_strict_mode {
@@ -215,7 +215,7 @@ fn parse_file(
     }
 
     let source = Rc::new(source);
-    let ast = js::parser::parse_file(&source)?;
+    let ast = js::parser::parse_script(&source)?;
 
     Ok((ast, source))
 }

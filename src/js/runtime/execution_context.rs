@@ -48,7 +48,7 @@ pub fn resolve_binding(
 }
 
 // 9.4.3 GetThisEnvironment
-fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
+pub fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
     let mut current_env = cx.current_execution_context().lexical_env;
     loop {
         if current_env.has_this_binding() {

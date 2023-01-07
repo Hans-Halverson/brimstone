@@ -11,6 +11,7 @@ pub struct Lexer<'a> {
     buf: &'a str,
     current: char,
     pos: Pos,
+    is_new_line_before_current: bool,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
@@ -54,6 +55,7 @@ impl<'a> Lexer<'a> {
             buf: &source.contents,
             current,
             pos: 0,
+            is_new_line_before_current: false,
         }
     }
 
@@ -67,6 +69,10 @@ impl<'a> Lexer<'a> {
     pub fn restore(&mut self, save_state: &SavedLexerState) {
         self.current = save_state.current;
         self.pos = save_state.pos;
+    }
+
+    pub fn is_new_line_before_current(&self) -> bool {
+        self.is_new_line_before_current
     }
 
     #[inline]
@@ -138,17 +144,25 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next(&mut self) -> LexResult {
+        self.is_new_line_before_current = false;
+        self.lex_token()
+    }
+
+    fn lex_token(&mut self) -> LexResult {
         // Skip whitespace
         loop {
             match self.current {
               | ' '
-              | '\n'
               | '\t'
-              | '\r'
               // Vertical tab
               | '\u{000b}'
               // Form feed
               | '\u{000c}' => self.advance(),
+              | '\n'
+              | '\r' => {
+                self.is_new_line_before_current = true;
+                self.advance();
+              }
               | _ => break,
             }
         }
@@ -208,7 +222,7 @@ impl<'a> Lexer<'a> {
                 '/' => {
                     self.advance2();
                     self.skip_line_comment();
-                    self.next()
+                    self.lex_token()
                 }
                 '*' => {
                     self.advance2();
@@ -219,7 +233,7 @@ impl<'a> Lexer<'a> {
                         result?;
                     }
 
-                    self.next()
+                    self.lex_token()
                 }
                 '=' => {
                     self.advance2();
@@ -448,6 +462,7 @@ impl<'a> Lexer<'a> {
             match self.current {
                 '\n' | '\r' => {
                     self.advance();
+                    self.is_new_line_before_current = true;
                     return;
                 }
                 EOF_CHAR => return,
@@ -472,6 +487,10 @@ impl<'a> Lexer<'a> {
                     }
                     _ => self.advance(),
                 },
+                '\n' | '\r' => {
+                    self.advance();
+                    self.is_new_line_before_current = true;
+                }
                 EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
                     return Some(

@@ -17,6 +17,7 @@ pub enum ParseError {
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
+    ThrowArgumentOnNewLine,
     InvalidForLeftHandSide,
     DuplicateLabel,
     LabelNotFound,
@@ -60,6 +61,9 @@ impl fmt::Display for LocalizedParseError {
             ParseError::UnterminatedStringLiteral => format!("Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => format!("Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => format!("Malformed numeric literal"),
+            ParseError::ThrowArgumentOnNewLine => {
+                format!("No line break is allowed between 'throw' and its expression")
+            }
             ParseError::InvalidForLeftHandSide => {
                 format!("Invalid left hand side of for statement")
             }
@@ -68,15 +72,13 @@ impl fmt::Display for LocalizedParseError {
             ParseError::WithInStrictMode => {
                 String::from("Strict mode code may not contain 'with' statements")
             }
-            ParseError::InvalidLabeledFunction(true) => {
-                String::from("functions cannot be labelled")
-            }
+            ParseError::InvalidLabeledFunction(true) => String::from("Functions cannot be labeled"),
             ParseError::InvalidLabeledFunction(false) => {
-                String::from("functions can only be labelled inside blocks")
+                String::from("Functions can only be labeled inside blocks")
             }
-            ParseError::ContinueOutsideIterable => String::from("continue must be inside loop"),
+            ParseError::ContinueOutsideIterable => String::from("Continue must be inside loop"),
             ParseError::UnlabeledBreakOutsideBreakable => {
-                String::from("unlabeld break must be inside loop or switch")
+                String::from("Unlabeled break must be inside loop or switch")
             }
         };
 
@@ -308,6 +310,41 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // Expect a semicolon, or insert one via automatic semicolon insertion if possible. Error if
+    // a semicolon was not present and one could not be inserted.
+    fn expect_semicolon(&mut self) -> ParseResult<()> {
+        match &self.token {
+            Token::Semicolon => {
+                self.advance()?;
+                Ok(())
+            }
+            Token::RightBrace | Token::Eof => Ok(()),
+            other => {
+                if self.lexer.is_new_line_before_current() {
+                    Ok(())
+                } else {
+                    self.error(
+                        self.loc,
+                        ParseError::ExpectedToken(other.clone(), Token::Semicolon),
+                    )
+                }
+            }
+        }
+    }
+
+    // Consume a semicolon if present and return true, otherwise return if a semicolon could be
+    // inserted via automatic semicolon insertion.
+    fn maybe_expect_semicolon(&mut self) -> ParseResult<bool> {
+        match &self.token {
+            Token::Semicolon => {
+                self.advance()?;
+                Ok(true)
+            }
+            Token::RightBrace | Token::Eof => Ok(true),
+            _ => Ok(self.lexer.is_new_line_before_current()),
+        }
+    }
+
     fn parse_program(&mut self) -> ParseResult<Program> {
         let has_use_strict_directive = self.parse_use_strict_directive()?;
 
@@ -375,7 +412,7 @@ impl<'a> Parser<'a> {
             Token::Debugger => {
                 let start_pos = self.current_start_pos();
                 self.advance()?;
-                self.expect(Token::Semicolon)?;
+                self.expect_semicolon()?;
 
                 Ok(Statement::Debugger(self.mark_loc(start_pos)))
             }
@@ -403,7 +440,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Otherwise must be an expression statement
-                self.expect(Token::Semicolon)?;
+                self.expect_semicolon()?;
                 let loc = self.mark_loc(start_pos);
 
                 Ok(Statement::Expr(ExpressionStatement { loc, expr }))
@@ -469,7 +506,7 @@ impl<'a> Parser<'a> {
         }
 
         if !is_for_init {
-            self.expect(Token::Semicolon)?;
+            self.expect_semicolon()?;
         }
 
         let loc = self.mark_loc(start_pos);
@@ -829,7 +866,11 @@ impl<'a> Parser<'a> {
         self.expect(Token::LeftParen)?;
         let test = self.parse_expression()?;
         self.expect(Token::RightParen)?;
-        self.expect(Token::Semicolon)?;
+
+        // A semicolon is always automatically inserted after a do while statement
+        if self.token == Token::Semicolon {
+            self.advance()?;
+        }
 
         let loc = self.mark_loc(start_pos);
 
@@ -906,8 +947,12 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
+        if self.lexer.is_new_line_before_current() {
+            return self.error(self.loc, ParseError::ThrowArgumentOnNewLine);
+        }
+
         let argument = self.parse_expression()?;
-        self.expect(Token::Semicolon)?;
+        self.expect_semicolon()?;
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::Throw(ThrowStatement { loc, argument }))
@@ -917,13 +962,14 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let argument = if self.token == Token::Semicolon {
+        let argument = if self.maybe_expect_semicolon()? {
             None
         } else {
-            Some(self.parse_expression()?)
+            let argument = self.parse_expression()?;
+            self.expect_semicolon()?;
+            Some(argument)
         };
 
-        self.expect(Token::Semicolon)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::Return(ReturnStatement { loc, argument }))
@@ -933,13 +979,14 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let label = if self.token == Token::Semicolon {
+        let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            Some(Label::new(p(self.parse_identifier()?)))
+            let label = Label::new(p(self.parse_identifier()?));
+            self.expect_semicolon()?;
+            Some(label)
         };
 
-        self.expect(Token::Semicolon)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::Break(BreakStatement { loc, label }))
@@ -949,13 +996,14 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let label = if self.token == Token::Semicolon {
+        let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            Some(Label::new(p(self.parse_identifier()?)))
+            let label = Label::new(p(self.parse_identifier()?));
+            self.expect_semicolon()?;
+            Some(label)
         };
 
-        self.expect(Token::Semicolon)?;
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::Continue(ContinueStatement { loc, label }))
@@ -1357,10 +1405,16 @@ impl<'a> Parser<'a> {
                 ),
 
             // Update expressions
-            Token::Increment if precedence.is_weaker_than(Precedence::PostfixUpdate) => {
+            Token::Increment
+                if precedence.is_weaker_than(Precedence::PostfixUpdate)
+                    && !self.lexer.is_new_line_before_current() =>
+            {
                 self.parse_update_expression_postfix(left, start_pos, UpdateOperator::Increment)
             }
-            Token::Decrement if precedence.is_weaker_than(Precedence::PostfixUpdate) => {
+            Token::Decrement
+                if precedence.is_weaker_than(Precedence::PostfixUpdate)
+                    && !self.lexer.is_new_line_before_current() =>
+            {
                 self.parse_update_expression_postfix(left, start_pos, UpdateOperator::Decrement)
             }
 

@@ -1,3 +1,5 @@
+use crate::js::parser::ast::LabelId;
+
 use super::{
     gc::Gc,
     object_value::ObjectValue,
@@ -16,11 +18,11 @@ pub enum CompletionKind {
 
 pub struct Completion {
     kind: CompletionKind,
-    label: u16,
+    label: LabelId,
     value: Value,
 }
 
-const EMPTY_LABEL: u16 = 0;
+pub const EMPTY_LABEL: u16 = 0;
 
 impl Completion {
     #[inline]
@@ -51,6 +53,24 @@ impl Completion {
     }
 
     #[inline]
+    pub const fn break_(label: LabelId) -> Completion {
+        Completion {
+            kind: CompletionKind::Break,
+            label,
+            value: Value::empty(),
+        }
+    }
+
+    #[inline]
+    pub const fn continue_(label: LabelId) -> Completion {
+        Completion {
+            kind: CompletionKind::Continue,
+            label,
+            value: Value::empty(),
+        }
+    }
+
+    #[inline]
     pub const fn empty() -> Completion {
         Completion::normal(Value::empty())
     }
@@ -63,6 +83,11 @@ impl Completion {
     #[inline]
     pub fn value(&self) -> Value {
         self.value
+    }
+
+    #[inline]
+    pub fn label(&self) -> LabelId {
+        self.label
     }
 
     #[inline]

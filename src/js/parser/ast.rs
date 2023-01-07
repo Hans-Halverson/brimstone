@@ -434,7 +434,7 @@ pub struct LabeledStatement {
     pub body: P<Statement>,
 }
 
-pub type LabelId = u32;
+pub type LabelId = u16;
 
 pub struct Label {
     pub label: P<Identifier>,

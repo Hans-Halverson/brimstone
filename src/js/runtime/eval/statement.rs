@@ -1,8 +1,8 @@
 use crate::{
     js::{
-        parser::ast::{self, LexDecl, WithDecls},
+        parser::ast::{self, LabelId, LexDecl, WithDecls},
         runtime::{
-            completion::{Completion, CompletionKind, EvalResult},
+            completion::{Completion, CompletionKind, EvalResult, EMPTY_LABEL},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
@@ -72,15 +72,15 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::Switch(_) => unimplemented!("switch statement"),
         ast::Statement::For(_) => unimplemented!("for statement"),
         ast::Statement::ForEach(_) => unimplemented!("for each statement"),
-        ast::Statement::While(_) => unimplemented!("while statement"),
-        ast::Statement::DoWhile(_) => unimplemented!("do while statement"),
+        ast::Statement::While(stmt) => eval_while_statement(cx, stmt, EMPTY_LABEL),
+        ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::With(stmt) => eval_with_statement(cx, stmt),
         ast::Statement::Try(stmt) => eval_try_statement(cx, stmt),
         ast::Statement::Throw(stmt) => eval_throw_statement(cx, stmt),
         ast::Statement::Return(stmt) => eval_return_statement(cx, stmt),
-        ast::Statement::Break(_) => unimplemented!("break statement"),
-        ast::Statement::Continue(_) => unimplemented!("continue statement"),
-        ast::Statement::Labeled(_) => unimplemented!("labeled statement"),
+        ast::Statement::Break(stmt) => eval_break_statement(stmt),
+        ast::Statement::Continue(stmt) => eval_continue_statement(stmt),
+        ast::Statement::Labeled(stmt) => eval_labeled_statement(cx, stmt),
         ast::Statement::Empty(_) => eval_empty_statement(),
         ast::Statement::Debugger(_) => eval_debugger_statement(),
     }
@@ -231,6 +231,109 @@ fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
     completion.update_if_empty(Value::undefined())
 }
 
+// 14.7.1.1 LoopContinues
+#[inline]
+fn loop_continues(completion: &Completion, stmt_label_id: LabelId) -> bool {
+    match completion.kind() {
+        CompletionKind::Normal => true,
+        CompletionKind::Break | CompletionKind::Return | CompletionKind::Throw => false,
+        CompletionKind::Continue => {
+            let label = completion.label();
+            (label == EMPTY_LABEL) || (label == stmt_label_id)
+        }
+    }
+}
+
+// 14.7.2.2 Do While Statement Evaluation
+fn eval_do_while_statement(
+    cx: &mut Context,
+    stmt: &ast::DoWhileStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    let mut value = Value::undefined();
+    loop {
+        let body_result = eval_statement(cx, &stmt.body);
+
+        if !loop_continues(&body_result, stmt_label_id) {
+            let body_result = body_result.update_if_empty(value);
+
+            // Inline labeled statement evaluation break handling
+            if body_result.kind() == CompletionKind::Break {
+                let label = body_result.label();
+                if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+                    return Completion::normal(body_result.value());
+                } else {
+                    return body_result;
+                }
+            }
+
+            return body_result;
+        }
+
+        if !body_result.value().is_empty() {
+            value = body_result.value()
+        }
+
+        let test_value = maybe__!(eval_expression(cx, &stmt.test));
+        if !to_boolean(test_value) {
+            return value.into();
+        }
+    }
+}
+
+// 14.7.3.2 While Statement Evaluation
+fn eval_while_statement(
+    cx: &mut Context,
+    stmt: &ast::WhileStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    let mut value = Value::undefined();
+    loop {
+        let test_value = maybe__!(eval_expression(cx, &stmt.test));
+        if !to_boolean(test_value) {
+            return value.into();
+        }
+
+        let body_result = eval_statement(cx, &stmt.body);
+
+        if !loop_continues(&body_result, stmt_label_id) {
+            let body_result = body_result.update_if_empty(value);
+
+            // Inline labeled statement evaluation break handling
+            if body_result.kind() == CompletionKind::Break {
+                let label = body_result.label();
+                if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+                    return Completion::normal(body_result.value());
+                } else {
+                    return body_result;
+                }
+            }
+
+            return body_result;
+        }
+
+        if !body_result.value().is_empty() {
+            value = body_result.value()
+        }
+    }
+}
+
+// 14.8.2 Continue Statement Evaluation
+fn eval_continue_statement(stmt: &ast::ContinueStatement) -> Completion {
+    match stmt.label.as_ref() {
+        None => Completion::continue_(EMPTY_LABEL),
+        Some(label) => Completion::continue_(label.id),
+    }
+}
+
+// 14.9.2 Break Statement Evaluation
+fn eval_break_statement(stmt: &ast::BreakStatement) -> Completion {
+    match stmt.label.as_ref() {
+        None => Completion::break_(EMPTY_LABEL),
+        Some(label) => Completion::break_(label.id),
+    }
+}
+
 // 14.10.1 Return Statement Evaluation
 fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Completion {
     let return_value = if let Some(ref argument) = stmt.argument {
@@ -261,6 +364,35 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
     current_execution_context.lexical_env = old_env;
 
     completion.update_if_empty(Value::undefined())
+}
+
+// 14.13.4 Labeled Statement Evaluation
+fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Completion {
+    let label_id = stmt.label.id;
+
+    // Find the innermost labeled statement
+    let mut inner_stmt = stmt;
+    while let ast::Statement::Labeled(labeled_stmt) = inner_stmt.body.as_ref() {
+        inner_stmt = labeled_stmt;
+    }
+
+    match inner_stmt.body.as_ref() {
+        // Breakable statements handle break completion within statement evaluation
+        ast::Statement::While(stmt) => eval_while_statement(cx, stmt, label_id),
+        ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, label_id),
+        ast::Statement::Switch(_) => unimplemented!("switch statement"),
+        ast::Statement::For(_) => unimplemented!("for statement"),
+        ast::Statement::ForEach(_) => unimplemented!("for each statement"),
+        _ => {
+            // Only labeled breaks allowed for all other statements
+            let completion = eval_statement(cx, inner_stmt.body.as_ref());
+            if completion.kind() == CompletionKind::Break && completion.label() == label_id {
+                return Completion::normal(completion.value());
+            } else {
+                return completion;
+            }
+        }
+    }
 }
 
 // 14.14.1 Throw Statement Evaluation

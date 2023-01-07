@@ -22,6 +22,8 @@ pub enum ParseError {
     LabelNotFound,
     WithInStrictMode,
     InvalidLabeledFunction(bool),
+    ContinueOutsideIterable,
+    UnlabeledBreakOutsideBreakable,
 }
 
 // Arbitrary error used to fail try parse
@@ -71,6 +73,10 @@ impl fmt::Display for LocalizedParseError {
             }
             ParseError::InvalidLabeledFunction(false) => {
                 String::from("functions can only be labelled inside blocks")
+            }
+            ParseError::ContinueOutsideIterable => String::from("continue must be inside loop"),
+            ParseError::UnlabeledBreakOutsideBreakable => {
+                String::from("unlabeld break must be inside loop or switch")
             }
         };
 

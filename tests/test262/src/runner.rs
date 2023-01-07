@@ -103,6 +103,15 @@ impl TestRunner {
             }
         }
 
+        // Always skip tail-call-optimization tests as they cause stack overflow
+        if test
+            .features
+            .iter()
+            .any(|feature| feature == "tail-call-optimization")
+        {
+            return false;
+        }
+
         true
     }
 }

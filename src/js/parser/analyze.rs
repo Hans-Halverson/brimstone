@@ -13,23 +13,41 @@ use super::{
 pub struct Analyzer {
     // Current source that is being analyzed
     source: Rc<Source>,
+    // Accumulator or errors reported during analysis
+    errors: Vec<LocalizedParseError>,
     scope_builder: ScopeBuilder,
     // Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     // Set of labels defined where the visitor is currently in
-    current_labels: HashMap<String, LabelId>,
-    // Accumulator or errors reported during analysis
-    errors: Vec<LocalizedParseError>,
+    labels: HashMap<String, LabelId>,
+    // Number of labeled statements that the visitor is currently inside. Multiple labels on the
+    // same statement all count as a single "label depth", and will receive the same label id.
+    label_depth: LabelId,
+    // Number of nested breakable statements the visitor is currently inside
+    breakable_depth: usize,
+    // Number of nested iterable statements the visitor is currently inside
+    iterable_depth: usize,
+}
+
+// Saved state from entering a function that can be restored from
+struct FunctionSavedState {
+    labels: HashMap<String, LabelId>,
+    label_depth: LabelId,
+    breakable_depth: usize,
+    iterable_depth: usize,
 }
 
 impl<'a> Analyzer {
     pub fn new(source: Rc<Source>) -> Analyzer {
         Analyzer {
             source,
+            errors: Vec::new(),
             scope_builder: ScopeBuilder::new(),
             strict_mode_context_depth: 0,
-            current_labels: HashMap::new(),
-            errors: Vec::new(),
+            labels: HashMap::new(),
+            label_depth: 0,
+            breakable_depth: 0,
+            iterable_depth: 0,
         }
     }
 
@@ -48,6 +66,60 @@ impl<'a> Analyzer {
     fn emit_error(&mut self, loc: Loc, error: ParseError) {
         let source_loc = Some((loc, self.source.clone()));
         self.errors.push(LocalizedParseError { error, source_loc })
+    }
+
+    fn inc_breakable_depth(&mut self) {
+        self.breakable_depth += 1;
+    }
+
+    fn dec_breakable_depth(&mut self) {
+        self.breakable_depth -= 1;
+    }
+
+    fn inc_iterable_depth(&mut self) {
+        // Every iterable is also breakable
+        self.iterable_depth += 1;
+        self.inc_breakable_depth();
+    }
+
+    fn dec_iterable_depth(&mut self) {
+        // Every iterable is also breakable
+        self.iterable_depth -= 1;
+        self.dec_breakable_depth();
+    }
+
+    fn is_in_breakable(&self) -> bool {
+        self.breakable_depth > 0
+    }
+
+    fn is_in_iterable(&self) -> bool {
+        self.iterable_depth > 0
+    }
+
+    // Save state before visiting a function. This prevents labels and some context from leaking
+    // into the inner function.
+    fn save_function_state(&mut self) -> FunctionSavedState {
+        let mut state = FunctionSavedState {
+            labels: HashMap::new(),
+            label_depth: self.label_depth,
+            breakable_depth: self.breakable_depth,
+            iterable_depth: self.iterable_depth,
+        };
+
+        std::mem::swap(&mut self.labels, &mut state.labels);
+        self.label_depth = 0;
+        self.breakable_depth = 0;
+        self.iterable_depth = 0;
+
+        state
+    }
+
+    // Restore state after visiting a function
+    fn restore_function_state(&mut self, mut state: FunctionSavedState) {
+        std::mem::swap(&mut self.labels, &mut state.labels);
+        self.label_depth = state.label_depth;
+        self.breakable_depth = state.breakable_depth;
+        self.iterable_depth = state.iterable_depth;
     }
 }
 
@@ -84,7 +156,11 @@ impl<'a> AstVisitor for Analyzer {
 
     fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement) {
         self.scope_builder.enter_switch_scope(stmt);
+        self.inc_breakable_depth();
+
         default_visit_switch_statement(self, stmt);
+
+        self.dec_breakable_depth();
         self.scope_builder.exit_scope();
     }
 
@@ -94,9 +170,11 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_labeled_statement(&mut self, stmt: &mut LabeledStatement) {
-        let is_duplicate = self.enter_label_scope(stmt);
-        default_visit_labeled_statement(self, stmt);
-        self.exit_label_scope(&stmt.label.label.name, is_duplicate);
+        let (inner_stmt, label_stack) = self.push_all_labels(stmt);
+
+        self.visit_statement(inner_stmt);
+
+        self.pop_all_labels(label_stack);
     }
 
     fn visit_function_expression(&mut self, func: &mut Function) {
@@ -111,11 +189,19 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_break_statement(&mut self, stmt: &mut BreakStatement) {
-        self.visit_label_use(stmt.label.as_mut())
+        self.visit_label_use(stmt.label.as_mut());
+
+        if stmt.label.is_none() && !self.is_in_breakable() {
+            self.emit_error(stmt.loc, ParseError::UnlabeledBreakOutsideBreakable);
+        }
     }
 
     fn visit_continue_statement(&mut self, stmt: &mut ContinueStatement) {
-        self.visit_label_use(stmt.label.as_mut())
+        self.visit_label_use(stmt.label.as_mut());
+
+        if !self.is_in_iterable() {
+            self.emit_error(stmt.loc, ParseError::ContinueOutsideIterable);
+        }
     }
 
     fn visit_with_statement(&mut self, stmt: &mut WithStatement) {
@@ -138,27 +224,39 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_while_statement(&mut self, stmt: &mut WhileStatement) {
-        self.check_for_labeled_function(&stmt.body);
+        self.inc_iterable_depth();
 
+        self.check_for_labeled_function(&stmt.body);
         default_visit_while_statement(self, stmt);
+
+        self.dec_iterable_depth();
     }
 
     fn visit_do_while_statement(&mut self, stmt: &mut DoWhileStatement) {
-        self.check_for_labeled_function(&stmt.body);
+        self.inc_iterable_depth();
 
+        self.check_for_labeled_function(&stmt.body);
         default_visit_do_while_statement(self, stmt);
+
+        self.dec_iterable_depth();
     }
 
     fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
-        self.check_for_labeled_function(&stmt.body);
+        self.inc_iterable_depth();
 
+        self.check_for_labeled_function(&stmt.body);
         default_visit_for_statement(self, stmt);
+
+        self.dec_iterable_depth();
     }
 
     fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
-        self.check_for_labeled_function(&stmt.body);
+        self.inc_iterable_depth();
 
+        self.check_for_labeled_function(&stmt.body);
         default_visit_for_each_statement(self, stmt);
+
+        self.dec_iterable_depth();
     }
 }
 
@@ -171,27 +269,15 @@ impl Analyzer {
             }
             // Find statement under labels, if it is a function it is a var scoped decl
             Statement::Labeled(ref mut labeled_stmt) => {
-                // Enter label scopes and collect labels as we descend
-                let mut labels = vec![];
-                let is_label_duplicate = self.enter_label_scope(labeled_stmt);
-                labels.push((labeled_stmt.label.label.name.clone(), is_label_duplicate));
-
-                let mut inner_stmt = labeled_stmt.body.as_mut();
-                while let Statement::Labeled(labeled_stmt) = inner_stmt {
-                    let is_label_duplicate = self.enter_label_scope(labeled_stmt);
-                    labels.push((labeled_stmt.label.label.name.clone(), is_label_duplicate));
-
-                    inner_stmt = labeled_stmt.body.as_mut()
-                }
+                let (inner_stmt, label_stack) = self.push_all_labels(labeled_stmt);
 
                 if let Statement::FuncDecl(func_decl) = inner_stmt {
-                    self.visit_function_declaration_common(func_decl, false)
+                    self.visit_function_declaration_common(func_decl, false);
+                } else {
+                    self.visit_statement(inner_stmt);
                 }
 
-                // Exit all label scopes in reverse order that they were entered
-                for (label_name, is_duplicate) in labels.iter().rev() {
-                    self.exit_label_scope(label_name, *is_duplicate)
-                }
+                self.pop_all_labels(label_stack);
             }
             _ => self.visit_statement(stmt),
         }
@@ -204,6 +290,9 @@ impl Analyzer {
     }
 
     fn visit_function_common(&mut self, func: &mut Function) {
+        // Save analyzer context before descending into function
+        let saved_state = self.save_function_state();
+
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_pattern);
 
@@ -296,20 +385,61 @@ impl Analyzer {
         if func.has_use_strict_directive {
             self.exit_strict_mode_context();
         }
+
+        // Restore analyzer context after visiting function
+        self.restore_function_state(saved_state);
     }
 
-    fn enter_label_scope(&mut self, stmt: &mut LabeledStatement) -> bool {
+    // Visit all nested labeled statements, adding labels to scope and returning the inner
+    // non-labeled statement. Labels that are directly nested within each other all have the same
+    // label id.
+    fn push_all_labels<'a>(
+        &mut self,
+        stmt: &'a mut LabeledStatement,
+    ) -> (&'a mut Statement, Vec<(String, bool)>) {
+        // Always use 1 more than the current lable depth, so that a label id of 0 marks the
+        // empty label.
+        let label_id = self.label_depth + 1;
+        self.label_depth += 1;
+
+        let mut labels = vec![];
+        // Deep track of duplicate labels so that we don't pop the duplicate labels at the end
+        let is_label_duplicate = self.visit_label_def(stmt, label_id);
+        labels.push((stmt.label.label.name.clone(), is_label_duplicate));
+
+        let mut inner_stmt = stmt.body.as_mut();
+        while let Statement::Labeled(stmt) = inner_stmt {
+            let is_label_duplicate = self.visit_label_def(stmt, label_id);
+            labels.push((stmt.label.label.name.clone(), is_label_duplicate));
+
+            inner_stmt = stmt.body.as_mut()
+        }
+
+        (inner_stmt, labels)
+    }
+
+    fn pop_all_labels(&mut self, label_stack: Vec<(String, bool)>) {
+        // Exit all label scopes in reverse order that they were entered
+        for (label_name, is_duplicate) in label_stack.iter().rev() {
+            if !is_duplicate {
+                self.labels.remove(label_name);
+            }
+        }
+
+        self.label_depth -= 1;
+    }
+
+    fn visit_label_def(&mut self, stmt: &mut LabeledStatement, label_id: LabelId) -> bool {
         let label_name = &stmt.label.label.name;
-        let is_duplicate = self.current_labels.contains_key(label_name);
+        let is_duplicate = self.labels.contains_key(label_name);
 
         if is_duplicate {
             self.emit_error(stmt.label.label.loc, ParseError::DuplicateLabel);
         } else {
-            let label_id = self.current_labels.len() as u32;
-            self.current_labels.insert(label_name.clone(), label_id);
-
-            stmt.label.id = label_id;
+            self.labels.insert(label_name.clone(), label_id);
         }
+
+        stmt.label.id = label_id;
 
         // Annex B: Always error on labeled function declarations in strict mode
         if self.is_in_strict_mode_context() {
@@ -345,15 +475,9 @@ impl Analyzer {
         }
     }
 
-    fn exit_label_scope(&mut self, label_name: &str, is_duplicate: bool) {
-        if !is_duplicate {
-            self.current_labels.remove(label_name);
-        }
-    }
-
     fn visit_label_use(&mut self, label: Option<&mut Label>) {
         if let Some(label) = label {
-            match self.current_labels.get(&label.label.name) {
+            match self.labels.get(&label.label.name) {
                 None => self.emit_error(label.label.loc, ParseError::LabelNotFound),
                 Some(label_id) => {
                     label.id = *label_id;

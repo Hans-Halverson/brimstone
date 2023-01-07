@@ -11,8 +11,8 @@ use crate::{
 use brimstone::js::{
     self,
     runtime::{
-        eval_script, get, initialize_host_defined_realm, to_console_string, Completion,
-        CompletionKind, Context, EvalResult, Gc, Realm,
+        eval_script, get, initialize_host_defined_realm, to_console_string, to_string, Completion,
+        CompletionKind, Context, EvalResult, Gc, Realm, Value,
     },
 };
 
@@ -283,10 +283,10 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                         }
                     } else if type_ == "Test262Error" {
                         // The Test262Error does not extend the Error type or have a name property,
-                        // so check the if the message property starts with "Test262Error".
-                        match get(cx, thrown_object, "message") {
-                            EvalResult::Ok(message_value) if message_value.is_string() => {
-                                message_value.as_string().str().starts_with("Test262Error")
+                        // so check the if the message starts with "Test262Error".
+                        match to_string(cx, thrown_value) {
+                            EvalResult::Ok(message_value) => {
+                                message_value.str().starts_with("Test262Error")
                             }
                             _ => false,
                         }
@@ -300,7 +300,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                 if is_expected_error {
                     TestResult::success(test)
                 } else {
-                    let thrown_string = to_console_string(cx, thrown_value);
+                    let thrown_string = to_console_string_test262(cx, thrown_value);
                     TestResult::failure(
                         test,
                         format!(
@@ -312,7 +312,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                 }
             }
             other => {
-                let thrown_string = to_console_string(cx, completion.value());
+                let thrown_string = to_console_string_test262(cx, completion.value());
                 TestResult::failure(
                     test,
                     format!(
@@ -329,6 +329,23 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
             String::from("Unexpected abnormal completion when evaluating file"),
         ),
     }
+}
+
+fn to_console_string_test262(cx: &mut Context, value: Value) -> String {
+    // Extract message for Test262Error, otherwise print to console normally
+    if value.is_object() {
+        match to_string(cx, value) {
+            EvalResult::Ok(message_value) => {
+                let message = message_value.str();
+                if message.starts_with("Test262Error") {
+                    return String::from(message);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    to_console_string(cx, value)
 }
 
 struct TestResult {

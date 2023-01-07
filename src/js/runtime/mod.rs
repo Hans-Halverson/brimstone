@@ -26,4 +26,5 @@ pub use context::Context;
 pub use eval::{evaluate::evaluate, script::eval_script};
 pub use gc::Gc;
 pub use realm::{initialize_host_defined_realm, Realm};
+pub use type_utilities::to_string;
 pub use value::Value;

@@ -367,6 +367,7 @@ pub struct ForEachStatement {
     pub is_await: bool,
 }
 
+#[derive(PartialEq)]
 pub enum ForEachKind {
     In,
     Of,

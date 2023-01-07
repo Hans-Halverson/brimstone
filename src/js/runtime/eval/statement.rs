@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     js::{
         parser::ast::{self, LabelId, LexDecl, WithDecls},
@@ -16,15 +18,16 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
+            object_value::ObjectValue,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             value::Value,
             Context,
         },
     },
-    maybe, maybe__, must,
+    maybe, maybe_, maybe__, must,
 };
 
-use super::expression::eval_expression;
+use super::expression::{eval_expression, eval_identifier_to_reference};
 
 // 14.2.2 StatementList Evaluation
 pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Completion {
@@ -79,7 +82,13 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
         ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::For(_) => unimplemented!("for statement"),
-        ast::Statement::ForEach(_) => unimplemented!("for each statement"),
+        ast::Statement::ForEach(stmt) => {
+            if stmt.kind == ast::ForEachKind::In {
+                eval_for_in_statement(cx, stmt, EMPTY_LABEL)
+            } else {
+                unimplemented!("for of statement")
+            }
+        }
         ast::Statement::While(stmt) => eval_while_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::With(stmt) => eval_with_statement(cx, stmt),
@@ -326,6 +335,181 @@ fn eval_while_statement(
     }
 }
 
+// 14.7.5.6 ForIn/OfHeadEvaluation
+// Only contains the shared part between enumerate and iterate.
+fn for_each_head_evaluation_shared(
+    cx: &mut Context,
+    stmt: &ast::ForEachStatement,
+) -> EvalResult<Value> {
+    match stmt.left.as_ref() {
+        ast::ForEachInit::Pattern(_)
+        | ast::ForEachInit::VarDecl(ast::VariableDeclaration {
+            kind: ast::VarKind::Var,
+            ..
+        }) => eval_expression(cx, &stmt.right),
+        ast::ForEachInit::VarDecl(
+            var_decl @ ast::VariableDeclaration {
+                kind: ast::VarKind::Let | ast::VarKind::Const,
+                ..
+            },
+        ) => {
+            let mut current_execution_context = cx.current_execution_context();
+            let old_env = current_execution_context.lexical_env;
+            let mut new_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+
+            must!(var_decl.iter_bound_names(&mut |id| {
+                new_env.create_mutable_binding(cx, id.name.clone(), false)
+            }));
+
+            current_execution_context.lexical_env = to_trait_object(new_env);
+
+            let result = eval_expression(cx, &stmt.right);
+
+            current_execution_context.lexical_env = old_env;
+
+            result
+        }
+    }
+}
+
+// 14.7.5.7 ForIn/OfBodyEvaluation
+// Only contains the shared part between enumerate and iterate.
+fn for_each_body_evaluation_shared(
+    cx: &mut Context,
+    stmt: &ast::ForEachStatement,
+    right_value: Value,
+) -> EvalResult<()> {
+    let mut current_execution_context = cx.current_execution_context();
+    let old_env = current_execution_context.lexical_env;
+
+    match stmt.left.as_ref() {
+        ast::ForEachInit::Pattern(_) => unimplemented!("for each: pattern left hand side"),
+        ast::ForEachInit::VarDecl(ast::VariableDeclaration {
+            kind: ast::VarKind::Var,
+            declarations,
+            ..
+        }) => match declarations[0].id.as_ref() {
+            ast::Pattern::Id(id) => {
+                let reference_completion = eval_identifier_to_reference(cx, id);
+                match reference_completion {
+                    EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
+                    EvalResult::Ok(mut reference) => reference.put_value(cx, right_value),
+                }
+            }
+            _ => {
+                unimplemented!("destructuring patterns")
+            }
+        },
+        ast::ForEachInit::VarDecl(
+            var_decl @ ast::VariableDeclaration {
+                kind: kind @ (ast::VarKind::Let | ast::VarKind::Const),
+                declarations,
+                ..
+            },
+        ) => {
+            let mut iteration_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+
+            // 14.7.5.4 ForDeclarationBindingInstantiation
+            must!(var_decl.iter_bound_names(&mut |id| {
+                if *kind == ast::VarKind::Const {
+                    iteration_env.create_immutable_binding(cx, id.name.clone(), true)
+                } else {
+                    iteration_env.create_mutable_binding(cx, id.name.clone(), true)
+                }
+            }));
+
+            current_execution_context.lexical_env = to_trait_object(iteration_env);
+
+            match declarations[0].id.as_ref() {
+                ast::Pattern::Id(id) => {
+                    let reference_completion = eval_identifier_to_reference(cx, id);
+                    match reference_completion {
+                        EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
+                        EvalResult::Ok(mut reference) => {
+                            reference.initialize_referenced_binding(cx, right_value)
+                        }
+                    }
+                }
+                _ => {
+                    unimplemented!("destructuring patterns")
+                }
+            }
+        }
+    }
+}
+
+fn eval_for_in_statement(
+    cx: &mut Context,
+    stmt: &ast::ForEachStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    let right_value = maybe__!(for_each_head_evaluation_shared(cx, stmt));
+
+    // Part of ForIn/OfHeadEvaluation that is specific to enumeration
+    if right_value.is_nullish() {
+        return Completion::break_(EMPTY_LABEL);
+    }
+
+    let object_value = maybe__!(to_object(cx, right_value));
+    let mut value = Value::undefined();
+
+    // 14.7.5.9 EnumerateObjectProperties inlined
+    // Walk prototype chain, collecting properties that haven't already been collected
+    let mut collected = HashSet::new();
+    let mut current_object = object_value;
+
+    loop {
+        let own_property_keys = current_object.own_property_keys(cx);
+        for key in own_property_keys {
+            if !key.is_string() {
+                continue;
+            }
+
+            let key_string = key.as_string();
+            if !collected.insert(key_string.str()) {
+                continue;
+            }
+
+            if let Some(desc) = maybe__!(current_object.get_own_property(key_string.str())) {
+                if !desc.is_enumerable() {
+                    continue;
+                }
+
+                maybe__!(for_each_body_evaluation_shared(cx, stmt, key));
+
+                // Part of ForIn/OfBodyEvaluation that is specific to enumeration
+                let completion = eval_statement(cx, &stmt.body);
+                if !loop_continues(&completion, stmt_label_id) {
+                    let completion = completion.update_if_empty(value);
+
+                    // Inline labeled statement evaluation break handling
+                    if completion.kind() == CompletionKind::Break {
+                        let label = completion.label();
+                        if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+                            return Completion::normal(completion.value());
+                        } else {
+                            return completion;
+                        }
+                    }
+
+                    return completion;
+                }
+
+                if !completion.is_empty() {
+                    value = completion.value();
+                }
+            }
+        }
+
+        match maybe__!(current_object.get_prototype_of()) {
+            None => return value.into(),
+            Some(proto_object) => {
+                current_object = proto_object;
+            }
+        }
+    }
+}
+
 // 14.8.2 Continue Statement Evaluation
 fn eval_continue_statement(stmt: &ast::ContinueStatement) -> Completion {
     match stmt.label.as_ref() {
@@ -522,7 +706,13 @@ fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Com
         ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, label_id),
         ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, label_id),
         ast::Statement::For(_) => unimplemented!("for statement"),
-        ast::Statement::ForEach(_) => unimplemented!("for each statement"),
+        ast::Statement::ForEach(stmt) => {
+            if stmt.kind == ast::ForEachKind::In {
+                eval_for_in_statement(cx, stmt, label_id)
+            } else {
+                unimplemented!("for of statement")
+            }
+        }
         _ => {
             // Only labeled breaks allowed for all other statements
             let completion = eval_statement(cx, inner_stmt.body.as_ref());

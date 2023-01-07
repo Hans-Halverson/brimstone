@@ -81,7 +81,10 @@ pub fn eval_identifier(cx: &mut Context, id: &ast::Identifier) -> EvalResult<Val
 }
 
 // Same as eval_identifier, but returns a reference instead of a value
-fn eval_identifier_to_reference(cx: &mut Context, id: &ast::Identifier) -> EvalResult<Reference> {
+pub fn eval_identifier_to_reference(
+    cx: &mut Context,
+    id: &ast::Identifier,
+) -> EvalResult<Reference> {
     resolve_binding(cx, &id.name, None)
 }
 

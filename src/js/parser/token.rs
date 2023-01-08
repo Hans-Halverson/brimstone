@@ -99,6 +99,10 @@ pub enum Token {
     Static,
     From,
     As,
+    Class,
+    Extends,
+    Get,
+    Set,
 }
 
 impl fmt::Display for Token {
@@ -196,6 +200,10 @@ impl fmt::Display for Token {
             Token::Static => "static",
             Token::From => "from",
             Token::As => "as",
+            Token::Class => "class",
+            Token::Extends => "extends",
+            Token::Get => "get",
+            Token::Set => "set",
         };
 
         f.write_str(str)

@@ -1194,11 +1194,10 @@ impl<'a> Parser<'a> {
         // Arrow function params can be either parenthesized function params or a single id
         let params = match self.token {
             Token::LeftParen => self.parse_function_params()?,
-            Token::Identifier(_) => {
+            _ => {
                 let id = self.parse_binding_identifier()?;
                 vec![Pattern::Id(id)]
             }
-            _ => return self.error_unexpected_token(self.loc, &self.token),
         };
 
         self.expect(Token::Arrow)?;
@@ -1829,7 +1828,7 @@ impl<'a> Parser<'a> {
                 Ok(Identifier { loc, name })
             }
             // Tokens that are always allowed as identifiers
-            Token::Async | Token::Of | Token::From | Token::As => {
+            Token::Async | Token::Of | Token::From | Token::As | Token::Get | Token::Set => {
                 let loc = self.loc;
                 self.advance()?;
                 Ok(Identifier {
@@ -1895,15 +1894,17 @@ impl<'a> Parser<'a> {
             | Token::Debugger
             | Token::Static
             | Token::From
-            | Token::As => {
+            | Token::As
+            | Token::Class
+            | Token::Extends
+            | Token::Get
+            | Token::Set => {
                 let loc = self.loc;
+                let name = self.token.to_string();
                 self.advance()?;
-                Ok(Some(Identifier {
-                    loc,
-                    name: self.token.to_string(),
-                }))
+                Ok(Some(Identifier { loc, name }))
             }
-            other => Ok(None),
+            _ => Ok(None),
         }
     }
 
@@ -1958,21 +1959,24 @@ impl<'a> Parser<'a> {
 
         // Handle getters and setters
         match self.token {
-            Token::Identifier(ref id) if id.eq("get") || id.eq("set") => {
+            Token::Get | Token::Set => {
                 let id_loc = self.loc;
-                let kind = if id.eq("get") {
+                let id_token = self.token.clone();
+                let kind = if self.token == Token::Get {
                     PropertyKind::Get
                 } else {
                     PropertyKind::Set
                 };
-                let name = id.to_owned();
 
                 self.advance()?;
 
                 return match self.token {
                     // Handle `get` or `set` as name of method
                     Token::LeftParen => {
-                        let name = p(Expression::Id(Identifier { loc: id_loc, name }));
+                        let name = p(Expression::Id(Identifier {
+                            loc: id_loc,
+                            name: id_token.to_string(),
+                        }));
                         self.parse_method_property(
                             name,
                             start_pos,
@@ -1984,7 +1988,10 @@ impl<'a> Parser<'a> {
                     }
                     // Handle `get` or `set` as shorthand or init property
                     Token::Comma | Token::RightBrace | Token::Colon => {
-                        let name = p(Expression::Id(Identifier { loc: id_loc, name }));
+                        let name = p(Expression::Id(Identifier {
+                            loc: id_loc,
+                            name: id_token.to_string(),
+                        }));
                         self.parse_init_property(name, start_pos, false, self.token != Token::Colon)
                     }
                     // Otherwise this is a getter or setter
@@ -2196,10 +2203,9 @@ impl<'a> Parser<'a> {
 
     fn parse_pattern(&mut self) -> ParseResult<Pattern> {
         match &self.token {
-            Token::Identifier(_) => Ok(Pattern::Id(self.parse_binding_identifier()?)),
             Token::LeftBracket => self.parse_array_pattern(),
             Token::LeftBrace => self.parse_object_pattern(),
-            other => self.error_unexpected_token(self.loc, other),
+            _ => Ok(Pattern::Id(self.parse_binding_identifier()?)),
         }
     }
 

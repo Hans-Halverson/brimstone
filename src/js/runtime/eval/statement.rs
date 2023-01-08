@@ -35,11 +35,11 @@ pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Comple
     for stmt in stmts {
         let new_result = eval_statement(cx, stmt);
 
-        if !new_result.is_normal() {
-            return new_result;
-        }
-
         result = new_result.update_if_empty(result.value());
+
+        if !result.is_normal() {
+            return result;
+        }
     }
 
     result
@@ -54,11 +54,11 @@ pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Comp
             ast::Toplevel::Statement(stmt) => {
                 let new_result = eval_statement(cx, stmt);
 
-                if !new_result.is_normal() {
-                    return new_result;
-                }
-
                 result = new_result.update_if_empty(result.value());
+
+                if !result.is_normal() {
+                    return result;
+                }
             }
         }
     }

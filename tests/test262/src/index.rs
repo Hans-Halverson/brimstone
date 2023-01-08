@@ -22,9 +22,9 @@ pub struct Test {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum ExpectedResult {
-    // Test that are expected to succeed without throwing an exception
+    // Test that are expected to succeed without throwing an error
     Positive,
-    // Tests that are expected to throw an uncaught exception
+    // Tests that are expected to throw an uncaught error
     Negative { phase: TestPhase, type_: String },
 }
 
@@ -53,7 +53,7 @@ pub enum TestMode {
 impl ExpectedResult {
     pub fn to_string(&self) -> String {
         match self {
-            ExpectedResult::Positive => String::from("no exception to be thrown"),
+            ExpectedResult::Positive => String::from("no error to be thrown"),
             ExpectedResult::Negative { phase, type_ } => {
                 let phase_string = match phase {
                     TestPhase::Parse => "parsing",

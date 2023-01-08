@@ -23,7 +23,7 @@ use crate::{
             Context,
         },
     },
-    maybe, maybe__, must,
+    maybe, maybe_, maybe__, must,
 };
 
 use super::expression::{eval_expression, eval_identifier_to_reference};
@@ -80,7 +80,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::Block(block) => eval_block(cx, block),
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
         ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, EMPTY_LABEL),
-        ast::Statement::For(_) => unimplemented!("for statement"),
+        ast::Statement::For(stmt) => eval_for_statement(cx, stmt, EMPTY_LABEL),
         ast::Statement::ForEach(stmt) => {
             if stmt.kind == ast::ForEachKind::In {
                 eval_for_in_statement(cx, stmt, EMPTY_LABEL)
@@ -266,12 +266,12 @@ fn eval_do_while_statement(
     stmt: &ast::DoWhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut value = Value::undefined();
+    let mut last_value = Value::undefined();
     loop {
         let body_result = eval_statement(cx, &stmt.body);
 
         if !loop_continues(&body_result, stmt_label_id) {
-            let body_result = body_result.update_if_empty(value);
+            let body_result = body_result.update_if_empty(last_value);
 
             // Inline labeled statement evaluation break handling
             if body_result.kind() == CompletionKind::Break {
@@ -287,12 +287,12 @@ fn eval_do_while_statement(
         }
 
         if !body_result.value().is_empty() {
-            value = body_result.value()
+            last_value = body_result.value()
         }
 
         let test_value = maybe__!(eval_expression(cx, &stmt.test));
         if !to_boolean(test_value) {
-            return value.into();
+            return last_value.into();
         }
     }
 }
@@ -303,17 +303,17 @@ fn eval_while_statement(
     stmt: &ast::WhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut value = Value::undefined();
+    let mut last_value = Value::undefined();
     loop {
         let test_value = maybe__!(eval_expression(cx, &stmt.test));
         if !to_boolean(test_value) {
-            return value.into();
+            return last_value.into();
         }
 
         let body_result = eval_statement(cx, &stmt.body);
 
         if !loop_continues(&body_result, stmt_label_id) {
-            let body_result = body_result.update_if_empty(value);
+            let body_result = body_result.update_if_empty(last_value);
 
             // Inline labeled statement evaluation break handling
             if body_result.kind() == CompletionKind::Break {
@@ -329,9 +329,140 @@ fn eval_while_statement(
         }
 
         if !body_result.value().is_empty() {
-            value = body_result.value()
+            last_value = body_result.value()
         }
     }
+}
+
+// 14.7.4.2 For Statement Evaluation
+fn eval_for_statement(
+    cx: &mut Context,
+    stmt: &ast::ForStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    match stmt.init.as_deref() {
+        None => for_body_evaluation(cx, stmt, None, stmt_label_id),
+        Some(ast::ForInit::Expression(expr)) => {
+            maybe__!(eval_expression(cx, expr));
+            for_body_evaluation(cx, stmt, None, stmt_label_id)
+        }
+        Some(ast::ForInit::VarDecl(
+            var_decl @ ast::VariableDeclaration {
+                kind: ast::VarKind::Var,
+                ..
+            },
+        )) => {
+            maybe_!(eval_variable_declaration(cx, var_decl));
+            for_body_evaluation(cx, stmt, None, stmt_label_id)
+        }
+        Some(ast::ForInit::VarDecl(
+            lex_decl @ ast::VariableDeclaration {
+                kind: kind @ (ast::VarKind::Let | ast::VarKind::Const),
+                ..
+            },
+        )) => {
+            let mut current_execution_context = cx.current_execution_context();
+            let old_env = current_execution_context.lexical_env;
+            let mut loop_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+
+            let is_const = *kind == ast::VarKind::Const;
+            must!(lex_decl.iter_bound_names(&mut |id| {
+                if is_const {
+                    loop_env.create_immutable_binding(cx, id.name.clone(), true)
+                } else {
+                    loop_env.create_mutable_binding(cx, id.name.clone(), true)
+                }
+            }));
+
+            current_execution_context.lexical_env = to_trait_object(loop_env);
+
+            let for_decl_completion = eval_lexical_declaration(cx, lex_decl);
+            if !for_decl_completion.is_normal() {
+                current_execution_context.lexical_env = old_env;
+                return for_decl_completion;
+            }
+
+            let per_iteration_decl = if is_const { None } else { Some(lex_decl) };
+            let body_result = for_body_evaluation(cx, stmt, per_iteration_decl, stmt_label_id);
+
+            current_execution_context.lexical_env = old_env;
+
+            body_result
+        }
+    }
+}
+
+// 14.7.4.3 ForBodyEvaluation
+fn for_body_evaluation(
+    cx: &mut Context,
+    stmt: &ast::ForStatement,
+    per_iteration_decl: Option<&ast::VariableDeclaration>,
+    stmt_label_id: LabelId,
+) -> Completion {
+    let mut last_value = Value::undefined();
+
+    if let Some(per_iteration_decl) = per_iteration_decl {
+        create_per_iteration_environment(cx, per_iteration_decl);
+    }
+
+    loop {
+        if let Some(test) = stmt.test.as_deref() {
+            let test_value = maybe__!(eval_expression(cx, test));
+            if !to_boolean(test_value) {
+                return last_value.into();
+            }
+        }
+
+        let body_result = eval_statement(cx, &stmt.body);
+
+        if !loop_continues(&body_result, stmt_label_id) {
+            let body_result = body_result.update_if_empty(last_value);
+
+            // Inline labeled statement evaluation break handling
+            if body_result.kind() == CompletionKind::Break {
+                let label = body_result.label();
+                if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+                    return Completion::normal(body_result.value());
+                } else {
+                    return body_result;
+                }
+            }
+
+            return body_result;
+        }
+
+        if !body_result.value().is_empty() {
+            last_value = body_result.value()
+        }
+
+        if let Some(update) = stmt.update.as_deref() {
+            maybe__!(eval_expression(cx, update));
+        }
+    }
+}
+
+// 14.7.4.4 CreatePerIterationEnvironment
+fn create_per_iteration_environment(
+    cx: &mut Context,
+    per_iteration_decl: &ast::VariableDeclaration,
+) -> EvalResult<()> {
+    let mut current_execution_context = cx.current_execution_context();
+    let last_iteration_env = current_execution_context.lexical_env;
+    let mut this_iteration_env = cx
+        .heap
+        .alloc(DeclarativeEnvironment::new(Some(last_iteration_env)));
+
+    maybe!(per_iteration_decl.iter_bound_names(&mut |id| {
+        must!(this_iteration_env.create_mutable_binding(cx, id.name.clone(), false));
+        let last_value = maybe!(last_iteration_env.get_binding_value(cx, &id.name, true));
+        must!(this_iteration_env.initialize_binding(cx, &id.name, last_value));
+
+        ().into()
+    }));
+
+    current_execution_context.lexical_env = to_trait_object(this_iteration_env);
+
+    ().into()
 }
 
 // 14.7.5.6 ForIn/OfHeadEvaluation
@@ -450,7 +581,7 @@ fn eval_for_in_statement(
     }
 
     let object_value = maybe__!(to_object(cx, right_value));
-    let mut value = Value::undefined();
+    let mut last_value = Value::undefined();
 
     // 14.7.5.9 EnumerateObjectProperties inlined
     // Walk prototype chain, collecting properties that haven't already been collected
@@ -479,7 +610,7 @@ fn eval_for_in_statement(
                 // Part of ForIn/OfBodyEvaluation that is specific to enumeration
                 let completion = eval_statement(cx, &stmt.body);
                 if !loop_continues(&completion, stmt_label_id) {
-                    let completion = completion.update_if_empty(value);
+                    let completion = completion.update_if_empty(last_value);
 
                     // Inline labeled statement evaluation break handling
                     if completion.kind() == CompletionKind::Break {
@@ -495,13 +626,13 @@ fn eval_for_in_statement(
                 }
 
                 if !completion.is_empty() {
-                    value = completion.value();
+                    last_value = completion.value();
                 }
             }
         }
 
         match maybe__!(current_object.get_prototype_of()) {
-            None => return value.into(),
+            None => return last_value.into(),
             Some(proto_object) => {
                 current_object = proto_object;
             }
@@ -704,7 +835,7 @@ fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Com
         ast::Statement::While(stmt) => eval_while_statement(cx, stmt, label_id),
         ast::Statement::DoWhile(stmt) => eval_do_while_statement(cx, stmt, label_id),
         ast::Statement::Switch(stmt) => eval_switch_statement(cx, stmt, label_id),
-        ast::Statement::For(_) => unimplemented!("for statement"),
+        ast::Statement::For(stmt) => eval_for_statement(cx, stmt, label_id),
         ast::Statement::ForEach(stmt) => {
             if stmt.kind == ast::ForEachKind::In {
                 eval_for_in_statement(cx, stmt, label_id)

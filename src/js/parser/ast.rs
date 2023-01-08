@@ -211,6 +211,7 @@ impl Function {
         body: P<FunctionBody>,
         is_async: bool,
         is_generator: bool,
+        is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Function {
         Function {
@@ -220,6 +221,7 @@ impl Function {
             body,
             is_async,
             is_generator,
+            is_strict_mode,
             var_decls: vec![],
             lex_decls: vec![],
             has_simple_parameter_list: false,
@@ -227,7 +229,6 @@ impl Function {
             has_duplicate_parameters: false,
             is_arguments_object_needed: true,
             has_use_strict_directive,
-            is_strict_mode: false,
         }
     }
 }

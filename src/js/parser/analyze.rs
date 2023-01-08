@@ -312,10 +312,9 @@ impl Analyzer {
         visit_vec!(self, func.params, visit_pattern);
 
         // Enter strict mode context if applicable
-        if func.has_use_strict_directive {
+        if func.is_strict_mode {
             self.enter_strict_mode_context();
         }
-        func.is_strict_mode = self.is_in_strict_mode_context();
 
         // Visit body inside a new function scope
         self.scope_builder.enter_function_scope(func);
@@ -399,7 +398,7 @@ impl Analyzer {
         self.function_depth -= 1;
         self.scope_builder.exit_scope();
 
-        if func.has_use_strict_directive {
+        if func.is_strict_mode {
             self.exit_strict_mode_context();
         }
 

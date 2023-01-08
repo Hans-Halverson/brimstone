@@ -96,6 +96,9 @@ pub enum Token {
     Void,
     Delete,
     Debugger,
+    Static,
+    From,
+    As,
 }
 
 impl fmt::Display for Token {
@@ -190,6 +193,9 @@ impl fmt::Display for Token {
             Token::Void => "void",
             Token::Delete => "delete",
             Token::Debugger => "debugger",
+            Token::Static => "static",
+            Token::From => "from",
+            Token::As => "as",
         };
 
         f.write_str(str)

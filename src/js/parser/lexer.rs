@@ -793,6 +793,9 @@ impl<'a> Lexer<'a> {
             "void" => self.emit(Token::Void, start_pos),
             "delete" => self.emit(Token::Delete, start_pos),
             "debugger" => self.emit(Token::Debugger, start_pos),
+            "static" => self.emit(Token::Static, start_pos),
+            "from" => self.emit(Token::From, start_pos),
+            "as" => self.emit(Token::As, start_pos),
             id => self.emit(Token::Identifier(id.to_owned()), start_pos),
         }
     }

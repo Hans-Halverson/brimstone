@@ -18,6 +18,7 @@ pub enum ParseError {
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
     ThrowArgumentOnNewLine,
+    AmbiguousLetBracket,
     InvalidForLeftHandSide,
     DuplicateLabel,
     LabelNotFound,
@@ -51,6 +52,9 @@ impl fmt::Display for ParseError {
                     f,
                     "No line break is allowed between 'throw' and its expression"
                 )
+            }
+            ParseError::AmbiguousLetBracket => {
+                write!(f, "Expression cannot start with ambiguous `let [`")
             }
             ParseError::InvalidForLeftHandSide => {
                 write!(f, "Invalid left hand side of for statement")
@@ -215,6 +219,8 @@ struct Parser<'a> {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
+    // Whether the parser is currently parsing in strict mode
+    in_strict_mode: bool,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -223,6 +229,7 @@ struct ParserSaveState {
     token: Token,
     loc: Loc,
     prev_loc: Loc,
+    in_strict_mode: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -233,6 +240,7 @@ impl<'a> Parser<'a> {
             token: Token::Eof,
             loc: EMPTY_LOC,
             prev_loc: EMPTY_LOC,
+            in_strict_mode: false,
         }
     }
 
@@ -250,6 +258,7 @@ impl<'a> Parser<'a> {
             token: self.token.clone(),
             loc: self.loc,
             prev_loc: self.prev_loc,
+            in_strict_mode: self.in_strict_mode,
         }
     }
 
@@ -258,6 +267,7 @@ impl<'a> Parser<'a> {
         self.token = save_state.token;
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
+        self.in_strict_mode = save_state.in_strict_mode;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -356,6 +366,9 @@ impl<'a> Parser<'a> {
 
     fn parse_script(&mut self) -> ParseResult<Program> {
         let has_use_strict_directive = self.parse_use_strict_directive()?;
+        if has_use_strict_directive {
+            self.in_strict_mode = true;
+        }
 
         let mut toplevels = vec![];
         while self.token != Token::Eof {
@@ -439,8 +452,19 @@ impl<'a> Parser<'a> {
                 Ok(Statement::Debugger(self.mark_loc(start_pos)))
             }
             _ => {
-                if self.is_function_start()? || self.token == Token::Let {
+                if self.is_function_start()? {
                     return self.error_unexpected_token(self.loc, &self.token);
+                } else if self.token == Token::Let {
+                    // The form 'let [` is ambiguous as it could be the start of a let declaration
+                    // with an array pattern, or a computed member access expression statement.
+                    let let_loc = self.loc;
+                    let save_state = self.save();
+                    self.advance()?;
+                    if self.token == Token::LeftBracket {
+                        return self.error(let_loc, ParseError::AmbiguousLetBracket);
+                    }
+
+                    self.restore(save_state);
                 }
 
                 let start_pos = self.current_start_pos();
@@ -566,13 +590,13 @@ impl<'a> Parser<'a> {
 
         // Id is optional only for function expresssions
         let id = if self.token != Token::LeftParen || is_decl {
-            Some(p(self.parse_identifier()?))
+            Some(p(self.parse_binding_identifier()?))
         } else {
             None
         };
 
         let params = self.parse_function_params()?;
-        let (block, has_use_strict_directive) = self.parse_function_block_body()?;
+        let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
@@ -583,6 +607,7 @@ impl<'a> Parser<'a> {
             body,
             is_async,
             is_generator,
+            is_strict_mode,
             has_use_strict_directive,
         ))
     }
@@ -607,11 +632,17 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool)> {
+    fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool, bool)> {
         let start_pos = self.current_start_pos();
         self.expect(Token::LeftBrace)?;
 
         let has_use_strict_directive = self.parse_use_strict_directive()?;
+
+        // Enter strict mode if applicable, saving strict mode context from before this function
+        let old_in_strict_mode = self.in_strict_mode;
+        if has_use_strict_directive {
+            self.in_strict_mode = true;
+        }
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
@@ -621,7 +652,15 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok((Block::new(loc, body), has_use_strict_directive))
+        // Restore to strict mode context from before this function
+        let is_strict_mode = self.in_strict_mode;
+        self.in_strict_mode = old_in_strict_mode;
+
+        Ok((
+            Block::new(loc, body),
+            has_use_strict_directive,
+            is_strict_mode,
+        ))
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -1011,7 +1050,7 @@ impl<'a> Parser<'a> {
         let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            let label = Label::new(p(self.parse_identifier()?));
+            let label = Label::new(p(self.parse_label_identifier()?));
             self.expect_semicolon()?;
             Some(label)
         };
@@ -1028,7 +1067,7 @@ impl<'a> Parser<'a> {
         let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            let label = Label::new(p(self.parse_identifier()?));
+            let label = Label::new(p(self.parse_label_identifier()?));
             self.expect_semicolon()?;
             Some(label)
         };
@@ -1135,7 +1174,8 @@ impl<'a> Parser<'a> {
                     loc: async_loc,
                     name: "async".to_owned(),
                 })];
-                let (body, has_use_strict_directive) = self.parse_arrow_function_body()?;
+                let (body, has_use_strict_directive, is_strict_mode) =
+                    self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
                 return Ok(p(Expression::ArrowFunction(Function::new(
@@ -1145,6 +1185,7 @@ impl<'a> Parser<'a> {
                     body,
                     /* is_async */ false,
                     /* is_generator */ false,
+                    is_strict_mode,
                     has_use_strict_directive,
                 ))));
             }
@@ -1154,14 +1195,14 @@ impl<'a> Parser<'a> {
         let params = match self.token {
             Token::LeftParen => self.parse_function_params()?,
             Token::Identifier(_) => {
-                let id = self.parse_identifier()?;
+                let id = self.parse_binding_identifier()?;
                 vec![Pattern::Id(id)]
             }
             _ => return self.error_unexpected_token(self.loc, &self.token),
         };
 
         self.expect(Token::Arrow)?;
-        let (body, has_use_strict_directive) = self.parse_arrow_function_body()?;
+        let (body, has_use_strict_directive, is_strict_mode) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
         Ok(p(Expression::ArrowFunction(Function::new(
@@ -1171,20 +1212,27 @@ impl<'a> Parser<'a> {
             body,
             is_async,
             /* is_generator */ false,
+            is_strict_mode,
             has_use_strict_directive,
         ))))
     }
 
-    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, bool)> {
+    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, bool, bool)> {
         if self.token == Token::LeftBrace {
-            let (block, has_use_strict_directive) = self.parse_function_block_body()?;
-            Ok((p(FunctionBody::Block(block)), has_use_strict_directive))
+            let (block, has_use_strict_directive, is_strict_mode) =
+                self.parse_function_block_body()?;
+            Ok((
+                p(FunctionBody::Block(block)),
+                has_use_strict_directive,
+                is_strict_mode,
+            ))
         } else {
             Ok((
                 p(FunctionBody::Expression(
                     *self.parse_assignment_expression()?,
                 )),
                 false,
+                self.in_strict_mode,
             ))
         }
     }
@@ -1582,7 +1630,11 @@ impl<'a> Parser<'a> {
         match &self.token {
             Token::Period => {
                 self.advance()?;
-                let property = self.parse_identifier()?;
+                let property = match self.parse_identifier_name()? {
+                    Some(id) => id,
+                    None => return self.error_unexpected_token(self.loc, &self.token),
+                };
+
                 let loc = self.mark_loc(start_pos);
 
                 let member_expr = p(Expression::Member(MemberExpression {
@@ -1664,7 +1716,6 @@ impl<'a> Parser<'a> {
     /// 13.2 PrimaryExpression
     fn parse_primary_expression(&mut self) -> ParseResult<P<Expression>> {
         match &self.token {
-            Token::Identifier(_) => Ok(p(Expression::Id(self.parse_identifier()?))),
             Token::Null => {
                 let loc = self.loc;
                 self.advance()?;
@@ -1706,20 +1757,118 @@ impl<'a> Parser<'a> {
                     return Ok(p(Expression::Function(self.parse_function(false)?)));
                 }
 
-                self.error_unexpected_token(self.loc, &self.token)
+                Ok(p(Expression::Id(self.parse_identifier_reference()?)))
             }
         }
+    }
+
+    fn parse_identifier_reference(&mut self) -> ParseResult<Identifier> {
+        self.parse_identifier()
+    }
+
+    fn parse_binding_identifier(&mut self) -> ParseResult<Identifier> {
+        self.parse_identifier()
+    }
+
+    fn parse_label_identifier(&mut self) -> ParseResult<Identifier> {
+        self.parse_identifier()
     }
 
     fn parse_identifier(&mut self) -> ParseResult<Identifier> {
         match &self.token {
             Token::Identifier(name) => {
+                // Names that are contextually disallowed as identifiers when in strict mode
+                if self.in_strict_mode {
+                    match name.as_str() {
+                        "implements" | "interface" | "package" | "private" | "protected"
+                        | "public" => {
+                            return self.error_unexpected_token(self.loc, &self.token);
+                        }
+                        _ => {}
+                    }
+                }
+
                 let loc = self.loc;
                 let name = name.clone();
                 self.advance()?;
                 Ok(Identifier { loc, name })
             }
+            // Tokens that are always allowed as identifiers
+            Token::Async | Token::Of | Token::From | Token::As => {
+                let loc = self.loc;
+                self.advance()?;
+                Ok(Identifier {
+                    loc,
+                    name: self.token.to_string(),
+                })
+            }
+            // Tokens that are contextually allowed as identifiers, when not in strict mode
+            Token::Let | Token::Static if !self.in_strict_mode => {
+                let loc = self.loc;
+                self.advance()?;
+                Ok(Identifier {
+                    loc,
+                    name: self.token.to_string(),
+                })
+            }
             other => self.error_unexpected_token(self.loc, other),
+        }
+    }
+
+    // Parse any identifier, including reserved words
+    fn parse_identifier_name(&mut self) -> ParseResult<Option<Identifier>> {
+        match &self.token {
+            Token::Identifier(name) => {
+                let loc = self.loc;
+                let name = name.clone();
+                self.advance()?;
+                Ok(Some(Identifier { loc, name }))
+            }
+            // All keywords can be uses as an identifier name
+            Token::Var
+            | Token::Let
+            | Token::Const
+            | Token::Function
+            | Token::Async
+            | Token::This
+            | Token::If
+            | Token::Else
+            | Token::Switch
+            | Token::Case
+            | Token::Default
+            | Token::For
+            | Token::Of
+            | Token::While
+            | Token::Do
+            | Token::With
+            | Token::Return
+            | Token::Break
+            | Token::Continue
+            | Token::Try
+            | Token::Catch
+            | Token::Finally
+            | Token::Throw
+            | Token::Null
+            | Token::True
+            | Token::False
+            | Token::In
+            | Token::InstanceOf
+            | Token::New
+            | Token::Typeof
+            | Token::Void
+            | Token::Delete
+            | Token::Debugger
+            | Token::Static
+            | Token::From
+            | Token::As => {
+                let loc = self.loc;
+                self.advance()?;
+                Ok(Some(Identifier {
+                    loc,
+                    name: self.token.to_string(),
+                }))
+            }
+            other => Ok(None),
         }
     }
 
@@ -1925,20 +2074,22 @@ impl<'a> Parser<'a> {
             Token::NumberLiteral(_) | Token::StringLiteral(_) => {
                 Some(self.parse_primary_expression()?)
             }
-            Token::Identifier(_) => {
-                let key = self.parse_identifier()?;
+            _ => {
+                match self.parse_identifier_name()? {
+                    None => None,
+                    Some(key) => {
+                        if self.token == Token::Comma
+                        || self.token == Token::RightBrace
+                        // Shorthand could be terminated by assignment pattern in pattern properties
+                        || self.token == Token::Equals
+                        {
+                            is_shorthand = true;
+                        }
 
-                if self.token == Token::Comma
-                    || self.token == Token::RightBrace
-                    // Shorthand could be terminated by assignment pattern in pattern properties
-                    || self.token == Token::Equals
-                {
-                    is_shorthand = true;
+                        Some(p(Expression::Id(key)))
+                    }
                 }
-
-                Some(p(Expression::Id(key)))
             }
-            _ => None,
         };
 
         Ok((expr, is_computed, is_shorthand))
@@ -1982,7 +2133,7 @@ impl<'a> Parser<'a> {
         is_computed: bool,
     ) -> ParseResult<Property> {
         let params = self.parse_function_params()?;
-        let (block, has_use_strict_directive) = self.parse_function_block_body()?;
+        let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
@@ -2001,6 +2152,7 @@ impl<'a> Parser<'a> {
                 body,
                 is_async,
                 is_generator,
+                is_strict_mode,
                 has_use_strict_directive,
             )))),
         })
@@ -2008,7 +2160,7 @@ impl<'a> Parser<'a> {
 
     fn parse_pattern(&mut self) -> ParseResult<Pattern> {
         match &self.token {
-            Token::Identifier(_) => Ok(Pattern::Id(self.parse_identifier()?)),
+            Token::Identifier(_) => Ok(Pattern::Id(self.parse_binding_identifier()?)),
             Token::LeftBracket => self.parse_array_pattern(),
             Token::LeftBrace => self.parse_object_pattern(),
             other => self.error_unexpected_token(self.loc, other),

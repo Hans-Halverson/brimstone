@@ -66,6 +66,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Object(expr) => eval_object_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
+        ast::Expression::Class(_) => unimplemented!("class expression"),
         ast::Expression::This(_) => eval_this_expression(cx),
         ast::Expression::Await(_) => unimplemented!("await expression"),
         ast::Expression::Yield(_) => unimplemented!("yield expression"),

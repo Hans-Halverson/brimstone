@@ -35,8 +35,7 @@
 // Keywords as methods
 ({ get() {}, set() {}, async() {} });
 
-// TODO: Add `async` function name test cases
-({ async get() {}, async set() {} });
+({ async get() {}, async set() {}, async async() {} });
 
 ({ get a() {}, set a(b) {} });
 

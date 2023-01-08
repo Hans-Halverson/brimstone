@@ -152,6 +152,7 @@ impl<'a> Printer<'a> {
         match stmt {
             Statement::VarDecl(var_decl) => self.print_variable_declaration(var_decl),
             Statement::FuncDecl(func_decl) => self.print_function(func_decl, "FunctionDeclaration"),
+            Statement::ClassDecl(class_decl) => self.print_class(class_decl, "ClassDeclaration"),
             Statement::Expr(expr) => self.print_expression_statement(expr),
             Statement::Block(stmt) => self.print_block(stmt),
             Statement::If(stmt) => self.print_if_statement(stmt),
@@ -183,6 +184,10 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
+    fn print_function_expression(&mut self, func: &Function) {
+        self.print_function(func, "FunctionExpression");
+    }
+
     fn print_function(&mut self, func: &Function, name: &str) {
         self.start_node(name, &func.loc);
         self.property("id", func.id.as_ref(), Printer::print_optional_identifier);
@@ -203,6 +208,85 @@ impl<'a> Printer<'a> {
             FunctionBody::Block(block) => self.print_block(block),
             FunctionBody::Expression(expr) => self.print_expression(&expr),
         }
+    }
+
+    fn print_class(&mut self, class: &Class, name: &str) {
+        self.start_node(name, &class.loc);
+        self.property("id", class.id.as_ref(), Printer::print_optional_identifier);
+        self.property(
+            "superClass",
+            class.super_class.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.property("body", class, Printer::print_class_body);
+        self.end_node();
+    }
+
+    fn print_class_body(&mut self, class: &Class) {
+        self.start_node("ClassBody", &class.loc);
+        self.array_property("body", &class.body, Printer::print_class_element);
+        self.end_node();
+    }
+
+    fn print_class_element(&mut self, element: &ClassElement) {
+        match element {
+            ClassElement::Method(method) => self.print_class_method(method),
+            ClassElement::Property(prop) => self.print_class_property(prop),
+        }
+    }
+
+    fn print_class_method(&mut self, method: &ClassMethod) {
+        if method.kind == ClassMethodKind::StaticInitializer {
+            self.print_class_static_block(method);
+            return;
+        }
+
+        self.start_node("MethodDefinition", &method.loc);
+        self.property("key", method.key.as_ref(), Printer::print_expression);
+        self.property(
+            "value",
+            method.value.as_ref(),
+            Printer::print_function_expression,
+        );
+        self.property("kind", method.kind, Printer::print_class_method_kind);
+        self.property("computed", method.is_computed, Printer::print_bool);
+        self.property("static", method.is_static, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_class_method_kind(&mut self, kind: ClassMethodKind) {
+        let str = match kind {
+            ClassMethodKind::Method => "method",
+            ClassMethodKind::Constructor => "constructor",
+            ClassMethodKind::Get => "get",
+            ClassMethodKind::Set => "set",
+            ClassMethodKind::StaticInitializer => "static initializer",
+        };
+        self.print_str(str)
+    }
+
+    fn print_class_property(&mut self, prop: &ClassProperty) {
+        self.start_node("PropertyDefinition", &prop.loc);
+        self.property("key", prop.key.as_ref(), Printer::print_expression);
+        self.property(
+            "value",
+            prop.value.as_ref(),
+            Printer::print_optional_expression,
+        );
+        self.property("computed", prop.is_computed, Printer::print_bool);
+        self.property("static", prop.is_static, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_class_static_block(&mut self, static_block: &ClassMethod) {
+        let block = match static_block.value.body.as_ref() {
+            FunctionBody::Block(block) => block,
+            FunctionBody::Expression(_) => unreachable!("static block requires block body"),
+        };
+
+        self.start_node("StaticBlock", &static_block.loc);
+        self.array_property("body", &block.body, Printer::print_statement);
+        self.end_node();
     }
 
     fn print_expression_statement(&mut self, expr: &ExpressionStatement) {
@@ -438,8 +522,9 @@ impl<'a> Printer<'a> {
             Expression::This(loc) => self.print_this_expression(&loc),
             Expression::Array(arr) => self.print_array_expression(arr),
             Expression::Object(arr) => self.print_object_expression(arr),
-            Expression::Function(func) => self.print_function(func, "FunctionExpression"),
+            Expression::Function(func) => self.print_function_expression(func),
             Expression::ArrowFunction(func) => self.print_function(func, "ArrowFunctionExpression"),
+            Expression::Class(class) => self.print_class(class, "ClassExpression"),
             Expression::Await(expr) => self.print_await_expression(expr),
             Expression::Yield(expr) => self.print_yield_expression(expr),
         }

@@ -76,6 +76,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
             }
         }
         ast::Statement::FuncDecl(_) => eval_function_declaration(),
+        ast::Statement::ClassDecl(_) => unimplemented!("class declaration"),
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),

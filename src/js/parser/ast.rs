@@ -120,6 +120,7 @@ pub struct Identifier {
 pub enum Statement {
     VarDecl(VariableDeclaration),
     FuncDecl(Function),
+    ClassDecl(Class),
     Expr(ExpressionStatement),
     Block(Block),
     If(IfStatement),
@@ -254,6 +255,45 @@ impl WithDecls for Function {
 pub enum FunctionBody {
     Block(Block),
     Expression(Expression),
+}
+
+pub struct Class {
+    pub loc: Loc,
+    pub id: Option<P<Identifier>>,
+    pub super_class: Option<P<Expression>>,
+    pub body: Vec<ClassElement>,
+}
+
+pub enum ClassElement {
+    Method(ClassMethod),
+    Property(ClassProperty),
+}
+
+pub struct ClassMethod {
+    pub loc: Loc,
+    pub key: P<Expression>,
+    pub value: P<Function>,
+    pub kind: ClassMethodKind,
+    pub is_computed: bool,
+    pub is_static: bool,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum ClassMethodKind {
+    Method,
+    Constructor,
+    Get,
+    Set,
+    // Static initializer blocks are represented as methods
+    StaticInitializer,
+}
+
+pub struct ClassProperty {
+    pub loc: Loc,
+    pub key: P<Expression>,
+    pub value: Option<P<Expression>>,
+    pub is_computed: bool,
+    pub is_static: bool,
 }
 
 pub struct ExpressionStatement {
@@ -469,6 +509,7 @@ pub enum Expression {
     Object(ObjectExpression),
     Function(Function),
     ArrowFunction(Function),
+    Class(Class),
     This(Loc),
     Await(AwaitExpression),
     Yield(YieldExpression),

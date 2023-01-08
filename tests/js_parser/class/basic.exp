@@ -1,0 +1,189 @@
+{
+  type: "Program",
+  loc: "1:0-26:1",
+  body: [
+    {
+      type: "ClassDeclaration",
+      loc: "1:0-1:10",
+      id: {
+        type: "Identifier",
+        loc: "1:6-1:7",
+        name: "A",
+      },
+      superClass: null,
+      body: {
+        type: "ClassBody",
+        loc: "1:0-1:10",
+        body: [],
+      },
+    },
+    {
+      type: "ClassDeclaration",
+      loc: "3:0-3:20",
+      id: {
+        type: "Identifier",
+        loc: "3:6-3:7",
+        name: "A",
+      },
+      superClass: {
+        type: "Identifier",
+        loc: "3:16-3:17",
+        name: "B",
+      },
+      body: {
+        type: "ClassBody",
+        loc: "3:0-3:20",
+        body: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:13",
+      kind: {
+        type: "ClassExpression",
+        loc: "5:1-5:11",
+        id: {
+          type: "Identifier",
+          loc: "5:7-5:8",
+          name: "A",
+        },
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "5:1-5:11",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:23",
+      kind: {
+        type: "ClassExpression",
+        loc: "7:1-7:21",
+        id: {
+          type: "Identifier",
+          loc: "7:7-7:8",
+          name: "A",
+        },
+        superClass: {
+          type: "Identifier",
+          loc: "7:17-7:18",
+          name: "B",
+        },
+        body: {
+          type: "ClassBody",
+          loc: "7:1-7:21",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:11",
+      kind: {
+        type: "ClassExpression",
+        loc: "9:1-9:9",
+        id: null,
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "9:1-9:9",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:21",
+      kind: {
+        type: "ClassExpression",
+        loc: "11:1-11:19",
+        id: null,
+        superClass: {
+          type: "Identifier",
+          loc: "11:15-11:16",
+          name: "B",
+        },
+        body: {
+          type: "ClassBody",
+          loc: "11:1-11:19",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ClassDeclaration",
+      loc: "13:0-15:1",
+      id: {
+        type: "Identifier",
+        loc: "13:6-13:7",
+        name: "C",
+      },
+      superClass: null,
+      body: {
+        type: "ClassBody",
+        loc: "13:0-15:1",
+        body: [],
+      },
+    },
+    {
+      type: "ClassDeclaration",
+      loc: "19:0-26:1",
+      id: {
+        type: "Identifier",
+        loc: "19:6-19:7",
+        name: "C",
+      },
+      superClass: null,
+      body: {
+        type: "ClassBody",
+        loc: "19:0-26:1",
+        body: [
+          {
+            type: "StaticBlock",
+            loc: "20:2-20:11",
+            body: [],
+          },
+          {
+            type: "StaticBlock",
+            loc: "22:2-25:3",
+            body: [
+              {
+                type: "VariableDeclaration",
+                loc: "23:4-23:14",
+                kind: "let",
+                declarations: [
+                  {
+                    type: "VariableDeclarator",
+                    loc: "23:8-23:13",
+                    id: {
+                      type: "Identifier",
+                      loc: "23:8-23:9",
+                      name: "i",
+                    },
+                    init: {
+                      type: "Literal",
+                      loc: "23:12-23:13",
+                      value: 0,
+                    },
+                  },
+                ],
+              },
+              {
+                type: "ExpressionStatement",
+                loc: "24:4-24:6",
+                kind: {
+                  type: "Identifier",
+                  loc: "24:4-24:5",
+                  name: "b",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

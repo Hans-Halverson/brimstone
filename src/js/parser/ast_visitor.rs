@@ -13,6 +13,7 @@ pub trait AstVisitor: Sized {
         match stmt {
             Statement::VarDecl(var_decl) => self.visit_variable_declaration(var_decl),
             Statement::FuncDecl(func_decl) => self.visit_function_declaration(func_decl),
+            Statement::ClassDecl(class_decl) => self.visit_class_declaration(class_decl),
             Statement::Expr(expr) => self.visit_expression_statement(expr),
             Statement::Block(stmt) => self.visit_block(stmt),
             Statement::If(stmt) => self.visit_if_statement(stmt),
@@ -55,6 +56,7 @@ pub trait AstVisitor: Sized {
             Expression::Object(arr) => self.visit_object_expression(arr),
             Expression::Function(func) => self.visit_function_expression(func),
             Expression::ArrowFunction(func) => self.visit_arrow_function(func),
+            Expression::Class(class) => self.visit_class_expression(class),
             Expression::Await(expr) => self.visit_await_expression(expr),
             Expression::Yield(expr) => self.visit_yield_expression(expr),
         }
@@ -89,6 +91,26 @@ pub trait AstVisitor: Sized {
 
     fn visit_function_body(&mut self, body: &mut FunctionBody) {
         default_visit_function_body(self, body)
+    }
+
+    fn visit_class_declaration(&mut self, class_decl: &mut Class) {
+        default_visit_class_declaration(self, class_decl)
+    }
+
+    fn visit_class(&mut self, class: &mut Class) {
+        default_visit_class(self, class)
+    }
+
+    fn visit_class_element(&mut self, element: &mut ClassElement) {
+        default_visit_class_element(self, element)
+    }
+
+    fn visit_class_method(&mut self, method: &mut ClassMethod) {
+        default_visit_class_method(self, method)
+    }
+
+    fn visit_class_property(&mut self, prop: &mut ClassProperty) {
+        default_visit_class_property(self, prop)
     }
 
     fn visit_block(&mut self, block: &mut Block) {
@@ -237,6 +259,10 @@ pub trait AstVisitor: Sized {
         default_visit_arrow_function(self, func)
     }
 
+    fn visit_class_expression(&mut self, class: &mut Class) {
+        default_visit_class_expression(self, class)
+    }
+
     fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {
         default_visit_await_expression(self, expr)
     }
@@ -320,6 +346,33 @@ pub fn default_visit_function_body<V: AstVisitor>(visitor: &mut V, body: &mut Fu
         FunctionBody::Block(ref mut block) => visitor.visit_block(block),
         FunctionBody::Expression(ref mut expr) => visitor.visit_expression(expr),
     }
+}
+
+pub fn default_visit_class_declaration<V: AstVisitor>(visitor: &mut V, class: &mut Class) {
+    visitor.visit_class(class);
+}
+
+pub fn default_visit_class<V: AstVisitor>(visitor: &mut V, class: &mut Class) {
+    visit_opt!(visitor, class.id, visit_identifier);
+    visit_opt!(visitor, class.super_class, visit_expression);
+    visit_vec!(visitor, class.body, visit_class_element);
+}
+
+pub fn default_visit_class_element<V: AstVisitor>(visitor: &mut V, element: &mut ClassElement) {
+    match element {
+        ClassElement::Method(method) => visitor.visit_class_method(method),
+        ClassElement::Property(prop) => visitor.visit_class_property(prop),
+    }
+}
+
+pub fn default_visit_class_method<V: AstVisitor>(visitor: &mut V, method: &mut ClassMethod) {
+    visitor.visit_expression(&mut method.key);
+    visitor.visit_function(&mut method.value);
+}
+
+pub fn default_visit_class_property<V: AstVisitor>(visitor: &mut V, prop: &mut ClassProperty) {
+    visitor.visit_expression(&mut prop.key);
+    visit_opt!(visitor, prop.value, visit_expression);
 }
 
 pub fn default_visit_block<V: AstVisitor>(visitor: &mut V, block: &mut Block) {
@@ -519,6 +572,10 @@ pub fn default_visit_function_expression<V: AstVisitor>(visitor: &mut V, func: &
 
 pub fn default_visit_arrow_function<V: AstVisitor>(visitor: &mut V, func: &mut Function) {
     visitor.visit_function(func);
+}
+
+pub fn default_visit_class_expression<V: AstVisitor>(visitor: &mut V, class: &mut Class) {
+    visitor.visit_class(class);
 }
 
 pub fn default_visit_await_expression<V: AstVisitor>(visitor: &mut V, expr: &mut AwaitExpression) {

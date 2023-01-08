@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-45:63",
+  loc: "1:0-44:63",
   body: [
     {
       type: "Block",
@@ -783,27 +783,27 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "39:0-39:37",
+      loc: "38:0-38:55",
       kind: {
         type: "ObjectExpression",
-        loc: "39:1-39:35",
+        loc: "38:1-38:53",
         properties: [
           {
             type: "Property",
-            loc: "39:3-39:17",
+            loc: "38:3-38:17",
             key: {
               type: "Identifier",
-              loc: "39:9-39:12",
+              loc: "38:9-38:12",
               name: "get",
             },
             value: {
               type: "FunctionExpression",
-              loc: "39:3-39:17",
+              loc: "38:3-38:17",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "39:15-39:17",
+                loc: "38:15-38:17",
                 body: [],
               },
               async: true,
@@ -817,20 +817,47 @@
           },
           {
             type: "Property",
-            loc: "39:19-39:33",
+            loc: "38:19-38:33",
             key: {
               type: "Identifier",
-              loc: "39:25-39:28",
+              loc: "38:25-38:28",
               name: "set",
             },
             value: {
               type: "FunctionExpression",
-              loc: "39:19-39:33",
+              loc: "38:19-38:33",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "39:31-39:33",
+                loc: "38:31-38:33",
+                body: [],
+              },
+              async: true,
+              generator: false,
+              has_use_strict_directive: false,
+            },
+            computed: false,
+            shorthand: false,
+            method: true,
+            kind: "init",
+          },
+          {
+            type: "Property",
+            loc: "38:35-38:51",
+            key: {
+              type: "Identifier",
+              loc: "38:41-38:46",
+              name: "async",
+            },
+            value: {
+              type: "FunctionExpression",
+              loc: "38:35-38:51",
+              id: null,
+              params: [],
+              body: {
+                type: "Block",
+                loc: "38:49-38:51",
                 body: [],
               },
               async: true,
@@ -847,27 +874,27 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "41:0-41:30",
+      loc: "40:0-40:30",
       kind: {
         type: "ObjectExpression",
-        loc: "41:1-41:28",
+        loc: "40:1-40:28",
         properties: [
           {
             type: "Property",
-            loc: "41:3-41:13",
+            loc: "40:3-40:13",
             key: {
               type: "Identifier",
-              loc: "41:7-41:8",
+              loc: "40:7-40:8",
               name: "a",
             },
             value: {
               type: "FunctionExpression",
-              loc: "41:3-41:13",
+              loc: "40:3-40:13",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "41:11-41:13",
+                loc: "40:11-40:13",
                 body: [],
               },
               async: false,
@@ -881,26 +908,26 @@
           },
           {
             type: "Property",
-            loc: "41:15-41:26",
+            loc: "40:15-40:26",
             key: {
               type: "Identifier",
-              loc: "41:19-41:20",
+              loc: "40:19-40:20",
               name: "a",
             },
             value: {
               type: "FunctionExpression",
-              loc: "41:15-41:26",
+              loc: "40:15-40:26",
               id: null,
               params: [
                 {
                   type: "Identifier",
-                  loc: "41:21-41:22",
+                  loc: "40:21-40:22",
                   name: "b",
                 },
               ],
               body: {
                 type: "Block",
-                loc: "41:24-41:26",
+                loc: "40:24-40:26",
                 body: [],
               },
               async: false,
@@ -917,27 +944,27 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "43:0-43:45",
+      loc: "42:0-42:45",
       kind: {
         type: "ObjectExpression",
-        loc: "43:1-43:43",
+        loc: "42:1-42:43",
         properties: [
           {
             type: "Property",
-            loc: "43:3-43:15",
+            loc: "42:3-42:15",
             key: {
               type: "Identifier",
-              loc: "43:8-43:9",
+              loc: "42:8-42:9",
               name: "a",
             },
             value: {
               type: "FunctionExpression",
-              loc: "43:3-43:15",
+              loc: "42:3-42:15",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "43:13-43:15",
+                loc: "42:13-42:15",
                 body: [],
               },
               async: false,
@@ -951,20 +978,20 @@
           },
           {
             type: "Property",
-            loc: "43:17-43:27",
+            loc: "42:17-42:27",
             key: {
               type: "Literal",
-              loc: "43:21-43:22",
+              loc: "42:21-42:22",
               value: 1,
             },
             value: {
               type: "FunctionExpression",
-              loc: "43:17-43:27",
+              loc: "42:17-42:27",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "43:25-43:27",
+                loc: "42:25-42:27",
                 body: [],
               },
               async: false,
@@ -978,20 +1005,20 @@
           },
           {
             type: "Property",
-            loc: "43:29-43:41",
+            loc: "42:29-42:41",
             key: {
               type: "Literal",
-              loc: "43:33-43:36",
+              loc: "42:33-42:36",
               value: "a",
             },
             value: {
               type: "FunctionExpression",
-              loc: "43:29-43:41",
+              loc: "42:29-42:41",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "43:39-43:41",
+                loc: "42:39-42:41",
                 body: [],
               },
               async: false,
@@ -1008,27 +1035,27 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "45:0-45:63",
+      loc: "44:0-44:63",
       kind: {
         type: "ObjectExpression",
-        loc: "45:1-45:61",
+        loc: "44:1-44:61",
         properties: [
           {
             type: "Property",
-            loc: "45:3-45:15",
+            loc: "44:3-44:15",
             key: {
               type: "Identifier",
-              loc: "45:7-45:10",
+              loc: "44:7-44:10",
               name: "get",
             },
             value: {
               type: "FunctionExpression",
-              loc: "45:3-45:15",
+              loc: "44:3-44:15",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "45:13-45:15",
+                loc: "44:13-44:15",
                 body: [],
               },
               async: false,
@@ -1042,20 +1069,20 @@
           },
           {
             type: "Property",
-            loc: "45:17-45:29",
+            loc: "44:17-44:29",
             key: {
               type: "Identifier",
-              loc: "45:21-45:24",
+              loc: "44:21-44:24",
               name: "set",
             },
             value: {
               type: "FunctionExpression",
-              loc: "45:17-45:29",
+              loc: "44:17-44:29",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "45:27-45:29",
+                loc: "44:27-44:29",
                 body: [],
               },
               async: false,
@@ -1069,26 +1096,26 @@
           },
           {
             type: "Property",
-            loc: "45:31-45:44",
+            loc: "44:31-44:44",
             key: {
               type: "Identifier",
-              loc: "45:35-45:38",
+              loc: "44:35-44:38",
               name: "get",
             },
             value: {
               type: "FunctionExpression",
-              loc: "45:31-45:44",
+              loc: "44:31-44:44",
               id: null,
               params: [
                 {
                   type: "Identifier",
-                  loc: "45:39-45:40",
+                  loc: "44:39-44:40",
                   name: "x",
                 },
               ],
               body: {
                 type: "Block",
-                loc: "45:42-45:44",
+                loc: "44:42-44:44",
                 body: [],
               },
               async: false,
@@ -1102,26 +1129,26 @@
           },
           {
             type: "Property",
-            loc: "45:46-45:59",
+            loc: "44:46-44:59",
             key: {
               type: "Identifier",
-              loc: "45:50-45:53",
+              loc: "44:50-44:53",
               name: "set",
             },
             value: {
               type: "FunctionExpression",
-              loc: "45:46-45:59",
+              loc: "44:46-44:59",
               id: null,
               params: [
                 {
                   type: "Identifier",
-                  loc: "45:54-45:55",
+                  loc: "44:54-44:55",
                   name: "x",
                 },
               ],
               body: {
                 type: "Block",
-                loc: "45:57-45:59",
+                loc: "44:57-44:59",
                 body: [],
               },
               async: false,

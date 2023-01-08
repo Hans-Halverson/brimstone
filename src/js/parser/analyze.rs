@@ -27,6 +27,8 @@ pub struct Analyzer {
     breakable_depth: usize,
     // Number of nested iterable statements the visitor is currently inside
     iterable_depth: usize,
+    // Number of nested functions the visitor is currently inside
+    function_depth: usize,
 }
 
 // Saved state from entering a function that can be restored from
@@ -48,6 +50,7 @@ impl<'a> Analyzer {
             label_depth: 0,
             breakable_depth: 0,
             iterable_depth: 0,
+            function_depth: 0,
         }
     }
 
@@ -94,6 +97,10 @@ impl<'a> Analyzer {
 
     fn is_in_iterable(&self) -> bool {
         self.iterable_depth > 0
+    }
+
+    fn is_in_function(&self) -> bool {
+        self.function_depth > 0
     }
 
     // Save state before visiting a function. This prevents labels and some context from leaking
@@ -186,6 +193,14 @@ impl<'a> AstVisitor for Analyzer {
         func.is_arguments_object_needed = false;
 
         self.visit_function_common(func);
+    }
+
+    fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
+        if !self.is_in_function() {
+            self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction);
+        }
+
+        default_visit_return_statement(self, stmt);
     }
 
     fn visit_break_statement(&mut self, stmt: &mut BreakStatement) {
@@ -304,6 +319,7 @@ impl Analyzer {
 
         // Visit body inside a new function scope
         self.scope_builder.enter_function_scope(func);
+        self.function_depth += 1;
 
         match *func.body {
             FunctionBody::Block(ref mut block) => {
@@ -380,6 +396,7 @@ impl Analyzer {
         func.has_duplicate_parameters = has_duplicate_parameters;
         func.is_arguments_object_needed = is_arguments_object_needed;
 
+        self.function_depth -= 1;
         self.scope_builder.exit_scope();
 
         if func.has_use_strict_directive {

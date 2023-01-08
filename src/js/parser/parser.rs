@@ -23,6 +23,7 @@ pub enum ParseError {
     LabelNotFound,
     WithInStrictMode,
     InvalidLabeledFunction(bool),
+    ReturnOutsideFunction,
     ContinueOutsideIterable,
     UnlabeledBreakOutsideBreakable,
 }
@@ -63,6 +64,7 @@ impl fmt::Display for ParseError {
             ParseError::InvalidLabeledFunction(false) => {
                 write!(f, "Functions can only be labeled inside blocks")
             }
+            ParseError::ReturnOutsideFunction => write!(f, "Return must be inside function"),
             ParseError::ContinueOutsideIterable => write!(f, "Continue must be inside loop"),
             ParseError::UnlabeledBreakOutsideBreakable => {
                 write!(f, "Unlabeled break must be inside loop or switch")
@@ -389,15 +391,28 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
-        let stmt = self.parse_statement()?;
+        let stmt = self.parse_statement_list_item()?;
         Ok(Toplevel::Statement(stmt))
+    }
+
+    fn parse_statement_list_item(&mut self) -> ParseResult<Statement> {
+        match self.token {
+            Token::Let | Token::Const => {
+                Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
+            }
+            _ => {
+                if self.is_function_start()? {
+                    return Ok(Statement::FuncDecl(self.parse_function(true)?));
+                }
+
+                self.parse_statement()
+            }
+        }
     }
 
     fn parse_statement(&mut self) -> ParseResult<Statement> {
         match self.token {
-            Token::Var | Token::Let | Token::Const => {
-                Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
-            }
+            Token::Var => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
             Token::LeftBrace => Ok(Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
@@ -424,8 +439,8 @@ impl<'a> Parser<'a> {
                 Ok(Statement::Debugger(self.mark_loc(start_pos)))
             }
             _ => {
-                if self.is_function_start()? {
-                    return Ok(Statement::FuncDecl(self.parse_function(true)?));
+                if self.is_function_start()? || self.token == Token::Let {
+                    return self.error_unexpected_token(self.loc, &self.token);
                 }
 
                 let start_pos = self.current_start_pos();
@@ -435,7 +450,14 @@ impl<'a> Parser<'a> {
                 if self.token == Token::Colon {
                     if let Expression::Id(label) = *expr {
                         self.advance()?;
-                        let body = self.parse_statement()?;
+
+                        // Functions can be labeled items
+                        let body = if self.is_function_start()? {
+                            Statement::FuncDecl(self.parse_function(true)?)
+                        } else {
+                            self.parse_statement()?
+                        };
+
                         let loc = self.mark_loc(start_pos);
 
                         return Ok(Statement::Labeled(LabeledStatement {
@@ -593,7 +615,7 @@ impl<'a> Parser<'a> {
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
-            body.push(self.parse_statement()?)
+            body.push(self.parse_statement_list_item()?)
         }
 
         self.advance()?;
@@ -608,7 +630,7 @@ impl<'a> Parser<'a> {
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
-            body.push(self.parse_statement()?)
+            body.push(self.parse_statement_list_item()?)
         }
 
         self.advance()?;
@@ -676,7 +698,7 @@ impl<'a> Parser<'a> {
                         && self.token != Token::Default
                         && self.token != Token::RightBrace
                     {
-                        body.push(self.parse_statement()?)
+                        body.push(self.parse_statement_list_item()?)
                     }
 
                     let loc = self.mark_loc(case_start_pos);

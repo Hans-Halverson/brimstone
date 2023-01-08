@@ -22,5 +22,5 @@ async (x, y) => {};
 
 async x => {};
 
-// TODO: Call, not arrow expression
-// async();
+// Call, not async arrow expression
+async();

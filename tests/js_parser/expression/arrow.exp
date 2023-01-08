@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-23:14",
+  loc: "1:0-26:8",
   body: [
     {
       type: "ExpressionStatement",
@@ -295,6 +295,21 @@
         async: true,
         generator: false,
         has_use_strict_directive: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "26:0-26:8",
+      kind: {
+        type: "CallExpression",
+        loc: "26:0-26:7",
+        callee: {
+          type: "Identifier",
+          loc: "26:0-26:5",
+          name: "async",
+        },
+        arguments: [],
+        optional: false,
       },
     },
   ],

@@ -1757,6 +1757,41 @@ impl<'a> Parser<'a> {
                     return Ok(p(Expression::Function(self.parse_function(false)?)));
                 }
 
+                // Check for the start of an async arrow function
+                if self.token == Token::Async {
+                    let async_loc = self.loc;
+                    self.advance()?;
+
+                    // `async [newline] id` is an `async` identifier with ASI followed by another
+                    // identifier instead of the start of an async arrow function.
+                    if self.lexer.is_new_line_before_current() {
+                        return Ok(p(Expression::Id(Identifier {
+                            loc: async_loc,
+                            name: String::from("async"),
+                        })));
+                    }
+
+                    // If followed by an identifier this is `async id`
+                    let id_token = self.token.clone();
+                    let id_loc = self.loc;
+                    if let Ok(_) = self.parse_binding_identifier() {
+                        // Start of an async arrow function. This can only occur if we are trying
+                        // to parse a non-arrow function first, so fail the try parse.
+                        if self.token == Token::Arrow {
+                            return self.error(async_loc, FAIL_TRY_PARSED_ERROR);
+                        } else {
+                            // Otherwise this is a regular parse error at `id`
+                            return self.error_unexpected_token(id_loc, &id_token);
+                        }
+                    } else {
+                        // If not followed by an identifier this is just the identifier `async`
+                        return Ok(p(Expression::Id(Identifier {
+                            loc: async_loc,
+                            name: String::from("async"),
+                        })));
+                    }
+                }
+
                 Ok(p(Expression::Id(self.parse_identifier_reference()?)))
             }
         }
@@ -1969,6 +2004,62 @@ impl<'a> Parser<'a> {
             _ => (),
         }
 
+        // Async method (or method with name async)
+        if self.token == Token::Async {
+            let async_loc = self.loc;
+            self.advance()?;
+
+            match self.token {
+                // Handle `async` as name of method: `async() {}`
+                Token::LeftParen => {
+                    let name = p(Expression::Id(Identifier {
+                        loc: async_loc,
+                        name: "async".to_owned(),
+                    }));
+                    return self.parse_method_property(
+                        name,
+                        start_pos,
+                        PropertyKind::Init,
+                        false,
+                        false,
+                        false,
+                    );
+                }
+                // Handle `async` as shorthand or init property
+                Token::Comma | Token::RightBrace | Token::Colon => {
+                    let name = p(Expression::Id(Identifier {
+                        loc: async_loc,
+                        name: "async".to_owned(),
+                    }));
+                    return self.parse_init_property(
+                        name,
+                        start_pos,
+                        false,
+                        self.token != Token::Colon,
+                    );
+                }
+                _ => (),
+            }
+
+            // Async method may also be a generator
+            let is_generator = self.token == Token::Multiply;
+            if is_generator {
+                self.advance()?;
+            }
+
+            return match self.parse_property_name()? {
+                (Some(name), is_computed, _) => self.parse_method_property(
+                    name,
+                    start_pos,
+                    PropertyKind::Init,
+                    true,
+                    is_generator,
+                    is_computed,
+                ),
+                _ => self.error_unexpected_token(self.loc, &self.token),
+            };
+        }
+
         match self.parse_property_name()? {
             // Regular init and method properties
             (Some(name), is_computed, is_shorthand) => match self.token {
@@ -1994,61 +2085,6 @@ impl<'a> Parser<'a> {
                             PropertyKind::Init,
                             false,
                             true,
-                            is_computed,
-                        ),
-                        _ => self.error_unexpected_token(self.loc, &self.token),
-                    }
-                }
-                // Async method (or method with name async)
-                Token::Async => {
-                    let async_loc = self.loc;
-                    self.advance()?;
-
-                    match self.token {
-                        // Handle `async` as name of method: `async() {}`
-                        Token::LeftParen => {
-                            let name = p(Expression::Id(Identifier {
-                                loc: async_loc,
-                                name: "async".to_owned(),
-                            }));
-                            return self.parse_method_property(
-                                name,
-                                start_pos,
-                                PropertyKind::Init,
-                                false,
-                                false,
-                                false,
-                            );
-                        }
-                        // Handle `async` as shorthand or init property
-                        Token::Comma | Token::RightBrace | Token::Colon => {
-                            let name = p(Expression::Id(Identifier {
-                                loc: async_loc,
-                                name: "async".to_owned(),
-                            }));
-                            return self.parse_init_property(
-                                name,
-                                start_pos,
-                                false,
-                                self.token != Token::Colon,
-                            );
-                        }
-                        _ => (),
-                    }
-
-                    // Async method may also be a generator
-                    let is_generator = self.token == Token::Multiply;
-                    if is_generator {
-                        self.advance()?;
-                    }
-
-                    match self.parse_property_name()? {
-                        (Some(name), is_computed, _) => self.parse_method_property(
-                            name,
-                            start_pos,
-                            PropertyKind::Init,
-                            true,
-                            is_generator,
                             is_computed,
                         ),
                         _ => self.error_unexpected_token(self.loc, &self.token),

@@ -25,7 +25,7 @@ pub fn binding_initialization(
 }
 
 // 8.5.2.1 InitializeBoundName
-fn initialize_bound_name(
+pub fn initialize_bound_name(
     cx: &mut Context,
     name: &str,
     value: Value,

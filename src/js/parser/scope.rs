@@ -65,6 +65,10 @@ impl ScopeBuilder {
         }
     }
 
+    pub fn add_class_decl(&mut self, class: &ast::Class) {
+        self.insert_lex_scoped_decl(LexDecl::Class(AstPtr::from_ref(class)))
+    }
+
     fn insert_var_scoped_decl(&mut self, decl: VarDecl) {
         // Variables are hoisted to closest function or toplevel scope
         for scope in self.scope_stack.iter_mut().rev() {

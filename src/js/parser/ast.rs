@@ -33,6 +33,7 @@ pub enum VarDecl {
 pub enum LexDecl {
     Func(AstPtr<Function>),
     Var(AstPtr<VariableDeclaration>),
+    Class(AstPtr<Class>),
 }
 
 impl VarDecl {
@@ -55,6 +56,7 @@ impl LexDecl {
         match &self {
             LexDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
             LexDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
+            LexDecl::Class(class) => class.as_ref().id.as_deref().map(f).unwrap_or(().into()),
         }
     }
 }

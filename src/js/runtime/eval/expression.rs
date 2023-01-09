@@ -29,6 +29,7 @@ use crate::{
 };
 
 use super::{
+    class::eval_class_expression,
     eval::perform_eval,
     function::{
         instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
@@ -66,7 +67,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Object(expr) => eval_object_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
-        ast::Expression::Class(_) => unimplemented!("class expression"),
+        ast::Expression::Class(class) => eval_class_expression(cx, class),
         ast::Expression::This(_) => eval_this_expression(cx),
         ast::Expression::Await(_) => unimplemented!("await expression"),
         ast::Expression::Yield(_) => unimplemented!("yield expression"),
@@ -187,7 +188,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
     object.into()
 }
 
-fn eval_property_name<'a>(
+pub fn eval_property_name<'a>(
     cx: &mut Context,
     key: &'a ast::Expression,
     is_computed: bool,

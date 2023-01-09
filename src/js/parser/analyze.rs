@@ -31,8 +31,8 @@ pub struct Analyzer {
     function_depth: usize,
 }
 
-// Saved state from entering a function that can be restored from
-struct FunctionSavedState {
+// Saved state from entering a function or class that can be restored from
+struct AnalyzerSavedState {
     labels: HashMap<String, LabelId>,
     label_depth: LabelId,
     breakable_depth: usize,
@@ -103,10 +103,10 @@ impl<'a> Analyzer {
         self.function_depth > 0
     }
 
-    // Save state before visiting a function. This prevents labels and some context from leaking
-    // into the inner function.
-    fn save_function_state(&mut self) -> FunctionSavedState {
-        let mut state = FunctionSavedState {
+    // Save state before visiting a function or class. This prevents labels and some context from
+    // leaking into the inner function or class.
+    fn save_state(&mut self) -> AnalyzerSavedState {
+        let mut state = AnalyzerSavedState {
             labels: HashMap::new(),
             label_depth: self.label_depth,
             breakable_depth: self.breakable_depth,
@@ -121,8 +121,8 @@ impl<'a> Analyzer {
         state
     }
 
-    // Restore state after visiting a function
-    fn restore_function_state(&mut self, mut state: FunctionSavedState) {
+    // Restore state after visiting a function or class
+    fn restore_state(&mut self, mut state: AnalyzerSavedState) {
         std::mem::swap(&mut self.labels, &mut state.labels);
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
@@ -156,6 +156,8 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_class_declaration(&mut self, class: &mut Class) {
+        self.scope_builder.add_class_decl(class);
+
         self.visit_class_common(class)
     }
 
@@ -314,7 +316,7 @@ impl Analyzer {
 
     fn visit_function_common(&mut self, func: &mut Function) {
         // Save analyzer context before descending into function
-        let saved_state = self.save_function_state();
+        let saved_state = self.save_state();
 
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_pattern);
@@ -411,10 +413,13 @@ impl Analyzer {
         }
 
         // Restore analyzer context after visiting function
-        self.restore_function_state(saved_state);
+        self.restore_state(saved_state);
     }
 
     fn visit_class_common(&mut self, class: &mut Class) {
+        // Save analyzer context before descending into class
+        let saved_state = self.save_state();
+
         // Entire class is in strict mode
         self.enter_strict_mode_context();
 
@@ -446,6 +451,9 @@ impl Analyzer {
         class.constructor = constructor;
 
         self.exit_strict_mode_context();
+
+        // Restore analyzer context after visiting class
+        self.restore_state(saved_state);
     }
 
     fn visit_class_method(&mut self, method: &mut ClassMethod) {

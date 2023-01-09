@@ -26,7 +26,10 @@ use crate::{
     maybe, maybe_, maybe__, must,
 };
 
-use super::expression::{eval_expression, eval_identifier_to_reference};
+use super::{
+    class::{class_definition_evaluation, eval_class_declaration},
+    expression::{eval_expression, eval_identifier_to_reference},
+};
 
 // 14.2.2 StatementList Evaluation
 pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Completion {
@@ -76,7 +79,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
             }
         }
         ast::Statement::FuncDecl(_) => eval_function_declaration(),
-        ast::Statement::ClassDecl(_) => unimplemented!("class declaration"),
+        ast::Statement::ClassDecl(class) => eval_class_declaration(cx, class),
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
         ast::Statement::If(stmt) => eval_if_statement(cx, stmt),
@@ -216,6 +219,10 @@ pub fn eval_named_anonymous_function_or_expression(
         }
         ast::Expression::ArrowFunction(func) => {
             instantiate_arrow_function_expression(cx, &func, Some(name)).into()
+        }
+        ast::Expression::Class(class @ ast::Class { id: None, .. }) => {
+            let value = maybe!(class_definition_evaluation(cx, class, None, name));
+            value.into()
         }
         _ => eval_expression(cx, expr),
     }

@@ -45,6 +45,17 @@ pub fn set(
     ().into()
 }
 
+// 7.3.6 CreateMethodProperty
+pub fn create_method_property(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    key: &str,
+    value: Value,
+) {
+    let new_desc = PropertyDescriptor::data(value, true, false, true);
+    must!(object.define_own_property(cx, key, new_desc));
+}
+
 // 7.3.5 CreateDataProperty
 pub fn create_data_property(
     cx: &mut Context,

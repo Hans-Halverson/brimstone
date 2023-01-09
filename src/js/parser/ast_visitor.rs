@@ -367,7 +367,7 @@ pub fn default_visit_class_element<V: AstVisitor>(visitor: &mut V, element: &mut
 
 pub fn default_visit_class_method<V: AstVisitor>(visitor: &mut V, method: &mut ClassMethod) {
     visitor.visit_expression(&mut method.key);
-    visitor.visit_function(&mut method.value);
+    visitor.visit_function_expression(&mut method.value);
 }
 
 pub fn default_visit_class_property<V: AstVisitor>(visitor: &mut V, prop: &mut ClassProperty) {

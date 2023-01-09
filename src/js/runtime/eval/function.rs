@@ -351,7 +351,7 @@ pub fn instantiate_arrow_function_expression(
 }
 
 // 15.4.4 DefineMethod
-fn define_method(
+pub fn define_method(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     func_node: &ast::Function,

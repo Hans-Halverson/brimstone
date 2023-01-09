@@ -1,3 +1,4 @@
+pub mod class;
 pub mod eval;
 pub mod evaluate;
 pub mod expression;

@@ -338,7 +338,7 @@ pub fn make_constructor(
 }
 
 // 10.2.6 MakeClassConstructor
-fn make_class_constructor(mut func: Gc<Function>) {
+pub fn make_class_constructor(mut func: Gc<Function>) {
     func.is_class_constructor = true;
 }
 

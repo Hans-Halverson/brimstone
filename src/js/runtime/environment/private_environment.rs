@@ -20,10 +20,10 @@ impl GcDeref for PrivateEnvironment {}
 
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
-    pub fn new(cx: &mut Context, outer: Gc<PrivateEnvironment>) -> Gc<PrivateEnvironment> {
+    pub fn new(cx: &mut Context, outer: Option<Gc<PrivateEnvironment>>) -> Gc<PrivateEnvironment> {
         cx.heap.alloc(PrivateEnvironment {
             names: HashMap::new(),
-            outer: Some(outer),
+            outer,
         })
     }
 

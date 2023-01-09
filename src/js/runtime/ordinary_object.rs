@@ -527,6 +527,15 @@ pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
     }
 }
 
+pub fn ordinary_object_create_optional_proto(prototype: Option<Gc<ObjectValue>>) -> OrdinaryObject {
+    OrdinaryObject {
+        _vtable: VTABLE,
+        prototype,
+        properties: HashMap::new(),
+        is_extensible: true,
+    }
+}
+
 // 10.1.13 OrdinaryCreateFromConstructor
 pub fn ordinary_create_from_constructor(
     cx: &mut Context,

@@ -27,6 +27,9 @@ pub enum ParseError {
     ReturnOutsideFunction,
     ContinueOutsideIterable,
     UnlabeledBreakOutsideBreakable,
+    MultipleConstructors,
+    NonSimpleConstructor,
+    ClassStaticPrototype,
 }
 
 // Arbitrary error used to fail try parse
@@ -72,6 +75,15 @@ impl fmt::Display for ParseError {
             ParseError::ContinueOutsideIterable => write!(f, "Continue must be inside loop"),
             ParseError::UnlabeledBreakOutsideBreakable => {
                 write!(f, "Unlabeled break must be inside loop or switch")
+            }
+            ParseError::MultipleConstructors => {
+                write!(f, "Class can only have a single constructor")
+            }
+            ParseError::NonSimpleConstructor => {
+                write!(f, "Constructors must be simple methods")
+            }
+            ParseError::ClassStaticPrototype => {
+                write!(f, "Classes cannot have a static prototype field or method")
             }
         }
     }
@@ -2299,12 +2311,7 @@ impl<'a> Parser<'a> {
         // Restore to strict mode context from beforehand
         self.in_strict_mode = old_in_strict_mode;
 
-        Ok(Class {
-            loc,
-            id,
-            super_class,
-            body,
-        })
+        Ok(Class::new(loc, id, super_class, body))
     }
 
     fn parse_class_element(&mut self) -> ParseResult<ClassElement> {
@@ -2420,7 +2427,7 @@ impl<'a> Parser<'a> {
             ..
         } = property;
 
-        let value = if let Expression::Function(func) = *value.unwrap() {
+        let func_value = if let Expression::Function(func) = *value.unwrap() {
             p(func)
         } else {
             unreachable!("method properties must have function expression")
@@ -2432,13 +2439,13 @@ impl<'a> Parser<'a> {
             PropertyKind::Init if is_static => ClassMethodKind::Method,
             PropertyKind::Init => {
                 // Any function name may be a constructor
-                let is_constructor = match key.as_ref() {
+                let is_constructor_key = match key.as_ref() {
                     Expression::Id(id) if id.name == "constructor" => true,
                     Expression::String(str) if str.value == "constructor" => true,
                     _ => false,
                 };
 
-                if is_constructor {
+                if is_constructor_key && !is_static && !is_computed {
                     ClassMethodKind::Constructor
                 } else {
                     ClassMethodKind::Method
@@ -2449,7 +2456,7 @@ impl<'a> Parser<'a> {
         ClassMethod {
             loc,
             key,
-            value,
+            value: func_value,
             kind,
             is_computed,
             is_static,

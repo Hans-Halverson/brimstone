@@ -262,6 +262,25 @@ pub struct Class {
     pub id: Option<P<Identifier>>,
     pub super_class: Option<P<Expression>>,
     pub body: Vec<ClassElement>,
+
+    pub constructor: Option<AstPtr<ClassMethod>>,
+}
+
+impl Class {
+    pub fn new(
+        loc: Loc,
+        id: Option<P<Identifier>>,
+        super_class: Option<P<Expression>>,
+        body: Vec<ClassElement>,
+    ) -> Class {
+        Class {
+            loc,
+            id,
+            super_class,
+            body,
+            constructor: None,
+        }
+    }
 }
 
 pub enum ClassElement {

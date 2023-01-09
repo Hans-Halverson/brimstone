@@ -155,6 +155,10 @@ impl<'a> AstVisitor for Analyzer {
         self.visit_function_declaration_common(func, true)
     }
 
+    fn visit_class_declaration(&mut self, class: &mut Class) {
+        self.visit_class_common(class)
+    }
+
     fn visit_block(&mut self, block: &mut Block) {
         self.scope_builder.enter_block_scope(block);
         default_visit_block(self, block);
@@ -193,6 +197,10 @@ impl<'a> AstVisitor for Analyzer {
         func.is_arguments_object_needed = false;
 
         self.visit_function_common(func);
+    }
+
+    fn visit_class_expression(&mut self, class: &mut Class) {
+        self.visit_class_common(class)
     }
 
     fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
@@ -404,6 +412,92 @@ impl Analyzer {
 
         // Restore analyzer context after visiting function
         self.restore_function_state(saved_state);
+    }
+
+    fn visit_class_common(&mut self, class: &mut Class) {
+        // Entire class is in strict mode
+        self.enter_strict_mode_context();
+
+        if let Some(super_class) = class.super_class.as_deref_mut() {
+            self.visit_expression(super_class);
+        }
+
+        let mut constructor = None;
+
+        for element in &mut class.body {
+            match element {
+                ClassElement::Method(method) => {
+                    if method.kind == ClassMethodKind::Constructor {
+                        if constructor.is_none() {
+                            constructor = Some(AstPtr::from_ref(method));
+                        } else {
+                            self.emit_error(method.loc, ParseError::MultipleConstructors);
+                        }
+                    }
+
+                    self.visit_class_method(method);
+                }
+                ClassElement::Property(prop) => {
+                    self.visit_class_property(prop);
+                }
+            }
+        }
+
+        class.constructor = constructor;
+
+        self.exit_strict_mode_context();
+    }
+
+    fn visit_class_method(&mut self, method: &mut ClassMethod) {
+        let key_name = if method.is_computed {
+            None
+        } else {
+            match method.key.as_ref() {
+                Expression::String(name) => Some(&name.value),
+                Expression::Id(id) => Some(&id.name),
+                _ => None,
+            }
+        };
+
+        // Constructors may be simple methods, without beign async, generator, getter, or setter.
+        // Static constructors are allowed however.
+        let is_bad_constructor = match method.kind {
+            ClassMethodKind::Constructor => method.value.is_async || method.value.is_generator,
+            ClassMethodKind::Get | ClassMethodKind::Set => {
+                key_name.map_or(false, |name| name == "constructor")
+            }
+            _ => false,
+        };
+
+        if is_bad_constructor {
+            self.emit_error(method.loc, ParseError::NonSimpleConstructor);
+        }
+
+        if method.is_static && key_name.map_or(false, |name| name == "prototype") {
+            self.emit_error(method.loc, ParseError::ClassStaticPrototype);
+        }
+
+        default_visit_class_method(self, method);
+    }
+
+    fn visit_class_property(&mut self, prop: &mut ClassProperty) {
+        let key_name = if prop.is_computed {
+            None
+        } else {
+            match prop.key.as_ref() {
+                Expression::String(name) => Some(name.value.as_str()),
+                Expression::Id(id) => Some(id.name.as_str()),
+                _ => None,
+            }
+        };
+
+        match key_name {
+            Some("constructor") => self.emit_error(prop.loc, ParseError::NonSimpleConstructor),
+            Some("prototype") if prop.is_static => {
+                self.emit_error(prop.loc, ParseError::ClassStaticPrototype)
+            }
+            _ => {}
+        }
     }
 
     // Visit all nested labeled statements, adding labels to scope and returning the inner

@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    abstract_operations::define_property_or_throw,
+    abstract_operations::{construct, define_property_or_throw, initialize_instance_elements},
     completion::{Completion, CompletionKind, EvalResult},
     environment::{
         environment::{to_trait_object, Environment},
@@ -16,9 +16,10 @@ use super::{
     },
     error::type_error_,
     eval::{
+        class::ClassFieldDefinition,
         expression::eval_expression,
         function::{function_declaration_instantiation, instantiate_ordinary_function_object},
-        statement::eval_statement_list,
+        statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, GcDeref},
@@ -28,7 +29,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     type_utilities::to_object,
-    value::Value,
+    value::{StringValue, Value},
     Context,
 };
 
@@ -60,9 +61,18 @@ pub struct Function {
     pub home_object: Option<Gc<ObjectValue>>,
     realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
-    pub func_node: AstPtr<ast::Function>,
+    pub func_node: FuncKind,
     pub environment: Gc<dyn Environment>,
     pub private_environment: Option<Gc<PrivateEnvironment>>,
+    pub fields: Vec<ClassFieldDefinition>,
+}
+
+// Function objects may have special kinds, such as executing a class property node instead of a
+// function node, or executing a builtin constructor.
+pub enum FuncKind {
+    Function(AstPtr<ast::Function>),
+    ClassProperty(AstPtr<ast::ClassProperty>, Gc<StringValue>),
+    DefaultConstructor,
 }
 
 impl GcDeref for Function {}
@@ -102,7 +112,7 @@ impl Object for Function {
             return error;
         }
 
-        maybe!(self.ordinary_call_bind_this(cx, callee_context, this_argument));
+        self.ordinary_call_bind_this(cx, callee_context, this_argument);
         let result = self.ordinary_call_evaluate_body(cx, &arguments);
 
         cx.pop_execution_context();
@@ -117,13 +127,38 @@ impl Object for Function {
         }
     }
 
-    // 9.2.2 [[Construct]]
+    // 10.2.2 [[Construct]]
     fn construct(
         &self,
         cx: &mut Context,
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
+        // Default constructor is implemented as a special function. Steps follow the default
+        // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
+        if let FuncKind::DefaultConstructor = self.func_node {
+            let new_object = if self.constructor_kind == ConstructorKind::Derived {
+                let func = must!(self.get_prototype_of());
+                match func {
+                    Some(func) if func.is_constructor() => {
+                        maybe!(construct(cx, func, arguments, Some(new_target)))
+                    }
+                    _ => return type_error_(cx, "super class must be a constructor"),
+                }
+            } else {
+                let object = maybe!(ordinary_create_from_constructor(
+                    cx,
+                    new_target,
+                    Intrinsic::ObjectPrototype
+                ));
+                cx.heap.alloc(object).into()
+            };
+
+            maybe!(initialize_instance_elements(cx, new_object, self.into()));
+
+            return new_object.into();
+        }
+
         let this_argument: Option<Gc<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
                 let object = maybe!(ordinary_create_from_constructor(
@@ -132,15 +167,41 @@ impl Object for Function {
                     Intrinsic::ObjectPrototype
                 ));
 
-                Some(cx.heap.alloc(object).into())
+                let object = cx.heap.alloc(object).into();
+
+                if let FuncKind::DefaultConstructor = self.func_node {
+                    maybe!(initialize_instance_elements(cx, object, self.into()));
+                    None
+                } else {
+                    Some(object)
+                }
             } else {
+                if let FuncKind::DefaultConstructor = self.func_node {
+                    let func = must!(self.get_prototype_of());
+                    let object = match func {
+                        Some(func) if func.is_constructor() => {
+                            maybe!(construct(cx, func, arguments, Some(new_target)))
+                        }
+                        _ => return type_error_(cx, "super class must be a constructor"),
+                    };
+
+                    maybe!(initialize_instance_elements(cx, object, self.into()));
+                }
+
                 None
             };
 
         let callee_context = self.prepare_for_ordinary_call(cx, Some(new_target));
         match this_argument {
             Some(this_argument) => {
-                maybe!(self.ordinary_call_bind_this(cx, callee_context, this_argument.into()))
+                self.ordinary_call_bind_this(cx, callee_context, this_argument.into());
+                let initialize_result =
+                    initialize_instance_elements(cx, this_argument, self.into());
+
+                if let EvalResult::Throw(thrown_value) = initialize_result {
+                    cx.pop_execution_context();
+                    return EvalResult::Throw(thrown_value);
+                }
             }
             None => {}
         }
@@ -204,7 +265,7 @@ impl Function {
             lexical_env: func_env,
             variable_env: func_env,
             private_env: self.private_environment,
-            is_strict_mode: self.func_node.as_ref().is_strict_mode,
+            is_strict_mode: self.is_strict,
         });
 
         cx.push_execution_context(callee_context);
@@ -218,7 +279,7 @@ impl Function {
         cx: &mut Context,
         mut callee_context: Gc<ExecutionContext>,
         this_argument: Value,
-    ) -> EvalResult<()> {
+    ) {
         let this_value = match self.this_mode {
             ThisMode::Lexical => return ().into(),
             ThisMode::Strict => this_argument,
@@ -227,7 +288,7 @@ impl Function {
                     let global_env = self.realm.global_env;
                     global_env.global_this_value
                 } else {
-                    maybe!(to_object(cx, this_argument))
+                    must!(to_object(cx, this_argument))
                 };
 
                 object_value.into()
@@ -238,27 +299,43 @@ impl Function {
             .lexical_env
             .as_function_environment()
             .unwrap();
-        maybe!(local_func_env.bind_this_value(cx, this_value));
-
-        ().into()
+        must!(local_func_env.bind_this_value(cx, this_value));
     }
 
     // 10.2.1.4 OrdinaryCallEvaluateBody
     // 10.2.1.3 EvaluateBody
     fn ordinary_call_evaluate_body(&self, cx: &mut Context, arguments: &[Value]) -> Completion {
-        let func_node = self.func_node.as_ref();
-        if func_node.is_async || func_node.is_generator {
-            unimplemented!("async and generator functions not yet implemented")
-        }
+        match &self.func_node {
+            FuncKind::Function(func_node) => {
+                let func_node = func_node.as_ref();
+                if func_node.is_async || func_node.is_generator {
+                    unimplemented!("async and generator functions not yet implemented")
+                }
 
-        // 15.2.3 EvaluateFunctionBody
-        // 15.3.3 EvaluateConciseBody
-        maybe_!(function_declaration_instantiation(cx, self, arguments));
-        match func_node.body.as_ref() {
-            ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
-            ast::FunctionBody::Expression(expr) => {
-                let value = maybe__!(eval_expression(cx, expr));
+                // 15.2.3 EvaluateFunctionBody
+                // 15.3.3 EvaluateConciseBody
+                maybe_!(function_declaration_instantiation(cx, self, arguments));
+                match func_node.body.as_ref() {
+                    ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
+                    ast::FunctionBody::Expression(expr) => {
+                        let value = maybe__!(eval_expression(cx, expr));
+                        Completion::return_(value)
+                    }
+                }
+            }
+            // Initializer evaluation in EvaluateBody
+            FuncKind::ClassProperty(prop, name) => {
+                let expr = prop.as_ref().value.as_ref().unwrap();
+                let value = maybe__!(eval_named_anonymous_function_or_expression(
+                    cx,
+                    expr,
+                    name.str()
+                ));
+
                 Completion::return_(value)
+            }
+            FuncKind::DefaultConstructor => {
+                unreachable!("default constructor body is never evaluated")
             }
         }
     }
@@ -297,7 +374,52 @@ pub fn ordinary_function_create(
         script_or_module: cx.get_active_script_or_module(),
         environment,
         private_environment,
-        func_node: AstPtr::from_ref(func_node),
+        func_node: FuncKind::Function(AstPtr::from_ref(func_node)),
+        fields: vec![],
+    };
+
+    let func = cx.heap.alloc(func);
+    set_function_length(cx, func.into(), argument_count);
+
+    func
+}
+
+// A copy of OrdinaryObjectCreate, but for creating function objects with special non-function kinds
+// such as class properties and static initializers.
+pub fn ordinary_function_create_special_kind(
+    cx: &mut Context,
+    function_prototype: Gc<ObjectValue>,
+    func_node: FuncKind,
+    is_lexical_this: bool,
+    is_strict: bool,
+    argument_count: u32,
+    environment: Gc<dyn Environment>,
+    private_environment: Option<Gc<PrivateEnvironment>>,
+) -> Gc<Function> {
+    let this_mode = if is_lexical_this {
+        ThisMode::Lexical
+    } else if is_strict {
+        ThisMode::Strict
+    } else {
+        ThisMode::Global
+    };
+    let object = ordinary_object_create(function_prototype);
+
+    let func = Function {
+        _vtable: VTABLE,
+        is_strict,
+        is_class_constructor: false,
+        has_construct: false,
+        constructor_kind: ConstructorKind::Base,
+        this_mode,
+        object,
+        home_object: None,
+        realm: cx.current_realm(),
+        script_or_module: cx.get_active_script_or_module(),
+        environment,
+        private_environment,
+        func_node,
+        fields: vec![],
     };
 
     let func = cx.heap.alloc(func);

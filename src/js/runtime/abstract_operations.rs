@@ -3,6 +3,8 @@ use crate::{maybe, must};
 use super::{
     completion::EvalResult,
     error::type_error_,
+    eval::class::ClassFieldDefinition,
+    function::Function,
     gc::Gc,
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
@@ -213,6 +215,44 @@ pub fn ordinary_has_instance(
             }
         }
     }
+}
+
+// 7.3.32 DefineField
+pub fn define_field(
+    cx: &mut Context,
+    receiver: Gc<ObjectValue>,
+    field_def: &ClassFieldDefinition,
+) -> EvalResult<()> {
+    let init_value = match field_def.initializer {
+        None => Value::undefined(),
+        Some(func) => maybe!(call_object(cx, func.into(), receiver.into(), &[])),
+    };
+
+    // TODO: Handle private fields
+
+    maybe!(create_data_property_or_throw(
+        cx,
+        receiver,
+        field_def.name.str(),
+        init_value
+    ));
+
+    ().into()
+}
+
+// 7.3.33 InitializeInstanceElements
+pub fn initialize_instance_elements(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    constructor: Gc<Function>,
+) -> EvalResult<()> {
+    // TODO: Handle private fields
+
+    for field_def in &constructor.fields {
+        maybe!(define_field(cx, object, field_def));
+    }
+
+    ().into()
 }
 
 pub fn get_function_realm(func: Gc<ObjectValue>) -> EvalResult<Realm> {

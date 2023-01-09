@@ -1,8 +1,8 @@
 use crate::{
     js::{
-        parser::ast::{self, ClassElement, ClassMethodKind},
+        parser::ast::{self, AstPtr, ClassElement, ClassMethodKind},
         runtime::{
-            abstract_operations::create_method_property,
+            abstract_operations::{create_method_property, define_field},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
@@ -11,14 +11,15 @@ use crate::{
             error::type_error_,
             eval::pattern::initialize_bound_name,
             function::{
-                make_class_constructor, make_constructor, make_method, ordinary_function_create,
-                set_function_name, ConstructorKind, Function,
+                make_class_constructor, make_constructor, make_method,
+                ordinary_function_create_special_kind, set_function_name, ConstructorKind,
+                FuncKind, Function,
             },
             get,
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create_optional_proto,
-            value::{NULL_TAG, OBJECT_TAG},
+            value::{StringValue, NULL_TAG, OBJECT_TAG},
             Completion, Context, EvalResult, Gc, Value,
         },
     },
@@ -30,23 +31,42 @@ use super::{
     function::{define_method, method_definition_evaluation},
 };
 
+// 6.2.10 ClassFieldDefinition Record
+pub struct ClassFieldDefinition {
+    pub name: Gc<StringValue>,
+    pub initializer: Option<Gc<Function>>,
+}
+
 // 15.7.10 ClassFieldDefinitionEvaluation
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
+    property_key: Gc<StringValue>,
     home_object: Gc<ObjectValue>,
-) -> EvalResult<Option<Gc<Function>>> {
+) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env;
     let private_env = current_execution_context.private_env;
 
-    // let prototype = current_execution_context
-    //     .realm
-    //     .get_intrinsic(Intrinsic::FunctionPrototype);
-    // let initializer = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
-    // make_method(initializer, home_object);
+    let prototype = current_execution_context
+        .realm
+        .get_intrinsic(Intrinsic::FunctionPrototype);
 
-    unimplemented!("class fields")
+    let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key);
+
+    let initializer = ordinary_function_create_special_kind(
+        cx,
+        prototype,
+        func_node,
+        /* is_lexical_this */ false,
+        /* is_strict */ true,
+        /* argument_count */ 0,
+        env,
+        private_env,
+    );
+    make_method(initializer, home_object);
+
+    initializer.into()
 }
 
 // 15.7.14 ClassDefinitionEvaluation
@@ -127,7 +147,23 @@ pub fn class_definition_evaluation(
 
         func
     } else {
-        unimplemented!("default constructor")
+        // Default constructor implemented as a special function object
+        let func = ordinary_function_create_special_kind(
+            cx,
+            constructor_parent,
+            FuncKind::DefaultConstructor,
+            /* is_lexical_this */ false,
+            /* is_strict */ true,
+            /* argument_count */ 0,
+            current_execution_context.lexical_env,
+            current_execution_context.private_env,
+        );
+
+        // Mark class constructor so that body is never evaluated
+        make_class_constructor(func);
+        set_function_name(cx, func.into(), class_name, None);
+
+        func
     };
 
     make_constructor(cx, func, Some(false), Some(proto.into()));
@@ -138,6 +174,9 @@ pub fn class_definition_evaluation(
 
     create_method_property(cx, proto.into(), "constructor", func.into());
 
+    let mut instance_fields = vec![];
+    let mut static_fields = vec![];
+
     // Evaluate class element definitions
     for element in &class.body {
         match element {
@@ -147,8 +186,45 @@ pub fn class_definition_evaluation(
                 } else {
                     func.into()
                 };
-                let completion = class_field_definition_evaluation(cx, prop, home_object);
-                unimplemented!("class fields")
+
+                let result = (|| {
+                    let property_key = maybe!(eval_property_name(cx, &prop.key, prop.is_computed));
+                    let property_key_value = cx.heap.alloc_string(String::from(property_key));
+
+                    let initializer = if prop.value.is_none() {
+                        None
+                    } else {
+                        Some(maybe!(class_field_definition_evaluation(
+                            cx,
+                            prop,
+                            property_key_value,
+                            home_object
+                        )))
+                    };
+
+                    EvalResult::Ok(ClassFieldDefinition {
+                        name: property_key_value,
+                        initializer,
+                    })
+                })();
+
+                let field_def = match result {
+                    EvalResult::Ok(field_def) => field_def,
+                    EvalResult::Throw(thrown_value) => {
+                        current_execution_context.lexical_env = env;
+                        current_execution_context.private_env = outer_private_env;
+
+                        return EvalResult::Throw(thrown_value);
+                    }
+                };
+
+                // TODO: Handle private fields
+
+                if prop.is_static {
+                    static_fields.push(field_def);
+                } else {
+                    instance_fields.push(field_def);
+                }
             }
             ClassElement::Method(method) => {
                 if method.kind == ClassMethodKind::Constructor {
@@ -206,9 +282,21 @@ pub fn class_definition_evaluation(
         must!(class_env.initialize_binding(cx, class_binding, func.into()));
     }
 
+    func.fields = instance_fields;
+
     // TODO: Handle private fields
 
-    // TODO: Handle static elements
+    // TODO: Handle static initializers
+
+    // Initialize static fields
+    for field_def in &static_fields {
+        let result = define_field(cx, func.into(), field_def);
+
+        if let EvalResult::Throw(thrown_value) = result {
+            current_execution_context.private_env = outer_private_env;
+            return EvalResult::Throw(thrown_value);
+        }
+    }
 
     current_execution_context.private_env = outer_private_env;
 

@@ -14,7 +14,7 @@ use crate::{
             execution_context::resolve_binding,
             function::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
-                ordinary_function_create, set_function_name, Function,
+                ordinary_function_create, set_function_name, FuncKind, Function,
             },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
@@ -35,7 +35,11 @@ pub fn function_declaration_instantiation(
     func: &Function,
     arguments: &[Value],
 ) -> Completion {
-    let func_node = func.func_node.as_ref();
+    let func_node = if let FuncKind::Function(func_node) = &func.func_node {
+        func_node.as_ref()
+    } else {
+        unreachable!()
+    };
 
     let mut function_names = HashSet::new();
     // Functions to initialize are in reverse order from spec
@@ -52,7 +56,7 @@ pub fn function_declaration_instantiation(
         }
     }
 
-    let is_strict = func.func_node.as_ref().is_strict_mode;
+    let is_strict = func_node.is_strict_mode;
 
     let mut callee_context = cx.current_execution_context();
 

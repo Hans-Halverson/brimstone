@@ -2,7 +2,7 @@ use crate::{
     js::{
         parser::ast::{self, AstPtr, ClassElement, ClassMethodKind},
         runtime::{
-            abstract_operations::{create_method_property, define_field},
+            abstract_operations::{call_object, create_method_property, define_field},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
@@ -11,7 +11,7 @@ use crate::{
             error::type_error_,
             eval::pattern::initialize_bound_name,
             function::{
-                make_class_constructor, make_constructor, make_method,
+                make_class_constructor, make_constructor, make_method, ordinary_function_create,
                 ordinary_function_create_special_kind, set_function_name, ConstructorKind,
                 FuncKind, Function,
             },
@@ -67,6 +67,31 @@ fn class_field_definition_evaluation(
     make_method(initializer, home_object);
 
     initializer.into()
+}
+
+// 15.7.11 ClassStaticBlockDefinitionEvaluation
+fn class_static_block_definition_evaluation(
+    cx: &mut Context,
+    block: &ast::ClassMethod,
+    home_object: Gc<ObjectValue>,
+) -> Gc<Function> {
+    let current_execution_context = cx.current_execution_context();
+    let env = current_execution_context.lexical_env;
+    let private_env = current_execution_context.private_env;
+
+    let prototype = current_execution_context
+        .realm
+        .get_intrinsic(Intrinsic::FunctionPrototype);
+    let body_function =
+        ordinary_function_create(cx, prototype, &block.value, false, env, private_env);
+    make_method(body_function, home_object);
+
+    body_function
+}
+
+enum StaticElement {
+    Field(ClassFieldDefinition),
+    Initializer(Gc<Function>),
 }
 
 // 15.7.14 ClassDefinitionEvaluation
@@ -175,7 +200,7 @@ pub fn class_definition_evaluation(
     create_method_property(cx, proto.into(), "constructor", func.into());
 
     let mut instance_fields = vec![];
-    let mut static_fields = vec![];
+    let mut static_elements = vec![];
 
     // Evaluate class element definitions
     for element in &class.body {
@@ -221,7 +246,7 @@ pub fn class_definition_evaluation(
                 // TODO: Handle private fields
 
                 if prop.is_static {
-                    static_fields.push(field_def);
+                    static_elements.push(StaticElement::Field(field_def));
                 } else {
                     instance_fields.push(field_def);
                 }
@@ -231,15 +256,20 @@ pub fn class_definition_evaluation(
                     continue;
                 }
 
-                if method.kind == ClassMethodKind::StaticInitializer {
-                    unimplemented!("class static initializers")
-                }
-
                 let home_object: Gc<ObjectValue> = if method.is_static {
                     func.into()
                 } else {
                     proto.into()
                 };
+
+                if method.kind == ClassMethodKind::StaticInitializer {
+                    let body_function =
+                        class_static_block_definition_evaluation(cx, method, home_object);
+
+                    static_elements.push(StaticElement::Initializer(body_function));
+
+                    continue;
+                }
 
                 let result = (|| {
                     let property_key =
@@ -286,15 +316,25 @@ pub fn class_definition_evaluation(
 
     // TODO: Handle private fields
 
-    // TODO: Handle static initializers
-
     // Initialize static fields
-    for field_def in &static_fields {
-        let result = define_field(cx, func.into(), field_def);
+    for static_element in static_elements {
+        match static_element {
+            StaticElement::Field(field_def) => {
+                let result = define_field(cx, func.into(), &field_def);
 
-        if let EvalResult::Throw(thrown_value) = result {
-            current_execution_context.private_env = outer_private_env;
-            return EvalResult::Throw(thrown_value);
+                if let EvalResult::Throw(thrown_value) = result {
+                    current_execution_context.private_env = outer_private_env;
+                    return EvalResult::Throw(thrown_value);
+                }
+            }
+            StaticElement::Initializer(body_function) => {
+                let result = call_object(cx, body_function.into(), func.into(), &[]);
+
+                if let EvalResult::Throw(thrown_value) = result {
+                    current_execution_context.private_env = outer_private_env;
+                    return EvalResult::Throw(thrown_value);
+                }
+            }
         }
     }
 

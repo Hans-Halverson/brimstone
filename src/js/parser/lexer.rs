@@ -26,7 +26,7 @@ type LexResult = ParseResult<(Token, Loc)>;
 const EOF_CHAR: char = '\u{ffff}';
 
 /// Can this character appear as the first character of an identifier.
-fn is_id_start_char(char: char) -> bool {
+fn is_id_start_char_ascii(char: char) -> bool {
     match char {
         'a'..='z' | 'A'..='Z' | '_' | '$' => true,
         _ => false,
@@ -34,10 +34,38 @@ fn is_id_start_char(char: char) -> bool {
 }
 
 /// Can this character appear in an identifier (after the first character).
-fn is_id_part_char(char: char) -> bool {
+fn is_id_part_char_ascii(char: char) -> bool {
     match char {
         'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
         _ => false,
+    }
+}
+
+fn is_decimal_digit(char: char) -> bool {
+    '0' <= char && char <= '9'
+}
+
+fn get_binary_value(char: char) -> Option<u32> {
+    match char {
+        '0' => Some(0),
+        '1' => Some(1),
+        _ => None,
+    }
+}
+
+fn get_octal_value(char: char) -> Option<u32> {
+    match char {
+        '0'..='7' => Some(char as u32 - '0' as u32),
+        _ => None,
+    }
+}
+
+fn get_hex_value(char: char) -> Option<u32> {
+    match char {
+        '0'..='9' => Some(char as u32 - '0' as u32),
+        'a'..='f' => Some(char as u32 - 'a' as u32 + 10),
+        'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
+        _ => None,
     }
 }
 
@@ -135,7 +163,7 @@ impl<'a> Lexer<'a> {
         Ok((token, self.mark_loc(start_pos)))
     }
 
-    fn error(&self, loc: Loc, error: ParseError) -> LexResult {
+    fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
         let source = (*self.source).clone();
         Err(LocalizedParseError {
             error,
@@ -425,7 +453,7 @@ impl<'a> Lexer<'a> {
                 self.emit(Token::Comma, start_pos)
             }
             '.' => {
-                if Lexer::is_decimal_digit(self.peek()) {
+                if is_decimal_digit(self.peek()) {
                     self.lex_decimal_literal()
                 } else {
                     self.advance();
@@ -445,7 +473,9 @@ impl<'a> Lexer<'a> {
             '1'..='9' => self.lex_decimal_literal(),
             '"' | '\'' => self.lex_string_literal(),
             EOF_CHAR => self.emit(Token::Eof, start_pos),
-            char if is_id_start_char(char) => self.lex_identifier(start_pos),
+            char if is_id_start_char_ascii(char) => self.lex_identifier_ascii(start_pos),
+            // Escape sequence at the start of an identifier
+            '\\' => self.lex_identifier_non_ascii(start_pos),
             other => {
                 self.advance();
                 let loc = self.mark_loc(start_pos);
@@ -505,7 +535,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_decimal_digits(&mut self) {
-        while Lexer::is_decimal_digit(self.current) {
+        while is_decimal_digit(self.current) {
             self.advance();
         }
     }
@@ -531,7 +561,7 @@ impl<'a> Lexer<'a> {
                 self.advance();
             }
 
-            if !Lexer::is_decimal_digit(self.current) {
+            if !is_decimal_digit(self.current) {
                 let loc = self.mark_loc(start_pos);
                 return self.error(loc, ParseError::MalformedNumericLiteral);
             }
@@ -553,7 +583,7 @@ impl<'a> Lexer<'a> {
         let mut value = 0;
         let mut has_digit = false;
 
-        while let Some(digit) = Lexer::get_binary_value(self.current) {
+        while let Some(digit) = get_binary_value(self.current) {
             value <<= 1;
             value += digit;
 
@@ -576,7 +606,7 @@ impl<'a> Lexer<'a> {
         let mut value = 0;
         let mut has_digit = false;
 
-        while let Some(digit) = Lexer::get_octal_value(self.current) {
+        while let Some(digit) = get_octal_value(self.current) {
             value <<= 3;
             value += digit;
 
@@ -599,7 +629,7 @@ impl<'a> Lexer<'a> {
         let mut value = 0;
         let mut has_digit = false;
 
-        while let Some(digit) = Lexer::get_hex_value(self.current) {
+        while let Some(digit) = get_hex_value(self.current) {
             value <<= 4;
             value += digit;
 
@@ -671,8 +701,8 @@ impl<'a> Lexer<'a> {
                     'x' => {
                         self.advance2();
 
-                        if let Some(x1) = Lexer::get_hex_value(self.current) {
-                            if let Some(x2) = Lexer::get_hex_value(self.peek()) {
+                        if let Some(x1) = get_hex_value(self.current) {
+                            if let Some(x2) = get_hex_value(self.peek()) {
                                 let escaped_char = std::char::from_u32(x1 * 16 + x2).unwrap();
                                 value.push(escaped_char);
                                 self.advance2();
@@ -685,6 +715,13 @@ impl<'a> Lexer<'a> {
                             let loc = self.mark_loc(self.pos);
                             return self.error(loc, ParseError::MalformedEscapeSeqence);
                         }
+                    }
+                    // Unicode escape sequence
+                    'u' => {
+                        let escape_start_pos = self.pos;
+                        self.advance2();
+                        let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
+                        value.push(code_point)
                     }
                     // Line continuations, either LF, CR, or CRLF
                     '\n' => {
@@ -724,39 +761,78 @@ impl<'a> Lexer<'a> {
         return self.emit(Token::StringLiteral(value), start_pos);
     }
 
-    fn is_decimal_digit(char: char) -> bool {
-        '0' <= char && char <= '9'
-    }
+    // Lex a single unicode escape sequence, called after the '\u' prefix has already been processed
+    fn lex_unicode_escape_sequence(&mut self, start_pos: Pos) -> ParseResult<char> {
+        // Escape sequence has form \u{HEX_DIGITS}, with at most 6 hex digits
+        if self.current == '{' {
+            self.advance();
 
-    fn get_binary_value(char: char) -> Option<u32> {
-        match char {
-            '0' => Some(0),
-            '1' => Some(1),
-            _ => None,
+            if self.current == '}' {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedEscapeSeqence);
+            }
+
+            let mut value = 0;
+            for _ in 0..6 {
+                if let Some(hex_value) = get_hex_value(self.current) {
+                    self.advance();
+                    value <<= 4;
+                    value += hex_value;
+                } else if self.current == '}' {
+                    break;
+                } else {
+                    let loc = self.mark_loc(start_pos);
+                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                }
+            }
+
+            if self.current != '}' {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedEscapeSeqence);
+            }
+
+            self.advance();
+
+            // Check that value is not out of range (greater than \u10FFFF)
+            if let Some(code_point) = std::char::from_u32(value) {
+                return Ok(code_point);
+            } else {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedEscapeSeqence);
+            }
         }
-    }
 
-    fn get_octal_value(char: char) -> Option<u32> {
-        match char {
-            '0'..='7' => Some(char as u32 - '0' as u32),
-            _ => None,
+        // Otherwise this is \uXXXX so expect exactly four hex digits
+        let mut value = 0;
+        for _ in 0..4 {
+            if let Some(hex_value) = get_hex_value(self.current) {
+                self.advance();
+                value <<= 4;
+                value += hex_value;
+            } else {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedEscapeSeqence);
+            }
         }
+
+        let code_point = unsafe { std::char::from_u32_unchecked(value) };
+        Ok(code_point)
     }
 
-    fn get_hex_value(char: char) -> Option<u32> {
-        match char {
-            '0'..='9' => Some(char as u32 - '0' as u32),
-            'a'..='f' => Some(char as u32 - 'a' as u32 + 10),
-            'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
-            _ => None,
-        }
-    }
-
-    fn lex_identifier(&mut self, start_pos: Pos) -> LexResult {
+    // Fast path for lexing a purely ASCII identifier
+    fn lex_identifier_ascii(&mut self, start_pos: Pos) -> LexResult {
         self.advance();
 
-        while is_id_part_char(self.current) {
-            self.advance();
+        loop {
+            if is_id_part_char_ascii(self.current) {
+                self.advance();
+                continue;
+            } else if self.current == '\\' {
+                // Start of an escape sequence, so bail to slow path
+                return self.lex_identifier_non_ascii(start_pos);
+            } else {
+                break;
+            }
         }
 
         match &self.buf[start_pos..self.pos] {
@@ -801,7 +877,37 @@ impl<'a> Lexer<'a> {
             "super" => self.emit(Token::Super, start_pos),
             "get" => self.emit(Token::Get, start_pos),
             "set" => self.emit(Token::Set, start_pos),
-            id => self.emit(Token::Identifier(id.to_owned()), start_pos),
+            id => self.emit(Token::Identifier(String::from(id)), start_pos),
         }
+    }
+
+    // Slow path for lexing an identifier with at least one unicode character or escape sequence
+    fn lex_identifier_non_ascii(&mut self, start_pos: Pos) -> LexResult {
+        // Copy over the ASCII part into the string builder
+        let mut string_builder = String::from(&self.buf[start_pos..self.pos]);
+
+        loop {
+            if is_id_part_char_ascii(self.current) {
+                string_builder.push(self.current);
+                self.advance();
+            } else if self.current == '\\' {
+                let escape_start_pos = self.pos;
+                self.advance();
+
+                if self.current == 'u' {
+                    self.advance();
+
+                    let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
+                    string_builder.push(code_point);
+                } else {
+                    let loc = self.mark_loc(escape_start_pos);
+                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                }
+            } else {
+                break;
+            }
+        }
+
+        self.emit(Token::Identifier(string_builder), start_pos)
     }
 }

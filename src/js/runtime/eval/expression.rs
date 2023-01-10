@@ -225,6 +225,8 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
 
         let base = maybe!(to_object(cx, base_value));
         base.get(cx, property_key.str(), base.into())
+    } else if expr.is_private {
+        unimplemented!("private properties")
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,
@@ -250,6 +252,8 @@ fn eval_member_expression_to_reference(
         let property_key = to_property_key(property_name_value);
 
         Reference::new_value(base_value, String::from(property_key.str()), is_strict).into()
+    } else if expr.is_private {
+        unimplemented!("private properties")
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,
@@ -627,6 +631,7 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
         ast::BinaryOperator::ShiftRightLogical => unimplemented!("logical right shift expression"),
         ast::BinaryOperator::InstanceOf => eval_instanceof_expression(cx, left_value, right_value),
         ast::BinaryOperator::In => eval_in_expression(cx, left_value, right_value),
+        ast::BinaryOperator::InPrivate => unimplemented!("private in expressions"),
     }
 }
 

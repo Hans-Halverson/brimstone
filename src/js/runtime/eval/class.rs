@@ -206,6 +206,10 @@ pub fn class_definition_evaluation(
     for element in &class.body {
         match element {
             ClassElement::Property(prop) => {
+                if prop.is_private {
+                    unimplemented!("private properties")
+                }
+
                 let home_object: Gc<ObjectValue> = if prop.is_static {
                     proto.into()
                 } else {
@@ -252,6 +256,10 @@ pub fn class_definition_evaluation(
                 }
             }
             ClassElement::Method(method) => {
+                if method.is_private {
+                    unimplemented!("private properties")
+                }
+
                 if method.kind == ClassMethodKind::Constructor {
                     continue;
                 }

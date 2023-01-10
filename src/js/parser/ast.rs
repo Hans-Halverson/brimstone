@@ -297,6 +297,7 @@ pub struct ClassMethod {
     pub kind: ClassMethodKind,
     pub is_computed: bool,
     pub is_static: bool,
+    pub is_private: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -315,6 +316,7 @@ pub struct ClassProperty {
     pub value: Option<P<Expression>>,
     pub is_computed: bool,
     pub is_static: bool,
+    pub is_private: bool,
 }
 
 pub struct ExpressionStatement {
@@ -575,6 +577,7 @@ pub struct UnaryExpression {
     pub argument: P<Expression>,
 }
 
+#[derive(PartialEq)]
 pub enum BinaryOperator {
     Add,
     Subtract,
@@ -596,7 +599,10 @@ pub enum BinaryOperator {
     ShiftLeft,
     ShiftRightArithmetic,
     ShiftRightLogical,
+    // All in expressions with a non-private name LHS
     In,
+    // Only for private name LHS. Left expr will always be an identifier.
+    InPrivate,
     InstanceOf,
 }
 
@@ -661,6 +667,7 @@ pub struct MemberExpression {
     pub property: P<Expression>,
     pub is_computed: bool,
     pub is_optional: bool,
+    pub is_private: bool,
 }
 
 pub struct ConditionalExpression {

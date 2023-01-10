@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-43:28",
+  loc: "1:0-45:28",
   body: [
     {
       type: "ExpressionStatement",
@@ -613,29 +613,48 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "43:0-43:28",
+      loc: "43:0-43:8",
       kind: {
         type: "BinaryExpression",
-        loc: "43:0-43:27",
+        loc: "43:0-43:7",
+        operator: "in",
+        left: {
+          type: "PrivateIdentifier",
+          loc: "43:1-43:2",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "43:6-43:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "45:0-45:28",
+      kind: {
+        type: "BinaryExpression",
+        loc: "45:0-45:27",
         operator: "instanceof",
         left: {
           type: "BinaryExpression",
-          loc: "43:0-43:14",
+          loc: "45:0-45:14",
           operator: "instanceof",
           left: {
             type: "Identifier",
-            loc: "43:0-43:1",
+            loc: "45:0-45:1",
             name: "a",
           },
           right: {
             type: "Identifier",
-            loc: "43:13-43:14",
+            loc: "45:13-45:14",
             name: "b",
           },
         },
         right: {
           type: "Identifier",
-          loc: "43:26-43:27",
+          loc: "45:26-45:27",
           name: "c",
         },
       },

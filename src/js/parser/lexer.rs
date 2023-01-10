@@ -464,6 +464,10 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.emit(Token::Colon, start_pos)
             }
+            '#' => {
+                self.advance();
+                self.emit(Token::Hash, start_pos)
+            }
             '0' => match self.peek() {
                 'b' | 'B' => self.lex_binary_literal(),
                 'o' | 'O' => self.lex_octal_literal(),

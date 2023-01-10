@@ -1,4 +1,4 @@
-// Property without initializers
+// Property with initializers
 
 class C { a = b }
 
@@ -7,6 +7,8 @@ class C { 1 = b }
 class C { "prop" = b }
 
 class C { [key] = b }
+
+class C { #key = b }
 
 // Property without initializer
 
@@ -17,6 +19,8 @@ class C { 1 }
 class C { "prop" }
 
 class C { [key] }
+
+class C { #key }
 
 class C {
   a = b
@@ -36,6 +40,7 @@ class C {
   [a]() {}
   1() {}
   "test"() {}
+  #a() {}
 }
 
 // Keywords as shorthand properties
@@ -77,6 +82,7 @@ class C {
   get [a]() {}
   get 1() {}
   get "a"() {}
+  get #a() {}
 }
 
 class C {
@@ -92,7 +98,9 @@ class C {
   static a
   static a = 1
   static [a] = 1
+  static #a = 1
   static a() {}
+  static #a() {}
   static async a() {}
   static get a() {}
   static set a(b,) {}

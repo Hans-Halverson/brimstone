@@ -242,7 +242,17 @@ impl<'a> Printer<'a> {
         }
 
         self.start_node("MethodDefinition", &method.loc);
-        self.property("key", method.key.as_ref(), Printer::print_expression);
+
+        if method.is_private {
+            self.property(
+                "key",
+                method.key.as_ref(),
+                Printer::print_private_identifier,
+            );
+        } else {
+            self.property("key", method.key.as_ref(), Printer::print_expression);
+        }
+
         self.property(
             "value",
             method.value.as_ref(),
@@ -267,7 +277,13 @@ impl<'a> Printer<'a> {
 
     fn print_class_property(&mut self, prop: &ClassProperty) {
         self.start_node("PropertyDefinition", &prop.loc);
-        self.property("key", prop.key.as_ref(), Printer::print_expression);
+
+        if prop.is_private {
+            self.property("key", prop.key.as_ref(), Printer::print_private_identifier);
+        } else {
+            self.property("key", prop.key.as_ref(), Printer::print_expression);
+        }
+
         self.property(
             "value",
             prop.value.as_ref(),
@@ -602,7 +618,7 @@ impl<'a> Printer<'a> {
             BinaryOperator::ShiftLeft => "<<",
             BinaryOperator::ShiftRightArithmetic => ">>",
             BinaryOperator::ShiftRightLogical => ">>>",
-            BinaryOperator::In => "in",
+            BinaryOperator::In | BinaryOperator::InPrivate => "in",
             BinaryOperator::InstanceOf => "instanceof",
         };
         self.print_str(str);
@@ -611,7 +627,17 @@ impl<'a> Printer<'a> {
     fn print_binary_expression(&mut self, binary: &BinaryExpression) {
         self.start_node("BinaryExpression", &binary.loc);
         self.property("operator", &binary.operator, Printer::print_binary_operator);
-        self.property("left", binary.left.as_ref(), Printer::print_expression);
+
+        if binary.operator == BinaryOperator::InPrivate {
+            self.property(
+                "left",
+                binary.left.as_ref(),
+                Printer::print_private_identifier,
+            );
+        } else {
+            self.property("left", binary.left.as_ref(), Printer::print_expression);
+        }
+
         self.property("right", binary.right.as_ref(), Printer::print_expression);
         self.end_node();
     }
@@ -691,13 +717,35 @@ impl<'a> Printer<'a> {
     fn print_member_expression(&mut self, member: &MemberExpression) {
         self.start_node("MemberExpression", &member.loc);
         self.property("object", member.object.as_ref(), Printer::print_expression);
-        self.property(
-            "property",
-            member.property.as_ref(),
-            Printer::print_expression,
-        );
+
+        if member.is_private {
+            self.property(
+                "property",
+                member.property.as_ref(),
+                Printer::print_private_identifier,
+            );
+        } else {
+            self.property(
+                "property",
+                member.property.as_ref(),
+                Printer::print_expression,
+            );
+        }
+
         self.property("computed", member.is_computed, Printer::print_bool);
         self.property("optional", member.is_optional, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_private_identifier(&mut self, expr: &Expression) {
+        let id = if let Expression::Id(id) = expr {
+            id
+        } else {
+            unreachable!()
+        };
+
+        self.start_node("PrivateIdentifier", &id.loc);
+        self.property("name", &id.name, Printer::print_string);
         self.end_node();
     }
 

@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-7:7",
+  loc: "1:0-9:7",
   body: [
     {
       type: "ExpressionStatement",
@@ -123,6 +123,26 @@
           optional: false,
         },
         computed: true,
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:7",
+      kind: {
+        type: "MemberExpression",
+        loc: "9:0-9:6",
+        object: {
+          type: "Identifier",
+          loc: "9:0-9:1",
+          name: "a",
+        },
+        property: {
+          type: "PrivateIdentifier",
+          loc: "9:3-9:6",
+          name: "foo",
+        },
+        computed: false,
         optional: false,
       },
     },

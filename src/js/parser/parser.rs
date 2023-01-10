@@ -229,6 +229,13 @@ enum PropertyContext {
     Pattern,
 }
 
+struct PropertyNameResult {
+    key: P<Expression>,
+    is_computed: bool,
+    is_shorthand: bool,
+    is_private: bool,
+}
+
 fn p<T>(node: T) -> P<T> {
     Box::new(node)
 }
@@ -1286,6 +1293,23 @@ impl<'a> Parser<'a> {
         precedence: Precedence,
     ) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
+
+        // Private names must be the start of an `in` expression
+        if self.token == Token::Hash {
+            let private_name = p(Expression::Id(self.parse_private_name()?));
+
+            if self.token == Token::In && precedence.is_weaker_than(Precedence::Relational) {
+                return self.parse_binary_expression(
+                    private_name,
+                    start_pos,
+                    BinaryOperator::InPrivate,
+                    Precedence::Relational,
+                );
+            }
+
+            return self.error_unexpected_token(self.loc, &self.token);
+        }
+
         let mut current_expr = self.parse_expression_prefix()?;
         loop {
             let current_expr_ref = current_expr.as_ref() as *const Expression;
@@ -1650,6 +1674,12 @@ impl<'a> Parser<'a> {
         match &self.token {
             Token::Period => {
                 self.advance()?;
+
+                let is_private = self.token == Token::Hash;
+                if is_private {
+                    self.advance()?;
+                }
+
                 let property = match self.parse_identifier_name()? {
                     Some(id) => id,
                     None => return self.error_unexpected_token(self.loc, &self.token),
@@ -1663,6 +1693,7 @@ impl<'a> Parser<'a> {
                     property: p(Expression::Id(property)),
                     is_computed: false,
                     is_optional: false,
+                    is_private,
                 }));
 
                 self.parse_call_expression(member_expr, start_pos, allow_call)
@@ -1679,6 +1710,7 @@ impl<'a> Parser<'a> {
                     property,
                     is_computed: true,
                     is_optional: false,
+                    is_private: false,
                 }));
 
                 self.parse_call_expression(member_expr, start_pos, allow_call)
@@ -2011,7 +2043,8 @@ impl<'a> Parser<'a> {
 
         let mut properties = vec![];
         while self.token != Token::RightBrace {
-            properties.push(self.parse_property(PropertyContext::Object)?);
+            let (property, _) = self.parse_property(PropertyContext::Object)?;
+            properties.push(property);
 
             if self.token == Token::RightBrace {
                 break;
@@ -2026,7 +2059,7 @@ impl<'a> Parser<'a> {
         Ok(p(Expression::Object(ObjectExpression { loc, properties })))
     }
 
-    fn parse_property(&mut self, prop_context: PropertyContext) -> ParseResult<Property> {
+    fn parse_property(&mut self, prop_context: PropertyContext) -> ParseResult<(Property, bool)> {
         let start_pos = self.current_start_pos();
 
         // Handle getters and setters
@@ -2055,6 +2088,7 @@ impl<'a> Parser<'a> {
                         /* is_async */ false,
                         /* is_generator */ false,
                         /* is_computed */ false,
+                        /* is_private */ false,
                     );
                 }
 
@@ -2068,26 +2102,24 @@ impl<'a> Parser<'a> {
                     return self.parse_init_property(
                         name,
                         start_pos,
+                        prop_context,
                         /* is_computed */ false,
                         /* is_shorthand */ !is_init_property,
-                        prop_context,
+                        /* is_private */ false,
                     );
                 }
 
                 // Otherwise this is a getter or setter
-                return match self.parse_property_name(prop_context)? {
-                    (Some(name), is_computed, _) => {
-                        self.parse_method_property(
-                            name,
-                            start_pos,
-                            kind,
-                            /* is_async */ false,
-                            /* is_generator */ false,
-                            is_computed,
-                        )
-                    }
-                    _ => self.error_unexpected_token(self.loc, &self.token),
-                };
+                let property_name = self.parse_property_name(prop_context)?;
+                return self.parse_method_property(
+                    property_name.key,
+                    start_pos,
+                    kind,
+                    /* is_async */ false,
+                    /* is_generator */ false,
+                    property_name.is_computed,
+                    property_name.is_private,
+                );
             }
             _ => (),
         }
@@ -2110,6 +2142,7 @@ impl<'a> Parser<'a> {
                     /* is_async */ false,
                     /* is_generator */ false,
                     /* is_computed */ false,
+                    /* is_private */ false,
                 );
             }
 
@@ -2123,9 +2156,10 @@ impl<'a> Parser<'a> {
                 return self.parse_init_property(
                     name,
                     start_pos,
+                    prop_context,
                     /* is_computed */ false,
                     /* is_shorthand */ !is_init_property,
-                    prop_context,
+                    /* is_private */ false,
                 );
             }
 
@@ -2135,57 +2169,55 @@ impl<'a> Parser<'a> {
                 self.advance()?;
             }
 
-            return match self.parse_property_name(prop_context)? {
-                (Some(name), is_computed, _) => self.parse_method_property(
-                    name,
-                    start_pos,
-                    PropertyKind::Init,
-                    /* is_async */ true,
-                    is_generator,
-                    is_computed,
-                ),
-                _ => self.error_unexpected_token(self.loc, &self.token),
-            };
+            let property_name = self.parse_property_name(prop_context)?;
+            return self.parse_method_property(
+                property_name.key,
+                start_pos,
+                PropertyKind::Init,
+                /* is_async */ true,
+                is_generator,
+                property_name.is_computed,
+                property_name.is_private,
+            );
         }
 
-        match self.parse_property_name(prop_context)? {
-            // Regular init and method properties
-            (Some(name), is_computed, is_shorthand) => match self.token {
-                Token::LeftParen => self.parse_method_property(
-                    name,
-                    start_pos,
-                    PropertyKind::Init,
-                    /* is_async */ false,
-                    /* is_generator */ false,
-                    is_computed,
-                ),
-                _ => self.parse_init_property(
-                    name,
-                    start_pos,
-                    is_computed,
-                    is_shorthand,
-                    prop_context,
-                ),
-            },
-            _ => match self.token {
-                // Generator method
-                Token::Multiply => {
-                    self.advance()?;
+        // Generator method
+        if self.token == Token::Multiply {
+            self.advance()?;
 
-                    match self.parse_property_name(prop_context)? {
-                        (Some(name), is_computed, _) => self.parse_method_property(
-                            name,
-                            start_pos,
-                            PropertyKind::Init,
-                            /* is_async */ false,
-                            /* is_generator */ true,
-                            is_computed,
-                        ),
-                        _ => self.error_unexpected_token(self.loc, &self.token),
-                    }
-                }
-                ref other => self.error_unexpected_token(self.loc, other),
-            },
+            let property_name = self.parse_property_name(prop_context)?;
+            return self.parse_method_property(
+                property_name.key,
+                start_pos,
+                PropertyKind::Init,
+                /* is_async */ false,
+                /* is_generator */ true,
+                property_name.is_computed,
+                property_name.is_private,
+            );
+        }
+
+        // Regular init and method properties
+        let property_name = self.parse_property_name(prop_context)?;
+
+        match self.token {
+            Token::LeftParen => self.parse_method_property(
+                property_name.key,
+                start_pos,
+                PropertyKind::Init,
+                /* is_async */ false,
+                /* is_generator */ false,
+                property_name.is_computed,
+                property_name.is_private,
+            ),
+            _ => self.parse_init_property(
+                property_name.key,
+                start_pos,
+                prop_context,
+                property_name.is_computed,
+                property_name.is_shorthand,
+                property_name.is_private,
+            ),
         }
     }
 
@@ -2222,10 +2254,11 @@ impl<'a> Parser<'a> {
     fn parse_property_name(
         &mut self,
         prop_context: PropertyContext,
-    ) -> ParseResult<(Option<P<Expression>>, bool, bool)> {
+    ) -> ParseResult<PropertyNameResult> {
         let mut is_computed = false;
         let mut is_shorthand = false;
         let mut is_identifier = false;
+        let mut is_private = false;
 
         let key = match self.token {
             Token::LeftBracket => {
@@ -2233,37 +2266,48 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_assignment_expression()?;
                 self.expect(Token::RightBracket)?;
                 is_computed = true;
-                Some(expr)
+                expr
             }
-            Token::NumberLiteral(_) | Token::StringLiteral(_) => {
-                Some(self.parse_primary_expression()?)
+            Token::NumberLiteral(_) | Token::StringLiteral(_) => self.parse_primary_expression()?,
+            // Private properties are only allowed in classes
+            Token::Hash if prop_context == PropertyContext::Class => {
+                is_private = true;
+                p(Expression::Id(self.parse_private_name()?))
             }
             _ => match self.parse_identifier_name()? {
-                None => None,
                 Some(key) => {
                     is_identifier = true;
-                    Some(p(Expression::Id(key)))
+                    p(Expression::Id(key))
+                }
+                None => {
+                    return self.error_unexpected_token(self.loc, &self.token);
                 }
             },
         };
 
-        // All key types can be shorthand for classes, but only identifier keys can be shorthand
-        // elsewhere.
-        if key.is_some() && (prop_context == PropertyContext::Class || is_identifier) {
+        // All non-private key types can be shorthand for classes, but only identifier keys can be
+        // shorthand elsewhere.
+        if is_identifier || (prop_context == PropertyContext::Class) {
             is_shorthand = self.is_property_end(prop_context);
         }
 
-        Ok((key, is_computed, is_shorthand))
+        Ok(PropertyNameResult {
+            key,
+            is_computed,
+            is_shorthand,
+            is_private,
+        })
     }
 
     fn parse_init_property(
         &mut self,
         key: P<Expression>,
         start_pos: Pos,
+        prop_context: PropertyContext,
         is_computed: bool,
         is_shorthand: bool,
-        prop_context: PropertyContext,
-    ) -> ParseResult<Property> {
+        is_private: bool,
+    ) -> ParseResult<(Property, bool)> {
         let value = if is_shorthand {
             None
         } else if self.is_property_initializer(prop_context) {
@@ -2276,14 +2320,16 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(Property {
+        let property = Property {
             loc,
             key,
             value,
             is_computed,
             is_method: false,
             kind: PropertyKind::Init,
-        })
+        };
+
+        Ok((property, is_private))
     }
 
     fn parse_method_property(
@@ -2294,7 +2340,8 @@ impl<'a> Parser<'a> {
         is_async: bool,
         is_generator: bool,
         is_computed: bool,
-    ) -> ParseResult<Property> {
+        is_private: bool,
+    ) -> ParseResult<(Property, bool)> {
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
@@ -2302,7 +2349,7 @@ impl<'a> Parser<'a> {
 
         // TODO: Error if getter or setter has wrong number of params
 
-        Ok(Property {
+        let property = Property {
             loc,
             key,
             is_computed,
@@ -2318,7 +2365,9 @@ impl<'a> Parser<'a> {
                 is_strict_mode,
                 has_use_strict_directive,
             )))),
-        })
+        };
+
+        Ok((property, is_private))
     }
 
     fn parse_class(&mut self, is_decl: bool) -> ParseResult<Class> {
@@ -2365,6 +2414,15 @@ impl<'a> Parser<'a> {
         Ok(Class::new(loc, id, super_class, body))
     }
 
+    fn parse_private_name(&mut self) -> ParseResult<Identifier> {
+        self.expect(Token::Hash)?;
+
+        match self.parse_identifier_name()? {
+            Some(id) => Ok(id),
+            None => return self.error_unexpected_token(self.loc, &self.token),
+        }
+    }
+
     fn parse_class_element(&mut self) -> ParseResult<ClassElement> {
         let start_pos = self.current_start_pos();
 
@@ -2398,6 +2456,7 @@ impl<'a> Parser<'a> {
                     kind: ClassMethodKind::StaticInitializer,
                     is_computed: false,
                     is_static: false,
+                    is_private: false,
                 }));
             }
 
@@ -2408,18 +2467,19 @@ impl<'a> Parser<'a> {
                     name: "static".to_owned(),
                 }));
 
-                let property = self.parse_method_property(
+                let (property, is_private) = self.parse_method_property(
                     name,
                     start_pos,
                     PropertyKind::Init,
                     /* is_async */ false,
                     /* is_generator */ false,
                     /* is_computed */ false,
+                    /* is_private */ false,
                 )?;
                 let loc = self.mark_loc(start_pos);
 
                 return Ok(ClassElement::Method(self.reparse_property_as_class_method(
-                    loc, property, /* is_static */ false,
+                    loc, property, /* is_static */ false, is_private,
                 )));
             }
 
@@ -2431,35 +2491,36 @@ impl<'a> Parser<'a> {
                     name: "static".to_owned(),
                 }));
 
-                let property = self.parse_init_property(
+                let (property, is_private) = self.parse_init_property(
                     name,
                     start_pos,
+                    PropertyContext::Class,
                     /* is_computed */ false,
                     /* is_shorthand */ !is_init_property,
-                    PropertyContext::Class,
+                    /* is_private */ false,
                 )?;
                 let loc = self.mark_loc(start_pos);
 
                 return Ok(ClassElement::Property(
                     self.reparse_property_as_class_property(
-                        loc, property, /* is_static */ false,
+                        loc, property, /* is_static */ false, is_private,
                     ),
                 ));
             }
         }
 
         // Parse an object property because syntax is almost identical to class property
-        let property = self.parse_property(PropertyContext::Class)?;
+        let (property, is_private) = self.parse_property(PropertyContext::Class)?;
         let loc = self.mark_loc(start_pos);
 
         // Translate from object property to class property or method
         if property.is_method {
             Ok(ClassElement::Method(self.reparse_property_as_class_method(
-                loc, property, is_static,
+                loc, property, is_static, is_private,
             )))
         } else {
             Ok(ClassElement::Property(
-                self.reparse_property_as_class_property(loc, property, is_static),
+                self.reparse_property_as_class_property(loc, property, is_static, is_private),
             ))
         }
     }
@@ -2469,6 +2530,7 @@ impl<'a> Parser<'a> {
         loc: Loc,
         property: Property,
         is_static: bool,
+        is_private: bool,
     ) -> ClassMethod {
         let Property {
             key,
@@ -2511,6 +2573,7 @@ impl<'a> Parser<'a> {
             kind,
             is_computed,
             is_static,
+            is_private,
         }
     }
 
@@ -2519,6 +2582,7 @@ impl<'a> Parser<'a> {
         loc: Loc,
         property: Property,
         is_static: bool,
+        is_private: bool,
     ) -> ClassProperty {
         let Property {
             key,
@@ -2533,6 +2597,7 @@ impl<'a> Parser<'a> {
             value,
             is_computed,
             is_static,
+            is_private,
         }
     }
 
@@ -2617,41 +2682,40 @@ impl<'a> Parser<'a> {
 
     fn parse_object_pattern_property(&mut self) -> ParseResult<ObjectPatternProperty> {
         let start_pos = self.current_start_pos();
-        match self.parse_property_name(PropertyContext::Pattern)? {
-            // Shorthand property
-            (Some(name), _, true) => {
-                let value = if let Expression::Id(id) = *name {
-                    Pattern::Id(id)
-                } else {
-                    unreachable!()
-                };
 
-                // Shorthand property may be followed by assignment pattern
-                let value = p(self.parse_assignment_pattern(value, start_pos)?);
-                let loc = self.mark_loc(start_pos);
+        let property_name = self.parse_property_name(PropertyContext::Pattern)?;
 
-                Ok(ObjectPatternProperty {
-                    loc,
-                    key: None,
-                    value,
-                    is_computed: false,
-                })
-            }
-            // Regular properties
-            (Some(name), is_computed, false) => {
-                self.expect(Token::Colon)?;
-                let value = p(self.parse_pattern_including_assignment_pattern()?);
-                let loc = self.mark_loc(start_pos);
+        // Shorthand property
+        if property_name.is_shorthand {
+            let value = if let Expression::Id(id) = *property_name.key {
+                Pattern::Id(id)
+            } else {
+                unreachable!()
+            };
 
-                Ok(ObjectPatternProperty {
-                    loc,
-                    key: Some(name),
-                    value,
-                    is_computed,
-                })
-            }
-            (None, _, _) => return self.error_unexpected_token(self.loc, &self.token),
+            // Shorthand property may be followed by assignment pattern
+            let value = p(self.parse_assignment_pattern(value, start_pos)?);
+            let loc = self.mark_loc(start_pos);
+
+            return Ok(ObjectPatternProperty {
+                loc,
+                key: None,
+                value,
+                is_computed: false,
+            });
         }
+
+        // Regular properties
+        self.expect(Token::Colon)?;
+        let value = p(self.parse_pattern_including_assignment_pattern()?);
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ObjectPatternProperty {
+            loc,
+            key: Some(property_name.key),
+            value,
+            is_computed: property_name.is_computed,
+        })
     }
 
     fn reparse_expression_as_pattern(&self, expr: Expression) -> Option<Pattern> {

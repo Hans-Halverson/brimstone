@@ -48,6 +48,21 @@ impl Reference {
         }
     }
 
+    pub fn new_value_with_this(
+        value: Value,
+        name: String,
+        is_strict: bool,
+        this_value: Value,
+    ) -> Reference {
+        Reference {
+            base: ReferenceBase::Value(value),
+            name,
+            is_strict,
+            this_value: Some(this_value),
+            private_name: None,
+        }
+    }
+
     pub fn new_env(env: Gc<dyn Environment>, name: String, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Env(env),

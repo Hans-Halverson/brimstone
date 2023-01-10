@@ -534,6 +534,8 @@ pub enum Expression {
     This(Loc),
     Await(AwaitExpression),
     Yield(YieldExpression),
+    SuperMember(SuperMemberExpression),
+    SuperCall(SuperCallExpression),
     // TODO: TemplateLiteral
     // TODO: TaggedTemplateExpression
     // TODO: ClassExpression
@@ -721,6 +723,19 @@ pub struct YieldExpression {
     pub loc: Loc,
     pub argument: Option<P<Expression>>,
     pub delegate: bool,
+}
+
+pub struct SuperMemberExpression {
+    pub loc: Loc,
+    pub super_: Loc,
+    pub property: P<Expression>,
+    pub is_computed: bool,
+}
+
+pub struct SuperCallExpression {
+    pub loc: Loc,
+    pub super_: Loc,
+    pub arguments: Vec<Expression>,
 }
 
 pub enum Pattern {

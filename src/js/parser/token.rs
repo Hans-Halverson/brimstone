@@ -101,6 +101,7 @@ pub enum Token {
     As,
     Class,
     Extends,
+    Super,
     Get,
     Set,
 }
@@ -202,6 +203,7 @@ impl fmt::Display for Token {
             Token::As => "as",
             Token::Class => "class",
             Token::Extends => "extends",
+            Token::Super => "super",
             Token::Get => "get",
             Token::Set => "set",
         };

@@ -1609,6 +1609,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         let expr = match &self.token {
             Token::New => self.parse_new_expression()?,
+            Token::Super => self.parse_super_expression()?,
             _ => self.parse_primary_expression()?,
         };
 
@@ -1711,6 +1712,55 @@ impl<'a> Parser<'a> {
             callee,
             arguments,
         })))
+    }
+
+    fn parse_super_expression(&mut self) -> ParseResult<P<Expression>> {
+        let start_pos = self.current_start_pos();
+        let super_loc = self.loc;
+        self.advance()?;
+
+        match self.token {
+            Token::Period => {
+                self.advance()?;
+                let id = match self.parse_identifier_name()? {
+                    Some(id) => id,
+                    None => return self.error_unexpected_token(self.loc, &self.token),
+                };
+
+                let loc = self.mark_loc(start_pos);
+
+                Ok(p(Expression::SuperMember(SuperMemberExpression {
+                    loc,
+                    super_: super_loc,
+                    property: p(Expression::Id(id)),
+                    is_computed: false,
+                })))
+            }
+            Token::LeftBracket => {
+                self.advance()?;
+                let property = self.parse_expression()?;
+                self.expect(Token::RightBracket)?;
+                let loc = self.mark_loc(start_pos);
+
+                Ok(p(Expression::SuperMember(SuperMemberExpression {
+                    loc,
+                    super_: super_loc,
+                    property,
+                    is_computed: true,
+                })))
+            }
+            Token::LeftParen => {
+                let arguments = self.parse_call_arguments()?;
+                let loc = self.mark_loc(start_pos);
+
+                Ok(p(Expression::SuperCall(SuperCallExpression {
+                    loc,
+                    super_: super_loc,
+                    arguments,
+                })))
+            }
+            _ => self.error_expected_token(self.loc, &self.token, &Token::LeftParen),
+        }
     }
 
     fn parse_call_arguments(&mut self) -> ParseResult<Vec<Expression>> {
@@ -1918,6 +1968,7 @@ impl<'a> Parser<'a> {
             | Token::As
             | Token::Class
             | Token::Extends
+            | Token::Super
             | Token::Get
             | Token::Set => {
                 let loc = self.loc;

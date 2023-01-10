@@ -527,6 +527,8 @@ impl<'a> Printer<'a> {
             Expression::Class(class) => self.print_class(class, "ClassExpression"),
             Expression::Await(expr) => self.print_await_expression(expr),
             Expression::Yield(expr) => self.print_yield_expression(expr),
+            Expression::SuperCall(expr) => self.print_super_call_expression(expr),
+            Expression::SuperMember(expr) => self.print_super_member_expression(expr),
         }
     }
 
@@ -811,6 +813,34 @@ impl<'a> Printer<'a> {
             Printer::print_optional_expression,
         );
         self.property("delegate", expr.delegate, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_super(&mut self, loc: &Loc) {
+        self.start_node("Super", loc);
+        self.end_node();
+    }
+
+    fn print_super_member_expression(&mut self, member: &SuperMemberExpression) {
+        self.start_node("MemberExpression", &member.loc);
+        self.property("object", &member.super_, Printer::print_super);
+        self.property(
+            "property",
+            member.property.as_ref(),
+            Printer::print_expression,
+        );
+        self.property("computed", member.is_computed, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_super_call_expression(&mut self, call: &SuperCallExpression) {
+        self.start_node("CallExpression", &call.loc);
+        self.property("callee", &call.super_, Printer::print_super);
+        self.array_property(
+            "arguments",
+            call.arguments.as_ref(),
+            Printer::print_expression,
+        );
         self.end_node();
     }
 

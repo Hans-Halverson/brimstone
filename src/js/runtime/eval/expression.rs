@@ -4,13 +4,16 @@ use crate::{
         runtime::{
             abstract_operations::{
                 call, call_object, construct, create_data_property_or_throw, get_method,
-                has_property, ordinary_has_instance,
+                has_property, initialize_instance_elements, ordinary_has_instance,
             },
             completion::EvalResult,
+            environment::environment::Environment,
             error::{reference_error_, type_error_},
-            execution_context::{resolve_binding, resolve_this_binding},
+            execution_context::{
+                get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
+            },
             intrinsics::intrinsics::Intrinsic,
-            object_value::ObjectValue,
+            object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
             reference::{Reference, ReferenceBase},
             type_utilities::{
@@ -71,6 +74,8 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::This(_) => eval_this_expression(cx),
         ast::Expression::Await(_) => unimplemented!("await expression"),
         ast::Expression::Yield(_) => unimplemented!("yield expression"),
+        ast::Expression::SuperMember(expr) => eval_super_member_expression(cx, expr),
+        ast::Expression::SuperCall(expr) => eval_super_call_expression(cx, expr),
     }
 }
 
@@ -275,6 +280,9 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
         ast::Expression::Member(expr) => {
             Some(maybe!(eval_member_expression_to_reference(cx, &expr)))
         }
+        ast::Expression::SuperMember(expr) => {
+            Some(maybe!(eval_super_member_expression_to_reference(cx, &expr)))
+        }
         _ => None,
     };
 
@@ -336,6 +344,84 @@ fn eval_call(
     call(cx, func_value, this_value, &arg_values)
 }
 
+// 13.3.7.1 SuperProperty Evaluation
+fn eval_super_member_expression(
+    cx: &mut Context,
+    expr: &ast::SuperMemberExpression,
+) -> EvalResult<Value> {
+    let reference = maybe!(eval_super_member_expression_to_reference(cx, expr));
+    reference.get_value(cx)
+}
+
+// Same as eval_super_member_expression, but returns a reference instead of a value
+fn eval_super_member_expression_to_reference(
+    cx: &mut Context,
+    expr: &ast::SuperMemberExpression,
+) -> EvalResult<Reference> {
+    let mut env = get_this_environment(cx);
+    let env = env.as_function_environment().unwrap();
+
+    let actual_this = maybe!(env.get_this_binding(cx));
+
+    let property_key = if expr.is_computed {
+        let property_name_value = maybe!(eval_expression(cx, &expr.property));
+        let property_key = to_property_key(property_name_value);
+        property_key.str()
+    } else {
+        if let ast::Expression::Id(id) = expr.property.as_ref() {
+            id.name.as_str()
+        } else {
+            unreachable!()
+        }
+    };
+
+    // 13.3.7.3 MakeSuperPropertyReference inlined
+    let is_strict = cx.current_execution_context().is_strict_mode;
+    let base_value = maybe!(env.get_super_base());
+
+    Reference::new_value_with_this(
+        base_value,
+        String::from(property_key),
+        is_strict,
+        actual_this,
+    )
+    .into()
+}
+
+// 13.3.7.1 SuperCall Evaluation
+fn eval_super_call_expression(
+    cx: &mut Context,
+    expr: &ast::SuperCallExpression,
+) -> EvalResult<Value> {
+    let new_target = get_new_target(cx);
+
+    // 13.3.7.2 GetSuperConstructor inlined
+    let mut this_env = get_this_environment(cx);
+    let this_env = if let Some(func_env) = this_env.as_function_environment() {
+        func_env
+    } else {
+        unreachable!()
+    };
+
+    let func = must!(this_env.function_object.get_prototype_of());
+    let arg_list = maybe!(eval_argument_list(cx, &expr.arguments));
+
+    let func = match func {
+        Some(func) if func.is_constructor() => func,
+        _ => return type_error_(cx, "super must be a constructor"),
+    };
+
+    let result = maybe!(construct(cx, func, &arg_list, new_target));
+    maybe!(this_env.bind_this_value(cx, result.into()));
+    maybe!(initialize_instance_elements(
+        cx,
+        result,
+        this_env.function_object
+    ));
+
+    result.into()
+}
+
 // 13.3.8.1 ArgumentListEvaluation
 fn eval_argument_list(cx: &mut Context, arguments: &[ast::Expression]) -> EvalResult<Vec<Value>> {
     let mut arg_values = vec![];
@@ -356,6 +442,9 @@ fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> Eva
     let mut argument_reference = match expr.argument.as_ref() {
         ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
         ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
+        ast::Expression::SuperMember(expr) => {
+            maybe!(eval_super_member_expression_to_reference(cx, &expr))
+        }
         _ => return reference_error_(cx, "expected a reference"),
     };
     let old_value = maybe!(argument_reference.get_value(cx));
@@ -392,6 +481,9 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
     let reference = match expr.argument.as_ref() {
         ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
         ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
+        ast::Expression::SuperMember(expr) => {
+            maybe!(eval_super_member_expression_to_reference(cx, &expr))
+        }
         other => {
             maybe!(eval_expression(cx, other));
             return true.into();
@@ -439,6 +531,14 @@ fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
         }
         ast::Expression::Member(expr) => {
             let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
+            if reference.is_unresolvable_reference() {
+                return cx.heap.alloc_string(String::from("undefined")).into();
+            }
+
+            maybe!(reference.get_value(cx))
+        }
+        ast::Expression::SuperMember(expr) => {
+            let reference = maybe!(eval_super_member_expression_to_reference(cx, &expr));
             if reference.is_unresolvable_reference() {
                 return cx.heap.alloc_string(String::from("undefined")).into();
             }
@@ -797,6 +897,9 @@ fn eval_assignment_expression(
     let mut reference = match expr.left.as_ref() {
         ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
         ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
+        ast::Expression::SuperMember(expr) => {
+            maybe!(eval_super_member_expression_to_reference(cx, &expr))
+        }
         ast::Expression::Object(_) => unimplemented!("object patterns"),
         ast::Expression::Array(_) => unimplemented!("array patterns"),
         _ => unreachable!("invalid assigment left hand side"),

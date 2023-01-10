@@ -59,6 +59,8 @@ pub trait AstVisitor: Sized {
             Expression::Class(class) => self.visit_class_expression(class),
             Expression::Await(expr) => self.visit_await_expression(expr),
             Expression::Yield(expr) => self.visit_yield_expression(expr),
+            Expression::SuperMember(expr) => self.visit_super_member_expression(expr),
+            Expression::SuperCall(expr) => self.visit_super_call_expression(expr),
         }
     }
 
@@ -269,6 +271,14 @@ pub trait AstVisitor: Sized {
 
     fn visit_yield_expression(&mut self, expr: &mut YieldExpression) {
         default_visit_yield_expression(self, expr)
+    }
+
+    fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
+        default_visit_super_member_expression(self, expr)
+    }
+
+    fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression) {
+        default_visit_super_call_expression(self, expr)
     }
 
     fn visit_array_pattern(&mut self, patt: &mut ArrayPattern) {
@@ -584,6 +594,20 @@ pub fn default_visit_await_expression<V: AstVisitor>(visitor: &mut V, expr: &mut
 
 pub fn default_visit_yield_expression<V: AstVisitor>(visitor: &mut V, expr: &mut YieldExpression) {
     visit_opt!(visitor, expr.argument, visit_expression)
+}
+
+pub fn default_visit_super_member_expression<V: AstVisitor>(
+    visitor: &mut V,
+    expr: &mut SuperMemberExpression,
+) {
+    visitor.visit_expression(&mut expr.property);
+}
+
+pub fn default_visit_super_call_expression<V: AstVisitor>(
+    visitor: &mut V,
+    expr: &mut SuperCallExpression,
+) {
+    visit_vec!(visitor, expr.arguments, visit_expression);
 }
 
 pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ArrayPattern) {

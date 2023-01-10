@@ -798,6 +798,7 @@ impl<'a> Lexer<'a> {
             "as" => self.emit(Token::As, start_pos),
             "class" => self.emit(Token::Class, start_pos),
             "extends" => self.emit(Token::Extends, start_pos),
+            "super" => self.emit(Token::Super, start_pos),
             "get" => self.emit(Token::Get, start_pos),
             "set" => self.emit(Token::Set, start_pos),
             id => self.emit(Token::Identifier(id.to_owned()), start_pos),

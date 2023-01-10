@@ -41,9 +41,11 @@ impl StringObject {
 
     pub fn new(mut object: OrdinaryObject, string_data: Gc<StringValue>) -> StringObject {
         // String objects have an immutable length property
+        let length = string_data.str().len();
+
         object.set_property(
             String::from("length"),
-            Property::data(0.into(), false, false, false),
+            Property::data((length as f64).into(), false, false, false),
         );
 
         StringObject {

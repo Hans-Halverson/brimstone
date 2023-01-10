@@ -1,0 +1,179 @@
+{
+  type: "Program",
+  loc: "1:0-15:13",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:8",
+      kind: {
+        type: "CallExpression",
+        loc: "1:0-1:7",
+        callee: {
+          type: "Super",
+          loc: "1:0-1:5",
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:9",
+      kind: {
+        type: "CallExpression",
+        loc: "3:0-3:8",
+        callee: {
+          type: "Super",
+          loc: "3:0-3:5",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "3:6-3:7",
+            name: "a",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:15",
+      kind: {
+        type: "CallExpression",
+        loc: "5:0-5:14",
+        callee: {
+          type: "Super",
+          loc: "5:0-5:5",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "5:6-5:7",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "5:9-5:10",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "5:12-5:13",
+            name: "c",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:17",
+      kind: {
+        type: "CallExpression",
+        loc: "7:0-7:16",
+        callee: {
+          type: "Super",
+          loc: "7:0-7:5",
+        },
+        arguments: [
+          {
+            type: "Identifier",
+            loc: "7:7-7:8",
+            name: "a",
+          },
+          {
+            type: "Identifier",
+            loc: "7:10-7:11",
+            name: "b",
+          },
+          {
+            type: "Identifier",
+            loc: "7:13-7:14",
+            name: "c",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:10",
+      kind: {
+        type: "MemberExpression",
+        loc: "9:0-9:9",
+        object: {
+          type: "Super",
+          loc: "9:0-9:5",
+        },
+        property: {
+          type: "Identifier",
+          loc: "9:6-9:9",
+          name: "foo",
+        },
+        computed: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:12",
+      kind: {
+        type: "MemberExpression",
+        loc: "11:0-11:11",
+        object: {
+          type: "Super",
+          loc: "11:0-11:5",
+        },
+        property: {
+          type: "Identifier",
+          loc: "11:6-11:11",
+          name: "super",
+        },
+        computed: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:11",
+      kind: {
+        type: "MemberExpression",
+        loc: "13:0-13:10",
+        object: {
+          type: "Super",
+          loc: "13:0-13:5",
+        },
+        property: {
+          type: "Identifier",
+          loc: "13:6-13:9",
+          name: "foo",
+        },
+        computed: true,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:13",
+      kind: {
+        type: "MemberExpression",
+        loc: "15:0-15:12",
+        object: {
+          type: "Super",
+          loc: "15:0-15:5",
+        },
+        property: {
+          type: "BinaryExpression",
+          loc: "15:6-15:11",
+          operator: "+",
+          left: {
+            type: "Literal",
+            loc: "15:6-15:7",
+            value: 1,
+          },
+          right: {
+            type: "Literal",
+            loc: "15:10-15:11",
+            value: 2,
+          },
+        },
+        computed: true,
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

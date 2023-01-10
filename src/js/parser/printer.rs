@@ -738,11 +738,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_private_identifier(&mut self, expr: &Expression) {
-        let id = if let Expression::Id(id) = expr {
-            id
-        } else {
-            unreachable!()
-        };
+        let id = expr.to_id();
 
         self.start_node("PrivateIdentifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);

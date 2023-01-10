@@ -30,6 +30,10 @@ pub enum ParseError {
     MultipleConstructors,
     NonSimpleConstructor,
     ClassStaticPrototype,
+    DuplicatePrivateName(String),
+    PrivateNameOutsideClass,
+    PrivateNameNotDefined(String),
+    PrivateNameConstructor,
 }
 
 // Arbitrary error used to fail try parse
@@ -84,6 +88,18 @@ impl fmt::Display for ParseError {
             }
             ParseError::ClassStaticPrototype => {
                 write!(f, "Classes cannot have a static prototype field or method")
+            }
+            ParseError::DuplicatePrivateName(name) => {
+                write!(f, "Redeclaration of private name #{}", name)
+            }
+            ParseError::PrivateNameOutsideClass => {
+                write!(f, "Private name outside class")
+            }
+            ParseError::PrivateNameNotDefined(name) => {
+                write!(f, "Reference to undeclared private name #{}", name)
+            }
+            ParseError::PrivateNameConstructor => {
+                write!(f, "Private name not allowed to be #constructor")
             }
         }
     }

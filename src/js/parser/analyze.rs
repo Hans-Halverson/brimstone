@@ -29,6 +29,8 @@ pub struct Analyzer {
     iterable_depth: usize,
     // Number of nested functions the visitor is currently inside
     function_depth: usize,
+    // Sets of private names bound classes that the visitor is currently inside
+    class_private_names_stack: Vec<HashMap<String, bool>>,
 }
 
 // Saved state from entering a function or class that can be restored from
@@ -51,6 +53,7 @@ impl<'a> Analyzer {
             breakable_depth: 0,
             iterable_depth: 0,
             function_depth: 0,
+            class_private_names_stack: vec![],
         }
     }
 
@@ -283,6 +286,22 @@ impl<'a> AstVisitor for Analyzer {
 
         self.dec_iterable_depth();
     }
+
+    fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
+        if expr.is_private {
+            self.visit_private_name_use(&expr.property);
+        }
+
+        default_visit_member_expression(self, expr);
+    }
+
+    fn visit_binary_expression(&mut self, expr: &mut BinaryExpression) {
+        if expr.operator == BinaryOperator::InPrivate {
+            self.visit_private_name_use(&expr.left);
+        }
+
+        default_visit_binary_expression(self, expr);
+    }
 }
 
 impl Analyzer {
@@ -427,6 +446,44 @@ impl Analyzer {
             self.visit_expression(super_class);
         }
 
+        // Create new private name scope for stack and initialize with defined private names
+        let mut private_names = HashMap::new();
+        for element in &class.body {
+            match element {
+                ClassElement::Method(ClassMethod {
+                    key,
+                    is_private,
+                    is_static,
+                    ..
+                })
+                | ClassElement::Property(ClassProperty {
+                    key,
+                    is_private,
+                    is_static,
+                    ..
+                }) if *is_private => {
+                    let private_id = key.to_id();
+                    if private_names
+                        .insert(private_id.name.clone(), *is_static)
+                        .is_some()
+                    {
+                        self.emit_error(
+                            private_id.loc,
+                            ParseError::DuplicatePrivateName(private_id.name.clone()),
+                        );
+                    }
+
+                    if private_id.name == "constructor" {
+                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        self.class_private_names_stack.push(private_names);
+
+        // Mark the construtor if it is found, erroring if multiple are found
         let mut constructor = None;
 
         for element in &mut class.body {
@@ -449,6 +506,8 @@ impl Analyzer {
         }
 
         class.constructor = constructor;
+
+        self.class_private_names_stack.pop();
 
         self.exit_strict_mode_context();
 
@@ -599,6 +658,19 @@ impl Analyzer {
                 None => self.emit_error(label.label.loc, ParseError::LabelNotFound),
                 Some(label_id) => {
                     label.id = *label_id;
+                }
+            }
+        }
+    }
+
+    fn visit_private_name_use(&mut self, expr: &Expression) {
+        let id = expr.to_id();
+
+        match self.class_private_names_stack.last() {
+            None => self.emit_error(id.loc, ParseError::PrivateNameOutsideClass),
+            Some(private_names) => {
+                if !private_names.contains_key(&id.name) {
+                    self.emit_error(id.loc, ParseError::PrivateNameNotDefined(id.name.clone()));
                 }
             }
         }

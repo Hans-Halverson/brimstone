@@ -546,6 +546,15 @@ pub enum Expression {
     // TODO: ChainExpression
 }
 
+impl Expression {
+    pub fn to_id(&self) -> &Identifier {
+        match self {
+            Expression::Id(id) => id,
+            _ => panic!("Expected identifier expression"),
+        }
+    }
+}
+
 pub struct BooleanLiteral {
     pub loc: Loc,
     pub value: bool,

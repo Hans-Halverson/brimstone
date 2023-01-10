@@ -127,14 +127,11 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
         match property.value.as_ref() {
             // Identifier shorthand property
             None => {
-                if let ast::Expression::Id(id) = property.key.as_ref() {
-                    let prop_value = maybe!(eval_identifier(cx, id));
-                    must!(create_data_property_or_throw(
-                        cx, object, &id.name, prop_value
-                    ));
-                } else {
-                    unreachable!()
-                };
+                let id = property.key.as_ref().to_id();
+                let prop_value = maybe!(eval_identifier(cx, id));
+                must!(create_data_property_or_throw(
+                    cx, object, &id.name, prop_value
+                ));
             }
             Some(_) if property.is_method => {
                 let property_key =
@@ -372,11 +369,8 @@ fn eval_super_member_expression_to_reference(
         let property_key = to_property_key(property_name_value);
         property_key.str()
     } else {
-        if let ast::Expression::Id(id) = expr.property.as_ref() {
-            id.name.as_str()
-        } else {
-            unreachable!()
-        }
+        let id = expr.property.as_ref().to_id();
+        id.name.as_str()
     };
 
     // 13.3.7.3 MakeSuperPropertyReference inlined

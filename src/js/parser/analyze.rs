@@ -30,7 +30,7 @@ pub struct Analyzer {
     // Number of nested functions the visitor is currently inside
     function_depth: usize,
     // Sets of private names bound classes that the visitor is currently inside
-    class_private_names_stack: Vec<HashMap<String, bool>>,
+    class_private_names_stack: Vec<HashMap<String, PrivateNameUsage>>,
 }
 
 // Saved state from entering a function or class that can be restored from
@@ -39,6 +39,23 @@ struct AnalyzerSavedState {
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
+}
+
+pub struct PrivateNameUsage {
+    is_static: bool,
+    has_getter: bool,
+    has_setter: bool,
+}
+
+impl PrivateNameUsage {
+    // A generic usage marking that a private name was used
+    pub fn used() -> PrivateNameUsage {
+        PrivateNameUsage {
+            is_static: false,
+            has_getter: true,
+            has_setter: true,
+        }
+    }
 }
 
 impl<'a> Analyzer {
@@ -450,27 +467,93 @@ impl Analyzer {
         let mut private_names = HashMap::new();
         for element in &class.body {
             match element {
-                ClassElement::Method(ClassMethod {
+                ClassElement::Property(ClassProperty {
+                    is_private: true,
                     key,
-                    is_private,
-                    is_static,
                     ..
-                })
-                | ClassElement::Property(ClassProperty {
-                    key,
-                    is_private,
-                    is_static,
-                    ..
-                }) if *is_private => {
+                }) => {
                     let private_id = key.to_id();
-                    if private_names
-                        .insert(private_id.name.clone(), *is_static)
-                        .is_some()
-                    {
+
+                    // If this name has been used at all so far it is a duplicate name
+                    if private_names.contains_key(&private_id.name) {
                         self.emit_error(
                             private_id.loc,
                             ParseError::DuplicatePrivateName(private_id.name.clone()),
                         );
+                    } else {
+                        // Create a complete usage that does not allow any other uses of this name
+                        let usage = PrivateNameUsage {
+                            is_static: false,
+                            has_getter: true,
+                            has_setter: true,
+                        };
+                        private_names.insert(private_id.name.clone(), usage);
+                    }
+
+                    if private_id.name == "constructor" {
+                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
+                    }
+                }
+
+                ClassElement::Method(ClassMethod {
+                    is_private: true,
+                    key,
+                    is_static,
+                    kind,
+                    ..
+                }) => {
+                    let private_id = key.to_id();
+
+                    // Check for duplicate name definitions. Only allow multiple definitions if
+                    // there is exactly one getter and setter that have the same static property.
+                    match private_names.get_mut(&private_id.name) {
+                        // Mark usage for private name and its method type
+                        None => {
+                            let is_static = *is_static;
+                            let usage = if *kind == ClassMethodKind::Get {
+                                PrivateNameUsage {
+                                    is_static,
+                                    has_getter: true,
+                                    has_setter: false,
+                                }
+                            } else if *kind == ClassMethodKind::Set {
+                                PrivateNameUsage {
+                                    is_static,
+                                    has_getter: false,
+                                    has_setter: true,
+                                }
+                            } else {
+                                PrivateNameUsage {
+                                    is_static,
+                                    has_getter: true,
+                                    has_setter: true,
+                                }
+                            };
+
+                            private_names.insert(private_id.name.clone(), usage);
+                        }
+                        // This private name has already been seen. Only avoid erroring if this use
+                        // is a getter or setter which has not yet been seen.
+                        Some(usage) => {
+                            let is_duplicate = if *kind == ClassMethodKind::Get {
+                                let had_getter = usage.has_getter;
+                                usage.has_getter = true;
+                                !had_getter && *is_static == usage.is_static
+                            } else if *kind == ClassMethodKind::Set {
+                                let had_setter = usage.has_getter;
+                                usage.has_setter = true;
+                                !had_setter && *is_static == usage.is_static
+                            } else {
+                                true
+                            };
+
+                            if is_duplicate {
+                                self.emit_error(
+                                    private_id.loc,
+                                    ParseError::DuplicatePrivateName(private_id.name.clone()),
+                                );
+                            }
+                        }
                     }
 
                     if private_id.name == "constructor" {
@@ -666,12 +749,20 @@ impl Analyzer {
     fn visit_private_name_use(&mut self, expr: &Expression) {
         let id = expr.to_id();
 
-        match self.class_private_names_stack.last() {
-            None => self.emit_error(id.loc, ParseError::PrivateNameOutsideClass),
-            Some(private_names) => {
-                if !private_names.contains_key(&id.name) {
-                    self.emit_error(id.loc, ParseError::PrivateNameNotDefined(id.name.clone()));
+        if self.class_private_names_stack.is_empty() {
+            self.emit_error(id.loc, ParseError::PrivateNameOutsideClass);
+        } else {
+            // Check if private name is defined in this class or a parent class in its scope
+            let mut is_defined = false;
+            for private_names in self.class_private_names_stack.iter().rev() {
+                if private_names.contains_key(&id.name) {
+                    is_defined = true;
+                    break;
                 }
+            }
+
+            if !is_defined {
+                self.emit_error(id.loc, ParseError::PrivateNameNotDefined(id.name.clone()));
             }
         }
     }
@@ -679,6 +770,27 @@ impl Analyzer {
 
 pub fn analyze(program: &mut Program, source: Rc<Source>) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source);
+    analyzer.visit_program(program);
+
+    if analyzer.errors.is_empty() {
+        Ok(())
+    } else {
+        Err(LocalizedParseErrors::new(analyzer.errors))
+    }
+}
+
+pub fn analyze_for_eval(
+    program: &mut Program,
+    source: Rc<Source>,
+    private_names: Option<HashMap<String, PrivateNameUsage>>,
+) -> Result<(), LocalizedParseErrors> {
+    let mut analyzer = Analyzer::new(source);
+
+    // Initialize private names from surrounding context if supplied
+    if let Some(private_names) = private_names {
+        analyzer.class_private_names_stack.push(private_names);
+    }
+
     analyzer.visit_program(program);
 
     if analyzer.errors.is_empty() {

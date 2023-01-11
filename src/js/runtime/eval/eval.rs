@@ -1,9 +1,12 @@
-use std::{collections::HashSet, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use crate::{
     js::{
         parser::{
-            analyze::analyze,
+            analyze::{analyze_for_eval, PrivateNameUsage},
             ast::{self, LexDecl, VarDecl, WithDecls},
             parse_script,
             source::Source,
@@ -35,6 +38,9 @@ pub fn perform_eval(
     }
     let code = code.as_string();
 
+    let running_context = cx.current_execution_context();
+    let eval_realm = running_context.realm;
+
     let mut in_function = false;
     let mut in_method = false;
     let mut in_derived_constructor = false;
@@ -52,6 +58,26 @@ pub fn perform_eval(
         }
     }
 
+    // Deviation from spec: Gather private names from surrounding context right now and emit
+    // missing error during analysis, instead of waiting until EvalDeclarationInstantiation.
+    let private_names = if is_direct {
+        let mut names = HashMap::new();
+
+        // Walk private contexts, gathering all defined private names
+        let mut current_private_env = running_context.private_env;
+        while let Some(private_env) = current_private_env {
+            for name in &private_env.names {
+                names.insert(name.0.clone(), PrivateNameUsage::used());
+            }
+
+            current_private_env = private_env.outer;
+        }
+
+        Some(names)
+    } else {
+        None
+    };
+
     // Parse source code
     let source = Rc::new(Source::new_from_string("<eval>", String::from(code.str())));
     let parse_result = parse_script(&source);
@@ -61,7 +87,7 @@ pub fn perform_eval(
     };
 
     // Analyze source code
-    let analyze_result = analyze(&mut ast, source);
+    let analyze_result = analyze_for_eval(&mut ast, source, private_names);
     if let Err(errors) = analyze_result {
         // TODO: Return an aggregate error with all syntax errors
         // Choose an arbitrary syntax error to return
@@ -72,9 +98,6 @@ pub fn perform_eval(
     // TODO: Check for NewTarget, SuperProperty, SuperCall, and ContainsArguments
 
     let is_strict_eval = is_strict_caller || ast.has_use_strict_directive;
-
-    let running_context = cx.current_execution_context();
-    let eval_realm = running_context.realm;
 
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(Some(running_context.lexical_env));

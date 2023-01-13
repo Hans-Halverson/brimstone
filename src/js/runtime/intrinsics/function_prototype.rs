@@ -5,11 +5,13 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object,
         completion::EvalResult,
+        environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::OrdinaryObject,
+        property::PrivateProperty,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::is_callable,

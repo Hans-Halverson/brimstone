@@ -4,6 +4,8 @@ use std::ops::{Deref, DerefMut};
 use crate::maybe;
 
 use super::builtin_function::BuiltinFunction;
+use super::environment::private_environment::PrivateNameId;
+use super::property::PrivateProperty;
 use super::type_utilities::same_opt_object_value;
 use super::Context;
 use super::{
@@ -75,6 +77,24 @@ pub trait Object {
         panic!("[[Construct]] not implemented for this object")
     }
 
+    // Private property methods
+    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty>;
+
+    fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        value: Value,
+    ) -> EvalResult<()>;
+
+    fn private_method_or_accessor_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        private_method: PrivateProperty,
+    ) -> EvalResult<()>;
+
+    // Type utilities
     fn is_callable(&self) -> bool {
         false
     }

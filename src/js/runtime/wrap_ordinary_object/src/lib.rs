@@ -117,5 +117,40 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         }
     );
 
+    implement_if_undefined!(
+        "private_element_find",
+        fn private_element_find(
+            &mut self,
+            private_id: PrivateNameId,
+        ) -> Option<&mut PrivateProperty> {
+            self.object_mut().private_element_find(private_id)
+        }
+    );
+
+    implement_if_undefined!(
+        "private_field_add",
+        fn private_field_add(
+            &mut self,
+            cx: &mut Context,
+            private_id: PrivateNameId,
+            value: Value,
+        ) -> EvalResult<()> {
+            self.object_mut().private_field_add(cx, private_id, value)
+        }
+    );
+
+    implement_if_undefined!(
+        "private_method_or_accessor_add",
+        fn private_method_or_accessor_add(
+            &mut self,
+            cx: &mut Context,
+            private_id: PrivateNameId,
+            private_method: PrivateProperty,
+        ) -> EvalResult<()> {
+            self.object_mut()
+                .private_method_or_accessor_add(cx, private_id, private_method)
+        }
+    );
+
     proc_macro::TokenStream::from(impl_ast.into_token_stream())
 }

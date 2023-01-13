@@ -1,12 +1,14 @@
-use crate::{maybe, must};
+use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
     completion::EvalResult,
+    environment::private_environment::PrivateNameId,
     error::type_error_,
     eval::class::ClassFieldDefinition,
     function::Function,
     gc::Gc,
     object_value::ObjectValue,
+    property::PrivatePropertyKind,
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     type_utilities::{is_callable, is_callable_object, same_object_value, to_object},
@@ -217,10 +219,63 @@ pub fn ordinary_has_instance(
     }
 }
 
+// 7.3.30 PrivateGet
+pub fn private_get(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    private_id: PrivateNameId,
+) -> EvalResult<Value> {
+    let entry = match object.private_element_find(private_id) {
+        None => return type_error_(cx, "can't access private field or method"),
+        Some(entry) => entry,
+    };
+
+    if entry.kind() != PrivatePropertyKind::Accessor {
+        return entry.value().into();
+    }
+
+    let accessor = entry.value().as_accessor();
+    match accessor.get {
+        None => return type_error_(cx, "cannot access private field or method"),
+        Some(getter) => call_object(cx, getter, object.into(), &[]),
+    }
+}
+
+// 7.3.31 PrivateSet
+pub fn private_set(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    private_id: PrivateNameId,
+    value: Value,
+) -> EvalResult<()> {
+    let entry = match object.private_element_find(private_id) {
+        None => return type_error_(cx, "cannot set private field or method"),
+        Some(entry) => entry,
+    };
+
+    match entry.kind() {
+        PrivatePropertyKind::Field => {
+            entry.set_value(value);
+            ().into()
+        }
+        PrivatePropertyKind::Method => type_error_(cx, "cannot assign to private method"),
+        PrivatePropertyKind::Accessor => {
+            let accessor = entry.value().as_accessor();
+            match accessor.set {
+                None => type_error_(cx, "cannot set getter-only private property"),
+                Some(setter) => {
+                    maybe!(call_object(cx, setter, object.into(), &[value]));
+                    ().into()
+                }
+            }
+        }
+    }
+}
+
 // 7.3.32 DefineField
 pub fn define_field(
     cx: &mut Context,
-    receiver: Gc<ObjectValue>,
+    mut receiver: Gc<ObjectValue>,
     field_def: &ClassFieldDefinition,
 ) -> EvalResult<()> {
     let init_value = match field_def.initializer {
@@ -228,14 +283,19 @@ pub fn define_field(
         Some(func) => maybe!(call_object(cx, func.into(), receiver.into(), &[])),
     };
 
-    // TODO: Handle private fields
-
-    maybe!(create_data_property_or_throw(
-        cx,
-        receiver,
-        field_def.name.str(),
-        init_value
-    ));
+    match field_def.name {
+        ClassFieldDefinitionName::Normal(key) => {
+            maybe!(create_data_property_or_throw(
+                cx,
+                receiver,
+                key.str(),
+                init_value
+            ));
+        }
+        ClassFieldDefinitionName::Private(private_id) => {
+            maybe!(receiver.private_field_add(cx, private_id, init_value))
+        }
+    }
 
     ().into()
 }
@@ -243,10 +303,12 @@ pub fn define_field(
 // 7.3.33 InitializeInstanceElements
 pub fn initialize_instance_elements(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     constructor: Gc<Function>,
 ) -> EvalResult<()> {
-    // TODO: Handle private fields
+    for (private_id, private_method) in &constructor.private_methods {
+        maybe!(object.private_method_or_accessor_add(cx, *private_id, private_method.clone()));
+    }
 
     for field_def in &constructor.fields {
         maybe!(define_field(cx, object, field_def));
@@ -256,13 +318,5 @@ pub fn initialize_instance_elements(
 }
 
 pub fn get_function_realm(func: Gc<ObjectValue>) -> EvalResult<Realm> {
-    unimplemented!()
-}
-
-pub fn private_get(object: Gc<ObjectValue>, private_name: &str) -> EvalResult<Value> {
-    unimplemented!()
-}
-
-pub fn private_set(object: Gc<ObjectValue>, private_name: &str, value: Value) -> EvalResult<()> {
     unimplemented!()
 }

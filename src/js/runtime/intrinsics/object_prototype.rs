@@ -5,12 +5,14 @@ use crate::{
     js::runtime::{
         abstract_operations::{get, has_own_property},
         completion::EvalResult,
+        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{
             extract_object_vtable, set_immutable_prototype, Object, ObjectValue, ObjectValueVtable,
         },
         ordinary_object::OrdinaryObject,
+        property::PrivateProperty,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::{same_object_value, to_object, to_property_key},

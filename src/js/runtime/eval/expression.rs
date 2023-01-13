@@ -4,7 +4,7 @@ use crate::{
         runtime::{
             abstract_operations::{
                 call, call_object, construct, create_data_property_or_throw, get_method,
-                has_property, initialize_instance_elements, ordinary_has_instance,
+                has_property, initialize_instance_elements, ordinary_has_instance, private_get,
             },
             completion::EvalResult,
             environment::environment::Environment,
@@ -223,7 +223,12 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let base = maybe!(to_object(cx, base_value));
         base.get(cx, property_key.str(), base.into())
     } else if expr.is_private {
-        unimplemented!("private properties")
+        let base = maybe!(to_object(cx, base_value));
+        let private_env = cx.current_execution_context().private_env.unwrap();
+        let private_name = expr.property.to_id().name.as_str();
+        let private_id = private_env.resolve_private_identifier(private_name);
+
+        private_get(cx, base, private_id)
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,
@@ -250,7 +255,7 @@ fn eval_member_expression_to_reference(
 
         Reference::new_value(base_value, String::from(property_key.str()), is_strict).into()
     } else if expr.is_private {
-        unimplemented!("private properties")
+        Reference::make_private_reference(cx, base_value, expr.property.to_id().name.clone()).into()
     } else {
         let property_name = match *expr.property {
             ast::Expression::Id(ref id) => &id.name,
@@ -591,28 +596,71 @@ fn eval_logical_not_expression(cx: &mut Context, expr: &ast::UnaryExpression) ->
 }
 
 fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> EvalResult<Value> {
-    let left_value = maybe!(eval_expression(cx, &expr.left));
-    let right_value = maybe!(eval_expression(cx, &expr.right));
-
     match expr.operator {
-        ast::BinaryOperator::Add => eval_add(cx, left_value, right_value),
-        ast::BinaryOperator::Subtract => eval_subtract(cx, left_value, right_value),
-        ast::BinaryOperator::Multiply => eval_multiply(cx, left_value, right_value),
-        ast::BinaryOperator::Divide => eval_divide(cx, left_value, right_value),
-        ast::BinaryOperator::Remainder => eval_remainder(cx, left_value, right_value),
+        ast::BinaryOperator::Add => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_add(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Subtract => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_subtract(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Multiply => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_multiply(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Divide => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_divide(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Remainder => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_remainder(cx, left_value, right_value)
+        }
         ast::BinaryOperator::Exponent => unimplemented!("exponent expression"),
-        ast::BinaryOperator::EqEq => maybe!(is_loosely_equal(cx, left_value, right_value)).into(),
+        ast::BinaryOperator::EqEq => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(is_loosely_equal(cx, left_value, right_value)).into()
+        }
         ast::BinaryOperator::NotEq => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
             (!maybe!(is_loosely_equal(cx, left_value, right_value))).into()
         }
-        ast::BinaryOperator::EqEqEq => is_strictly_equal(left_value, right_value).into(),
-        ast::BinaryOperator::NotEqEq => (!is_strictly_equal(left_value, right_value)).into(),
-        ast::BinaryOperator::LessThan => eval_less_than(cx, left_value, right_value),
+        ast::BinaryOperator::EqEqEq => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            is_strictly_equal(left_value, right_value).into()
+        }
+        ast::BinaryOperator::NotEqEq => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            (!is_strictly_equal(left_value, right_value)).into()
+        }
+        ast::BinaryOperator::LessThan => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_less_than(cx, left_value, right_value)
+        }
         ast::BinaryOperator::LessThanOrEqual => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
             eval_less_than_or_equal(cx, left_value, right_value)
         }
-        ast::BinaryOperator::GreaterThan => eval_greater_than(cx, left_value, right_value),
+        ast::BinaryOperator::GreaterThan => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_greater_than(cx, left_value, right_value)
+        }
         ast::BinaryOperator::GreaterThanOrEqual => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
             eval_greater_than_or_equal(cx, left_value, right_value)
         }
         ast::BinaryOperator::And => unimplemented!("bitwise and expression"),
@@ -623,9 +671,20 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
             unimplemented!("arithmetic right shift expression")
         }
         ast::BinaryOperator::ShiftRightLogical => unimplemented!("logical right shift expression"),
-        ast::BinaryOperator::InstanceOf => eval_instanceof_expression(cx, left_value, right_value),
-        ast::BinaryOperator::In => eval_in_expression(cx, left_value, right_value),
-        ast::BinaryOperator::InPrivate => unimplemented!("private in expressions"),
+        ast::BinaryOperator::InstanceOf => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_instanceof_expression(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::In => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_in_expression(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::InPrivate => {
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_private_in_expression(cx, expr.left.to_id(), right_value)
+        }
     }
 }
 
@@ -838,11 +897,32 @@ fn eval_in_expression(
         return type_error_(cx, "right side of 'in' must be an object");
     }
 
-    // TODO: Handle private identifiers on left hand side
     let property_key = to_property_key(left_value);
 
     let has_property = maybe!(has_property(right_value.as_object(), property_key.str()));
     has_property.into()
+}
+
+fn eval_private_in_expression(
+    cx: &mut Context,
+    private_property: &ast::Identifier,
+    right_value: Value,
+) -> EvalResult<Value> {
+    if !right_value.is_object() {
+        return type_error_(cx, "right side of 'in' must be an object");
+    }
+
+    let private_id = cx
+        .current_execution_context()
+        .private_env
+        .unwrap()
+        .resolve_private_identifier(&private_property.name);
+
+    right_value
+        .as_object()
+        .private_element_find(private_id)
+        .is_some()
+        .into()
 }
 
 // 13.13.1 Logical Expression Evaluation

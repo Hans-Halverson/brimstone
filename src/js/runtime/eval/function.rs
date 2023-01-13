@@ -19,6 +19,7 @@ use crate::{
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
+            property::PrivateProperty,
             property_descriptor::PropertyDescriptor,
             value::Value,
             Context,
@@ -378,7 +379,7 @@ pub fn define_method(
     closure
 }
 
-// 15.4.5 Runtime Semantics: MethodDefinitionEvaluation
+// 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
 pub fn method_definition_evaluation(
     cx: &mut Context,
     object: Gc<ObjectValue>,
@@ -428,6 +429,51 @@ pub fn method_definition_evaluation(
             let desc =
                 PropertyDescriptor::accessor(None, Some(closure.into()), is_enumerable, true);
             define_property_or_throw(cx, object, property_key, desc)
+        }
+        _ => unreachable!(),
+    }
+}
+
+// 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
+pub fn private_method_definition_evaluation(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    func_node: &ast::Function,
+    property_name: &str,
+    method_kind: ast::ClassMethodKind,
+) -> PrivateProperty {
+    if func_node.is_async || func_node.is_generator {
+        unimplemented!("async and generator functions")
+    }
+
+    // Handle regular method definitions
+    if method_kind == ast::ClassMethodKind::Method {
+        let closure = define_method(cx, object, func_node, None);
+        set_function_name(cx, closure.into(), property_name, None);
+
+        return PrivateProperty::method(closure.into());
+    }
+
+    // Otherwise is a getter or setter
+    let current_execution_context = cx.current_execution_context();
+    let env = current_execution_context.lexical_env;
+    let private_env = current_execution_context.private_env;
+
+    let prototype = current_execution_context
+        .realm
+        .get_intrinsic(Intrinsic::FunctionPrototype);
+
+    let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
+    make_method(closure, object);
+
+    match method_kind {
+        ast::ClassMethodKind::Get => {
+            set_function_name(cx, closure.into(), property_name, Some("get"));
+            PrivateProperty::getter(cx, closure.into())
+        }
+        ast::ClassMethodKind::Set => {
+            set_function_name(cx, closure.into(), property_name, Some("set"));
+            PrivateProperty::setter(cx, closure.into())
         }
         _ => unreachable!(),
     }

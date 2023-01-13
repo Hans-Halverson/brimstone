@@ -12,7 +12,7 @@ use super::{
     environment::{
         environment::{to_trait_object, Environment},
         function_environment::FunctionEnvironment,
-        private_environment::PrivateEnvironment,
+        private_environment::{PrivateEnvironment, PrivateNameId},
     },
     error::type_error_,
     eval::{
@@ -26,6 +26,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::{ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject},
+    property::PrivateProperty,
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     type_utilities::to_object,
@@ -65,6 +66,7 @@ pub struct Function {
     pub environment: Gc<dyn Environment>,
     pub private_environment: Option<Gc<PrivateEnvironment>>,
     pub fields: Vec<ClassFieldDefinition>,
+    pub private_methods: Vec<(PrivateNameId, PrivateProperty)>,
 }
 
 // Function objects may have special kinds, such as executing a class property node instead of a
@@ -376,6 +378,7 @@ pub fn ordinary_function_create(
         private_environment,
         func_node: FuncKind::Function(AstPtr::from_ref(func_node)),
         fields: vec![],
+        private_methods: vec![],
     };
 
     let func = cx.heap.alloc(func);
@@ -420,6 +423,7 @@ pub fn ordinary_function_create_special_kind(
         private_environment,
         func_node,
         fields: vec![],
+        private_methods: vec![],
     };
 
     let func = cx.heap.alloc(func);
@@ -477,7 +481,6 @@ pub fn define_method_property(
     closure: Gc<Function>,
     is_enumerable: bool,
 ) {
-    // TOOD: Check if property_key is private name
     let desc = PropertyDescriptor::data(closure.into(), true, is_enumerable, true);
     must!(define_property_or_throw(cx, home_object, key, desc));
 }

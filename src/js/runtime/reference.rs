@@ -18,7 +18,7 @@ pub struct Reference {
     name: String,
     is_strict: bool,
     this_value: Option<Value>,
-    private_name: Option<PrivateNameId>,
+    private_id: Option<PrivateNameId>,
 }
 
 pub enum ReferenceBase {
@@ -34,7 +34,7 @@ impl Reference {
             name,
             is_strict,
             this_value: None,
-            private_name: None,
+            private_id: None,
         }
     }
 
@@ -44,7 +44,7 @@ impl Reference {
             name,
             is_strict,
             this_value: None,
-            private_name: None,
+            private_id: None,
         }
     }
 
@@ -59,7 +59,7 @@ impl Reference {
             name,
             is_strict,
             this_value: Some(this_value),
-            private_name: None,
+            private_id: None,
         }
     }
 
@@ -69,7 +69,7 @@ impl Reference {
             name,
             is_strict,
             this_value: None,
-            private_name: None,
+            private_id: None,
         }
     }
 
@@ -109,7 +109,7 @@ impl Reference {
 
     // 6.2.4.4 IsPrivateReference
     pub fn is_private_reference(&self) -> bool {
-        self.private_name.is_some()
+        self.private_id.is_some()
     }
 
     // 6.2.4.5 GetValue
@@ -120,11 +120,10 @@ impl Reference {
             }
             ReferenceBase::Value(value) => {
                 let base = maybe!(to_object(cx, value));
-                if self.is_private_reference() {
-                    return private_get(base, &self.name);
+                match self.private_id {
+                    Some(private_id) => return private_get(cx, base, private_id),
+                    None => base.get(cx, &self.name, self.get_this_value()),
                 }
-
-                base.get(cx, &self.name, self.get_this_value())
             }
             ReferenceBase::Env(env) => env.get_binding_value(cx, &self.name, self.is_strict),
         }
@@ -146,7 +145,7 @@ impl Reference {
             ReferenceBase::Value(base_value) => {
                 let mut base = maybe!(to_object(cx, base_value));
                 if self.is_private_reference() {
-                    return private_set(base, &self.name, value);
+                    return private_set(cx, base, self.private_id.unwrap(), value);
                 }
 
                 let succeeded = maybe!(base.set(cx, &self.name, value, self.get_this_value()));
@@ -193,17 +192,17 @@ impl Reference {
     pub fn make_private_reference(
         cx: &mut Context,
         base_value: Value,
-        private_identifier: String,
+        private_name: String,
     ) -> Reference {
         let private_env = cx.current_execution_context().private_env.unwrap();
-        let private_name = private_env.resolve_private_identifier(&private_identifier);
+        let private_id = private_env.resolve_private_identifier(&private_name);
 
         Reference {
             base: ReferenceBase::Value(base_value),
-            name: private_identifier,
+            name: private_name,
             is_strict: true,
             this_value: None,
-            private_name: Some(private_name),
+            private_id: Some(private_id),
         }
     }
 }

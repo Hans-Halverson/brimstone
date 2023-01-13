@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     js::{
         parser::ast::{self, AstPtr, ClassElement, ClassMethodKind},
@@ -6,7 +8,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{to_trait_object, Environment},
-                private_environment::PrivateEnvironment,
+                private_environment::{PrivateEnvironment, PrivateNameId},
             },
             error::type_error_,
             eval::pattern::initialize_bound_name,
@@ -19,6 +21,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create_optional_proto,
+            property::PrivatePropertyKind,
             value::{StringValue, NULL_TAG, OBJECT_TAG},
             Completion, Context, EvalResult, Gc, Value,
         },
@@ -28,13 +31,18 @@ use crate::{
 
 use super::{
     expression::{eval_expression, eval_property_name},
-    function::{define_method, method_definition_evaluation},
+    function::{define_method, method_definition_evaluation, private_method_definition_evaluation},
 };
 
 // 6.2.10 ClassFieldDefinition Record
 pub struct ClassFieldDefinition {
-    pub name: Gc<StringValue>,
+    pub name: ClassFieldDefinitionName,
     pub initializer: Option<Gc<Function>>,
+}
+
+pub enum ClassFieldDefinitionName {
+    Normal(Gc<StringValue>),
+    Private(PrivateNameId),
 }
 
 // 15.7.10 ClassFieldDefinitionEvaluation
@@ -111,9 +119,25 @@ pub fn class_definition_evaluation(
     }
 
     let outer_private_env = current_execution_context.private_env;
-    let class_private_env = PrivateEnvironment::new(cx, outer_private_env);
+    let mut class_private_env = PrivateEnvironment::new(cx, outer_private_env);
 
-    // TODO: Implement private fields
+    // Add private fields to class's private environment
+    for element in &class.body {
+        match element {
+            ast::ClassElement::Method(ast::ClassMethod {
+                key, is_private, ..
+            })
+            | ast::ClassElement::Property(ast::ClassProperty {
+                key, is_private, ..
+            }) if *is_private => {
+                let id = key.to_id();
+                if !class_private_env.names.contains_key(&id.name) {
+                    class_private_env.add_private_name(id.name.clone())
+                }
+            }
+            _ => {}
+        }
+    }
 
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
@@ -201,15 +225,13 @@ pub fn class_definition_evaluation(
 
     let mut instance_fields = vec![];
     let mut static_elements = vec![];
+    let mut instance_private_methods = HashMap::new();
+    let mut static_private_methods = HashMap::new();
 
     // Evaluate class element definitions
     for element in &class.body {
         match element {
             ClassElement::Property(prop) => {
-                if prop.is_private {
-                    unimplemented!("private properties")
-                }
-
                 let home_object: Gc<ObjectValue> = if prop.is_static {
                     proto.into()
                 } else {
@@ -217,8 +239,19 @@ pub fn class_definition_evaluation(
                 };
 
                 let result = (|| {
-                    let property_key = maybe!(eval_property_name(cx, &prop.key, prop.is_computed));
-                    let property_key_value = cx.heap.alloc_string(String::from(property_key));
+                    let (property_name_value, field_def_name) = if prop.is_private {
+                        let id = prop.key.to_id();
+                        let private_id = class_private_env.names.get(&id.name).unwrap();
+                        let property_name_value = cx.heap.alloc_string(id.name.clone());
+                        let field_def_name = ClassFieldDefinitionName::Private(*private_id);
+                        (property_name_value, field_def_name)
+                    } else {
+                        let property_key =
+                            maybe!(eval_property_name(cx, &prop.key, prop.is_computed));
+                        let property_name_value = cx.heap.alloc_string(String::from(property_key));
+                        let field_def_name = ClassFieldDefinitionName::Normal(property_name_value);
+                        (property_name_value, field_def_name)
+                    };
 
                     let initializer = if prop.value.is_none() {
                         None
@@ -226,13 +259,13 @@ pub fn class_definition_evaluation(
                         Some(maybe!(class_field_definition_evaluation(
                             cx,
                             prop,
-                            property_key_value,
+                            property_name_value,
                             home_object
                         )))
                     };
 
                     EvalResult::Ok(ClassFieldDefinition {
-                        name: property_key_value,
+                        name: field_def_name,
                         initializer,
                     })
                 })();
@@ -247,8 +280,6 @@ pub fn class_definition_evaluation(
                     }
                 };
 
-                // TODO: Handle private fields
-
                 if prop.is_static {
                     static_elements.push(StaticElement::Field(field_def));
                 } else {
@@ -256,10 +287,6 @@ pub fn class_definition_evaluation(
                 }
             }
             ClassElement::Method(method) => {
-                if method.is_private {
-                    unimplemented!("private properties")
-                }
-
                 if method.kind == ClassMethodKind::Constructor {
                     continue;
                 }
@@ -277,6 +304,41 @@ pub fn class_definition_evaluation(
                     static_elements.push(StaticElement::Initializer(body_function));
 
                     continue;
+                }
+
+                if method.is_private {
+                    // Resolve private name to id
+                    let id = method.key.to_id();
+                    let private_id = *class_private_env.names.get(&id.name).unwrap();
+                    let property_name_value = cx.heap.alloc_string(id.name.clone());
+
+                    let private_property = private_method_definition_evaluation(
+                        cx,
+                        home_object,
+                        &method.value,
+                        property_name_value.str(),
+                        method.kind,
+                    );
+
+                    let container = if method.is_static {
+                        &mut static_private_methods
+                    } else {
+                        &mut instance_private_methods
+                    };
+
+                    // Add property to appropriate container, combining accessors if necessary
+                    if private_property.kind() == PrivatePropertyKind::Method {
+                        container.insert(private_id, private_property);
+                    } else {
+                        match container.get_mut(&private_id) {
+                            None => {
+                                container.insert(private_id, private_property);
+                            }
+                            Some(existing_property) => {
+                                existing_property.add_accessor(private_property);
+                            }
+                        }
+                    }
                 }
 
                 let result = (|| {
@@ -299,8 +361,6 @@ pub fn class_definition_evaluation(
                     )
                 })();
 
-                // TODO: Handle private fields
-
                 match result {
                     EvalResult::Ok(_) => {}
                     EvalResult::Throw(thrown_value) => {
@@ -322,7 +382,18 @@ pub fn class_definition_evaluation(
 
     func.fields = instance_fields;
 
-    // TODO: Handle private fields
+    // Store templates for private methods on constructor function
+    func.private_methods
+        .reserve_exact(instance_private_methods.len());
+    for private_id_and_method in instance_private_methods {
+        func.private_methods.push(private_id_and_method);
+    }
+
+    // Define static private methods as private properties of the constructor function
+    for (private_id, static_private_method) in static_private_methods {
+        let mut func_object: Gc<ObjectValue> = func.into();
+        must!(func_object.private_method_or_accessor_add(cx, private_id, static_private_method,));
+    }
 
     // Initialize static fields
     for static_element in static_elements {

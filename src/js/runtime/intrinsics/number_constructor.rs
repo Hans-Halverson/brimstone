@@ -5,13 +5,14 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
+        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::{
             ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
         },
-        property::Property,
+        property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::to_numeric,

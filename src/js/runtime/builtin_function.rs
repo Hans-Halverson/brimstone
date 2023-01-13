@@ -4,13 +4,14 @@ use crate::impl_gc_into;
 
 use super::{
     completion::EvalResult,
+    environment::private_environment::PrivateNameId,
     execution_context::{ExecutionContext, ScriptOrModule},
     function::{set_function_length, set_function_name},
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::OrdinaryObject,
-    property::Property,
+    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     value::Value,

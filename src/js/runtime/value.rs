@@ -347,3 +347,5 @@ pub struct AccessorValue {
     pub get: Option<Gc<ObjectValue>>,
     pub set: Option<Gc<ObjectValue>>,
 }
+
+impl GcDeref for AccessorValue {}

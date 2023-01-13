@@ -6,10 +6,12 @@ use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     completion::EvalResult,
+    environment::private_environment::PrivateNameId,
+    error::type_error_,
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    property::Property,
+    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     realm::Realm,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
@@ -25,6 +27,8 @@ pub struct OrdinaryObject {
     prototype: Option<Gc<ObjectValue>>,
     // Properties with string keys. Does not yet support symbol or number keys.
     properties: HashMap<String, Property>,
+    // Private properties with string keys
+    private_properties: HashMap<PrivateNameId, PrivateProperty>,
     is_extensible: bool,
 }
 
@@ -40,6 +44,7 @@ impl OrdinaryObject {
             _vtable: VTABLE,
             prototype,
             properties: HashMap::new(),
+            private_properties: HashMap::new(),
             is_extensible,
         }
     }
@@ -49,6 +54,7 @@ impl OrdinaryObject {
             _vtable: VTABLE,
             prototype: None,
             properties: HashMap::new(),
+            private_properties: HashMap::new(),
             is_extensible: false,
         }
     }
@@ -190,6 +196,44 @@ impl Object for OrdinaryObject {
     // 10.1.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
         ordinary_own_property_keys(cx, self)
+    }
+
+    // 7.3.27 PrivateElementFind
+    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty> {
+        self.private_properties.get_mut(&private_id)
+    }
+
+    // 7.3.28 PrivateFieldAdd
+    fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        value: Value,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                let property = PrivateProperty::field(value);
+                self.private_properties.insert(private_id, property);
+                ().into()
+            }
+        }
+    }
+
+    // 7.3.29 PrivateMethodOrAccessorAdd
+    fn private_method_or_accessor_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        private_method: PrivateProperty,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                self.private_properties.insert(private_id, private_method);
+                ().into()
+            }
+        }
     }
 }
 
@@ -523,6 +567,7 @@ pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
         _vtable: VTABLE,
         prototype: Some(proto),
         properties: HashMap::new(),
+        private_properties: HashMap::new(),
         is_extensible: true,
     }
 }
@@ -532,6 +577,7 @@ pub fn ordinary_object_create_optional_proto(prototype: Option<Gc<ObjectValue>>)
         _vtable: VTABLE,
         prototype,
         properties: HashMap::new(),
+        private_properties: HashMap::new(),
         is_extensible: true,
     }
 }

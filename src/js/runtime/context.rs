@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::js::parser::ast;
 
 use super::{
@@ -8,6 +10,7 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
     realm::Realm,
+    value::SymbolValue,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -16,6 +19,7 @@ use super::{
 pub struct Context {
     execution_context_stack: Vec<Gc<ExecutionContext>>,
     pub heap: Heap,
+    pub global_symbol_registry: HashMap<String, Gc<SymbolValue>>,
 
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: Gc<dyn Environment>,
@@ -33,6 +37,7 @@ impl Context {
         Context {
             execution_context_stack: vec![],
             heap,
+            global_symbol_registry: HashMap::new(),
             uninit_environment,
             eval_asts: vec![],
         }

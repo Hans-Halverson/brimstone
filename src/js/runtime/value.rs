@@ -206,6 +206,11 @@ impl Value {
     }
 
     #[inline]
+    pub const fn as_symbol(&self) -> Gc<SymbolValue> {
+        Gc::from_ptr(self.restore_pointer_bits())
+    }
+
+    #[inline]
     pub const fn as_accessor(&self) -> Gc<AccessorValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
@@ -262,6 +267,13 @@ impl Value {
     }
 
     #[inline]
+    pub fn symbol(value: Gc<SymbolValue>) -> Value {
+        Value {
+            raw_bits: ((SYMBOL_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
+        }
+    }
+
+    #[inline]
     pub fn accessor(value: Gc<AccessorValue>) -> Value {
         Value {
             raw_bits: ((ACCESSOR_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
@@ -304,6 +316,12 @@ impl From<Gc<StringValue>> for Value {
     }
 }
 
+impl From<Gc<SymbolValue>> for Value {
+    fn from(value: Gc<SymbolValue>) -> Self {
+        Value::symbol(value)
+    }
+}
+
 impl From<Gc<AccessorValue>> for Value {
     fn from(value: Gc<AccessorValue>) -> Self {
         Value::accessor(value)
@@ -342,6 +360,25 @@ impl PartialEq for StringValue {
         self.0 == other.0
     }
 }
+
+pub struct SymbolValue(Option<String>);
+
+impl SymbolValue {
+    pub fn new(description: Option<String>) -> SymbolValue {
+        SymbolValue(description)
+    }
+}
+
+impl Gc<SymbolValue> {
+    pub fn description<'a, 'b>(&'a self) -> Option<&'b str> {
+        // Intentionally break lifetime, as SymbolValues are managed by the Gc heap
+        self.0
+            .as_ref()
+            .map(|desc| unsafe { std::mem::transmute(desc.as_str()) })
+    }
+}
+
+impl GcDeref for SymbolValue {}
 
 pub struct AccessorValue {
     pub get: Option<Gc<ObjectValue>>,

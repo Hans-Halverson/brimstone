@@ -85,6 +85,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!("RangeError", RangeErrorConstructor);
     intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
     intrinsic_prop!("String", StringConstructor);
+    intrinsic_prop!("Symbol", SymbolConstructor);
     intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);
     intrinsic_prop!("TypeError", TypeErrorConstructor);
     intrinsic_prop!("URIError", URIErrorConstructor);

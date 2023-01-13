@@ -7,7 +7,7 @@ use super::{
     gc::Gc,
     intrinsics::{
         boolean_constructor::BooleanObject, number_constructor::NumberObject,
-        string_constructor::StringObject,
+        string_constructor::StringObject, symbol_constructor::SymbolObject,
     },
     object_value::ObjectValue,
     value::{
@@ -200,7 +200,11 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
                 StringObject::new_from_value(cx, value.as_string()).into();
             object.into()
         }
-        SYMBOL_TAG => unimplemented!("symbol objects"),
+        SYMBOL_TAG => {
+            let object: Gc<ObjectValue> =
+                SymbolObject::new_from_value(cx, value.as_symbol()).into();
+            object.into()
+        }
         BIGINT_TAG => unimplemented!("BigInt objects"),
         _ => unreachable!(),
     }

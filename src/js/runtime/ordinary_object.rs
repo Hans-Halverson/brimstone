@@ -86,6 +86,24 @@ impl OrdinaryObject {
         )
     }
 
+    pub fn intrinsic_getter(
+        &mut self,
+        cx: &mut Context,
+        name: &str,
+        func: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
+        let accessor_value = cx.heap.alloc(AccessorValue {
+            get: Some(getter.into()),
+            set: None,
+        });
+        self.set_property(
+            String::from(name),
+            Property::accessor(accessor_value.into(), false, true),
+        );
+    }
+
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,

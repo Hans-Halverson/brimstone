@@ -56,8 +56,11 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
                 "false".to_owned()
             }
         }
+        SYMBOL_TAG => {
+            let description = value.as_symbol().description().unwrap_or("");
+            return format!("Symbol({})", description);
+        }
         BIGINT_TAG => unimplemented!("BigInts"),
-        SYMBOL_TAG => unimplemented!("Symbols"),
         _ => {}
     };
 

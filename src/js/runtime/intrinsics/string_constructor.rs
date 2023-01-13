@@ -22,7 +22,7 @@ use crate::{
     maybe,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, symbol_prototype::symbol_descriptive_string};
 
 // 10.4.3 String Exotic Objects
 #[repr(C)]
@@ -121,7 +121,7 @@ impl StringConstructor {
         } else {
             let value = get_argument(arguments, 0);
             if new_target.is_none() && value.is_symbol() {
-                unimplemented!("Symbols")
+                return symbol_descriptive_string(cx, value.as_symbol()).into();
             }
 
             maybe!(to_string(cx, value))

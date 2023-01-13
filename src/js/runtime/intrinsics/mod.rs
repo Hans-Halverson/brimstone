@@ -14,3 +14,5 @@ mod object_constructor;
 mod object_prototype;
 pub mod string_constructor;
 mod string_prototype;
+pub mod symbol_constructor;
+mod symbol_prototype;

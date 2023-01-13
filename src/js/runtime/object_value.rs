@@ -128,6 +128,10 @@ pub trait Object {
         false
     }
 
+    fn is_symbol_object(&self) -> bool {
+        false
+    }
+
     fn is_date_object(&self) -> bool {
         false
     }

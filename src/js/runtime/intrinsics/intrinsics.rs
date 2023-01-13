@@ -13,6 +13,7 @@ use crate::{
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
             string_constructor::StringConstructor, string_prototype::StringPrototype,
+            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -45,6 +46,8 @@ pub enum Intrinsic {
     ReferenceErrorPrototype,
     StringConstructor,
     StringPrototype,
+    SymbolConstructor,
+    SymbolPrototype,
     SyntaxErrorConstructor,
     SyntaxErrorPrototype,
     ThrowTypeError,
@@ -131,6 +134,7 @@ impl Intrinsics {
         register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);
         register_intrinsic_pair!(NumberPrototype, NumberConstructor);
         register_intrinsic_pair!(StringPrototype, StringConstructor);
+        register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
         register_intrinsic!(ArrayConstructor, ArrayConstructor);
 
         // Native errors

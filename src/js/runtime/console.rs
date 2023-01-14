@@ -17,7 +17,7 @@ impl ConsoleObject {
         let mut object =
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        object.intrinsic_func(cx, "log", Self::log, 0, realm);
+        object.intrinsic_func(cx, cx.names.log, Self::log, 0, realm);
 
         cx.heap.alloc(object).into()
     }
@@ -68,12 +68,12 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
     let object = value.as_object();
 
     if object.is_error() {
-        let name = match get(cx, object, "name") {
+        let name = match get(cx, object, cx.names.name) {
             EvalResult::Ok(name_value) if name_value.is_string() => name_value.as_string().str(),
             _ => "Error",
         };
 
-        match get(cx, object, "message") {
+        match get(cx, object, cx.names.message) {
             EvalResult::Ok(message_value) => {
                 format!("{}: {}", name, to_console_string(cx, message_value))
             }

@@ -28,9 +28,10 @@ use super::{
     ordinary_object::{ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject},
     property::PrivateProperty,
     property_descriptor::PropertyDescriptor,
+    property_key::PropertyKey,
     realm::Realm,
     type_utilities::to_object,
-    value::{StringValue, Value},
+    value::Value,
     Context,
 };
 
@@ -73,7 +74,7 @@ pub struct Function {
 // function node, or executing a builtin constructor.
 pub enum FuncKind {
     Function(AstPtr<ast::Function>),
-    ClassProperty(AstPtr<ast::ClassProperty>, Gc<StringValue>),
+    ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
     DefaultConstructor,
 }
 
@@ -328,11 +329,7 @@ impl Function {
             // Initializer evaluation in EvaluateBody
             FuncKind::ClassProperty(prop, name) => {
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(
-                    cx,
-                    expr,
-                    name.str()
-                ));
+                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, *name,));
 
                 Completion::return_(value)
             }
@@ -453,14 +450,24 @@ pub fn make_constructor(
             let prototype = cx.heap.alloc(ordinary_object).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
-            must!(define_property_or_throw(cx, prototype, "constructor", desc));
+            must!(define_property_or_throw(
+                cx,
+                prototype,
+                cx.names.constructor,
+                desc
+            ));
 
             prototype
         }
     };
 
     let desc = PropertyDescriptor::data(prototype.into(), writable_prototype, false, false);
-    must!(define_property_or_throw(cx, func.into(), "prototype", desc));
+    must!(define_property_or_throw(
+        cx,
+        func.into(),
+        cx.names.prototype,
+        desc
+    ));
 }
 
 // 10.2.6 MakeClassConstructor
@@ -477,7 +484,7 @@ pub fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
 pub fn define_method_property(
     cx: &mut Context,
     home_object: Gc<ObjectValue>,
-    key: &str,
+    key: PropertyKey,
     closure: Gc<Function>,
     is_enumerable: bool,
 ) {
@@ -489,31 +496,42 @@ pub fn define_method_property(
 pub fn set_function_name(
     cx: &mut Context,
     func: Gc<ObjectValue>,
-    name: &str,
+    name: PropertyKey,
     prefix: Option<&str>,
 ) {
-    // TODO: Handle symbol and private names
+    // Format name including prefix, converting to string value
+    let name_string = match name {
+        PropertyKey::String(str) => {
+            if let Some(prefix) = prefix {
+                cx.heap.alloc_string(format!("{} {}", prefix, str.str()))
+            } else {
+                str
+            }
+        }
+        PropertyKey::Symbol(sym) => {
+            let desc = sym.description().unwrap_or("");
+            if let Some(prefix) = prefix {
+                cx.heap.alloc_string(format!("{} [{}]", prefix, desc))
+            } else {
+                cx.heap.alloc_string(format!("[{}]", desc))
+            }
+        }
+    };
 
     if let Some(mut builtin_func) = func.as_builtin_function_opt() {
         // Choose to not add prefix, as this is optional in spec
-        builtin_func.initial_name = Some(name.to_string());
+        builtin_func.initial_name = Some(name_string);
     }
 
-    let name = if let Some(prefix) = prefix {
-        cx.heap.alloc_string(format!("{} {}", prefix, name))
-    } else {
-        cx.heap.alloc_string(name.into())
-    };
-
-    let desc = PropertyDescriptor::data(name.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, "name", desc))
+    let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
+    must!(define_property_or_throw(cx, func, cx.names.name, desc))
 }
 
 // 10.2.10 SetFunctionLength
 pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: u32) {
     let float_length: f64 = length.into();
     let desc = PropertyDescriptor::data(float_length.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, "length", desc))
+    must!(define_property_or_throw(cx, func, cx.names.length, desc))
 }
 
 // 8.5.1 InstantiateFunctionObject

@@ -5,7 +5,7 @@ use crate::js::runtime::{
     error::{err_not_defined_, err_uninitialized_, type_error_},
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
-    value::Value,
+    value::{StringValue, Value},
     Context,
 };
 
@@ -34,7 +34,7 @@ impl Binding {
 
 // 9.1.1.1 Declarative Environment Record
 pub struct DeclarativeEnvironment {
-    pub bindings: HashMap<String, Binding>,
+    pub bindings: HashMap<Gc<StringValue>, Binding>,
     outer: Option<Gc<dyn Environment>>,
 }
 
@@ -52,19 +52,19 @@ impl DeclarativeEnvironment {
 
 impl Environment for DeclarativeEnvironment {
     // 9.1.1.1.1 HasBinding
-    fn has_binding(&self, _: &mut Context, name: &str) -> EvalResult<bool> {
-        self.bindings.contains_key(name).into()
+    fn has_binding(&self, _: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+        self.bindings.contains_key(&name).into()
     }
 
     // 9.1.1.1.2 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
         _: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(true, false, can_delete);
-        self.bindings.insert(name.to_string(), binding);
+        self.bindings.insert(name, binding);
         ().into()
     }
 
@@ -72,17 +72,22 @@ impl Environment for DeclarativeEnvironment {
     fn create_immutable_binding(
         &mut self,
         _: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(false, is_strict, false);
-        self.bindings.insert(name.to_string(), binding);
+        self.bindings.insert(name, binding);
         ().into()
     }
 
     // 9.1.1.1.4 InitializeBinding
-    fn initialize_binding(&mut self, _: &mut Context, name: &str, value: Value) -> EvalResult<()> {
-        let binding = self.bindings.get_mut(name).unwrap();
+    fn initialize_binding(
+        &mut self,
+        _: &mut Context,
+        name: Gc<StringValue>,
+        value: Value,
+    ) -> EvalResult<()> {
+        let binding = self.bindings.get_mut(&name).unwrap();
         binding.value = value;
         binding.is_initialized = true;
         ().into()
@@ -92,14 +97,14 @@ impl Environment for DeclarativeEnvironment {
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        match self.bindings.get_mut(name) {
-            None if is_strict => err_not_defined_(cx, name),
+        match self.bindings.get_mut(&name) {
+            None if is_strict => err_not_defined_(cx, name.str()),
             None => {
-                self.create_mutable_binding(cx, name.to_string(), true);
+                self.create_mutable_binding(cx, name, true);
                 self.initialize_binding(cx, name, value);
                 ().into()
             }
@@ -107,13 +112,13 @@ impl Environment for DeclarativeEnvironment {
                 let s = if binding.is_strict { true } else { is_strict };
 
                 if !binding.is_initialized {
-                    return err_uninitialized_(cx, name);
+                    return err_uninitialized_(cx, name.str());
                 }
 
                 if binding.is_mutable {
                     binding.value = value;
                 } else if s {
-                    return type_error_(cx, &format!("{} is immutable", name));
+                    return type_error_(cx, &format!("{} is immutable", name.str()));
                 }
 
                 ().into()
@@ -125,25 +130,25 @@ impl Environment for DeclarativeEnvironment {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Value> {
-        let binding = self.bindings.get(name).unwrap();
+        let binding = self.bindings.get(&name).unwrap();
         if !binding.is_initialized {
-            return err_uninitialized_(cx, name);
+            return err_uninitialized_(cx, name.str());
         }
 
         binding.value.into()
     }
 
     // 9.1.1.1.7 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, name: &str) -> EvalResult<bool> {
-        let binding = self.bindings.get(name).unwrap();
+    fn delete_binding(&mut self, _: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+        let binding = self.bindings.get(&name).unwrap();
         if !binding.can_delete {
             return false.into();
         }
 
-        self.bindings.remove(name);
+        self.bindings.remove(&name);
 
         true.into()
     }

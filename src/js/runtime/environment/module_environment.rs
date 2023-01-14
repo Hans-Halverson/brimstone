@@ -1,5 +1,9 @@
 use crate::js::runtime::{
-    completion::EvalResult, gc::Gc, object_value::ObjectValue, value::Value, Context,
+    completion::EvalResult,
+    gc::Gc,
+    object_value::ObjectValue,
+    value::{StringValue, Value},
+    Context,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
@@ -24,14 +28,14 @@ impl Environment for ModuleEnvironment {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
         unimplemented!()
     }
 
     // 9.1.1.5.2 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, _name: &str) -> EvalResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, _name: Gc<StringValue>) -> EvalResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
@@ -47,14 +51,14 @@ impl Environment for ModuleEnvironment {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
         self.env.has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         self.env.create_mutable_binding(cx, name, can_delete)
@@ -63,20 +67,25 @@ impl Environment for ModuleEnvironment {
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: Gc<StringValue>,
+        value: Value,
+    ) -> EvalResult<()> {
         self.env.initialize_binding(cx, name, value)
     }
 
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {

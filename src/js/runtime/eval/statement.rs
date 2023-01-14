@@ -14,10 +14,11 @@ use crate::{
                 function::{
                     instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
                 },
-                pattern::binding_initialization,
+                pattern::{binding_initialization, id_string_value},
             },
             execution_context::resolve_binding,
             gc::Gc,
+            property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             value::Value,
             Context,
@@ -141,11 +142,13 @@ fn block_declaration_instantiation(
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 must!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_immutable_binding(cx, id.name.to_string(), true)
+                    let name_value = id_string_value(cx, id);
+                    env.create_immutable_binding(cx, name_value, true)
                 }))
             }
             _ => must!(lex_decl.iter_bound_names(&mut |id| {
-                env.create_mutable_binding(cx, id.name.to_string(), false)
+                let name_value = id_string_value(cx, id);
+                env.create_mutable_binding(cx, name_value, false)
             })),
         }
     }
@@ -156,19 +159,20 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
     for decl in &var_decl.declarations {
         match decl.id.as_ref() {
             ast::Pattern::Id(id) => {
-                let mut id_reference = maybe__!(resolve_binding(cx, &id.name, None));
+                let name_value = id_string_value(cx, id);
+                let mut reference = maybe__!(resolve_binding(cx, name_value, None));
 
                 let value = if let Some(init) = &decl.init {
                     maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
-                        &id.name
+                        PropertyKey::String(name_value)
                     ))
                 } else {
                     Value::undefined()
                 };
 
-                maybe__!(id_reference.initialize_referenced_binding(cx, value));
+                maybe__!(reference.initialize_referenced_binding(cx, value));
             }
             patt => {
                 let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
@@ -187,11 +191,12 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
         match decl.id.as_ref() {
             ast::Pattern::Id(id) => {
                 if let Some(init) = &decl.init {
-                    let mut id_reference = maybe__!(resolve_binding(cx, &id.name, None));
+                    let name_value = id_string_value(cx, id);
+                    let mut id_reference = maybe__!(resolve_binding(cx, name_value, None));
                     let value = maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
-                        &id.name
+                        PropertyKey::String(name_value)
                     ));
 
                     maybe__!(id_reference.put_value(cx, value));
@@ -211,7 +216,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
 pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: &str,
+    name: PropertyKey,
 ) -> EvalResult<Value> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
@@ -375,10 +380,11 @@ fn eval_for_statement(
 
             let is_const = *kind == ast::VarKind::Const;
             must!(lex_decl.iter_bound_names(&mut |id| {
+                let name_value = id_string_value(cx, id);
                 if is_const {
-                    loop_env.create_immutable_binding(cx, id.name.clone(), true)
+                    loop_env.create_immutable_binding(cx, name_value, true)
                 } else {
-                    loop_env.create_mutable_binding(cx, id.name.clone(), true)
+                    loop_env.create_mutable_binding(cx, name_value, true)
                 }
             }));
 
@@ -461,9 +467,10 @@ fn create_per_iteration_environment(
         .alloc(DeclarativeEnvironment::new(Some(last_iteration_env)));
 
     maybe!(per_iteration_decl.iter_bound_names(&mut |id| {
-        must!(this_iteration_env.create_mutable_binding(cx, id.name.clone(), false));
-        let last_value = maybe!(last_iteration_env.get_binding_value(cx, &id.name, true));
-        must!(this_iteration_env.initialize_binding(cx, &id.name, last_value));
+        let name_value = id_string_value(cx, id);
+        must!(this_iteration_env.create_mutable_binding(cx, name_value, false));
+        let last_value = maybe!(last_iteration_env.get_binding_value(cx, name_value, true));
+        must!(this_iteration_env.initialize_binding(cx, name_value, last_value));
 
         ().into()
     }));
@@ -496,7 +503,8 @@ fn for_each_head_evaluation_shared(
             let mut new_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
 
             must!(var_decl.iter_bound_names(&mut |id| {
-                new_env.create_mutable_binding(cx, id.name.clone(), false)
+                let name_value = id_string_value(cx, id);
+                new_env.create_mutable_binding(cx, name_value, false)
             }));
 
             current_execution_context.lexical_env = to_trait_object(new_env);
@@ -549,10 +557,11 @@ fn for_each_body_evaluation_shared(
 
             // 14.7.5.4 ForDeclarationBindingInstantiation
             must!(var_decl.iter_bound_names(&mut |id| {
+                let name_value = id_string_value(cx, id);
                 if *kind == ast::VarKind::Const {
-                    iteration_env.create_immutable_binding(cx, id.name.clone(), true)
+                    iteration_env.create_immutable_binding(cx, name_value, true)
                 } else {
-                    iteration_env.create_mutable_binding(cx, id.name.clone(), true)
+                    iteration_env.create_mutable_binding(cx, name_value, true)
                 }
             }));
 
@@ -608,7 +617,9 @@ fn eval_for_in_statement(
                 continue;
             }
 
-            if let Some(desc) = maybe__!(current_object.get_own_property(key_string.str())) {
+            if let Some(desc) =
+                maybe__!(current_object.get_own_property(PropertyKey::String(key_string)))
+            {
                 if !desc.is_enumerable() {
                     continue;
                 }
@@ -912,7 +923,8 @@ fn eval_catch_clause(
                 to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env))));
 
             must!(param.iter_bound_names(&mut |id| {
-                catch_env.create_mutable_binding(cx, id.name.clone(), false)
+                let name_value = id_string_value(cx, id);
+                catch_env.create_mutable_binding(cx, name_value, false)
             }));
 
             current_context.lexical_env = catch_env;

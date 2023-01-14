@@ -13,6 +13,7 @@ use crate::{
         ordinary_object::OrdinaryObject,
         property::PrivateProperty,
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
         value::Value,
@@ -51,9 +52,9 @@ impl FunctionPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         self.object.intrinsic_name_prop(cx, "");
-        self.object.instrinsic_length_prop(0.0);
+        self.object.instrinsic_length_prop(cx, 0.0);
         self.object
-            .intrinsic_func(cx, "call", Self::call_intrinsic, 1, realm);
+            .intrinsic_func(cx, cx.names.call, Self::call_intrinsic, 1, realm);
     }
 
     #[inline]

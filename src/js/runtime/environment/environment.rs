@@ -4,7 +4,7 @@ use crate::{
         gc::{Gc, GcDeref},
         object_value::ObjectValue,
         reference::Reference,
-        value::Value,
+        value::{StringValue, Value},
         Context,
     },
     maybe,
@@ -18,34 +18,39 @@ use super::{
 // 9.1 Environment Record
 pub trait Environment {
     // Environment functions from spec
-    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool>;
+    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool>;
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()>;
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()>;
-    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()>;
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: Gc<StringValue>,
+        value: Value,
+    ) -> EvalResult<()>;
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()>;
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Value>;
-    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> EvalResult<bool>;
+    fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Option<Gc<ObjectValue>>;
@@ -76,14 +81,14 @@ impl GcDeref for dyn Environment {}
 pub fn get_identifier_reference(
     cx: &mut Context,
     env: Option<Gc<dyn Environment>>,
-    name: &str,
+    name: Gc<StringValue>,
     is_strict: bool,
 ) -> EvalResult<Reference> {
     match env {
-        None => Reference::new_unresolvable(name.to_string(), is_strict).into(),
+        None => Reference::new_unresolvable(name, is_strict).into(),
         Some(env) => {
             if maybe!(env.has_binding(cx, name)) {
-                Reference::new_env(env, name.to_string(), is_strict).into()
+                Reference::new_env(env, name, is_strict).into()
             } else {
                 get_identifier_reference(cx, env.outer(), name, is_strict)
             }

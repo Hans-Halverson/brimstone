@@ -6,6 +6,7 @@ use crate::maybe;
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
 use super::property::PrivateProperty;
+use super::property_key::PropertyKey;
 use super::type_utilities::same_opt_object_value;
 use super::Context;
 use super::{
@@ -34,28 +35,28 @@ pub trait Object {
 
     fn prevent_extensions(&mut self) -> EvalResult<bool>;
 
-    fn get_own_property(&self, key: &str) -> EvalResult<Option<PropertyDescriptor>>;
+    fn get_own_property(&self, key: PropertyKey) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &str,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, key: &str) -> EvalResult<bool>;
+    fn has_property(&self, key: PropertyKey) -> EvalResult<bool>;
 
-    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> EvalResult<Value>;
+    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value>;
 
     fn set(
         &mut self,
         cx: &mut Context,
-        key: &str,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, key: &str) -> EvalResult<bool>;
+    fn delete(&mut self, key: PropertyKey) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
 

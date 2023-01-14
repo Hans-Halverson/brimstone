@@ -19,13 +19,14 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
+            value::StringValue,
             Completion, CompletionKind, Context, EvalResult, Gc, Value,
         },
     },
     maybe, must,
 };
 
-use super::statement::eval_toplevel_list;
+use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 pub fn perform_eval(
     cx: &mut Context,
@@ -168,10 +169,14 @@ fn eval_declaration_instantiation(
         if let Some(var_env) = var_env.as_global_environment() {
             for var_decl in ast.var_decls() {
                 maybe!(var_decl.iter_bound_names(&mut |id| {
-                    if maybe!(var_env.has_lexical_declaration(cx, &id.name)) {
+                    let name_value = id_string_value(cx, id);
+                    if maybe!(var_env.has_lexical_declaration(cx, name_value)) {
                         return syntax_error_(
                             cx,
-                            &format!("identifier '{}' has already been declared", &id.name),
+                            &format!(
+                                "identifier '{}' has already been declared",
+                                name_value.str()
+                            ),
                         );
                     }
 
@@ -181,14 +186,18 @@ fn eval_declaration_instantiation(
         }
 
         let mut this_env = lex_env;
-        while this_env != var_env {
+        while !this_env.ptr_eq(&var_env) {
             if this_env.as_object_environment().is_none() {
                 for var_decl in ast.var_decls() {
                     maybe!(var_decl.iter_bound_names(&mut |id| {
-                        if must!(this_env.has_binding(cx, &id.name)) {
+                        let name_value = id_string_value(cx, id);
+                        if must!(this_env.has_binding(cx, name_value)) {
                             return syntax_error_(
                                 cx,
-                                &format!("identifier '{}' has already been declared", &id.name),
+                                &format!(
+                                    "identifier '{}' has already been declared",
+                                    name_value.str()
+                                ),
                             );
                         }
 
@@ -215,10 +224,11 @@ fn eval_declaration_instantiation(
 
             if declared_function_names.insert(name) {
                 if let Some(var_env) = var_env.as_global_environment() {
-                    if !maybe!(var_env.can_declare_global_function(name)) {
+                    let name_value = id_string_value(cx, func.id.as_deref().unwrap());
+                    if !maybe!(var_env.can_declare_global_function(name_value)) {
                         return type_error_(
                             cx,
-                            &format!("cannot declare global function {}", name),
+                            &format!("cannot declare global function {}", name_value.str()),
                         );
                     }
                 }
@@ -229,20 +239,25 @@ fn eval_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<String> = HashSet::new();
+    let mut declared_var_names: HashSet<Gc<StringValue>> = HashSet::new();
 
     for var_decl in ast.var_decls() {
         if let VarDecl::Var(var_decl) = var_decl {
             maybe!(var_decl.as_ref().iter_bound_names(&mut |id| {
                 let name = &id.name;
                 if !declared_function_names.contains(name) {
+                    let name_value = id_string_value(cx, id);
+
                     if let Some(var_env) = var_env.as_global_environment() {
-                        if !maybe!(var_env.can_declare_global_var(name)) {
-                            return type_error_(cx, &format!("cannot declare global var {}", name));
+                        if !maybe!(var_env.can_declare_global_var(name_value)) {
+                            return type_error_(
+                                cx,
+                                &format!("cannot declare global var {}", name_value.str()),
+                            );
                         }
                     }
 
-                    declared_var_names.insert(name.to_string());
+                    declared_var_names.insert(name_value);
                 }
 
                 ().into()
@@ -254,45 +269,47 @@ fn eval_declaration_instantiation(
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 maybe!(lex_decl.iter_bound_names(&mut |id| {
-                    lex_env.create_immutable_binding(cx, id.name.to_string(), true)
+                    let name_value = id_string_value(cx, id);
+                    lex_env.create_immutable_binding(cx, name_value, true)
                 }))
             }
             _ => {
                 maybe!(lex_decl.iter_bound_names(&mut |id| {
-                    lex_env.create_mutable_binding(cx, id.name.to_string(), false)
+                    let name_value = id_string_value(cx, id);
+                    lex_env.create_mutable_binding(cx, name_value, false)
                 }))
             }
         }
     }
 
     for func in functions_to_initialize.iter().rev() {
-        let name = &func.id.as_deref().unwrap().name;
+        let name_value = id_string_value(cx, func.id.as_deref().unwrap());
         let function_object = instantiate_function_object(cx, func, lex_env, private_env);
 
         if let Some(var_env) = var_env.as_global_environment() {
             maybe!(var_env.create_global_function_binding(
                 cx,
-                name.to_string(),
+                name_value,
                 function_object.into(),
                 true
             ));
         } else {
-            if must!(var_env.has_binding(cx, name)) {
-                must!(var_env.set_mutable_binding(cx, name, function_object.into(), false));
+            if must!(var_env.has_binding(cx, name_value)) {
+                must!(var_env.set_mutable_binding(cx, name_value, function_object.into(), false));
             } else {
-                must!(var_env.create_mutable_binding(cx, name.clone(), true));
-                must!(var_env.initialize_binding(cx, name, function_object.into()));
+                must!(var_env.create_mutable_binding(cx, name_value, true));
+                must!(var_env.initialize_binding(cx, name_value, function_object.into()));
             }
         }
     }
 
     for name in declared_var_names {
         if let Some(var_env) = var_env.as_global_environment() {
-            maybe!(var_env.create_global_var_binding(cx, &name, true));
+            maybe!(var_env.create_global_var_binding(cx, name, true));
         } else {
-            if !must!(var_env.has_binding(cx, &name)) {
-                must!(var_env.create_mutable_binding(cx, name.clone(), true));
-                must!(var_env.initialize_binding(cx, &name, Value::undefined()));
+            if !must!(var_env.has_binding(cx, name)) {
+                must!(var_env.create_mutable_binding(cx, name, true));
+                must!(var_env.initialize_binding(cx, name, Value::undefined()));
             }
         }
     }

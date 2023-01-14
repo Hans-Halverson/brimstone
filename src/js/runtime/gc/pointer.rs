@@ -20,6 +20,11 @@ impl<T: ?Sized> Gc<T> {
             }
         }
     }
+
+    #[inline]
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        self.ptr == other.ptr
+    }
 }
 
 impl<T> Gc<T> {
@@ -39,12 +44,6 @@ impl<T: ?Sized> AsRef<T> for Gc<T> {
 impl<T: ?Sized> AsMut<T> for Gc<T> {
     fn as_mut(&mut self) -> &mut T {
         unsafe { self.ptr.as_mut() }
-    }
-}
-
-impl<T: ?Sized> PartialEq for Gc<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.ptr == other.ptr
     }
 }
 

@@ -5,7 +5,7 @@ use crate::{
         function::{Function, ThisMode},
         gc::Gc,
         object_value::ObjectValue,
-        value::Value,
+        value::{StringValue, Value},
         Context,
     },
     maybe,
@@ -87,14 +87,14 @@ impl Environment for FunctionEnvironment {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
         self.env.has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         self.env.create_mutable_binding(cx, name, can_delete)
@@ -103,20 +103,25 @@ impl Environment for FunctionEnvironment {
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env.create_immutable_binding(cx, name, is_strict)
     }
 
-    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: Gc<StringValue>,
+        value: Value,
+    ) -> EvalResult<()> {
         self.env.initialize_binding(cx, name, value)
     }
 
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
@@ -126,13 +131,13 @@ impl Environment for FunctionEnvironment {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
         self.env.get_binding_value(cx, name, is_strict)
     }
 
-    fn delete_binding(&mut self, cx: &mut Context, name: &str) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
         self.env.delete_binding(cx, name)
     }
 

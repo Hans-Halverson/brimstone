@@ -13,6 +13,7 @@ use crate::{
         ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_string,
         value::Value,
@@ -64,12 +65,19 @@ pub struct ErrorConstructor;
 impl ErrorConstructor {
     // 20.5.2 Properties of the Error Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 1, "Error", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            1,
+            cx.names.error,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
                 false,
@@ -107,7 +115,7 @@ impl ErrorConstructor {
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object,
-                "message",
+                cx.names.message,
                 message_string.into(),
             );
         }
@@ -126,9 +134,9 @@ pub fn install_error_cause(
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
-        if maybe!(has_property(options, "cause")) {
-            let cause = maybe!(get(cx, options, "cause"));
-            create_non_enumerable_data_property_or_throw(cx, object, "cause", cause);
+        if maybe!(has_property(options, cx.names.cause)) {
+            let cause = maybe!(get(cx, options, cx.names.cause));
+            create_non_enumerable_data_property_or_throw(cx, object, cx.names.cause, cause);
         }
     }
 

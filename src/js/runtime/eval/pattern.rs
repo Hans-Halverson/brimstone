@@ -2,8 +2,13 @@ use crate::{
     js::{
         parser::ast,
         runtime::{
-            completion::EvalResult, environment::environment::Environment,
-            execution_context::resolve_binding, gc::Gc, value::Value, Context,
+            completion::EvalResult,
+            environment::environment::Environment,
+            execution_context::resolve_binding,
+            gc::Gc,
+            property_key::PropertyKey,
+            value::{StringValue, Value},
+            Context,
         },
     },
     maybe, must,
@@ -17,7 +22,10 @@ pub fn binding_initialization(
     env: Option<Gc<dyn Environment>>,
 ) -> EvalResult<()> {
     match patt {
-        ast::Pattern::Id(id) => initialize_bound_name(cx, &id.name, value, env),
+        ast::Pattern::Id(id) => {
+            let name_value = id_string_value(cx, id);
+            initialize_bound_name(cx, name_value, value, env)
+        }
         ast::Pattern::Array(_) => unimplemented!("array patterns"),
         ast::Pattern::Object(_) => unimplemented!("object patterns"),
         ast::Pattern::Assign(_) => unreachable!(),
@@ -27,7 +35,7 @@ pub fn binding_initialization(
 // 8.5.2.1 InitializeBoundName
 pub fn initialize_bound_name(
     cx: &mut Context,
-    name: &str,
+    name: Gc<StringValue>,
     value: Value,
     env: Option<Gc<dyn Environment>>,
 ) -> EvalResult<()> {
@@ -41,4 +49,14 @@ pub fn initialize_bound_name(
             reference.put_value(cx, value)
         }
     }
+}
+
+#[inline]
+pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue> {
+    cx.get_interned_string(&id.name)
+}
+
+#[inline]
+pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
+    PropertyKey::String(cx.get_interned_string(&id.name))
 }

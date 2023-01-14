@@ -14,13 +14,12 @@ impl StringPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once StringConstructor has been created
-        object.intrinsic_func(cx, "toString", Self::to_string, 0, realm);
-        object.intrinsic_func(cx, "valueOf", Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_string, Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
 
         let string_value = cx.heap.alloc_string(String::new());
-        cx.heap
-            .alloc(StringObject::new(object, string_value))
-            .into()
+        let string_object = StringObject::new(cx, object, string_value);
+        cx.heap.alloc(string_object).into()
     }
 
     // 22.1.3.28 String.prototype.toString

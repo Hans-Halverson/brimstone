@@ -6,8 +6,9 @@ use crate::{
         gc::Gc,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         type_utilities::to_boolean,
-        value::Value,
+        value::{StringValue, Value},
         Context,
     },
     maybe,
@@ -43,20 +44,21 @@ impl Environment for ObjectEnvironment {
     }
 
     // 9.1.1.2.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: &str) -> EvalResult<bool> {
-        if !maybe!(has_property(self.binding_object, name)) {
+    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+        let name_key = PropertyKey::String(name);
+        if !maybe!(has_property(self.binding_object, name_key)) {
             return false.into();
         } else if !self.is_with_environment {
             return true.into();
         }
 
-        // TODO: Change to symbol once symbols are implemented
         // Ignore properties in @@unscopables
-        let unscopables = maybe!(get(cx, self.binding_object, "@@unscopables"));
+        let unscopables_key = PropertyKey::Symbol(cx.well_known_symbols.unscopables);
+        let unscopables = maybe!(get(cx, self.binding_object, unscopables_key));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe!(get(cx, unscopables, name));
+            let value = maybe!(get(cx, unscopables, name_key));
             let blocked = to_boolean(value);
             if blocked {
                 return false.into();
@@ -70,20 +72,35 @@ impl Environment for ObjectEnvironment {
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: String,
+        name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
-        define_property_or_throw(cx, self.binding_object, &name, prop_desc)
+        define_property_or_throw(
+            cx,
+            self.binding_object,
+            PropertyKey::String(name),
+            prop_desc,
+        )
     }
 
     // 9.1.1.2.3 CreateImmutableBinding
-    fn create_immutable_binding(&mut self, _: &mut Context, _: String, _: bool) -> EvalResult<()> {
+    fn create_immutable_binding(
+        &mut self,
+        _: &mut Context,
+        _: Gc<StringValue>,
+        _: bool,
+    ) -> EvalResult<()> {
         unreachable!("ObjectEnvironment::create_immutable_binding is never used in spec")
     }
 
     // 9.1.1.2.4 InitializeBinding
-    fn initialize_binding(&mut self, cx: &mut Context, name: &str, value: Value) -> EvalResult<()> {
+    fn initialize_binding(
+        &mut self,
+        cx: &mut Context,
+        name: Gc<StringValue>,
+        value: Value,
+    ) -> EvalResult<()> {
         self.set_mutable_binding(cx, name, value, false)
     }
 
@@ -91,16 +108,17 @@ impl Environment for ObjectEnvironment {
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        let still_exists = maybe!(has_property(self.binding_object, name));
+        let name_key = PropertyKey::String(name);
+        let still_exists = maybe!(has_property(self.binding_object, name_key));
         if !still_exists && is_strict {
-            return err_not_defined_(cx, name);
+            return err_not_defined_(cx, name.str());
         }
 
-        maybe!(set(cx, self.binding_object, name, value, is_strict));
+        maybe!(set(cx, self.binding_object, name_key, value, is_strict));
         ().into()
     }
 
@@ -108,23 +126,24 @@ impl Environment for ObjectEnvironment {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: &str,
+        name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
-        if !maybe!(has_property(self.binding_object, name)) {
+        let name_key = PropertyKey::String(name);
+        if !maybe!(has_property(self.binding_object, name_key)) {
             return if !is_strict {
                 Value::undefined().into()
             } else {
-                err_not_defined_(cx, name)
+                err_not_defined_(cx, name.str())
             };
         }
 
-        get(cx, self.binding_object, name)
+        get(cx, self.binding_object, name_key)
     }
 
     // 9.1.1.2.7 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, name: &str) -> EvalResult<bool> {
-        self.binding_object.delete(name)
+    fn delete_binding(&mut self, _: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+        self.binding_object.delete(PropertyKey::String(name))
     }
 
     // 9.1.1.2.8 HasThisBinding

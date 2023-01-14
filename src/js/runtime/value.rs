@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, hash};
 
 use super::{
     gc::{Gc, GcDeref},
@@ -358,6 +358,21 @@ impl fmt::Display for StringValue {
 impl PartialEq for StringValue {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+}
+
+impl PartialEq for Gc<StringValue> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ref() == other.as_ref()
+    }
+}
+
+impl Eq for Gc<StringValue> {}
+
+impl hash::Hash for Gc<StringValue> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_ref().0.hash(state);
     }
 }
 

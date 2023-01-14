@@ -23,9 +23,9 @@ impl SymbolPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once SymbolConstructor has been created
-        object.intrinsic_getter(cx, "description", Self::get_description, realm);
-        object.intrinsic_func(cx, "toString", Self::to_string, 0, realm);
-        object.intrinsic_func(cx, "valueOf", Self::value_of, 0, realm);
+        object.intrinsic_getter(cx, cx.names.description, Self::get_description, realm);
+        object.intrinsic_func(cx, cx.names.to_string, Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
 
         cx.heap.alloc(object).into()
     }

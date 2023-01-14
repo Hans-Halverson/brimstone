@@ -171,7 +171,7 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);
-        must!(prototype_object.define_own_property(cx, "constructor", constructor_desc));
+        must!(prototype_object.define_own_property(cx, cx.names.constructor, constructor_desc));
     }
 }
 
@@ -193,7 +193,7 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
-        "length",
+        cx.names.length,
         length_desc,
     ));
 
@@ -203,7 +203,7 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
-        "name",
+        cx.names.name,
         name_desc,
     ));
 
@@ -218,14 +218,19 @@ fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, r
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, "caller", caller_desc));
+    must!(define_property_or_throw(
+        cx,
+        func,
+        cx.names.caller,
+        caller_desc
+    ));
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
     must!(define_property_or_throw(
         cx,
         func,
-        "arguments",
+        cx.names.arguments,
         arguments_desc,
     ));
 }

@@ -10,6 +10,7 @@ use super::{
         string_constructor::StringObject, symbol_constructor::SymbolObject,
     },
     object_value::ObjectValue,
+    property_key::PropertyKey,
     value::{
         StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
         UNDEFINED_TAG,
@@ -34,8 +35,8 @@ pub fn to_primitive(
         return value.into();
     }
 
-    // TODO: Change to symbol once symbols are implemented
-    let exotic_prim = maybe!(get_method(cx, value, "@@toPrimitive"));
+    let to_primitive_key = PropertyKey::Symbol(cx.well_known_symbols.to_primitive);
+    let exotic_prim = maybe!(get_method(cx, value, to_primitive_key));
     match exotic_prim {
         Some(exotic_prim) => {
             let hint_str = match preferred_type {
@@ -83,11 +84,11 @@ fn ordinary_to_primitive(
     }
 
     if preferred_type == ToPrimitivePreferredType::String {
-        call_method!("toString");
-        call_method!("valueOf");
+        call_method!(cx.names.to_string);
+        call_method!(cx.names.value_of);
     } else {
-        call_method!("valueOf");
-        call_method!("toString");
+        call_method!(cx.names.value_of);
+        call_method!(cx.names.to_string);
     }
 
     type_error_(cx, "object cannot be converted to primitive")
@@ -293,9 +294,12 @@ fn string_to_big_int(value: Value) -> Value {
 }
 
 // 7.1.19 ToPropertyKey
-pub fn to_property_key(value: Value) -> Gc<StringValue> {
+pub fn to_property_key(value: Value) -> PropertyKey {
+    // TODO: Implement number property keys
     if value.is_string() {
-        return value.as_string();
+        return PropertyKey::String(value.as_string());
+    } else if value.is_symbol() {
+        return PropertyKey::Symbol(value.as_symbol());
     }
 
     unimplemented!("Non-string property keys")
@@ -454,7 +458,7 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
 // Specialization of SameValue for objects, checks object identity
 #[inline]
 pub fn same_object_value(value1: Gc<ObjectValue>, value2: Gc<ObjectValue>) -> bool {
-    value1 == value2
+    value1.ptr_eq(&value2)
 }
 
 // Specialization of SameValue for optional objects, checks object identity
@@ -465,7 +469,7 @@ pub fn same_opt_object_value(
 ) -> bool {
     match (value1, value2) {
         (None, None) => true,
-        (Some(value1), Some(value2)) => value1 == value2,
+        (Some(value1), Some(value2)) => value1.ptr_eq(&value2),
         _ => false,
     }
 }

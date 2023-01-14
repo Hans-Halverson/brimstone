@@ -14,6 +14,7 @@ use crate::{
         },
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_boolean,
         value::Value,
@@ -84,12 +85,19 @@ pub struct BooleanConstructor;
 impl BooleanConstructor {
     // 20.3.2 Properties of the Boolean Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 1, "Boolean", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            1,
+            cx.names.boolean,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
                 false,

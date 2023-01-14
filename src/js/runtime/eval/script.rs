@@ -14,14 +14,14 @@ use crate::{
             function::instantiate_function_object,
             gc::Gc,
             realm::Realm,
-            value::Value,
+            value::{StringValue, Value},
             Context,
         },
     },
     maybe, maybe__, must,
 };
 
-use super::statement::eval_toplevel_list;
+use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 // 16.1.4 Script Record
 pub struct Script {
@@ -77,15 +77,21 @@ fn global_declaration_instantiation(
 ) -> Completion {
     for lex_decl in script.lex_decls() {
         maybe__!(lex_decl.iter_bound_names(&mut |id| {
-            let name = &id.name;
-            if env.has_var_declaration(name) || must!(env.has_lexical_declaration(cx, name)) {
-                return syntax_error_(cx, &format!("redeclaration of {}", name));
+            let name_value = id_string_value(cx, id);
+
+            if env.has_var_declaration(name_value)
+                || must!(env.has_lexical_declaration(cx, name_value))
+            {
+                return syntax_error_(cx, &format!("redeclaration of {}", name_value.str()));
             }
 
-            if maybe!(env.has_restricted_global_property(name)) {
+            if maybe!(env.has_restricted_global_property(name_value)) {
                 return syntax_error_(
                     cx,
-                    &format!("cannot redeclare restricted global property {}", name),
+                    &format!(
+                        "cannot redeclare restricted global property {}",
+                        name_value.str()
+                    ),
                 );
             }
 
@@ -95,9 +101,9 @@ fn global_declaration_instantiation(
 
     for var_decl in script.var_decls() {
         maybe__!(var_decl.iter_bound_names(&mut |id| {
-            let name = &id.name;
-            if must!(env.has_lexical_declaration(cx, name)) {
-                return syntax_error_(cx, &format!("redeclaration of {}", name));
+            let name_value = id_string_value(cx, id);
+            if must!(env.has_lexical_declaration(cx, name_value)) {
+                return syntax_error_(cx, &format!("redeclaration of {}", name_value.str()));
             }
 
             ().into()
@@ -115,8 +121,12 @@ fn global_declaration_instantiation(
             let name = &func.id.as_deref().unwrap().name;
 
             if declared_function_names.insert(name) {
-                if !maybe__!(env.can_declare_global_function(name)) {
-                    return type_error(cx, &format!("cannot declare global function {}", name));
+                let name_value = id_string_value(cx, func.id.as_deref().unwrap());
+                if !maybe__!(env.can_declare_global_function(name_value)) {
+                    return type_error(
+                        cx,
+                        &format!("cannot declare global function {}", name_value.str()),
+                    );
                 }
 
                 functions_to_initialize.push(func);
@@ -125,7 +135,7 @@ fn global_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<String> = HashSet::new();
+    let mut declared_var_names: HashSet<Gc<StringValue>> = HashSet::new();
 
     for var_decl in script.var_decls() {
         match var_decl {
@@ -133,11 +143,15 @@ fn global_declaration_instantiation(
                 maybe__!(var_decl.as_ref().iter_bound_names(&mut |id| {
                     let name = &id.name;
                     if !declared_function_names.contains(name) {
-                        if !maybe!(env.can_declare_global_var(name)) {
-                            return type_error_(cx, &format!("cannot declare global var {}", name));
+                        let name_value = id_string_value(cx, id);
+                        if !maybe!(env.can_declare_global_var(name_value)) {
+                            return type_error_(
+                                cx,
+                                &format!("cannot declare global var {}", name_value.str()),
+                            );
                         }
 
-                        declared_var_names.insert(name.to_string());
+                        declared_var_names.insert(name_value);
                     }
 
                     ().into()
@@ -151,30 +165,27 @@ fn global_declaration_instantiation(
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 maybe__!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_immutable_binding(cx, id.name.to_string(), true)
+                    let name_value = id_string_value(cx, id);
+                    env.create_immutable_binding(cx, name_value, true)
                 }))
             }
             _ => {
                 maybe__!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_mutable_binding(cx, id.name.to_string(), false)
+                    let name_value = id_string_value(cx, id);
+                    env.create_mutable_binding(cx, name_value, false)
                 }))
             }
         }
     }
 
     for func in functions_to_initialize.iter().rev() {
-        let name = &func.id.as_deref().unwrap().name;
+        let name_value = id_string_value(cx, func.id.as_deref().unwrap());
         let function_object = instantiate_function_object(cx, func, to_trait_object(env), None);
-        maybe__!(env.create_global_function_binding(
-            cx,
-            name.to_string(),
-            function_object.into(),
-            false
-        ));
+        maybe__!(env.create_global_function_binding(cx, name_value, function_object.into(), false));
     }
 
     for var_name in declared_var_names {
-        maybe__!(env.create_global_var_binding(cx, &var_name, false));
+        maybe__!(env.create_global_var_binding(cx, var_name, false));
     }
 
     Completion::empty()

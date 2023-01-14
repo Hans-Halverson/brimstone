@@ -22,6 +22,7 @@ use crate::{
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create_optional_proto,
             property::PrivatePropertyKind,
+            property_key::PropertyKey,
             value::{StringValue, NULL_TAG, OBJECT_TAG},
             Completion, Context, EvalResult, Gc, Value,
         },
@@ -32,6 +33,7 @@ use crate::{
 use super::{
     expression::{eval_expression, eval_property_name},
     function::{define_method, method_definition_evaluation, private_method_definition_evaluation},
+    pattern::{id_property_key, id_string_value},
 };
 
 // 6.2.10 ClassFieldDefinition Record
@@ -41,7 +43,7 @@ pub struct ClassFieldDefinition {
 }
 
 pub enum ClassFieldDefinitionName {
-    Normal(Gc<StringValue>),
+    Normal(PropertyKey),
     Private(PrivateNameId),
 }
 
@@ -49,7 +51,7 @@ pub enum ClassFieldDefinitionName {
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
-    property_key: Gc<StringValue>,
+    property_key: PropertyKey,
     home_object: Gc<ObjectValue>,
 ) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
@@ -106,8 +108,8 @@ enum StaticElement {
 pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
-    class_binding: Option<&str>,
-    class_name: &str,
+    class_binding: Option<Gc<StringValue>>,
+    class_name: PropertyKey,
 ) -> EvalResult<Gc<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm;
@@ -115,7 +117,7 @@ pub fn class_definition_evaluation(
     let mut class_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(env)));
 
     if let Some(class_binding) = class_binding {
-        must!(class_env.create_immutable_binding(cx, String::from(class_binding), true));
+        must!(class_env.create_immutable_binding(cx, class_binding, true));
     }
 
     let outer_private_env = current_execution_context.private_env;
@@ -160,7 +162,7 @@ pub fn class_definition_evaluation(
             return type_error_(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();
-            let proto_parent = maybe!(get(cx, super_class, "prototype"));
+            let proto_parent = maybe!(get(cx, super_class, cx.names.prototype));
 
             match proto_parent.get_tag() {
                 OBJECT_TAG => (Some(proto_parent.as_object()), super_class),
@@ -221,7 +223,7 @@ pub fn class_definition_evaluation(
         func.constructor_kind = ConstructorKind::Derived;
     }
 
-    create_method_property(cx, proto.into(), "constructor", func.into());
+    create_method_property(cx, proto.into(), cx.names.constructor, func.into());
 
     let mut instance_fields = vec![];
     let mut static_elements = vec![];
@@ -239,18 +241,17 @@ pub fn class_definition_evaluation(
                 };
 
                 let result = (|| {
-                    let (property_name_value, field_def_name) = if prop.is_private {
+                    let (property_key, field_def_name) = if prop.is_private {
                         let id = prop.key.to_id();
                         let private_id = class_private_env.names.get(&id.name).unwrap();
-                        let property_name_value = cx.heap.alloc_string(id.name.clone());
+                        let property_key = id_property_key(cx, id);
                         let field_def_name = ClassFieldDefinitionName::Private(*private_id);
-                        (property_name_value, field_def_name)
+                        (property_key, field_def_name)
                     } else {
                         let property_key =
                             maybe!(eval_property_name(cx, &prop.key, prop.is_computed));
-                        let property_name_value = cx.heap.alloc_string(String::from(property_key));
-                        let field_def_name = ClassFieldDefinitionName::Normal(property_name_value);
-                        (property_name_value, field_def_name)
+                        let field_def_name = ClassFieldDefinitionName::Normal(property_key);
+                        (property_key, field_def_name)
                     };
 
                     let initializer = if prop.value.is_none() {
@@ -259,7 +260,7 @@ pub fn class_definition_evaluation(
                         Some(maybe!(class_field_definition_evaluation(
                             cx,
                             prop,
-                            property_name_value,
+                            property_key,
                             home_object
                         )))
                     };
@@ -310,13 +311,13 @@ pub fn class_definition_evaluation(
                     // Resolve private name to id
                     let id = method.key.to_id();
                     let private_id = *class_private_env.names.get(&id.name).unwrap();
-                    let property_name_value = cx.heap.alloc_string(id.name.clone());
+                    let property_key = id_property_key(cx, id);
 
                     let private_property = private_method_definition_evaluation(
                         cx,
                         home_object,
                         &method.value,
-                        property_name_value.str(),
+                        property_key,
                         method.kind,
                     );
 
@@ -428,20 +429,25 @@ fn binding_class_declaration_evaluation(
     class: &ast::Class,
 ) -> EvalResult<Gc<Function>> {
     if let Some(id) = class.id.as_deref() {
-        let name = id.name.as_str();
-        let value = maybe!(class_definition_evaluation(cx, class, Some(name), name));
+        let name_value = id_string_value(cx, id);
+        let value = maybe!(class_definition_evaluation(
+            cx,
+            class,
+            Some(name_value),
+            PropertyKey::String(name_value)
+        ));
 
         let lexical_env = cx.current_execution_context().lexical_env;
         maybe!(initialize_bound_name(
             cx,
-            name,
+            name_value,
             value.into(),
             Some(lexical_env)
         ));
 
         value.into()
     } else {
-        class_definition_evaluation(cx, class, None, "default")
+        class_definition_evaluation(cx, class, None, cx.names.default)
     }
 }
 
@@ -453,11 +459,21 @@ pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completio
 
 pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<Value> {
     if let Some(id) = class.id.as_deref() {
-        let name = id.name.as_str();
-        let value = maybe!(class_definition_evaluation(cx, class, Some(name), name));
+        let name_value = id_string_value(cx, id);
+        let value = maybe!(class_definition_evaluation(
+            cx,
+            class,
+            Some(name_value),
+            PropertyKey::String(name_value)
+        ));
         value.into()
     } else {
-        let value = maybe!(class_definition_evaluation(cx, class, None, ""));
+        let value = maybe!(class_definition_evaluation(
+            cx,
+            class,
+            None,
+            cx.names.empty_string
+        ));
         value.into()
     }
 }

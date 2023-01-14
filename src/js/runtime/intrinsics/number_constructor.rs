@@ -14,6 +14,7 @@ use crate::{
         },
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_numeric,
         value::Value,
@@ -82,12 +83,19 @@ pub struct NumberConstructor;
 impl NumberConstructor {
     // 21.1.2 Properties of the Number Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 1, "Number", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            1,
+            cx.names.number,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
                 false,
@@ -97,40 +105,40 @@ impl NumberConstructor {
         );
 
         func.set_property(
-            "EPSILON".to_owned(),
+            cx.names.epsilon,
             Property::data(Value::number(f64::EPSILON), false, false, false),
         );
         func.set_property(
-            "MAX_SAFE_INTEGER".to_owned(),
+            cx.names.max_safe_integer,
             Property::data(Value::number(9007199254740991.0), false, false, false),
         );
         func.set_property(
-            "MAX_VALUE".to_owned(),
+            cx.names.max_value,
             Property::data(Value::number(f64::MAX), false, false, false),
         );
         func.set_property(
-            "MIN_SAFE_INTEGER".to_owned(),
+            cx.names.min_safe_integer,
             Property::data(Value::number(-9007199254740991.0), false, false, false),
         );
         func.set_property(
-            "MIN_VALUE".to_owned(),
+            cx.names.min_value,
             Property::data(Value::number(f64::MIN), false, false, false),
         );
         func.set_property(
-            "NaN".to_owned(),
+            cx.names.nan,
             Property::data(Value::nan(), false, false, false),
         );
         func.set_property(
-            "NEGATIVE_INFINITY".to_owned(),
+            cx.names.negative_infinity,
             Property::data(Value::number(f64::NEG_INFINITY), false, false, false),
         );
         func.set_property(
-            "POSITIVE_INFINITY".to_owned(),
+            cx.names.positive_infinity,
             Property::data(Value::number(f64::INFINITY), false, false, false),
         );
 
-        func.intrinsic_func(cx, "isFinite", Self::is_finite, 1, realm);
-        func.intrinsic_func(cx, "isNaN", Self::is_nan, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_finite, Self::is_finite, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_nan, Self::is_nan, 1, realm);
 
         func
     }

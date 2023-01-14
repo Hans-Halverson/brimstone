@@ -25,12 +25,19 @@ pub struct ObjectConstructor;
 impl ObjectConstructor {
     // 20.1.2 Properties of the Object Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 1, "Object", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            1,
+            cx.names.object,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
                 false,
@@ -39,10 +46,16 @@ impl ObjectConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, "defineProperty", Self::define_property, 3, realm);
         func.intrinsic_func(
             cx,
-            "getOwnPropertyDescriptor",
+            cx.names.define_property,
+            Self::define_property,
+            3,
+            realm,
+        );
+        func.intrinsic_func(
+            cx,
+            cx.names.get_own_property_descriptor,
             Self::get_own_property_descriptor,
             2,
             realm,
@@ -59,7 +72,12 @@ impl ObjectConstructor {
         new_target: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         if let Some(new_target) = new_target {
-            if cx.current_execution_context().function.unwrap() != new_target {
+            if cx
+                .current_execution_context()
+                .function
+                .unwrap()
+                .ptr_eq(&new_target)
+            {
                 let new_object = maybe!(ordinary_create_from_constructor(
                     cx,
                     new_target,
@@ -100,7 +118,7 @@ impl ObjectConstructor {
         maybe!(define_property_or_throw(
             cx,
             object.as_object(),
-            property_key.str(),
+            property_key,
             desc,
         ));
 
@@ -117,7 +135,7 @@ impl ObjectConstructor {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
         let property_key = to_property_key(get_argument(arguments, 1));
 
-        match maybe!(object.get_own_property(property_key.str())) {
+        match maybe!(object.get_own_property(property_key)) {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }

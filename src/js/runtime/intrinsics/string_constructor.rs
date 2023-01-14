@@ -14,6 +14,7 @@ use crate::{
         },
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_string,
         value::{StringValue, Value},
@@ -40,12 +41,16 @@ impl_gc_into!(StringObject, ObjectValue);
 impl StringObject {
     const VTABLE: *const () = extract_object_vtable::<StringObject>();
 
-    pub fn new(mut object: OrdinaryObject, string_data: Gc<StringValue>) -> StringObject {
+    pub fn new(
+        cx: &mut Context,
+        mut object: OrdinaryObject,
+        string_data: Gc<StringValue>,
+    ) -> StringObject {
         // String objects have an immutable length property
         let length = string_data.str().len();
 
         object.set_property(
-            String::from("length"),
+            cx.names.length,
             Property::data((length as f64).into(), false, false, false),
         );
 
@@ -60,7 +65,8 @@ impl StringObject {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::StringPrototype);
         let object = ordinary_object_create(proto);
 
-        cx.heap.alloc(StringObject::new(object, string_data))
+        let string_object = StringObject::new(cx, object, string_data);
+        cx.heap.alloc(string_object)
     }
 
     pub fn string_data(&self) -> Gc<StringValue> {
@@ -92,12 +98,19 @@ pub struct StringConstructor;
 impl StringConstructor {
     // 22.1.2 Properties of the String Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 1, "String", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            1,
+            cx.names.string,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::StringPrototype).into(),
                 false,
@@ -136,9 +149,8 @@ impl StringConstructor {
                     Intrinsic::StringPrototype
                 ));
 
-                cx.heap
-                    .alloc(StringObject::new(object, string_value))
-                    .into()
+                let string_object = StringObject::new(cx, object, string_value);
+                cx.heap.alloc(string_object).into()
             }
         }
     }

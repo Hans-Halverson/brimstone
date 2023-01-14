@@ -53,52 +53,52 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
 
     // 19.1 Value Properties of the Global Object
     value_prop!(
-        "globalThis",
+        cx.names.global_this,
         realm.global_env.global_this_value.into(),
         true,
         false,
         true
     );
     value_prop!(
-        "Infinity",
+        cx.names.infinity,
         Value::number(f64::INFINITY),
         false,
         false,
         false
     );
-    value_prop!("NaN", Value::nan(), false, false, false);
-    value_prop!("undefined", Value::undefined(), false, false, false);
+    value_prop!(cx.names.nan, Value::nan(), false, false, false);
+    value_prop!(cx.names.undefined, Value::undefined(), false, false, false);
 
     // 19.2 Function Properties of the Global Object
-    intrinsic_prop!("eval", Eval);
-    func_prop!("isNaN", is_nan, 1);
-    func_prop!("isFinite", is_finite, 1);
+    intrinsic_prop!(cx.names.eval, Eval);
+    func_prop!(cx.names.is_nan, is_nan, 1);
+    func_prop!(cx.names.is_finite, is_finite, 1);
 
     // 19.3 Constructor Properties of the Global Object
-    intrinsic_prop!("Array", ArrayConstructor);
-    intrinsic_prop!("Boolean", BooleanConstructor);
-    intrinsic_prop!("Error", ErrorConstructor);
-    intrinsic_prop!("EvalError", EvalErrorConstructor);
-    intrinsic_prop!("Function", FunctionConstructor);
-    intrinsic_prop!("Number", NumberConstructor);
-    intrinsic_prop!("Object", ObjectConstructor);
-    intrinsic_prop!("RangeError", RangeErrorConstructor);
-    intrinsic_prop!("ReferenceError", ReferenceErrorConstructor);
-    intrinsic_prop!("String", StringConstructor);
-    intrinsic_prop!("Symbol", SymbolConstructor);
-    intrinsic_prop!("SyntaxError", SyntaxErrorConstructor);
-    intrinsic_prop!("TypeError", TypeErrorConstructor);
-    intrinsic_prop!("URIError", URIErrorConstructor);
+    intrinsic_prop!(cx.names.array, ArrayConstructor);
+    intrinsic_prop!(cx.names.boolean, BooleanConstructor);
+    intrinsic_prop!(cx.names.error, ErrorConstructor);
+    intrinsic_prop!(cx.names.eval_error, EvalErrorConstructor);
+    intrinsic_prop!(cx.names.function, FunctionConstructor);
+    intrinsic_prop!(cx.names.number, NumberConstructor);
+    intrinsic_prop!(cx.names.object, ObjectConstructor);
+    intrinsic_prop!(cx.names.range_error, RangeErrorConstructor);
+    intrinsic_prop!(cx.names.reference_error, ReferenceErrorConstructor);
+    intrinsic_prop!(cx.names.string, StringConstructor);
+    intrinsic_prop!(cx.names.symbol, SymbolConstructor);
+    intrinsic_prop!(cx.names.syntax_error, SyntaxErrorConstructor);
+    intrinsic_prop!(cx.names.type_error, TypeErrorConstructor);
+    intrinsic_prop!(cx.names.uri_error, URIErrorConstructor);
 
     // Non-standard, environment specific properties of global object
     let console_object = ConsoleObject::new(cx, realm).into();
-    value_prop!("console", console_object, true, false, true);
+    value_prop!(cx.names.console, console_object, true, false, true);
 
     ().into()
 }
 
 pub fn create_eval(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-    BuiltinFunction::create(cx, eval, 1, "eval", Some(realm), None, None)
+    BuiltinFunction::create(cx, eval, 1, cx.names.eval, Some(realm), None, None)
 }
 
 // 19.2.1 eval

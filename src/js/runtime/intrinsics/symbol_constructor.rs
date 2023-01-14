@@ -13,6 +13,7 @@ use crate::{
         ordinary_object::{ordinary_object_create, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_string,
         value::{SymbolValue, Value},
@@ -39,7 +40,7 @@ impl_gc_into!(SymbolObject, ObjectValue);
 impl SymbolObject {
     const VTABLE: *const () = extract_object_vtable::<SymbolObject>();
 
-    pub fn new(mut object: OrdinaryObject, symbol_data: Gc<SymbolValue>) -> SymbolObject {
+    pub fn new(object: OrdinaryObject, symbol_data: Gc<SymbolValue>) -> SymbolObject {
         SymbolObject {
             _vtable: Self::VTABLE,
             object,
@@ -81,12 +82,19 @@ pub struct SymbolConstructor;
 impl SymbolConstructor {
     // 20.4.2 Properties of the Symbol Constructor
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-        let mut func =
-            BuiltinFunction::create(cx, Self::construct, 0, "Symbol", Some(realm), None, None);
+        let mut func = BuiltinFunction::create(
+            cx,
+            Self::construct,
+            0,
+            cx.names.symbol,
+            Some(realm),
+            None,
+            None,
+        );
 
         func.set_is_constructor();
         func.set_property(
-            "prototype".to_owned(),
+            cx.names.prototype,
             Property::data(
                 realm.get_intrinsic(Intrinsic::SymbolPrototype).into(),
                 false,
@@ -95,8 +103,8 @@ impl SymbolConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, "for", Self::for_, 1, realm);
-        func.intrinsic_func(cx, "key_for", Self::key_for, 1, realm);
+        func.intrinsic_func(cx, cx.names.for_, Self::for_, 1, realm);
+        func.intrinsic_func(cx, cx.names.key_for, Self::key_for, 1, realm);
 
         func
     }
@@ -156,7 +164,7 @@ impl SymbolConstructor {
         let symbol_value = symbol_value.as_symbol();
 
         for (str, symbol) in &cx.global_symbol_registry {
-            if *symbol == symbol_value {
+            if symbol.ptr_eq(&symbol_value) {
                 return cx.heap.alloc_string(str.clone()).into();
             }
         }

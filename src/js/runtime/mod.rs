@@ -1,5 +1,6 @@
 mod abstract_operations;
 mod builtin_function;
+mod builtin_names;
 pub mod completion;
 mod console;
 mod context;
@@ -14,6 +15,7 @@ mod object_value;
 mod ordinary_object;
 mod property;
 mod property_descriptor;
+mod property_key;
 mod realm;
 mod reference;
 mod type_utilities;

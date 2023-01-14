@@ -9,7 +9,7 @@ use super::{
     object_value::ObjectValue,
     realm::Realm,
     reference::Reference,
-    value::Value,
+    value::{StringValue, Value},
     Context,
 };
 
@@ -34,7 +34,7 @@ pub enum ScriptOrModule {
 // 9.4.2 ResolveBinding
 pub fn resolve_binding(
     cx: &mut Context,
-    name: &str,
+    name: Gc<StringValue>,
     env: Option<Gc<dyn Environment>>,
 ) -> EvalResult<Reference> {
     let env = match env {

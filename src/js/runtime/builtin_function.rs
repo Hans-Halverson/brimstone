@@ -13,8 +13,9 @@ use super::{
     ordinary_object::OrdinaryObject,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
+    property_key::PropertyKey,
     realm::Realm,
-    value::Value,
+    value::{StringValue, Value},
     Context,
 };
 
@@ -25,7 +26,7 @@ pub struct BuiltinFunction {
     object: OrdinaryObject,
     realm: Gc<Realm>,
     script_or_module: Option<ScriptOrModule>,
-    pub initial_name: Option<String>,
+    pub initial_name: Option<Gc<StringValue>>,
     builtin_func: BuiltinFunctionPtr,
     has_constructor: bool,
 }
@@ -60,7 +61,7 @@ impl BuiltinFunction {
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         length: u32,
-        name: &str,
+        name: PropertyKey,
         realm: Option<Gc<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
         prefix: Option<&str>,
@@ -98,14 +99,14 @@ impl BuiltinFunction {
         self.has_constructor = true;
     }
 
-    pub fn set_property(&mut self, key: String, value: Property) {
+    pub fn set_property(&mut self, key: PropertyKey, value: Property) {
         self.object.set_property(key, value);
     }
 
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: u32,
         realm: Gc<Realm>,

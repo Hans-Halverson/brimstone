@@ -15,6 +15,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
+            property_key::PropertyKey,
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
@@ -38,6 +39,7 @@ use super::{
         instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
         method_definition_evaluation,
     },
+    pattern::{id_property_key, id_string_value},
     statement::eval_named_anonymous_function_or_expression,
 };
 
@@ -81,10 +83,10 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
 
 // 13.1.3 Identifier Evaluation
 pub fn eval_identifier(cx: &mut Context, id: &ast::Identifier) -> EvalResult<Value> {
-    let reference = maybe!(resolve_binding(cx, &id.name, None));
+    let name_value = id_string_value(cx, id);
+    let reference = maybe!(resolve_binding(cx, name_value, None));
 
     // Unlike the spec, greedily call GetValue here as all eval functions evaluate to a value.
-    // TOOD: If a reference is needed provide another method to evaluate to a reference instead
     reference.get_value(cx)
 }
 
@@ -93,7 +95,8 @@ pub fn eval_identifier_to_reference(
     cx: &mut Context,
     id: &ast::Identifier,
 ) -> EvalResult<Reference> {
-    resolve_binding(cx, &id.name, None)
+    let name_value = id_string_value(cx, id);
+    resolve_binding(cx, name_value, None)
 }
 
 // 13.2.1.1 This Expression Evaluation
@@ -129,8 +132,9 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
             None => {
                 let id = property.key.as_ref().to_id();
                 let prop_value = maybe!(eval_identifier(cx, id));
+                let prop_key = id_property_key(cx, id);
                 must!(create_data_property_or_throw(
-                    cx, object, &id.name, prop_value
+                    cx, object, prop_key, prop_value
                 ));
             }
             Some(_) if property.is_method => {
@@ -157,7 +161,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     maybe!(eval_property_name(cx, &property.key, property.is_computed));
 
                 // TODO: Check if in JSON.parse
-                let is_proto_setter = property_key == "__proto__" && !property.is_computed;
+                let is_proto_setter = property_key == cx.names.__proto__ && !property.is_computed;
                 if is_proto_setter {
                     let prop_value = maybe!(eval_expression(cx, value));
                     match prop_value.get_tag() {
@@ -192,16 +196,19 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
 
 pub fn eval_property_name<'a>(
     cx: &mut Context,
-    key: &'a ast::Expression,
+    key: &ast::Expression,
     is_computed: bool,
-) -> EvalResult<&'a str> {
+) -> EvalResult<PropertyKey> {
     let property_key = if is_computed {
         let property_key_value = maybe!(eval_expression(cx, key));
-        to_property_key(property_key_value).str()
+        to_property_key(property_key_value)
     } else {
         match key {
-            ast::Expression::Id(id) => id.name.as_str(),
-            ast::Expression::String(lit) => lit.value.as_str(),
+            ast::Expression::Id(id) => id_property_key(cx, id),
+            ast::Expression::String(lit) => {
+                let string_value = cx.get_interned_string(lit.value.as_str());
+                PropertyKey::String(string_value)
+            }
             ast::Expression::Number(_) => unimplemented!("numeric property keys"),
             _ => unreachable!(),
         }
@@ -221,7 +228,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = to_property_key(property_name_value);
 
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, property_key.str(), base.into())
+        base.get(cx, property_key, base.into())
     } else if expr.is_private {
         let base = maybe!(to_object(cx, base_value));
         let private_env = cx.current_execution_context().private_env.unwrap();
@@ -230,13 +237,10 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
 
         private_get(cx, base, private_id)
     } else {
-        let property_name = match *expr.property {
-            ast::Expression::Id(ref id) => &id.name,
-            _ => unreachable!(),
-        };
-
+        let property_key = id_property_key(cx, expr.property.to_id());
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, property_name, base.into())
+
+        base.get(cx, property_key, base.into())
     }
 }
 
@@ -253,16 +257,13 @@ fn eval_member_expression_to_reference(
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
         let property_key = to_property_key(property_name_value);
 
-        Reference::new_value(base_value, String::from(property_key.str()), is_strict).into()
+        Reference::new_property(base_value, property_key, is_strict).into()
     } else if expr.is_private {
-        Reference::make_private_reference(cx, base_value, expr.property.to_id().name.clone()).into()
+        let property_name = id_string_value(cx, expr.property.to_id());
+        Reference::make_private_reference(cx, base_value, property_name).into()
     } else {
-        let property_name = match *expr.property {
-            ast::Expression::Id(ref id) => &id.name,
-            _ => unreachable!(),
-        };
-
-        Reference::new_value(base_value, property_name.to_owned(), is_strict).into()
+        let property_key = id_property_key(cx, expr.property.to_id());
+        Reference::new_property(base_value, property_key, is_strict).into()
     }
 }
 
@@ -298,25 +299,30 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
 
             // Check for direct call to eval
             let eval_func = cx.current_realm().get_intrinsic(Intrinsic::Eval);
-            if func_value.is_object()
-                && same_object_value(func_value.as_object(), eval_func)
-                && !reference.is_property_reference()
-                && reference.name() == "eval"
-            {
-                let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
-                if arg_values.is_empty() {
-                    return Value::undefined().into();
+            if func_value.is_object() && same_object_value(func_value.as_object(), eval_func) {
+                let is_non_property_eval_reference = match reference.base() {
+                    ReferenceBase::Property { .. } => false,
+                    ReferenceBase::Unresolvable { name } | ReferenceBase::Env { name, .. } => {
+                        name.str() == "eval"
+                    }
+                };
+
+                if is_non_property_eval_reference {
+                    let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
+                    if arg_values.is_empty() {
+                        return Value::undefined().into();
+                    }
+
+                    let eval_arg = &arg_values[0];
+                    let is_strict_caller = cx.current_execution_context().is_strict_mode;
+
+                    return perform_eval(cx, eval_arg.clone(), is_strict_caller, true);
                 }
-
-                let eval_arg = &arg_values[0];
-                let is_strict_caller = cx.current_execution_context().is_strict_mode;
-
-                return perform_eval(cx, eval_arg.clone(), is_strict_caller, true);
             }
 
             let this_value = match reference.base() {
-                ReferenceBase::Value(_) => reference.get_this_value(),
-                ReferenceBase::Env(env) => match env.with_base_object() {
+                ReferenceBase::Property { .. } => reference.get_this_value(),
+                ReferenceBase::Env { env, .. } => match env.with_base_object() {
                     Some(base_object) => base_object.into(),
                     None => Value::undefined(),
                 },
@@ -372,23 +378,16 @@ fn eval_super_member_expression_to_reference(
     let property_key = if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
         let property_key = to_property_key(property_name_value);
-        property_key.str()
+        property_key
     } else {
-        let id = expr.property.as_ref().to_id();
-        id.name.as_str()
+        id_property_key(cx, expr.property.as_ref().to_id())
     };
 
     // 13.3.7.3 MakeSuperPropertyReference inlined
     let is_strict = cx.current_execution_context().is_strict_mode;
     let base_value = maybe!(env.get_super_base());
 
-    Reference::new_value_with_this(
-        base_value,
-        String::from(property_key),
-        is_strict,
-        actual_this,
-    )
-    .into()
+    Reference::new_property_with_this(base_value, property_key, is_strict, actual_this).into()
 }
 
 // 13.3.7.1 SuperCall Evaluation
@@ -494,22 +493,24 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
     };
 
     match reference.base() {
-        ReferenceBase::Unresolvable => true.into(),
-        ReferenceBase::Value(base_value) => {
+        ReferenceBase::Unresolvable { .. } => true.into(),
+        ReferenceBase::Property {
+            object, property, ..
+        } => {
             if reference.is_super_reference() {
                 return reference_error_(cx, "cannot delete super");
             }
 
-            let base_object = maybe!(to_object(cx, base_value.clone()));
-            let delete_status = maybe!(base_object.clone().delete(reference.name()));
+            let base_object = maybe!(to_object(cx, *object));
+            let delete_status = maybe!(base_object.clone().delete(*property));
             if !delete_status && reference.is_strict() {
                 return type_error_(cx, "cannot delete property");
             }
 
             delete_status.into()
         }
-        ReferenceBase::Env(env) => {
-            let delete_status = maybe!(env.clone().delete_binding(cx, reference.name()));
+        ReferenceBase::Env { env, name } => {
+            let delete_status = maybe!(env.clone().delete_binding(cx, *name));
             delete_status.into()
         }
     }
@@ -872,8 +873,8 @@ fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> 
         return type_error_(cx, "invalid instanceof operand");
     }
 
-    // TODO: Change to symbol once symbols are implemented
-    let instance_of_handler = maybe!(get_method(cx, target, "@@hasInstance"));
+    let has_instance_key = PropertyKey::Symbol(cx.well_known_symbols.has_instance);
+    let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
         return to_boolean(result).into();
@@ -899,7 +900,7 @@ fn eval_in_expression(
 
     let property_key = to_property_key(left_value);
 
-    let has_property = maybe!(has_property(right_value.as_object(), property_key.str()));
+    let has_property = maybe!(has_property(right_value.as_object(), property_key));
     has_property.into()
 }
 
@@ -989,7 +990,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression(
                 cx,
                 &expr.right,
-                reference.name()
+                reference.name_as_property_key()
             ))
         }
         ast::AssignmentOperator::Add => {

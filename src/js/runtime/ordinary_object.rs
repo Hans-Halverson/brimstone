@@ -13,6 +13,7 @@ use super::{
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
+    property_key::PropertyKey,
     realm::Realm,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
@@ -26,7 +27,7 @@ pub struct OrdinaryObject {
     // None represents the null value
     prototype: Option<Gc<ObjectValue>>,
     // Properties with string keys. Does not yet support symbol or number keys.
-    properties: HashMap<String, Property>,
+    properties: HashMap<PropertyKey, Property>,
     // Private properties with string keys
     private_properties: HashMap<PrivateNameId, PrivateProperty>,
     is_extensible: bool,
@@ -59,24 +60,24 @@ impl OrdinaryObject {
         }
     }
 
-    pub fn set_property(&mut self, key: String, value: Property) {
+    pub fn set_property(&mut self, key: PropertyKey, value: Property) {
         self.properties.insert(key, value);
     }
 
-    pub fn intrinsic_data_prop(&mut self, key: &str, value: Value) {
-        self.set_property(key.to_owned(), Property::data(value, true, false, true))
+    pub fn intrinsic_data_prop(&mut self, key: PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, true, false, true))
     }
 
-    pub fn instrinsic_length_prop(&mut self, length: f64) {
+    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: f64) {
         self.set_property(
-            "length".to_owned(),
+            cx.names.length,
             Property::data(Value::number(length), false, false, true),
         )
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
         self.set_property(
-            "name".to_owned(),
+            cx.names.name,
             Property::data(
                 Value::string(cx.heap.alloc_string(name.to_owned())),
                 false,
@@ -89,7 +90,7 @@ impl OrdinaryObject {
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {
@@ -98,16 +99,13 @@ impl OrdinaryObject {
             get: Some(getter.into()),
             set: None,
         });
-        self.set_property(
-            String::from(name),
-            Property::accessor(accessor_value.into(), false, true),
-        );
+        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
     }
 
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: &str,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: u32,
         realm: Gc<Realm>,
@@ -171,7 +169,7 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.5 [[GetOwnProperty]]
-    fn get_own_property(&self, key: &str) -> EvalResult<Option<PropertyDescriptor>> {
+    fn get_own_property(&self, key: PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self, key).into()
     }
 
@@ -179,19 +177,19 @@ impl Object for OrdinaryObject {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &str,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self, key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, key: &str) -> EvalResult<bool> {
+    fn has_property(&self, key: PropertyKey) -> EvalResult<bool> {
         ordinary_has_property(self, key)
     }
 
     // 10.1.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: &str, receiver: Value) -> EvalResult<Value> {
+    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
         ordinary_get(cx, self, key, receiver)
     }
 
@@ -199,7 +197,7 @@ impl Object for OrdinaryObject {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: &str,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
@@ -207,7 +205,7 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, key: &str) -> EvalResult<bool> {
+    fn delete(&mut self, key: PropertyKey) -> EvalResult<bool> {
         ordinary_delete(self, key)
     }
 
@@ -256,8 +254,11 @@ impl Object for OrdinaryObject {
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
-pub fn ordinary_get_own_property(object: &OrdinaryObject, key: &str) -> Option<PropertyDescriptor> {
-    match object.properties.get(key) {
+pub fn ordinary_get_own_property(
+    object: &OrdinaryObject,
+    key: PropertyKey,
+) -> Option<PropertyDescriptor> {
+    match object.properties.get(&key) {
         None => None,
         Some(property) => {
             if property.value().is_accessor() {
@@ -284,7 +285,7 @@ pub fn ordinary_get_own_property(object: &OrdinaryObject, key: &str) -> Option<P
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: &mut OrdinaryObject,
-    key: &str,
+    key: PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(key));
@@ -301,14 +302,21 @@ pub fn is_compatible_property_descriptor(
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
 ) -> bool {
-    validate_and_apply_property_descriptor(cx, None, "", is_extensible, desc, current_desc)
+    validate_and_apply_property_descriptor(
+        cx,
+        None,
+        cx.names.empty_string,
+        is_extensible,
+        desc,
+        current_desc,
+    )
 }
 
 // 10.1.6.3 ValidateAndApplyPropertyDescriptor
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<&mut OrdinaryObject>,
-    key: &str,
+    key: PropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -341,7 +349,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.properties.insert(key.to_string(), property);
+        object.properties.insert(key, property);
 
         return true;
     }
@@ -374,7 +382,7 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let property = object.properties.get_mut(key).unwrap();
+                let property = object.properties.get_mut(&key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
@@ -420,7 +428,7 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let property = object.properties.get_mut(key).unwrap();
+            let property = object.properties.get_mut(&key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -457,7 +465,7 @@ pub fn validate_and_apply_property_descriptor(
 }
 
 // 10.1.7.1 OrdinaryHasProperty
-pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> EvalResult<bool> {
+pub fn ordinary_has_property(object: &OrdinaryObject, key: PropertyKey) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(key));
     if own_property.is_some() {
         return true.into();
@@ -474,7 +482,7 @@ pub fn ordinary_has_property(object: &OrdinaryObject, key: &str) -> EvalResult<b
 pub fn ordinary_get(
     cx: &mut Context,
     object: &OrdinaryObject,
-    key: &str,
+    key: PropertyKey,
     receiver: Value,
 ) -> EvalResult<Value> {
     let desc = maybe!(object.get_own_property(key));
@@ -499,7 +507,7 @@ pub fn ordinary_get(
 pub fn ordinary_set(
     cx: &mut Context,
     object: &mut OrdinaryObject,
-    key: &str,
+    key: PropertyKey,
     value: Value,
     receiver: Value,
 ) -> EvalResult<bool> {
@@ -553,13 +561,13 @@ pub fn ordinary_set(
 }
 
 // 10.1.10.1 OrdinaryDelete
-pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> EvalResult<bool> {
+pub fn ordinary_delete(object: &mut OrdinaryObject, key: PropertyKey) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(key));
     match desc {
         None => true.into(),
         Some(desc) => {
             if desc.is_configurable() {
-                object.properties.remove(key);
+                object.properties.remove(&key);
                 true.into()
             } else {
                 false.into()
@@ -569,14 +577,23 @@ pub fn ordinary_delete(object: &mut OrdinaryObject, key: &str) -> EvalResult<boo
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
+pub fn ordinary_own_property_keys(_: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
     // TODO: Return keys in order of property creation
-    // TODO: Add array index and symbol keys
-    object
-        .properties
-        .keys()
-        .map(|str| Value::string(cx.heap.alloc_string(str.into())))
-        .collect()
+    // TODO: Add array index keys
+    let mut keys: Vec<Value> = vec![];
+    for property_key in object.properties.keys() {
+        if let PropertyKey::String(str) = property_key {
+            keys.push((*str).into());
+        }
+    }
+
+    for property_key in object.properties.keys() {
+        if let PropertyKey::Symbol(sym) = property_key {
+            keys.push((*sym).into());
+        }
+    }
+
+    keys
 }
 
 // 10.1.12 OrdinaryObjectCreate
@@ -621,7 +638,7 @@ pub fn get_prototype_from_constructor(
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Gc<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor.into(), "prototype"));
+    let proto = maybe!(get(cx, constructor.into(), cx.names.prototype));
     if proto.is_object() {
         proto.as_object().into()
     } else {

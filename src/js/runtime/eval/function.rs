@@ -11,6 +11,7 @@ use crate::{
                 environment::{to_trait_object, Environment},
                 private_environment::PrivateEnvironment,
             },
+            eval::pattern::id_property_key,
             execution_context::resolve_binding,
             function::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
@@ -21,6 +22,7 @@ use crate::{
             object_value::ObjectValue,
             property::PrivateProperty,
             property_descriptor::PropertyDescriptor,
+            property_key::PropertyKey,
             value::Value,
             Context,
         },
@@ -28,7 +30,7 @@ use crate::{
     maybe__, must,
 };
 
-use super::statement::eval_named_anonymous_function_or_expression;
+use super::{pattern::id_string_value, statement::eval_named_anonymous_function_or_expression};
 
 // 10.2.11 FunctionDeclarationInstantiation
 pub fn function_declaration_instantiation(
@@ -77,11 +79,13 @@ pub fn function_declaration_instantiation(
         must!(param.iter_bound_names(&mut |id| {
             parameter_names.insert(&id.name);
 
-            let already_declared = must!(env.has_binding(cx, &id.name));
+            let name_value = id_string_value(cx, id);
+
+            let already_declared = must!(env.has_binding(cx, name_value));
             if !already_declared {
-                must!(env.create_mutable_binding(cx, id.name.clone(), false));
+                must!(env.create_mutable_binding(cx, name_value, false));
                 if func_node.has_duplicate_parameters {
-                    must!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                    must!(env.initialize_binding(cx, name_value, Value::undefined()));
                 }
             }
 
@@ -97,13 +101,15 @@ pub fn function_declaration_instantiation(
             create_mapped_arguments_object(cx, func_node, &arguments, env)
         };
 
+        let arguments_name_value = cx.get_interned_string("arguments");
+
         if is_strict {
-            must!(env.create_immutable_binding(cx, "arguments".to_owned(), false))
+            must!(env.create_immutable_binding(cx, arguments_name_value, false))
         } else {
-            must!(env.create_mutable_binding(cx, "arguments".to_owned(), false))
+            must!(env.create_mutable_binding(cx, arguments_name_value, false))
         }
 
-        must!(env.initialize_binding(cx, "arguments", arguments_object));
+        must!(env.initialize_binding(cx, arguments_name_value, arguments_object));
 
         parameter_names.insert("arguments");
     }
@@ -124,7 +130,8 @@ pub fn function_declaration_instantiation(
 
         match patt {
             ast::Pattern::Id(id) => {
-                let mut reference = maybe__!(resolve_binding(cx, &id.name, binding_init_env));
+                let name_value = id_string_value(cx, id);
+                let mut reference = maybe__!(resolve_binding(cx, name_value, binding_init_env));
                 let mut value = if arg_index < arguments.len() {
                     let argument = arguments[arg_index];
                     arg_index += 1;
@@ -136,7 +143,9 @@ pub fn function_declaration_instantiation(
                 if let Some(init) = init {
                     if value.is_undefined() {
                         value = maybe__!(eval_named_anonymous_function_or_expression(
-                            cx, init, &id.name
+                            cx,
+                            init,
+                            PropertyKey::String(name_value)
                         ));
                     }
                 }
@@ -160,8 +169,9 @@ pub fn function_declaration_instantiation(
         for var_decl in func_node.var_decls() {
             must!(var_decl.iter_bound_names(&mut |id| {
                 if instantiated_var_names.insert(&id.name) {
-                    must!(env.create_mutable_binding(cx, id.name.clone(), false));
-                    must!(env.initialize_binding(cx, &id.name, Value::undefined()));
+                    let name_value = id_string_value(cx, id);
+                    must!(env.create_mutable_binding(cx, name_value, false));
+                    must!(env.initialize_binding(cx, name_value, Value::undefined()));
                 }
 
                 ().into()
@@ -181,17 +191,19 @@ pub fn function_declaration_instantiation(
         for var_decl in func_node.var_decls() {
             must!(var_decl.iter_bound_names(&mut |id| {
                 if instantiated_var_names.insert(&id.name) {
-                    must!(env.create_mutable_binding(cx, id.name.clone(), false));
+                    let name_value = id_string_value(cx, id);
+
+                    must!(env.create_mutable_binding(cx, name_value, false));
 
                     let initial_value = if !parameter_names.contains(id.name.as_str())
                         || function_names.contains(&id.name)
                     {
                         Value::undefined()
                     } else {
-                        must!(env.get_binding_value(cx, &id.name, false))
+                        must!(env.get_binding_value(cx, name_value, false))
                     };
 
-                    must!(var_env.initialize_binding(cx, &id.name, initial_value));
+                    must!(var_env.initialize_binding(cx, name_value, initial_value));
 
                     ().into()
                 }
@@ -219,11 +231,13 @@ pub fn function_declaration_instantiation(
         match lex_decl {
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 must!(lex_decl.iter_bound_names(&mut |id| {
-                    env.create_immutable_binding(cx, id.name.clone(), true)
+                    let name_value = id_string_value(cx, id);
+                    env.create_immutable_binding(cx, name_value, true)
                 }))
             }
             _ => must!(lex_decl.iter_bound_names(&mut |id| {
-                env.create_mutable_binding(cx, id.name.clone(), false)
+                let name_value = id_string_value(cx, id);
+                env.create_mutable_binding(cx, name_value, false)
             })),
         }
     }
@@ -231,9 +245,9 @@ pub fn function_declaration_instantiation(
     // Initialize toplevel function objects
     let private_env = callee_context.private_env;
     for func in functions_to_initialize {
-        let func_id = func.id.as_deref().unwrap();
+        let func_name = id_string_value(cx, func.id.as_deref().unwrap());
         let func_object = instantiate_function_object(cx, func, lex_env, private_env);
-        must!(var_env.set_mutable_binding(cx, &func_id.name, func_object.into(), false));
+        must!(var_env.set_mutable_binding(cx, func_name, func_object.into(), false));
     }
 
     Completion::empty()
@@ -259,9 +273,9 @@ pub fn instantiate_ordinary_function_object(
     env: Gc<dyn Environment>,
     private_env: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
-    let name = match &func_node.id {
-        None => "default",
-        Some(id) => &id.name,
+    let name_key = match &func_node.id {
+        None => cx.names.default,
+        Some(id) => id_property_key(cx, id),
     };
 
     let function_prototype = cx
@@ -270,7 +284,7 @@ pub fn instantiate_ordinary_function_object(
     let function_object =
         ordinary_function_create(cx, function_prototype, func_node, false, env, private_env);
 
-    set_function_name(cx, function_object.into(), name, None);
+    set_function_name(cx, function_object.into(), name_key, None);
     make_constructor(cx, function_object, None, None);
 
     function_object
@@ -280,7 +294,7 @@ pub fn instantiate_ordinary_function_object(
 pub fn instantiate_ordinary_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<&str>,
+    name: Option<PropertyKey>,
 ) -> Gc<Function> {
     let current_context = cx.current_execution_context();
     let function_prototype = cx
@@ -289,7 +303,7 @@ pub fn instantiate_ordinary_function_expression(
 
     match &func_node.id {
         None => {
-            let name = name.unwrap_or("");
+            let name = name.unwrap_or(cx.names.empty_string);
             let closure = ordinary_function_create(
                 cx,
                 function_prototype,
@@ -305,11 +319,12 @@ pub fn instantiate_ordinary_function_expression(
             closure
         }
         Some(id) => {
-            let name = &id.name;
             let mut func_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(
                 current_context.lexical_env,
             )));
-            must!(func_env.create_immutable_binding(cx, name.to_string(), false));
+
+            let name_value = id_string_value(cx, id);
+            must!(func_env.create_immutable_binding(cx, name_value, false));
 
             let closure = ordinary_function_create(
                 cx,
@@ -320,10 +335,10 @@ pub fn instantiate_ordinary_function_expression(
                 current_context.private_env,
             );
 
-            set_function_name(cx, closure.into(), name, None);
+            set_function_name(cx, closure.into(), PropertyKey::String(name_value), None);
             make_constructor(cx, closure, None, None);
 
-            must!(func_env.initialize_binding(cx, name, closure.into()));
+            must!(func_env.initialize_binding(cx, name_value, closure.into()));
 
             closure
         }
@@ -334,9 +349,9 @@ pub fn instantiate_ordinary_function_expression(
 pub fn instantiate_arrow_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<&str>,
+    name: Option<PropertyKey>,
 ) -> Gc<Function> {
-    let name = name.unwrap_or("");
+    let name = name.unwrap_or(cx.names.empty_string);
     let current_context = cx.current_execution_context();
 
     let function_prototype = cx
@@ -384,7 +399,7 @@ pub fn method_definition_evaluation(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     func_node: &ast::Function,
-    property_key: &str,
+    property_key: PropertyKey,
     property_kind: ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -439,7 +454,7 @@ pub fn private_method_definition_evaluation(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     func_node: &ast::Function,
-    property_name: &str,
+    property_name: PropertyKey,
     method_kind: ast::ClassMethodKind,
 ) -> PrivateProperty {
     if func_node.is_async || func_node.is_generator {

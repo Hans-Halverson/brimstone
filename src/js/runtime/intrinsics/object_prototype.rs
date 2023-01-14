@@ -14,6 +14,7 @@ use crate::{
         ordinary_object::OrdinaryObject,
         property::PrivateProperty,
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::{same_object_value, to_object, to_property_key},
         value::Value,
@@ -47,21 +48,31 @@ impl ObjectPrototype {
         self.object = OrdinaryObject::new(None, true);
 
         // Constructor property is added once ObjectConstructor has been created
-        self.object
-            .intrinsic_func(cx, "hasOwnProperty", Self::has_own_property, 1, realm);
-        self.object
-            .intrinsic_func(cx, "isPrototypeOf", Self::is_prototype_of, 1, realm);
         self.object.intrinsic_func(
             cx,
-            "propertyIsEnumerable",
+            cx.names.has_own_property,
+            Self::has_own_property,
+            1,
+            realm,
+        );
+        self.object.intrinsic_func(
+            cx,
+            cx.names.is_prototype_of,
+            Self::is_prototype_of,
+            1,
+            realm,
+        );
+        self.object.intrinsic_func(
+            cx,
+            cx.names.property_is_enumerable,
             Self::property_is_enumerable,
             1,
             realm,
         );
         self.object
-            .intrinsic_func(cx, "valueOf", Self::value_of, 0, realm);
+            .intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
         self.object
-            .intrinsic_func(cx, "toString", Self::to_string, 0, realm);
+            .intrinsic_func(cx, cx.names.to_string, Self::to_string, 0, realm);
     }
 
     #[inline]
@@ -84,7 +95,7 @@ impl ObjectPrototype {
         let property_key = to_property_key(get_argument(arguments, 0));
         let this_object = maybe!(to_object(cx, this_value));
 
-        maybe!(has_own_property(this_object, property_key.str())).into()
+        maybe!(has_own_property(this_object, property_key)).into()
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
@@ -127,7 +138,7 @@ impl ObjectPrototype {
         let property_key = to_property_key(get_argument(arguments, 0));
         let this_object = maybe!(to_object(cx, this_value));
 
-        match maybe!(this_object.get_own_property(property_key.str())) {
+        match maybe!(this_object.get_own_property(property_key)) {
             None => false.into(),
             Some(desc) => desc.is_enumerable().into(),
         }
@@ -158,8 +169,8 @@ impl ObjectPrototype {
 
         let object = maybe!(to_object(cx, this_value));
 
-        // TODO: Change to symbol once symbols are implemented
-        let tag = maybe!(get(cx, object, "@@toStringTag"));
+        let to_string_tag_key = PropertyKey::Symbol(cx.well_known_symbols.to_string_tag);
+        let tag = maybe!(get(cx, object, to_string_tag_key));
 
         let tag_string = if tag.is_string() {
             return cx

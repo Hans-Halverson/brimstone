@@ -14,6 +14,7 @@ use crate::{
         ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_string,
         value::Value,
@@ -25,7 +26,7 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 macro_rules! create_native_error {
-    ($native_error:ident, $prototype:ident, $constructor:ident) => {
+    ($native_error:ident, $rust_name:ident, $prototype:ident, $constructor:ident) => {
         #[repr(C)]
         pub struct $native_error {
             _vtable: ObjectValueVtable,
@@ -48,7 +49,7 @@ macro_rules! create_native_error {
                 let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
                 let mut object = OrdinaryObject::new(Some(prototype), true);
 
-                object.intrinsic_data_prop("message", cx.heap.alloc_string(message).into());
+                object.intrinsic_data_prop(cx.names.message, cx.heap.alloc_string(message).into());
 
                 cx.heap.alloc(Self::new(object))
             }
@@ -81,7 +82,7 @@ macro_rules! create_native_error {
                     cx,
                     Self::construct,
                     1,
-                    stringify!($native_error),
+                    cx.names.$rust_name,
                     Some(realm),
                     Some(error_constructor),
                     None,
@@ -89,7 +90,7 @@ macro_rules! create_native_error {
 
                 func.set_is_constructor();
                 func.set_property(
-                    "prototype".to_owned(),
+                    cx.names.prototype,
                     Property::data(
                         realm.get_intrinsic(Intrinsic::$prototype).into(),
                         false,
@@ -128,7 +129,7 @@ macro_rules! create_native_error {
                     create_non_enumerable_data_property_or_throw(
                         cx,
                         object,
-                        "message",
+                        cx.names.message,
                         message_string.into(),
                     );
                 }
@@ -149,7 +150,10 @@ macro_rules! create_native_error {
 
                 // Constructor property is added once NativeErrorConstructor has been created
                 object.intrinsic_name_prop(cx, stringify!($native_error));
-                object.intrinsic_data_prop("message", cx.heap.alloc_string(String::new()).into());
+                object.intrinsic_data_prop(
+                    cx.names.message,
+                    cx.heap.alloc_string(String::new()).into(),
+                );
 
                 cx.heap.alloc(object).into()
             }
@@ -157,13 +161,34 @@ macro_rules! create_native_error {
     };
 }
 
-create_native_error!(EvalError, EvalErrorPrototype, EvalErrorConstructor);
-create_native_error!(RangeError, RangeErrorPrototype, RangeErrorConstructor);
+create_native_error!(
+    EvalError,
+    eval_error,
+    EvalErrorPrototype,
+    EvalErrorConstructor
+);
+create_native_error!(
+    RangeError,
+    range_error,
+    RangeErrorPrototype,
+    RangeErrorConstructor
+);
 create_native_error!(
     ReferenceError,
+    reference_error,
     ReferenceErrorPrototype,
     ReferenceErrorConstructor
 );
-create_native_error!(SyntaxError, SyntaxErrorPrototype, SyntaxErrorConstructor);
-create_native_error!(TypeError, TypeErrorPrototype, TypeErrorConstructor);
-create_native_error!(URIError, URIErrorPrototype, URIErrorConstructor);
+create_native_error!(
+    SyntaxError,
+    syntax_error,
+    SyntaxErrorPrototype,
+    SyntaxErrorConstructor
+);
+create_native_error!(
+    TypeError,
+    type_error,
+    TypeErrorPrototype,
+    TypeErrorConstructor
+);
+create_native_error!(URIError, uri_error, URIErrorPrototype, URIErrorConstructor);

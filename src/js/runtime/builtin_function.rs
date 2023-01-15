@@ -60,7 +60,7 @@ impl BuiltinFunction {
     pub fn create(
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
-        length: u32,
+        length: i32,
         name: PropertyKey,
         realm: Option<Gc<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
@@ -108,7 +108,7 @@ impl BuiltinFunction {
         cx: &mut Context,
         name: PropertyKey,
         func: BuiltinFunctionPtr,
-        length: u32,
+        length: i32,
         realm: Gc<Realm>,
     ) {
         self.object.intrinsic_func(cx, name, func, length, realm);

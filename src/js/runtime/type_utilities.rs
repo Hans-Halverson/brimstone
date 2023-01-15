@@ -12,8 +12,8 @@ use super::{
     object_value::ObjectValue,
     property_key::PropertyKey,
     value::{
-        StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
-        UNDEFINED_TAG,
+        StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG, STRING_TAG,
+        SYMBOL_TAG, UNDEFINED_TAG,
     },
     Context,
 };
@@ -96,14 +96,15 @@ fn ordinary_to_primitive(
 
 // 7.1.2 ToBoolean
 pub fn to_boolean(value: Value) -> bool {
-    if value.is_number() {
-        return value.as_number() != 0.0 && !value.is_nan();
+    if value.is_double() {
+        return value.as_double() != 0.0 && !value.is_nan();
     }
 
     match value.get_tag() {
         BOOL_TAG => value.as_bool(),
         NULL_TAG => false,
         UNDEFINED_TAG => false,
+        SMI_TAG => value.as_smi() != 0,
         OBJECT_TAG => true,
         STRING_TAG => !value.as_string().is_empty(),
         SYMBOL_TAG => true,
@@ -129,13 +130,13 @@ pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
     }
 
     match value.get_tag() {
-        NULL_TAG => Value::number(0.0).into(),
+        NULL_TAG => Value::smi(0).into(),
         UNDEFINED_TAG => Value::nan().into(),
         BOOL_TAG => {
             if value.as_bool() {
-                Value::number(1.0).into()
+                Value::smi(1).into()
             } else {
-                Value::number(0.0).into()
+                Value::smi(0).into()
             }
         }
         STRING_TAG => string_to_number(value).into(),
@@ -158,9 +159,9 @@ fn string_to_number(value: Value) -> Value {
 pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> {
     if value.is_string() {
         return value.as_string().into();
-    } else if value.is_number() {
+    } else if value.is_double() {
         // TODO: Implement Number::toString from spec
-        return cx.heap.alloc_string(value.as_number().to_string()).into();
+        return cx.heap.alloc_string(value.as_double().to_string()).into();
     }
 
     match value.get_tag() {
@@ -170,6 +171,7 @@ pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> 
             let str = if value.as_bool() { "true" } else { "false" };
             cx.heap.alloc_string(str.to_owned()).into()
         }
+        SMI_TAG => cx.heap.alloc_string(value.as_smi().to_string()).into(),
         OBJECT_TAG => {
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
             to_string(cx, primitive_value)

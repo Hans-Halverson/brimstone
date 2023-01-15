@@ -392,7 +392,7 @@ pub fn ordinary_function_create_special_kind(
     func_node: FuncKind,
     is_lexical_this: bool,
     is_strict: bool,
-    argument_count: u32,
+    argument_count: i32,
     environment: Gc<dyn Environment>,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
@@ -528,9 +528,8 @@ pub fn set_function_name(
 }
 
 // 10.2.10 SetFunctionLength
-pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: u32) {
-    let float_length: f64 = length.into();
-    let desc = PropertyDescriptor::data(float_length.into(), false, false, true);
+pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32) {
+    let desc = PropertyDescriptor::data(Value::smi(length), false, false, true);
     must!(define_property_or_throw(cx, func, cx.names.length, desc))
 }
 
@@ -550,7 +549,7 @@ pub fn instantiate_function_object(
 
 // 15.1.5 ExpectedArgumentCount
 // Count is the number of parameters to the left of the first initializer or rest parameter.
-fn expected_argument_count(func_node: &ast::Function) -> u32 {
+fn expected_argument_count(func_node: &ast::Function) -> i32 {
     let mut count = 0;
     for param in &func_node.params {
         match param {

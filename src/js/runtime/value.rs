@@ -1,4 +1,7 @@
-use std::{fmt, hash};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt, hash,
+};
 
 use super::{
     gc::{Gc, GcDeref},
@@ -27,6 +30,7 @@ use super::{
 ///   Null:       0b011
 ///   Empty:      0b010
 ///   Bool:       0b100, and the lowest bit of the mantissa stores the bool value
+///   Smi:        0b110, and the low 32 bits of the mantissa stores the i32 value
 ///
 /// Pointers use the top three bits with the following tags, leaving 48 bits to store the pointer:
 ///
@@ -48,6 +52,7 @@ pub const NULL_TAG: u16 = 0b011 | NAN_TAG;
 // Empty value in a completion record. Can use instead of Option<Value> to fit into single word.
 const EMPTY_TAG: u16 = 0b010 | NAN_TAG;
 pub const BOOL_TAG: u16 = 0b100 | NAN_TAG;
+pub const SMI_TAG: u16 = 0b110 | NAN_TAG;
 
 pub const OBJECT_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
 pub const STRING_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
@@ -63,6 +68,10 @@ const NULLISH_TAG_MASK: u16 = 0xFFFD;
 const NEGATIVE_INFINITY: u64 = 0xFFF0 << TAG_SHIFT;
 const TRUE: u64 = Value::bool(true).as_raw_bits();
 const FALSE: u64 = Value::bool(false).as_raw_bits();
+
+const SMI_MAX: f64 = i32::MAX as f64;
+const SMI_MIN: f64 = i32::MIN as f64;
+const SMI_ZERO_BITS: u64 = Value::smi(0).as_raw_bits();
 
 #[derive(Clone, Copy)]
 pub struct Value {
@@ -84,9 +93,14 @@ impl Value {
     }
 
     #[inline]
-    pub const fn is_number(&self) -> bool {
+    pub const fn is_double(&self) -> bool {
         // Make sure to check if this is the canonical NaN value
         (self.raw_bits & NAN_MASK != NAN_MASK) || self.is_nan()
+    }
+
+    #[inline]
+    pub const fn is_number(&self) -> bool {
+        self.is_smi() || self.is_double()
     }
 
     #[inline]
@@ -103,7 +117,7 @@ impl Value {
 
     #[inline]
     pub fn is_positive_zero(&self) -> bool {
-        self.raw_bits == f64::to_bits(0.0)
+        self.raw_bits == f64::to_bits(0.0) || (self.is_smi() && self.raw_bits == SMI_ZERO_BITS)
     }
 
     #[inline]
@@ -147,6 +161,11 @@ impl Value {
     }
 
     #[inline]
+    pub const fn is_smi(&self) -> bool {
+        self.has_tag(SMI_TAG)
+    }
+
+    #[inline]
     pub const fn is_object(&self) -> bool {
         self.has_tag(OBJECT_TAG)
     }
@@ -180,12 +199,26 @@ impl Value {
 
     #[inline]
     pub fn as_number(&self) -> f64 {
+        if self.is_smi() {
+            return f64::from(self.as_smi());
+        }
+
+        self.as_double()
+    }
+
+    #[inline]
+    pub fn as_double(&self) -> f64 {
         f64::from_bits(self.raw_bits)
     }
 
     #[inline]
     pub const fn as_bool(&self) -> bool {
         (self.raw_bits & 1) != 0
+    }
+
+    #[inline]
+    pub const fn as_smi(&self) -> i32 {
+        unsafe { std::mem::transmute::<u32, i32>(self.raw_bits as u32) }
     }
 
     // In x86_64 pointers must be in "canonical form", meaning the top 16 bits must be the same a
@@ -219,6 +252,15 @@ impl Value {
 
     #[inline]
     pub fn number(value: f64) -> Value {
+        // Check if this number should be converted into a smi
+        if value.trunc() == value
+            && value >= SMI_MIN
+            && value <= SMI_MAX
+            && f64::to_bits(value) != f64::to_bits(-0.0)
+        {
+            return Value::smi(value as i32);
+        }
+
         Value {
             raw_bits: f64::to_bits(value),
         }
@@ -249,6 +291,14 @@ impl Value {
     pub const fn bool(value: bool) -> Value {
         Value {
             raw_bits: (((BOOL_TAG as u64) << TAG_SHIFT) | (value as u64)),
+        }
+    }
+
+    #[inline]
+    pub const fn smi(value: i32) -> Value {
+        let smi_value_bits = unsafe { std::mem::transmute::<i32, u32>(value) as u64 };
+        Value {
+            raw_bits: (((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits),
         }
     }
 
@@ -300,7 +350,7 @@ impl From<f64> for Value {
 
 impl From<i32> for Value {
     fn from(value: i32) -> Self {
-        Value::number(value.into())
+        Value::smi(value)
     }
 }
 

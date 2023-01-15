@@ -68,10 +68,10 @@ impl OrdinaryObject {
         self.set_property(key, Property::data(value, true, false, true))
     }
 
-    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: f64) {
+    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
         self.set_property(
             cx.names.length,
-            Property::data(Value::number(length), false, false, true),
+            Property::data(Value::smi(length), false, false, true),
         )
     }
 
@@ -107,7 +107,7 @@ impl OrdinaryObject {
         cx: &mut Context,
         name: PropertyKey,
         func: BuiltinFunctionPtr,
-        length: u32,
+        length: i32,
         realm: Gc<Realm>,
     ) {
         self.intrinsic_data_prop(

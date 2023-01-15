@@ -52,7 +52,7 @@ impl FunctionPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         self.object.intrinsic_name_prop(cx, "");
-        self.object.instrinsic_length_prop(cx, 0.0);
+        self.object.instrinsic_length_prop(cx, 0);
         self.object
             .intrinsic_func(cx, cx.names.call, Self::call_intrinsic, 1, realm);
     }

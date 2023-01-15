@@ -19,8 +19,8 @@ use crate::{
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
-                same_object_value, to_boolean, to_number, to_numeric, to_object, to_primitive,
-                to_property_key, to_string, ToPrimitivePreferredType,
+                same_object_value, to_boolean, to_int32, to_number, to_numeric, to_object,
+                to_primitive, to_property_key, to_string, ToPrimitivePreferredType,
             },
             value::{
                 Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -54,7 +54,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
-            ast::UnaryOperator::BitwiseNot => unimplemented!("bitwise not expression"),
+            ast::UnaryOperator::BitwiseNot => eval_bitwise_not(cx, expr),
             ast::UnaryOperator::TypeOf => eval_typeof_expression(cx, expr),
             ast::UnaryOperator::Delete => eval_delete_expression(cx, expr),
             ast::UnaryOperator::Void => eval_void_expression(cx, expr),
@@ -603,6 +603,19 @@ fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
     }
 }
 
+// 13.5.6.1 Bitwise Not Evaluation
+fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
+    let value = maybe!(eval_expression(cx, &expr.argument));
+    let value = maybe!(to_numeric(cx, value));
+
+    if value.is_bigint() {
+        unimplemented!("BigInt")
+    } else {
+        let value = must!(to_int32(cx, value));
+        Value::smi(!value).into()
+    }
+}
+
 // 13.5.7.1 Logical Not Evaluation
 fn eval_logical_not_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
@@ -677,9 +690,21 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
             let right_value = maybe!(eval_expression(cx, &expr.right));
             eval_greater_than_or_equal(cx, left_value, right_value)
         }
-        ast::BinaryOperator::And => unimplemented!("bitwise and expression"),
-        ast::BinaryOperator::Or => unimplemented!("bitwise or expression"),
-        ast::BinaryOperator::Xor => unimplemented!("bitwise xor expression"),
+        ast::BinaryOperator::And => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_bitwise_and(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Or => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_bitwise_or(cx, left_value, right_value)
+        }
+        ast::BinaryOperator::Xor => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_bitwise_xor(cx, left_value, right_value)
+        }
         ast::BinaryOperator::ShiftLeft => unimplemented!("left shift expression"),
         ast::BinaryOperator::ShiftRightArithmetic => {
             unimplemented!("arithmetic right shift expression")
@@ -880,6 +905,63 @@ fn eval_greater_than_or_equal(
     (result.is_false()).into()
 }
 
+fn eval_bitwise_and(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left_num = maybe!(to_numeric(cx, left_value));
+    let right_num = maybe!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error_(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        let left_smi = maybe!(to_int32(cx, left_value));
+        let right_smi = maybe!(to_int32(cx, right_value));
+
+        return Value::smi(left_smi & right_smi).into();
+    }
+}
+
+fn eval_bitwise_or(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left_num = maybe!(to_numeric(cx, left_value));
+    let right_num = maybe!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error_(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        let left_smi = maybe!(to_int32(cx, left_value));
+        let right_smi = maybe!(to_int32(cx, right_value));
+
+        return Value::smi(left_smi | right_smi).into();
+    }
+}
+
+fn eval_bitwise_xor(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
+    let left_num = maybe!(to_numeric(cx, left_value));
+    let right_num = maybe!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error_(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        let left_smi = maybe!(to_int32(cx, left_value));
+        let right_smi = maybe!(to_int32(cx, right_value));
+
+        return Value::smi(left_smi ^ right_smi).into();
+    }
+}
+
 // 13.10.2 InstanceofOperator
 fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> EvalResult<Value> {
     if !target.is_object() {
@@ -1031,7 +1113,29 @@ fn eval_assignment_expression(
             let right_value = maybe!(eval_expression(cx, &expr.right));
             maybe!(eval_remainder(cx, left_value, right_value))
         }
-        _ => unimplemented!("assignment operators"),
+        ast::AssignmentOperator::Exponent => unimplemented!("exponent expression"),
+        ast::AssignmentOperator::And => {
+            let left_value = maybe!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_bitwise_and(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Or => {
+            let left_value = maybe!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_bitwise_or(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::Xor => {
+            let left_value = maybe!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_bitwise_xor(cx, left_value, right_value))
+        }
+        ast::AssignmentOperator::ShiftLeft => unimplemented!("left shift expression"),
+        ast::AssignmentOperator::ShiftRightArithmetic => {
+            unimplemented!("arithmetic right shift expression")
+        }
+        ast::AssignmentOperator::ShiftRightLogical => {
+            unimplemented!("logical right shift expression")
+        }
     };
 
     maybe!(reference.put_value(cx, result_value));

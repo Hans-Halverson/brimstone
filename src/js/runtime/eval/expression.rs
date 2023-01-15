@@ -118,7 +118,8 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<Value> {
 }
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Value> {
-    Value::string(cx.heap.alloc_string(lit.value.clone())).into()
+    let interned_value = cx.get_interned_string(&lit.value);
+    interned_value.into()
 }
 
 // 13.2.5.4 Object Initializer Evaluation
@@ -134,7 +135,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                 let prop_value = maybe!(eval_identifier(cx, id));
                 let prop_key = id_property_key(cx, id);
                 must!(create_data_property_or_throw(
-                    cx, object, prop_key, prop_value
+                    cx, object, &prop_key, prop_value
                 ));
             }
             Some(_) if property.is_method => {
@@ -151,7 +152,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     cx,
                     object,
                     func,
-                    property_key,
+                    &property_key,
                     property.kind,
                     /* is_enumerable */ true,
                 ))
@@ -177,13 +178,13 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     let prop_value = maybe!(eval_named_anonymous_function_or_expression(
                         cx,
                         value,
-                        property_key
+                        &property_key
                     ));
 
                     must!(create_data_property_or_throw(
                         cx,
                         object,
-                        property_key,
+                        &property_key,
                         prop_value
                     ));
                 }
@@ -201,15 +202,27 @@ pub fn eval_property_name<'a>(
 ) -> EvalResult<PropertyKey> {
     let property_key = if is_computed {
         let property_key_value = maybe!(eval_expression(cx, key));
-        to_property_key(property_key_value)
+        maybe!(to_property_key(cx, property_key_value))
     } else {
         match key {
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
                 let string_value = cx.get_interned_string(lit.value.as_str());
-                PropertyKey::String(string_value)
+                PropertyKey::string(string_value)
             }
-            ast::Expression::Number(_) => unimplemented!("numeric property keys"),
+            ast::Expression::Number(lit) => {
+                let key_value = Value::number(lit.value);
+                if key_value.is_smi() {
+                    let smi_value = key_value.as_smi();
+                    if smi_value >= 0 {
+                        return PropertyKey::array_index(smi_value as u32).into();
+                    }
+                }
+
+                // TODO: Implement Number::toString from spec
+                let string_value = cx.heap.alloc_string(key_value.as_double().to_string());
+                PropertyKey::string(string_value)
+            }
             _ => unreachable!(),
         }
     };
@@ -225,10 +238,10 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
 
     if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
-        let property_key = to_property_key(property_name_value);
+        let property_key = maybe!(to_property_key(cx, property_name_value));
 
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, property_key, base.into())
+        base.get(cx, &property_key, base.into())
     } else if expr.is_private {
         let base = maybe!(to_object(cx, base_value));
         let private_env = cx.current_execution_context().private_env.unwrap();
@@ -240,7 +253,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = id_property_key(cx, expr.property.to_id());
         let base = maybe!(to_object(cx, base_value));
 
-        base.get(cx, property_key, base.into())
+        base.get(cx, &property_key, base.into())
     }
 }
 
@@ -255,7 +268,7 @@ fn eval_member_expression_to_reference(
 
     if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
-        let property_key = to_property_key(property_name_value);
+        let property_key = maybe!(to_property_key(cx, property_name_value));
 
         Reference::new_property(base_value, property_key, is_strict).into()
     } else if expr.is_private {
@@ -377,7 +390,7 @@ fn eval_super_member_expression_to_reference(
 
     let property_key = if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
-        let property_key = to_property_key(property_name_value);
+        let property_key = maybe!(to_property_key(cx, property_name_value));
         property_key
     } else {
         id_property_key(cx, expr.property.as_ref().to_id())
@@ -502,7 +515,7 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
             }
 
             let base_object = maybe!(to_object(cx, *object));
-            let delete_status = maybe!(base_object.clone().delete(*property));
+            let delete_status = maybe!(base_object.clone().delete(property));
             if !delete_status && reference.is_strict() {
                 return type_error_(cx, "cannot delete property");
             }
@@ -873,8 +886,8 @@ fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> 
         return type_error_(cx, "invalid instanceof operand");
     }
 
-    let has_instance_key = PropertyKey::Symbol(cx.well_known_symbols.has_instance);
-    let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
+    let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
+    let instance_of_handler = maybe!(get_method(cx, target, &has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
         return to_boolean(result).into();
@@ -898,9 +911,9 @@ fn eval_in_expression(
         return type_error_(cx, "right side of 'in' must be an object");
     }
 
-    let property_key = to_property_key(left_value);
+    let property_key = maybe!(to_property_key(cx, left_value));
 
-    let has_property = maybe!(has_property(right_value.as_object(), property_key));
+    let has_property = maybe!(has_property(right_value.as_object(), &property_key));
     has_property.into()
 }
 
@@ -990,7 +1003,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression(
                 cx,
                 &expr.right,
-                reference.name_as_property_key()
+                &reference.name_as_property_key()
             ))
         }
         ast::AssignmentOperator::Add => {

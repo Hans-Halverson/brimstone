@@ -35,28 +35,28 @@ pub trait Object {
 
     fn prevent_extensions(&mut self) -> EvalResult<bool>;
 
-    fn get_own_property(&self, key: PropertyKey) -> EvalResult<Option<PropertyDescriptor>>;
+    fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, key: PropertyKey) -> EvalResult<bool>;
+    fn has_property(&self, key: &PropertyKey) -> EvalResult<bool>;
 
-    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value>;
+    fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value>;
 
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: &PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, key: PropertyKey) -> EvalResult<bool>;
+    fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
 

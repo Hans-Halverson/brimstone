@@ -149,7 +149,7 @@ impl Environment for GlobalEnvironment {
 
         if maybe!(has_own_property(
             self.object_env.binding_object,
-            PropertyKey::String(name)
+            &PropertyKey::string(name)
         )) {
             let status = maybe!(self.object_env.delete_binding(cx, name));
             if status {
@@ -206,8 +206,8 @@ impl GlobalEnvironment {
     pub fn has_restricted_global_property(&self, name: Gc<StringValue>) -> EvalResult<bool> {
         let global_object = &self.object_env.binding_object;
 
-        let name_key = PropertyKey::String(name);
-        let existing_prop = maybe!(global_object.get_own_property(name_key));
+        let name_key = PropertyKey::string(name);
+        let existing_prop = maybe!(global_object.get_own_property(&name_key));
 
         match existing_prop {
             None => false.into(),
@@ -218,7 +218,7 @@ impl GlobalEnvironment {
     // 9.1.1.4.15 CanDeclareGlobalVar
     pub fn can_declare_global_var(&self, name: Gc<StringValue>) -> EvalResult<bool> {
         let global_object = self.object_env.binding_object;
-        if maybe!(has_own_property(global_object, PropertyKey::String(name))) {
+        if maybe!(has_own_property(global_object, &PropertyKey::string(name))) {
             return true.into();
         }
 
@@ -228,7 +228,7 @@ impl GlobalEnvironment {
     // 9.1.1.4.16 CanDeclareGlobalFunction
     pub fn can_declare_global_function(&self, name: Gc<StringValue>) -> EvalResult<bool> {
         let global_object = self.object_env.binding_object;
-        let existing_prop = maybe!(global_object.get_own_property(PropertyKey::String(name)));
+        let existing_prop = maybe!(global_object.get_own_property(&PropertyKey::string(name)));
 
         match existing_prop {
             None => is_extensible(global_object),
@@ -255,8 +255,8 @@ impl GlobalEnvironment {
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object;
 
-        let name_key = PropertyKey::String(name);
-        let has_property = maybe!(has_own_property(global_object, name_key));
+        let name_key = PropertyKey::string(name);
+        let has_property = maybe!(has_own_property(global_object, &name_key));
         let is_extensible = maybe!(is_extensible(global_object));
 
         if !has_property && is_extensible {
@@ -283,8 +283,8 @@ impl GlobalEnvironment {
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object;
 
-        let name_key = PropertyKey::String(name);
-        let existing_prop = maybe!(global_object.get_own_property(name_key));
+        let name_key = PropertyKey::string(name);
+        let existing_prop = maybe!(global_object.get_own_property(&name_key));
 
         let is_writable = match existing_prop {
             None => true,
@@ -300,10 +300,10 @@ impl GlobalEnvironment {
         maybe!(define_property_or_throw(
             cx,
             global_object,
-            name_key,
+            &name_key,
             prop_desc
         ));
-        maybe!(set(cx, global_object, name_key, value, false));
+        maybe!(set(cx, global_object, &name_key, value, false));
 
         if !(self.var_names.contains(&name)) {
             self.var_names.insert(name);

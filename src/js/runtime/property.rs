@@ -6,6 +6,7 @@ use super::{
 
 // A property value. If a data property then the value is the value itself. If an accessor property
 // then the value is an accessor property, which is a pointer to the get and set function pair.
+#[derive(Clone)]
 pub struct Property {
     value: Value,
     is_writable: bool,
@@ -14,7 +15,7 @@ pub struct Property {
 }
 
 impl Property {
-    pub fn data(
+    pub const fn data(
         value: Value,
         is_writable: bool,
         is_enumerable: bool,
@@ -28,7 +29,11 @@ impl Property {
         }
     }
 
-    pub fn accessor(accessor_value: Value, is_enumerable: bool, is_configurable: bool) -> Property {
+    pub const fn accessor(
+        accessor_value: Value,
+        is_enumerable: bool,
+        is_configurable: bool,
+    ) -> Property {
         Property {
             value: accessor_value,
             is_enumerable,

@@ -86,7 +86,7 @@ impl SymbolConstructor {
             cx,
             Self::construct,
             0,
-            cx.names.symbol,
+            &cx.names.symbol(),
             Some(realm),
             None,
             None,
@@ -94,7 +94,7 @@ impl SymbolConstructor {
 
         func.set_is_constructor();
         func.set_property(
-            cx.names.prototype,
+            &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::SymbolPrototype).into(),
                 false,
@@ -103,8 +103,8 @@ impl SymbolConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, cx.names.for_, Self::for_, 1, realm);
-        func.intrinsic_func(cx, cx.names.key_for, Self::key_for, 1, realm);
+        func.intrinsic_func(cx, &cx.names.for_(), Self::for_, 1, realm);
+        func.intrinsic_func(cx, &cx.names.key_for(), Self::key_for, 1, realm);
 
         func
     }

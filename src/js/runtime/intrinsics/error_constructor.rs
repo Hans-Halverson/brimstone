@@ -69,7 +69,7 @@ impl ErrorConstructor {
             cx,
             Self::construct,
             1,
-            cx.names.error,
+            &cx.names.error(),
             Some(realm),
             None,
             None,
@@ -77,7 +77,7 @@ impl ErrorConstructor {
 
         func.set_is_constructor();
         func.set_property(
-            cx.names.prototype,
+            &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
                 false,
@@ -115,7 +115,7 @@ impl ErrorConstructor {
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object,
-                cx.names.message,
+                &cx.names.message(),
                 message_string.into(),
             );
         }
@@ -134,9 +134,9 @@ pub fn install_error_cause(
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
-        if maybe!(has_property(options, cx.names.cause)) {
-            let cause = maybe!(get(cx, options, cx.names.cause));
-            create_non_enumerable_data_property_or_throw(cx, object, cx.names.cause, cause);
+        if maybe!(has_property(options, &cx.names.cause())) {
+            let cause = maybe!(get(cx, options, &cx.names.cause()));
+            create_non_enumerable_data_property_or_throw(cx, object, &cx.names.cause(), cause);
         }
     }
 

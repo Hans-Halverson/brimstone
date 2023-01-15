@@ -15,11 +15,18 @@ macro_rules! builtin_names {
                     $(
                         $rust_name: {
                             let string_value = heap.alloc_string(String::from($js_name));
-                            PropertyKey::String(string_value)
+                            PropertyKey::string_not_number(string_value)
                         },
                     )*
                 }
             }
+
+            $(
+                #[inline]
+                pub fn $rust_name(&self) -> PropertyKey {
+                    self.$rust_name.clone()
+                }
+            )*
         }
     };
 }

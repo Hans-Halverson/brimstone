@@ -89,7 +89,7 @@ impl BooleanConstructor {
             cx,
             Self::construct,
             1,
-            cx.names.boolean,
+            &cx.names.boolean(),
             Some(realm),
             None,
             None,
@@ -97,7 +97,7 @@ impl BooleanConstructor {
 
         func.set_is_constructor();
         func.set_property(
-            cx.names.prototype,
+            &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
                 false,

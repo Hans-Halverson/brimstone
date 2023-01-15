@@ -14,7 +14,7 @@ impl NumberPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once NumberConstructor has been created
-        object.intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
+        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
         cx.heap.alloc(NumberObject::new(object, 0.0)).into()
     }

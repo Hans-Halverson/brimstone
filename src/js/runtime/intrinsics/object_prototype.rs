@@ -50,29 +50,29 @@ impl ObjectPrototype {
         // Constructor property is added once ObjectConstructor has been created
         self.object.intrinsic_func(
             cx,
-            cx.names.has_own_property,
+            &cx.names.has_own_property(),
             Self::has_own_property,
             1,
             realm,
         );
         self.object.intrinsic_func(
             cx,
-            cx.names.is_prototype_of,
+            &cx.names.is_prototype_of(),
             Self::is_prototype_of,
             1,
             realm,
         );
         self.object.intrinsic_func(
             cx,
-            cx.names.property_is_enumerable,
+            &cx.names.property_is_enumerable(),
             Self::property_is_enumerable,
             1,
             realm,
         );
         self.object
-            .intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
+            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
         self.object
-            .intrinsic_func(cx, cx.names.to_string, Self::to_string, 0, realm);
+            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
     }
 
     #[inline]
@@ -92,10 +92,10 @@ impl ObjectPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        let property_key = to_property_key(get_argument(arguments, 0));
+        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        maybe!(has_own_property(this_object, property_key)).into()
+        maybe!(has_own_property(this_object, &property_key)).into()
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
@@ -135,10 +135,10 @@ impl ObjectPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        let property_key = to_property_key(get_argument(arguments, 0));
+        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        match maybe!(this_object.get_own_property(property_key)) {
+        match maybe!(this_object.get_own_property(&property_key)) {
             None => false.into(),
             Some(desc) => desc.is_enumerable().into(),
         }
@@ -169,8 +169,8 @@ impl ObjectPrototype {
 
         let object = maybe!(to_object(cx, this_value));
 
-        let to_string_tag_key = PropertyKey::Symbol(cx.well_known_symbols.to_string_tag);
-        let tag = maybe!(get(cx, object, to_string_tag_key));
+        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let tag = maybe!(get(cx, object, &to_string_tag_key));
 
         let tag_string = if tag.is_string() {
             return cx

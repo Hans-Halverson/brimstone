@@ -59,7 +59,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get_own_property",
-        fn get_own_property(&self, key: PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
+        fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
             self.object().get_own_property(key)
         }
     );
@@ -69,7 +69,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         fn define_own_property(
             &mut self,
             cx: &mut Context,
-            key: PropertyKey,
+            key: &PropertyKey,
             desc: PropertyDescriptor,
         ) -> EvalResult<bool> {
             self.object_mut().define_own_property(cx, key, desc)
@@ -78,14 +78,14 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "has_property",
-        fn has_property(&self, key: PropertyKey) -> EvalResult<bool> {
+        fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
             self.object().has_property(key)
         }
     );
 
     implement_if_undefined!(
         "get",
-        fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
+        fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
             self.object().get(cx, key, receiver)
         }
     );
@@ -95,7 +95,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         fn set(
             &mut self,
             cx: &mut Context,
-            key: PropertyKey,
+            key: &PropertyKey,
             value: Value,
             receiver: Value,
         ) -> EvalResult<bool> {
@@ -105,7 +105,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "delete",
-        fn delete(&mut self, key: PropertyKey) -> EvalResult<bool> {
+        fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
             self.object_mut().delete(key)
         }
     );

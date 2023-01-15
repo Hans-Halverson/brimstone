@@ -29,7 +29,7 @@ impl ObjectConstructor {
             cx,
             Self::construct,
             1,
-            cx.names.object,
+            &cx.names.object(),
             Some(realm),
             None,
             None,
@@ -37,7 +37,7 @@ impl ObjectConstructor {
 
         func.set_is_constructor();
         func.set_property(
-            cx.names.prototype,
+            &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
                 false,
@@ -48,14 +48,14 @@ impl ObjectConstructor {
 
         func.intrinsic_func(
             cx,
-            cx.names.define_property,
+            &cx.names.define_property(),
             Self::define_property,
             3,
             realm,
         );
         func.intrinsic_func(
             cx,
-            cx.names.get_own_property_descriptor,
+            &cx.names.get_own_property_descriptor(),
             Self::get_own_property_descriptor,
             2,
             realm,
@@ -112,13 +112,13 @@ impl ObjectConstructor {
             return type_error_(cx, "can only define property on an object");
         }
 
-        let property_key = to_property_key(get_argument(arguments, 1));
+        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = maybe!(to_property_descriptor(cx, get_argument(arguments, 2)));
 
         maybe!(define_property_or_throw(
             cx,
             object.as_object(),
-            property_key,
+            &property_key,
             desc,
         ));
 
@@ -133,9 +133,9 @@ impl ObjectConstructor {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
-        let property_key = to_property_key(get_argument(arguments, 1));
+        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        match maybe!(object.get_own_property(property_key)) {
+        match maybe!(object.get_own_property(&property_key)) {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }

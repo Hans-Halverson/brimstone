@@ -26,6 +26,7 @@ pub enum ToPrimitivePreferredType {
 }
 
 // 7.1.1 ToPrimitive
+#[inline]
 pub fn to_primitive(
     cx: &mut Context,
     value: Value,
@@ -35,8 +36,8 @@ pub fn to_primitive(
         return value.into();
     }
 
-    let to_primitive_key = PropertyKey::Symbol(cx.well_known_symbols.to_primitive);
-    let exotic_prim = maybe!(get_method(cx, value, to_primitive_key));
+    let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
+    let exotic_prim = maybe!(get_method(cx, value, &to_primitive_key));
     match exotic_prim {
         Some(exotic_prim) => {
             let hint_str = match preferred_type {
@@ -84,11 +85,11 @@ fn ordinary_to_primitive(
     }
 
     if preferred_type == ToPrimitivePreferredType::String {
-        call_method!(cx.names.to_string);
-        call_method!(cx.names.value_of);
+        call_method!(&cx.names.to_string());
+        call_method!(&cx.names.value_of());
     } else {
-        call_method!(cx.names.value_of);
-        call_method!(cx.names.to_string);
+        call_method!(&cx.names.value_of());
+        call_method!(&cx.names.to_string());
     }
 
     type_error_(cx, "object cannot be converted to primitive")
@@ -296,15 +297,23 @@ fn string_to_big_int(value: Value) -> Value {
 }
 
 // 7.1.19 ToPropertyKey
-pub fn to_property_key(value: Value) -> PropertyKey {
-    // TODO: Implement number property keys
-    if value.is_string() {
-        return PropertyKey::String(value.as_string());
-    } else if value.is_symbol() {
-        return PropertyKey::Symbol(value.as_symbol());
+pub fn to_property_key(cx: &mut Context, value: Value) -> EvalResult<PropertyKey> {
+    if value.is_smi() {
+        let smi_value = value.as_smi();
+        if smi_value >= 0 {
+            return PropertyKey::array_index(smi_value as u32).into();
+        }
     }
 
-    unimplemented!("Non-string property keys")
+    let key = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
+    if key.is_string() {
+        return PropertyKey::string(key.as_string()).into();
+    } else if value.is_symbol() {
+        return PropertyKey::symbol(key.as_symbol()).into();
+    }
+
+    let string_key = maybe!(to_string(cx, key));
+    PropertyKey::string(string_key).into()
 }
 
 // 7.2.14 IsLessThan

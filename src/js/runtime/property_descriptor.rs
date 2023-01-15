@@ -149,7 +149,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.value,
+            &cx.names.value(),
             value,
         ));
     }
@@ -158,7 +158,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.writable,
+            &cx.names.writable(),
             is_writable.into(),
         ));
     }
@@ -167,7 +167,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.get,
+            &cx.names.get(),
             get.into(),
         ));
     }
@@ -176,7 +176,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.set,
+            &cx.names.set(),
             set.into(),
         ));
     }
@@ -185,7 +185,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.enumerable,
+            &cx.names.enumerable(),
             is_enumerable.into(),
         ));
     }
@@ -194,7 +194,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
         must!(create_data_property_or_throw(
             cx,
             object.into(),
-            cx.names.configurable,
+            &cx.names.configurable(),
             is_configurable.into(),
         ));
     }
@@ -219,27 +219,27 @@ pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<Prop
         set: None,
     };
 
-    if maybe!(has_property(object, cx.names.enumerable)) {
-        let enumerable = maybe!(get(cx, object, cx.names.enumerable));
+    if maybe!(has_property(object, &cx.names.enumerable())) {
+        let enumerable = maybe!(get(cx, object, &cx.names.enumerable()));
         desc.is_enumerable = Some(to_boolean(enumerable));
     }
 
-    if maybe!(has_property(object, cx.names.configurable)) {
-        let configurable = maybe!(get(cx, object, cx.names.configurable));
+    if maybe!(has_property(object, &cx.names.configurable())) {
+        let configurable = maybe!(get(cx, object, &cx.names.configurable()));
         desc.is_configurable = Some(to_boolean(configurable));
     }
 
-    if maybe!(has_property(object, cx.names.value)) {
-        desc.value = Some(maybe!(get(cx, object, cx.names.value)));
+    if maybe!(has_property(object, &cx.names.value())) {
+        desc.value = Some(maybe!(get(cx, object, &cx.names.value())));
     }
 
-    if maybe!(has_property(object, cx.names.writable)) {
-        let writable = maybe!(get(cx, object, cx.names.writable));
+    if maybe!(has_property(object, &cx.names.writable())) {
+        let writable = maybe!(get(cx, object, &cx.names.writable()));
         desc.is_writable = Some(to_boolean(writable));
     }
 
-    if maybe!(has_property(object, cx.names.get)) {
-        let get = maybe!(get(cx, object, cx.names.get));
+    if maybe!(has_property(object, &cx.names.get())) {
+        let get = maybe!(get(cx, object, &cx.names.get()));
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
             return type_error_(cx, "getter is not callable");
@@ -251,8 +251,8 @@ pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<Prop
         };
     }
 
-    if maybe!(has_property(object, cx.names.set)) {
-        let set = maybe!(get(cx, object, cx.names.set));
+    if maybe!(has_property(object, &cx.names.set())) {
+        let set = maybe!(get(cx, object, &cx.names.set()));
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
             return type_error_(cx, "setter is not callable");

@@ -45,20 +45,20 @@ impl Environment for ObjectEnvironment {
 
     // 9.1.1.2.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        let name_key = PropertyKey::String(name);
-        if !maybe!(has_property(self.binding_object, name_key)) {
+        let name_key = PropertyKey::string(name);
+        if !maybe!(has_property(self.binding_object, &name_key)) {
             return false.into();
         } else if !self.is_with_environment {
             return true.into();
         }
 
         // Ignore properties in @@unscopables
-        let unscopables_key = PropertyKey::Symbol(cx.well_known_symbols.unscopables);
-        let unscopables = maybe!(get(cx, self.binding_object, unscopables_key));
+        let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
+        let unscopables = maybe!(get(cx, self.binding_object, &unscopables_key));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe!(get(cx, unscopables, name_key));
+            let value = maybe!(get(cx, unscopables, &name_key));
             let blocked = to_boolean(value);
             if blocked {
                 return false.into();
@@ -79,7 +79,7 @@ impl Environment for ObjectEnvironment {
         define_property_or_throw(
             cx,
             self.binding_object,
-            PropertyKey::String(name),
+            &PropertyKey::string(name),
             prop_desc,
         )
     }
@@ -112,13 +112,13 @@ impl Environment for ObjectEnvironment {
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        let name_key = PropertyKey::String(name);
-        let still_exists = maybe!(has_property(self.binding_object, name_key));
+        let name_key = PropertyKey::string(name);
+        let still_exists = maybe!(has_property(self.binding_object, &name_key));
         if !still_exists && is_strict {
             return err_not_defined_(cx, name.str());
         }
 
-        maybe!(set(cx, self.binding_object, name_key, value, is_strict));
+        maybe!(set(cx, self.binding_object, &name_key, value, is_strict));
         ().into()
     }
 
@@ -129,8 +129,8 @@ impl Environment for ObjectEnvironment {
         name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
-        let name_key = PropertyKey::String(name);
-        if !maybe!(has_property(self.binding_object, name_key)) {
+        let name_key = PropertyKey::string(name);
+        if !maybe!(has_property(self.binding_object, &name_key)) {
             return if !is_strict {
                 Value::undefined().into()
             } else {
@@ -138,12 +138,12 @@ impl Environment for ObjectEnvironment {
             };
         }
 
-        get(cx, self.binding_object, name_key)
+        get(cx, self.binding_object, &name_key)
     }
 
     // 9.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, _: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        self.binding_object.delete(PropertyKey::String(name))
+        self.binding_object.delete(&PropertyKey::string(name))
     }
 
     // 9.1.1.2.8 HasThisBinding

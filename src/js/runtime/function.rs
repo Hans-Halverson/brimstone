@@ -329,7 +329,7 @@ impl Function {
             // Initializer evaluation in EvaluateBody
             FuncKind::ClassProperty(prop, name) => {
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, *name,));
+                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name,));
 
                 Completion::return_(value)
             }
@@ -453,7 +453,7 @@ pub fn make_constructor(
             must!(define_property_or_throw(
                 cx,
                 prototype,
-                cx.names.constructor,
+                &cx.names.constructor(),
                 desc
             ));
 
@@ -465,7 +465,7 @@ pub fn make_constructor(
     must!(define_property_or_throw(
         cx,
         func.into(),
-        cx.names.prototype,
+        &cx.names.prototype(),
         desc
     ));
 }
@@ -484,7 +484,7 @@ pub fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
 pub fn define_method_property(
     cx: &mut Context,
     home_object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     closure: Gc<Function>,
     is_enumerable: bool,
 ) {
@@ -496,24 +496,26 @@ pub fn define_method_property(
 pub fn set_function_name(
     cx: &mut Context,
     func: Gc<ObjectValue>,
-    name: PropertyKey,
+    name: &PropertyKey,
     prefix: Option<&str>,
 ) {
     // Format name including prefix, converting to string value
-    let name_string = match name {
-        PropertyKey::String(str) => {
-            if let Some(prefix) = prefix {
-                cx.heap.alloc_string(format!("{} {}", prefix, str.str()))
-            } else {
-                str
-            }
-        }
-        PropertyKey::Symbol(sym) => {
+    let name_string = match name.as_symbol() {
+        Some(sym) => {
             let desc = sym.description().unwrap_or("");
             if let Some(prefix) = prefix {
                 cx.heap.alloc_string(format!("{} [{}]", prefix, desc))
             } else {
                 cx.heap.alloc_string(format!("[{}]", desc))
+            }
+        }
+        None => {
+            let string_value = name.non_symbol_to_string(cx);
+            if let Some(prefix) = prefix {
+                cx.heap
+                    .alloc_string(format!("{} {}", prefix, string_value.str()))
+            } else {
+                string_value
             }
         }
     };
@@ -524,13 +526,13 @@ pub fn set_function_name(
     }
 
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.name, desc))
+    must!(define_property_or_throw(cx, func, &cx.names.name(), desc))
 }
 
 // 10.2.10 SetFunctionLength
 pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32) {
     let desc = PropertyDescriptor::data(Value::smi(length), false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.length, desc))
+    must!(define_property_or_throw(cx, func, &cx.names.length(), desc))
 }
 
 // 8.5.1 InstantiateFunctionObject

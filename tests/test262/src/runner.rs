@@ -275,7 +275,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                     let thrown_object = thrown_value.as_object();
                     if thrown_object.is_error() {
                         // Check if thrown error type has the same name as the expected error
-                        match get(cx, thrown_object, cx.names.name) {
+                        match get(cx, thrown_object, &cx.names.name()) {
                             EvalResult::Ok(name_value) if name_value.is_string() => {
                                 name_value.as_string().str() == type_
                             }

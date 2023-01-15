@@ -58,5 +58,5 @@ pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue
 
 #[inline]
 pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
-    PropertyKey::String(cx.get_interned_string(&id.name))
+    PropertyKey::string(cx.get_interned_string(&id.name))
 }

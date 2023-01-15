@@ -12,7 +12,7 @@ impl ArrayConstructor {
             cx,
             Self::construct,
             0,
-            cx.names.array,
+            &cx.names.array(),
             Some(realm),
             None,
             None,
@@ -20,7 +20,7 @@ impl ArrayConstructor {
 
         func.set_is_constructor();
 
-        func.intrinsic_func(cx, cx.names.is_array, Self::is_array, 1, realm);
+        func.intrinsic_func(cx, &cx.names.is_array(), Self::is_array, 1, realm);
 
         func
     }

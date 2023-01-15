@@ -145,7 +145,7 @@ pub fn function_declaration_instantiation(
                         value = maybe__!(eval_named_anonymous_function_or_expression(
                             cx,
                             init,
-                            PropertyKey::String(name_value)
+                            &PropertyKey::string(name_value)
                         ));
                     }
                 }
@@ -274,7 +274,7 @@ pub fn instantiate_ordinary_function_object(
     private_env: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     let name_key = match &func_node.id {
-        None => cx.names.default,
+        None => cx.names.default(),
         Some(id) => id_property_key(cx, id),
     };
 
@@ -284,7 +284,7 @@ pub fn instantiate_ordinary_function_object(
     let function_object =
         ordinary_function_create(cx, function_prototype, func_node, false, env, private_env);
 
-    set_function_name(cx, function_object.into(), name_key, None);
+    set_function_name(cx, function_object.into(), &name_key, None);
     make_constructor(cx, function_object, None, None);
 
     function_object
@@ -294,7 +294,7 @@ pub fn instantiate_ordinary_function_object(
 pub fn instantiate_ordinary_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<PropertyKey>,
+    name: Option<&PropertyKey>,
 ) -> Gc<Function> {
     let current_context = cx.current_execution_context();
     let function_prototype = cx
@@ -303,7 +303,6 @@ pub fn instantiate_ordinary_function_expression(
 
     match &func_node.id {
         None => {
-            let name = name.unwrap_or(cx.names.empty_string);
             let closure = ordinary_function_create(
                 cx,
                 function_prototype,
@@ -313,7 +312,11 @@ pub fn instantiate_ordinary_function_expression(
                 current_context.private_env,
             );
 
-            set_function_name(cx, closure.into(), name, None);
+            match name {
+                None => set_function_name(cx, closure.into(), &cx.names.empty_string(), None),
+                Some(name) => set_function_name(cx, closure.into(), name, None),
+            }
+
             make_constructor(cx, closure, None, None);
 
             closure
@@ -335,7 +338,7 @@ pub fn instantiate_ordinary_function_expression(
                 current_context.private_env,
             );
 
-            set_function_name(cx, closure.into(), PropertyKey::String(name_value), None);
+            set_function_name(cx, closure.into(), &PropertyKey::string(name_value), None);
             make_constructor(cx, closure, None, None);
 
             must!(func_env.initialize_binding(cx, name_value, closure.into()));
@@ -349,9 +352,8 @@ pub fn instantiate_ordinary_function_expression(
 pub fn instantiate_arrow_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<PropertyKey>,
+    name: Option<&PropertyKey>,
 ) -> Gc<Function> {
-    let name = name.unwrap_or(cx.names.empty_string);
     let current_context = cx.current_execution_context();
 
     let function_prototype = cx
@@ -365,7 +367,11 @@ pub fn instantiate_arrow_function_expression(
         current_context.lexical_env,
         current_context.private_env,
     );
-    set_function_name(cx, closure.into(), name, None);
+
+    match name {
+        None => set_function_name(cx, closure.into(), &cx.names.empty_string(), None),
+        Some(name) => set_function_name(cx, closure.into(), name, None),
+    }
 
     closure
 }
@@ -399,7 +405,7 @@ pub fn method_definition_evaluation(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     func_node: &ast::Function,
-    property_key: PropertyKey,
+    property_key: &PropertyKey,
     property_kind: ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -454,7 +460,7 @@ pub fn private_method_definition_evaluation(
     cx: &mut Context,
     object: Gc<ObjectValue>,
     func_node: &ast::Function,
-    property_name: PropertyKey,
+    property_name: &PropertyKey,
     method_kind: ast::ClassMethodKind,
 ) -> PrivateProperty {
     if func_node.is_async || func_node.is_generator {

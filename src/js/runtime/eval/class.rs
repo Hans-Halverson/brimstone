@@ -51,7 +51,7 @@ pub enum ClassFieldDefinitionName {
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
-    property_key: PropertyKey,
+    property_key: &PropertyKey,
     home_object: Gc<ObjectValue>,
 ) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
@@ -62,7 +62,7 @@ fn class_field_definition_evaluation(
         .realm
         .get_intrinsic(Intrinsic::FunctionPrototype);
 
-    let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key);
+    let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key.clone());
 
     let initializer = ordinary_function_create_special_kind(
         cx,
@@ -109,7 +109,7 @@ pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
     class_binding: Option<Gc<StringValue>>,
-    class_name: PropertyKey,
+    class_name: &PropertyKey,
 ) -> EvalResult<Gc<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm;
@@ -162,7 +162,7 @@ pub fn class_definition_evaluation(
             return type_error_(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();
-            let proto_parent = maybe!(get(cx, super_class, cx.names.prototype));
+            let proto_parent = maybe!(get(cx, super_class, &cx.names.prototype()));
 
             match proto_parent.get_tag() {
                 OBJECT_TAG => (Some(proto_parent.as_object()), super_class),
@@ -223,7 +223,7 @@ pub fn class_definition_evaluation(
         func.constructor_kind = ConstructorKind::Derived;
     }
 
-    create_method_property(cx, proto.into(), cx.names.constructor, func.into());
+    create_method_property(cx, proto.into(), &cx.names.constructor(), func.into());
 
     let mut instance_fields = vec![];
     let mut static_elements = vec![];
@@ -250,7 +250,7 @@ pub fn class_definition_evaluation(
                     } else {
                         let property_key =
                             maybe!(eval_property_name(cx, &prop.key, prop.is_computed));
-                        let field_def_name = ClassFieldDefinitionName::Normal(property_key);
+                        let field_def_name = ClassFieldDefinitionName::Normal(property_key.clone());
                         (property_key, field_def_name)
                     };
 
@@ -260,7 +260,7 @@ pub fn class_definition_evaluation(
                         Some(maybe!(class_field_definition_evaluation(
                             cx,
                             prop,
-                            property_key,
+                            &property_key,
                             home_object
                         )))
                     };
@@ -317,7 +317,7 @@ pub fn class_definition_evaluation(
                         cx,
                         home_object,
                         &method.value,
-                        property_key,
+                        &property_key,
                         method.kind,
                     );
 
@@ -356,7 +356,7 @@ pub fn class_definition_evaluation(
                         cx,
                         home_object,
                         &method.value,
-                        property_key,
+                        &property_key,
                         property_kind,
                         false,
                     )
@@ -434,7 +434,7 @@ fn binding_class_declaration_evaluation(
             cx,
             class,
             Some(name_value),
-            PropertyKey::String(name_value)
+            &PropertyKey::string(name_value)
         ));
 
         let lexical_env = cx.current_execution_context().lexical_env;
@@ -447,7 +447,7 @@ fn binding_class_declaration_evaluation(
 
         value.into()
     } else {
-        class_definition_evaluation(cx, class, None, cx.names.default)
+        class_definition_evaluation(cx, class, None, &cx.names.default())
     }
 }
 
@@ -464,7 +464,7 @@ pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult
             cx,
             class,
             Some(name_value),
-            PropertyKey::String(name_value)
+            &PropertyKey::string(name_value)
         ));
         value.into()
     } else {
@@ -472,7 +472,7 @@ pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult
             cx,
             class,
             None,
-            cx.names.empty_string
+            &cx.names.empty_string()
         ));
         value.into()
     }

@@ -24,12 +24,12 @@ pub fn is_extensible(object: Gc<ObjectValue>) -> EvalResult<bool> {
 }
 
 // 7.3.2 Get
-pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: PropertyKey) -> EvalResult<Value> {
+pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<Value> {
     object.get(cx, key, object.into())
 }
 
 // 7.3.3 GetV
-pub fn get_v(cx: &mut Context, value: Value, key: PropertyKey) -> EvalResult<Value> {
+pub fn get_v(cx: &mut Context, value: Value, key: &PropertyKey) -> EvalResult<Value> {
     let object = maybe!(to_object(cx, value));
     object.get(cx, key, value)
 }
@@ -38,7 +38,7 @@ pub fn get_v(cx: &mut Context, value: Value, key: PropertyKey) -> EvalResult<Val
 pub fn set(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
     should_throw: bool,
 ) -> EvalResult<()> {
@@ -54,7 +54,7 @@ pub fn set(
 pub fn create_method_property(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -65,7 +65,7 @@ pub fn create_method_property(
 pub fn create_data_property(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
 ) -> EvalResult<bool> {
     let new_desc = PropertyDescriptor::data(value, true, true, true);
@@ -76,7 +76,7 @@ pub fn create_data_property(
 pub fn create_data_property_or_throw(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
 ) -> EvalResult<()> {
     let success = maybe!(create_data_property(cx, object, key, value));
@@ -91,7 +91,7 @@ pub fn create_data_property_or_throw(
 pub fn create_non_enumerable_data_property_or_throw(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -102,7 +102,7 @@ pub fn create_non_enumerable_data_property_or_throw(
 pub fn define_property_or_throw(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: PropertyKey,
+    key: &PropertyKey,
     prop_desc: PropertyDescriptor,
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
@@ -117,7 +117,7 @@ pub fn define_property_or_throw(
 pub fn get_method(
     cx: &mut Context,
     value: Value,
-    key: PropertyKey,
+    key: &PropertyKey,
 ) -> EvalResult<Option<Gc<ObjectValue>>> {
     let func = maybe!(get_v(cx, value, key));
     if func.is_nullish() {
@@ -132,12 +132,12 @@ pub fn get_method(
 }
 
 // 7.3.12 HasProperty
-pub fn has_property(object: Gc<ObjectValue>, key: PropertyKey) -> EvalResult<bool> {
+pub fn has_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
     object.has_property(key)
 }
 
 // 7.3.13 HasOwnProperty
-pub fn has_own_property(object: Gc<ObjectValue>, key: PropertyKey) -> EvalResult<bool> {
+pub fn has_own_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(key));
     desc.is_some().into()
 }
@@ -198,7 +198,7 @@ pub fn ordinary_has_instance(
         return false.into();
     }
 
-    let target_prototype = maybe!(get(cx, func, cx.names.prototype));
+    let target_prototype = maybe!(get(cx, func, &cx.names.prototype()));
     if !target_prototype.is_object() {
         return type_error_(cx, "prototype must be object");
     }
@@ -285,11 +285,11 @@ pub fn define_field(
     };
 
     match field_def.name {
-        ClassFieldDefinitionName::Normal(property_key) => {
+        ClassFieldDefinitionName::Normal(ref property_key) => {
             maybe!(create_data_property_or_throw(
                 cx,
                 receiver,
-                property_key,
+                &property_key,
                 init_value
             ));
         }

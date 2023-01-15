@@ -14,8 +14,8 @@ impl StringPrototype {
             OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once StringConstructor has been created
-        object.intrinsic_func(cx, cx.names.to_string, Self::to_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of, Self::value_of, 0, realm);
+        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
         let string_value = cx.heap.alloc_string(String::new());
         let string_object = StringObject::new(cx, object, string_value);

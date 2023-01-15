@@ -50,7 +50,7 @@ impl StringObject {
         let length = string_data.str().len();
 
         object.set_property(
-            cx.names.length,
+            &cx.names.length(),
             Property::data((length as f64).into(), false, false, false),
         );
 
@@ -102,7 +102,7 @@ impl StringConstructor {
             cx,
             Self::construct,
             1,
-            cx.names.string,
+            &cx.names.string(),
             Some(realm),
             None,
             None,
@@ -110,7 +110,7 @@ impl StringConstructor {
 
         func.set_is_constructor();
         func.set_property(
-            cx.names.prototype,
+            &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::StringPrototype).into(),
                 false,

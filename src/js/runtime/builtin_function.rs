@@ -61,7 +61,7 @@ impl BuiltinFunction {
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         length: i32,
-        name: PropertyKey,
+        name: &PropertyKey,
         realm: Option<Gc<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
         prefix: Option<&str>,
@@ -99,14 +99,14 @@ impl BuiltinFunction {
         self.has_constructor = true;
     }
 
-    pub fn set_property(&mut self, key: PropertyKey, value: Property) {
+    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
         self.object.set_property(key, value);
     }
 
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: &PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Gc<Realm>,

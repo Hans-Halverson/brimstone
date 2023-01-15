@@ -166,7 +166,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
                     maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
-                        PropertyKey::String(name_value)
+                        &PropertyKey::string(name_value)
                     ))
                 } else {
                     Value::undefined()
@@ -196,7 +196,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
                     let value = maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
                         init.as_ref(),
-                        PropertyKey::String(name_value)
+                        &PropertyKey::string(name_value)
                     ));
 
                     maybe__!(id_reference.put_value(cx, value));
@@ -216,7 +216,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
 pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: PropertyKey,
+    name: &PropertyKey,
 ) -> EvalResult<Value> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
@@ -618,7 +618,7 @@ fn eval_for_in_statement(
             }
 
             if let Some(desc) =
-                maybe__!(current_object.get_own_property(PropertyKey::String(key_string)))
+                maybe__!(current_object.get_own_property(&PropertyKey::string(key_string)))
             {
                 if !desc.is_enumerable() {
                     continue;

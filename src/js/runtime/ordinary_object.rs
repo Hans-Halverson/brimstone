@@ -26,8 +26,10 @@ pub struct OrdinaryObject {
     _vtable: ObjectValueVtable,
     // None represents the null value
     prototype: Option<Gc<ObjectValue>>,
-    // Properties with string keys. Does not yet support symbol or number keys.
+    // String and symbol properties by their property key
     properties: HashMap<PropertyKey, Property>,
+    // Array index properties by their property key
+    array_properties: ArrayProperties,
     // Private properties with string keys
     private_properties: HashMap<PrivateNameId, PrivateProperty>,
     is_extensible: bool,
@@ -37,14 +39,19 @@ impl GcDeref for OrdinaryObject {}
 
 impl_gc_into!(OrdinaryObject, ObjectValue);
 
-const VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
+// Number of indices past the end of an array an access can occur before dense array is converted
+// to a sparse array.
+const SPARSE_ARRAY_THRESHOLD: usize = 100;
 
 impl OrdinaryObject {
+    const VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
+
     pub fn new(prototype: Option<Gc<ObjectValue>>, is_extensible: bool) -> OrdinaryObject {
         OrdinaryObject {
-            _vtable: VTABLE,
+            _vtable: Self::VTABLE,
             prototype,
             properties: HashMap::new(),
+            array_properties: ArrayProperties::new(),
             private_properties: HashMap::new(),
             is_extensible,
         }
@@ -52,32 +59,152 @@ impl OrdinaryObject {
 
     pub fn new_uninit() -> OrdinaryObject {
         OrdinaryObject {
-            _vtable: VTABLE,
+            _vtable: Self::VTABLE,
             prototype: None,
             properties: HashMap::new(),
+            array_properties: ArrayProperties::new(),
             private_properties: HashMap::new(),
             is_extensible: false,
         }
     }
 
-    pub fn set_property(&mut self, key: PropertyKey, value: Property) {
-        self.properties.insert(key, value);
+    // Property mutators
+    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
+                            self.fall_back_to_sparse_properties();
+                        } else {
+                            self.expand_dense_properties(array_index + 1);
+                        }
+
+                        self.set_property(key, value);
+                    } else {
+                        array[array_index as usize] = value;
+                    }
+                }
+                ArrayProperties::Sparse(sparse_map) => {
+                    sparse_map.insert(array_index, value);
+                }
+            }
+
+            return;
+        }
+
+        self.properties.insert(key.clone(), value);
     }
 
-    pub fn intrinsic_data_prop(&mut self, key: PropertyKey, value: Value) {
+    #[inline]
+    fn expand_dense_properties(&mut self, new_length: u32) {
+        if let ArrayProperties::Dense(array) = &mut self.array_properties {
+            let default_value = Property::data(Value::empty(), false, false, false);
+            array.resize(new_length as usize, default_value);
+        } else {
+            unreachable!("expected dense properties");
+        }
+    }
+
+    fn fall_back_to_sparse_properties(&mut self) {
+        let array = if let ArrayProperties::Dense(array) = &self.array_properties {
+            array
+        } else {
+            unreachable!("expected dense properties");
+        };
+
+        let mut sparse_map = HashMap::new();
+
+        for (index, value) in array.iter().enumerate() {
+            if !value.value().is_empty() {
+                sparse_map.insert(index as u32, (*value).clone());
+            }
+        }
+
+        self.array_properties = ArrayProperties::Sparse(sparse_map)
+    }
+
+    pub fn remove_property(&mut self, key: &PropertyKey) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    array[array_index as usize] =
+                        Property::data(Value::empty(), false, false, false);
+                }
+                ArrayProperties::Sparse(sparse_map) => {
+                    sparse_map.remove(&array_index);
+                }
+            }
+
+            return;
+        }
+
+        self.properties.remove(key);
+    }
+
+    pub fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse(sparse_map) => sparse_map.get(&array_index),
+            };
+        }
+
+        self.properties.get(key)
+    }
+
+    pub fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &mut array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse(sparse_map) => sparse_map.get_mut(&array_index),
+            };
+        }
+
+        self.properties.get_mut(key)
+    }
+
+    // Intrinsic creation utilities
+    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
         self.set_property(key, Property::data(value, true, false, true))
     }
 
     pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
         self.set_property(
-            cx.names.length,
+            &cx.names.length(),
             Property::data(Value::smi(length), false, false, true),
         )
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
         self.set_property(
-            cx.names.name,
+            &cx.names.name(),
             Property::data(
                 Value::string(cx.heap.alloc_string(name.to_owned())),
                 false,
@@ -90,7 +217,7 @@ impl OrdinaryObject {
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: &PropertyKey,
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {
@@ -105,7 +232,7 @@ impl OrdinaryObject {
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: &PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Gc<Realm>,
@@ -114,6 +241,19 @@ impl OrdinaryObject {
             name,
             BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
         );
+    }
+}
+
+// Properties keyed by array index. Keep dense and backed by a true array if possible, otherwise
+// switch to sparse array represented by map.
+enum ArrayProperties {
+    Dense(Vec<Property>),
+    Sparse(HashMap<u32, Property>),
+}
+
+impl ArrayProperties {
+    pub const fn new() -> ArrayProperties {
+        Self::Dense(vec![])
     }
 }
 
@@ -169,7 +309,7 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.5 [[GetOwnProperty]]
-    fn get_own_property(&self, key: PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
+    fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self, key).into()
     }
 
@@ -177,19 +317,19 @@ impl Object for OrdinaryObject {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self, key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, key: PropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
         ordinary_has_property(self, key)
     }
 
     // 10.1.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
+    fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
         ordinary_get(cx, self, key, receiver)
     }
 
@@ -197,7 +337,7 @@ impl Object for OrdinaryObject {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: &PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
@@ -205,7 +345,7 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, key: PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
         ordinary_delete(self, key)
     }
 
@@ -256,9 +396,9 @@ impl Object for OrdinaryObject {
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
     object: &OrdinaryObject,
-    key: PropertyKey,
+    key: &PropertyKey,
 ) -> Option<PropertyDescriptor> {
-    match object.properties.get(&key) {
+    match object.get_property(key) {
         None => None,
         Some(property) => {
             if property.value().is_accessor() {
@@ -285,7 +425,7 @@ pub fn ordinary_get_own_property(
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: &mut OrdinaryObject,
-    key: PropertyKey,
+    key: &PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(key));
@@ -305,7 +445,7 @@ pub fn is_compatible_property_descriptor(
     validate_and_apply_property_descriptor(
         cx,
         None,
-        cx.names.empty_string,
+        &cx.names.empty_string(),
         is_extensible,
         desc,
         current_desc,
@@ -316,7 +456,7 @@ pub fn is_compatible_property_descriptor(
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<&mut OrdinaryObject>,
-    key: PropertyKey,
+    key: &PropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -349,7 +489,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.properties.insert(key, property);
+        object.set_property(key, property);
 
         return true;
     }
@@ -382,7 +522,7 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let property = object.properties.get_mut(&key).unwrap();
+                let property = object.get_property_mut(key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
@@ -428,7 +568,7 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let property = object.properties.get_mut(&key).unwrap();
+            let property = object.get_property_mut(key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -465,7 +605,7 @@ pub fn validate_and_apply_property_descriptor(
 }
 
 // 10.1.7.1 OrdinaryHasProperty
-pub fn ordinary_has_property(object: &OrdinaryObject, key: PropertyKey) -> EvalResult<bool> {
+pub fn ordinary_has_property(object: &OrdinaryObject, key: &PropertyKey) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(key));
     if own_property.is_some() {
         return true.into();
@@ -482,7 +622,7 @@ pub fn ordinary_has_property(object: &OrdinaryObject, key: PropertyKey) -> EvalR
 pub fn ordinary_get(
     cx: &mut Context,
     object: &OrdinaryObject,
-    key: PropertyKey,
+    key: &PropertyKey,
     receiver: Value,
 ) -> EvalResult<Value> {
     let desc = maybe!(object.get_own_property(key));
@@ -507,7 +647,7 @@ pub fn ordinary_get(
 pub fn ordinary_set(
     cx: &mut Context,
     object: &mut OrdinaryObject,
-    key: PropertyKey,
+    key: &PropertyKey,
     value: Value,
     receiver: Value,
 ) -> EvalResult<bool> {
@@ -561,13 +701,13 @@ pub fn ordinary_set(
 }
 
 // 10.1.10.1 OrdinaryDelete
-pub fn ordinary_delete(object: &mut OrdinaryObject, key: PropertyKey) -> EvalResult<bool> {
+pub fn ordinary_delete(object: &mut OrdinaryObject, key: &PropertyKey) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(key));
     match desc {
         None => true.into(),
         Some(desc) => {
             if desc.is_configurable() {
-                object.properties.remove(&key);
+                object.remove_property(key);
                 true.into()
             } else {
                 false.into()
@@ -577,19 +717,42 @@ pub fn ordinary_delete(object: &mut OrdinaryObject, key: PropertyKey) -> EvalRes
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(_: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
-    // TODO: Return keys in order of property creation
-    // TODO: Add array index keys
+pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
     let mut keys: Vec<Value> = vec![];
+
+    // Return array index properties in numerical order
+    match &object.array_properties {
+        ArrayProperties::Dense(array) => {
+            for (index, value) in array.iter().enumerate() {
+                if !value.value().is_empty() {
+                    let index_string = cx.heap.alloc_string(index.to_string());
+                    keys.push(Value::string(index_string));
+                }
+            }
+        }
+        ArrayProperties::Sparse(sparse_map) => {
+            // Sparse map is unordered, so first extract and order keys
+            let mut indexes_array = sparse_map.keys().map(|key| *key).collect::<Vec<_>>();
+            indexes_array.sort();
+
+            for index in indexes_array {
+                let index_string = cx.heap.alloc_string(index.to_string());
+                keys.push(Value::string(index_string));
+            }
+        }
+    }
+
+    // TODO: Return string and symbol keys in order of property creation
+
     for property_key in object.properties.keys() {
-        if let PropertyKey::String(str) = property_key {
-            keys.push((*str).into());
+        if property_key.as_symbol().is_none() {
+            keys.push(property_key.non_symbol_to_string(cx).into());
         }
     }
 
     for property_key in object.properties.keys() {
-        if let PropertyKey::Symbol(sym) = property_key {
-            keys.push((*sym).into());
+        if let Some(sym) = property_key.as_symbol() {
+            keys.push(sym.into());
         }
     }
 
@@ -599,9 +762,10 @@ pub fn ordinary_own_property_keys(_: &mut Context, object: &OrdinaryObject) -> V
 // 10.1.12 OrdinaryObjectCreate
 pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
     OrdinaryObject {
-        _vtable: VTABLE,
+        _vtable: OrdinaryObject::VTABLE,
         prototype: Some(proto),
         properties: HashMap::new(),
+        array_properties: ArrayProperties::new(),
         private_properties: HashMap::new(),
         is_extensible: true,
     }
@@ -609,9 +773,10 @@ pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
 
 pub fn ordinary_object_create_optional_proto(prototype: Option<Gc<ObjectValue>>) -> OrdinaryObject {
     OrdinaryObject {
-        _vtable: VTABLE,
+        _vtable: OrdinaryObject::VTABLE,
         prototype,
         properties: HashMap::new(),
+        array_properties: ArrayProperties::new(),
         private_properties: HashMap::new(),
         is_extensible: true,
     }
@@ -638,7 +803,7 @@ pub fn get_prototype_from_constructor(
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Gc<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor.into(), cx.names.prototype));
+    let proto = maybe!(get(cx, constructor.into(), &cx.names.prototype()));
     if proto.is_object() {
         proto.as_object().into()
     } else {

@@ -88,9 +88,9 @@ impl Reference {
     pub fn name_as_property_key(&self) -> PropertyKey {
         match self.base {
             ReferenceBase::Unresolvable { name, .. } | ReferenceBase::Env { name, .. } => {
-                PropertyKey::String(name)
+                PropertyKey::string(name)
             }
-            ReferenceBase::Property { property, .. } => property,
+            ReferenceBase::Property { ref property, .. } => property.clone(),
         }
     }
 
@@ -120,13 +120,13 @@ impl Reference {
             }
             ReferenceBase::Property {
                 object,
-                property,
+                ref property,
                 private_id,
             } => {
                 let base = maybe!(to_object(cx, object));
                 match private_id {
                     Some(private_id) => return private_get(cx, base, private_id),
-                    None => base.get(cx, property, self.get_this_value()),
+                    None => base.get(cx, &property, self.get_this_value()),
                 }
             }
             ReferenceBase::Env { env, name } => env.get_binding_value(cx, name, self.is_strict),
@@ -142,13 +142,19 @@ impl Reference {
                 }
 
                 let global_obj = get_global_object(cx);
-                maybe!(set(cx, global_obj, PropertyKey::String(name), value, false));
+                maybe!(set(
+                    cx,
+                    global_obj,
+                    &PropertyKey::string(name),
+                    value,
+                    false
+                ));
 
                 return ().into();
             }
             ReferenceBase::Property {
                 object,
-                property,
+                ref property,
                 private_id,
             } => {
                 let mut base = maybe!(to_object(cx, object));
@@ -208,7 +214,7 @@ impl Reference {
         Reference {
             base: ReferenceBase::Property {
                 object: base_value,
-                property: PropertyKey::String(private_name),
+                property: PropertyKey::string(private_name),
                 private_id: Some(private_id),
             },
             is_strict: true,

@@ -153,6 +153,7 @@ pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
 
 // 7.1.6 ToInt32
 pub fn to_int32(cx: &mut Context, value: Value) -> EvalResult<i32> {
+    // Fast pass if the value is a smi
     if value.is_smi() {
         return value.as_smi().into();
     }
@@ -181,6 +182,37 @@ pub fn to_int32(cx: &mut Context, value: Value) -> EvalResult<i32> {
     }
 
     (i32_number as i32).into()
+}
+
+// 7.1.7 ToUint32
+pub fn to_uint32(cx: &mut Context, value: Value) -> EvalResult<u32> {
+    // Fast pass if the value is a non-negative smi
+    if value.is_smi() {
+        let i32_value = value.as_smi();
+        if i32_value >= 0 {
+            return (i32_value as u32).into();
+        }
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // All zeros, infinities, and NaNs map to 0
+    if f64_number == 0.0 || !f64_number.is_finite() {
+        return 0.into();
+    }
+
+    // Round float to an integer
+    let mut u32_number = f64::floor(f64::abs(f64_number)) as i64;
+    if f64_number < 0.0 {
+        u32_number = -u32_number;
+    }
+
+    // Compute modulus according to spec
+    let u32_max = u32::MAX as i64 + 1;
+    u32_number = ((u32_number % u32_max) + u32_max) % u32_max;
+
+    (u32_number as u32).into()
 }
 
 // 7.1.4.1.1 StringToNumber

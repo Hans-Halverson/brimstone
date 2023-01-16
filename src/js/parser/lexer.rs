@@ -5,6 +5,7 @@ use super::loc::{Loc, Pos};
 use super::parser::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
 use super::token::Token;
+use super::unicode_tables::{ID_CONTINUE, ID_START};
 
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,
@@ -26,7 +27,7 @@ type LexResult = ParseResult<(Token, Loc)>;
 const EOF_CHAR: char = '\u{ffff}';
 
 /// Can this character appear as the first character of an identifier.
-fn is_id_start_char_ascii(char: char) -> bool {
+fn is_id_start_ascii(char: char) -> bool {
     match char {
         'a'..='z' | 'A'..='Z' | '_' | '$' => true,
         _ => false,
@@ -34,11 +35,31 @@ fn is_id_start_char_ascii(char: char) -> bool {
 }
 
 /// Can this character appear in an identifier (after the first character).
-fn is_id_part_char_ascii(char: char) -> bool {
+fn is_id_continue_ascii(char: char) -> bool {
     match char {
         'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
         _ => false,
     }
+}
+
+#[inline]
+fn is_id_start_unicode(char: char) -> bool {
+    ID_START.contains_char(char)
+}
+
+#[inline]
+fn is_id_continue_unicode(char: char) -> bool {
+    ID_CONTINUE.contains_char(char)
+}
+
+#[inline]
+fn is_continuation_byte(byte: u8) -> bool {
+    (byte & 0xC0) == 0x80
+}
+
+#[inline]
+fn is_ascii(char: char) -> bool {
+    (char as u32) < 0x80
 }
 
 fn is_decimal_digit(char: char) -> bool {
@@ -249,18 +270,12 @@ impl<'a> Lexer<'a> {
             '/' => match self.peek() {
                 '/' => {
                     self.advance2();
-                    self.skip_line_comment();
+                    self.skip_line_comment()?;
                     self.lex_token()
                 }
                 '*' => {
                     self.advance2();
-                    let result_opt = self.skip_block_comment();
-
-                    // Propagate result error up if one exists
-                    if let Some(result) = result_opt {
-                        result?;
-                    }
-
+                    self.skip_block_comment()?;
                     self.lex_token()
                 }
                 '=' => {
@@ -477,35 +492,55 @@ impl<'a> Lexer<'a> {
             '1'..='9' => self.lex_decimal_literal(),
             '"' | '\'' => self.lex_string_literal(),
             EOF_CHAR => self.emit(Token::Eof, start_pos),
-            char if is_id_start_char_ascii(char) => self.lex_identifier_ascii(start_pos),
+            char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
             // Escape sequence at the start of an identifier
-            '\\' => self.lex_identifier_non_ascii(start_pos),
+            '\\' => {
+                let code_point = self.lex_identifier_unicode_escape_sequence()?;
+                if !is_id_start_ascii(code_point) && !is_id_start_unicode(code_point) {
+                    let loc = self.mark_loc(start_pos);
+                    return self.error(loc, ParseError::UnknownToken((code_point as char).into()));
+                }
+
+                self.lex_identifier_non_ascii(start_pos, code_point.into())
+            }
             other => {
-                self.advance();
-                let loc = self.mark_loc(start_pos);
-                self.error(
-                    loc,
-                    ParseError::UnknownToken(((other as u8) as char).into()),
-                )
+                if is_ascii(other) {
+                    self.advance();
+                    let loc = self.mark_loc(start_pos);
+                    self.error(
+                        loc,
+                        ParseError::UnknownToken(((other as u8) as char).into()),
+                    )
+                } else {
+                    let code_point = self.lex_utf8_codepoint()?;
+                    if is_id_start_unicode(code_point) {
+                        self.lex_identifier_non_ascii(start_pos, code_point.into())
+                    } else {
+                        let loc = self.mark_loc(start_pos);
+                        self.error(loc, ParseError::UnknownToken((code_point as char).into()))
+                    }
+                }
             }
         }
     }
 
-    fn skip_line_comment(&mut self) {
+    fn skip_line_comment(&mut self) -> ParseResult<()> {
         loop {
             match self.current {
                 '\n' | '\r' => {
                     self.advance();
                     self.is_new_line_before_current = true;
-                    return;
+                    return Ok(());
                 }
-                EOF_CHAR => return,
-                _ => self.advance(),
+                EOF_CHAR => return Ok(()),
+                _ => {
+                    self.lex_ascii_or_unicode_character()?;
+                }
             }
         }
     }
 
-    fn skip_block_comment(&mut self) -> Option<LexResult> {
+    fn skip_block_comment(&mut self) -> ParseResult<()> {
         loop {
             match self.current {
                 '*' => match self.peek() {
@@ -515,9 +550,8 @@ impl<'a> Lexer<'a> {
                     }
                     EOF_CHAR => {
                         let loc = self.mark_loc(self.pos + 1);
-                        return Some(
-                            self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Divide)),
-                        );
+                        return self
+                            .error(loc, ParseError::ExpectedToken(Token::Eof, Token::Divide));
                     }
                     _ => self.advance(),
                 },
@@ -527,15 +561,85 @@ impl<'a> Lexer<'a> {
                 }
                 EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
-                    return Some(
-                        self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Multiply)),
-                    );
+                    return self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Multiply));
                 }
-                _ => self.advance(),
+                _ => {
+                    self.lex_ascii_or_unicode_character()?;
+                }
             }
         }
 
-        None
+        Ok(())
+    }
+
+    fn error_invalid_unicode(&mut self, start_pos: Pos) -> ParseResult<char> {
+        let loc = self.mark_loc(start_pos);
+        return self.error(loc, ParseError::InvalidUnicode);
+    }
+
+    // Lex a non-ascii unicode codepoint encoded as utf-8
+    fn lex_utf8_codepoint(&mut self) -> ParseResult<char> {
+        let bytes = self.buf[self.pos..].as_bytes();
+        let b1 = bytes[0];
+
+        if (b1 & 0xE0) == 0xC0 && self.pos + 1 < self.buf.len() {
+            // Two byte sequence
+            self.advance2();
+
+            let b2 = bytes[1];
+            if !is_continuation_byte(b2) {
+                return self.error_invalid_unicode(self.pos - 2);
+            }
+
+            let mut codepoint = (b1 as u32 & 0x1F) << 6;
+            codepoint |= b2 as u32 & 0x3F;
+
+            Ok(unsafe { char::from_u32_unchecked(codepoint) })
+        } else if (b1 & 0xF0) == 0xE0 && self.pos + 2 < self.buf.len() {
+            // Three byte sequence
+            self.advance3();
+
+            let b2 = bytes[1];
+            let b3 = bytes[2];
+            if !is_continuation_byte(b2) || !is_continuation_byte(b3) {
+                return self.error_invalid_unicode(self.pos - 3);
+            }
+
+            let mut codepoint = (b1 as u32 & 0x0F) << 12;
+            codepoint |= (b2 as u32 & 0x3F) << 6;
+            codepoint |= b3 as u32 & 0x3F;
+
+            // Char could be in the surrogate pair range, 0xD800 - 0xDFFF, which is not considered
+            // a valid code point.
+            return match char::from_u32(codepoint) {
+                None => self.error_invalid_unicode(self.pos - 3),
+                Some(char) => Ok(char),
+            };
+        } else if (b1 & 0xF8) == 0xF0 && self.pos + 3 < self.buf.len() {
+            // Four byte sequence
+            self.advance4();
+
+            let b2 = bytes[1];
+            let b3 = bytes[2];
+            let b4 = bytes[3];
+            if !is_continuation_byte(b2) || !is_continuation_byte(b3) || !is_continuation_byte(b4) {
+                return self.error_invalid_unicode(self.pos - 4);
+            }
+
+            let mut codepoint = (b1 as u32 & 0x07) << 18;
+            codepoint |= (b2 as u32 & 0x3F) << 12;
+            codepoint |= (b3 as u32 & 0x3F) << 6;
+            codepoint |= b4 as u32 & 0x3F;
+
+            // Char could be above the code point max, 0x10FFFF
+            return match char::from_u32(codepoint) {
+                None => self.error_invalid_unicode(self.pos - 4),
+                Some(char) => Ok(char),
+            };
+        } else {
+            self.advance();
+            return self.error_invalid_unicode(self.pos);
+        }
     }
 
     fn skip_decimal_digits(&mut self) {
@@ -753,9 +857,8 @@ impl<'a> Lexer<'a> {
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
                 quote if quote == quote_char => break,
-                other => {
-                    value.push(other);
-                    self.advance()
+                _ => {
+                    value.push(self.lex_ascii_or_unicode_character()?);
                 }
             }
         }
@@ -763,6 +866,18 @@ impl<'a> Lexer<'a> {
         self.advance();
 
         return self.emit(Token::StringLiteral(value), start_pos);
+    }
+
+    #[inline]
+    fn lex_ascii_or_unicode_character(&mut self) -> ParseResult<char> {
+        if is_ascii(self.current) {
+            let ascii_char = self.current;
+            self.advance();
+            Ok(ascii_char)
+        } else {
+            let code_point = self.lex_utf8_codepoint()?;
+            Ok(code_point)
+        }
     }
 
     // Lex a single unicode escape sequence, called after the '\u' prefix has already been processed
@@ -828,90 +943,131 @@ impl<'a> Lexer<'a> {
         self.advance();
 
         loop {
-            if is_id_part_char_ascii(self.current) {
+            if is_id_continue_ascii(self.current) {
                 self.advance();
                 continue;
-            } else if self.current == '\\' {
-                // Start of an escape sequence, so bail to slow path
-                return self.lex_identifier_non_ascii(start_pos);
+            } else if self.current == '\\' || is_id_continue_unicode(self.current) {
+                // Start of an escape sequence so bail to slow path, copying over ASCII string that
+                // has been created so far.
+                let string_builder = String::from(&self.buf[start_pos..self.pos]);
+                return self.lex_identifier_non_ascii(start_pos, string_builder);
             } else {
                 break;
             }
         }
 
-        match &self.buf[start_pos..self.pos] {
-            "var" => self.emit(Token::Var, start_pos),
-            "let" => self.emit(Token::Let, start_pos),
-            "const" => self.emit(Token::Const, start_pos),
-            "function" => self.emit(Token::Function, start_pos),
-            "async" => self.emit(Token::Async, start_pos),
-            "this" => self.emit(Token::This, start_pos),
-            "if" => self.emit(Token::If, start_pos),
-            "else" => self.emit(Token::Else, start_pos),
-            "switch" => self.emit(Token::Switch, start_pos),
-            "case" => self.emit(Token::Case, start_pos),
-            "default" => self.emit(Token::Default, start_pos),
-            "for" => self.emit(Token::For, start_pos),
-            "of" => self.emit(Token::Of, start_pos),
-            "while" => self.emit(Token::While, start_pos),
-            "do" => self.emit(Token::Do, start_pos),
-            "with" => self.emit(Token::With, start_pos),
-            "return" => self.emit(Token::Return, start_pos),
-            "break" => self.emit(Token::Break, start_pos),
-            "continue" => self.emit(Token::Continue, start_pos),
-            "try" => self.emit(Token::Try, start_pos),
-            "catch" => self.emit(Token::Catch, start_pos),
-            "finally" => self.emit(Token::Finally, start_pos),
-            "throw" => self.emit(Token::Throw, start_pos),
-            "null" => self.emit(Token::Null, start_pos),
-            "true" => self.emit(Token::True, start_pos),
-            "false" => self.emit(Token::False, start_pos),
-            "in" => self.emit(Token::In, start_pos),
-            "instanceof" => self.emit(Token::InstanceOf, start_pos),
-            "new" => self.emit(Token::New, start_pos),
-            "typeof" => self.emit(Token::Typeof, start_pos),
-            "void" => self.emit(Token::Void, start_pos),
-            "delete" => self.emit(Token::Delete, start_pos),
-            "debugger" => self.emit(Token::Debugger, start_pos),
-            "static" => self.emit(Token::Static, start_pos),
-            "from" => self.emit(Token::From, start_pos),
-            "as" => self.emit(Token::As, start_pos),
-            "class" => self.emit(Token::Class, start_pos),
-            "extends" => self.emit(Token::Extends, start_pos),
-            "super" => self.emit(Token::Super, start_pos),
-            "get" => self.emit(Token::Get, start_pos),
-            "set" => self.emit(Token::Set, start_pos),
-            id => self.emit(Token::Identifier(String::from(id)), start_pos),
+        let id_string = &self.buf[start_pos..self.pos];
+
+        if let Some(keyword_token) = self.id_to_keyword(id_string) {
+            self.emit(keyword_token, start_pos)
+        } else {
+            self.emit(Token::Identifier(String::from(id_string)), start_pos)
         }
     }
 
-    // Slow path for lexing an identifier with at least one unicode character or escape sequence
-    fn lex_identifier_non_ascii(&mut self, start_pos: Pos) -> LexResult {
-        // Copy over the ASCII part into the string builder
-        let mut string_builder = String::from(&self.buf[start_pos..self.pos]);
-
+    // Slow path for lexing an identifier with at least one unicode character or escape sequence.
+    // Input the string that has been created so far before falling back to this slow path.
+    fn lex_identifier_non_ascii(
+        &mut self,
+        start_pos: Pos,
+        mut string_builder: String,
+    ) -> LexResult {
         loop {
-            if is_id_part_char_ascii(self.current) {
-                string_builder.push(self.current);
-                self.advance();
-            } else if self.current == '\\' {
-                let escape_start_pos = self.pos;
-                self.advance();
-
-                if self.current == 'u' {
+            // Check if ASCII
+            if is_ascii(self.current) {
+                if is_id_continue_ascii(self.current) {
+                    string_builder.push(self.current);
                     self.advance();
+                } else if self.current == '\\' {
+                    let code_point = self.lex_identifier_unicode_escape_sequence()?;
+                    if !is_id_continue_ascii(code_point) && !is_id_continue_unicode(code_point) {
+                        let loc = self.mark_loc(self.pos);
+                        return self.error(loc, ParseError::UnknownToken(code_point.into()));
+                    }
 
-                    let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
                     string_builder.push(code_point);
                 } else {
-                    let loc = self.mark_loc(escape_start_pos);
-                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                    break;
                 }
             } else {
-                break;
+                // Otherwise must be a utf-8 encoded codepoint
+                let code_point = self.lex_utf8_codepoint()?;
+                if is_id_continue_unicode(code_point) {
+                    string_builder.push(code_point);
+                } else {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnknownToken(code_point.into()));
+                }
             }
         }
 
-        self.emit(Token::Identifier(string_builder), start_pos)
+        // Escape characters can be used in keywords
+        if let Some(keyword_token) = self.id_to_keyword(&string_builder) {
+            self.emit(keyword_token, start_pos)
+        } else {
+            self.emit(Token::Identifier(string_builder), start_pos)
+        }
+    }
+
+    fn lex_identifier_unicode_escape_sequence(&mut self) -> ParseResult<char> {
+        let escape_start_pos = self.pos;
+        self.advance();
+
+        if self.current == 'u' {
+            self.advance();
+
+            let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
+            Ok(code_point)
+        } else {
+            let loc = self.mark_loc(escape_start_pos);
+            self.error(loc, ParseError::MalformedEscapeSeqence)
+        }
+    }
+
+    fn id_to_keyword(&mut self, id_string: &str) -> Option<Token> {
+        match id_string {
+            "var" => Some(Token::Var),
+            "let" => Some(Token::Let),
+            "const" => Some(Token::Const),
+            "function" => Some(Token::Function),
+            "async" => Some(Token::Async),
+            "this" => Some(Token::This),
+            "if" => Some(Token::If),
+            "else" => Some(Token::Else),
+            "switch" => Some(Token::Switch),
+            "case" => Some(Token::Case),
+            "default" => Some(Token::Default),
+            "for" => Some(Token::For),
+            "of" => Some(Token::Of),
+            "while" => Some(Token::While),
+            "do" => Some(Token::Do),
+            "with" => Some(Token::With),
+            "return" => Some(Token::Return),
+            "break" => Some(Token::Break),
+            "continue" => Some(Token::Continue),
+            "try" => Some(Token::Try),
+            "catch" => Some(Token::Catch),
+            "finally" => Some(Token::Finally),
+            "throw" => Some(Token::Throw),
+            "null" => Some(Token::Null),
+            "true" => Some(Token::True),
+            "false" => Some(Token::False),
+            "in" => Some(Token::In),
+            "instanceof" => Some(Token::InstanceOf),
+            "new" => Some(Token::New),
+            "typeof" => Some(Token::Typeof),
+            "void" => Some(Token::Void),
+            "delete" => Some(Token::Delete),
+            "debugger" => Some(Token::Debugger),
+            "static" => Some(Token::Static),
+            "from" => Some(Token::From),
+            "as" => Some(Token::As),
+            "class" => Some(Token::Class),
+            "extends" => Some(Token::Extends),
+            "super" => Some(Token::Super),
+            "get" => Some(Token::Get),
+            "set" => Some(Token::Set),
+            _ => None,
+        }
     }
 }

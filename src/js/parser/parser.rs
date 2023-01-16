@@ -14,6 +14,7 @@ pub enum ParseError {
     UnknownToken(String),
     UnexpectedToken(Token),
     ExpectedToken(Token, Token),
+    InvalidUnicode,
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
@@ -50,6 +51,9 @@ impl fmt::Display for ParseError {
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),
             ParseError::ExpectedToken(actual, expected) => {
                 write!(f, "Unexpected token {}, expected {}", actual, expected)
+            }
+            ParseError::InvalidUnicode => {
+                write!(f, "Invalid utf-8 sequence")
             }
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),

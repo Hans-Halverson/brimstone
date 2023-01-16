@@ -8,6 +8,7 @@ mod printer;
 mod scope;
 pub mod source;
 mod token;
+mod unicode_tables;
 
 pub use parser::{
     parse_script, LocalizedParseError, LocalizedParseErrors, ParseError, ParseResult,

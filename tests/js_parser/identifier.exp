@@ -40,11 +40,11 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "10:0-10:26",
+      loc: "10:0-10:24",
       kind: {
         type: "Identifier",
-        loc: "10:0-10:25",
-        name: "abc􏿿",
+        loc: "10:0-10:23",
+        name: "abcჿ",
       },
     },
     {

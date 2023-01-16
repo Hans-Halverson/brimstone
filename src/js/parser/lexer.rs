@@ -137,10 +137,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn save(&self) -> SavedLexerState {
-        SavedLexerState {
-            current: self.current,
-            pos: self.pos,
-        }
+        SavedLexerState { current: self.current, pos: self.pos }
     }
 
     pub fn restore(&mut self, save_state: &SavedLexerState) {
@@ -202,10 +199,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
-        Loc {
-            start: start_pos,
-            end: self.pos,
-        }
+        Loc { start: start_pos, end: self.pos }
     }
 
     fn emit(&self, token: Token, start_pos: Pos) -> LexResult {
@@ -214,10 +208,7 @@ impl<'a> Lexer<'a> {
 
     fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
         let source = (*self.source).clone();
-        Err(LocalizedParseError {
-            error,
-            source_loc: Some((loc, source)),
-        })
+        Err(LocalizedParseError { error, source_loc: Some((loc, source)) })
     }
 
     pub fn next(&mut self) -> LexResult {
@@ -546,10 +537,7 @@ impl<'a> Lexer<'a> {
                     if is_ascii(other) {
                         self.advance();
                         let loc = self.mark_loc(start_pos);
-                        self.error(
-                            loc,
-                            ParseError::UnknownToken(((other as u8) as char).into()),
-                        )
+                        self.error(loc, ParseError::UnknownToken(((other as u8) as char).into()))
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
                         if is_id_start_unicode(code_point) {

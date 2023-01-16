@@ -53,9 +53,7 @@ fn visit_directory(env: &mut TestEnv, path: &Path) -> GenericResult {
 fn process_snapshot_test_file(env: &mut TestEnv, path: &Path) -> GenericResult {
     let exp_path = path.with_extension("exp");
 
-    let source = Rc::new(js::parser::source::Source::new_from_file(
-        path.to_str().unwrap(),
-    )?);
+    let source = Rc::new(js::parser::source::Source::new_from_file(path.to_str().unwrap())?);
     let ast = js::parser::parse_script(&source)?;
     let actual = js::parser::print_program(&ast, &source);
 

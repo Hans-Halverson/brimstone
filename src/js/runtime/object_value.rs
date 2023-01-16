@@ -182,10 +182,7 @@ impl Deref for Gc<ObjectValue> {
             let data = self.as_ptr() as *const ObjectValue;
             let object_value = data.read();
 
-            let trait_object = ObjectTraitObject {
-                data,
-                vtable: object_value.vtable,
-            };
+            let trait_object = ObjectTraitObject { data, vtable: object_value.vtable };
 
             transmute_copy::<ObjectTraitObject, &dyn Object>(&trait_object)
         }
@@ -198,10 +195,7 @@ impl DerefMut for Gc<ObjectValue> {
             let data = self.as_ptr() as *const ObjectValue;
             let object_value = data.read();
 
-            let trait_object = ObjectTraitObject {
-                data,
-                vtable: object_value.vtable,
-            };
+            let trait_object = ObjectTraitObject { data, vtable: object_value.vtable };
 
             transmute_copy::<ObjectTraitObject, &mut dyn Object>(&trait_object)
         }

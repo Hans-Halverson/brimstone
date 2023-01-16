@@ -30,11 +30,7 @@ impl ObjectEnvironment {
         is_with_environment: bool,
         outer: Option<Gc<dyn Environment>>,
     ) -> ObjectEnvironment {
-        ObjectEnvironment {
-            binding_object,
-            is_with_environment,
-            outer,
-        }
+        ObjectEnvironment { binding_object, is_with_environment, outer }
     }
 }
 
@@ -76,12 +72,7 @@ impl Environment for ObjectEnvironment {
         can_delete: bool,
     ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
-        define_property_or_throw(
-            cx,
-            self.binding_object,
-            &PropertyKey::string(name),
-            prop_desc,
-        )
+        define_property_or_throw(cx, self.binding_object, &PropertyKey::string(name), prop_desc)
     }
 
     // 9.1.1.2.3 CreateImmutableBinding

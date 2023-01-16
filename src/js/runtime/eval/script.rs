@@ -88,10 +88,7 @@ fn global_declaration_instantiation(
             if maybe!(env.has_restricted_global_property(name_value)) {
                 return syntax_error_(
                     cx,
-                    &format!(
-                        "cannot redeclare restricted global property {}",
-                        name_value.str()
-                    ),
+                    &format!("cannot redeclare restricted global property {}", name_value.str()),
                 );
             }
 

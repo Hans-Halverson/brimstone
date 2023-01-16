@@ -222,10 +222,9 @@ impl OrdinaryObject {
         realm: Gc<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
-        let accessor_value = cx.heap.alloc(AccessorValue {
-            get: Some(getter.into()),
-            set: None,
-        });
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter.into()), set: None });
         self.set_property(name, Property::accessor(accessor_value.into(), false, true));
     }
 
@@ -476,10 +475,9 @@ pub fn validate_and_apply_property_descriptor(
         let is_configurable = desc.is_configurable.unwrap_or(false);
 
         let property = if desc.is_accessor_descriptor() {
-            let accessor_value = cx.heap.alloc(AccessorValue {
-                get: desc.get,
-                set: desc.set,
-            });
+            let accessor_value = cx
+                .heap
+                .alloc(AccessorValue { get: desc.get, set: desc.set });
 
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
         } else {
@@ -527,10 +525,7 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
                 } else {
-                    let accessor_value = cx.heap.alloc(AccessorValue {
-                        get: None,
-                        set: None,
-                    });
+                    let accessor_value = cx.heap.alloc(AccessorValue { get: None, set: None });
                     property.set_value(accessor_value.into());
                 }
             }
@@ -636,9 +631,9 @@ pub fn ordinary_get(
         }
         Some(desc) if desc.is_data_descriptor() => desc.value.unwrap().into(),
         Some(PropertyDescriptor { get: None, .. }) => Value::undefined().into(),
-        Some(PropertyDescriptor {
-            get: Some(getter), ..
-        }) => call_object(cx, getter, receiver, &[]),
+        Some(PropertyDescriptor { get: Some(getter), .. }) => {
+            call_object(cx, getter, receiver, &[])
+        }
     }
 }
 
@@ -680,10 +675,7 @@ pub fn ordinary_set(
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
                 false.into()
             }
-            Some(PropertyDescriptor {
-                is_writable: Some(false),
-                ..
-            }) => false.into(),
+            Some(PropertyDescriptor { is_writable: Some(false), .. }) => false.into(),
             Some(_) => {
                 let value_desc = PropertyDescriptor::data_value_only(value);
                 receiver.define_own_property(cx, key, value_desc)
@@ -788,11 +780,7 @@ pub fn ordinary_create_from_constructor(
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<OrdinaryObject> {
-    let proto = maybe!(get_prototype_from_constructor(
-        cx,
-        constructor,
-        intrinsic_default_proto
-    ));
+    let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
 
     ordinary_object_create(proto).into()
 }

@@ -21,12 +21,7 @@ impl Property {
         is_enumerable: bool,
         is_configurable: bool,
     ) -> Property {
-        Property {
-            value,
-            is_writable,
-            is_enumerable,
-            is_configurable,
-        }
+        Property { value, is_writable, is_enumerable, is_configurable }
     }
 
     pub const fn accessor(
@@ -83,24 +78,17 @@ pub struct PrivateProperty {
 
 impl PrivateProperty {
     pub fn field(value: Value) -> PrivateProperty {
-        PrivateProperty {
-            kind: PrivatePropertyKind::Field,
-            value,
-        }
+        PrivateProperty { kind: PrivatePropertyKind::Field, value }
     }
 
     pub fn method(method: Gc<ObjectValue>) -> PrivateProperty {
-        PrivateProperty {
-            kind: PrivatePropertyKind::Method,
-            value: method.into(),
-        }
+        PrivateProperty { kind: PrivatePropertyKind::Method, value: method.into() }
     }
 
     pub fn getter(cx: &mut Context, getter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = cx.heap.alloc(AccessorValue {
-            get: Some(getter),
-            set: None,
-        });
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter), set: None });
         PrivateProperty {
             kind: PrivatePropertyKind::Accessor,
             value: accessor_value.into(),
@@ -108,10 +96,9 @@ impl PrivateProperty {
     }
 
     pub fn setter(cx: &mut Context, setter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = cx.heap.alloc(AccessorValue {
-            get: None,
-            set: Some(setter),
-        });
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: None, set: Some(setter) });
         PrivateProperty {
             kind: PrivatePropertyKind::Accessor,
             value: accessor_value.into(),
@@ -146,10 +133,7 @@ impl PrivateProperty {
 
 impl Clone for PrivateProperty {
     fn clone(&self) -> PrivateProperty {
-        PrivateProperty {
-            kind: self.kind,
-            value: self.value,
-        }
+        PrivateProperty { kind: self.kind, value: self.value }
     }
 }
 

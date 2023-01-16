@@ -46,13 +46,7 @@ impl ObjectConstructor {
             ),
         );
 
-        func.intrinsic_func(
-            cx,
-            &cx.names.define_property(),
-            Self::define_property,
-            3,
-            realm,
-        );
+        func.intrinsic_func(cx, &cx.names.define_property(), Self::define_property, 3, realm);
         func.intrinsic_func(
             cx,
             &cx.names.get_own_property_descriptor(),
@@ -115,12 +109,7 @@ impl ObjectConstructor {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = maybe!(to_property_descriptor(cx, get_argument(arguments, 2)));
 
-        maybe!(define_property_or_throw(
-            cx,
-            object.as_object(),
-            &property_key,
-            desc,
-        ));
+        maybe!(define_property_or_throw(cx, object.as_object(), &property_key, desc,));
 
         object.into()
     }

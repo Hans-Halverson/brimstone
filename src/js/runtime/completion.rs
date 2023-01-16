@@ -27,47 +27,27 @@ pub const EMPTY_LABEL: u16 = 0;
 impl Completion {
     #[inline]
     pub const fn normal(value: Value) -> Completion {
-        Completion {
-            kind: CompletionKind::Normal,
-            label: EMPTY_LABEL,
-            value,
-        }
+        Completion { kind: CompletionKind::Normal, label: EMPTY_LABEL, value }
     }
 
     #[inline]
     pub const fn throw(value: Value) -> Completion {
-        Completion {
-            kind: CompletionKind::Throw,
-            label: EMPTY_LABEL,
-            value,
-        }
+        Completion { kind: CompletionKind::Throw, label: EMPTY_LABEL, value }
     }
 
     #[inline]
     pub const fn return_(value: Value) -> Completion {
-        Completion {
-            kind: CompletionKind::Return,
-            label: EMPTY_LABEL,
-            value,
-        }
+        Completion { kind: CompletionKind::Return, label: EMPTY_LABEL, value }
     }
 
     #[inline]
     pub const fn break_(label: LabelId) -> Completion {
-        Completion {
-            kind: CompletionKind::Break,
-            label,
-            value: Value::empty(),
-        }
+        Completion { kind: CompletionKind::Break, label, value: Value::empty() }
     }
 
     #[inline]
     pub const fn continue_(label: LabelId) -> Completion {
-        Completion {
-            kind: CompletionKind::Continue,
-            label,
-            value: Value::empty(),
-        }
+        Completion { kind: CompletionKind::Continue, label, value: Value::empty() }
     }
 
     #[inline]

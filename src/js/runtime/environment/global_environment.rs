@@ -147,10 +147,7 @@ impl Environment for GlobalEnvironment {
             return self.decl_env.delete_binding(cx, name);
         }
 
-        if maybe!(has_own_property(
-            self.object_env.binding_object,
-            &PropertyKey::string(name)
-        )) {
+        if maybe!(has_own_property(self.object_env.binding_object, &PropertyKey::string(name))) {
             let status = maybe!(self.object_env.delete_binding(cx, name));
             if status {
                 self.var_names.remove(&name);
@@ -297,12 +294,7 @@ impl GlobalEnvironment {
             PropertyDescriptor::data_value_only(value)
         };
 
-        maybe!(define_property_or_throw(
-            cx,
-            global_object,
-            &name_key,
-            prop_desc
-        ));
+        maybe!(define_property_or_throw(cx, global_object, &name_key, prop_desc));
         maybe!(set(cx, global_object, &name_key, value, false));
 
         if !(self.var_names.contains(&name)) {

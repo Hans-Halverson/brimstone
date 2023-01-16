@@ -1,0 +1,8 @@
+# Default line width
+max_width = 100
+
+# Adjust defaults to break expressions that fit on one line less often
+fn_call_width = 80
+attr_fn_like_width = 80
+struct_lit_width = 60
+struct_variant_width = 60

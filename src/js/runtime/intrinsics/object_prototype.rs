@@ -36,10 +36,8 @@ impl ObjectPrototype {
 
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<ObjectPrototype> {
-        let object_prototype = ObjectPrototype {
-            _vtable: Self::VTABLE,
-            object: OrdinaryObject::new_uninit(),
-        };
+        let object_prototype =
+            ObjectPrototype { _vtable: Self::VTABLE, object: OrdinaryObject::new_uninit() };
         cx.heap.alloc(object_prototype)
     }
 

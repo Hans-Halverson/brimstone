@@ -59,21 +59,9 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
         false,
         true
     );
-    value_prop!(
-        &cx.names.infinity(),
-        Value::number(f64::INFINITY),
-        false,
-        false,
-        false
-    );
+    value_prop!(&cx.names.infinity(), Value::number(f64::INFINITY), false, false, false);
     value_prop!(&cx.names.nan(), Value::nan(), false, false, false);
-    value_prop!(
-        &cx.names.undefined(),
-        Value::undefined(),
-        false,
-        false,
-        false
-    );
+    value_prop!(&cx.names.undefined(), Value::undefined(), false, false, false);
 
     // 19.2 Function Properties of the Global Object
     intrinsic_prop!(&cx.names.eval(), Eval);

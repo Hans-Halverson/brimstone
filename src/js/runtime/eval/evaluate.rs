@@ -36,9 +36,7 @@ pub fn evaluate(
             let value = completion.value();
             let string_value = to_console_string(cx, value);
 
-            return Err(EvalError {
-                message: string_value,
-            });
+            return Err(EvalError { message: string_value });
         }
         CompletionKind::Return => panic!("Cannot return at top level"),
         CompletionKind::Break => panic!("Cannot break at top level"),

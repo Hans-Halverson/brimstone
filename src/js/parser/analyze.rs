@@ -50,11 +50,7 @@ pub struct PrivateNameUsage {
 impl PrivateNameUsage {
     // A generic usage marking that a private name was used
     pub fn used() -> PrivateNameUsage {
-        PrivateNameUsage {
-            is_static: false,
-            has_getter: true,
-            has_setter: true,
-        }
+        PrivateNameUsage { is_static: false, has_getter: true, has_setter: true }
     }
 }
 
@@ -467,11 +463,7 @@ impl Analyzer {
         let mut private_names = HashMap::new();
         for element in &class.body {
             match element {
-                ClassElement::Property(ClassProperty {
-                    is_private: true,
-                    key,
-                    ..
-                }) => {
+                ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
                     let private_id = key.to_id();
 
                     // If this name has been used at all so far it is a duplicate name
@@ -511,23 +503,11 @@ impl Analyzer {
                         None => {
                             let is_static = *is_static;
                             let usage = if *kind == ClassMethodKind::Get {
-                                PrivateNameUsage {
-                                    is_static,
-                                    has_getter: true,
-                                    has_setter: false,
-                                }
+                                PrivateNameUsage { is_static, has_getter: true, has_setter: false }
                             } else if *kind == ClassMethodKind::Set {
-                                PrivateNameUsage {
-                                    is_static,
-                                    has_getter: false,
-                                    has_setter: true,
-                                }
+                                PrivateNameUsage { is_static, has_getter: false, has_setter: true }
                             } else {
-                                PrivateNameUsage {
-                                    is_static,
-                                    has_getter: true,
-                                    has_setter: true,
-                                }
+                                PrivateNameUsage { is_static, has_getter: true, has_setter: true }
                             };
 
                             private_names.insert(private_id.name.clone(), usage);
@@ -704,10 +684,7 @@ impl Analyzer {
         // Annex B: Always error on labeled function declarations in strict mode
         if self.is_in_strict_mode_context() {
             if let Statement::FuncDecl(_) = stmt.body.as_ref() {
-                self.emit_error(
-                    stmt.label.label.loc,
-                    ParseError::InvalidLabeledFunction(true),
-                );
+                self.emit_error(stmt.label.label.loc, ParseError::InvalidLabeledFunction(true));
             }
         }
 

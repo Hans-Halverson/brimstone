@@ -54,11 +54,7 @@ impl StringObject {
             Property::data((length as f64).into(), false, false, false),
         );
 
-        StringObject {
-            _vtable: Self::VTABLE,
-            object,
-            string_data,
-        }
+        StringObject { _vtable: Self::VTABLE, object, string_data }
     }
 
     pub fn new_from_value(cx: &mut Context, string_data: Gc<StringValue>) -> Gc<StringObject> {

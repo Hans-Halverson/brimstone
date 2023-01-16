@@ -322,9 +322,9 @@ pub fn instantiate_ordinary_function_expression(
             closure
         }
         Some(id) => {
-            let mut func_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(
-                current_context.lexical_env,
-            )));
+            let mut func_env = cx
+                .heap
+                .alloc(DeclarativeEnvironment::new(Some(current_context.lexical_env)));
 
             let name_value = id_string_value(cx, id);
             must!(func_env.create_immutable_binding(cx, name_value, false));

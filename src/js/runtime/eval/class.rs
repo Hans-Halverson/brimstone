@@ -126,12 +126,10 @@ pub fn class_definition_evaluation(
     // Add private fields to class's private environment
     for element in &class.body {
         match element {
-            ast::ClassElement::Method(ast::ClassMethod {
-                key, is_private, ..
-            })
-            | ast::ClassElement::Property(ast::ClassProperty {
-                key, is_private, ..
-            }) if *is_private => {
+            ast::ClassElement::Method(ast::ClassMethod { key, is_private, .. })
+            | ast::ClassElement::Property(ast::ClassProperty { key, is_private, .. })
+                if *is_private =>
+            {
                 let id = key.to_id();
                 if !class_private_env.names.contains_key(&id.name) {
                     class_private_env.add_private_name(id.name.clone())
@@ -186,12 +184,7 @@ pub fn class_definition_evaluation(
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {
         let constructor = constructor.as_ref();
-        let func = define_method(
-            cx,
-            proto.into(),
-            &constructor.value,
-            Some(constructor_parent),
-        );
+        let func = define_method(cx, proto.into(), &constructor.value, Some(constructor_parent));
 
         make_class_constructor(func);
         set_function_name(cx, func.into(), class_name, None);
@@ -265,10 +258,7 @@ pub fn class_definition_evaluation(
                         )))
                     };
 
-                    EvalResult::Ok(ClassFieldDefinition {
-                        name: field_def_name,
-                        initializer,
-                    })
+                    EvalResult::Ok(ClassFieldDefinition { name: field_def_name, initializer })
                 })();
 
                 let field_def = match result {
@@ -438,12 +428,7 @@ fn binding_class_declaration_evaluation(
         ));
 
         let lexical_env = cx.current_execution_context().lexical_env;
-        maybe!(initialize_bound_name(
-            cx,
-            name_value,
-            value.into(),
-            Some(lexical_env)
-        ));
+        maybe!(initialize_bound_name(cx, name_value, value.into(), Some(lexical_env)));
 
         value.into()
     } else {
@@ -468,12 +453,7 @@ pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult
         ));
         value.into()
     } else {
-        let value = maybe!(class_definition_evaluation(
-            cx,
-            class,
-            None,
-            &cx.names.empty_string()
-        ));
+        let value = maybe!(class_definition_evaluation(cx, class, None, &cx.names.empty_string()));
         value.into()
     }
 }

@@ -39,10 +39,7 @@ macro_rules! create_native_error {
             const VTABLE: *const () = extract_object_vtable::<$native_error>();
 
             fn new(object: OrdinaryObject) -> $native_error {
-                $native_error {
-                    _vtable: Self::VTABLE,
-                    object,
-                }
+                $native_error { _vtable: Self::VTABLE, object }
             }
 
             pub fn new_with_message(cx: &mut Context, message: String) -> Gc<$native_error> {
@@ -116,11 +113,8 @@ macro_rules! create_native_error {
                     cx.current_execution_context().function.unwrap()
                 };
 
-                let ordinary_object = maybe!(ordinary_create_from_constructor(
-                    cx,
-                    new_target,
-                    Intrinsic::$prototype
-                ));
+                let ordinary_object =
+                    maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::$prototype));
                 let object: Gc<ObjectValue> =
                     cx.heap.alloc($native_error::new(ordinary_object)).into();
 
@@ -162,34 +156,14 @@ macro_rules! create_native_error {
     };
 }
 
-create_native_error!(
-    EvalError,
-    eval_error,
-    EvalErrorPrototype,
-    EvalErrorConstructor
-);
-create_native_error!(
-    RangeError,
-    range_error,
-    RangeErrorPrototype,
-    RangeErrorConstructor
-);
+create_native_error!(EvalError, eval_error, EvalErrorPrototype, EvalErrorConstructor);
+create_native_error!(RangeError, range_error, RangeErrorPrototype, RangeErrorConstructor);
 create_native_error!(
     ReferenceError,
     reference_error,
     ReferenceErrorPrototype,
     ReferenceErrorConstructor
 );
-create_native_error!(
-    SyntaxError,
-    syntax_error,
-    SyntaxErrorPrototype,
-    SyntaxErrorConstructor
-);
-create_native_error!(
-    TypeError,
-    type_error,
-    TypeErrorPrototype,
-    TypeErrorConstructor
-);
+create_native_error!(SyntaxError, syntax_error, SyntaxErrorPrototype, SyntaxErrorConstructor);
+create_native_error!(TypeError, type_error, TypeErrorPrototype, TypeErrorConstructor);
 create_native_error!(URIError, uri_error, URIErrorPrototype, URIErrorConstructor);

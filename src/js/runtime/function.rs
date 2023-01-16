@@ -450,24 +450,14 @@ pub fn make_constructor(
             let prototype = cx.heap.alloc(ordinary_object).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
-            must!(define_property_or_throw(
-                cx,
-                prototype,
-                &cx.names.constructor(),
-                desc
-            ));
+            must!(define_property_or_throw(cx, prototype, &cx.names.constructor(), desc));
 
             prototype
         }
     };
 
     let desc = PropertyDescriptor::data(prototype.into(), writable_prototype, false, false);
-    must!(define_property_or_throw(
-        cx,
-        func.into(),
-        &cx.names.prototype(),
-        desc
-    ));
+    must!(define_property_or_throw(cx, func.into(), &cx.names.prototype(), desc));
 }
 
 // 10.2.6 MakeClassConstructor

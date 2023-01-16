@@ -42,11 +42,7 @@ impl NumberObject {
     const VTABLE: *const () = extract_object_vtable::<NumberObject>();
 
     pub fn new(object: OrdinaryObject, number_data: f64) -> NumberObject {
-        NumberObject {
-            _vtable: Self::VTABLE,
-            object,
-            number_data,
-        }
+        NumberObject { _vtable: Self::VTABLE, object, number_data }
     }
 
     pub fn new_from_value(cx: &mut Context, number_data: f64) -> Gc<NumberObject> {
@@ -124,10 +120,7 @@ impl NumberConstructor {
             &cx.names.min_value(),
             Property::data(Value::number(f64::MIN), false, false, false),
         );
-        func.set_property(
-            &cx.names.nan(),
-            Property::data(Value::nan(), false, false, false),
-        );
+        func.set_property(&cx.names.nan(), Property::data(Value::nan(), false, false, false));
         func.set_property(
             &cx.names.negative_infinity(),
             Property::data(Value::number(f64::NEG_INFINITY), false, false, false),

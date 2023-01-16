@@ -59,10 +59,7 @@ impl fmt::Display for ParseError {
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
             ParseError::ThrowArgumentOnNewLine => {
-                write!(
-                    f,
-                    "No line break is allowed between 'throw' and its expression"
-                )
+                write!(f, "No line break is allowed between 'throw' and its expression")
             }
             ParseError::AmbiguousLetBracket => {
                 write!(f, "Expression cannot start with ambiguous `let [`")
@@ -116,10 +113,7 @@ pub struct LocalizedParseError {
 
 impl LocalizedParseError {
     fn new_without_loc(error: ParseError) -> LocalizedParseError {
-        LocalizedParseError {
-            error,
-            source_loc: None,
-        }
+        LocalizedParseError { error, source_loc: None }
     }
 }
 
@@ -132,11 +126,7 @@ impl fmt::Display for LocalizedParseError {
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
                 let (line, col) = find_line_col_for_pos(loc.start, offsets);
-                write!(
-                    f,
-                    "SyntaxError: {}:{}:{} {}",
-                    source.file_path, line, col, self.error
-                )
+                write!(f, "SyntaxError: {}:{}:{} {}", source.file_path, line, col, self.error)
             }
         }
     }
@@ -292,10 +282,7 @@ impl<'a> Parser<'a> {
 
     pub fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
         let source = (*self.lexer.source).clone();
-        Err(LocalizedParseError {
-            error,
-            source_loc: Some((loc, source)),
-        })
+        Err(LocalizedParseError { error, source_loc: Some((loc, source)) })
     }
 
     fn save(&self) -> ParserSaveState {
@@ -337,10 +324,7 @@ impl<'a> Parser<'a> {
 
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
-            return self.error(
-                self.loc,
-                ParseError::ExpectedToken(self.token.clone(), token),
-            );
+            return self.error(self.loc, ParseError::ExpectedToken(self.token.clone(), token));
         }
 
         self.advance()?;
@@ -357,10 +341,7 @@ impl<'a> Parser<'a> {
         actual: &Token,
         expected: &Token,
     ) -> ParseResult<T> {
-        self.error(
-            loc,
-            ParseError::ExpectedToken(actual.clone(), expected.clone()),
-        )
+        self.error(loc, ParseError::ExpectedToken(actual.clone(), expected.clone()))
     }
 
     #[inline]
@@ -369,10 +350,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
-        Loc {
-            start: start_pos,
-            end: self.prev_loc.end,
-        }
+        Loc { start: start_pos, end: self.prev_loc.end }
     }
 
     // Expect a semicolon, or insert one via automatic semicolon insertion if possible. Error if
@@ -388,10 +366,7 @@ impl<'a> Parser<'a> {
                 if self.lexer.is_new_line_before_current() {
                     Ok(())
                 } else {
-                    self.error(
-                        self.loc,
-                        ParseError::ExpectedToken(other.clone(), Token::Semicolon),
-                    )
+                    self.error(self.loc, ParseError::ExpectedToken(other.clone(), Token::Semicolon))
                 }
             }
         }
@@ -592,11 +567,7 @@ impl<'a> Parser<'a> {
 
             let loc = self.mark_loc(start_pos);
 
-            declarations.push(VariableDeclarator {
-                loc,
-                id: p(id),
-                init,
-            });
+            declarations.push(VariableDeclarator { loc, id: p(id), init });
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -611,11 +582,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(VariableDeclaration {
-            loc,
-            kind,
-            declarations,
-        })
+        Ok(VariableDeclaration { loc, kind, declarations })
     }
 
     fn parse_function(&mut self, is_decl: bool) -> ParseResult<Function> {
@@ -703,11 +670,7 @@ impl<'a> Parser<'a> {
         let is_strict_mode = self.in_strict_mode;
         self.in_strict_mode = old_in_strict_mode;
 
-        Ok((
-            Block::new(loc, body),
-            has_use_strict_directive,
-            is_strict_mode,
-        ))
+        Ok((Block::new(loc, body), has_use_strict_directive, is_strict_mode))
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -744,12 +707,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::If(IfStatement {
-            loc,
-            test,
-            conseq,
-            altern,
-        }))
+        Ok(Statement::If(IfStatement { loc, test, conseq, altern }))
     }
 
     fn parse_switch_statement(&mut self) -> ParseResult<Statement> {
@@ -797,11 +755,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::Switch(SwitchStatement::new(
-            loc,
-            discriminant,
-            cases,
-        )))
+        Ok(Statement::Switch(SwitchStatement::new(loc, discriminant, cases)))
     }
 
     fn parse_any_for_statement(&mut self) -> ParseResult<Statement> {
@@ -915,13 +869,7 @@ impl<'a> Parser<'a> {
         let body = p(self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::For(ForStatement {
-            loc,
-            init,
-            test,
-            update,
-            body,
-        }))
+        Ok(Statement::For(ForStatement { loc, init, test, update, body }))
     }
 
     fn parse_for_each_statement(
@@ -1050,12 +998,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::Try(TryStatement {
-            loc,
-            block,
-            handler,
-            finalizer,
-        }))
+        Ok(Statement::Try(TryStatement { loc, block, handler, finalizer }))
     }
 
     fn parse_throw_statement(&mut self) -> ParseResult<Statement> {
@@ -1138,10 +1081,7 @@ impl<'a> Parser<'a> {
 
             let loc = self.mark_loc(start_pos);
 
-            Ok(p(Expression::Sequence(SequenceExpression {
-                loc,
-                expressions,
-            })))
+            Ok(p(Expression::Sequence(SequenceExpression { loc, expressions })))
         } else {
             Ok(expr)
         }
@@ -1189,12 +1129,7 @@ impl<'a> Parser<'a> {
                 let right = self.parse_assignment_expression()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::Assign(AssignmentExpression {
-                    loc,
-                    left: expr,
-                    right,
-                    operator,
-                })))
+                Ok(p(Expression::Assign(AssignmentExpression { loc, left: expr, right, operator })))
             }
         };
 
@@ -1267,16 +1202,10 @@ impl<'a> Parser<'a> {
         if self.token == Token::LeftBrace {
             let (block, has_use_strict_directive, is_strict_mode) =
                 self.parse_function_block_body()?;
-            Ok((
-                p(FunctionBody::Block(block)),
-                has_use_strict_directive,
-                is_strict_mode,
-            ))
+            Ok((p(FunctionBody::Block(block)), has_use_strict_directive, is_strict_mode))
         } else {
             Ok((
-                p(FunctionBody::Expression(
-                    *self.parse_assignment_expression()?,
-                )),
+                p(FunctionBody::Expression(*self.parse_assignment_expression()?)),
                 false,
                 self.in_strict_mode,
             ))
@@ -1574,12 +1503,7 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Binary(BinaryExpression {
-            loc,
-            left,
-            right,
-            operator,
-        })))
+        Ok(p(Expression::Binary(BinaryExpression { loc, left, right, operator })))
     }
 
     fn parse_logical_expression(
@@ -1593,12 +1517,7 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Logical(LogicalExpression {
-            loc,
-            left,
-            right,
-            operator,
-        })))
+        Ok(p(Expression::Logical(LogicalExpression { loc, left, right, operator })))
     }
 
     fn parse_update_expression_prefix(
@@ -1641,11 +1560,7 @@ impl<'a> Parser<'a> {
         let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Unary(UnaryExpression {
-            loc,
-            operator,
-            argument,
-        })))
+        Ok(p(Expression::Unary(UnaryExpression { loc, operator, argument })))
     }
 
     /// 13.3 LeftHandSideExpression
@@ -1759,11 +1674,7 @@ impl<'a> Parser<'a> {
         };
 
         let loc = self.mark_loc(start_pos);
-        Ok(p(Expression::New(NewExpression {
-            loc,
-            callee,
-            arguments,
-        })))
+        Ok(p(Expression::New(NewExpression { loc, callee, arguments })))
     }
 
     fn parse_super_expression(&mut self) -> ParseResult<P<Expression>> {
@@ -1954,19 +1865,13 @@ impl<'a> Parser<'a> {
             Token::Async | Token::Of | Token::From | Token::As | Token::Get | Token::Set => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(Identifier {
-                    loc,
-                    name: self.token.to_string(),
-                })
+                Ok(Identifier { loc, name: self.token.to_string() })
             }
             // Tokens that are contextually allowed as identifiers, when not in strict mode
             Token::Let | Token::Static if !self.in_strict_mode => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(Identifier {
-                    loc,
-                    name: self.token.to_string(),
-                })
+                Ok(Identifier { loc, name: self.token.to_string() })
             }
             other => self.error_unexpected_token(self.loc, other),
         }
@@ -2100,10 +2005,8 @@ impl<'a> Parser<'a> {
 
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
-                    let name = p(Expression::Id(Identifier {
-                        loc: id_loc,
-                        name: id_token.to_string(),
-                    }));
+                    let name =
+                        p(Expression::Id(Identifier { loc: id_loc, name: id_token.to_string() }));
                     return self.parse_method_property(
                         name,
                         start_pos,
@@ -2118,10 +2021,8 @@ impl<'a> Parser<'a> {
                 // Handle `get` or `set` as shorthand or init property
                 let is_init_property = self.is_property_initializer(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
-                    let name = p(Expression::Id(Identifier {
-                        loc: id_loc,
-                        name: id_token.to_string(),
-                    }));
+                    let name =
+                        p(Expression::Id(Identifier { loc: id_loc, name: id_token.to_string() }));
                     return self.parse_init_property(
                         name,
                         start_pos,
@@ -2154,10 +2055,8 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let name = p(Expression::Id(Identifier {
-                    loc: async_loc,
-                    name: "async".to_owned(),
-                }));
+                let name =
+                    p(Expression::Id(Identifier { loc: async_loc, name: "async".to_owned() }));
                 return self.parse_method_property(
                     name,
                     start_pos,
@@ -2172,10 +2071,8 @@ impl<'a> Parser<'a> {
             // Handle `async` as shorthand or init property
             let is_init_property = self.is_property_initializer(prop_context);
             if is_init_property || self.is_property_end(prop_context) {
-                let name = p(Expression::Id(Identifier {
-                    loc: async_loc,
-                    name: "async".to_owned(),
-                }));
+                let name =
+                    p(Expression::Id(Identifier { loc: async_loc, name: "async".to_owned() }));
                 return self.parse_init_property(
                     name,
                     start_pos,
@@ -2314,12 +2211,7 @@ impl<'a> Parser<'a> {
             is_shorthand = self.is_property_end(prop_context);
         }
 
-        Ok(PropertyNameResult {
-            key,
-            is_computed,
-            is_shorthand,
-            is_private,
-        })
+        Ok(PropertyNameResult { key, is_computed, is_shorthand, is_private })
     }
 
     fn parse_init_property(
@@ -2485,10 +2377,8 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let name = p(Expression::Id(Identifier {
-                    loc: static_loc,
-                    name: "static".to_owned(),
-                }));
+                let name =
+                    p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
 
                 let (property, is_private) = self.parse_method_property(
                     name,
@@ -2509,10 +2399,8 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let name = p(Expression::Id(Identifier {
-                    loc: static_loc,
-                    name: "static".to_owned(),
-                }));
+                let name =
+                    p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
 
                 let (property, is_private) = self.parse_init_property(
                     name,
@@ -2524,11 +2412,9 @@ impl<'a> Parser<'a> {
                 )?;
                 let loc = self.mark_loc(start_pos);
 
-                return Ok(ClassElement::Property(
-                    self.reparse_property_as_class_property(
-                        loc, property, /* is_static */ false, is_private,
-                    ),
-                ));
+                return Ok(ClassElement::Property(self.reparse_property_as_class_property(
+                    loc, property, /* is_static */ false, is_private,
+                )));
             }
         }
 
@@ -2538,9 +2424,9 @@ impl<'a> Parser<'a> {
 
         // Translate from object property to class property or method
         if property.is_method {
-            Ok(ClassElement::Method(self.reparse_property_as_class_method(
-                loc, property, is_static, is_private,
-            )))
+            Ok(ClassElement::Method(
+                self.reparse_property_as_class_method(loc, property, is_static, is_private),
+            ))
         } else {
             Ok(ClassElement::Property(
                 self.reparse_property_as_class_property(loc, property, is_static, is_private),
@@ -2555,13 +2441,7 @@ impl<'a> Parser<'a> {
         is_static: bool,
         is_private: bool,
     ) -> ClassMethod {
-        let Property {
-            key,
-            value,
-            is_computed,
-            kind,
-            ..
-        } = property;
+        let Property { key, value, is_computed, kind, .. } = property;
 
         let func_value = if let Expression::Function(func) = *value.unwrap() {
             p(func)
@@ -2607,21 +2487,9 @@ impl<'a> Parser<'a> {
         is_static: bool,
         is_private: bool,
     ) -> ClassProperty {
-        let Property {
-            key,
-            value,
-            is_computed,
-            ..
-        } = property;
+        let Property { key, value, is_computed, .. } = property;
 
-        ClassProperty {
-            loc,
-            key,
-            value,
-            is_computed,
-            is_static,
-            is_private,
-        }
+        ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
 
     fn parse_pattern(&mut self) -> ParseResult<Pattern> {
@@ -2647,11 +2515,7 @@ impl<'a> Parser<'a> {
                 let right = self.parse_assignment_expression()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(Pattern::Assign(AssignmentPattern {
-                    loc,
-                    left: p(left),
-                    right,
-                }))
+                Ok(Pattern::Assign(AssignmentPattern { loc, left: p(left), right }))
             }
             _ => Ok(left),
         }
@@ -2720,12 +2584,7 @@ impl<'a> Parser<'a> {
             let value = p(self.parse_assignment_pattern(value, start_pos)?);
             let loc = self.mark_loc(start_pos);
 
-            return Ok(ObjectPatternProperty {
-                loc,
-                key: None,
-                value,
-                is_computed: false,
-            });
+            return Ok(ObjectPatternProperty { loc, key: None, value, is_computed: false });
         }
 
         // Regular properties

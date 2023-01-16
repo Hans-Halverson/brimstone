@@ -70,9 +70,7 @@ pub struct Intrinsics {
 
 impl Intrinsics {
     pub fn new_uninit() -> Intrinsics {
-        Intrinsics {
-            intrinsics: Vec::new(),
-        }
+        Intrinsics { intrinsics: Vec::new() }
     }
 
     // 9.3.2 CreateIntrinsics
@@ -218,19 +216,9 @@ fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, r
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(
-        cx,
-        func,
-        &cx.names.caller(),
-        caller_desc
-    ));
+    must!(define_property_or_throw(cx, func, &cx.names.caller(), caller_desc));
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(
-        cx,
-        func,
-        &cx.names.arguments(),
-        arguments_desc,
-    ));
+    must!(define_property_or_throw(cx, func, &cx.names.arguments(), arguments_desc,));
 }

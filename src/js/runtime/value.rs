@@ -258,30 +258,22 @@ impl Value {
             return Value::smi(value as i32);
         }
 
-        Value {
-            raw_bits: f64::to_bits(value),
-        }
+        Value { raw_bits: f64::to_bits(value) }
     }
 
     #[inline]
     pub const fn undefined() -> Value {
-        Value {
-            raw_bits: (UNDEFINED_TAG as u64) << TAG_SHIFT,
-        }
+        Value { raw_bits: (UNDEFINED_TAG as u64) << TAG_SHIFT }
     }
 
     #[inline]
     pub const fn null() -> Value {
-        Value {
-            raw_bits: (NULL_TAG as u64) << TAG_SHIFT,
-        }
+        Value { raw_bits: (NULL_TAG as u64) << TAG_SHIFT }
     }
 
     #[inline]
     pub const fn empty() -> Value {
-        Value {
-            raw_bits: (EMPTY_TAG as u64) << TAG_SHIFT,
-        }
+        Value { raw_bits: (EMPTY_TAG as u64) << TAG_SHIFT }
     }
 
     #[inline]
@@ -294,9 +286,7 @@ impl Value {
     #[inline]
     pub const fn smi(value: i32) -> Value {
         let smi_value_bits = unsafe { std::mem::transmute::<i32, u32>(value) as u64 };
-        Value {
-            raw_bits: (((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits),
-        }
+        Value { raw_bits: (((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits) }
     }
 
     #[inline]

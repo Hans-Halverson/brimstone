@@ -43,10 +43,7 @@ impl GcDeref for DeclarativeEnvironment {}
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
     pub fn new(outer: Option<Gc<dyn Environment>>) -> DeclarativeEnvironment {
-        DeclarativeEnvironment {
-            bindings: HashMap::new(),
-            outer,
-        }
+        DeclarativeEnvironment { bindings: HashMap::new(), outer }
     }
 }
 

@@ -360,10 +360,7 @@ fn eval_for_statement(
             for_body_evaluation(cx, stmt, None, stmt_label_id)
         }
         Some(ast::ForInit::VarDecl(
-            var_decl @ ast::VariableDeclaration {
-                kind: ast::VarKind::Var,
-                ..
-            },
+            var_decl @ ast::VariableDeclaration { kind: ast::VarKind::Var, .. },
         )) => {
             maybe_!(eval_variable_declaration(cx, var_decl));
             for_body_evaluation(cx, stmt, None, stmt_label_id)
@@ -488,10 +485,9 @@ fn for_each_head_evaluation_shared(
 ) -> EvalResult<Value> {
     match stmt.left.as_ref() {
         ast::ForEachInit::Pattern(_)
-        | ast::ForEachInit::VarDecl(ast::VariableDeclaration {
-            kind: ast::VarKind::Var,
-            ..
-        }) => eval_expression(cx, &stmt.right),
+        | ast::ForEachInit::VarDecl(ast::VariableDeclaration { kind: ast::VarKind::Var, .. }) => {
+            eval_expression(cx, &stmt.right)
+        }
         ast::ForEachInit::VarDecl(
             var_decl @ ast::VariableDeclaration {
                 kind: ast::VarKind::Let | ast::VarKind::Const,
@@ -744,11 +740,8 @@ fn eval_case_block(
         };
 
         if !is_found {
-            is_found = maybe__!(is_case_clause_selected(
-                cx,
-                case_selector_value,
-                discriminant_value
-            ));
+            is_found =
+                maybe__!(is_case_clause_selected(cx, case_selector_value, discriminant_value));
         }
 
         if is_found {
@@ -767,11 +760,8 @@ fn eval_case_block(
         for case in &stmt.cases[default_case_index + 1..] {
             if !is_found_after_default {
                 let case_selector_value = case.test.as_deref().unwrap();
-                is_found_after_default = maybe__!(is_case_clause_selected(
-                    cx,
-                    case_selector_value,
-                    discriminant_value
-                ));
+                is_found_after_default =
+                    maybe__!(is_case_clause_selected(cx, case_selector_value, discriminant_value));
             }
 
             if is_found_after_default {

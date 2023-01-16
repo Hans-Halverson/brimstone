@@ -286,12 +286,7 @@ pub fn define_field(
 
     match field_def.name {
         ClassFieldDefinitionName::Normal(ref property_key) => {
-            maybe!(create_data_property_or_throw(
-                cx,
-                receiver,
-                &property_key,
-                init_value
-            ));
+            maybe!(create_data_property_or_throw(cx, receiver, &property_key, init_value));
         }
         ClassFieldDefinitionName::Private(private_id) => {
             maybe!(receiver.private_field_add(cx, private_id, init_value))

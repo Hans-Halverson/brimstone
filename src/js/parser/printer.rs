@@ -10,11 +10,7 @@ struct Printer<'a> {
 
 impl<'a> Printer<'a> {
     fn new(source: &'a Source) -> Printer<'a> {
-        Printer {
-            buf: String::new(),
-            indent: 0,
-            source,
-        }
+        Printer { buf: String::new(), indent: 0, source }
     }
 
     fn finish(self) -> String {
@@ -82,10 +78,7 @@ impl<'a> Printer<'a> {
 
         // Write loc as string in concise format
         self.indent();
-        self.string(&format!(
-            "loc: \"{}:{}-{}:{}\",\n",
-            start_line, start_col, end_line, end_col
-        ));
+        self.string(&format!("loc: \"{}:{}-{}:{}\",\n", start_line, start_col, end_line, end_col));
     }
 
     fn end_node(&mut self) {
@@ -213,11 +206,7 @@ impl<'a> Printer<'a> {
     fn print_class(&mut self, class: &Class, name: &str) {
         self.start_node(name, &class.loc);
         self.property("id", class.id.as_ref(), Printer::print_optional_identifier);
-        self.property(
-            "superClass",
-            class.super_class.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("superClass", class.super_class.as_ref(), Printer::print_optional_expression);
         self.property("body", class, Printer::print_class_body);
         self.end_node();
     }
@@ -244,20 +233,12 @@ impl<'a> Printer<'a> {
         self.start_node("MethodDefinition", &method.loc);
 
         if method.is_private {
-            self.property(
-                "key",
-                method.key.as_ref(),
-                Printer::print_private_identifier,
-            );
+            self.property("key", method.key.as_ref(), Printer::print_private_identifier);
         } else {
             self.property("key", method.key.as_ref(), Printer::print_expression);
         }
 
-        self.property(
-            "value",
-            method.value.as_ref(),
-            Printer::print_function_expression,
-        );
+        self.property("value", method.value.as_ref(), Printer::print_function_expression);
         self.property("kind", method.kind, Printer::print_class_method_kind);
         self.property("computed", method.is_computed, Printer::print_bool);
         self.property("static", method.is_static, Printer::print_bool);
@@ -284,11 +265,7 @@ impl<'a> Printer<'a> {
             self.property("key", prop.key.as_ref(), Printer::print_expression);
         }
 
-        self.property(
-            "value",
-            prop.value.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("value", prop.value.as_ref(), Printer::print_optional_expression);
         self.property("computed", prop.is_computed, Printer::print_bool);
         self.property("static", prop.is_static, Printer::print_bool);
         self.end_node();
@@ -321,32 +298,20 @@ impl<'a> Printer<'a> {
         self.start_node("IfStatement", &stmt.loc);
         self.property("test", stmt.test.as_ref(), Printer::print_expression);
         self.property("consequent", stmt.conseq.as_ref(), Printer::print_statement);
-        self.property(
-            "alternate",
-            stmt.altern.as_ref(),
-            Printer::print_optional_statement,
-        );
+        self.property("alternate", stmt.altern.as_ref(), Printer::print_optional_statement);
         self.end_node();
     }
 
     fn print_switch_statement(&mut self, stmt: &SwitchStatement) {
         self.start_node("SwitchStatement", &stmt.loc);
-        self.property(
-            "discriminant",
-            stmt.discriminant.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("discriminant", stmt.discriminant.as_ref(), Printer::print_expression);
         self.array_property("cases", stmt.cases.as_ref(), Printer::print_switch_case);
         self.end_node();
     }
 
     fn print_switch_case(&mut self, case: &SwitchCase) {
         self.start_node("SwitchCase", &case.loc);
-        self.property(
-            "test",
-            case.test.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("test", case.test.as_ref(), Printer::print_optional_expression);
         self.array_property("body", case.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
@@ -354,16 +319,8 @@ impl<'a> Printer<'a> {
     fn print_for_statement(&mut self, stmt: &ForStatement) {
         self.start_node("ForStatement", &stmt.loc);
         self.property("init", stmt.init.as_ref(), Printer::print_for_init);
-        self.property(
-            "test",
-            stmt.test.as_ref(),
-            Printer::print_optional_expression,
-        );
-        self.property(
-            "update",
-            stmt.update.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("test", stmt.test.as_ref(), Printer::print_optional_expression);
+        self.property("update", stmt.update.as_ref(), Printer::print_optional_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }
@@ -422,22 +379,14 @@ impl<'a> Printer<'a> {
         self.start_node("TryStatement", &stmt.loc);
         self.property("block", stmt.block.as_ref(), Printer::print_block);
         self.property("handler", stmt.handler.as_ref(), Printer::print_try_handler);
-        self.property(
-            "finalizer",
-            stmt.finalizer.as_ref(),
-            Printer::print_optional_block,
-        );
+        self.property("finalizer", stmt.finalizer.as_ref(), Printer::print_optional_block);
         self.end_node();
     }
 
     fn print_try_handler(&mut self, handler: Option<&Box<CatchClause>>) {
         if let Some(handler) = handler {
             self.start_node("CatchClause", &handler.loc);
-            self.property(
-                "param",
-                handler.param.as_ref(),
-                Printer::print_optional_pattern,
-            );
+            self.property("param", handler.param.as_ref(), Printer::print_optional_pattern);
             self.property("body", handler.body.as_ref(), Printer::print_block);
             self.end_node();
         } else {
@@ -447,21 +396,13 @@ impl<'a> Printer<'a> {
 
     fn print_throw_statement(&mut self, stmt: &ThrowStatement) {
         self.start_node("ThrowStatement", &stmt.loc);
-        self.property(
-            "argument",
-            stmt.argument.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("argument", stmt.argument.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
     fn print_return_statement(&mut self, stmt: &ReturnStatement) {
         self.start_node("ReturnStatement", &stmt.loc);
-        self.property(
-            "argument",
-            stmt.argument.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("argument", stmt.argument.as_ref(), Printer::print_optional_expression);
         self.end_node();
     }
 
@@ -510,11 +451,7 @@ impl<'a> Printer<'a> {
     fn print_variable_declarator(&mut self, var_decl: &VariableDeclarator) {
         self.start_node("VariableDeclarator", &var_decl.loc);
         self.property("id", var_decl.id.as_ref(), Printer::print_pattern);
-        self.property(
-            "init",
-            var_decl.init.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("init", var_decl.init.as_ref(), Printer::print_optional_expression);
         self.end_node();
     }
 
@@ -588,11 +525,7 @@ impl<'a> Printer<'a> {
     fn print_unary_expression(&mut self, unary: &UnaryExpression) {
         self.start_node("UnaryExpression", &unary.loc);
         self.property("operator", &unary.operator, Printer::print_unary_operator);
-        self.property(
-            "argument",
-            unary.argument.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("argument", unary.argument.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
@@ -629,11 +562,7 @@ impl<'a> Printer<'a> {
         self.property("operator", &binary.operator, Printer::print_binary_operator);
 
         if binary.operator == BinaryOperator::InPrivate {
-            self.property(
-                "left",
-                binary.left.as_ref(),
-                Printer::print_private_identifier,
-            );
+            self.property("left", binary.left.as_ref(), Printer::print_private_identifier);
         } else {
             self.property("left", binary.left.as_ref(), Printer::print_expression);
         }
@@ -653,11 +582,7 @@ impl<'a> Printer<'a> {
 
     fn print_logical_expression(&mut self, logical: &LogicalExpression) {
         self.start_node("LogicalExpression", &logical.loc);
-        self.property(
-            "operator",
-            &logical.operator,
-            Printer::print_logical_operator,
-        );
+        self.property("operator", &logical.operator, Printer::print_logical_operator);
         self.property("left", logical.left.as_ref(), Printer::print_expression);
         self.property("right", logical.right.as_ref(), Printer::print_expression);
         self.end_node();
@@ -684,11 +609,7 @@ impl<'a> Printer<'a> {
 
     fn print_assignment_expression(&mut self, assign: &AssignmentExpression) {
         self.start_node("AssignmentExpression", &assign.loc);
-        self.property(
-            "operator",
-            &assign.operator,
-            Printer::print_assignment_operator,
-        );
+        self.property("operator", &assign.operator, Printer::print_assignment_operator);
         self.property("left", assign.left.as_ref(), Printer::print_expression);
         self.property("right", assign.right.as_ref(), Printer::print_expression);
         self.end_node();
@@ -705,11 +626,7 @@ impl<'a> Printer<'a> {
     fn print_update_expression(&mut self, update: &UpdateExpression) {
         self.start_node("UpdateExpression", &update.loc);
         self.property("operator", &update.operator, Printer::print_update_operator);
-        self.property(
-            "argument",
-            update.argument.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("argument", update.argument.as_ref(), Printer::print_expression);
         self.property("prefix", update.is_prefix, Printer::print_bool);
         self.end_node();
     }
@@ -719,17 +636,9 @@ impl<'a> Printer<'a> {
         self.property("object", member.object.as_ref(), Printer::print_expression);
 
         if member.is_private {
-            self.property(
-                "property",
-                member.property.as_ref(),
-                Printer::print_private_identifier,
-            );
+            self.property("property", member.property.as_ref(), Printer::print_private_identifier);
         } else {
-            self.property(
-                "property",
-                member.property.as_ref(),
-                Printer::print_expression,
-            );
+            self.property("property", member.property.as_ref(), Printer::print_expression);
         }
 
         self.property("computed", member.is_computed, Printer::print_bool);
@@ -748,11 +657,7 @@ impl<'a> Printer<'a> {
     fn print_conditional_expression(&mut self, cond: &ConditionalExpression) {
         self.start_node("ConditionalExpression", &cond.loc);
         self.property("test", cond.test.as_ref(), Printer::print_expression);
-        self.property(
-            "consequent",
-            cond.conseq.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("consequent", cond.conseq.as_ref(), Printer::print_expression);
         self.property("alternate", cond.altern.as_ref(), Printer::print_expression);
         self.end_node();
     }
@@ -760,11 +665,7 @@ impl<'a> Printer<'a> {
     fn print_call_expression(&mut self, call: &CallExpression) {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", call.callee.as_ref(), Printer::print_expression);
-        self.array_property(
-            "arguments",
-            call.arguments.as_ref(),
-            Printer::print_expression,
-        );
+        self.array_property("arguments", call.arguments.as_ref(), Printer::print_expression);
         self.property("optional", call.is_optional, Printer::print_bool);
         self.end_node();
     }
@@ -772,21 +673,13 @@ impl<'a> Printer<'a> {
     fn print_new_expression(&mut self, new: &NewExpression) {
         self.start_node("NewExpression", &new.loc);
         self.property("callee", new.callee.as_ref(), Printer::print_expression);
-        self.array_property(
-            "arguments",
-            new.arguments.as_ref(),
-            Printer::print_expression,
-        );
+        self.array_property("arguments", new.arguments.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
     fn print_sequence_expression(&mut self, seq: &SequenceExpression) {
         self.start_node("SequenceExpression", &seq.loc);
-        self.array_property(
-            "expressions",
-            seq.expressions.as_ref(),
-            Printer::print_expression,
-        );
+        self.array_property("expressions", seq.expressions.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
@@ -807,22 +700,14 @@ impl<'a> Printer<'a> {
 
     fn print_object_expression(&mut self, obj: &ObjectExpression) {
         self.start_node("ObjectExpression", &obj.loc);
-        self.array_property(
-            "properties",
-            obj.properties.as_ref(),
-            Printer::print_property,
-        );
+        self.array_property("properties", obj.properties.as_ref(), Printer::print_property);
         self.end_node();
     }
 
     fn print_property(&mut self, prop: &Property) {
         self.start_node("Property", &prop.loc);
         self.property("key", prop.key.as_ref(), Printer::print_expression);
-        self.property(
-            "value",
-            prop.value.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("value", prop.value.as_ref(), Printer::print_optional_expression);
         self.property("computed", prop.is_computed, Printer::print_bool);
         self.property("shorthand", prop.value.is_none(), Printer::print_bool);
         self.property("method", prop.is_method, Printer::print_bool);
@@ -841,21 +726,13 @@ impl<'a> Printer<'a> {
 
     fn print_await_expression(&mut self, expr: &AwaitExpression) {
         self.start_node("AwaitExpression", &expr.loc);
-        self.property(
-            "argument",
-            expr.argument.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("argument", expr.argument.as_ref(), Printer::print_expression);
         self.end_node();
     }
 
     fn print_yield_expression(&mut self, expr: &YieldExpression) {
         self.start_node("YieldExpression", &expr.loc);
-        self.property(
-            "argument",
-            expr.argument.as_ref(),
-            Printer::print_optional_expression,
-        );
+        self.property("argument", expr.argument.as_ref(), Printer::print_optional_expression);
         self.property("delegate", expr.delegate, Printer::print_bool);
         self.end_node();
     }
@@ -868,11 +745,7 @@ impl<'a> Printer<'a> {
     fn print_super_member_expression(&mut self, member: &SuperMemberExpression) {
         self.start_node("MemberExpression", &member.loc);
         self.property("object", &member.super_, Printer::print_super);
-        self.property(
-            "property",
-            member.property.as_ref(),
-            Printer::print_expression,
-        );
+        self.property("property", member.property.as_ref(), Printer::print_expression);
         self.property("computed", member.is_computed, Printer::print_bool);
         self.end_node();
     }
@@ -880,11 +753,7 @@ impl<'a> Printer<'a> {
     fn print_super_call_expression(&mut self, call: &SuperCallExpression) {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", &call.super_, Printer::print_super);
-        self.array_property(
-            "arguments",
-            call.arguments.as_ref(),
-            Printer::print_expression,
-        );
+        self.array_property("arguments", call.arguments.as_ref(), Printer::print_expression);
         self.end_node();
     }
 

@@ -275,13 +275,7 @@ impl Class {
         super_class: Option<P<Expression>>,
         body: Vec<ClassElement>,
     ) -> Class {
-        Class {
-            loc,
-            id,
-            super_class,
-            body,
-            constructor: None,
-        }
+        Class { loc, id, super_class, body, constructor: None }
     }
 }
 
@@ -333,11 +327,7 @@ pub struct Block {
 
 impl Block {
     pub fn new(loc: Loc, body: Vec<Statement>) -> Block {
-        Block {
-            loc,
-            body,
-            lex_decls: vec![],
-        }
+        Block { loc, body, lex_decls: vec![] }
     }
 }
 
@@ -376,12 +366,7 @@ pub struct SwitchStatement {
 
 impl SwitchStatement {
     pub fn new(loc: Loc, discriminant: P<Expression>, cases: Vec<SwitchCase>) -> SwitchStatement {
-        SwitchStatement {
-            loc,
-            discriminant,
-            cases,
-            lex_decls: vec![],
-        }
+        SwitchStatement { loc, discriminant, cases, lex_decls: vec![] }
     }
 }
 

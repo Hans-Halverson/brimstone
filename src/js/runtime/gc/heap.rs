@@ -24,11 +24,7 @@ impl Heap {
 
             let start = memory.as_ptr();
 
-            Heap {
-                memory,
-                current: start,
-                end: start.add(DEFAULT_HEAP_SIZE),
-            }
+            Heap { memory, current: start, end: start.add(DEFAULT_HEAP_SIZE) }
         }
     }
 

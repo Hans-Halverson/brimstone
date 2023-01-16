@@ -42,11 +42,7 @@ impl BooleanObject {
     const VTABLE: *const () = extract_object_vtable::<BooleanObject>();
 
     pub fn new(object: OrdinaryObject, boolean_data: bool) -> BooleanObject {
-        BooleanObject {
-            _vtable: Self::VTABLE,
-            object,
-            boolean_data,
-        }
+        BooleanObject { _vtable: Self::VTABLE, object, boolean_data }
     }
 
     pub fn new_from_value(cx: &mut Context, boolean_data: bool) -> Gc<BooleanObject> {

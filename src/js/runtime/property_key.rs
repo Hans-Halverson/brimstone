@@ -31,10 +31,7 @@ impl PropertyKey {
     #[inline]
     pub const fn string(value: Gc<StringValue>) -> PropertyKey {
         PropertyKey {
-            data: RefCell::new(KeyData::String(StringData {
-                value,
-                can_be_number: true,
-            })),
+            data: RefCell::new(KeyData::String(StringData { value, can_be_number: true })),
         }
     }
 
@@ -43,39 +40,27 @@ impl PropertyKey {
     #[inline]
     pub const fn string_not_number(value: Gc<StringValue>) -> PropertyKey {
         PropertyKey {
-            data: RefCell::new(KeyData::String(StringData {
-                value,
-                can_be_number: false,
-            })),
+            data: RefCell::new(KeyData::String(StringData { value, can_be_number: false })),
         }
     }
 
     #[inline]
     pub const fn symbol(value: Gc<SymbolValue>) -> PropertyKey {
-        PropertyKey {
-            data: RefCell::new(KeyData::Symbol { value }),
-        }
+        PropertyKey { data: RefCell::new(KeyData::Symbol { value }) }
     }
 
     #[inline]
     pub const fn array_index(value: u32) -> PropertyKey {
-        PropertyKey {
-            data: RefCell::new(KeyData::ArrayIndex { value }),
-        }
+        PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
     }
 
     #[inline]
     pub fn is_array_index(&self) -> bool {
         match &*self.data.borrow() {
-            KeyData::String(StringData {
-                can_be_number: true,
-                ..
-            }) => {}
-            KeyData::String(StringData {
-                can_be_number: false,
-                ..
-            })
-            | KeyData::Symbol { .. } => return false,
+            KeyData::String(StringData { can_be_number: true, .. }) => {}
+            KeyData::String(StringData { can_be_number: false, .. }) | KeyData::Symbol { .. } => {
+                return false
+            }
             KeyData::ArrayIndex { .. } => return true,
         }
 
@@ -93,14 +78,8 @@ impl PropertyKey {
     #[inline]
     pub fn is_string(&self) -> bool {
         match &*self.data.borrow() {
-            KeyData::String(StringData {
-                can_be_number: true,
-                ..
-            }) => {}
-            KeyData::String(StringData {
-                can_be_number: false,
-                ..
-            }) => return true,
+            KeyData::String(StringData { can_be_number: true, .. }) => {}
+            KeyData::String(StringData { can_be_number: false, .. }) => return true,
             KeyData::Symbol { .. } | KeyData::ArrayIndex { .. } => return false,
         }
 
@@ -127,12 +106,7 @@ impl PropertyKey {
     #[inline]
     fn check_is_number(&self) -> bool {
         let number_key = match &mut *self.data.borrow_mut() {
-            KeyData::String(
-                string_key @ StringData {
-                    can_be_number: true,
-                    ..
-                },
-            ) => {
+            KeyData::String(string_key @ StringData { can_be_number: true, .. }) => {
                 let str = string_key.value.str();
 
                 // Empty string can never be number
@@ -217,11 +191,7 @@ impl fmt::Display for PropertyKey {
         match &*self.data.borrow() {
             KeyData::String(StringData { value, .. }) => f.write_str(value.str()),
             KeyData::Symbol { value } => {
-                write!(
-                    f,
-                    "Symbol({})",
-                    value.description().as_deref().unwrap_or("")
-                )
+                write!(f, "Symbol({})", value.description().as_deref().unwrap_or(""))
             }
             KeyData::ArrayIndex { value, .. } => write!(f, "{}", value),
         }

@@ -46,11 +46,7 @@ impl Reference {
 
     pub fn new_property(object: Value, property: PropertyKey, is_strict: bool) -> Reference {
         Reference {
-            base: ReferenceBase::Property {
-                object,
-                property,
-                private_id: None,
-            },
+            base: ReferenceBase::Property { object, property, private_id: None },
             is_strict,
             this_value: None,
         }
@@ -63,11 +59,7 @@ impl Reference {
         this_value: Value,
     ) -> Reference {
         Reference {
-            base: ReferenceBase::Property {
-                object,
-                property,
-                private_id: None,
-            },
+            base: ReferenceBase::Property { object, property, private_id: None },
             is_strict,
             this_value: Some(this_value),
         }
@@ -118,11 +110,7 @@ impl Reference {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name.str()))
             }
-            ReferenceBase::Property {
-                object,
-                ref property,
-                private_id,
-            } => {
+            ReferenceBase::Property { object, ref property, private_id } => {
                 let base = maybe!(to_object(cx, object));
                 match private_id {
                     Some(private_id) => return private_get(cx, base, private_id),
@@ -142,21 +130,11 @@ impl Reference {
                 }
 
                 let global_obj = get_global_object(cx);
-                maybe!(set(
-                    cx,
-                    global_obj,
-                    &PropertyKey::string(name),
-                    value,
-                    false
-                ));
+                maybe!(set(cx, global_obj, &PropertyKey::string(name), value, false));
 
                 return ().into();
             }
-            ReferenceBase::Property {
-                object,
-                ref property,
-                private_id,
-            } => {
+            ReferenceBase::Property { object, ref property, private_id } => {
                 let mut base = maybe!(to_object(cx, object));
                 if let Some(private_id) = private_id {
                     return private_set(cx, base, private_id, value);

@@ -41,11 +41,7 @@ impl SymbolObject {
     const VTABLE: *const () = extract_object_vtable::<SymbolObject>();
 
     pub fn new(object: OrdinaryObject, symbol_data: Gc<SymbolValue>) -> SymbolObject {
-        SymbolObject {
-            _vtable: Self::VTABLE,
-            object,
-            symbol_data,
-        }
+        SymbolObject { _vtable: Self::VTABLE, object, symbol_data }
     }
 
     pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {

@@ -36,10 +36,7 @@ impl ErrorObject {
     const VTABLE: *const () = extract_object_vtable::<ErrorObject>();
 
     fn new(object: OrdinaryObject) -> ErrorObject {
-        ErrorObject {
-            _vtable: Self::VTABLE,
-            object,
-        }
+        ErrorObject { _vtable: Self::VTABLE, object }
     }
 
     #[inline]
@@ -102,11 +99,8 @@ impl ErrorConstructor {
             cx.current_execution_context().function.unwrap()
         };
 
-        let ordinary_object = maybe!(ordinary_create_from_constructor(
-            cx,
-            new_target,
-            Intrinsic::ErrorPrototype
-        ));
+        let ordinary_object =
+            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::ErrorPrototype));
         let object: Gc<ObjectValue> = cx.heap.alloc(ErrorObject::new(ordinary_object)).into();
 
         let message = get_argument(arguments, 0);

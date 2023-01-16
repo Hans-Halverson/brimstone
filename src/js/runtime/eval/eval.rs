@@ -173,10 +173,7 @@ fn eval_declaration_instantiation(
                     if maybe!(var_env.has_lexical_declaration(cx, name_value)) {
                         return syntax_error_(
                             cx,
-                            &format!(
-                                "identifier '{}' has already been declared",
-                                name_value.str()
-                            ),
+                            &format!("identifier '{}' has already been declared", name_value.str()),
                         );
                     }
 

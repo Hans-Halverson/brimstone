@@ -161,12 +161,8 @@ impl Object for BuiltinFunction {
         });
 
         cx.push_execution_context(callee_context);
-        let result = crate::maybe!((self.builtin_func)(
-            cx,
-            Value::undefined(),
-            arguments,
-            Some(new_target)
-        ));
+        let result =
+            crate::maybe!((self.builtin_func)(cx, Value::undefined(), arguments, Some(new_target)));
         cx.pop_execution_context();
 
         result.as_object().into()

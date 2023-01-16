@@ -17,9 +17,8 @@ impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
     fn new(cx: &mut Context, outer: Gc<dyn Environment>) -> Gc<ModuleEnvironment> {
         // Inner decl env contains the outer environment pointer
-        cx.heap.alloc(ModuleEnvironment {
-            env: DeclarativeEnvironment::new(Some(outer)),
-        })
+        cx.heap
+            .alloc(ModuleEnvironment { env: DeclarativeEnvironment::new(Some(outer)) })
     }
 }
 

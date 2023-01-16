@@ -14,11 +14,7 @@ impl<T: ?Sized> Gc<T> {
     }
 
     pub const fn from_ptr(ptr: *mut T) -> Gc<T> {
-        unsafe {
-            Gc {
-                ptr: NonNull::new_unchecked(ptr),
-            }
-        }
+        unsafe { Gc { ptr: NonNull::new_unchecked(ptr) } }
     }
 
     #[inline]
@@ -29,9 +25,7 @@ impl<T: ?Sized> Gc<T> {
 
 impl<T> Gc<T> {
     pub fn uninit() -> Gc<T> {
-        Gc {
-            ptr: NonNull::dangling(),
-        }
+        Gc { ptr: NonNull::dangling() }
     }
 }
 

@@ -38,10 +38,8 @@ impl FunctionPrototype {
 
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<FunctionPrototype> {
-        let func_prototype = FunctionPrototype {
-            _vtable: Self::VTABLE,
-            object: OrdinaryObject::new_uninit(),
-        };
+        let func_prototype =
+            FunctionPrototype { _vtable: Self::VTABLE, object: OrdinaryObject::new_uninit() };
 
         cx.heap.alloc(func_prototype)
     }
@@ -78,12 +76,7 @@ impl FunctionPrototype {
             return type_error_(cx, "value is not a function");
         }
 
-        call_object(
-            cx,
-            this_value.as_object(),
-            get_argument(arguments, 0),
-            &arguments[1..],
-        )
+        call_object(cx, this_value.as_object(), get_argument(arguments, 0), &arguments[1..])
     }
 }
 

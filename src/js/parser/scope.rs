@@ -13,9 +13,7 @@ pub struct ScopeBuilder {
 
 impl ScopeBuilder {
     pub fn new() -> ScopeBuilder {
-        ScopeBuilder {
-            scope_stack: vec![],
-        }
+        ScopeBuilder { scope_stack: vec![] }
     }
 
     pub fn exit_scope(&mut self) {

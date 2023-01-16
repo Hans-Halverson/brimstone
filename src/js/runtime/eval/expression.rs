@@ -134,9 +134,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                 let id = property.key.as_ref().to_id();
                 let prop_value = maybe!(eval_identifier(cx, id));
                 let prop_key = id_property_key(cx, id);
-                must!(create_data_property_or_throw(
-                    cx, object, &prop_key, prop_value
-                ));
+                must!(create_data_property_or_throw(cx, object, &prop_key, prop_value));
             }
             Some(_) if property.is_method => {
                 let property_key =
@@ -181,12 +179,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                         &property_key
                     ));
 
-                    must!(create_data_property_or_throw(
-                        cx,
-                        object,
-                        &property_key,
-                        prop_value
-                    ));
+                    must!(create_data_property_or_throw(cx, object, &property_key, prop_value));
                 }
             }
         }
@@ -428,11 +421,7 @@ fn eval_super_call_expression(
 
     let result = maybe!(construct(cx, func, &arg_list, new_target));
     maybe!(this_env.bind_this_value(cx, result.into()));
-    maybe!(initialize_instance_elements(
-        cx,
-        result,
-        this_env.function_object
-    ));
+    maybe!(initialize_instance_elements(cx, result, this_env.function_object));
 
     result.into()
 }
@@ -507,9 +496,7 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
 
     match reference.base() {
         ReferenceBase::Unresolvable { .. } => true.into(),
-        ReferenceBase::Property {
-            object, property, ..
-        } => {
+        ReferenceBase::Property { object, property, .. } => {
             if reference.is_super_reference() {
                 return reference_error_(cx, "cannot delete super");
             }
@@ -739,11 +726,7 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
 
 fn eval_add(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
     let left_prim = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::None));
-    let right_prim = maybe!(to_primitive(
-        cx,
-        right_value,
-        ToPrimitivePreferredType::None
-    ));
+    let right_prim = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::None));
     if left_prim.is_string() || right_prim.is_string() {
         let left_string = maybe!(to_string(cx, left_prim));
         let right_string = maybe!(to_string(cx, right_prim));
@@ -834,16 +817,8 @@ fn eval_remainder(cx: &mut Context, left_value: Value, right_value: Value) -> Ev
 }
 
 fn eval_less_than(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
-    let left = maybe!(to_primitive(
-        cx,
-        left_value,
-        ToPrimitivePreferredType::Number
-    ));
-    let right = maybe!(to_primitive(
-        cx,
-        right_value,
-        ToPrimitivePreferredType::Number
-    ));
+    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
+    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     let result = maybe!(is_less_than(cx, left, right));
     if result.is_undefined() {
@@ -854,16 +829,8 @@ fn eval_less_than(cx: &mut Context, left_value: Value, right_value: Value) -> Ev
 }
 
 fn eval_greater_than(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResult<Value> {
-    let left = maybe!(to_primitive(
-        cx,
-        left_value,
-        ToPrimitivePreferredType::Number
-    ));
-    let right = maybe!(to_primitive(
-        cx,
-        right_value,
-        ToPrimitivePreferredType::Number
-    ));
+    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
+    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
@@ -879,16 +846,8 @@ fn eval_less_than_or_equal(
     left_value: Value,
     right_value: Value,
 ) -> EvalResult<Value> {
-    let left = maybe!(to_primitive(
-        cx,
-        left_value,
-        ToPrimitivePreferredType::Number
-    ));
-    let right = maybe!(to_primitive(
-        cx,
-        right_value,
-        ToPrimitivePreferredType::Number
-    ));
+    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
+    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
@@ -900,16 +859,8 @@ fn eval_greater_than_or_equal(
     left_value: Value,
     right_value: Value,
 ) -> EvalResult<Value> {
-    let left = maybe!(to_primitive(
-        cx,
-        left_value,
-        ToPrimitivePreferredType::Number
-    ));
-    let right = maybe!(to_primitive(
-        cx,
-        right_value,
-        ToPrimitivePreferredType::Number
-    ));
+    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
+    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     let result = maybe!(is_less_than(cx, left, right));
     (result.is_false()).into()

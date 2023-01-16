@@ -19,10 +19,7 @@ impl ErrorPrototype {
 
         // Constructor property is added once ErrorConstructor has been created
         object.intrinsic_name_prop(cx, "Error");
-        object.intrinsic_data_prop(
-            &cx.names.message(),
-            cx.heap.alloc_string(String::new()).into(),
-        );
+        object.intrinsic_data_prop(&cx.names.message(), cx.heap.alloc_string(String::new()).into());
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
 
         cx.heap.alloc(object).into()

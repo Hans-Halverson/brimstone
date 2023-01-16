@@ -146,12 +146,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
     let object = cx.heap.alloc(ordinary_object);
 
     if let Some(value) = desc.value {
-        must!(create_data_property_or_throw(
-            cx,
-            object.into(),
-            &cx.names.value(),
-            value,
-        ));
+        must!(create_data_property_or_throw(cx, object.into(), &cx.names.value(), value,));
     }
 
     if let Some(is_writable) = desc.is_writable {
@@ -164,21 +159,11 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
     }
 
     if let Some(get) = desc.get {
-        must!(create_data_property_or_throw(
-            cx,
-            object.into(),
-            &cx.names.get(),
-            get.into(),
-        ));
+        must!(create_data_property_or_throw(cx, object.into(), &cx.names.get(), get.into(),));
     }
 
     if let Some(set) = desc.set {
-        must!(create_data_property_or_throw(
-            cx,
-            object.into(),
-            &cx.names.set(),
-            set.into(),
-        ));
+        must!(create_data_property_or_throw(cx, object.into(), &cx.names.set(), set.into(),));
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {

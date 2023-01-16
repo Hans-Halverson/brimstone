@@ -105,6 +105,9 @@ pub enum Token {
     Super,
     Get,
     Set,
+    Import,
+    Export,
+    Enum,
 }
 
 impl fmt::Display for Token {
@@ -208,6 +211,9 @@ impl fmt::Display for Token {
             Token::Super => "super",
             Token::Get => "get",
             Token::Set => "set",
+            Token::Import => "import",
+            Token::Export => "export",
+            Token::Enum => "enum",
         };
 
         f.write_str(str)

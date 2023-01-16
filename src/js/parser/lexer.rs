@@ -35,7 +35,7 @@ fn is_id_start_ascii(char: char) -> bool {
 }
 
 /// Can this character appear in an identifier (after the first character).
-fn is_id_continue_ascii(char: char) -> bool {
+fn is_id_part_ascii(char: char) -> bool {
     match char {
         'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
         _ => false,
@@ -53,6 +53,12 @@ fn is_id_continue_unicode(char: char) -> bool {
 }
 
 #[inline]
+fn is_id_part_unicode(char: char) -> bool {
+    // Either part of the unicode ID_Continue, ZWNJ, or ZWJ
+    is_id_continue_unicode(char) || char == '\u{200C}' || char == '\u{200D}'
+}
+
+#[inline]
 fn is_continuation_byte(byte: u8) -> bool {
     (byte & 0xC0) == 0x80
 }
@@ -64,6 +70,28 @@ fn is_ascii(char: char) -> bool {
 
 fn is_decimal_digit(char: char) -> bool {
     '0' <= char && char <= '9'
+}
+
+#[inline]
+fn is_unicode_whitespace(char: char) -> bool {
+    match char {
+    // All non-ascii characters in the unicode Space_Separator category
+        '\u{00A0}'
+        | '\u{1680}'
+        | '\u{2000}'..='\u{200A}'
+        | '\u{202F}'
+        | '\u{205F}'
+        | '\u{3000}'
+        // And the zero width non breaking space
+        | '\u{FEFF}'
+        => true,
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_unicode_newline(char: char) -> bool {
+    char == '\u{2028}' || char == '\u{2029}'
 }
 
 fn get_binary_value(char: char) -> Option<u32> {
@@ -198,329 +226,346 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_token(&mut self) -> LexResult {
-        // Skip whitespace
         loop {
-            match self.current {
-              | ' '
-              | '\t'
-              // Vertical tab
-              | '\u{000b}'
-              // Form feed
-              | '\u{000c}' => self.advance(),
-              | '\n'
-              | '\r' => {
-                self.is_new_line_before_current = true;
-                self.advance();
-              }
-              | _ => break,
+            // Fast pass for skipping ASCII whitespace and newlines
+            loop {
+                if is_ascii(self.current) {
+                    match self.current {
+                    | ' '
+                    | '\t'
+                    // Vertical tab
+                    | '\u{000B}'
+                    // Form feed
+                    | '\u{000C}' => self.advance(),
+                    | '\n'
+                    | '\r' => {
+                      self.is_new_line_before_current = true;
+                      self.advance();
+                    }
+                    | _ => break,
+                  }
+                } else {
+                    // if is_unicode_whitespace(self.current) {
+                    //     self.is_new_line_before_current = true;
+                    //     self.advance();
+                    // }
+
+                    break;
+                }
             }
-        }
 
-        let start_pos = self.pos;
+            let start_pos = self.pos;
 
-        match self.current {
-            '+' => match self.peek() {
-                '+' => {
-                    self.advance2();
-                    self.emit(Token::Increment, start_pos)
-                }
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::AddEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Plus, start_pos)
-                }
-            },
-            '-' => match self.peek() {
-                '-' => {
-                    self.advance2();
-                    self.emit(Token::Decrement, start_pos)
-                }
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::SubtractEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Minus, start_pos)
-                }
-            },
-            '*' => match self.peek() {
-                '*' => match self.peek2() {
+            return match self.current {
+                '+' => match self.peek() {
+                    '+' => {
+                        self.advance2();
+                        self.emit(Token::Increment, start_pos)
+                    }
                     '=' => {
-                        self.advance3();
-                        self.emit(Token::ExponentEq, start_pos)
+                        self.advance2();
+                        self.emit(Token::AddEq, start_pos)
                     }
                     _ => {
-                        self.advance2();
-                        self.emit(Token::Exponent, start_pos)
+                        self.advance();
+                        self.emit(Token::Plus, start_pos)
                     }
                 },
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::MultiplyEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Multiply, start_pos)
-                }
-            },
-            '/' => match self.peek() {
-                '/' => {
-                    self.advance2();
-                    self.skip_line_comment()?;
-                    self.lex_token()
-                }
-                '*' => {
-                    self.advance2();
-                    self.skip_block_comment()?;
-                    self.lex_token()
-                }
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::DivideEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Divide, start_pos)
-                }
-            },
-            '%' => match self.peek() {
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::RemainderEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Remainder, start_pos)
-                }
-            },
-            '&' => match self.peek() {
-                '&' => {
-                    self.advance2();
-                    self.emit(Token::LogicalAnd, start_pos)
-                }
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::AndEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::BitwiseAnd, start_pos)
-                }
-            },
-            '|' => match self.peek() {
-                '|' => {
-                    self.advance2();
-                    self.emit(Token::LogicalOr, start_pos)
-                }
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::OrEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::BitwiseOr, start_pos)
-                }
-            },
-            '?' => match self.peek() {
-                '?' => {
-                    self.advance2();
-                    self.emit(Token::NullishCoalesce, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Question, start_pos)
-                }
-            },
-            '^' => match self.peek() {
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::XorEq, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::BitwiseXor, start_pos)
-                }
-            },
-            '>' => match self.peek() {
-                '>' => match self.peek2() {
-                    '>' => match self.peek3() {
+                '-' => match self.peek() {
+                    '-' => {
+                        self.advance2();
+                        self.emit(Token::Decrement, start_pos)
+                    }
+                    '=' => {
+                        self.advance2();
+                        self.emit(Token::SubtractEq, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::Minus, start_pos)
+                    }
+                },
+                '*' => match self.peek() {
+                    '*' => match self.peek2() {
                         '=' => {
-                            self.advance4();
-                            self.emit(Token::ShiftRightLogicalEq, start_pos)
+                            self.advance3();
+                            self.emit(Token::ExponentEq, start_pos)
                         }
                         _ => {
-                            self.advance3();
-                            self.emit(Token::ShiftRightLogical, start_pos)
+                            self.advance2();
+                            self.emit(Token::Exponent, start_pos)
                         }
                     },
                     '=' => {
-                        self.advance3();
-                        self.emit(Token::ShiftRightArithmeticEq, start_pos)
+                        self.advance2();
+                        self.emit(Token::MultiplyEq, start_pos)
                     }
                     _ => {
-                        self.advance2();
-                        self.emit(Token::ShiftRightArithmetic, start_pos)
+                        self.advance();
+                        self.emit(Token::Multiply, start_pos)
                     }
                 },
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::GreaterThanOrEqual, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::GreaterThan, start_pos)
-                }
-            },
-            '<' => match self.peek() {
-                '<' => match self.peek2() {
+                '/' => match self.peek() {
+                    '/' => {
+                        self.advance2();
+                        self.skip_line_comment()?;
+                        continue;
+                    }
+                    '*' => {
+                        self.advance2();
+                        self.skip_block_comment()?;
+                        continue;
+                    }
                     '=' => {
-                        self.advance3();
-                        self.emit(Token::ShiftLeftEq, start_pos)
+                        self.advance2();
+                        self.emit(Token::DivideEq, start_pos)
                     }
                     _ => {
-                        self.advance2();
-                        self.emit(Token::ShiftLeft, start_pos)
+                        self.advance();
+                        self.emit(Token::Divide, start_pos)
                     }
                 },
-                '=' => {
-                    self.advance2();
-                    self.emit(Token::LessThanOrEqual, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::LessThan, start_pos)
-                }
-            },
-            '~' => {
-                self.advance();
-                self.emit(Token::BitwiseNot, start_pos)
-            }
-            '=' => match self.peek() {
-                '=' => match self.peek2() {
+                '%' => match self.peek() {
                     '=' => {
-                        self.advance3();
-                        self.emit(Token::EqEqEq, start_pos)
+                        self.advance2();
+                        self.emit(Token::RemainderEq, start_pos)
                     }
                     _ => {
-                        self.advance2();
-                        self.emit(Token::EqEq, start_pos)
+                        self.advance();
+                        self.emit(Token::Remainder, start_pos)
                     }
                 },
-                '>' => {
-                    self.advance2();
-                    self.emit(Token::Arrow, start_pos)
-                }
-                _ => {
-                    self.advance();
-                    self.emit(Token::Equals, start_pos)
-                }
-            },
-            '!' => match self.peek() {
-                '=' => match self.peek2() {
+                '&' => match self.peek() {
+                    '&' => {
+                        self.advance2();
+                        self.emit(Token::LogicalAnd, start_pos)
+                    }
                     '=' => {
-                        self.advance3();
-                        self.emit(Token::NotEqEq, start_pos)
+                        self.advance2();
+                        self.emit(Token::AndEq, start_pos)
                     }
                     _ => {
-                        self.advance2();
-                        self.emit(Token::NotEq, start_pos)
+                        self.advance();
+                        self.emit(Token::BitwiseAnd, start_pos)
                     }
                 },
-                _ => {
+                '|' => match self.peek() {
+                    '|' => {
+                        self.advance2();
+                        self.emit(Token::LogicalOr, start_pos)
+                    }
+                    '=' => {
+                        self.advance2();
+                        self.emit(Token::OrEq, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::BitwiseOr, start_pos)
+                    }
+                },
+                '?' => match self.peek() {
+                    '?' => {
+                        self.advance2();
+                        self.emit(Token::NullishCoalesce, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::Question, start_pos)
+                    }
+                },
+                '^' => match self.peek() {
+                    '=' => {
+                        self.advance2();
+                        self.emit(Token::XorEq, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::BitwiseXor, start_pos)
+                    }
+                },
+                '>' => match self.peek() {
+                    '>' => match self.peek2() {
+                        '>' => match self.peek3() {
+                            '=' => {
+                                self.advance4();
+                                self.emit(Token::ShiftRightLogicalEq, start_pos)
+                            }
+                            _ => {
+                                self.advance3();
+                                self.emit(Token::ShiftRightLogical, start_pos)
+                            }
+                        },
+                        '=' => {
+                            self.advance3();
+                            self.emit(Token::ShiftRightArithmeticEq, start_pos)
+                        }
+                        _ => {
+                            self.advance2();
+                            self.emit(Token::ShiftRightArithmetic, start_pos)
+                        }
+                    },
+                    '=' => {
+                        self.advance2();
+                        self.emit(Token::GreaterThanOrEqual, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::GreaterThan, start_pos)
+                    }
+                },
+                '<' => match self.peek() {
+                    '<' => match self.peek2() {
+                        '=' => {
+                            self.advance3();
+                            self.emit(Token::ShiftLeftEq, start_pos)
+                        }
+                        _ => {
+                            self.advance2();
+                            self.emit(Token::ShiftLeft, start_pos)
+                        }
+                    },
+                    '=' => {
+                        self.advance2();
+                        self.emit(Token::LessThanOrEqual, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::LessThan, start_pos)
+                    }
+                },
+                '~' => {
                     self.advance();
-                    self.emit(Token::LogicalNot, start_pos)
+                    self.emit(Token::BitwiseNot, start_pos)
                 }
-            },
-            '(' => {
-                self.advance();
-                self.emit(Token::LeftParen, start_pos)
-            }
-            ')' => {
-                self.advance();
-                self.emit(Token::RightParen, start_pos)
-            }
-            '{' => {
-                self.advance();
-                self.emit(Token::LeftBrace, start_pos)
-            }
-            '}' => {
-                self.advance();
-                self.emit(Token::RightBrace, start_pos)
-            }
-            '[' => {
-                self.advance();
-                self.emit(Token::LeftBracket, start_pos)
-            }
-            ']' => {
-                self.advance();
-                self.emit(Token::RightBracket, start_pos)
-            }
-            ';' => {
-                self.advance();
-                self.emit(Token::Semicolon, start_pos)
-            }
-            ',' => {
-                self.advance();
-                self.emit(Token::Comma, start_pos)
-            }
-            '.' => {
-                if is_decimal_digit(self.peek()) {
-                    self.lex_decimal_literal()
-                } else {
+                '=' => match self.peek() {
+                    '=' => match self.peek2() {
+                        '=' => {
+                            self.advance3();
+                            self.emit(Token::EqEqEq, start_pos)
+                        }
+                        _ => {
+                            self.advance2();
+                            self.emit(Token::EqEq, start_pos)
+                        }
+                    },
+                    '>' => {
+                        self.advance2();
+                        self.emit(Token::Arrow, start_pos)
+                    }
+                    _ => {
+                        self.advance();
+                        self.emit(Token::Equals, start_pos)
+                    }
+                },
+                '!' => match self.peek() {
+                    '=' => match self.peek2() {
+                        '=' => {
+                            self.advance3();
+                            self.emit(Token::NotEqEq, start_pos)
+                        }
+                        _ => {
+                            self.advance2();
+                            self.emit(Token::NotEq, start_pos)
+                        }
+                    },
+                    _ => {
+                        self.advance();
+                        self.emit(Token::LogicalNot, start_pos)
+                    }
+                },
+                '(' => {
                     self.advance();
-                    self.emit(Token::Period, start_pos)
+                    self.emit(Token::LeftParen, start_pos)
                 }
-            }
-            ':' => {
-                self.advance();
-                self.emit(Token::Colon, start_pos)
-            }
-            '#' => {
-                self.advance();
-                self.emit(Token::Hash, start_pos)
-            }
-            '0' => match self.peek() {
-                'b' | 'B' => self.lex_binary_literal(),
-                'o' | 'O' => self.lex_octal_literal(),
-                'x' | 'X' => self.lex_hex_literal(),
-                _ => self.lex_decimal_literal(),
-            },
-            '1'..='9' => self.lex_decimal_literal(),
-            '"' | '\'' => self.lex_string_literal(),
-            EOF_CHAR => self.emit(Token::Eof, start_pos),
-            char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
-            // Escape sequence at the start of an identifier
-            '\\' => {
-                let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                if !is_id_start_ascii(code_point) && !is_id_start_unicode(code_point) {
-                    let loc = self.mark_loc(start_pos);
-                    return self.error(loc, ParseError::UnknownToken((code_point as char).into()));
-                }
-
-                self.lex_identifier_non_ascii(start_pos, code_point.into())
-            }
-            other => {
-                if is_ascii(other) {
+                ')' => {
                     self.advance();
-                    let loc = self.mark_loc(start_pos);
-                    self.error(
-                        loc,
-                        ParseError::UnknownToken(((other as u8) as char).into()),
-                    )
-                } else {
-                    let code_point = self.lex_utf8_codepoint()?;
-                    if is_id_start_unicode(code_point) {
-                        self.lex_identifier_non_ascii(start_pos, code_point.into())
+                    self.emit(Token::RightParen, start_pos)
+                }
+                '{' => {
+                    self.advance();
+                    self.emit(Token::LeftBrace, start_pos)
+                }
+                '}' => {
+                    self.advance();
+                    self.emit(Token::RightBrace, start_pos)
+                }
+                '[' => {
+                    self.advance();
+                    self.emit(Token::LeftBracket, start_pos)
+                }
+                ']' => {
+                    self.advance();
+                    self.emit(Token::RightBracket, start_pos)
+                }
+                ';' => {
+                    self.advance();
+                    self.emit(Token::Semicolon, start_pos)
+                }
+                ',' => {
+                    self.advance();
+                    self.emit(Token::Comma, start_pos)
+                }
+                '.' => {
+                    if is_decimal_digit(self.peek()) {
+                        self.lex_decimal_literal()
                     } else {
-                        let loc = self.mark_loc(start_pos);
-                        self.error(loc, ParseError::UnknownToken((code_point as char).into()))
+                        self.advance();
+                        self.emit(Token::Period, start_pos)
                     }
                 }
-            }
+                ':' => {
+                    self.advance();
+                    self.emit(Token::Colon, start_pos)
+                }
+                '#' => {
+                    self.advance();
+                    self.emit(Token::Hash, start_pos)
+                }
+                '0' => match self.peek() {
+                    'b' | 'B' => self.lex_binary_literal(),
+                    'o' | 'O' => self.lex_octal_literal(),
+                    'x' | 'X' => self.lex_hex_literal(),
+                    _ => self.lex_decimal_literal(),
+                },
+                '1'..='9' => self.lex_decimal_literal(),
+                '"' | '\'' => self.lex_string_literal(),
+                EOF_CHAR => self.emit(Token::Eof, start_pos),
+                char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
+                // Escape sequence at the start of an identifier
+                '\\' => {
+                    let code_point = self.lex_identifier_unicode_escape_sequence()?;
+                    if !is_id_start_ascii(code_point) && !is_id_start_unicode(code_point) {
+                        let loc = self.mark_loc(start_pos);
+                        return self
+                            .error(loc, ParseError::UnknownToken((code_point as char).into()));
+                    }
+
+                    self.lex_identifier_non_ascii(start_pos, code_point.into())
+                }
+                other => {
+                    if is_ascii(other) {
+                        self.advance();
+                        let loc = self.mark_loc(start_pos);
+                        self.error(
+                            loc,
+                            ParseError::UnknownToken(((other as u8) as char).into()),
+                        )
+                    } else {
+                        let code_point = self.lex_utf8_codepoint()?;
+                        if is_id_start_unicode(code_point) {
+                            self.lex_identifier_non_ascii(start_pos, code_point.into())
+                        } else if is_unicode_whitespace(code_point) {
+                            continue;
+                        } else if is_unicode_newline(code_point) {
+                            self.is_new_line_before_current = true;
+                            continue;
+                        } else {
+                            let loc = self.mark_loc(start_pos);
+                            self.error(loc, ParseError::UnknownToken((code_point as char).into()))
+                        }
+                    }
+                }
+            };
         }
     }
 
@@ -533,8 +578,16 @@ impl<'a> Lexer<'a> {
                     return Ok(());
                 }
                 EOF_CHAR => return Ok(()),
-                _ => {
-                    self.lex_ascii_or_unicode_character()?;
+                other => {
+                    if is_ascii(other) {
+                        self.advance()
+                    } else {
+                        let code_point = self.lex_utf8_codepoint()?;
+                        if is_unicode_newline(code_point) {
+                            self.is_new_line_before_current = true;
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
@@ -563,8 +616,15 @@ impl<'a> Lexer<'a> {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Multiply));
                 }
-                _ => {
-                    self.lex_ascii_or_unicode_character()?;
+                other => {
+                    if is_ascii(other) {
+                        self.advance()
+                    } else {
+                        let code_point = self.lex_utf8_codepoint()?;
+                        if is_unicode_newline(code_point) {
+                            self.is_new_line_before_current = true;
+                        }
+                    }
                 }
             }
         }
@@ -940,19 +1000,24 @@ impl<'a> Lexer<'a> {
 
     // Fast path for lexing a purely ASCII identifier
     fn lex_identifier_ascii(&mut self, start_pos: Pos) -> LexResult {
+        // Consume the id start ASCII character
         self.advance();
 
         loop {
-            if is_id_continue_ascii(self.current) {
+            if is_id_part_ascii(self.current) {
                 self.advance();
                 continue;
-            } else if self.current == '\\' || is_id_continue_unicode(self.current) {
+            } else if is_ascii(self.current) && self.current != '\\' {
+                // The only remaining allowed ASCII character is the start of an escape sequence,
+                // handled below.
+                break;
+            } else if self.current == EOF_CHAR {
+                break;
+            } else {
                 // Start of an escape sequence so bail to slow path, copying over ASCII string that
                 // has been created so far.
                 let string_builder = String::from(&self.buf[start_pos..self.pos]);
                 return self.lex_identifier_non_ascii(start_pos, string_builder);
-            } else {
-                break;
             }
         }
 
@@ -975,12 +1040,12 @@ impl<'a> Lexer<'a> {
         loop {
             // Check if ASCII
             if is_ascii(self.current) {
-                if is_id_continue_ascii(self.current) {
+                if is_id_part_ascii(self.current) {
                     string_builder.push(self.current);
                     self.advance();
                 } else if self.current == '\\' {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                    if !is_id_continue_ascii(code_point) && !is_id_continue_unicode(code_point) {
+                    if !is_id_part_ascii(code_point) && !is_id_part_unicode(code_point) {
                         let loc = self.mark_loc(self.pos);
                         return self.error(loc, ParseError::UnknownToken(code_point.into()));
                     }
@@ -991,12 +1056,14 @@ impl<'a> Lexer<'a> {
                 }
             } else {
                 // Otherwise must be a utf-8 encoded codepoint
+                let save_state = self.save();
                 let code_point = self.lex_utf8_codepoint()?;
-                if is_id_continue_unicode(code_point) {
+                if is_id_part_unicode(code_point) {
                     string_builder.push(code_point);
                 } else {
-                    let loc = self.mark_loc(self.pos);
-                    return self.error(loc, ParseError::UnknownToken(code_point.into()));
+                    // Restore to before codepoint if not part of the id
+                    self.restore(&save_state);
+                    break;
                 }
             }
         }
@@ -1067,6 +1134,9 @@ impl<'a> Lexer<'a> {
             "super" => Some(Token::Super),
             "get" => Some(Token::Get),
             "set" => Some(Token::Set),
+            "import" => Some(Token::Import),
+            "export" => Some(Token::Export),
+            "enum" => Some(Token::Enum),
             _ => None,
         }
     }

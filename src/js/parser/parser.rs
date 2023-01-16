@@ -2022,7 +2022,10 @@ impl<'a> Parser<'a> {
             | Token::Extends
             | Token::Super
             | Token::Get
-            | Token::Set => {
+            | Token::Set
+            | Token::Import
+            | Token::Export
+            | Token::Enum => {
                 let loc = self.loc;
                 let name = self.token.to_string();
                 self.advance()?;

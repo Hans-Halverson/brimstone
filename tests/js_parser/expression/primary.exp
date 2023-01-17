@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-23:14",
+  loc: "1:0-27:8",
   body: [
     {
       type: "ExpressionStatement",
@@ -145,6 +145,62 @@
             name: "c",
           },
           null,
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "25:0-25:17",
+      kind: {
+        type: "ArrayExpression",
+        loc: "25:0-25:16",
+        elements: [
+          {
+            type: "SpreadElement",
+            loc: "25:1-25:5",
+            argument: {
+              type: "Identifier",
+              loc: "25:4-25:5",
+              name: "a",
+            },
+          },
+          {
+            type: "SpreadElement",
+            loc: "25:6-25:10",
+            argument: {
+              type: "Identifier",
+              loc: "25:9-25:10",
+              name: "b",
+            },
+          },
+          {
+            type: "SpreadElement",
+            loc: "25:11-25:15",
+            argument: {
+              type: "Identifier",
+              loc: "25:14-25:15",
+              name: "c",
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "27:0-27:8",
+      kind: {
+        type: "ArrayExpression",
+        loc: "27:0-27:7",
+        elements: [
+          {
+            type: "SpreadElement",
+            loc: "27:1-27:5",
+            argument: {
+              type: "Identifier",
+              loc: "27:4-27:5",
+              name: "a",
+            },
+          },
         ],
       },
     },

@@ -497,7 +497,11 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::Comma, start_pos)
                 }
                 '.' => {
-                    if is_decimal_digit(self.peek()) {
+                    let next_char = self.peek();
+                    if next_char == '.' && self.peek2() == '.' {
+                        self.advance3();
+                        self.emit(Token::Spread, start_pos)
+                    } else if is_decimal_digit(next_char) {
                         self.lex_decimal_literal()
                     } else {
                         self.advance();

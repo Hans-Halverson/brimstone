@@ -665,15 +665,22 @@ impl<'a> Printer<'a> {
     fn print_call_expression(&mut self, call: &CallExpression) {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", call.callee.as_ref(), Printer::print_expression);
-        self.array_property("arguments", call.arguments.as_ref(), Printer::print_expression);
+        self.array_property("arguments", call.arguments.as_ref(), Printer::print_call_argument);
         self.property("optional", call.is_optional, Printer::print_bool);
         self.end_node();
+    }
+
+    fn print_call_argument(&mut self, argument: &CallArgument) {
+        match argument {
+            CallArgument::Expression(expr) => self.print_expression(expr),
+            CallArgument::Spread(spread) => self.print_spread_element(spread),
+        }
     }
 
     fn print_new_expression(&mut self, new: &NewExpression) {
         self.start_node("NewExpression", &new.loc);
         self.property("callee", new.callee.as_ref(), Printer::print_expression);
-        self.array_property("arguments", new.arguments.as_ref(), Printer::print_expression);
+        self.array_property("arguments", new.arguments.as_ref(), Printer::print_call_argument);
         self.end_node();
     }
 
@@ -690,12 +697,22 @@ impl<'a> Printer<'a> {
 
     fn print_array_expression(&mut self, arr: &ArrayExpression) {
         self.start_node("ArrayExpression", &arr.loc);
-        self.array_property(
-            "elements",
-            arr.elements.as_ref(),
-            Printer::print_optional_expression_in_array,
-        );
+        self.array_property("elements", arr.elements.as_ref(), Printer::print_array_element);
         self.end_node();
+    }
+
+    fn print_array_element(&mut self, element: &ArrayElement) {
+        match element {
+            ArrayElement::Expression(expr) => self.print_expression(expr),
+            ArrayElement::Spread(spread) => self.print_spread_element(spread),
+            ArrayElement::Hole => self.print_null(),
+        }
+    }
+
+    fn print_spread_element(&mut self, spread: &SpreadElement) {
+        self.start_node("SpreadElement", &spread.loc);
+        self.property("argument", spread.argument.as_ref(), Printer::print_expression);
+        self.end_node()
     }
 
     fn print_object_expression(&mut self, obj: &ObjectExpression) {
@@ -705,6 +722,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_property(&mut self, prop: &Property) {
+        if prop.kind == PropertyKind::Spread {
+            self.start_node("SpreadElement", &prop.loc);
+            self.property("argument", prop.key.as_ref(), Printer::print_expression);
+            self.end_node();
+            return;
+        }
+
         self.start_node("Property", &prop.loc);
         self.property("key", prop.key.as_ref(), Printer::print_expression);
         self.property("value", prop.value.as_ref(), Printer::print_optional_expression);
@@ -720,6 +744,7 @@ impl<'a> Printer<'a> {
             PropertyKind::Init => "init",
             PropertyKind::Get => "get",
             PropertyKind::Set => "set",
+            PropertyKind::Spread => "spread",
         };
         self.print_str(str)
     }
@@ -753,7 +778,7 @@ impl<'a> Printer<'a> {
     fn print_super_call_expression(&mut self, call: &SuperCallExpression) {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", &call.super_, Printer::print_super);
-        self.array_property("arguments", call.arguments.as_ref(), Printer::print_expression);
+        self.array_property("arguments", call.arguments.as_ref(), Printer::print_call_argument);
         self.end_node();
     }
 

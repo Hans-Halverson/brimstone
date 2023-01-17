@@ -6,6 +6,8 @@ super(a, b, c);
 
 super (a, b, c,);
 
+super(...a);
+
 super.foo;
 
 super.super;

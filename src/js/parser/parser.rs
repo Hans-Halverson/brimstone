@@ -1726,12 +1726,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call_arguments(&mut self) -> ParseResult<Vec<Expression>> {
+    fn parse_call_arguments(&mut self) -> ParseResult<Vec<CallArgument>> {
         self.expect(Token::LeftParen)?;
 
         let mut arguments = vec![];
         while self.token != Token::RightParen {
-            arguments.push(*self.parse_assignment_expression()?);
+            if self.token == Token::Spread {
+                arguments.push(CallArgument::Spread(self.parse_spread_element()?))
+            } else {
+                arguments.push(CallArgument::Expression(*self.parse_assignment_expression()?));
+            }
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -1940,22 +1944,39 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_spread_element(&mut self) -> ParseResult<SpreadElement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+        let argument = self.parse_assignment_expression()?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(SpreadElement { loc, argument })
+    }
+
     fn parse_array_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
         let mut elements = vec![];
         while self.token != Token::RightBracket {
+            match self.token {
+                Token::Comma => {
+                    self.advance()?;
+                    elements.push(ArrayElement::Hole);
+                    continue;
+                }
+                Token::Spread => {
+                    elements.push(ArrayElement::Spread(self.parse_spread_element()?));
+                }
+                _ => {
+                    elements.push(ArrayElement::Expression(*self.parse_assignment_expression()?));
+                }
+            }
+
             if self.token == Token::Comma {
                 self.advance()?;
-                elements.push(None);
             } else {
-                elements.push(Some(*self.parse_assignment_expression()?));
-                if self.token == Token::Comma {
-                    self.advance()?;
-                } else {
-                    break;
-                }
+                break;
             }
         }
 
@@ -1971,8 +1992,21 @@ impl<'a> Parser<'a> {
 
         let mut properties = vec![];
         while self.token != Token::RightBrace {
-            let (property, _) = self.parse_property(PropertyContext::Object)?;
-            properties.push(property);
+            if self.token == Token::Spread {
+                let spread = self.parse_spread_element()?;
+                let spread_property = Property {
+                    loc: spread.loc,
+                    key: spread.argument,
+                    value: None,
+                    is_computed: false,
+                    is_method: false,
+                    kind: PropertyKind::Spread,
+                };
+                properties.push(spread_property);
+            } else {
+                let (property, _) = self.parse_property(PropertyContext::Object)?;
+                properties.push(property);
+            }
 
             if self.token == Token::RightBrace {
                 break;
@@ -2467,6 +2501,7 @@ impl<'a> Parser<'a> {
                     ClassMethodKind::Method
                 }
             }
+            PropertyKind::Spread => unreachable!("spread element cannot appear in class"),
         };
 
         ClassMethod {

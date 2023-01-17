@@ -231,6 +231,10 @@ pub trait AstVisitor: Sized {
         default_visit_call_expression(self, expr)
     }
 
+    fn visit_call_argument(&mut self, argument: &mut CallArgument) {
+        default_visit_call_argument(self, argument)
+    }
+
     fn visit_new_expression(&mut self, expr: &mut NewExpression) {
         default_visit_new_expression(self, expr)
     }
@@ -243,6 +247,10 @@ pub trait AstVisitor: Sized {
 
     fn visit_array_expression(&mut self, expr: &mut ArrayExpression) {
         default_visit_array_expression(self, expr)
+    }
+
+    fn visit_spread_element(&mut self, spread: &mut SpreadElement) {
+        default_visit_spread_element(self, spread)
     }
 
     fn visit_object_expression(&mut self, expr: &mut ObjectExpression) {
@@ -540,12 +548,19 @@ pub fn default_visit_conditional_expression<V: AstVisitor>(
 
 pub fn default_visit_call_expression<V: AstVisitor>(visitor: &mut V, expr: &mut CallExpression) {
     visitor.visit_expression(&mut expr.callee);
-    visit_vec!(visitor, expr.arguments, visit_expression);
+    visit_vec!(visitor, expr.arguments, visit_call_argument);
+}
+
+pub fn default_visit_call_argument<V: AstVisitor>(visitor: &mut V, argument: &mut CallArgument) {
+    match argument {
+        CallArgument::Expression(expr) => visitor.visit_expression(expr),
+        CallArgument::Spread(spread) => visitor.visit_spread_element(spread),
+    }
 }
 
 pub fn default_visit_new_expression<V: AstVisitor>(visitor: &mut V, expr: &mut NewExpression) {
     visitor.visit_expression(&mut expr.callee);
-    visit_vec!(visitor, expr.arguments, visit_expression);
+    visit_vec!(visitor, expr.arguments, visit_call_argument);
 }
 
 pub fn default_visit_sequence_expression<V: AstVisitor>(
@@ -558,10 +573,15 @@ pub fn default_visit_sequence_expression<V: AstVisitor>(
 pub fn default_visit_array_expression<V: AstVisitor>(visitor: &mut V, expr: &mut ArrayExpression) {
     for element in &mut expr.elements {
         match element {
-            None => {}
-            Some(element) => visitor.visit_expression(element),
+            ArrayElement::Expression(expr) => visitor.visit_expression(expr),
+            ArrayElement::Spread(spread) => visitor.visit_spread_element(spread),
+            ArrayElement::Hole => {}
         }
     }
+}
+
+pub fn default_visit_spread_element<V: AstVisitor>(visitor: &mut V, spread: &mut SpreadElement) {
+    visitor.visit_expression(&mut spread.argument);
 }
 
 pub fn default_visit_object_expression<V: AstVisitor>(
@@ -607,7 +627,7 @@ pub fn default_visit_super_call_expression<V: AstVisitor>(
     visitor: &mut V,
     expr: &mut SuperCallExpression,
 ) {
-    visit_vec!(visitor, expr.arguments, visit_expression);
+    visit_vec!(visitor, expr.arguments, visit_call_argument);
 }
 
 pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ArrayPattern) {

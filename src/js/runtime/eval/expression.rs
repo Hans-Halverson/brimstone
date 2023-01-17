@@ -131,17 +131,18 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
 
     for (index, element) in expr.elements.iter().enumerate() {
         match element {
-            None => {
+            ast::ArrayElement::Hole => {
                 let key = PropertyKey::array_index(index as u32);
                 let desc = Property::data(Value::empty(), true, true, true);
                 array.object.set_property(&key, desc);
             }
-            Some(element) => {
+            ast::ArrayElement::Expression(expr) => {
                 let key = PropertyKey::array_index(index as u32);
-                let element_value = maybe!(eval_expression(cx, element));
+                let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
                 array.object.set_property(&key, desc);
             }
+            ast::ArrayElement::Spread(_) => unimplemented!("array spread element"),
         }
     }
 
@@ -155,6 +156,10 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
 
     for property in &expr.properties {
         match property.value.as_ref() {
+            // Spread element
+            _ if property.kind == ast::PropertyKind::Spread => {
+                unimplemented!("object spread elements")
+            }
             // Identifier shorthand property
             None => {
                 let id = property.key.as_ref().to_id();
@@ -378,7 +383,7 @@ fn eval_call(
     cx: &mut Context,
     func_value: Value,
     this_value: Value,
-    arguments: &[ast::Expression],
+    arguments: &[ast::CallArgument],
 ) -> EvalResult<Value> {
     let arg_values = maybe!(eval_argument_list(cx, arguments));
     if !is_callable(func_value) {
@@ -453,12 +458,17 @@ fn eval_super_call_expression(
 }
 
 // 13.3.8.1 ArgumentListEvaluation
-fn eval_argument_list(cx: &mut Context, arguments: &[ast::Expression]) -> EvalResult<Vec<Value>> {
+fn eval_argument_list(cx: &mut Context, arguments: &[ast::CallArgument]) -> EvalResult<Vec<Value>> {
     let mut arg_values = vec![];
 
     for arg in arguments {
-        let arg_value = maybe!(eval_expression(cx, arg));
-        arg_values.push(arg_value)
+        match arg {
+            ast::CallArgument::Expression(expr) => {
+                let arg_value = maybe!(eval_expression(cx, expr));
+                arg_values.push(arg_value)
+            }
+            ast::CallArgument::Spread(_) => unimplemented!("call spread element"),
+        }
     }
 
     arg_values.into()

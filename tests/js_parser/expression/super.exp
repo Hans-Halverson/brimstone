@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-15:13",
+  loc: "1:0-17:13",
   body: [
     {
       type: "ExpressionStatement",
@@ -94,17 +94,40 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:10",
+      loc: "9:0-9:12",
       kind: {
-        type: "MemberExpression",
-        loc: "9:0-9:9",
-        object: {
+        type: "CallExpression",
+        loc: "9:0-9:11",
+        callee: {
           type: "Super",
           loc: "9:0-9:5",
         },
+        arguments: [
+          {
+            type: "SpreadElement",
+            loc: "9:6-9:10",
+            argument: {
+              type: "Identifier",
+              loc: "9:9-9:10",
+              name: "a",
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:10",
+      kind: {
+        type: "MemberExpression",
+        loc: "11:0-11:9",
+        object: {
+          type: "Super",
+          loc: "11:0-11:5",
+        },
         property: {
           type: "Identifier",
-          loc: "9:6-9:9",
+          loc: "11:6-11:9",
           name: "foo",
         },
         computed: false,
@@ -112,17 +135,17 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:12",
+      loc: "13:0-13:12",
       kind: {
         type: "MemberExpression",
-        loc: "11:0-11:11",
+        loc: "13:0-13:11",
         object: {
           type: "Super",
-          loc: "11:0-11:5",
+          loc: "13:0-13:5",
         },
         property: {
           type: "Identifier",
-          loc: "11:6-11:11",
+          loc: "13:6-13:11",
           name: "super",
         },
         computed: false,
@@ -130,17 +153,17 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "13:0-13:11",
+      loc: "15:0-15:11",
       kind: {
         type: "MemberExpression",
-        loc: "13:0-13:10",
+        loc: "15:0-15:10",
         object: {
           type: "Super",
-          loc: "13:0-13:5",
+          loc: "15:0-15:5",
         },
         property: {
           type: "Identifier",
-          loc: "13:6-13:9",
+          loc: "15:6-15:9",
           name: "foo",
         },
         computed: true,
@@ -148,26 +171,26 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "15:0-15:13",
+      loc: "17:0-17:13",
       kind: {
         type: "MemberExpression",
-        loc: "15:0-15:12",
+        loc: "17:0-17:12",
         object: {
           type: "Super",
-          loc: "15:0-15:5",
+          loc: "17:0-17:5",
         },
         property: {
           type: "BinaryExpression",
-          loc: "15:6-15:11",
+          loc: "17:6-17:11",
           operator: "+",
           left: {
             type: "Literal",
-            loc: "15:6-15:7",
+            loc: "17:6-17:7",
             value: 1,
           },
           right: {
             type: "Literal",
-            loc: "15:10-15:11",
+            loc: "17:10-17:11",
             value: 2,
           },
         },

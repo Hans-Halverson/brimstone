@@ -8,6 +8,8 @@ new a(b, c, d);
 
 new a(b, c, d,);
 
+new a(...b);
+
 new a + b;
 
 new a.b;

@@ -43,3 +43,7 @@
 
 ({ get get() {}, get set() {}, set get(x) {}, set set(x) {} });
 
+// Spread elements
+({a, ...b, ...c});
+
+({...a, b, ...c,});

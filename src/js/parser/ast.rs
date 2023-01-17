@@ -674,14 +674,19 @@ pub struct ConditionalExpression {
 pub struct CallExpression {
     pub loc: Loc,
     pub callee: P<Expression>,
-    pub arguments: Vec<Expression>,
+    pub arguments: Vec<CallArgument>,
     pub is_optional: bool,
+}
+
+pub enum CallArgument {
+    Expression(Expression),
+    Spread(SpreadElement),
 }
 
 pub struct NewExpression {
     pub loc: Loc,
     pub callee: P<Expression>,
-    pub arguments: Vec<Expression>,
+    pub arguments: Vec<CallArgument>,
 }
 
 pub struct SequenceExpression {
@@ -691,7 +696,18 @@ pub struct SequenceExpression {
 
 pub struct ArrayExpression {
     pub loc: Loc,
-    pub elements: Vec<Option<Expression>>,
+    pub elements: Vec<ArrayElement>,
+}
+
+pub enum ArrayElement {
+    Expression(Expression),
+    Spread(SpreadElement),
+    Hole,
+}
+
+pub struct SpreadElement {
+    pub loc: Loc,
+    pub argument: P<Expression>,
 }
 
 pub struct ObjectExpression {
@@ -713,6 +729,8 @@ pub enum PropertyKind {
     Init,
     Get,
     Set,
+    // For spread properties the key is the argument and all other fields are ignored
+    Spread,
 }
 
 pub struct AwaitExpression {
@@ -736,7 +754,7 @@ pub struct SuperMemberExpression {
 pub struct SuperCallExpression {
     pub loc: Loc,
     pub super_: Loc,
-    pub arguments: Vec<Expression>,
+    pub arguments: Vec<CallArgument>,
 }
 
 pub enum Pattern {

@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-44:63",
+  loc: "1:0-49:19",
   body: [
     {
       type: "Block",
@@ -1159,6 +1159,90 @@
             shorthand: false,
             method: true,
             kind: "set",
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "47:0-47:18",
+      kind: {
+        type: "ObjectExpression",
+        loc: "47:1-47:16",
+        properties: [
+          {
+            type: "Property",
+            loc: "47:2-47:3",
+            key: {
+              type: "Identifier",
+              loc: "47:2-47:3",
+              name: "a",
+            },
+            value: null,
+            computed: false,
+            shorthand: true,
+            method: false,
+            kind: "init",
+          },
+          {
+            type: "SpreadElement",
+            loc: "47:5-47:9",
+            argument: {
+              type: "Identifier",
+              loc: "47:8-47:9",
+              name: "b",
+            },
+          },
+          {
+            type: "SpreadElement",
+            loc: "47:11-47:15",
+            argument: {
+              type: "Identifier",
+              loc: "47:14-47:15",
+              name: "c",
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "49:0-49:19",
+      kind: {
+        type: "ObjectExpression",
+        loc: "49:1-49:17",
+        properties: [
+          {
+            type: "SpreadElement",
+            loc: "49:2-49:6",
+            argument: {
+              type: "Identifier",
+              loc: "49:5-49:6",
+              name: "a",
+            },
+          },
+          {
+            type: "Property",
+            loc: "49:8-49:9",
+            key: {
+              type: "Identifier",
+              loc: "49:8-49:9",
+              name: "b",
+            },
+            value: null,
+            computed: false,
+            shorthand: true,
+            method: false,
+            kind: "init",
+          },
+          {
+            type: "SpreadElement",
+            loc: "49:11-49:15",
+            argument: {
+              type: "Identifier",
+              loc: "49:14-49:15",
+              name: "c",
+            },
           },
         ],
       },

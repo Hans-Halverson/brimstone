@@ -62,6 +62,7 @@ pub enum Token {
     Question,
     Colon,
     Arrow,
+    Spread,
     Hash,
     // Keywords
     Var,
@@ -135,6 +136,7 @@ impl fmt::Display for Token {
             Token::Decrement => "--",
             Token::Semicolon => ";",
             Token::Arrow => "=>",
+            Token::Spread => "...",
             Token::Hash => "#",
             Token::LeftParen => "(",
             Token::RightParen => ")",

@@ -11,7 +11,7 @@ use crate::{
         gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::OrdinaryObject,
-        property::PrivateProperty,
+        property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,

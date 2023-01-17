@@ -6,14 +6,15 @@ use crate::{
         error::type_error_,
         gc::Gc,
         intrinsics::{
-            array_constructor::ArrayConstructor, boolean_constructor::BooleanConstructor,
-            boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
-            error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
-            function_prototype::FunctionPrototype, global_object::create_eval, native_error::*,
-            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
-            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            string_constructor::StringConstructor, string_prototype::StringPrototype,
-            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
+            array_constructor::ArrayConstructor, array_prototype::ArrayPrototype,
+            boolean_constructor::BooleanConstructor, boolean_prototype::BooleanPrototype,
+            error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
+            function_constructor::FunctionConstructor, function_prototype::FunctionPrototype,
+            global_object::create_eval, native_error::*, number_constructor::NumberConstructor,
+            number_prototype::NumberPrototype, object_constructor::ObjectConstructor,
+            object_prototype::ObjectPrototype, string_constructor::StringConstructor,
+            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
+            symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -27,6 +28,7 @@ use crate::{
 #[repr(u8)]
 pub enum Intrinsic {
     ArrayConstructor = 0,
+    ArrayPrototype,
     BooleanConstructor,
     BooleanPrototype,
     ErrorConstructor,
@@ -133,7 +135,7 @@ impl Intrinsics {
         register_intrinsic_pair!(NumberPrototype, NumberConstructor);
         register_intrinsic_pair!(StringPrototype, StringConstructor);
         register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
-        register_intrinsic!(ArrayConstructor, ArrayConstructor);
+        register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
 
         // Native errors
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);

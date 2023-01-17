@@ -6,6 +6,7 @@ use crate::{
                 call, call_object, construct, create_data_property_or_throw, get_method,
                 has_property, initialize_instance_elements, ordinary_has_instance, private_get,
             },
+            array_object::array_create,
             completion::EvalResult,
             environment::environment::Environment,
             error::{reference_error_, type_error_},
@@ -15,6 +16,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
+            property::Property,
             property_key::PropertyKey,
             reference::{Reference, ReferenceBase},
             type_utilities::{
@@ -68,7 +70,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Call(expr) => eval_call_expression(cx, expr),
         ast::Expression::New(expr) => eval_new_expression(cx, expr),
         ast::Expression::Sequence(expr) => eval_sequence_expression(cx, expr),
-        ast::Expression::Array(_) => unimplemented!("array expression"),
+        ast::Expression::Array(expr) => eval_array_expression(cx, expr),
         ast::Expression::Object(expr) => eval_object_expression(cx, expr),
         ast::Expression::Function(func) => eval_function_expression(cx, func),
         ast::Expression::ArrowFunction(func) => eval_arrow_function(cx, func),
@@ -120,6 +122,30 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<Value> {
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Value> {
     let interned_value = cx.get_interned_string(&lit.value);
     interned_value.into()
+}
+
+// 13.2.4.2 Array Initializer Evaluation
+// 13.2.4.1 ArrayAccumulation
+fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalResult<Value> {
+    let mut array = must!(array_create(cx, 0, None));
+
+    for (index, element) in expr.elements.iter().enumerate() {
+        match element {
+            None => {
+                let key = PropertyKey::array_index(index as u32);
+                let desc = Property::data(Value::empty(), true, true, true);
+                array.object.set_property(&key, desc);
+            }
+            Some(element) => {
+                let key = PropertyKey::array_index(index as u32);
+                let element_value = maybe!(eval_expression(cx, element));
+                let desc = Property::data(element_value, true, true, true);
+                array.object.set_property(&key, desc);
+            }
+        }
+    }
+
+    array.into()
 }
 
 // 13.2.5.4 Object Initializer Evaluation

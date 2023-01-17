@@ -12,7 +12,7 @@ use crate::{
             extract_object_vtable, set_immutable_prototype, Object, ObjectValue, ObjectValueVtable,
         },
         ordinary_object::OrdinaryObject,
-        property::PrivateProperty,
+        property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,

@@ -26,7 +26,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::{ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject},
-    property::PrivateProperty,
+    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,

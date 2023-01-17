@@ -68,39 +68,10 @@ impl OrdinaryObject {
         }
     }
 
-    // Property mutators
-    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
-                            self.fall_back_to_sparse_properties();
-                        } else {
-                            self.expand_dense_properties(array_index + 1);
-                        }
-
-                        self.set_property(key, value);
-                    } else {
-                        array[array_index as usize] = value;
-                    }
-                }
-                ArrayProperties::Sparse(sparse_map) => {
-                    sparse_map.insert(array_index, value);
-                }
-            }
-
-            return;
-        }
-
-        self.properties.insert(key.clone(), value);
-    }
-
     #[inline]
     fn expand_dense_properties(&mut self, new_length: u32) {
         if let ArrayProperties::Dense(array) = &mut self.array_properties {
-            let default_value = Property::data(Value::empty(), false, false, false);
+            let default_value = Property::data(Value::empty(), true, true, true);
             array.resize(new_length as usize, default_value);
         } else {
             unreachable!("expected dense properties");
@@ -122,72 +93,106 @@ impl OrdinaryObject {
             }
         }
 
-        self.array_properties = ArrayProperties::Sparse(sparse_map)
+        self.array_properties = ArrayProperties::Sparse { sparse_map, length: array.len() as u32 }
     }
 
-    pub fn remove_property(&mut self, key: &PropertyKey) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    array[array_index as usize] =
-                        Property::data(Value::empty(), false, false, false);
+    pub fn array_properties_length(&self) -> u32 {
+        match &self.array_properties {
+            ArrayProperties::Dense(array) => array.len() as u32,
+            ArrayProperties::Sparse { length, .. } => *length,
+        }
+    }
+
+    // Resize array properties to match a new array length, potentially expanding and adding empty
+    // values, or shrinking and removing existing values.
+    //
+    // Properties are removed in descending numerical order, and removal can fail if the property
+    // is not configurable. In this case set the new length to have that property at the end of the
+    // array, stop deleting other properties, and return false.
+    //
+    // Returns return true on success.
+    pub fn set_array_properties_length(&mut self, new_length: u32) -> bool {
+        // First try falling back to sparse properties if this is an expanded dense array
+        match &self.array_properties {
+            ArrayProperties::Dense(array)
+                if new_length as usize >= array.len() + SPARSE_ARRAY_THRESHOLD =>
+            {
+                self.fall_back_to_sparse_properties();
+            }
+            _ => {}
+        }
+
+        match &mut self.array_properties {
+            ArrayProperties::Dense(array) => {
+                // In dense expansion case we resize array with new empty elements
+                if new_length >= array.len() as u32 {
+                    self.expand_dense_properties(new_length);
+                    return true;
                 }
-                ArrayProperties::Sparse(sparse_map) => {
-                    sparse_map.remove(&array_index);
+
+                // In dense truncating case we must first find the last non-configurable property
+                let mut last_non_configurable_index = None;
+                for (index, value) in array.iter().enumerate().rev() {
+                    if (index as u32) < new_length {
+                        break;
+                    }
+
+                    if !value.is_configurable() {
+                        last_non_configurable_index = Some(index);
+                        break;
+                    }
+                }
+
+                // And only truncate to one past the last non-configurable property, keeping it
+                if let Some(last_index) = last_non_configurable_index {
+                    array.truncate(last_index + 1);
+                    false
+                } else {
+                    array.truncate(new_length as usize);
+                    true
                 }
             }
-
-            return;
-        }
-
-        self.properties.remove(key);
-    }
-
-    pub fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return match &self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        return None;
-                    }
-
-                    let value = &array[array_index as usize];
-                    if value.value().is_empty() {
-                        return None;
-                    }
-
-                    Some(value)
+            ArrayProperties::Sparse { sparse_map, length } => {
+                // Sparse expand case is easy, we simply set the new length
+                if new_length >= *length {
+                    *length = new_length;
+                    return true;
                 }
-                ArrayProperties::Sparse(sparse_map) => sparse_map.get(&array_index),
-            };
-        }
 
-        self.properties.get(key)
-    }
-
-    pub fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        return None;
+                // In sparse removal case we must first find the last non-configurable property
+                let mut last_non_configurable_index = None;
+                for (index, value) in sparse_map.iter() {
+                    if (*index as u32) < new_length {
+                        continue;
                     }
 
-                    let value = &mut array[array_index as usize];
-                    if value.value().is_empty() {
-                        return None;
+                    if !value.is_configurable() {
+                        if *index <= last_non_configurable_index.unwrap_or(*index) {
+                            last_non_configurable_index = Some(*index);
+                        }
                     }
-
-                    Some(value)
                 }
-                ArrayProperties::Sparse(sparse_map) => sparse_map.get_mut(&array_index),
-            };
-        }
 
-        self.properties.get_mut(key)
+                let new_length = if let Some(last_index) = last_non_configurable_index {
+                    last_index + 1
+                } else {
+                    new_length
+                };
+
+                // Create a new map with non-truncated values
+                let mut new_sparse_map = HashMap::new();
+                for (index, value) in sparse_map.iter() {
+                    if *index < new_length {
+                        new_sparse_map.insert(*index, value.clone());
+                    }
+                }
+
+                *sparse_map = new_sparse_map;
+                *length = new_length;
+
+                last_non_configurable_index.is_none()
+            }
+        }
     }
 
     // Intrinsic creation utilities
@@ -247,7 +252,7 @@ impl OrdinaryObject {
 // switch to sparse array represented by map.
 enum ArrayProperties {
     Dense(Vec<Property>),
-    Sparse(HashMap<u32, Property>),
+    Sparse { sparse_map: HashMap<u32, Property>, length: u32 },
 }
 
 impl ArrayProperties {
@@ -319,17 +324,17 @@ impl Object for OrdinaryObject {
         key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        ordinary_define_own_property(cx, self, key, desc)
+        ordinary_define_own_property(cx, self.into(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
     fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_has_property(self, key)
+        ordinary_has_property(self.into(), key)
     }
 
     // 10.1.8 [[Get]]
     fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-        ordinary_get(cx, self, key, receiver)
+        ordinary_get(cx, self.into(), key, receiver)
     }
 
     // 10.1.9 [[Set]]
@@ -340,12 +345,12 @@ impl Object for OrdinaryObject {
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
-        ordinary_set(cx, self, key, value, receiver)
+        ordinary_set(cx, self.into(), key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
     fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_delete(self, key)
+        ordinary_delete(self.into(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
@@ -390,6 +395,102 @@ impl Object for OrdinaryObject {
             }
         }
     }
+
+    // Property accessors and mutators
+    fn set_property(&mut self, key: &PropertyKey, value: Property) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
+                            self.fall_back_to_sparse_properties();
+                        } else {
+                            self.expand_dense_properties(array_index + 1);
+                        }
+
+                        self.set_property(key, value);
+                    } else {
+                        array[array_index as usize] = value;
+                    }
+                }
+                ArrayProperties::Sparse { sparse_map, length } => {
+                    sparse_map.insert(array_index, value);
+                    if array_index >= *length {
+                        *length = array_index + 1;
+                    }
+                }
+            }
+
+            return;
+        }
+
+        self.properties.insert(key.clone(), value);
+    }
+
+    fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get(&array_index),
+            };
+        }
+
+        self.properties.get(key)
+    }
+
+    fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &mut array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get_mut(&array_index),
+            };
+        }
+
+        self.properties.get_mut(key)
+    }
+
+    fn remove_property(&mut self, key: &PropertyKey) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    array[array_index as usize] = Property::data(Value::empty(), true, true, true);
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => {
+                    sparse_map.remove(&array_index);
+                }
+            }
+
+            return;
+        }
+
+        self.properties.remove(key);
+    }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
@@ -423,7 +524,7 @@ pub fn ordinary_get_own_property(
 // 10.1.6.1 OrdinaryDefineOwnProperty
 pub fn ordinary_define_own_property(
     cx: &mut Context,
-    object: &mut OrdinaryObject,
+    object: Gc<ObjectValue>,
     key: &PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
@@ -454,7 +555,7 @@ pub fn is_compatible_property_descriptor(
 // 10.1.6.3 ValidateAndApplyPropertyDescriptor
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
-    mut object: Option<&mut OrdinaryObject>,
+    mut object: Option<Gc<ObjectValue>>,
     key: &PropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
@@ -468,7 +569,7 @@ pub fn validate_and_apply_property_descriptor(
         if object.is_none() {
             return true;
         }
-        let object = object.unwrap();
+        let mut object = object.unwrap();
 
         // Create new property with fields in descriptor, using default if field is not set
         let is_enumerable = desc.is_enumerable.unwrap_or(false);
@@ -600,7 +701,7 @@ pub fn validate_and_apply_property_descriptor(
 }
 
 // 10.1.7.1 OrdinaryHasProperty
-pub fn ordinary_has_property(object: &OrdinaryObject, key: &PropertyKey) -> EvalResult<bool> {
+pub fn ordinary_has_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(key));
     if own_property.is_some() {
         return true.into();
@@ -616,7 +717,7 @@ pub fn ordinary_has_property(object: &OrdinaryObject, key: &PropertyKey) -> Eval
 // 10.1.8.1 OrdinaryGet
 pub fn ordinary_get(
     cx: &mut Context,
-    object: &OrdinaryObject,
+    object: Gc<ObjectValue>,
     key: &PropertyKey,
     receiver: Value,
 ) -> EvalResult<Value> {
@@ -641,7 +742,7 @@ pub fn ordinary_get(
 // 10.1.9.2 OrdinarySetWithOwnDescriptor
 pub fn ordinary_set(
     cx: &mut Context,
-    object: &mut OrdinaryObject,
+    object: Gc<ObjectValue>,
     key: &PropertyKey,
     value: Value,
     receiver: Value,
@@ -693,7 +794,7 @@ pub fn ordinary_set(
 }
 
 // 10.1.10.1 OrdinaryDelete
-pub fn ordinary_delete(object: &mut OrdinaryObject, key: &PropertyKey) -> EvalResult<bool> {
+pub fn ordinary_delete(mut object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(key));
     match desc {
         None => true.into(),
@@ -722,7 +823,7 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
                 }
             }
         }
-        ArrayProperties::Sparse(sparse_map) => {
+        ArrayProperties::Sparse { sparse_map, .. } => {
             // Sparse map is unordered, so first extract and order keys
             let mut indexes_array = sparse_map.keys().map(|key| *key).collect::<Vec<_>>();
             indexes_array.sort();

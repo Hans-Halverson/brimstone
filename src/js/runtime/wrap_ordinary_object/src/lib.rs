@@ -72,21 +72,26 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             key: &PropertyKey,
             desc: PropertyDescriptor,
         ) -> EvalResult<bool> {
-            self.object_mut().define_own_property(cx, key, desc)
+            crate::js::runtime::ordinary_object::ordinary_define_own_property(
+                cx,
+                self.into(),
+                key,
+                desc,
+            )
         }
     );
 
     implement_if_undefined!(
         "has_property",
         fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
-            self.object().has_property(key)
+            crate::js::runtime::ordinary_object::ordinary_has_property(self.into(), key)
         }
     );
 
     implement_if_undefined!(
         "get",
         fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-            self.object().get(cx, key, receiver)
+            crate::js::runtime::ordinary_object::ordinary_get(cx, self.into(), key, receiver)
         }
     );
 
@@ -99,14 +104,14 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             value: Value,
             receiver: Value,
         ) -> EvalResult<bool> {
-            self.object_mut().set(cx, key, value, receiver)
+            crate::js::runtime::ordinary_object::ordinary_set(cx, self.into(), key, value, receiver)
         }
     );
 
     implement_if_undefined!(
         "delete",
         fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
-            self.object_mut().delete(key)
+            crate::js::runtime::ordinary_object::ordinary_delete(self.into(), key)
         }
     );
 
@@ -149,6 +154,34 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         ) -> EvalResult<()> {
             self.object_mut()
                 .private_method_or_accessor_add(cx, private_id, private_method)
+        }
+    );
+
+    implement_if_undefined!(
+        "get_property",
+        fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+            self.object().get_property(key)
+        }
+    );
+
+    implement_if_undefined!(
+        "get_property_mut",
+        fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+            self.object_mut().get_property_mut(key)
+        }
+    );
+
+    implement_if_undefined!(
+        "set_property",
+        fn set_property(&mut self, key: &PropertyKey, value: Property) {
+            self.object_mut().set_property(key, value)
+        }
+    );
+
+    implement_if_undefined!(
+        "remove_property",
+        fn remove_property(&mut self, key: &PropertyKey) {
+            self.object_mut().remove_property(key)
         }
     );
 

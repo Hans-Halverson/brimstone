@@ -1,4 +1,5 @@
 mod abstract_operations;
+mod array_object;
 mod builtin_function;
 mod builtin_names;
 pub mod completion;

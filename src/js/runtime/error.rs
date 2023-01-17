@@ -1,6 +1,6 @@
 use super::{
     completion::{Completion, EvalResult},
-    intrinsics::native_error::{ReferenceError, SyntaxError, TypeError},
+    intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError},
     value::Value,
     Context,
 };
@@ -15,6 +15,10 @@ fn type_error_value(cx: &mut Context, message: &str) -> Value {
 
 fn reference_error_value(cx: &mut Context, message: &str) -> Value {
     ReferenceError::new_with_message(cx, message.to_owned()).into()
+}
+
+fn range_error_value(cx: &mut Context, message: &str) -> Value {
+    RangeError::new_with_message(cx, message.to_owned()).into()
 }
 
 pub fn syntax_error(cx: &mut Context, message: &str) -> Completion {
@@ -39,6 +43,10 @@ pub fn type_error_<T>(cx: &mut Context, message: &str) -> EvalResult<T> {
 
 pub fn reference_error_<T>(cx: &mut Context, message: &str) -> EvalResult<T> {
     EvalResult::Throw(reference_error_value(cx, message))
+}
+
+pub fn range_error_<T>(cx: &mut Context, message: &str) -> EvalResult<T> {
+    EvalResult::Throw(range_error_value(cx, message))
 }
 
 pub fn err_not_defined_<T>(cx: &mut Context, name: &str) -> EvalResult<T> {

@@ -87,6 +87,14 @@ impl PropertyKey {
     }
 
     #[inline]
+    pub fn as_string(&self) -> Gc<StringValue> {
+        match &*self.data.borrow() {
+            KeyData::String(StringData { value, .. }) => *value,
+            _ => unreachable!("expected string key"),
+        }
+    }
+
+    #[inline]
     pub fn as_symbol(&self) -> Option<Gc<SymbolValue>> {
         return match &*self.data.borrow() {
             KeyData::Symbol { value } => Some(*value),

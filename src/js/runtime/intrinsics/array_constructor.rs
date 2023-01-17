@@ -1,7 +1,9 @@
 use crate::js::runtime::{
     builtin_function::BuiltinFunction, function::get_argument, object_value::ObjectValue,
-    type_utilities::is_array, Context, EvalResult, Gc, Realm, Value,
+    property::Property, type_utilities::is_array, Context, EvalResult, Gc, Realm, Value,
 };
+
+use super::intrinsics::Intrinsic;
 
 pub struct ArrayConstructor;
 
@@ -19,6 +21,15 @@ impl ArrayConstructor {
         );
 
         func.set_is_constructor();
+        func.set_property(
+            &cx.names.prototype(),
+            Property::data(
+                realm.get_intrinsic(Intrinsic::ArrayPrototype).into(),
+                false,
+                false,
+                false,
+            ),
+        );
 
         func.intrinsic_func(cx, &cx.names.is_array(), Self::is_array, 1, realm);
 

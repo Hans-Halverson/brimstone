@@ -3,6 +3,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{impl_gc_into, maybe, must};
 
 use super::{
+    abstract_operations::create_data_property_or_throw,
     environment::private_environment::PrivateNameId,
     error::range_error_,
     gc::GcDeref,
@@ -34,6 +35,14 @@ impl_gc_into!(ArrayObject, ObjectValue);
 
 impl ArrayObject {
     const VTABLE: *const () = extract_object_vtable::<ArrayObject>();
+
+    pub fn new(object: OrdinaryObject) -> ArrayObject {
+        ArrayObject {
+            _vtable: ArrayObject::VTABLE,
+            object,
+            is_length_writable: true,
+        }
+    }
 
     #[inline]
     fn object(&self) -> &OrdinaryObject {
@@ -129,11 +138,7 @@ pub fn array_create(
 
     let object = ordinary_object_create(proto);
 
-    let mut array_object = ArrayObject {
-        _vtable: ArrayObject::VTABLE,
-        object,
-        is_length_writable: true,
-    };
+    let mut array_object = ArrayObject::new(object);
 
     let length_value = Value::number((length as u32).into());
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
@@ -184,4 +189,17 @@ fn array_set_length(
     }
 
     return has_delete_succeeded.into();
+}
+
+// 7.3.18 CreateArrayFromList
+pub fn create_array_from_list(cx: &mut Context, elements: &[Value]) -> Gc<ArrayObject> {
+    let array = must!(array_create(cx, 0, None));
+
+    for (index, element) in elements.iter().enumerate() {
+        // TODO: Handle keys out of u32 range
+        let key = PropertyKey::array_index(index as u32);
+        must!(create_data_property_or_throw(cx, array.into(), &key, *element));
+    }
+
+    array
 }

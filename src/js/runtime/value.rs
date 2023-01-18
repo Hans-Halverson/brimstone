@@ -289,6 +289,15 @@ impl Value {
         Value { raw_bits: (((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits) }
     }
 
+    pub fn from_u64(value: u64) -> Value {
+        if value > i32::MAX as u64 {
+            // TODO: This conversion is lossy
+            return Value { raw_bits: f64::to_bits(value as f64) };
+        }
+
+        Value::smi(value as i32)
+    }
+
     #[inline]
     pub fn object(value: Gc<ObjectValue>) -> Value {
         Value {

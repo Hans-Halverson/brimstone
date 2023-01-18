@@ -9,6 +9,7 @@ use super::{
         boolean_constructor::BooleanObject, number_constructor::NumberObject,
         string_constructor::StringObject, symbol_constructor::SymbolObject,
     },
+    numeric_constants::MAX_SAFE_INTEGER_F64,
     object_value::ObjectValue,
     property_key::PropertyKey,
     value::{
@@ -151,6 +152,28 @@ pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
     }
 }
 
+// 7.1.5 ToIntegerOrInfinity
+pub fn to_integer_or_infinity(cx: &mut Context, value: Value) -> EvalResult<f64> {
+    let number = maybe!(to_number(cx, value));
+
+    let number_f64 = number.as_number();
+    if number.is_nan() || number_f64 == 0.0 {
+        return 0.0.into();
+    }
+
+    if number.is_infinity() {
+        return number_f64.into();
+    }
+
+    let mut integer_f64 = number_f64.floor().abs();
+
+    if number_f64 < 0.0 {
+        integer_f64 = -integer_f64;
+    }
+
+    integer_f64.into()
+}
+
 // 7.1.6 ToInt32
 pub fn to_int32(cx: &mut Context, value: Value) -> EvalResult<i32> {
     // Fast pass if the value is a smi
@@ -167,7 +190,7 @@ pub fn to_int32(cx: &mut Context, value: Value) -> EvalResult<i32> {
     }
 
     // Round float to an integer
-    let mut i32_number = f64::floor(f64::abs(f64_number)) as i64;
+    let mut i32_number = f64_number.abs().floor() as i64;
     if f64_number < 0.0 {
         i32_number = -i32_number;
     }
@@ -203,7 +226,7 @@ pub fn to_uint32(cx: &mut Context, value: Value) -> EvalResult<u32> {
     }
 
     // Round float to an integer
-    let mut u32_number = f64::floor(f64::abs(f64_number)) as i64;
+    let mut u32_number = f64_number.abs().floor() as i64;
     if f64_number < 0.0 {
         u32_number = -u32_number;
     }
@@ -547,4 +570,19 @@ pub fn same_opt_object_value(
         (Some(value1), Some(value2)) => value1.ptr_eq(&value2),
         _ => false,
     }
+}
+
+// 7.1.20 ToLength
+pub fn to_length(cx: &mut Context, value: Value) -> EvalResult<u64> {
+    let len = maybe!(to_integer_or_infinity(cx, value));
+    if len <= 0.0 {
+        return 0.into();
+    }
+
+    let len_in_int_range = f64::min(len, MAX_SAFE_INTEGER_F64);
+
+    // Safe since we have guaranteed that length is positive and within safe range
+    let len_u64: u64 = unsafe { len_in_int_range.to_int_unchecked() };
+
+    len_u64.into()
 }

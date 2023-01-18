@@ -1,4 +1,5 @@
 mod array_constructor;
+mod array_iterator;
 mod array_prototype;
 pub mod boolean_constructor;
 mod boolean_prototype;
@@ -8,6 +9,7 @@ mod function_constructor;
 mod function_prototype;
 pub mod global_object;
 pub mod intrinsics;
+mod iterator_prototype;
 pub mod native_error;
 pub mod number_constructor;
 mod number_prototype;
@@ -17,3 +19,4 @@ pub mod string_constructor;
 mod string_prototype;
 pub mod symbol_constructor;
 mod symbol_prototype;
+mod utils;

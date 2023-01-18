@@ -12,7 +12,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
-    type_utilities::{is_callable, is_callable_object, same_object_value, to_object},
+    type_utilities::{is_callable, is_callable_object, same_object_value, to_length, to_object},
     value::Value,
     Context,
 };
@@ -178,6 +178,12 @@ pub fn construct(
 ) -> EvalResult<Gc<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);
     func.construct(cx, arguments, new_target)
+}
+
+// 7.3.19 LengthOfArrayLike
+pub fn length_of_array_like(cx: &mut Context, object: Gc<ObjectValue>) -> EvalResult<u64> {
+    let length_value = maybe!(get(cx, object, &cx.names.length()));
+    to_length(cx, length_value).into()
 }
 
 // 7.3.22 OrdinaryHasInstance

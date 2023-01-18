@@ -13,6 +13,7 @@ mod function;
 mod gc;
 mod intrinsics;
 mod iterator;
+mod numeric_constants;
 mod object_value;
 mod ordinary_object;
 mod property;

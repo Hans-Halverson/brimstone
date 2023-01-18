@@ -67,6 +67,7 @@ builtin_names!(
     (define_property, "defineProperty"),
     (description, "description"),
     (done, "done"),
+    (entries, "entries"),
     (enumerable, "enumerable"),
     (eval, "eval"),
     (for_, "for"),
@@ -78,6 +79,7 @@ builtin_names!(
     (is_finite, "isFinite"),
     (is_nan, "isNaN"),
     (is_prototype_of, "isPrototypeOf"),
+    (keys, "keys"),
     (key_for, "keyFor"),
     (length, "length"),
     (log, "log"),
@@ -92,6 +94,7 @@ builtin_names!(
     (to_string, "toString"),
     (undefined, "undefined"),
     (value, "value"),
+    (values, "values"),
     (value_of, "valueOf"),
     (writable, "writable")
 );

@@ -51,7 +51,23 @@ impl PropertyKey {
 
     #[inline]
     pub const fn array_index(value: u32) -> PropertyKey {
+        if value == u32::MAX {
+            // TODO: Create key with PropertyKey::string_not_number
+            panic!("array index out of range")
+        }
+
         PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
+    }
+
+    pub const fn from_u64(value: u64) -> PropertyKey {
+        if value > u32::MAX as u64 {
+            // TODO: Create key with PropertyKey::string_not_number
+            panic!("array index out of range")
+        }
+
+        PropertyKey {
+            data: RefCell::new(KeyData::ArrayIndex { value: value as u32 }),
+        }
     }
 
     #[inline]

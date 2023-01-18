@@ -8,6 +8,7 @@ use crate::{
         environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::{Gc, GcDeref},
+        numeric_constants::{MAX_SAFE_INTEGER_F64, MIN_SAFE_INTEGER_F64},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::{
             ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
@@ -106,7 +107,7 @@ impl NumberConstructor {
         );
         func.set_property(
             &cx.names.max_safe_integer(),
-            Property::data(Value::number(9007199254740991.0), false, false, false),
+            Property::data(Value::number(MAX_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
             &cx.names.max_value(),
@@ -114,7 +115,7 @@ impl NumberConstructor {
         );
         func.set_property(
             &cx.names.min_safe_integer(),
-            Property::data(Value::number(-9007199254740991.0), false, false, false),
+            Property::data(Value::number(MIN_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
             &cx.names.min_value(),

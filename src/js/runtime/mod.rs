@@ -12,6 +12,7 @@ mod execution_context;
 mod function;
 mod gc;
 mod intrinsics;
+mod iterator;
 mod object_value;
 mod ordinary_object;
 mod property;

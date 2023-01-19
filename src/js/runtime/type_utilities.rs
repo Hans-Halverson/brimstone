@@ -301,6 +301,18 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
     }
 }
 
+pub fn require_object_coercible(cx: &mut Context, value: Value) -> EvalResult<Value> {
+    if value.is_nullish() {
+        if value.is_null() {
+            return type_error_(cx, "can't convert null to object");
+        }
+
+        return type_error_(cx, "can't convert undefined to object");
+    }
+
+    value.into()
+}
+
 // 7.2.2 IsArray
 pub fn is_array(value: Value) -> bool {
     if !value.is_object() {

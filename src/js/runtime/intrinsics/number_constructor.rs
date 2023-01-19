@@ -17,7 +17,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
-        type_utilities::to_numeric,
+        type_utilities::{is_integral_number, to_numeric},
         value::Value,
         Context,
     },
@@ -132,7 +132,9 @@ impl NumberConstructor {
         );
 
         func.intrinsic_func(cx, &cx.names.is_finite(), Self::is_finite, 1, realm);
+        func.intrinsic_func(cx, &cx.names.is_integer(), Self::is_integer, 1, realm);
         func.intrinsic_func(cx, &cx.names.is_nan(), Self::is_nan, 1, realm);
+        func.intrinsic_func(cx, &cx.names.is_safe_integer(), Self::is_safe_integer, 1, realm);
 
         func
     }
@@ -186,6 +188,17 @@ impl NumberConstructor {
         (!value.is_nan() && !value.is_infinity()).into()
     }
 
+    // 21.1.2.3 Number.isInteger
+    fn is_integer(
+        _: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        is_integral_number(value).into()
+    }
+
     // 21.1.2.4 Number.isNaN
     fn is_nan(
         _: &mut Context,
@@ -199,5 +212,20 @@ impl NumberConstructor {
         }
 
         value.is_nan().into()
+    }
+
+    // 21.1.2.5 Number.isSafeInteger
+    fn is_safe_integer(
+        _: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !is_integral_number(value) {
+            return false.into();
+        }
+
+        (value.as_number().abs() <= MAX_SAFE_INTEGER_F64).into()
     }
 }

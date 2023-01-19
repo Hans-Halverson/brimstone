@@ -21,16 +21,8 @@ fn range_error_value(cx: &mut Context, message: &str) -> Value {
     RangeError::new_with_message(cx, message.to_owned()).into()
 }
 
-pub fn syntax_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::throw(syntax_error_value(cx, message))
-}
-
 pub fn type_error(cx: &mut Context, message: &str) -> Completion {
     Completion::throw(type_error_value(cx, message))
-}
-
-pub fn reference_error(cx: &mut Context, message: &str) -> Completion {
-    Completion::throw(reference_error_value(cx, message))
 }
 
 pub fn syntax_error_<T>(cx: &mut Context, message: &str) -> EvalResult<T> {

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
@@ -231,7 +233,7 @@ pub fn copy_data_properties(
     cx: &mut Context,
     target: Gc<ObjectValue>,
     source: Value,
-    excluded_items: &[PropertyKey],
+    excluded_items: &HashSet<PropertyKey>,
 ) -> EvalResult<()> {
     if source.is_nullish() {
         return ().into();
@@ -242,11 +244,8 @@ pub fn copy_data_properties(
 
     for next_key in keys {
         let next_key = must!(PropertyKey::from_value(cx, next_key));
-        let is_excluded = excluded_items
-            .iter()
-            .any(|excluded_item| excluded_item == &next_key);
 
-        if !is_excluded {
+        if !excluded_items.contains(&next_key) {
             let desc = maybe!(from.get_own_property(&next_key));
             match desc {
                 Some(desc) if desc.is_enumerable() => {

@@ -63,7 +63,7 @@ impl Context {
     }
 
     pub fn current_execution_context(&mut self) -> Gc<ExecutionContext> {
-        self.execution_context_stack.last_mut().unwrap().clone()
+        *self.execution_context_stack.last().unwrap()
     }
 
     pub fn current_realm(&mut self) -> Gc<Realm> {

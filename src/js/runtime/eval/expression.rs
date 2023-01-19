@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     js::{
         parser::ast::{self, UpdateOperator},
@@ -179,7 +181,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
             // Spread element
             _ if property.kind == ast::PropertyKind::Spread => {
                 let from_value = maybe!(eval_expression(cx, &property.key));
-                maybe!(copy_data_properties(cx, object, from_value, &[]));
+                maybe!(copy_data_properties(cx, object, from_value, &HashSet::new()));
             }
             // Identifier shorthand property
             None => {

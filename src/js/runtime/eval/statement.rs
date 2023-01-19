@@ -533,15 +533,10 @@ fn for_each_body_evaluation_shared(
             ..
         }) => match declarations[0].id.as_ref() {
             ast::Pattern::Id(id) => {
-                let reference_completion = eval_identifier_to_reference(cx, id);
-                match reference_completion {
-                    EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
-                    EvalResult::Ok(mut reference) => reference.put_value(cx, right_value),
-                }
+                let mut reference = maybe!(eval_identifier_to_reference(cx, id));
+                reference.put_value(cx, right_value)
             }
-            _ => {
-                unimplemented!("destructuring patterns")
-            }
+            pattern => binding_initialization(cx, pattern, right_value, None),
         },
         ast::ForEachInit::VarDecl(
             var_decl @ ast::VariableDeclaration {
@@ -562,21 +557,15 @@ fn for_each_body_evaluation_shared(
                 }
             }));
 
-            current_execution_context.lexical_env = to_trait_object(iteration_env);
+            let iteration_env = to_trait_object(iteration_env);
+            current_execution_context.lexical_env = iteration_env;
 
             match declarations[0].id.as_ref() {
                 ast::Pattern::Id(id) => {
-                    let reference_completion = eval_identifier_to_reference(cx, id);
-                    match reference_completion {
-                        EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
-                        EvalResult::Ok(mut reference) => {
-                            reference.initialize_referenced_binding(cx, right_value)
-                        }
-                    }
+                    let mut reference = maybe!(eval_identifier_to_reference(cx, id));
+                    reference.initialize_referenced_binding(cx, right_value)
                 }
-                _ => {
-                    unimplemented!("destructuring patterns")
-                }
+                pattern => binding_initialization(cx, pattern, right_value, Some(iteration_env)),
             }
         }
     }

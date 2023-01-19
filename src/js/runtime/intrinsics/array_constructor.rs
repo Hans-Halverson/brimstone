@@ -38,7 +38,7 @@ impl ArrayConstructor {
 
     // 23.1.1.1 Array
     fn construct(
-        cx: &mut Context,
+        _: &mut Context,
         _: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
@@ -48,7 +48,7 @@ impl ArrayConstructor {
 
     // 23.1.2.2 Array.isArray
     fn is_array(
-        cx: &mut Context,
+        _: &mut Context,
         _: Value,
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,

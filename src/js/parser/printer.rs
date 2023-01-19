@@ -860,13 +860,6 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_expression_in_array(&mut self, expr: &Option<Expression>) {
-        match expr {
-            None => self.print_null(),
-            Some(expr) => self.print_expression(expr),
-        }
-    }
-
     fn print_optional_statement(&mut self, stmt: Option<&P<Statement>>) {
         match stmt {
             None => self.print_null(),

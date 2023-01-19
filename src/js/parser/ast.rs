@@ -765,6 +765,13 @@ pub enum Pattern {
 }
 
 impl Pattern {
+    pub fn to_id(&self) -> &Identifier {
+        match self {
+            Pattern::Id(id) => id,
+            _ => panic!("Expected identifier pattern"),
+        }
+    }
+
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
         f(self);
 

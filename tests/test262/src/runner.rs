@@ -31,12 +31,7 @@ impl TestRunner {
         feature: Option<String>,
     ) -> TestRunner {
         let thread_pool = ThreadPool::new(num_threads.into());
-        TestRunner {
-            index,
-            thread_pool,
-            filter,
-            feature,
-        }
+        TestRunner { index, thread_pool, filter, feature }
     }
 
     pub fn run(&mut self, verbose: bool) -> TestResults {
@@ -164,10 +159,9 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
             };
 
             return match test.expected_result {
-                ExpectedResult::Negative {
-                    phase: TestPhase::Parse,
-                    ..
-                } if is_parse_error => TestResult::success(test),
+                ExpectedResult::Negative { phase: TestPhase::Parse, .. } if is_parse_error => {
+                    TestResult::success(test)
+                }
                 _ => TestResult::failure(
                     test,
                     format!("Unexpected error during parsing:\n{}", err.to_string()),
@@ -184,10 +178,9 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         // the test.
         Err(err) => {
             return match test.expected_result {
-                ExpectedResult::Negative {
-                    phase: TestPhase::Parse,
-                    ..
-                } => TestResult::success(test),
+                ExpectedResult::Negative { phase: TestPhase::Parse, .. } => {
+                    TestResult::success(test)
+                }
                 _ => TestResult::failure(
                     test,
                     format!("Unexpected error during analysis:\n{}", err.to_string()),
@@ -223,23 +216,19 @@ fn parse_file(
 fn load_harness_test_file(cx: &mut Context, realm: Gc<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), test262_root, false).expect(
-        &format!("Failed to parse test harness file {}", full_path.display()),
-    );
+    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), test262_root, false)
+        .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
-    js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1).expect(&format!(
-        "Failed to prse test harness file {}",
-        full_path.display()
-    ));
+    js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)
+        .expect(&format!("Failed to prse test harness file {}", full_path.display()));
 
     let eval_result = eval_script(cx, Rc::new(ast_and_source.0), realm);
 
     match eval_result.kind() {
         CompletionKind::Normal => {}
-        CompletionKind::Throw => panic!(
-            "Failed to evaluate test harness file {}",
-            full_path.display()
-        ),
+        CompletionKind::Throw => {
+            panic!("Failed to evaluate test harness file {}", full_path.display())
+        }
         _ => panic!(
             "Unexpected abnormal completion when evaluating test harness file {}",
             full_path.display()
@@ -256,19 +245,13 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
             ExpectedResult::Positive => TestResult::success(test),
             other => TestResult::failure(
                 test,
-                format!(
-                    "Test completed without throwing, but expected {}",
-                    other.to_string()
-                ),
+                format!("Test completed without throwing, but expected {}", other.to_string()),
             ),
         },
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
         CompletionKind::Throw => match &test.expected_result {
-            ExpectedResult::Negative {
-                phase: TestPhase::Runtime,
-                type_,
-            } => {
+            ExpectedResult::Negative { phase: TestPhase::Runtime, type_ } => {
                 // Check that the thrown error matches the expected error type
                 let thrown_value = completion.value();
                 let is_expected_error = if thrown_value.is_object() {
@@ -390,11 +373,7 @@ const DIM: &str = "\x1b[2m";
 
 impl TestResults {
     fn collate(results: Vec<TestResult>, num_skipped: u64) -> TestResults {
-        let mut collated = TestResults {
-            failed: vec![],
-            succeeded: vec![],
-            num_skipped,
-        };
+        let mut collated = TestResults { failed: vec![], succeeded: vec![], num_skipped };
 
         for result in results {
             match result.result {
@@ -426,10 +405,7 @@ impl TestResults {
                 let file_path = test262_prefix.join(&failed.path);
                 let cleaned_message = message.replace(file_path.to_str().unwrap(), "<file>");
 
-                println!(
-                    "{}{}Failed{}: {}\n{}\n",
-                    BOLD, RED, RESET, failed.path, cleaned_message
-                );
+                println!("{}{}Failed{}: {}\n{}\n", BOLD, RED, RESET, failed.path, cleaned_message);
             }
         }
 

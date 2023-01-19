@@ -1,8 +1,15 @@
 use crate::{
     js::runtime::{
-        array_object::ArrayObject, gc::Gc, object_value::ObjectValue,
-        ordinary_object::ordinary_object_create, realm::Realm, type_utilities::to_object, Context,
-        EvalResult, Value,
+        array_object::ArrayObject,
+        builtin_function::BuiltinFunction,
+        gc::Gc,
+        object_value::{Object, ObjectValue},
+        ordinary_object::ordinary_object_create,
+        property::Property,
+        property_key::PropertyKey,
+        realm::Realm,
+        type_utilities::to_object,
+        Context, EvalResult, Value,
     },
     maybe,
 };
@@ -20,10 +27,26 @@ impl ArrayPrototype {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let mut object = ordinary_object_create(object_proto);
 
+        // Create values function as it is referenced by multiple properties
+        let values_function = BuiltinFunction::create(
+            cx,
+            Self::values,
+            0,
+            &cx.names.values(),
+            Some(realm),
+            None,
+            None,
+        )
+        .into();
+
         // Constructor property is added once ArrayConstructor has been created
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
-        object.intrinsic_func(cx, &cx.names.values(), Self::values, 0, realm);
+        object.intrinsic_data_prop(&cx.names.values(), values_function);
+
+        // 23.1.3.34 Array.prototype [ @@iterator ]
+        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        object.set_property(&iterator_key, Property::data(values_function, true, false, true));
 
         cx.heap.alloc(ArrayObject::new(object)).into()
     }

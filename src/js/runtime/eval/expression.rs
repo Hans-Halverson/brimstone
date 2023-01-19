@@ -14,6 +14,7 @@ use crate::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
             intrinsics::intrinsics::Intrinsic,
+            iterator::iter_iterator_values,
             object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
@@ -129,20 +130,38 @@ fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult
 fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalResult<Value> {
     let mut array = must!(array_create(cx, 0, None));
 
-    for (index, element) in expr.elements.iter().enumerate() {
+    let mut index = 0;
+    for element in expr.elements.iter() {
         match element {
             ast::ArrayElement::Hole => {
-                let key = PropertyKey::array_index(index as u32);
+                let key = PropertyKey::array_index(index);
                 let desc = Property::data(Value::empty(), true, true, true);
+
                 array.object.set_property(&key, desc);
+                index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
-                let key = PropertyKey::array_index(index as u32);
+                let key = PropertyKey::array_index(index);
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
+
                 array.object.set_property(&key, desc);
+                index += 1;
             }
-            ast::ArrayElement::Spread(_) => unimplemented!("array spread element"),
+            ast::ArrayElement::Spread(spread) => {
+                let iterable = maybe!(eval_expression(cx, &spread.argument));
+                let completion = iter_iterator_values(cx, iterable, &mut |_, value| {
+                    let key = PropertyKey::array_index(index);
+                    let desc = Property::data(value, true, true, true);
+
+                    array.object.set_property(&key, desc);
+                    index += 1;
+
+                    None
+                });
+
+                maybe!(completion.into_eval_result());
+            }
         }
     }
 
@@ -467,7 +486,15 @@ fn eval_argument_list(cx: &mut Context, arguments: &[ast::CallArgument]) -> Eval
                 let arg_value = maybe!(eval_expression(cx, expr));
                 arg_values.push(arg_value)
             }
-            ast::CallArgument::Spread(_) => unimplemented!("call spread element"),
+            ast::CallArgument::Spread(spread) => {
+                let iterable = maybe!(eval_expression(cx, &spread.argument));
+                let completion = iter_iterator_values(cx, iterable, &mut |_, value| {
+                    arg_values.push(value);
+
+                    None
+                });
+                maybe!(completion.into_eval_result());
+            }
         }
     }
 

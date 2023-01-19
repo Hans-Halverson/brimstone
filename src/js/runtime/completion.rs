@@ -16,6 +16,7 @@ pub enum CompletionKind {
     Continue,
 }
 
+#[derive(Clone)]
 pub struct Completion {
     kind: CompletionKind,
     label: LabelId,
@@ -88,6 +89,20 @@ impl Completion {
         }
 
         self
+    }
+
+    /// Convert a completion into an EvalResult, panicking if the completion is a non-throw
+    /// abnormal completion. This is only safe to call when the completion must be normal or throw,
+    /// such as for expression evaluation.
+    #[inline]
+    pub fn into_eval_result(&self) -> EvalResult<Value> {
+        match self.kind() {
+            CompletionKind::Normal => EvalResult::Ok(self.value()),
+            CompletionKind::Throw => EvalResult::Throw(self.value()),
+            CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
+                unreachable!("")
+            }
+        }
     }
 }
 

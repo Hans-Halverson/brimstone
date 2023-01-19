@@ -18,6 +18,7 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
+            iterator::iter_iterator_values,
             property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             value::Value,
@@ -90,7 +91,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
             if stmt.kind == ast::ForEachKind::In {
                 eval_for_in_statement(cx, stmt, EMPTY_LABEL)
             } else {
-                unimplemented!("for of statement")
+                eval_for_of_statement(cx, stmt, EMPTY_LABEL)
             }
         }
         ast::Statement::While(stmt) => eval_while_statement(cx, stmt, EMPTY_LABEL),
@@ -655,6 +656,59 @@ fn eval_for_in_statement(
     }
 }
 
+fn eval_for_of_statement(
+    cx: &mut Context,
+    stmt: &ast::ForEachStatement,
+    stmt_label_id: LabelId,
+) -> Completion {
+    if stmt.is_await {
+        unimplemented!("for await of statement")
+    }
+
+    let right_value = maybe__!(for_each_head_evaluation_shared(cx, stmt));
+
+    let mut last_value = Value::undefined();
+    let mut last_completion = None;
+
+    maybe_!(iter_iterator_values(cx, right_value, &mut |cx, value| {
+        let body_eval_result = for_each_body_evaluation_shared(cx, stmt, value);
+        if let EvalResult::Throw(thrown_value) = body_eval_result {
+            return Some(Completion::throw(thrown_value));
+        }
+
+        // Part of ForIn/OfBodyEvaluation that is specific to enumeration
+        let completion = eval_statement(cx, &stmt.body);
+
+        if !loop_continues(&completion, stmt_label_id) {
+            let completion = completion.update_if_empty(last_value);
+
+            // Inline labeled statement evaluation break handling
+            if completion.kind() == CompletionKind::Break {
+                let label = completion.label();
+                if (label == EMPTY_LABEL) || (label == stmt_label_id) {
+                    let completion = Completion::normal(completion.value());
+                    last_completion = Some(completion.clone());
+                    return Some(completion);
+                } else {
+                    last_completion = Some(completion.clone());
+                    return Some(completion);
+                }
+            }
+
+            last_completion = Some(completion.clone());
+            return Some(completion);
+        }
+
+        if !completion.is_empty() {
+            last_value = completion.value();
+        }
+
+        None
+    }));
+
+    last_completion.unwrap_or(last_value.into())
+}
+
 // 14.8.2 Continue Statement Evaluation
 fn eval_continue_statement(stmt: &ast::ContinueStatement) -> Completion {
     match stmt.label.as_ref() {
@@ -849,7 +903,7 @@ fn eval_labeled_statement(cx: &mut Context, stmt: &ast::LabeledStatement) -> Com
             if stmt.kind == ast::ForEachKind::In {
                 eval_for_in_statement(cx, stmt, label_id)
             } else {
-                unimplemented!("for of statement")
+                eval_for_of_statement(cx, stmt, label_id)
             }
         }
         _ => {

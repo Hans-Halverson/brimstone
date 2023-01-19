@@ -163,7 +163,7 @@ pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) 
 
 // Iterate over an object, executing a callback function against every value returned by the
 // iterator. Return a completion from the callback function to stop and close the iterator.
-pub fn iter_iterator_values<F: FnMut(Value) -> Option<Completion>>(
+pub fn iter_iterator_values<F: FnMut(&mut Context, Value) -> Option<Completion>>(
     cx: &mut Context,
     object: Value,
     f: &mut F,
@@ -173,11 +173,11 @@ pub fn iter_iterator_values<F: FnMut(Value) -> Option<Completion>>(
     loop {
         let iter_result = maybe__!(iterator_step(cx, &iterator));
         match iter_result {
-            None => {}
+            None => return Completion::empty(),
             Some(iter_result) => {
                 let value = maybe__!(iterator_value(cx, iter_result));
 
-                let completion = f(value);
+                let completion = f(cx, value);
 
                 if let Some(completion) = completion {
                     return maybe_!(iterator_close(cx, &iterator, completion)).into();

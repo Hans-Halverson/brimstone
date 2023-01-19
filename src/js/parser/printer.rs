@@ -184,7 +184,7 @@ impl<'a> Printer<'a> {
     fn print_function(&mut self, func: &Function, name: &str) {
         self.start_node(name, &func.loc);
         self.property("id", func.id.as_ref(), Printer::print_optional_identifier);
-        self.array_property("params", func.params.as_ref(), Printer::print_pattern);
+        self.array_property("params", func.params.as_ref(), Printer::print_function_param);
         self.property("body", func.body.as_ref(), Printer::print_function_body);
         self.property("async", func.is_async, Printer::print_bool);
         self.property("generator", func.is_generator, Printer::print_bool);
@@ -194,6 +194,13 @@ impl<'a> Printer<'a> {
             Printer::print_bool,
         );
         self.end_node();
+    }
+
+    fn print_function_param(&mut self, param: &FunctionParam) {
+        match param {
+            FunctionParam::Pattern(pattern) => self.print_pattern(pattern),
+            FunctionParam::Rest(rest) => self.print_rest_element(rest),
+        }
     }
 
     fn print_function_body(&mut self, body: &FunctionBody) {

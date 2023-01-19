@@ -351,7 +351,7 @@ impl Analyzer {
         let saved_state = self.save_state();
 
         visit_opt!(self, func.id, visit_identifier);
-        visit_vec!(self, func.params, visit_pattern);
+        visit_vec!(self, func.params, visit_function_param);
 
         // Enter strict mode context if applicable
         if func.is_strict_mode {

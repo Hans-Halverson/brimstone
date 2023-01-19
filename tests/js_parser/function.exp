@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-21:25",
+  loc: "1:0-25:32",
   body: [
     {
       type: "FunctionDeclaration",
@@ -260,6 +260,92 @@
       body: {
         type: "Block",
         loc: "21:23-21:25",
+        body: [],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "23:0-23:27",
+      id: {
+        type: "Identifier",
+        loc: "23:9-23:12",
+        name: "foo",
+      },
+      params: [
+        {
+          type: "Identifier",
+          loc: "23:13-23:14",
+          name: "a",
+        },
+        {
+          type: "Identifier",
+          loc: "23:16-23:17",
+          name: "b",
+        },
+        {
+          type: "RestElement",
+          loc: "23:19-23:23",
+          argument: {
+            type: "Identifier",
+            loc: "23:22-23:23",
+            name: "c",
+          },
+        },
+      ],
+      body: {
+        type: "Block",
+        loc: "23:25-23:27",
+        body: [],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "25:0-25:32",
+      id: {
+        type: "Identifier",
+        loc: "25:9-25:12",
+        name: "foo",
+      },
+      params: [
+        {
+          type: "Identifier",
+          loc: "25:13-25:14",
+          name: "a",
+        },
+        {
+          type: "RestElement",
+          loc: "25:16-25:28",
+          argument: {
+            type: "ArrayPattern",
+            loc: "25:19-25:28",
+            elements: [
+              {
+                type: "Identifier",
+                loc: "25:20-25:21",
+                name: "b",
+              },
+              {
+                type: "RestElement",
+                loc: "25:23-25:27",
+                argument: {
+                  type: "Identifier",
+                  loc: "25:26-25:27",
+                  name: "c",
+                },
+              },
+            ],
+          },
+        },
+      ],
+      body: {
+        type: "Block",
+        loc: "25:30-25:32",
         body: [],
       },
       async: false,

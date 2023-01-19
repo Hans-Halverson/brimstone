@@ -91,6 +91,10 @@ pub trait AstVisitor: Sized {
         default_visit_function(self, func)
     }
 
+    fn visit_function_param(&mut self, param: &mut FunctionParam) {
+        default_visit_function_param(self, param)
+    }
+
     fn visit_function_body(&mut self, body: &mut FunctionBody) {
         default_visit_function_body(self, body)
     }
@@ -359,8 +363,15 @@ pub fn default_visit_function_declaration<V: AstVisitor>(visitor: &mut V, func: 
 
 pub fn default_visit_function<V: AstVisitor>(visitor: &mut V, func: &mut Function) {
     visit_opt!(visitor, func.id, visit_identifier);
-    visit_vec!(visitor, func.params, visit_pattern);
+    visit_vec!(visitor, func.params, visit_function_param);
     visitor.visit_function_body(&mut func.body);
+}
+
+pub fn default_visit_function_param<V: AstVisitor>(visitor: &mut V, param: &mut FunctionParam) {
+    match param {
+        FunctionParam::Pattern(ref mut pattern) => visitor.visit_pattern(pattern),
+        FunctionParam::Rest(ref mut rest) => visitor.visit_rest_element(rest),
+    }
 }
 
 pub fn default_visit_function_body<V: AstVisitor>(visitor: &mut V, body: &mut FunctionBody) {

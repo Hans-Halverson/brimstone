@@ -630,13 +630,26 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_function_params(&mut self) -> ParseResult<Vec<Pattern>> {
+    fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
         // Read all function params between the parentheses
         let mut params = vec![];
         self.expect(Token::LeftParen)?;
 
         while self.token != Token::RightParen {
-            params.push(self.parse_pattern_including_assignment_pattern()?);
+            if self.token == Token::Spread {
+                let rest_element = self.parse_rest_element()?;
+                params.push(FunctionParam::Rest(rest_element));
+
+                // Trailing commas are not allowed after rest elements, nor are any other params
+                if self.token == Token::Comma {
+                    return self.error(self.loc, ParseError::RestTrailingComma);
+                } else {
+                    break;
+                }
+            }
+
+            let pattern = self.parse_pattern_including_assignment_pattern()?;
+            params.push(FunctionParam::Pattern(pattern));
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -1156,10 +1169,8 @@ impl<'a> Parser<'a> {
             // Special case for when async is actually the single parameter: async => body
             if self.token == Token::Arrow {
                 self.advance()?;
-                let params = vec![Pattern::Id(Identifier {
-                    loc: async_loc,
-                    name: "async".to_owned(),
-                })];
+                let async_id = Identifier { loc: async_loc, name: "async".to_owned() };
+                let params = vec![FunctionParam::Pattern(Pattern::Id(async_id))];
                 let (body, has_use_strict_directive, is_strict_mode) =
                     self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
@@ -1182,7 +1193,7 @@ impl<'a> Parser<'a> {
             Token::LeftParen => self.parse_function_params()?,
             _ => {
                 let id = self.parse_binding_identifier()?;
-                vec![Pattern::Id(id)]
+                vec![FunctionParam::Pattern(Pattern::Id(id))]
             }
         };
 
@@ -2572,13 +2583,7 @@ impl<'a> Parser<'a> {
                     elements.push(ArrayPatternElement::Hole);
                 }
                 Token::Spread => {
-                    let start_pos = self.current_start_pos();
-                    self.advance()?;
-
-                    let argument = p(self.parse_pattern()?);
-                    let loc = self.mark_loc(start_pos);
-
-                    let rest_element = RestElement { loc, argument };
+                    let rest_element = self.parse_rest_element()?;
                     elements.push(ArrayPatternElement::Rest(rest_element));
 
                     // Trailing commas are not allowed after rest elements, nor are any other elements
@@ -2604,6 +2609,16 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         Ok(Pattern::Array(ArrayPattern { loc, elements }))
+    }
+
+    fn parse_rest_element(&mut self) -> ParseResult<RestElement> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        let argument = p(self.parse_pattern()?);
+        let loc = self.mark_loc(start_pos);
+
+        Ok(RestElement { loc, argument })
     }
 
     fn parse_object_pattern(&mut self) -> ParseResult<Pattern> {

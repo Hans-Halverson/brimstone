@@ -545,7 +545,9 @@ fn expected_argument_count(func_node: &ast::Function) -> i32 {
     let mut count = 0;
     for param in &func_node.params {
         match param {
-            ast::Pattern::Assign(_) => return count,
+            ast::FunctionParam::Pattern(ast::Pattern::Assign(_)) | ast::FunctionParam::Rest(_) => {
+                return count
+            }
             _ => count += 1,
         }
     }

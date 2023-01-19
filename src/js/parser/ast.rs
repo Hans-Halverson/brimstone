@@ -186,7 +186,7 @@ impl VariableDeclarator {
 pub struct Function {
     pub loc: Loc,
     pub id: Option<P<Identifier>>,
-    pub params: Vec<Pattern>,
+    pub params: Vec<FunctionParam>,
     pub body: P<FunctionBody>,
     pub is_async: bool,
     pub is_generator: bool,
@@ -210,7 +210,7 @@ impl Function {
     pub fn new(
         loc: Loc,
         id: Option<P<Identifier>>,
-        params: Vec<Pattern>,
+        params: Vec<FunctionParam>,
         body: P<FunctionBody>,
         is_async: bool,
         is_generator: bool,
@@ -251,6 +251,30 @@ impl WithDecls for Function {
 
     fn add_lex_decl(&mut self, lex_decl: LexDecl) {
         self.lex_decls.push(lex_decl)
+    }
+}
+
+pub enum FunctionParam {
+    Pattern(Pattern),
+    Rest(RestElement),
+}
+
+impl FunctionParam {
+    pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
+        match &self {
+            FunctionParam::Pattern(pattern) => pattern.iter_patterns(f),
+            FunctionParam::Rest(RestElement { argument, .. }) => argument.iter_patterns(f),
+        }
+    }
+
+    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
+        &'a self,
+        f: &mut F,
+    ) -> EvalResult<()> {
+        match &self {
+            FunctionParam::Pattern(pattern) => pattern.iter_bound_names(f),
+            FunctionParam::Rest(RestElement { argument, .. }) => argument.iter_bound_names(f),
+        }
     }
 }
 

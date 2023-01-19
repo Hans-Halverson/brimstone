@@ -5,6 +5,7 @@ use crate::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
             abstract_operations::define_property_or_throw,
+            array_object::array_create,
             completion::{Completion, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
@@ -19,8 +20,8 @@ use crate::{
             },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
-            object_value::ObjectValue,
-            property::PrivateProperty,
+            object_value::{Object, ObjectValue},
+            property::{PrivateProperty, Property},
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             value::Value,
@@ -30,7 +31,11 @@ use crate::{
     maybe__, must,
 };
 
-use super::{pattern::id_string_value, statement::eval_named_anonymous_function_or_expression};
+use super::{
+    expression::eval_expression,
+    pattern::{binding_initialization, id_string_value},
+    statement::eval_named_anonymous_function_or_expression,
+};
 
 // 10.2.11 FunctionDeclarationInstantiation
 pub fn function_declaration_instantiation(
@@ -123,22 +128,45 @@ pub fn function_declaration_instantiation(
     // Perform inlined IteratorBindingInitialization instead of creating an actual iterator object
     let mut arg_index = 0;
     for param in &func_node.params {
-        let (patt, init) = match param {
+        let mut value = Value::undefined();
+
+        // For rest parameters create an array holding all the values, then evaluate pattern as
+        // normal with this new array as the value.
+        let pattern = match param {
+            ast::FunctionParam::Pattern(pattern) => {
+                if arg_index < arguments.len() {
+                    let argument = arguments[arg_index];
+                    arg_index += 1;
+                    value = argument;
+                }
+
+                pattern
+            }
+            ast::FunctionParam::Rest(rest) => {
+                let mut rest_array = must!(array_create(cx, 0, None));
+
+                for (array_index, arg_index) in (arg_index..arguments.len()).enumerate() {
+                    let array_key = PropertyKey::array_index(array_index as u32);
+                    let array_property = Property::data(arguments[arg_index], true, true, true);
+                    rest_array.object.set_property(&array_key, array_property);
+                }
+
+                value = rest_array.into();
+
+                rest.argument.as_ref()
+            }
+        };
+
+        // Initializers are represented as an assignment pattern as the value
+        let (patt, init) = match pattern {
             ast::Pattern::Assign(patt) => (patt.left.as_ref(), Some(patt.right.as_ref())),
-            _ => (param, None),
+            _ => (pattern, None),
         };
 
         match patt {
             ast::Pattern::Id(id) => {
                 let name_value = id_string_value(cx, id);
                 let mut reference = maybe__!(resolve_binding(cx, name_value, binding_init_env));
-                let mut value = if arg_index < arguments.len() {
-                    let argument = arguments[arg_index];
-                    arg_index += 1;
-                    argument
-                } else {
-                    Value::undefined()
-                };
 
                 if let Some(init) = init {
                     if value.is_undefined() {
@@ -156,9 +184,15 @@ pub fn function_declaration_instantiation(
                     maybe__!(reference.initialize_referenced_binding(cx, value));
                 }
             }
-            ast::Pattern::Array(_) => unimplemented!("array patterns"),
-            ast::Pattern::Object(_) => unimplemented!("object patterns"),
-            ast::Pattern::Assign(_) => panic!("Cannot have nested assignment patterns"),
+            binding_pattern => {
+                if let Some(init) = init {
+                    if value.is_undefined() {
+                        value = maybe__!(eval_expression(cx, init,));
+                    }
+                }
+
+                maybe__!(binding_initialization(cx, binding_pattern, value, binding_init_env))
+            }
         }
     }
 

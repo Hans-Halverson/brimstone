@@ -772,8 +772,10 @@ impl Pattern {
             Pattern::Id(_) => {}
             Pattern::Array(patt) => {
                 for element in &patt.elements {
-                    if let Some(element) = element {
-                        element.iter_patterns(f)
+                    match element {
+                        ArrayPatternElement::Pattern(pattern) => pattern.iter_patterns(f),
+                        ArrayPatternElement::Rest(rest) => rest.argument.iter_patterns(f),
+                        ArrayPatternElement::Hole => {}
                     }
                 }
             }
@@ -801,7 +803,13 @@ impl Pattern {
 
 pub struct ArrayPattern {
     pub loc: Loc,
-    pub elements: Vec<Option<Pattern>>,
+    pub elements: Vec<ArrayPatternElement>,
+}
+
+pub enum ArrayPatternElement {
+    Pattern(Pattern),
+    Rest(RestElement),
+    Hole,
 }
 
 impl ArrayPattern {
@@ -810,13 +818,22 @@ impl ArrayPattern {
         f: &mut F,
     ) -> EvalResult<()> {
         for element in &self.elements {
-            if let Some(element) = element {
-                maybe!(element.iter_bound_names(f))
+            match element {
+                ArrayPatternElement::Pattern(pattern) => maybe!(pattern.iter_bound_names(f)),
+                ArrayPatternElement::Rest(RestElement { argument, .. }) => {
+                    maybe!(argument.iter_bound_names(f))
+                }
+                ArrayPatternElement::Hole => {}
             }
         }
 
         ().into()
     }
+}
+
+pub struct RestElement {
+    pub loc: Loc,
+    pub argument: P<Pattern>,
 }
 
 pub struct ObjectPattern {
@@ -842,6 +859,8 @@ pub struct ObjectPatternProperty {
     pub key: Option<P<Expression>>,
     pub value: P<Pattern>,
     pub is_computed: bool,
+    // For rest properties the value is the argument and must be an id. All other fields are ignored.
+    pub is_rest: bool,
 }
 
 pub struct AssignmentPattern {

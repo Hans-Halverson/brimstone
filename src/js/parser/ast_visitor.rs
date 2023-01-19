@@ -293,6 +293,10 @@ pub trait AstVisitor: Sized {
         default_visit_array_pattern(self, patt)
     }
 
+    fn visit_rest_element(&mut self, rest: &mut RestElement) {
+        default_visit_rest_element(self, rest)
+    }
+
     fn visit_object_pattern(&mut self, patt: &mut ObjectPattern) {
         default_visit_object_pattern(self, patt)
     }
@@ -633,10 +637,15 @@ pub fn default_visit_super_call_expression<V: AstVisitor>(
 pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ArrayPattern) {
     for element in &mut patt.elements {
         match element {
-            None => {}
-            Some(element) => visitor.visit_pattern(element),
+            ArrayPatternElement::Pattern(pattern) => visitor.visit_pattern(pattern),
+            ArrayPatternElement::Rest(rest) => visitor.visit_rest_element(rest),
+            ArrayPatternElement::Hole => {}
         }
     }
+}
+
+pub fn default_visit_rest_element<V: AstVisitor>(visitor: &mut V, patt: &mut RestElement) {
+    visitor.visit_pattern(&mut patt.argument);
 }
 
 pub fn default_visit_object_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ObjectPattern) {

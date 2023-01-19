@@ -18,6 +18,7 @@ pub enum ParseError {
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
+    RestTrailingComma,
     ThrowArgumentOnNewLine,
     AmbiguousLetBracket,
     InvalidForLeftHandSide,
@@ -58,6 +59,9 @@ impl fmt::Display for ParseError {
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
+            ParseError::RestTrailingComma => {
+                write!(f, "Rest element may not have a trailing comma")
+            }
             ParseError::ThrowArgumentOnNewLine => {
                 write!(f, "No line break is allowed between 'throw' and its expression")
             }
@@ -2562,15 +2566,36 @@ impl<'a> Parser<'a> {
 
         let mut elements = vec![];
         while self.token != Token::RightBracket {
-            if self.token == Token::Comma {
-                self.advance()?;
-                elements.push(None);
-            } else {
-                elements.push(Some(self.parse_pattern_including_assignment_pattern()?));
-                if self.token == Token::Comma {
+            match self.token {
+                Token::Comma => {
                     self.advance()?;
-                } else {
-                    break;
+                    elements.push(ArrayPatternElement::Hole);
+                }
+                Token::Spread => {
+                    let start_pos = self.current_start_pos();
+                    self.advance()?;
+
+                    let argument = p(self.parse_pattern()?);
+                    let loc = self.mark_loc(start_pos);
+
+                    let rest_element = RestElement { loc, argument };
+                    elements.push(ArrayPatternElement::Rest(rest_element));
+
+                    // Trailing commas are not allowed after rest elements, nor are any other elements
+                    if self.token == Token::Comma {
+                        return self.error(self.loc, ParseError::RestTrailingComma);
+                    } else {
+                        break;
+                    }
+                }
+                _ => {
+                    let pattern = self.parse_pattern_including_assignment_pattern()?;
+                    elements.push(ArrayPatternElement::Pattern(pattern));
+                    if self.token == Token::Comma {
+                        self.advance()?;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
@@ -2587,6 +2612,17 @@ impl<'a> Parser<'a> {
 
         let mut properties = vec![];
         while self.token != Token::RightBrace {
+            if self.token == Token::Spread {
+                properties.push(self.parse_object_rest_property()?);
+
+                // Trailing commas are not allowed after rest elements, nor are any other properties
+                if self.token == Token::Comma {
+                    return self.error(self.loc, ParseError::RestTrailingComma);
+                } else {
+                    break;
+                }
+            }
+
             properties.push(self.parse_object_pattern_property()?);
 
             if self.token == Token::RightBrace {
@@ -2619,7 +2655,13 @@ impl<'a> Parser<'a> {
             let value = p(self.parse_assignment_pattern(value, start_pos)?);
             let loc = self.mark_loc(start_pos);
 
-            return Ok(ObjectPatternProperty { loc, key: None, value, is_computed: false });
+            return Ok(ObjectPatternProperty {
+                loc,
+                key: None,
+                value,
+                is_computed: false,
+                is_rest: false,
+            });
         }
 
         // Regular properties
@@ -2632,6 +2674,24 @@ impl<'a> Parser<'a> {
             key: Some(property_name.key),
             value,
             is_computed: property_name.is_computed,
+            is_rest: false,
+        })
+    }
+
+    fn parse_object_rest_property(&mut self) -> ParseResult<ObjectPatternProperty> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        // Only identifiers are allowed as rest property arguments
+        let id_argument = self.parse_binding_identifier()?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ObjectPatternProperty {
+            loc,
+            key: None,
+            value: p(Pattern::Id(id_argument)),
+            is_computed: false,
+            is_rest: true,
         })
     }
 

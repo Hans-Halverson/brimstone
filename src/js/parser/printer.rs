@@ -802,8 +802,22 @@ impl<'a> Printer<'a> {
         self.array_property(
             "elements",
             patt.elements.as_ref(),
-            Printer::print_optional_pattern_in_array,
+            Printer::print_array_pattern_element,
         );
+        self.end_node();
+    }
+
+    fn print_array_pattern_element(&mut self, element: &ArrayPatternElement) {
+        match element {
+            ArrayPatternElement::Pattern(pattern) => self.print_pattern(pattern),
+            ArrayPatternElement::Rest(rest) => self.print_rest_element(rest),
+            ArrayPatternElement::Hole => self.print_null(),
+        }
+    }
+
+    fn print_rest_element(&mut self, rest: &RestElement) {
+        self.start_node("RestElement", &rest.loc);
+        self.property("argument", rest.argument.as_ref(), Printer::print_pattern);
         self.end_node();
     }
 
@@ -818,6 +832,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_object_pattern_property(&mut self, prop: &ObjectPatternProperty) {
+        if prop.is_rest {
+            self.start_node("RestElement", &prop.loc);
+            self.property("property", prop.value.as_ref(), Printer::print_pattern);
+            self.end_node();
+            return;
+        }
+
         self.start_node("Property", &prop.loc);
         self.property("key", prop.key.as_ref(), Printer::print_optional_expression);
         self.property("value", prop.value.as_ref(), Printer::print_pattern);
@@ -875,13 +896,6 @@ impl<'a> Printer<'a> {
     }
 
     fn print_optional_pattern(&mut self, pattern: Option<&P<Pattern>>) {
-        match pattern {
-            None => self.print_null(),
-            Some(pattern) => self.print_pattern(pattern),
-        }
-    }
-
-    fn print_optional_pattern_in_array(&mut self, pattern: &Option<Pattern>) {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),

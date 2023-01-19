@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-19:32",
+  loc: "1:0-21:23",
   body: [
     {
       type: "VariableDeclaration",
@@ -475,6 +475,59 @@
           init: {
             type: "Literal",
             loc: "19:30-19:31",
+            value: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "21:0-21:23",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "21:4-21:22",
+          id: {
+            type: "ObjectPattern",
+            loc: "21:4-21:18",
+            properties: [
+              {
+                type: "Property",
+                loc: "21:6-21:7",
+                key: null,
+                value: {
+                  type: "Identifier",
+                  loc: "21:6-21:7",
+                  name: "a",
+                },
+                computed: false,
+              },
+              {
+                type: "Property",
+                loc: "21:9-21:10",
+                key: null,
+                value: {
+                  type: "Identifier",
+                  loc: "21:9-21:10",
+                  name: "b",
+                },
+                computed: false,
+              },
+              {
+                type: "RestElement",
+                loc: "21:12-21:16",
+                property: {
+                  type: "Identifier",
+                  loc: "21:15-21:16",
+                  name: "c",
+                },
+              },
+            ],
+          },
+          init: {
+            type: "Literal",
+            loc: "21:21-21:22",
             value: 1,
           },
         },

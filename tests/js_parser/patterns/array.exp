@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-15:22",
+  loc: "1:0-19:30",
   body: [
     {
       type: "VariableDeclaration",
@@ -265,6 +265,116 @@
           init: {
             type: "Literal",
             loc: "15:20-15:21",
+            value: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "17:0-17:21",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "17:4-17:20",
+          id: {
+            type: "ArrayPattern",
+            loc: "17:4-17:16",
+            elements: [
+              {
+                type: "Identifier",
+                loc: "17:5-17:6",
+                name: "a",
+              },
+              {
+                type: "Identifier",
+                loc: "17:8-17:9",
+                name: "b",
+              },
+              {
+                type: "RestElement",
+                loc: "17:11-17:15",
+                argument: {
+                  type: "Identifier",
+                  loc: "17:14-17:15",
+                  name: "c",
+                },
+              },
+            ],
+          },
+          init: {
+            type: "Literal",
+            loc: "17:19-17:20",
+            value: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: "VariableDeclaration",
+      loc: "19:0-19:30",
+      kind: "var",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          loc: "19:4-19:29",
+          id: {
+            type: "ArrayPattern",
+            loc: "19:4-19:25",
+            elements: [
+              {
+                type: "RestElement",
+                loc: "19:5-19:24",
+                argument: {
+                  type: "ArrayPattern",
+                  loc: "19:8-19:24",
+                  elements: [
+                    {
+                      type: "Identifier",
+                      loc: "19:9-19:10",
+                      name: "c",
+                    },
+                    {
+                      type: "Identifier",
+                      loc: "19:12-19:13",
+                      name: "d",
+                    },
+                    {
+                      type: "RestElement",
+                      loc: "19:15-19:23",
+                      argument: {
+                        type: "ArrayPattern",
+                        loc: "19:18-19:23",
+                        elements: [
+                          {
+                            type: "ObjectPattern",
+                            loc: "19:19-19:22",
+                            properties: [
+                              {
+                                type: "Property",
+                                loc: "19:20-19:21",
+                                key: null,
+                                value: {
+                                  type: "Identifier",
+                                  loc: "19:20-19:21",
+                                  name: "e",
+                                },
+                                computed: false,
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          init: {
+            type: "Literal",
+            loc: "19:28-19:29",
             value: 1,
           },
         },

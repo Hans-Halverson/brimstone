@@ -341,6 +341,21 @@ pub fn is_constructor(value: Value) -> bool {
     value.as_object().is_constructor()
 }
 
+// 7.2.6 IsIntegralNumber
+pub fn is_integral_number(value: Value) -> bool {
+    if value.is_smi() {
+        return true;
+    } else if !value.is_double() {
+        return false;
+    } else if value.is_nan() || value.is_infinity() {
+        return false;
+    }
+
+    let number = value.as_double();
+
+    number.trunc() == number
+}
+
 // 7.2.11 SameValue
 pub fn same_value(v1: Value, v2: Value) -> bool {
     // Same as is_strictly_equal, but treats NaN as equal to itself, and does not treat differently

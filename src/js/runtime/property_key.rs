@@ -1,8 +1,13 @@
 use std::{cell::RefCell, fmt, hash};
 
+use crate::maybe;
+
 use super::{
+    numeric_constants::MAX_U32_AS_F64,
+    to_string,
+    type_utilities::is_integral_number,
     value::{StringValue, SymbolValue},
-    Context, Gc,
+    Context, EvalResult, Gc, Value,
 };
 
 #[derive(Clone)]
@@ -67,6 +72,21 @@ impl PropertyKey {
 
         PropertyKey {
             data: RefCell::new(KeyData::ArrayIndex { value: value as u32 }),
+        }
+    }
+
+    pub fn from_value(cx: &mut Context, value: Value) -> EvalResult<PropertyKey> {
+        if is_integral_number(value) {
+            let number = value.as_double();
+            if number >= 0.0 && number < MAX_U32_AS_F64 {
+                return PropertyKey::array_index(number as u32).into();
+            }
+        }
+
+        if value.is_symbol() {
+            PropertyKey::symbol(value.as_symbol()).into()
+        } else {
+            PropertyKey::string(maybe!(to_string(cx, value))).into()
         }
     }
 

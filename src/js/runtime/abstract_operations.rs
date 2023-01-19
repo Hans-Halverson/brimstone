@@ -226,6 +226,41 @@ pub fn ordinary_has_instance(
     }
 }
 
+// 7.3.26 CopyDataProperties
+pub fn copy_data_properties(
+    cx: &mut Context,
+    target: Gc<ObjectValue>,
+    source: Value,
+    excluded_items: &[PropertyKey],
+) -> EvalResult<()> {
+    if source.is_nullish() {
+        return ().into();
+    }
+
+    let from = must!(to_object(cx, source));
+    let keys = from.own_property_keys(cx);
+
+    for next_key in keys {
+        let next_key = must!(PropertyKey::from_value(cx, next_key));
+        let is_excluded = excluded_items
+            .iter()
+            .any(|excluded_item| excluded_item == &next_key);
+
+        if !is_excluded {
+            let desc = maybe!(from.get_own_property(&next_key));
+            match desc {
+                Some(desc) if desc.is_enumerable() => {
+                    let prop_value = maybe!(get(cx, from, &next_key));
+                    must!(create_data_property_or_throw(cx, target, &next_key, prop_value));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    ().into()
+}
+
 // 7.3.30 PrivateGet
 pub fn private_get(
     cx: &mut Context,

@@ -3,8 +3,9 @@ use crate::{
         parser::ast::{self, UpdateOperator},
         runtime::{
             abstract_operations::{
-                call, call_object, construct, create_data_property_or_throw, get_method,
-                has_property, initialize_instance_elements, ordinary_has_instance, private_get,
+                call, call_object, construct, copy_data_properties, create_data_property_or_throw,
+                get_method, has_property, initialize_instance_elements, ordinary_has_instance,
+                private_get,
             },
             array_object::array_create,
             completion::EvalResult,
@@ -177,7 +178,8 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
         match property.value.as_ref() {
             // Spread element
             _ if property.kind == ast::PropertyKind::Spread => {
-                unimplemented!("object spread elements")
+                let from_value = maybe!(eval_expression(cx, &property.key));
+                maybe!(copy_data_properties(cx, object, from_value, &[]));
             }
             // Identifier shorthand property
             None => {

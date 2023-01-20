@@ -99,6 +99,7 @@ builtin_names!(
     (name, "name"),
     (nan, "NaN"),
     (next, "next"),
+    (of, "of"),
     (prevent_extensions, "preventExtensions"),
     (property_is_enumerable, "propertyIsEnumerable"),
     (prototype, "prototype"),

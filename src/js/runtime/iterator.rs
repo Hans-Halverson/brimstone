@@ -20,9 +20,9 @@ use super::{
 
 // 7.4.1 Iterator Records
 pub struct Iterator {
-    iterator: Gc<ObjectValue>,
-    next_method: Value,
-    is_done: bool,
+    pub iterator: Gc<ObjectValue>,
+    pub next_method: Value,
+    pub is_done: bool,
 }
 
 #[derive(PartialEq)]

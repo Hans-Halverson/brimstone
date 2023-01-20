@@ -5,6 +5,7 @@ use crate::{
         parser::ast,
         runtime::{
             abstract_operations::{copy_data_properties, get_v},
+            array_object::array_create,
             completion::EvalResult,
             environment::environment::Environment,
             eval::{
@@ -14,12 +15,17 @@ use crate::{
             execution_context::resolve_binding,
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
-            object_value::ObjectValue,
+            iterator::{
+                get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
+            },
+            object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
+            property::Property,
             property_key::PropertyKey,
+            reference::Reference,
             type_utilities::require_object_coercible,
             value::{StringValue, Value},
-            Context,
+            Completion, Context,
         },
     },
     maybe, must,
@@ -37,7 +43,23 @@ pub fn binding_initialization(
             let name_value = id_string_value(cx, id);
             initialize_bound_name(cx, name_value, value, env)
         }
-        ast::Pattern::Array(_) => unimplemented!("array patterns"),
+        ast::Pattern::Array(array) => {
+            let mut iterator = maybe!(get_iterator(cx, value, IteratorHint::Sync, None));
+            let result = iterator_binding_initialization(cx, array, &mut iterator, env);
+
+            if !iterator.is_done {
+                let completion = if let EvalResult::Throw(thrown_value) = result {
+                    Completion::throw(thrown_value)
+                } else {
+                    Completion::empty()
+                };
+
+                let close_completion = iterator_close(cx, &iterator, completion);
+                maybe!(close_completion.into_eval_result());
+            }
+
+            result
+        }
         ast::Pattern::Object(object) => object_binding_initialization(cx, object, value, env),
         ast::Pattern::Assign(_) => unreachable!(),
     }
@@ -77,13 +99,7 @@ fn object_binding_initialization(
                 maybe!(reference.initialize_referenced_binding(cx, rest_object.into()))
             }
         } else {
-            // Initializers are represented as an assignment pattern as the value
-            let (binding_value, initializer) = match property.value.as_ref() {
-                ast::Pattern::Assign(ast::AssignmentPattern { left, right, .. }) => {
-                    (left.as_ref(), Some(right.as_ref()))
-                }
-                other_pattern => (other_pattern, None),
-            };
+            let (binding_value, initializer) = maybe_extract_initializer(property.value.as_ref());
 
             // 14.3.3.1 PropertyBindingInitialization
             let name_key = match &property.key {
@@ -133,6 +149,191 @@ fn object_binding_initialization(
     ().into()
 }
 
+enum ReferenceOrBindingPattern<'a> {
+    Reference(Reference, Option<&'a ast::Expression>),
+    Pattern(&'a ast::Pattern, Option<&'a ast::Expression>),
+}
+
+// 8.5.3 IteratorBindingInitialization
+fn iterator_binding_initialization(
+    cx: &mut Context,
+    array_pattern: &ast::ArrayPattern,
+    iterator: &mut Iterator,
+    env: Option<Gc<dyn Environment>>,
+) -> EvalResult<()> {
+    for element in &array_pattern.elements {
+        // Binding identifiers must be resolved before later steps
+        let reference_or_binding_pattern = match element {
+            ast::ArrayPatternElement::Pattern(pattern) => {
+                let (binding_value, initializer) = maybe_extract_initializer(pattern);
+                match binding_value {
+                    ast::Pattern::Id(id) => {
+                        let name_value = id_string_value(cx, id);
+                        let reference = maybe!(resolve_binding(cx, name_value, env));
+                        ReferenceOrBindingPattern::Reference(reference, initializer)
+                    }
+                    pattern => ReferenceOrBindingPattern::Pattern(pattern, initializer),
+                }
+            }
+            ast::ArrayPatternElement::Rest(ast::RestElement { argument, .. }) => {
+                match argument.as_ref() {
+                    ast::Pattern::Id(id) => {
+                        let name_value = id_string_value(cx, id);
+                        let reference = maybe!(resolve_binding(cx, name_value, env));
+                        ReferenceOrBindingPattern::Reference(reference, None)
+                    }
+                    pattern => ReferenceOrBindingPattern::Pattern(pattern, None),
+                }
+            }
+            // Handle holes immediately as they ignore the rest of evaluation for this element
+            ast::ArrayPatternElement::Hole => {
+                if !iterator.is_done {
+                    let next = iterator_step(cx, &iterator);
+
+                    match next {
+                        EvalResult::Throw(thrown_value) => {
+                            iterator.is_done = true;
+                            return EvalResult::Throw(thrown_value);
+                        }
+                        EvalResult::Ok(None) => {
+                            iterator.is_done = true;
+                        }
+                        EvalResult::Ok(Some(_)) => {}
+                    }
+                }
+
+                continue;
+            }
+        };
+
+        match element {
+            ast::ArrayPatternElement::Pattern(_) => {
+                let mut value = Value::undefined();
+
+                // Perform a step of the iterator if it is not complete
+                if !iterator.is_done {
+                    let next_result = iterator_step(cx, iterator);
+
+                    match next_result {
+                        EvalResult::Throw(thrown_value) => {
+                            iterator.is_done = true;
+                            return EvalResult::Throw(thrown_value);
+                        }
+                        EvalResult::Ok(None) => {
+                            iterator.is_done = true;
+                        }
+                        EvalResult::Ok(Some(next)) => {
+                            let next_value_result = iterator_value(cx, next);
+
+                            match next_value_result {
+                                EvalResult::Throw(thrown_value) => {
+                                    iterator.is_done = true;
+                                    return EvalResult::Throw(thrown_value);
+                                }
+                                EvalResult::Ok(next_value) => {
+                                    value = next_value;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Evaluate and use initializer if value is undefined and initializer is present,
+                // then bind pattern.
+                match reference_or_binding_pattern {
+                    ReferenceOrBindingPattern::Reference(mut reference, initializer) => {
+                        if value.is_undefined() {
+                            if let Some(initializer) = initializer {
+                                value = maybe!(eval_named_anonymous_function_or_expression(
+                                    cx,
+                                    initializer,
+                                    &reference.name_as_property_key(),
+                                ));
+                            }
+                        }
+
+                        if env.is_none() {
+                            maybe!(reference.put_value(cx, value));
+                        } else {
+                            maybe!(reference.initialize_referenced_binding(cx, value));
+                        }
+                    }
+                    ReferenceOrBindingPattern::Pattern(pattern, initializer) => {
+                        if value.is_undefined() {
+                            if let Some(initializer) = initializer {
+                                value = maybe!(eval_expression(cx, initializer));
+                            }
+                        }
+
+                        maybe!(binding_initialization(cx, pattern, value, env));
+                    }
+                }
+            }
+            ast::ArrayPatternElement::Rest(_) => {
+                let mut array = must!(array_create(cx, 0, None));
+                let mut index = 0;
+
+                loop {
+                    // Perform a step of the iterator if it is not complete
+                    let mut next_value = None;
+                    if !iterator.is_done {
+                        let next_result = iterator_step(cx, iterator);
+
+                        match next_result {
+                            EvalResult::Throw(thrown_value) => {
+                                iterator.is_done = true;
+                                return EvalResult::Throw(thrown_value);
+                            }
+                            EvalResult::Ok(next) => {
+                                if next.is_none() {
+                                    iterator.is_done = true;
+                                }
+
+                                next_value = next;
+                            }
+                        }
+                    }
+
+                    // Rest element is complete, bind it and return since rest must be the last element
+                    if iterator.is_done {
+                        return match reference_or_binding_pattern {
+                            ReferenceOrBindingPattern::Reference(mut reference, _)
+                                if env.is_none() =>
+                            {
+                                reference.put_value(cx, array.into())
+                            }
+                            ReferenceOrBindingPattern::Reference(mut reference, _) => {
+                                reference.initialize_referenced_binding(cx, array.into())
+                            }
+                            ReferenceOrBindingPattern::Pattern(pattern, _) => {
+                                binding_initialization(cx, pattern, array.into(), env)
+                            }
+                        };
+                    }
+
+                    // Get next value from iterator and append to rest array
+                    let next_value = iterator_value(cx, next_value.unwrap());
+
+                    match next_value {
+                        EvalResult::Throw(thrown_value) => {
+                            iterator.is_done = true;
+                            return EvalResult::Throw(thrown_value);
+                        }
+                        EvalResult::Ok(next_value) => {
+                            let property = Property::data(next_value, true, true, true);
+                            array.set_property(&PropertyKey::array_index(index), property);
+                            index += 1;
+                        }
+                    }
+                }
+            }
+            ast::ArrayPatternElement::Hole => unreachable!(),
+        }
+    }
+
+    ().into()
+}
+
 // 8.5.2.1 InitializeBoundName
 pub fn initialize_bound_name(
     cx: &mut Context,
@@ -160,4 +361,17 @@ pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue
 #[inline]
 pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
     PropertyKey::string(cx.get_interned_string(&id.name))
+}
+
+// Initializers are represented as an assignment pattern as the value, wrapping the binding pattern.
+// Unwrap this structure into the inner binding pattern and the initializer, if one exists.
+pub fn maybe_extract_initializer(
+    pattern: &ast::Pattern,
+) -> (&ast::Pattern, Option<&ast::Expression>) {
+    match pattern {
+        ast::Pattern::Assign(ast::AssignmentPattern { left, right, .. }) => {
+            (left.as_ref(), Some(right.as_ref()))
+        }
+        other_pattern => (other_pattern, None),
+    }
 }

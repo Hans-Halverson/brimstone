@@ -33,7 +33,7 @@ use crate::{
 
 use super::{
     expression::eval_expression,
-    pattern::{binding_initialization, id_string_value},
+    pattern::{binding_initialization, id_string_value, maybe_extract_initializer},
     statement::eval_named_anonymous_function_or_expression,
 };
 
@@ -157,11 +157,7 @@ pub fn function_declaration_instantiation(
             }
         };
 
-        // Initializers are represented as an assignment pattern as the value
-        let (patt, init) = match pattern {
-            ast::Pattern::Assign(patt) => (patt.left.as_ref(), Some(patt.right.as_ref())),
-            _ => (pattern, None),
-        };
+        let (patt, init) = maybe_extract_initializer(pattern);
 
         match patt {
             ast::Pattern::Id(id) => {

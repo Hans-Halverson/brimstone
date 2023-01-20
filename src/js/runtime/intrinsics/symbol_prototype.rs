@@ -1,10 +1,13 @@
 use crate::{
     js::runtime::{
+        builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
         gc::Gc,
-        object_value::ObjectValue,
+        object_value::{Object, ObjectValue},
         ordinary_object::OrdinaryObject,
+        property::Property,
+        property_key::PropertyKey,
         realm::Realm,
         value::{StringValue, SymbolValue, Value},
         Context,
@@ -26,6 +29,29 @@ impl SymbolPrototype {
         object.intrinsic_getter(cx, &cx.names.description(), Self::get_description, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+
+        // [Symbol.toPrimitive] property
+        let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
+        let to_primitive_name = cx.heap.alloc_string(String::from("[Symbol.toPrimitive]"));
+        let to_primitive_func = BuiltinFunction::create(
+            cx,
+            Self::to_primitive,
+            1,
+            &PropertyKey::string_not_number(to_primitive_name),
+            Some(realm),
+            None,
+            None,
+        )
+        .into();
+        object
+            .set_property(&to_primitive_key, Property::data(to_primitive_func, false, false, true));
+
+        // [Symbol.toStringTag] property
+        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        object.set_property(
+            &to_string_tag_key,
+            Property::data(cx.names.symbol().as_string().into(), false, false, true),
+        );
 
         cx.heap.alloc(object).into()
     }
@@ -57,6 +83,16 @@ impl SymbolPrototype {
 
     // 20.4.3.4 Symbol.prototype.valueOf
     fn value_of(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        this_symbol_value(cx, this_value)
+    }
+
+    // 20.4.3.5 Symbol.prototype [ @@toPrimitive ]
+    fn to_primitive(
         cx: &mut Context,
         this_value: Value,
         _: &[Value],

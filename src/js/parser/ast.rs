@@ -658,6 +658,9 @@ pub enum AssignmentOperator {
     ShiftLeft,
     ShiftRightArithmetic,
     ShiftRightLogical,
+    LogicalAnd,
+    LogicalOr,
+    NullishCoalesce,
 }
 
 pub struct AssignmentExpression {

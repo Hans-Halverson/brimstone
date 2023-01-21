@@ -1136,6 +1136,9 @@ impl<'a> Parser<'a> {
             Token::ShiftLeftEq => Some(AssignmentOperator::ShiftLeft),
             Token::ShiftRightArithmeticEq => Some(AssignmentOperator::ShiftRightArithmetic),
             Token::ShiftRightLogicalEq => Some(AssignmentOperator::ShiftRightLogical),
+            Token::LogicalAndEq => Some(AssignmentOperator::LogicalAnd),
+            Token::LogicalOrEq => Some(AssignmentOperator::LogicalOr),
+            Token::NullishCoalesceEq => Some(AssignmentOperator::NullishCoalesce),
             _ => None,
         };
 

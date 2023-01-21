@@ -1246,6 +1246,42 @@ fn eval_assignment_expression(
             let right_value = maybe!(eval_expression(cx, &expr.right));
             maybe!(eval_shift_right_logical(cx, left_value, right_value))
         }
+        ast::AssignmentOperator::LogicalAnd => {
+            let left_value = maybe!(reference.get_value(cx));
+            if !to_boolean(left_value) {
+                return left_value.into();
+            }
+
+            maybe!(eval_named_anonymous_function_or_expression(
+                cx,
+                &expr.right,
+                &reference.name_as_property_key()
+            ))
+        }
+        ast::AssignmentOperator::LogicalOr => {
+            let left_value = maybe!(reference.get_value(cx));
+            if to_boolean(left_value) {
+                return left_value.into();
+            }
+
+            maybe!(eval_named_anonymous_function_or_expression(
+                cx,
+                &expr.right,
+                &reference.name_as_property_key()
+            ))
+        }
+        ast::AssignmentOperator::NullishCoalesce => {
+            let left_value = maybe!(reference.get_value(cx));
+            if !left_value.is_nullish() {
+                return left_value.into();
+            }
+
+            maybe!(eval_named_anonymous_function_or_expression(
+                cx,
+                &expr.right,
+                &reference.name_as_property_key()
+            ))
+        }
     };
 
     maybe!(reference.put_value(cx, result_value));

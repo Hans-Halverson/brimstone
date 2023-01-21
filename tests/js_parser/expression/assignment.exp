@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-25:9",
+  loc: "1:0-31:8",
   body: [
     {
       type: "ExpressionStatement",
@@ -255,6 +255,63 @@
         right: {
           type: "Identifier",
           loc: "25:7-25:8",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "27:0-27:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "27:0-27:7",
+        operator: "&&=",
+        left: {
+          type: "Identifier",
+          loc: "27:0-27:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "27:6-27:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "29:0-29:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "29:0-29:7",
+        operator: "||=",
+        left: {
+          type: "Identifier",
+          loc: "29:0-29:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "29:6-29:7",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "31:0-31:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "31:0-31:7",
+        operator: "??=",
+        left: {
+          type: "Identifier",
+          loc: "31:0-31:1",
+          name: "a",
+        },
+        right: {
+          type: "Identifier",
+          loc: "31:6-31:7",
           name: "b",
         },
       },

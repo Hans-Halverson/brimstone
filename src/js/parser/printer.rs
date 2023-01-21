@@ -610,6 +610,9 @@ impl<'a> Printer<'a> {
             AssignmentOperator::ShiftLeft => "<<=",
             AssignmentOperator::ShiftRightArithmetic => ">>=",
             AssignmentOperator::ShiftRightLogical => ">>>=",
+            AssignmentOperator::LogicalAnd => "&&=",
+            AssignmentOperator::LogicalOr => "||=",
+            AssignmentOperator::NullishCoalesce => "??=",
         };
         self.print_str(str);
     }

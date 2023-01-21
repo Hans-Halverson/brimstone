@@ -60,7 +60,9 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
             let description = value.as_symbol().description().unwrap_or("");
             return format!("Symbol({})", description);
         }
-        BIGINT_TAG => unimplemented!("BigInts"),
+        BIGINT_TAG => {
+            return format!("{}n", value.as_bigint().bigint().to_string());
+        }
         _ => {}
     };
 

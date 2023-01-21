@@ -139,6 +139,10 @@ pub trait Object {
         false
     }
 
+    fn is_bigint_object(&self) -> bool {
+        false
+    }
+
     fn is_date_object(&self) -> bool {
         false
     }

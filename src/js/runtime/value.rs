@@ -1,5 +1,7 @@
 use std::{fmt, hash};
 
+use num_bigint::BigInt;
+
 use super::{
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
@@ -31,11 +33,11 @@ use super::{
 ///
 /// Pointers use the top three bits with the following tags, leaving 48 bits to store the pointer:
 ///
-///   Object:   0b000
-///   String:   0b001
-///   Symbol:   0b010
-///   BigInt:   0b011
-///   Accessor: 0b100
+///   Object:   0b001
+///   String:   0b010
+///   Symbol:   0b011
+///   BigInt:   0b100
+///   Accessor: 0b101
 
 const TAG_SHIFT: u64 = 48;
 const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
@@ -241,6 +243,11 @@ impl Value {
     }
 
     #[inline]
+    pub const fn as_bigint(&self) -> Gc<BigIntValue> {
+        Gc::from_ptr(self.restore_pointer_bits())
+    }
+
+    #[inline]
     pub const fn as_accessor(&self) -> Gc<AccessorValue> {
         Gc::from_ptr(self.restore_pointer_bits())
     }
@@ -320,6 +327,13 @@ impl Value {
     }
 
     #[inline]
+    pub fn bigint(value: Gc<BigIntValue>) -> Value {
+        Value {
+            raw_bits: ((BIGINT_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
+        }
+    }
+
+    #[inline]
     pub fn accessor(value: Gc<AccessorValue>) -> Value {
         Value {
             raw_bits: ((ACCESSOR_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
@@ -365,6 +379,12 @@ impl From<Gc<StringValue>> for Value {
 impl From<Gc<SymbolValue>> for Value {
     fn from(value: Gc<SymbolValue>) -> Self {
         Value::symbol(value)
+    }
+}
+
+impl From<Gc<BigIntValue>> for Value {
+    fn from(value: Gc<BigIntValue>) -> Self {
+        Value::bigint(value)
     }
 }
 
@@ -440,6 +460,23 @@ impl Gc<SymbolValue> {
 }
 
 impl GcDeref for SymbolValue {}
+
+pub struct BigIntValue(BigInt);
+
+impl BigIntValue {
+    pub fn new(value: BigInt) -> BigIntValue {
+        BigIntValue(value)
+    }
+}
+
+impl Gc<BigIntValue> {
+    pub fn bigint<'a, 'b>(&'a self) -> &'b BigInt {
+        // Intentionally break lifetime, as BigIntValues are managed by the Gc heap
+        unsafe { std::mem::transmute(&self.0) }
+    }
+}
+
+impl GcDeref for BigIntValue {}
 
 pub struct AccessorValue {
     pub get: Option<Gc<ObjectValue>>,

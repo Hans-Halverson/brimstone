@@ -70,6 +70,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
 
     // 19.3 Constructor Properties of the Global Object
     intrinsic_prop!(&cx.names.array(), ArrayConstructor);
+    intrinsic_prop!(&cx.names.bigint(), BigIntConstructor);
     intrinsic_prop!(&cx.names.boolean(), BooleanConstructor);
     intrinsic_prop!(&cx.names.error(), ErrorConstructor);
     intrinsic_prop!(&cx.names.eval_error(), EvalErrorConstructor);

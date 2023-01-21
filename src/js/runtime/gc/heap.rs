@@ -1,6 +1,8 @@
 use std::mem::{align_of, size_of};
 
-use crate::js::runtime::value::StringValue;
+use num_bigint::BigInt;
+
+use crate::js::runtime::value::{BigIntValue, StringValue};
 
 use super::pointer::Gc;
 
@@ -50,5 +52,9 @@ impl Heap {
 
     pub fn alloc_string(&mut self, str: String) -> Gc<StringValue> {
         self.alloc(StringValue::new(str))
+    }
+
+    pub fn alloc_bigint(&mut self, bigint: BigInt) -> Gc<BigIntValue> {
+        self.alloc(BigIntValue::new(bigint))
     }
 }

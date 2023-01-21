@@ -1,6 +1,8 @@
 mod array_constructor;
 mod array_iterator;
 mod array_prototype;
+pub mod bigint_constructor;
+mod bigint_prototype;
 pub mod boolean_constructor;
 mod boolean_prototype;
 mod error_constructor;

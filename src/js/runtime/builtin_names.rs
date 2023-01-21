@@ -50,6 +50,7 @@ builtin_names!(
     (sqrt1_2, "SQRT1_2"),
     (sqrt2, "SQRT2"),
     (array, "Array"),
+    (bigint, "BigInt"),
     (boolean, "Boolean"),
     (error, "Error"),
     (eval_error, "EvalError"),

@@ -7,7 +7,8 @@ use crate::{
         gc::Gc,
         intrinsics::{
             array_constructor::ArrayConstructor, array_iterator::ArrayIteratorPrototype,
-            array_prototype::ArrayPrototype, boolean_constructor::BooleanConstructor,
+            array_prototype::ArrayPrototype, bigint_constructor::BigIntConstructor,
+            bigint_prototype::BigIntPrototype, boolean_constructor::BooleanConstructor,
             boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype, global_object::create_eval,
@@ -31,6 +32,8 @@ pub enum Intrinsic {
     ArrayConstructor = 0,
     ArrayIteratorPrototype,
     ArrayPrototype,
+    BigIntConstructor,
+    BigIntPrototype,
     BooleanConstructor,
     BooleanPrototype,
     ErrorConstructor,
@@ -139,6 +142,7 @@ impl Intrinsics {
         register_intrinsic_pair!(NumberPrototype, NumberConstructor);
         register_intrinsic_pair!(StringPrototype, StringConstructor);
         register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
+        register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
 
         // Native errors

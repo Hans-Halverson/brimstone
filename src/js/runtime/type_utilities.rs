@@ -1,20 +1,23 @@
+use num_bigint::BigInt;
+
 use crate::maybe;
 
 use super::{
     abstract_operations::{call_object, get, get_method},
     completion::EvalResult,
-    error::type_error_,
+    error::{syntax_error_, type_error_},
     gc::Gc,
     intrinsics::{
-        boolean_constructor::BooleanObject, number_constructor::NumberObject,
-        string_constructor::StringObject, symbol_constructor::SymbolObject,
+        bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
+        number_constructor::NumberObject, string_constructor::StringObject,
+        symbol_constructor::SymbolObject,
     },
     numeric_constants::MAX_SAFE_INTEGER_F64,
     object_value::ObjectValue,
     property_key::PropertyKey,
     value::{
-        StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG, STRING_TAG,
-        SYMBOL_TAG, UNDEFINED_TAG,
+        BigIntValue, StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG,
+        STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
     },
     Context,
 };
@@ -110,7 +113,7 @@ pub fn to_boolean(value: Value) -> bool {
         OBJECT_TAG => true,
         STRING_TAG => !value.as_string().is_empty(),
         SYMBOL_TAG => true,
-        BIGINT_TAG => unimplemented!("BigInt"),
+        BIGINT_TAG => value.as_bigint().bigint().ne(&BigInt::default()),
         _ => unreachable!(),
     }
 }
@@ -243,6 +246,35 @@ fn string_to_number(value: Value) -> Value {
     unimplemented!("StringToNumber")
 }
 
+// 7.1.13 ToBigInt
+pub fn to_bigint(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> {
+    let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+
+    if primitive.is_bigint() {
+        return primitive.as_bigint().into();
+    } else if primitive.is_number() {
+        return type_error_(cx, "value cannot be converted to BigInt");
+    }
+
+    match value.get_tag() {
+        BOOL_TAG => {
+            if value.as_bool() {
+                cx.heap.alloc_bigint(1.into()).into()
+            } else {
+                cx.heap.alloc_bigint(0.into()).into()
+            }
+        }
+        STRING_TAG => {
+            if let Some(bigint) = string_to_bigint(value.as_string()) {
+                cx.heap.alloc_bigint(bigint).into()
+            } else {
+                syntax_error_(cx, "string does not represent a BigInt")
+            }
+        }
+        _ => type_error_(cx, "value cannot be converted to BigInt"),
+    }
+}
+
 // 7.1.17 ToString
 pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> {
     if value.is_string() {
@@ -264,7 +296,10 @@ pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> 
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
             to_string(cx, primitive_value)
         }
-        BIGINT_TAG => unimplemented!("BigInts"),
+        BIGINT_TAG => cx
+            .heap
+            .alloc_string(value.as_bigint().bigint().to_string())
+            .into(),
         SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to string"),
         _ => unreachable!(),
     }
@@ -296,7 +331,11 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
                 SymbolObject::new_from_value(cx, value.as_symbol()).into();
             object.into()
         }
-        BIGINT_TAG => unimplemented!("BigInt objects"),
+        BIGINT_TAG => {
+            let object: Gc<ObjectValue> =
+                BigIntObject::new_from_value(cx, value.as_bigint()).into();
+            object.into()
+        }
         _ => unreachable!(),
     }
 }
@@ -397,7 +436,7 @@ pub fn same_value(v1: Value, v2: Value) -> bool {
 
     match tag1 {
         STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
-        BIGINT_TAG => unimplemented!("BigInt"),
+        BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
         // Null, Undefined, and Bool all have a single canonical bit representation for each value,
         // so the bits can be compared directly. For Objects and Symbols there is a single
         // representation for a unique pointer, so can directly compare bits as well.
@@ -406,8 +445,8 @@ pub fn same_value(v1: Value, v2: Value) -> bool {
 }
 
 // 7.1.14 StringToBigInt
-fn string_to_big_int(value: Value) -> Value {
-    unimplemented!()
+fn string_to_bigint(value: Gc<StringValue>) -> Option<BigInt> {
+    unimplemented!("StringToBigInt")
 }
 
 // 7.1.19 ToPropertyKey
@@ -439,12 +478,24 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
         if y_tag == STRING_TAG {
             return (x.as_string().str() < y.as_string().str()).into();
         } else if y_tag == BIGINT_TAG {
-            unimplemented!("BigInts")
+            let x_bigint = string_to_bigint(x.as_string());
+
+            return if let Some(x_bigint) = x_bigint {
+                x_bigint.lt(y.as_bigint().bigint()).into()
+            } else {
+                Value::undefined().into()
+            };
         }
     }
 
     if x_tag == BIGINT_TAG && y_tag == STRING_TAG {
-        unimplemented!("BigInts")
+        let y_bigint = string_to_bigint(x.as_string());
+
+        return if let Some(y_bigint) = y_bigint {
+            x.as_bigint().bigint().lt(&y_bigint).into()
+        } else {
+            Value::undefined().into()
+        };
     }
 
     let num_x = maybe!(to_numeric(cx, x));
@@ -454,8 +505,7 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
     let y_is_bigint = num_y.is_bigint();
     if x_is_bigint == y_is_bigint {
         if x_is_bigint {
-            // Both are BigInt
-            unimplemented!("BigInts")
+            return x.as_bigint().bigint().lt(y.as_bigint().bigint()).into();
         } else {
             // Both are numbers
             if x.is_nan() || y.is_nan() {
@@ -466,7 +516,7 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
         }
     } else {
         // One number and one BigInt
-        unimplemented!("BigInts")
+        unimplemented!("BigInt comparison to number")
     }
 }
 
@@ -490,7 +540,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
                 let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
                 is_loosely_equal(cx, v1, primitive_v2)
             }
-            BIGINT_TAG => unimplemented!("BigInt"),
+            BIGINT_TAG => unimplemented!("BigInt comparison to number"),
             _ => false.into(),
         };
     }
@@ -500,7 +550,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
     if tag1 == tag2 {
         return match tag1 {
             STRING_TAG => (v1.as_string().as_ref() == v2.as_string().as_ref()).into(),
-            BIGINT_TAG => unimplemented!("BigInt"),
+            BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into(),
             // Null, Undefined, and Bool all have a single canonical bit representation for each value,
             // so the bits can be compared directly. For Objects and Symbols there is a single
             // representation for a unique pointer, so can directly compare bits as well.
@@ -515,11 +565,11 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
             (v1_number.as_number() == v2.as_number()).into()
         }
         (STRING_TAG, BIGINT_TAG) => {
-            let v1_bigint = string_to_big_int(v1);
-            if v1_bigint.is_undefined() {
-                false.into()
+            let v1_bigint = string_to_bigint(v1.as_string());
+            if let Some(v1_bigint) = v1_bigint {
+                v1_bigint.eq(v2.as_bigint().bigint()).into()
             } else {
-                unimplemented!("BigInt")
+                false.into()
             }
         }
         (BOOL_TAG, _) => {
@@ -530,13 +580,13 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
             let v2_number = maybe!(to_number(cx, v2));
             is_loosely_equal(cx, v1, v2_number)
         }
-        (BIGINT_TAG, _) if v2.is_number() => unimplemented!("BigInt"),
+        (BIGINT_TAG, _) if v2.is_number() => unimplemented!("BigInt comparison to number"),
         (BIGINT_TAG, STRING_TAG) => {
-            let v2_bigint = string_to_big_int(v2);
-            if v2_bigint.is_undefined() {
-                false.into()
+            let v2_bigint = string_to_bigint(v2.as_string());
+            if let Some(v2_bigint) = v2_bigint {
+                v1.as_bigint().bigint().eq(&v2_bigint).into()
             } else {
-                unimplemented!("BigInt")
+                false.into()
             }
         }
         (OBJECT_TAG, _) if v2.is_number() => {
@@ -572,7 +622,7 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
 
     match tag1 {
         STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
-        BIGINT_TAG => unimplemented!("BigInt"),
+        BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
         // Null, Undefined, and Bool all have a single canonical bit representation for each value,
         // so the bits can be compared directly. For Objects and Symbols there is a single
         // representation for a unique pointer, so can directly compare bits as well.

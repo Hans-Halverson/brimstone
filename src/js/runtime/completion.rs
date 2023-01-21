@@ -3,7 +3,7 @@ use crate::js::parser::ast::LabelId;
 use super::{
     gc::Gc,
     object_value::ObjectValue,
-    value::{StringValue, SymbolValue, Value},
+    value::{BigIntValue, StringValue, SymbolValue, Value},
 };
 
 /// 6.2.3 Completion Record
@@ -150,6 +150,13 @@ impl From<Gc<StringValue>> for EvalResult<Value> {
 impl From<Gc<SymbolValue>> for EvalResult<Value> {
     #[inline]
     fn from(value: Gc<SymbolValue>) -> Self {
+        EvalResult::Ok(value.into())
+    }
+}
+
+impl From<Gc<BigIntValue>> for EvalResult<Value> {
+    #[inline]
+    fn from(value: Gc<BigIntValue>) -> Self {
         EvalResult::Ok(value.into())
     }
 }

@@ -74,6 +74,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.error(), ErrorConstructor);
     intrinsic_prop!(&cx.names.eval_error(), EvalErrorConstructor);
     intrinsic_prop!(&cx.names.function(), FunctionConstructor);
+    intrinsic_prop!(&cx.names.math(), Math);
     intrinsic_prop!(&cx.names.number(), NumberConstructor);
     intrinsic_prop!(&cx.names.object(), ObjectConstructor);
     intrinsic_prop!(&cx.names.range_error(), RangeErrorConstructor);

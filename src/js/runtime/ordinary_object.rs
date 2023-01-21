@@ -246,6 +246,10 @@ impl OrdinaryObject {
             BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
         );
     }
+
+    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, false, false, false));
+    }
 }
 
 // Properties keyed by array index. Keep dense and backed by a true array if possible, otherwise

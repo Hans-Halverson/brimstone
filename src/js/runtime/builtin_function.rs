@@ -104,8 +104,7 @@ impl BuiltinFunction {
     }
 
     pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.object
-            .set_property(key, Property::data(value, false, false, false));
+        self.object.intrinsic_frozen_property(key, value);
     }
 
     pub fn intrinsic_func(

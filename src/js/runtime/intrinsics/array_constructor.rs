@@ -5,7 +5,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::range_error_,
         function::get_argument,
-        object_value::{Object, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::get_prototype_from_constructor,
         property::Property,
         property_key::PropertyKey,

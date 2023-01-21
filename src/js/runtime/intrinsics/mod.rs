@@ -10,6 +10,7 @@ mod function_prototype;
 pub mod global_object;
 pub mod intrinsics;
 mod iterator_prototype;
+mod math_object;
 pub mod native_error;
 pub mod number_constructor;
 mod number_prototype;

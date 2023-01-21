@@ -18,6 +18,7 @@ use crate::{
             },
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
+            numeric_operations::number_exponentiate,
             object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
@@ -703,7 +704,11 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
             let right_value = maybe!(eval_expression(cx, &expr.right));
             eval_remainder(cx, left_value, right_value)
         }
-        ast::BinaryOperator::Exponent => unimplemented!("exponent expression"),
+        ast::BinaryOperator::Exponent => {
+            let left_value = maybe!(eval_expression(cx, &expr.left));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            eval_exponentiation(cx, left_value, right_value)
+        }
         ast::BinaryOperator::EqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
@@ -880,6 +885,27 @@ fn eval_remainder(cx: &mut Context, left_value: Value, right_value: Value) -> Ev
         unimplemented!("BigInt")
     } else {
         return Value::number(left_num.as_number() % right_num.as_number()).into();
+    }
+}
+
+fn eval_exponentiation(
+    cx: &mut Context,
+    left_value: Value,
+    right_value: Value,
+) -> EvalResult<Value> {
+    let left_num = maybe!(to_numeric(cx, left_value));
+    let right_num = maybe!(to_numeric(cx, right_value));
+
+    let left_is_bigint = left_num.is_bigint();
+    if left_is_bigint != right_num.is_bigint() {
+        return type_error_(cx, "BigInt cannot be converted to number");
+    }
+
+    if left_is_bigint {
+        unimplemented!("BigInt")
+    } else {
+        return Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
+            .into();
     }
 }
 
@@ -1215,7 +1241,11 @@ fn eval_assignment_expression(
             let right_value = maybe!(eval_expression(cx, &expr.right));
             maybe!(eval_remainder(cx, left_value, right_value))
         }
-        ast::AssignmentOperator::Exponent => unimplemented!("exponent expression"),
+        ast::AssignmentOperator::Exponent => {
+            let left_value = maybe!(reference.get_value(cx));
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(eval_exponentiation(cx, left_value, right_value))
+        }
         ast::AssignmentOperator::And => {
             let left_value = maybe!(reference.get_value(cx));
             let right_value = maybe!(eval_expression(cx, &expr.right));

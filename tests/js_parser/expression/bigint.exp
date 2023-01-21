@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-11:6",
+  loc: "1:0-19:7",
   body: [
     {
       type: "ExpressionStatement",
@@ -58,6 +58,46 @@
       kind: {
         type: "Literal",
         loc: "11:0-11:5",
+        value: null,
+        bigint: "169",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:10",
+      kind: {
+        type: "Literal",
+        loc: "13:0-13:9",
+        value: null,
+        bigint: "91234",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:13",
+      kind: {
+        type: "Literal",
+        loc: "15:0-15:12",
+        value: null,
+        bigint: "51",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:7",
+      kind: {
+        type: "Literal",
+        loc: "17:0-17:6",
+        value: null,
+        bigint: "15",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:7",
+      kind: {
+        type: "Literal",
+        loc: "19:0-19:6",
         value: null,
         bigint: "169",
       },

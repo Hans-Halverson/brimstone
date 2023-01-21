@@ -18,6 +18,9 @@ pub enum ParseError {
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
+    BigIntLeadingZero,
+    TrailingNumericSeparator,
+    AdjacentNumericSeparators,
     RestTrailingComma,
     ThrowArgumentOnNewLine,
     AmbiguousLetBracket,
@@ -59,6 +62,14 @@ impl fmt::Display for ParseError {
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
+            ParseError::BigIntLeadingZero => write!(f, "BigInt cannot have a leading zero"),
+            ParseError::TrailingNumericSeparator => write!(
+                f,
+                "Underscore can appear only between digits, not after the last digit in a number"
+            ),
+            ParseError::AdjacentNumericSeparators => {
+                write!(f, "Number cannot contain multiple adjacent underscores")
+            }
             ParseError::RestTrailingComma => {
                 write!(f, "Rest element may not have a trailing comma")
             }

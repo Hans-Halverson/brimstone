@@ -714,17 +714,59 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn skip_decimal_digits(&mut self) {
-        while is_decimal_digit(self.current) {
-            self.advance();
+    /// Skip a series of decimal digits, possibly separated by numeric separators. Numeric separators
+    /// must be adjacent to a numeric digit on both sides.
+    ///
+    /// Return whether any numeric separator was encountered.
+    fn skip_decimal_digits(&mut self, allow_numeric_separator: bool) -> ParseResult<bool> {
+        // First digit must be a decimal digit
+        if !is_decimal_digit(self.current) {
+            return Ok(false);
         }
+
+        self.advance();
+
+        // Middle digits may be decimal numbers or numeric separators
+        let mut has_numeric_separator = false;
+        let mut is_last_char_numeric_separator = false;
+
+        loop {
+            is_last_char_numeric_separator = if is_decimal_digit(self.current) {
+                false
+            } else if self.current == '_' && allow_numeric_separator {
+                if is_last_char_numeric_separator {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::AdjacentNumericSeparators);
+                }
+
+                has_numeric_separator = true;
+
+                true
+            } else {
+                break;
+            };
+
+            self.advance()
+        }
+
+        // Last digit cannot be a separator
+        if is_last_char_numeric_separator {
+            let loc = self.mark_loc(self.pos - 1);
+            return self.error(loc, ParseError::TrailingNumericSeparator);
+        }
+
+        Ok(has_numeric_separator)
     }
 
     fn lex_decimal_literal(&mut self) -> LexResult {
         let start_pos = self.pos;
+        let mut has_numeric_separator = false;
+
+        let has_leading_zero = self.current == '0';
+        let allow_numeric_separator = !has_leading_zero;
 
         // Read optional digits before the decimal point
-        self.skip_decimal_digits();
+        has_numeric_separator |= self.skip_decimal_digits(allow_numeric_separator)?;
 
         // This is a bigint literal
         if self.current == 'n' {
@@ -732,13 +774,19 @@ impl<'a> Lexer<'a> {
             let value = BigInt::parse_bytes(digits_slice.as_bytes(), 10).unwrap();
             self.advance();
 
+            // BigInts do not allow a leading zeros
+            if has_leading_zero && self.pos - 2 != start_pos {
+                let loc = self.mark_loc(self.pos);
+                return self.error(loc, ParseError::BigIntLeadingZero);
+            }
+
             return self.emit(Token::BigIntLiteral(value), start_pos);
         }
 
         // Read optional decimal point with its optional following digits
         if self.current == '.' {
             self.advance();
-            self.skip_decimal_digits();
+            has_numeric_separator |= self.skip_decimal_digits(allow_numeric_separator)?;
         }
 
         // Read optional exponent
@@ -755,107 +803,91 @@ impl<'a> Lexer<'a> {
                 return self.error(loc, ParseError::MalformedNumericLiteral);
             }
 
-            self.skip_decimal_digits();
+            has_numeric_separator |= self.skip_decimal_digits(allow_numeric_separator)?;
         }
 
-        // Parse float using rust stdlib
+        // Parse float using rust stdlib. Rust stdlib cannot handle numeric separators, so if there
+        // were numeric separators then first generate string with numeric separators removed.
         let end_pos = self.pos;
-        let value = f64::from_str(&self.buf[start_pos..end_pos]).unwrap();
+        let value = if has_numeric_separator {
+            f64::from_str(&self.buf[start_pos..end_pos].replace('_', "")).unwrap()
+        } else {
+            f64::from_str(&self.buf[start_pos..end_pos]).unwrap()
+        };
 
         self.emit(Token::NumberLiteral(value), start_pos)
     }
 
-    fn lex_binary_literal(&mut self) -> LexResult {
+    #[inline]
+    fn lex_literal_with_base(
+        &mut self,
+        base: u32,
+        shift: u32,
+        char_to_digit: fn(char) -> Option<u32>,
+    ) -> LexResult {
         let start_pos = self.pos;
         self.advance2();
 
-        let mut value: u64 = 0;
-        let mut has_digit = false;
+        let mut value: u64;
 
-        while let Some(digit) = get_binary_value(self.current) {
-            value <<= 1;
-            value += digit as u64;
-
-            has_digit = true;
-            self.advance();
-        }
-
-        if !has_digit {
+        // First digit must be a binary digit
+        if let Some(digit) = char_to_digit(self.current) {
+            value = digit as u64;
+            self.advance()
+        } else {
             let loc = self.mark_loc(start_pos);
             return self.error(loc, ParseError::MalformedNumericLiteral);
         }
 
+        // Middle digits may be binary numbers or numeric separators
+        let mut is_last_char_numeric_separator = false;
+        loop {
+            is_last_char_numeric_separator = if let Some(digit) = char_to_digit(self.current) {
+                value <<= shift;
+                value += digit as u64;
+
+                false
+            } else if self.current == '_' {
+                if is_last_char_numeric_separator {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::AdjacentNumericSeparators);
+                }
+
+                true
+            } else {
+                break;
+            };
+
+            self.advance()
+        }
+
+        // Last digit cannot be a separator
+        if is_last_char_numeric_separator {
+            let loc = self.mark_loc(self.pos - 1);
+            return self.error(loc, ParseError::TrailingNumericSeparator);
+        }
+
         if self.current == 'n' {
             let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 2).unwrap();
+            let value = BigInt::parse_bytes(digits_slice.as_bytes(), base).unwrap();
             self.advance();
 
             return self.emit(Token::BigIntLiteral(value), start_pos);
         }
 
         self.emit(Token::NumberLiteral(value as f64), start_pos)
+    }
+
+    fn lex_binary_literal(&mut self) -> LexResult {
+        self.lex_literal_with_base(2, 1, get_binary_value)
     }
 
     fn lex_octal_literal(&mut self) -> LexResult {
-        let start_pos = self.pos;
-        self.advance2();
-
-        let mut value: u64 = 0;
-        let mut has_digit = false;
-
-        while let Some(digit) = get_octal_value(self.current) {
-            value <<= 3;
-            value += digit as u64;
-
-            has_digit = true;
-            self.advance();
-        }
-
-        if !has_digit {
-            let loc = self.mark_loc(start_pos);
-            return self.error(loc, ParseError::MalformedNumericLiteral);
-        }
-
-        if self.current == 'n' {
-            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 8).unwrap();
-            self.advance();
-
-            return self.emit(Token::BigIntLiteral(value), start_pos);
-        }
-
-        self.emit(Token::NumberLiteral(value as f64), start_pos)
+        self.lex_literal_with_base(8, 3, get_octal_value)
     }
 
     fn lex_hex_literal(&mut self) -> LexResult {
-        let start_pos = self.pos;
-        self.advance2();
-
-        let mut value: u64 = 0;
-        let mut has_digit = false;
-
-        while let Some(digit) = get_hex_value(self.current) {
-            value <<= 4;
-            value += digit as u64;
-
-            has_digit = true;
-            self.advance();
-        }
-
-        if !has_digit {
-            let loc = self.mark_loc(start_pos);
-            return self.error(loc, ParseError::MalformedNumericLiteral);
-        }
-
-        if self.current == 'n' {
-            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 16).unwrap();
-            self.advance();
-
-            return self.emit(Token::BigIntLiteral(value), start_pos);
-        }
-
-        self.emit(Token::NumberLiteral(value as f64), start_pos)
+        self.lex_literal_with_base(16, 4, get_hex_value)
     }
 
     fn lex_string_literal(&mut self) -> LexResult {

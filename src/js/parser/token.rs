@@ -1,10 +1,13 @@
 use std::fmt;
 
+use num_bigint::BigInt;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(String),
     NumberLiteral(f64),
     StringLiteral(String),
+    BigIntLiteral(BigInt),
     Eof,
     // Operators
     Plus,
@@ -120,6 +123,7 @@ impl fmt::Display for Token {
             Token::Identifier(name) => name,
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::StringLiteral(lit) => lit,
+            Token::BigIntLiteral(lit) => return write!(f, "{}n", lit.to_string()),
             Token::Plus => "+",
             Token::Minus => "-",
             Token::Multiply => "*",

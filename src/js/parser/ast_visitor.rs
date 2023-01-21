@@ -41,6 +41,7 @@ pub trait AstVisitor: Sized {
             Expression::Boolean(lit) => self.visit_boolean_literal(lit),
             Expression::Number(lit) => self.visit_number_literal(lit),
             Expression::String(lit) => self.visit_string_literal(lit),
+            Expression::BigInt(lit) => self.visit_bigint_literal(lit),
             Expression::Unary(unary) => self.visit_unary_expression(unary),
             Expression::Binary(binary) => self.visit_binary_expression(binary),
             Expression::Logical(logical) => self.visit_logical_expression(logical),
@@ -202,6 +203,8 @@ pub trait AstVisitor: Sized {
     fn visit_number_literal(&mut self, _: &mut NumberLiteral) {}
 
     fn visit_string_literal(&mut self, _: &mut StringLiteral) {}
+
+    fn visit_bigint_literal(&mut self, _: &mut BigIntLiteral) {}
 
     fn visit_unary_expression(&mut self, expr: &mut UnaryExpression) {
         default_visit_unary_expression(self, expr)

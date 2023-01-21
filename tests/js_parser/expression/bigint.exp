@@ -1,0 +1,67 @@
+{
+  type: "Program",
+  loc: "1:0-11:6",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:3",
+      kind: {
+        type: "Literal",
+        loc: "1:0-1:2",
+        value: null,
+        bigint: "0",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:39",
+      kind: {
+        type: "Literal",
+        loc: "3:0-3:38",
+        value: null,
+        bigint: "1002003004005006000700800900123456789",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:10",
+      kind: {
+        type: "Literal",
+        loc: "5:0-5:9",
+        value: null,
+        bigint: "51",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:6",
+      kind: {
+        type: "Literal",
+        loc: "7:0-7:5",
+        value: null,
+        bigint: "15",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:6",
+      kind: {
+        type: "Literal",
+        loc: "9:0-9:5",
+        value: null,
+        bigint: "169",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:6",
+      kind: {
+        type: "Literal",
+        loc: "11:0-11:5",
+        value: null,
+        bigint: "169",
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

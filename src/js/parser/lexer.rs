@@ -1,6 +1,8 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
+use num_bigint::BigInt;
+
 use super::loc::{Loc, Pos};
 use super::parser::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
@@ -724,6 +726,15 @@ impl<'a> Lexer<'a> {
         // Read optional digits before the decimal point
         self.skip_decimal_digits();
 
+        // This is a bigint literal
+        if self.current == 'n' {
+            let digits_slice = &self.buf[start_pos..self.pos];
+            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 10).unwrap();
+            self.advance();
+
+            return self.emit(Token::BigIntLiteral(value), start_pos);
+        }
+
         // Read optional decimal point with its optional following digits
         if self.current == '.' {
             self.advance();
@@ -758,12 +769,12 @@ impl<'a> Lexer<'a> {
         let start_pos = self.pos;
         self.advance2();
 
-        let mut value = 0;
+        let mut value: u64 = 0;
         let mut has_digit = false;
 
         while let Some(digit) = get_binary_value(self.current) {
             value <<= 1;
-            value += digit;
+            value += digit as u64;
 
             has_digit = true;
             self.advance();
@@ -771,22 +782,30 @@ impl<'a> Lexer<'a> {
 
         if !has_digit {
             let loc = self.mark_loc(start_pos);
-            self.error(loc, ParseError::MalformedNumericLiteral)
-        } else {
-            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+            return self.error(loc, ParseError::MalformedNumericLiteral);
         }
+
+        if self.current == 'n' {
+            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
+            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 2).unwrap();
+            self.advance();
+
+            return self.emit(Token::BigIntLiteral(value), start_pos);
+        }
+
+        self.emit(Token::NumberLiteral(value as f64), start_pos)
     }
 
     fn lex_octal_literal(&mut self) -> LexResult {
         let start_pos = self.pos;
         self.advance2();
 
-        let mut value = 0;
+        let mut value: u64 = 0;
         let mut has_digit = false;
 
         while let Some(digit) = get_octal_value(self.current) {
             value <<= 3;
-            value += digit;
+            value += digit as u64;
 
             has_digit = true;
             self.advance();
@@ -794,22 +813,30 @@ impl<'a> Lexer<'a> {
 
         if !has_digit {
             let loc = self.mark_loc(start_pos);
-            self.error(loc, ParseError::MalformedNumericLiteral)
-        } else {
-            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+            return self.error(loc, ParseError::MalformedNumericLiteral);
         }
+
+        if self.current == 'n' {
+            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
+            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 8).unwrap();
+            self.advance();
+
+            return self.emit(Token::BigIntLiteral(value), start_pos);
+        }
+
+        self.emit(Token::NumberLiteral(value as f64), start_pos)
     }
 
     fn lex_hex_literal(&mut self) -> LexResult {
         let start_pos = self.pos;
         self.advance2();
 
-        let mut value = 0;
+        let mut value: u64 = 0;
         let mut has_digit = false;
 
         while let Some(digit) = get_hex_value(self.current) {
             value <<= 4;
-            value += digit;
+            value += digit as u64;
 
             has_digit = true;
             self.advance();
@@ -817,10 +844,18 @@ impl<'a> Lexer<'a> {
 
         if !has_digit {
             let loc = self.mark_loc(start_pos);
-            self.error(loc, ParseError::MalformedNumericLiteral)
-        } else {
-            self.emit(Token::NumberLiteral(f64::from(value)), start_pos)
+            return self.error(loc, ParseError::MalformedNumericLiteral);
         }
+
+        if self.current == 'n' {
+            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
+            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 16).unwrap();
+            self.advance();
+
+            return self.emit(Token::BigIntLiteral(value), start_pos);
+        }
+
+        self.emit(Token::NumberLiteral(value as f64), start_pos)
     }
 
     fn lex_string_literal(&mut self) -> LexResult {

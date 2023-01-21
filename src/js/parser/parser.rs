@@ -1793,6 +1793,12 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(p(Expression::String(StringLiteral { loc, value })))
             }
+            Token::BigIntLiteral(value) => {
+                let loc = self.loc;
+                let value = value.clone();
+                self.advance()?;
+                Ok(p(Expression::BigInt(BigIntLiteral { loc, value })))
+            }
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;

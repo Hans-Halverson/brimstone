@@ -57,6 +57,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Boolean(lit) => eval_boolean_literal(lit),
         ast::Expression::Number(lit) => eval_number_literal(lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
+        ast::Expression::BigInt(lit) => eval_bigint_literal(cx, lit),
         ast::Expression::Unary(expr) => match expr.operator {
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
@@ -127,6 +128,10 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<Value> {
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Value> {
     let interned_value = cx.get_interned_string(&lit.value);
     interned_value.into()
+}
+
+fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult<Value> {
+    unimplemented!("BigInt")
 }
 
 // 13.2.4.2 Array Initializer Evaluation

@@ -469,6 +469,7 @@ impl<'a> Printer<'a> {
             Expression::Boolean(lit) => self.print_boolean_literal(lit),
             Expression::Number(lit) => self.print_number_literal(lit),
             Expression::String(lit) => self.print_string_literal(lit),
+            Expression::BigInt(lit) => self.print_bigint_literal(lit),
             Expression::Unary(unary) => self.print_unary_expression(unary),
             Expression::Binary(binary) => self.print_binary_expression(binary),
             Expression::Logical(logical) => self.print_logical_expression(logical),
@@ -513,6 +514,13 @@ impl<'a> Printer<'a> {
     fn print_string_literal(&mut self, lit: &StringLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", &lit.value, Printer::print_string);
+        self.end_node();
+    }
+
+    fn print_bigint_literal(&mut self, lit: &BigIntLiteral) {
+        self.start_node("Literal", &lit.loc);
+        self.property("value", (), Printer::print_null_in_property);
+        self.property("bigint", &lit.value.to_string(), Printer::print_string);
         self.end_node();
     }
 

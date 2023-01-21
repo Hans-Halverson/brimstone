@@ -1,3 +1,5 @@
+use num_bigint::BigInt;
+
 use crate::{js::runtime::completion::EvalResult, maybe};
 
 use super::loc::Loc;
@@ -527,6 +529,7 @@ pub enum Expression {
     Boolean(BooleanLiteral),
     Number(NumberLiteral),
     String(StringLiteral),
+    BigInt(BigIntLiteral),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
     Logical(LogicalExpression),
@@ -577,6 +580,11 @@ pub struct NumberLiteral {
 pub struct StringLiteral {
     pub loc: Loc,
     pub value: String,
+}
+
+pub struct BigIntLiteral {
+    pub loc: Loc,
+    pub value: BigInt,
 }
 
 pub enum UnaryOperator {

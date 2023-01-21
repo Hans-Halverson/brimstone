@@ -75,7 +75,6 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.error(), ErrorConstructor);
     intrinsic_prop!(&cx.names.eval_error(), EvalErrorConstructor);
     intrinsic_prop!(&cx.names.function(), FunctionConstructor);
-    intrinsic_prop!(&cx.names.math(), Math);
     intrinsic_prop!(&cx.names.number(), NumberConstructor);
     intrinsic_prop!(&cx.names.object(), ObjectConstructor);
     intrinsic_prop!(&cx.names.range_error(), RangeErrorConstructor);
@@ -85,6 +84,10 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.syntax_error(), SyntaxErrorConstructor);
     intrinsic_prop!(&cx.names.type_error(), TypeErrorConstructor);
     intrinsic_prop!(&cx.names.uri_error(), URIErrorConstructor);
+
+    // 19.4 Other Properties of the Global Object
+    intrinsic_prop!(&cx.names.math(), Math);
+    intrinsic_prop!(&cx.names.reflect(), Reflect);
 
     // Non-standard, environment specific properties of global object
     let console_object = ConsoleObject::new(cx, realm).into();

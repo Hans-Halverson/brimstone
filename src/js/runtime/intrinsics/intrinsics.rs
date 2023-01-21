@@ -15,8 +15,9 @@ use crate::{
             iterator_prototype::IteratorPrototype, math_object::MathObject, native_error::*,
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            string_constructor::StringConstructor, string_prototype::StringPrototype,
-            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
+            reflect_object::ReflectObject, string_constructor::StringConstructor,
+            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
+            symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -53,6 +54,7 @@ pub enum Intrinsic {
     RangeErrorPrototype,
     ReferenceErrorConstructor,
     ReferenceErrorPrototype,
+    Reflect,
     StringConstructor,
     StringPrototype,
     SymbolConstructor,
@@ -159,6 +161,7 @@ impl Intrinsics {
 
         // Builtin objects
         register_intrinsic!(Math, MathObject);
+        register_intrinsic!(Reflect, ReflectObject);
 
         // Builtin functions
         register_existing_intrinsic!(Eval, create_eval(cx, realm).into());

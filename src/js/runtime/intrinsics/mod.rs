@@ -18,6 +18,7 @@ pub mod number_constructor;
 mod number_prototype;
 mod object_constructor;
 mod object_prototype;
+mod reflect_object;
 pub mod string_constructor;
 mod string_prototype;
 pub mod symbol_constructor;

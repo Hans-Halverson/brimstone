@@ -188,6 +188,26 @@ pub fn length_of_array_like(cx: &mut Context, object: Gc<ObjectValue>) -> EvalRe
     to_length(cx, length_value).into()
 }
 
+// 7.3.20 CreateListFromArrayLike
+pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResult<Vec<Value>> {
+    if object.is_object() {
+        return type_error_(cx, "value is not an object");
+    }
+
+    let object = object.as_object();
+    let length = maybe!(length_of_array_like(cx, object));
+
+    let mut vec = Vec::with_capacity(length as usize);
+
+    for i in 0..length {
+        let key = PropertyKey::array_index(i as u32);
+        let next = maybe!(get(cx, object, &key));
+        vec.push(next);
+    }
+
+    vec.into()
+}
+
 // 7.3.22 OrdinaryHasInstance
 pub fn ordinary_has_instance(
     cx: &mut Context,

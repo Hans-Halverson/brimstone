@@ -22,6 +22,7 @@ mod property_descriptor;
 mod property_key;
 mod realm;
 mod reference;
+mod string_parsing;
 mod type_utilities;
 mod value;
 

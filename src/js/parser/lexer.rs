@@ -3,6 +3,12 @@ use std::str::FromStr;
 
 use num_bigint::BigInt;
 
+use crate::js::common::unicode::{
+    get_binary_value, get_hex_value, get_octal_value, is_ascii, is_ascii_newline,
+    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_unicode_newline,
+    is_unicode_whitespace,
+};
+
 use super::loc::{Loc, Pos};
 use super::parser::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
@@ -58,66 +64,6 @@ fn is_id_continue_unicode(char: char) -> bool {
 fn is_id_part_unicode(char: char) -> bool {
     // Either part of the unicode ID_Continue, ZWNJ, or ZWJ
     is_id_continue_unicode(char) || char == '\u{200C}' || char == '\u{200D}'
-}
-
-#[inline]
-fn is_continuation_byte(byte: u8) -> bool {
-    (byte & 0xC0) == 0x80
-}
-
-#[inline]
-fn is_ascii(char: char) -> bool {
-    (char as u32) < 0x80
-}
-
-fn is_decimal_digit(char: char) -> bool {
-    '0' <= char && char <= '9'
-}
-
-#[inline]
-fn is_unicode_whitespace(char: char) -> bool {
-    match char {
-    // All non-ascii characters in the unicode Space_Separator category
-        '\u{00A0}'
-        | '\u{1680}'
-        | '\u{2000}'..='\u{200A}'
-        | '\u{202F}'
-        | '\u{205F}'
-        | '\u{3000}'
-        // And the zero width non breaking space
-        | '\u{FEFF}'
-        => true,
-        _ => false,
-    }
-}
-
-#[inline]
-fn is_unicode_newline(char: char) -> bool {
-    char == '\u{2028}' || char == '\u{2029}'
-}
-
-fn get_binary_value(char: char) -> Option<u32> {
-    match char {
-        '0' => Some(0),
-        '1' => Some(1),
-        _ => None,
-    }
-}
-
-fn get_octal_value(char: char) -> Option<u32> {
-    match char {
-        '0'..='7' => Some(char as u32 - '0' as u32),
-        _ => None,
-    }
-}
-
-fn get_hex_value(char: char) -> Option<u32> {
-    match char {
-        '0'..='9' => Some(char as u32 - '0' as u32),
-        'a'..='f' => Some(char as u32 - 'a' as u32 + 10),
-        'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
-        _ => None,
-    }
 }
 
 impl<'a> Lexer<'a> {
@@ -223,26 +169,15 @@ impl<'a> Lexer<'a> {
             // Fast pass for skipping ASCII whitespace and newlines
             loop {
                 if is_ascii(self.current) {
-                    match self.current {
-                    | ' '
-                    | '\t'
-                    // Vertical tab
-                    | '\u{000B}'
-                    // Form feed
-                    | '\u{000C}' => self.advance(),
-                    | '\n'
-                    | '\r' => {
-                      self.is_new_line_before_current = true;
-                      self.advance();
+                    if is_ascii_whitespace(self.current) {
+                        self.advance();
+                    } else if is_ascii_newline(self.current) {
+                        self.is_new_line_before_current = true;
+                        self.advance();
+                    } else {
+                        break;
                     }
-                    | _ => break,
-                  }
                 } else {
-                    // if is_unicode_whitespace(self.current) {
-                    //     self.is_new_line_before_current = true;
-                    //     self.advance();
-                    // }
-
                     break;
                 }
             }

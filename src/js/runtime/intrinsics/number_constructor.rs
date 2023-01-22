@@ -8,7 +8,9 @@ use crate::{
         environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::{Gc, GcDeref},
-        numeric_constants::{MAX_SAFE_INTEGER_F64, MIN_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64},
+        numeric_constants::{
+            MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
+        },
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::{
             ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,

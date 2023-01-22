@@ -15,6 +15,7 @@ use super::{
     numeric_constants::MAX_SAFE_INTEGER_F64,
     object_value::ObjectValue,
     property_key::PropertyKey,
+    string_parsing::parse_string_to_number,
     value::{
         BigIntValue, StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG,
         STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
@@ -144,7 +145,7 @@ pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
                 Value::smi(0).into()
             }
         }
-        STRING_TAG => string_to_number(value).into(),
+        STRING_TAG => string_to_number(value.as_string()).into(),
         OBJECT_TAG => {
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
             to_number(cx, primitive_value)
@@ -242,8 +243,11 @@ pub fn to_uint32(cx: &mut Context, value: Value) -> EvalResult<u32> {
 }
 
 // 7.1.4.1.1 StringToNumber
-fn string_to_number(value: Value) -> Value {
-    unimplemented!("StringToNumber")
+fn string_to_number(value: Gc<StringValue>) -> Value {
+    match parse_string_to_number(value.str()) {
+        None => Value::nan(),
+        Some(num) => Value::number(num),
+    }
 }
 
 // 7.1.13 ToBigInt
@@ -533,7 +537,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
 
         return match v2.get_tag() {
             STRING_TAG => {
-                let number_v2 = string_to_number(v2);
+                let number_v2 = string_to_number(v2.as_string());
                 (v1.as_number() == number_v2.as_number()).into()
             }
             OBJECT_TAG => {
@@ -561,7 +565,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
     match (tag1, tag2) {
         (NULL_TAG, UNDEFINED_TAG) | (UNDEFINED_TAG, NULL_TAG) => true.into(),
         (STRING_TAG, _) if v2.is_number() => {
-            let v1_number = string_to_number(v1);
+            let v1_number = string_to_number(v1.as_string());
             (v1_number.as_number() == v2.as_number()).into()
         }
         (STRING_TAG, BIGINT_TAG) => {

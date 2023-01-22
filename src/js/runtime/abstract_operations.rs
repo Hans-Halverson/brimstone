@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
+    array_object::create_array_from_list,
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     error::type_error_,
@@ -246,6 +247,51 @@ pub fn ordinary_has_instance(
             }
         }
     }
+}
+
+pub enum KeyOrValue {
+    Key,
+    Value,
+    KeyAndValue,
+}
+
+// 7.3.24 EnumerableOwnPropertyNames
+pub fn enumerable_own_property_names(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    kind: KeyOrValue,
+) -> EvalResult<Vec<Value>> {
+    let keys = object.own_property_keys(cx);
+
+    let mut properties = vec![];
+
+    for key_value in keys {
+        if key_value.is_symbol() {
+            continue;
+        }
+
+        let key = must!(PropertyKey::from_value(cx, key_value));
+        let desc = maybe!(object.get_own_property(&key));
+
+        if let Some(desc) = desc {
+            if let Some(true) = desc.is_enumerable {
+                match kind {
+                    KeyOrValue::Key => properties.push(key_value),
+                    KeyOrValue::Value => {
+                        let value = maybe!(get(cx, object, &key));
+                        properties.push(value);
+                    }
+                    KeyOrValue::KeyAndValue => {
+                        let value = maybe!(get(cx, object, &key));
+                        let entry = create_array_from_list(cx, &[key_value, value]);
+                        properties.push(entry.into());
+                    }
+                }
+            }
+        }
+    }
+
+    properties.into()
 }
 
 // 7.3.26 CopyDataProperties

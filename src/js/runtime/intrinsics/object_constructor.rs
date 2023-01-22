@@ -1,15 +1,24 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
+        abstract_operations::{
+            define_property_or_throw, enumerable_own_property_names, has_own_property,
+            is_extensible, KeyOrValue,
+        },
+        array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
         gc::Gc,
+        get,
         object_value::ObjectValue,
-        ordinary_object::{ordinary_create_from_constructor, ordinary_object_create},
+        ordinary_object::{
+            ordinary_create_from_constructor, ordinary_object_create,
+            ordinary_object_create_optional_proto,
+        },
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::{require_object_coercible, same_value, to_object, to_property_key},
         value::Value,
@@ -46,6 +55,8 @@ impl ObjectConstructor {
             ),
         );
 
+        func.intrinsic_func(cx, &cx.names.create(), Self::create, 2, realm);
+        func.intrinsic_func(cx, &cx.names.define_properties(), Self::define_properties, 2, realm);
         func.intrinsic_func(cx, &cx.names.define_property(), Self::define_property, 3, realm);
         func.intrinsic_func(
             cx,
@@ -54,12 +65,29 @@ impl ObjectConstructor {
             2,
             realm,
         );
+        func.intrinsic_func(cx, &cx.names.entries(), Self::entries, 1, realm);
+        func.intrinsic_func(
+            cx,
+            &cx.names.get_own_property_names(),
+            Self::get_own_property_names,
+            1,
+            realm,
+        );
+        func.intrinsic_func(
+            cx,
+            &cx.names.get_own_property_symbols(),
+            Self::get_own_property_symbols,
+            1,
+            realm,
+        );
         func.intrinsic_func(cx, &cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
         func.intrinsic_func(cx, &cx.names.has_own(), Self::has_own, 2, realm);
         func.intrinsic_func(cx, &cx.names.is(), Self::is, 2, realm);
         func.intrinsic_func(cx, &cx.names.is_extensible(), Self::is_extensible, 1, realm);
+        func.intrinsic_func(cx, &cx.names.keys(), Self::keys, 1, realm);
         func.intrinsic_func(cx, &cx.names.prevent_extensions(), Self::prevent_extensions, 1, realm);
         func.intrinsic_func(cx, &cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
+        func.intrinsic_func(cx, &cx.names.values(), Self::values, 1, realm);
 
         func
     }
@@ -100,6 +128,82 @@ impl ObjectConstructor {
         must!(to_object(cx, value)).into()
     }
 
+    // 20.1.2.2 Object.create
+    fn create(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let proto = get_argument(arguments, 0);
+        let proto = if proto.is_object() {
+            Some(proto.as_object())
+        } else if proto.is_null() {
+            None
+        } else {
+            return type_error_(cx, "prototype must be an object or null");
+        };
+
+        let object: Gc<ObjectValue> = cx
+            .heap
+            .alloc(ordinary_object_create_optional_proto(proto))
+            .into();
+
+        let properties = get_argument(arguments, 1);
+        if properties.is_undefined() {
+            object.into()
+        } else {
+            Self::object_define_properties(cx, object, properties)
+        }
+    }
+
+    // 20.1.2.3 Object.defineProperties
+    fn define_properties(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = get_argument(arguments, 0);
+        if !object.is_object() {
+            return type_error_(cx, "value is not an object");
+        }
+
+        Self::object_define_properties(cx, object.as_object(), get_argument(arguments, 1))
+    }
+
+    // 20.1.2.3.1 ObjectDefineProperties
+    fn object_define_properties(
+        cx: &mut Context,
+        object: Gc<ObjectValue>,
+        properties: Value,
+    ) -> EvalResult<Value> {
+        let properties = maybe!(to_object(cx, properties));
+
+        let keys = properties.own_property_keys(cx);
+
+        let mut descriptors = vec![];
+
+        for key in keys {
+            let key = must!(PropertyKey::from_value(cx, key));
+            let prop_desc = maybe!(properties.get_own_property(&key));
+            if let Some(prop_desc) = prop_desc {
+                if let Some(true) = prop_desc.is_enumerable {
+                    let desc_object = maybe!(get(cx, properties, &key));
+                    let desc = maybe!(to_property_descriptor(cx, desc_object));
+
+                    descriptors.push((key, desc));
+                }
+            }
+        }
+
+        for (key, desc) in descriptors {
+            maybe!(define_property_or_throw(cx, object, &key, desc));
+        }
+
+        object.into()
+    }
+
     // 20.1.2.4 Object.defineProperty
     fn define_property(
         cx: &mut Context,
@@ -120,6 +224,18 @@ impl ObjectConstructor {
         object.into()
     }
 
+    // 20.1.2.5 Object.entries
+    fn entries(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::KeyAndValue));
+        create_array_from_list(cx, &name_list).into()
+    }
+
     // 20.1.2.8 Object.getOwnPropertyDescriptor
     fn get_own_property_descriptor(
         cx: &mut Context,
@@ -134,6 +250,52 @@ impl ObjectConstructor {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }
+    }
+
+    // 20.1.2.10 Object.getOwnPropertyNames
+    fn get_own_property_names(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let symbol_keys = maybe!(Self::get_own_property_keys(cx, get_argument(arguments, 0), true));
+        create_array_from_list(cx, &symbol_keys).into()
+    }
+
+    // 20.1.2.11 Object.getOwnPropertySymbols
+    fn get_own_property_symbols(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let symbol_keys =
+            maybe!(Self::get_own_property_keys(cx, get_argument(arguments, 0), false));
+        create_array_from_list(cx, &symbol_keys).into()
+    }
+
+    // 20.1.2.11.1 GetOwnPropertyKeys
+    fn get_own_property_keys(
+        cx: &mut Context,
+        object: Value,
+        string_keys: bool,
+    ) -> EvalResult<Vec<Value>> {
+        let object = maybe!(to_object(cx, object));
+        let keys = object.own_property_keys(cx);
+
+        let keys_of_type: Vec<Value> = keys
+            .into_iter()
+            .filter(|key| {
+                if string_keys {
+                    key.is_string()
+                } else {
+                    key.is_symbol()
+                }
+            })
+            .collect();
+
+        keys_of_type.into()
     }
 
     // 20.1.2.12 Object.getPrototypeOf
@@ -190,6 +352,18 @@ impl ObjectConstructor {
         maybe!(is_extensible(value.as_object())).into()
     }
 
+    // 20.1.2.18 Object.keys
+    fn keys(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Key));
+        create_array_from_list(cx, &name_list).into()
+    }
+
     // 20.1.2.19 Object.preventExtensions
     fn prevent_extensions(
         cx: &mut Context,
@@ -237,5 +411,17 @@ impl ObjectConstructor {
         }
 
         object.into()
+    }
+
+    // 20.1.2.23 Object.values
+    fn values(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Value));
+        create_array_from_list(cx, &name_list).into()
     }
 }

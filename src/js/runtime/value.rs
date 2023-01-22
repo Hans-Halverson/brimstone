@@ -263,6 +263,8 @@ impl Value {
             && f64::to_bits(value) != f64::to_bits(-0.0)
         {
             return Value::smi(value as i32);
+        } else if value.is_nan() {
+            return Value::nan();
         }
 
         Value { raw_bits: f64::to_bits(value) }

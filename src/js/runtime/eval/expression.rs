@@ -820,8 +820,8 @@ fn eval_add(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResu
             .into();
     }
 
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = maybe!(to_numeric(cx, left_prim));
+    let right_num = maybe!(to_numeric(cx, right_prim));
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {

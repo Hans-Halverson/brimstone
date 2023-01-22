@@ -125,7 +125,7 @@ pub fn to_numeric(cx: &mut Context, value: Value) -> EvalResult<Value> {
         return prim_value.into();
     }
 
-    to_number(cx, value)
+    to_number(cx, prim_value)
 }
 
 // 7.1.4 ToNumber

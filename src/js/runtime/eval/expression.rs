@@ -1173,13 +1173,13 @@ fn eval_shift_right_logical(
         return type_error_(cx, "BigInt cannot be converted to number");
     }
 
-    let left_smi = must!(to_int32(cx, left_value));
+    let left_smi = must!(to_uint32(cx, left_value));
     let right_u32 = must!(to_uint32(cx, right_value));
 
     // Shift modulus 32
     let shift = right_u32 & 0x1F;
 
-    return Value::smi(((left_smi as u32) >> shift) as i32).into();
+    return Value::from_u64((left_smi >> shift) as u64).into();
 }
 
 // 13.10.2 InstanceofOperator

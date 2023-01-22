@@ -492,11 +492,16 @@ pub fn set_function_name(
     // Format name including prefix, converting to string value
     let name_string = match name.as_symbol() {
         Some(sym) => {
-            let desc = sym.description().unwrap_or("");
-            if let Some(prefix) = prefix {
-                cx.heap.alloc_string(format!("{} [{}]", prefix, desc))
+            let description = if let Some(description) = sym.description() {
+                format!("[{}]", description)
             } else {
-                cx.heap.alloc_string(format!("[{}]", desc))
+                String::new()
+            };
+
+            if let Some(prefix) = prefix {
+                cx.heap.alloc_string(format!("{} {}", prefix, description))
+            } else {
+                cx.heap.alloc_string(description)
             }
         }
         None => {

@@ -540,6 +540,10 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
                 let number_v2 = string_to_number(v2.as_string());
                 (v1.as_number() == number_v2.as_number()).into()
             }
+            BOOL_TAG => {
+                let v2_number = maybe!(to_number(cx, v2));
+                is_loosely_equal(cx, v1, v2_number)
+            }
             OBJECT_TAG => {
                 let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
                 is_loosely_equal(cx, v1, primitive_v2)

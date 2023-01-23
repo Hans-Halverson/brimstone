@@ -9,7 +9,10 @@ use crate::{
             completion::EvalResult,
             environment::environment::Environment,
             eval::{
-                expression::{eval_expression, eval_property_name},
+                expression::{
+                    eval_expression, eval_member_expression_to_reference, eval_property_name,
+                    eval_super_member_expression_to_reference,
+                },
                 statement::eval_named_anonymous_function_or_expression,
             },
             execution_context::resolve_binding,
@@ -32,6 +35,9 @@ use crate::{
 };
 
 // 8.5.2 BindingInitialization
+//
+// Combined with 13.15.5.2 DestructuringAssignmentEvaluation from spec, since implementations are
+// very close.
 pub fn binding_initialization(
     cx: &mut Context,
     patt: &ast::Pattern,
@@ -85,8 +91,20 @@ fn object_binding_initialization(
     for property in &object.properties {
         if property.is_rest {
             // 14.3.3.2 RestBindingInitialization
-            let name_value = id_string_value(cx, property.value.to_id());
-            let mut reference = maybe!(resolve_binding(cx, name_value, env));
+            // Evaluate property to reference
+            let mut reference = match property.value.as_ref() {
+                ast::Pattern::Id(id) => {
+                    let name_value = id_string_value(cx, id);
+                    maybe!(resolve_binding(cx, name_value, env))
+                }
+                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                    maybe!(eval_member_expression_to_reference(cx, &expr))
+                }
+                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                    maybe!(eval_super_member_expression_to_reference(cx, &expr))
+                }
+                _ => unreachable!("invalid rest property pattern"),
+            };
 
             let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
             let rest_object: Gc<ObjectValue> =
@@ -108,31 +126,21 @@ fn object_binding_initialization(
                 Some(expr) => maybe!(eval_property_name(cx, expr, property.is_computed)),
             };
 
+            bound_names.insert(name_key.clone());
+
             // 14.3.3.3 KeyedBindingInitialization
-            match binding_value {
+            let mut reference = match binding_value {
                 ast::Pattern::Id(id) => {
                     let binding_name = id_string_value(cx, id);
-                    let mut reference = maybe!(resolve_binding(cx, binding_name, env));
-
-                    let mut property_value = maybe!(get_v(cx, object_value, &name_key));
-
-                    bound_names.insert(PropertyKey::string(binding_name));
-
-                    if let Some(init) = initializer {
-                        if property_value.is_undefined() {
-                            property_value = maybe!(eval_named_anonymous_function_or_expression(
-                                cx, init, &name_key
-                            ));
-                        }
-                    }
-
-                    if env.is_none() {
-                        maybe!(reference.put_value(cx, property_value))
-                    } else {
-                        maybe!(reference.initialize_referenced_binding(cx, property_value))
-                    }
+                    maybe!(resolve_binding(cx, binding_name, env))
                 }
-                binding_pattern => {
+                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                    maybe!(eval_member_expression_to_reference(cx, &expr))
+                }
+                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                    maybe!(eval_super_member_expression_to_reference(cx, &expr))
+                }
+                binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
                     let mut property_value = maybe!(get_v(cx, object_value, &name_key));
 
                     if let Some(init) = initializer {
@@ -141,8 +149,32 @@ fn object_binding_initialization(
                         }
                     }
 
-                    maybe!(binding_initialization(cx, binding_pattern, property_value, env));
+                    return binding_initialization(cx, binding_pattern, property_value, env);
                 }
+                ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                    unreachable!("invalid object property pattern")
+                }
+            };
+
+            let mut property_value = maybe!(get_v(cx, object_value, &name_key));
+
+            if let Some(init) = initializer {
+                if property_value.is_undefined() {
+                    // Only perform named evaluation if the binding is an identifier pattern
+                    if binding_value.is_id() {
+                        property_value = maybe!(eval_named_anonymous_function_or_expression(
+                            cx, init, &name_key
+                        ));
+                    } else {
+                        property_value = maybe!(eval_expression(cx, init));
+                    }
+                }
+            }
+
+            if env.is_none() {
+                maybe!(reference.put_value(cx, property_value))
+            } else {
+                maybe!(reference.initialize_referenced_binding(cx, property_value))
             }
         }
     }
@@ -173,7 +205,21 @@ fn iterator_binding_initialization(
                         let reference = maybe!(resolve_binding(cx, name_value, env));
                         ReferenceOrBindingPattern::Reference(reference, initializer)
                     }
-                    pattern => ReferenceOrBindingPattern::Pattern(pattern, initializer),
+                    ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                        let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
+                        ReferenceOrBindingPattern::Reference(reference, initializer)
+                    }
+                    ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                        let reference =
+                            maybe!(eval_super_member_expression_to_reference(cx, &expr));
+                        ReferenceOrBindingPattern::Reference(reference, initializer)
+                    }
+                    binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
+                        ReferenceOrBindingPattern::Pattern(binding_pattern, initializer)
+                    }
+                    ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                        unreachable!("invalid array element pattern")
+                    }
                 }
             }
             ast::ArrayPatternElement::Rest(ast::RestElement { argument, .. }) => {
@@ -183,7 +229,21 @@ fn iterator_binding_initialization(
                         let reference = maybe!(resolve_binding(cx, name_value, env));
                         ReferenceOrBindingPattern::Reference(reference, None)
                     }
-                    pattern => ReferenceOrBindingPattern::Pattern(pattern, None),
+                    ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                        let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
+                        ReferenceOrBindingPattern::Reference(reference, None)
+                    }
+                    ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                        let reference =
+                            maybe!(eval_super_member_expression_to_reference(cx, &expr));
+                        ReferenceOrBindingPattern::Reference(reference, None)
+                    }
+                    binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
+                        ReferenceOrBindingPattern::Pattern(binding_pattern, None)
+                    }
+                    ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                        unreachable!("invalid array element pattern")
+                    }
                 }
             }
             // Handle holes immediately as they ignore the rest of evaluation for this element
@@ -352,6 +412,15 @@ pub fn initialize_bound_name(
             reference.put_value(cx, value)
         }
     }
+}
+
+// 13.15.5.2 DestructuringAssignmentEvaluation
+pub fn destructuring_assignment_evaluation(
+    cx: &mut Context,
+    patt: &ast::Pattern,
+    value: Value,
+) -> EvalResult<()> {
+    binding_initialization(cx, patt, value, None)
 }
 
 #[inline]

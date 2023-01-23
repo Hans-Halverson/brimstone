@@ -30,7 +30,11 @@ use crate::{
 
 use super::{
     class::{class_definition_evaluation, eval_class_declaration},
-    expression::{eval_expression, eval_identifier_to_reference},
+    expression::{
+        eval_expression, eval_identifier_to_reference, eval_member_expression_to_reference,
+        eval_super_member_expression_to_reference,
+    },
+    pattern::destructuring_assignment_evaluation,
 };
 
 // 14.2.2 StatementList Evaluation
@@ -526,7 +530,25 @@ fn for_each_body_evaluation_shared(
     let old_env = current_execution_context.lexical_env;
 
     match stmt.left.as_ref() {
-        ast::ForEachInit::Pattern(_) => unimplemented!("for each: pattern left hand side"),
+        ast::ForEachInit::Pattern(pattern) => {
+            let mut reference = match pattern {
+                ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, id)),
+                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                    maybe!(eval_member_expression_to_reference(cx, expr))
+                }
+                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                    maybe!(eval_super_member_expression_to_reference(cx, expr))
+                }
+                ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
+                    return destructuring_assignment_evaluation(cx, pattern, right_value)
+                }
+                ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                    unreachable!("invalid for left hand side")
+                }
+            };
+
+            reference.put_value(cx, right_value)
+        }
         ast::ForEachInit::VarDecl(ast::VariableDeclaration {
             kind: ast::VarKind::Var,
             declarations,

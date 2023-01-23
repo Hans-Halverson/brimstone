@@ -829,6 +829,13 @@ impl Pattern {
         }
     }
 
+    pub fn is_id(&self) -> bool {
+        match self {
+            Pattern::Id(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
         f(self);
 

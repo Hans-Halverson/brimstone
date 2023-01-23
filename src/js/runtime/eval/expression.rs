@@ -15,6 +15,7 @@ use crate::{
             completion::EvalResult,
             environment::environment::Environment,
             error::{range_error_, reference_error_, type_error_},
+            eval::pattern::destructuring_assignment_evaluation,
             execution_context::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
@@ -320,7 +321,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
 }
 
 // Same as eval_member_expression, but returns a reference instead of a value
-fn eval_member_expression_to_reference(
+pub fn eval_member_expression_to_reference(
     cx: &mut Context,
     expr: &ast::MemberExpression,
 ) -> EvalResult<Reference> {
@@ -441,7 +442,7 @@ fn eval_super_member_expression(
 }
 
 // Same as eval_super_member_expression, but returns a reference instead of a value
-fn eval_super_member_expression_to_reference(
+pub fn eval_super_member_expression_to_reference(
     cx: &mut Context,
     expr: &ast::SuperMemberExpression,
 ) -> EvalResult<Reference> {
@@ -1304,9 +1305,15 @@ fn eval_assignment_expression(
         ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
             maybe!(eval_super_member_expression_to_reference(cx, &expr))
         }
-        ast::Pattern::Object(_) => unimplemented!("object patterns"),
-        ast::Pattern::Array(_) => unimplemented!("array patterns"),
-        _ => unreachable!("invalid assigment left hand side"),
+        ast::Pattern::Object(_) | ast::Pattern::Array(_) => {
+            let right_value = maybe!(eval_expression(cx, &expr.right));
+            maybe!(destructuring_assignment_evaluation(cx, &expr.left, right_value));
+
+            return right_value.into();
+        }
+        ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+            unreachable!("invalid assigment left hand side")
+        }
     };
 
     let result_value = match expr.operator {

@@ -658,6 +658,7 @@ pub struct LogicalExpression {
     pub right: P<Expression>,
 }
 
+#[derive(PartialEq)]
 pub enum AssignmentOperator {
     Equals,
     Add,

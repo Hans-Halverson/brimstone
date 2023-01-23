@@ -402,8 +402,20 @@ impl Analyzer {
                         is_arguments_object_needed = false;
                     }
                 }
-                Pattern::Array(_) | Pattern::Object(_) => {
+                Pattern::Array(_) => {
                     has_binding_patterns = true;
+                }
+                Pattern::Object(object_pattern) => {
+                    has_binding_patterns = true;
+
+                    let has_computed_property = object_pattern
+                        .properties
+                        .iter()
+                        .any(|prop| prop.is_computed);
+
+                    if has_computed_property {
+                        has_parameter_expressions = true;
+                    }
                 }
                 Pattern::Assign(_) => {
                     has_parameter_expressions = true;

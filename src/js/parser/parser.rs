@@ -1154,8 +1154,13 @@ impl<'a> Parser<'a> {
         let result = match assignment_op {
             None => Ok(expr),
             Some(operator) => {
-                let left =
-                    p(self.reparse_expression_as_assignment_left_hand_side(*expr, start_pos)?);
+                let left = if operator == AssignmentOperator::Equals {
+                    p(self.reparse_expression_as_assignment_left_hand_side(*expr, start_pos)?)
+                } else {
+                    p(self.reparse_expression_as_operator_assignment_left_hand_side(
+                        *expr, start_pos,
+                    )?)
+                };
 
                 self.advance()?;
                 let right = self.parse_assignment_expression()?;
@@ -2345,9 +2350,11 @@ impl<'a> Parser<'a> {
         is_private: bool,
     ) -> ParseResult<(Property, bool)> {
         let value = if is_shorthand {
-            let key_id = key.to_id();
-            if self.identifier_is_reserved_word(key_id) {
-                return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
+            if prop_context != PropertyContext::Class {
+                let key_id = key.to_id();
+                if self.identifier_is_reserved_word(key_id) {
+                    return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
+                }
             }
 
             // Object initializer properties may reparsed as patterns in some contexts. If a property
@@ -2836,6 +2843,28 @@ impl<'a> Parser<'a> {
             None => {
                 let loc = self.mark_loc(start_pos);
                 self.error(loc, ParseError::InvalidForLeftHandSide)
+            }
+        }
+    }
+
+    fn reparse_expression_as_operator_assignment_left_hand_side(
+        &self,
+        expr: Expression,
+        start_pos: Pos,
+    ) -> ParseResult<Pattern> {
+        let reparsed_pattern = match expr {
+            // Only valid operator assignment left hand side expressions
+            Expression::Id(_) | Expression::Member(_) | Expression::SuperMember(_) => {
+                self.reparse_left_hand_side_expression_as_pattern(expr)
+            }
+            _ => None,
+        };
+
+        match reparsed_pattern {
+            Some(pattern) => Ok(pattern),
+            None => {
+                let loc = self.mark_loc(start_pos);
+                self.error(loc, ParseError::InvalidAssignmentLeftHandSide)
             }
         }
     }

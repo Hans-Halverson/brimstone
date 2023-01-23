@@ -436,7 +436,7 @@ pub fn method_definition_evaluation(
     object: Gc<ObjectValue>,
     func_node: &ast::Function,
     property_key: &PropertyKey,
-    property_kind: ast::PropertyKind,
+    property_kind: &ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
     if func_node.is_async || func_node.is_generator {
@@ -444,7 +444,7 @@ pub fn method_definition_evaluation(
     }
 
     // Handle regular method definitions
-    if property_kind == ast::PropertyKind::Init {
+    if let ast::PropertyKind::Init = property_kind {
         let closure = define_method(cx, object, func_node, None);
         set_function_name(cx, closure.into(), property_key, None);
         define_method_property(cx, object, property_key, closure, is_enumerable);

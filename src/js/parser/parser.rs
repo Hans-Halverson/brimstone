@@ -24,7 +24,9 @@ pub enum ParseError {
     RestTrailingComma,
     ThrowArgumentOnNewLine,
     AmbiguousLetBracket,
+    InvalidAssignmentLeftHandSide,
     InvalidForLeftHandSide,
+    IdentifierIsReservedWord,
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -35,6 +37,7 @@ pub enum ParseError {
     MultipleConstructors,
     NonSimpleConstructor,
     ClassStaticPrototype,
+    InvalidPatternInitializer,
     DuplicatePrivateName(String),
     PrivateNameOutsideClass,
     PrivateNameNotDefined(String),
@@ -79,8 +82,14 @@ impl fmt::Display for ParseError {
             ParseError::AmbiguousLetBracket => {
                 write!(f, "Expression cannot start with ambiguous `let [`")
             }
+            ParseError::InvalidAssignmentLeftHandSide => {
+                write!(f, "Invalid left hand side of assignment")
+            }
             ParseError::InvalidForLeftHandSide => {
                 write!(f, "Invalid left hand side of for statement")
+            }
+            ParseError::IdentifierIsReservedWord => {
+                write!(f, "Identifier is a reserved word")
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),
@@ -104,6 +113,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::ClassStaticPrototype => {
                 write!(f, "Classes cannot have a static prototype field or method")
+            }
+            ParseError::InvalidPatternInitializer => {
+                write!(f, "Object property initializers do not use `=`")
             }
             ParseError::DuplicatePrivateName(name) => {
                 write!(f, "Redeclaration of private name #{}", name)
@@ -863,20 +875,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn reparse_expression_as_for_left_hand_side(
-        &self,
-        expr: Expression,
-        start_pos: Pos,
-    ) -> ParseResult<Pattern> {
-        match self.reparse_expression_as_pattern(expr) {
-            Some(pattern) => Ok(pattern),
-            None => {
-                let loc = self.mark_loc(start_pos);
-                self.error(loc, ParseError::InvalidForLeftHandSide)
-            }
-        }
-    }
-
     fn parse_for_statement(
         &mut self,
         init: Option<P<ForInit>>,
@@ -1156,11 +1154,20 @@ impl<'a> Parser<'a> {
         let result = match assignment_op {
             None => Ok(expr),
             Some(operator) => {
+                let left =
+                    p(self.reparse_expression_as_assignment_left_hand_side(*expr, start_pos)?);
+
                 self.advance()?;
                 let right = self.parse_assignment_expression()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::Assign(AssignmentExpression { loc, left: expr, right, operator })))
+                Ok(p(Expression::Assign(AssignmentExpression {
+                    loc,
+                    left,
+                    right,
+                    operator,
+                    is_parenthesized: false,
+                })))
             }
         };
 
@@ -1817,8 +1824,18 @@ impl<'a> Parser<'a> {
             }
             Token::LeftParen => {
                 self.advance()?;
-                let expr = self.parse_expression()?;
+                let mut expr = self.parse_expression()?;
                 self.expect(Token::RightParen)?;
+
+                // Mark expression which need to know if they are parenthesized, in order for them
+                // to be potentially reparsed into patterns.
+                match expr.as_mut() {
+                    Expression::Assign(expr) => expr.is_parenthesized = true,
+                    Expression::Object(expr) => expr.is_parenthesized = true,
+                    Expression::Array(expr) => expr.is_parenthesized = true,
+                    _ => {}
+                }
+
                 Ok(expr)
             }
             Token::LeftBrace => self.parse_object_expression(),
@@ -1979,13 +1996,34 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn identifier_is_reserved_word(&self, id: &Identifier) -> bool {
+        match id.name.as_str() {
+            // Names that are always reserved
+            "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger"
+            | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false"
+            | "finally" | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new"
+            | "null" | "return" | "super" | "switch" | "this" | "throw" | "true" | "try"
+            | "typeof" | "var" | "void" | "while" | "with" | "yield" => true,
+            // Names that are only reserved in strict mode
+            "let" | "static" | "implements" | "interface" | "package" | "private" | "protected"
+            | "public"
+                if self.in_strict_mode =>
+            {
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn parse_spread_element(&mut self) -> ParseResult<SpreadElement> {
         let start_pos = self.current_start_pos();
         self.advance()?;
         let argument = self.parse_assignment_expression()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(SpreadElement { loc, argument })
+        let has_trailing_comma = self.token == Token::Comma;
+
+        Ok(SpreadElement { loc, argument, has_trailing_comma })
     }
 
     fn parse_array_expression(&mut self) -> ParseResult<P<Expression>> {
@@ -2018,7 +2056,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBracket)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Array(ArrayExpression { loc, elements })))
+        Ok(p(Expression::Array(ArrayExpression { loc, elements, is_parenthesized: false })))
     }
 
     fn parse_object_expression(&mut self) -> ParseResult<P<Expression>> {
@@ -2029,13 +2067,14 @@ impl<'a> Parser<'a> {
         while self.token != Token::RightBrace {
             if self.token == Token::Spread {
                 let spread = self.parse_spread_element()?;
+                let has_spread_comma = self.token == Token::Comma;
                 let spread_property = Property {
                     loc: spread.loc,
                     key: spread.argument,
                     value: None,
                     is_computed: false,
                     is_method: false,
-                    kind: PropertyKind::Spread,
+                    kind: PropertyKind::Spread(has_spread_comma),
                 };
                 properties.push(spread_property);
             } else {
@@ -2053,7 +2092,11 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Object(ObjectExpression { loc, properties })))
+        Ok(p(Expression::Object(ObjectExpression {
+            loc,
+            properties,
+            is_parenthesized: false,
+        })))
     }
 
     fn parse_property(&mut self, prop_context: PropertyContext) -> ParseResult<(Property, bool)> {
@@ -2088,7 +2131,8 @@ impl<'a> Parser<'a> {
                 }
 
                 // Handle `get` or `set` as shorthand or init property
-                let is_init_property = self.is_property_initializer(prop_context);
+                let is_init_property = self.is_property_initializer(prop_context)
+                    || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
                     let name =
                         p(Expression::Id(Identifier { loc: id_loc, name: id_token.to_string() }));
@@ -2138,7 +2182,8 @@ impl<'a> Parser<'a> {
             }
 
             // Handle `async` as shorthand or init property
-            let is_init_property = self.is_property_initializer(prop_context);
+            let is_init_property = self.is_property_initializer(prop_context)
+                || self.is_pattern_initializer_in_object(prop_context);
             if is_init_property || self.is_property_end(prop_context) {
                 let name =
                     p(Expression::Id(Identifier { loc: async_loc, name: "async".to_owned() }));
@@ -2240,6 +2285,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn is_pattern_initializer_in_object(&mut self, prop_context: PropertyContext) -> bool {
+        prop_context == PropertyContext::Object
+            && self.is_property_initializer(PropertyContext::Pattern)
+    }
+
     fn parse_property_name(
         &mut self,
         prop_context: PropertyContext,
@@ -2277,7 +2327,9 @@ impl<'a> Parser<'a> {
         // All non-private key types can be shorthand for classes, but only identifier keys can be
         // shorthand elsewhere.
         if is_identifier || (prop_context == PropertyContext::Class) {
-            is_shorthand = self.is_property_end(prop_context);
+            is_shorthand = self.is_property_end(prop_context)
+                || (prop_context == PropertyContext::Object
+                    && self.is_property_end(PropertyContext::Pattern));
         }
 
         Ok(PropertyNameResult { key, is_computed, is_shorthand, is_private })
@@ -2293,10 +2345,37 @@ impl<'a> Parser<'a> {
         is_private: bool,
     ) -> ParseResult<(Property, bool)> {
         let value = if is_shorthand {
+            let key_id = key.to_id();
+            if self.identifier_is_reserved_word(key_id) {
+                return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
+            }
+
+            // Object initializer properties may reparsed as patterns in some contexts. If a property
+            // initializer is seen here this may be a shorthand initializer pattern.
+            if self.is_pattern_initializer_in_object(prop_context) {
+                self.advance()?;
+
+                let initializer = self.parse_assignment_expression()?;
+                let loc = self.mark_loc(start_pos);
+
+                let property = Property {
+                    loc,
+                    key,
+                    value: None,
+                    is_computed,
+                    is_method: false,
+                    kind: PropertyKind::PatternInitializer(initializer),
+                };
+
+                return Ok((property, false));
+            }
+
             None
         } else if self.is_property_initializer(prop_context) {
             self.advance()?;
-            Some(self.parse_assignment_expression()?)
+            let value = self.parse_assignment_expression()?;
+
+            Some(value)
         } else {
             let expected_token = self.get_property_initializer(prop_context);
             return self.error_expected_token(self.loc, &self.token, &expected_token);
@@ -2536,7 +2615,10 @@ impl<'a> Parser<'a> {
                     ClassMethodKind::Method
                 }
             }
-            PropertyKind::Spread => unreachable!("spread element cannot appear in class"),
+            PropertyKind::Spread(_) => unreachable!("spread element cannot appear in class"),
+            PropertyKind::PatternInitializer(_) => {
+                unreachable!("pattern initializer cannot appear in class")
+            }
         };
 
         ClassMethod {
@@ -2730,10 +2812,181 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn reparse_expression_as_pattern(&self, expr: Expression) -> Option<Pattern> {
+    fn reparse_expression_as_assignment_left_hand_side(
+        &self,
+        expr: Expression,
+        start_pos: Pos,
+    ) -> ParseResult<Pattern> {
+        match self.reparse_left_hand_side_expression_as_pattern(expr) {
+            Some(pattern) => Ok(pattern),
+            None => {
+                let loc = self.mark_loc(start_pos);
+                self.error(loc, ParseError::InvalidAssignmentLeftHandSide)
+            }
+        }
+    }
+
+    fn reparse_expression_as_for_left_hand_side(
+        &self,
+        expr: Expression,
+        start_pos: Pos,
+    ) -> ParseResult<Pattern> {
+        match self.reparse_left_hand_side_expression_as_pattern(expr) {
+            Some(pattern) => Ok(pattern),
+            None => {
+                let loc = self.mark_loc(start_pos);
+                self.error(loc, ParseError::InvalidForLeftHandSide)
+            }
+        }
+    }
+
+    fn reparse_left_hand_side_expression_as_pattern(&self, expr: Expression) -> Option<Pattern> {
         match expr {
-            Expression::Id(id) => Some(Pattern::Id(id)),
+            Expression::Id(id) => {
+                // Cannot assign to arguments or eval in strict mode
+                if self.in_strict_mode {
+                    match id.name.as_str() {
+                        "arguments" | "eval" => return None,
+                        _ => {}
+                    }
+                }
+
+                Some(Pattern::Id(id))
+            }
+            Expression::Object(object) => self.reparse_object_expression_as_pattern(object),
+            Expression::Array(object) => self.reparse_array_expression_as_pattern(object),
+            Expression::Member(_) | Expression::SuperMember(_) => Some(Pattern::Reference(expr)),
             _ => None,
+        }
+    }
+
+    fn reparse_object_expression_as_pattern(&self, expr: ObjectExpression) -> Option<Pattern> {
+        if expr.is_parenthesized {
+            return None;
+        }
+
+        let mut properties = vec![];
+
+        for property in expr.properties {
+            let property = if let PropertyKind::Spread(has_spread_comma) = property.kind {
+                // Convert spread property to rest property
+
+                // Trailing commas (or properties after) are not allowed on rest element
+                if has_spread_comma {
+                    return None;
+                }
+
+                // Object and array patterns are not allowed as rest elements
+                let value = match *property.key {
+                    Expression::Object(_) | Expression::Array(_) => return None,
+                    lhs_pattern => {
+                        p(self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
+                    }
+                };
+
+                ObjectPatternProperty {
+                    loc: property.loc,
+                    key: None,
+                    value,
+                    is_computed: false,
+                    is_rest: true,
+                }
+            } else if property.value.is_none() {
+                // Shorthand properties
+                let id_pattern =
+                    p(self.reparse_left_hand_side_expression_as_pattern(*property.key)?);
+
+                // Check the property kind to see if this is a shorthand pattern initializer
+                let value = if let PropertyKind::PatternInitializer(initializer) = property.kind {
+                    p(Pattern::Assign(AssignmentPattern {
+                        loc: property.loc,
+                        left: id_pattern,
+                        right: initializer,
+                    }))
+                } else {
+                    id_pattern
+                };
+
+                ObjectPatternProperty {
+                    loc: property.loc,
+                    key: None,
+                    value,
+                    is_computed: false,
+                    is_rest: false,
+                }
+            } else {
+                // If the value is an assignment expression with an identifier lhs, this can be
+                // reparsed to an assignment pattern.
+                let value = p(
+                    self.reparse_expression_as_maybe_assignment_pattern(*property.value.unwrap())?
+                );
+
+                ObjectPatternProperty {
+                    loc: property.loc,
+                    key: Some(property.key),
+                    value,
+                    is_computed: property.is_computed,
+                    is_rest: false,
+                }
+            };
+
+            properties.push(property);
+        }
+
+        Some(Pattern::Object(ObjectPattern { loc: expr.loc, properties }))
+    }
+
+    fn reparse_array_expression_as_pattern(&self, expr: ArrayExpression) -> Option<Pattern> {
+        if expr.is_parenthesized {
+            return None;
+        }
+
+        let mut elements = vec![];
+
+        for element in expr.elements {
+            let element = match element {
+                ArrayElement::Expression(expr) => {
+                    let pattern = self.reparse_expression_as_maybe_assignment_pattern(expr)?;
+                    ArrayPatternElement::Pattern(pattern)
+                }
+                ArrayElement::Hole => ArrayPatternElement::Hole,
+                ArrayElement::Spread(spread) => {
+                    // Trailing commas (or properties after) are not allowed on rest element
+                    if spread.has_trailing_comma {
+                        return None;
+                    }
+
+                    let argument =
+                        p(self.reparse_left_hand_side_expression_as_pattern(*spread.argument)?);
+                    ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
+                }
+            };
+
+            elements.push(element);
+        }
+
+        Some(Pattern::Array(ArrayPattern { loc: expr.loc, elements }))
+    }
+
+    // If the value is an assignment expression with an identifier lhs, it can be reparsed to an
+    // assignment pattern. Otherwise it is parsed normally as a left hand side expression.
+    fn reparse_expression_as_maybe_assignment_pattern(&self, expr: Expression) -> Option<Pattern> {
+        match expr {
+            Expression::Assign(AssignmentExpression {
+                operator: AssignmentOperator::Equals,
+                loc,
+                left,
+                right,
+                is_parenthesized,
+            }) => {
+                // Parenthesized assignment expressions are invalid as pattern elements
+                if is_parenthesized {
+                    return None;
+                }
+
+                Some(Pattern::Assign(AssignmentPattern { loc, left, right }))
+            }
+            other_expr => Some(self.reparse_left_hand_side_expression_as_pattern(other_expr)?),
         }
     }
 }

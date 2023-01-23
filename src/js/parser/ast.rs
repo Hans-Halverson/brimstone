@@ -552,7 +552,6 @@ pub enum Expression {
     SuperCall(SuperCallExpression),
     // TODO: TemplateLiteral
     // TODO: TaggedTemplateExpression
-    // TODO: ClassExpression
     // TODO: MetaProperty
     // TODO: ImportExpression
     // TODO: ChainExpression
@@ -560,6 +559,13 @@ pub enum Expression {
 
 impl Expression {
     pub fn to_id(&self) -> &Identifier {
+        match self {
+            Expression::Id(id) => id,
+            _ => panic!("Expected identifier expression"),
+        }
+    }
+
+    pub fn into_id(self) -> Identifier {
         match self {
             Expression::Id(id) => id,
             _ => panic!("Expected identifier expression"),
@@ -674,8 +680,10 @@ pub enum AssignmentOperator {
 pub struct AssignmentExpression {
     pub loc: Loc,
     pub operator: AssignmentOperator,
-    pub left: P<Expression>,
+    pub left: P<Pattern>,
     pub right: P<Expression>,
+    // Needed for reparsing into a pattern
+    pub is_parenthesized: bool,
 }
 
 pub enum UpdateOperator {
@@ -732,6 +740,8 @@ pub struct SequenceExpression {
 pub struct ArrayExpression {
     pub loc: Loc,
     pub elements: Vec<ArrayElement>,
+    // Needed for reparsing into a pattern
+    pub is_parenthesized: bool,
 }
 
 pub enum ArrayElement {
@@ -743,11 +753,14 @@ pub enum ArrayElement {
 pub struct SpreadElement {
     pub loc: Loc,
     pub argument: P<Expression>,
+    pub has_trailing_comma: bool,
 }
 
 pub struct ObjectExpression {
     pub loc: Loc,
     pub properties: Vec<Property>,
+    // Needed for reparsing into a pattern
+    pub is_parenthesized: bool,
 }
 
 pub struct Property {
@@ -759,13 +772,18 @@ pub struct Property {
     pub kind: PropertyKind,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+// #[derive(Clone, PartialEq)]
 pub enum PropertyKind {
     Init,
     Get,
     Set,
-    // For spread properties the key is the argument and all other fields are ignored
-    Spread,
+    // For spread properties the key is the argument and all other fields are ignored. The single
+    // bool argument is whether the spread property is followed by a comma.
+    Spread(bool),
+    // A pattern initializer that is not valid in a final AST, but can be reparsed into an object
+    // pattern property with an initializer. The single expression argument is the initializer. If
+    // a PatternInitializer is found during analysis the analyzer will error.
+    PatternInitializer(P<Expression>),
 }
 
 pub struct AwaitExpression {
@@ -797,6 +815,9 @@ pub enum Pattern {
     Array(ArrayPattern),
     Object(ObjectPattern),
     Assign(AssignmentPattern),
+    // An expression that evaluates to a reference. Can only be a MemberExpression or
+    // SuperMemberExpression.
+    Reference(Expression),
 }
 
 impl Pattern {
@@ -827,6 +848,7 @@ impl Pattern {
                 }
             }
             Pattern::Assign(patt) => patt.left.iter_patterns(f),
+            Pattern::Reference(_) => {}
         }
     }
 
@@ -839,6 +861,7 @@ impl Pattern {
             Pattern::Array(patt) => patt.iter_bound_names(f),
             Pattern::Object(patt) => patt.iter_bound_names(f),
             Pattern::Assign(patt) => patt.iter_bound_names(f),
+            Pattern::Reference(_) => ().into(),
         }
     }
 }

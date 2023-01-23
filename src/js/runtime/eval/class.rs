@@ -347,7 +347,7 @@ pub fn class_definition_evaluation(
                         home_object,
                         &method.value,
                         &property_key,
-                        property_kind,
+                        &property_kind,
                         false,
                     )
                 })();

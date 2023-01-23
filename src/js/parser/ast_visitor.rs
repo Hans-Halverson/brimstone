@@ -71,6 +71,7 @@ pub trait AstVisitor: Sized {
             Pattern::Array(patt) => self.visit_array_pattern(patt),
             Pattern::Object(patt) => self.visit_object_pattern(patt),
             Pattern::Assign(patt) => self.visit_assignment_pattern(patt),
+            Pattern::Reference(expr) => self.visit_expression(expr),
         }
     }
 
@@ -536,7 +537,7 @@ pub fn default_visit_assignment_expression<V: AstVisitor>(
     visitor: &mut V,
     expr: &mut AssignmentExpression,
 ) {
-    visitor.visit_expression(&mut expr.left);
+    visitor.visit_pattern(&mut expr.left);
     visitor.visit_expression(&mut expr.right);
 }
 

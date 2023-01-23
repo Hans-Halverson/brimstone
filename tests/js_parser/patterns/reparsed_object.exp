@@ -1,0 +1,724 @@
+{
+  type: "Program",
+  loc: "1:0-23:16",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:12",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "1:1-1:10",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "1:1-1:6",
+          properties: [
+            {
+              type: "Property",
+              loc: "1:3-1:4",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "1:3-1:4",
+                name: "a",
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "1:9-1:10",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:16",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "3:1-3:14",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "3:1-3:10",
+          properties: [
+            {
+              type: "Property",
+              loc: "3:3-3:4",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "3:3-3:4",
+                name: "a",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "3:6-3:7",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "3:6-3:7",
+                name: "b",
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "3:13-3:14",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:39",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "5:1-5:37",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "5:1-5:33",
+          properties: [
+            {
+              type: "Property",
+              loc: "5:3-5:12",
+              key: {
+                type: "Literal",
+                loc: "5:3-5:9",
+                value: "prop",
+              },
+              value: {
+                type: "Identifier",
+                loc: "5:11-5:12",
+                name: "a",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "5:14-5:19",
+              key: {
+                type: "Literal",
+                loc: "5:14-5:16",
+                value: 99,
+              },
+              value: {
+                type: "Identifier",
+                loc: "5:18-5:19",
+                name: "b",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "5:21-5:31",
+              key: {
+                type: "BinaryExpression",
+                loc: "5:22-5:27",
+                operator: "+",
+                left: {
+                  type: "Identifier",
+                  loc: "5:22-5:23",
+                  name: "c",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "5:26-5:27",
+                  value: 1,
+                },
+              },
+              value: {
+                type: "Identifier",
+                loc: "5:30-5:31",
+                name: "d",
+              },
+              computed: true,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "5:36-5:37",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:51",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "7:1-7:49",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "7:1-7:45",
+          properties: [
+            {
+              type: "Property",
+              loc: "7:3-7:16",
+              key: {
+                type: "Literal",
+                loc: "7:3-7:9",
+                value: "prop",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "7:11-7:16",
+                left: {
+                  type: "Identifier",
+                  loc: "7:11-7:12",
+                  name: "a",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "7:15-7:16",
+                  value: 1,
+                },
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "7:18-7:27",
+              key: {
+                type: "Literal",
+                loc: "7:18-7:20",
+                value: 99,
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "7:22-7:27",
+                left: {
+                  type: "Identifier",
+                  loc: "7:22-7:23",
+                  name: "b",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "7:26-7:27",
+                  value: 2,
+                },
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "7:29-7:43",
+              key: {
+                type: "BinaryExpression",
+                loc: "7:30-7:35",
+                operator: "+",
+                left: {
+                  type: "Identifier",
+                  loc: "7:30-7:31",
+                  name: "c",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "7:34-7:35",
+                  value: 1,
+                },
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "7:38-7:43",
+                left: {
+                  type: "Identifier",
+                  loc: "7:38-7:39",
+                  name: "d",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "7:42-7:43",
+                  value: 3,
+                },
+              },
+              computed: true,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "7:48-7:49",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:37",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "9:1-9:35",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "9:1-9:31",
+          properties: [
+            {
+              type: "Property",
+              loc: "9:3-9:12",
+              key: {
+                type: "Identifier",
+                loc: "9:3-9:4",
+                name: "a",
+              },
+              value: {
+                type: "ArrayPattern",
+                loc: "9:6-9:12",
+                elements: [
+                  {
+                    type: "Identifier",
+                    loc: "9:7-9:8",
+                    name: "b",
+                  },
+                  {
+                    type: "Identifier",
+                    loc: "9:10-9:11",
+                    name: "c",
+                  },
+                ],
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "9:14-9:29",
+              key: {
+                type: "Identifier",
+                loc: "9:14-9:15",
+                name: "d",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "9:17-9:29",
+                left: {
+                  type: "ObjectPattern",
+                  loc: "9:17-9:25",
+                  properties: [
+                    {
+                      type: "Property",
+                      loc: "9:19-9:20",
+                      key: null,
+                      value: {
+                        type: "Identifier",
+                        loc: "9:19-9:20",
+                        name: "e",
+                      },
+                      computed: false,
+                    },
+                    {
+                      type: "Property",
+                      loc: "9:22-9:23",
+                      key: null,
+                      value: {
+                        type: "Identifier",
+                        loc: "9:22-9:23",
+                        name: "f",
+                      },
+                      computed: false,
+                    },
+                  ],
+                },
+                right: {
+                  type: "Literal",
+                  loc: "9:28-9:29",
+                  value: 2,
+                },
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "9:34-9:35",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:16",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "11:1-11:14",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "11:1-11:10",
+          properties: [
+            {
+              type: "Property",
+              loc: "11:3-11:8",
+              key: null,
+              value: {
+                type: "AssignmentPattern",
+                loc: "11:3-11:8",
+                left: {
+                  type: "Identifier",
+                  loc: "11:3-11:4",
+                  name: "a",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "11:7-11:8",
+                  value: 1,
+                },
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "11:13-11:14",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:19",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "13:1-13:17",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "13:1-13:13",
+          properties: [
+            {
+              type: "Property",
+              loc: "13:3-13:11",
+              key: {
+                type: "Identifier",
+                loc: "13:3-13:4",
+                name: "a",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "13:6-13:11",
+                left: {
+                  type: "Identifier",
+                  loc: "13:6-13:7",
+                  name: "b",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "13:10-13:11",
+                  value: 1,
+                },
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "13:16-13:17",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:26",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "15:1-15:24",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "15:1-15:20",
+          properties: [
+            {
+              type: "Property",
+              loc: "15:3-15:6",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "15:3-15:6",
+                name: "get",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "15:8-15:11",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "15:8-15:11",
+                name: "set",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "15:13-15:18",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "15:13-15:18",
+                name: "async",
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "15:23-15:24",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:35",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "17:1-17:33",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "17:1-17:29",
+          properties: [
+            {
+              type: "Property",
+              loc: "17:3-17:9",
+              key: {
+                type: "Identifier",
+                loc: "17:3-17:6",
+                name: "get",
+              },
+              value: {
+                type: "Identifier",
+                loc: "17:8-17:9",
+                name: "a",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "17:11-17:17",
+              key: {
+                type: "Identifier",
+                loc: "17:11-17:14",
+                name: "set",
+              },
+              value: {
+                type: "Identifier",
+                loc: "17:16-17:17",
+                name: "b",
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "17:19-17:27",
+              key: {
+                type: "Identifier",
+                loc: "17:19-17:24",
+                name: "async",
+              },
+              value: {
+                type: "Identifier",
+                loc: "17:26-17:27",
+                name: "c",
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "17:32-17:33",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:47",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "19:1-19:45",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "19:1-19:41",
+          properties: [
+            {
+              type: "Property",
+              loc: "19:3-19:13",
+              key: {
+                type: "Identifier",
+                loc: "19:3-19:6",
+                name: "get",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "19:8-19:13",
+                left: {
+                  type: "Identifier",
+                  loc: "19:8-19:9",
+                  name: "a",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "19:12-19:13",
+                  value: 1,
+                },
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "19:15-19:25",
+              key: {
+                type: "Identifier",
+                loc: "19:15-19:18",
+                name: "set",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "19:20-19:25",
+                left: {
+                  type: "Identifier",
+                  loc: "19:20-19:21",
+                  name: "b",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "19:24-19:25",
+                  value: 2,
+                },
+              },
+              computed: false,
+            },
+            {
+              type: "Property",
+              loc: "19:27-19:39",
+              key: {
+                type: "Identifier",
+                loc: "19:27-19:32",
+                name: "async",
+              },
+              value: {
+                type: "AssignmentPattern",
+                loc: "19:34-19:39",
+                left: {
+                  type: "Identifier",
+                  loc: "19:34-19:35",
+                  name: "c",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "19:38-19:39",
+                  value: 2,
+                },
+              },
+              computed: false,
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "19:44-19:45",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:0-21:17",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "21:1-21:15",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "21:1-21:11",
+          properties: [
+            {
+              type: "Property",
+              loc: "21:3-21:4",
+              key: null,
+              value: {
+                type: "Identifier",
+                loc: "21:3-21:4",
+                name: "a",
+              },
+              computed: false,
+            },
+            {
+              type: "RestElement",
+              loc: "21:6-21:10",
+              property: {
+                type: "Identifier",
+                loc: "21:9-21:10",
+                name: "b",
+              },
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "21:14-21:15",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:0-23:16",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "23:1-23:14",
+        operator: "=",
+        left: {
+          type: "ObjectPattern",
+          loc: "23:1-23:10",
+          properties: [
+            {
+              type: "RestElement",
+              loc: "23:3-23:9",
+              property: {
+                type: "MemberExpression",
+                loc: "23:6-23:9",
+                object: {
+                  type: "Identifier",
+                  loc: "23:6-23:7",
+                  name: "a",
+                },
+                property: {
+                  type: "Identifier",
+                  loc: "23:8-23:9",
+                  name: "b",
+                },
+                computed: false,
+                optional: false,
+              },
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "23:13-23:14",
+          value: 1,
+        },
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

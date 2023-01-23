@@ -315,6 +315,14 @@ impl<'a> AstVisitor for Analyzer {
 
         default_visit_binary_expression(self, expr);
     }
+
+    fn visit_property(&mut self, prop: &mut Property) {
+        if let PropertyKind::PatternInitializer(_) = prop.kind {
+            self.emit_error(prop.loc, ParseError::InvalidPatternInitializer);
+        }
+
+        default_visit_property(self, prop);
+    }
 }
 
 impl Analyzer {
@@ -400,6 +408,7 @@ impl Analyzer {
                 Pattern::Assign(_) => {
                     has_parameter_expressions = true;
                 }
+                Pattern::Reference(_) => {}
             });
         }
 

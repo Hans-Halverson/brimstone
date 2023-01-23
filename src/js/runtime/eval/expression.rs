@@ -187,7 +187,14 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
     for property in &expr.properties {
         match property.value.as_ref() {
             // Spread element
-            _ if property.kind == ast::PropertyKind::Spread => {
+            _ if {
+                if let ast::PropertyKind::Spread(_) = property.kind {
+                    true
+                } else {
+                    false
+                }
+            } =>
+            {
                 let from_value = maybe!(eval_expression(cx, &property.key));
                 maybe!(copy_data_properties(cx, object, from_value, &HashSet::new()));
             }
@@ -213,7 +220,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     object,
                     func,
                     &property_key,
-                    property.kind,
+                    &property.kind,
                     /* is_enumerable */ true,
                 ))
             }
@@ -1290,13 +1297,15 @@ fn eval_assignment_expression(
     expr: &ast::AssignmentExpression,
 ) -> EvalResult<Value> {
     let mut reference = match expr.left.as_ref() {
-        ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
-        ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
-        ast::Expression::SuperMember(expr) => {
+        ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
+        ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+            maybe!(eval_member_expression_to_reference(cx, &expr))
+        }
+        ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
             maybe!(eval_super_member_expression_to_reference(cx, &expr))
         }
-        ast::Expression::Object(_) => unimplemented!("object patterns"),
-        ast::Expression::Array(_) => unimplemented!("array patterns"),
+        ast::Pattern::Object(_) => unimplemented!("object patterns"),
+        ast::Pattern::Array(_) => unimplemented!("array patterns"),
         _ => unreachable!("invalid assigment left hand side"),
     };
 

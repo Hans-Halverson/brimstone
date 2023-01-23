@@ -628,7 +628,7 @@ impl<'a> Printer<'a> {
     fn print_assignment_expression(&mut self, assign: &AssignmentExpression) {
         self.start_node("AssignmentExpression", &assign.loc);
         self.property("operator", &assign.operator, Printer::print_assignment_operator);
-        self.property("left", assign.left.as_ref(), Printer::print_expression);
+        self.property("left", assign.left.as_ref(), Printer::print_pattern);
         self.property("right", assign.right.as_ref(), Printer::print_expression);
         self.end_node();
     }
@@ -740,7 +740,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_property(&mut self, prop: &Property) {
-        if prop.kind == PropertyKind::Spread {
+        if let PropertyKind::Spread(_) = prop.kind {
             self.start_node("SpreadElement", &prop.loc);
             self.property("argument", prop.key.as_ref(), Printer::print_expression);
             self.end_node();
@@ -753,16 +753,17 @@ impl<'a> Printer<'a> {
         self.property("computed", prop.is_computed, Printer::print_bool);
         self.property("shorthand", prop.value.is_none(), Printer::print_bool);
         self.property("method", prop.is_method, Printer::print_bool);
-        self.property("kind", prop.kind, Printer::print_property_kind);
+        self.property("kind", &prop.kind, Printer::print_property_kind);
         self.end_node();
     }
 
-    fn print_property_kind(&mut self, kind: PropertyKind) {
+    fn print_property_kind(&mut self, kind: &PropertyKind) {
         let str = match kind {
             PropertyKind::Init => "init",
             PropertyKind::Get => "get",
             PropertyKind::Set => "set",
-            PropertyKind::Spread => "spread",
+            PropertyKind::Spread(_) => "spread",
+            PropertyKind::PatternInitializer(_) => "<pattern initializer>",
         };
         self.print_str(str)
     }
@@ -806,6 +807,7 @@ impl<'a> Printer<'a> {
             Pattern::Array(patt) => self.print_array_pattern(patt),
             Pattern::Object(patt) => self.print_object_pattern(patt),
             Pattern::Assign(patt) => self.print_assign_pattern(patt),
+            Pattern::Reference(expr) => self.print_expression(expr),
         }
     }
 

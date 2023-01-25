@@ -135,13 +135,21 @@ pub fn get_method(
 }
 
 // 7.3.12 HasProperty
-pub fn has_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
-    object.has_property(key)
+pub fn has_property(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    key: &PropertyKey,
+) -> EvalResult<bool> {
+    object.has_property(cx, key)
 }
 
 // 7.3.13 HasOwnProperty
-pub fn has_own_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
-    let desc = maybe!(object.get_own_property(key));
+pub fn has_own_property(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    key: &PropertyKey,
+) -> EvalResult<bool> {
+    let desc = maybe!(object.get_own_property(cx, key));
     desc.is_some().into()
 }
 
@@ -271,7 +279,7 @@ pub fn enumerable_own_property_names(
         }
 
         let key = must!(PropertyKey::from_value(cx, key_value));
-        let desc = maybe!(object.get_own_property(&key));
+        let desc = maybe!(object.get_own_property(cx, &key));
 
         if let Some(desc) = desc {
             if let Some(true) = desc.is_enumerable {
@@ -312,7 +320,7 @@ pub fn copy_data_properties(
         let next_key = must!(PropertyKey::from_value(cx, next_key));
 
         if !excluded_items.contains(&next_key) {
-            let desc = maybe!(from.get_own_property(&next_key));
+            let desc = maybe!(from.get_own_property(cx, &next_key));
             match desc {
                 Some(desc) if desc.is_enumerable() => {
                     let prop_value = maybe!(get(cx, from, &next_key));

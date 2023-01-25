@@ -93,7 +93,7 @@ impl ObjectPrototype {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        maybe!(has_own_property(this_object, &property_key)).into()
+        maybe!(has_own_property(cx, this_object, &property_key)).into()
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
@@ -136,7 +136,7 @@ impl ObjectPrototype {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        match maybe!(this_object.get_own_property(&property_key)) {
+        match maybe!(this_object.get_own_property(cx, &property_key)) {
             None => false.into(),
             Some(desc) => desc.is_enumerable().into(),
         }
@@ -177,6 +177,8 @@ impl ObjectPrototype {
                 .into();
         } else if object.is_array() {
             "Array"
+        } else if object.is_arguments_object() {
+            "Arguments"
         } else if object.is_callable() {
             "Function"
         } else if object.is_error() {

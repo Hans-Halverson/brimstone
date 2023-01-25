@@ -128,7 +128,7 @@ pub fn install_error_cause(
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
-        if maybe!(has_property(options, &cx.names.cause())) {
+        if maybe!(has_property(cx, options, &cx.names.cause())) {
             let cause = maybe!(get(cx, options, &cx.names.cause()));
             create_non_enumerable_data_property_or_throw(cx, object, &cx.names.cause(), cause);
         }

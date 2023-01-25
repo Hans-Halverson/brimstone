@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::js::parser::ast;
 
 use super::{
+    builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
     environment::{
         declarative_environment::DeclarativeEnvironment,
@@ -27,6 +28,9 @@ pub struct Context {
     // Canonical string values for strings that appear in the AST
     pub interned_strings: HashMap<String, Gc<StringValue>>,
 
+    // Stack of closure environments for all builtin functions currently being evaluated
+    pub closure_environments: Vec<Option<Gc<ClosureEnvironment>>>,
+
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: Gc<dyn Environment>,
 
@@ -49,6 +53,7 @@ impl Context {
             names,
             well_known_symbols,
             interned_strings: HashMap::new(),
+            closure_environments: vec![],
             uninit_environment,
             eval_asts: vec![],
         }
@@ -88,5 +93,18 @@ impl Context {
                 string_value
             }
         }
+    }
+
+    pub fn push_closure_environment(&mut self, env: Option<Gc<ClosureEnvironment>>) {
+        self.closure_environments.push(env)
+    }
+
+    pub fn pop_closure_environment(&mut self) {
+        self.closure_environments.pop();
+    }
+
+    pub fn get_closure_environment<T>(&self) -> Gc<T> {
+        let closure_environment = self.closure_environments.last().unwrap().unwrap();
+        Gc::from_ptr(closure_environment.as_ptr().cast::<T>())
     }
 }

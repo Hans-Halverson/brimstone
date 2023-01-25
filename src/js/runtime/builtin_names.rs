@@ -71,6 +71,7 @@ builtin_names!(
     (arguments, "arguments"),
     (async_iterator, "asyncIterator"),
     (call, "call"),
+    (callee, "callee"),
     (caller, "caller"),
     (cause, "cause"),
     (configurable, "configurable"),

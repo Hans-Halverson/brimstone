@@ -5,6 +5,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         gc::Gc,
+        get,
         intrinsics::{
             array_constructor::ArrayConstructor, array_iterator::ArrayIteratorPrototype,
             array_prototype::ArrayPrototype, bigint_constructor::BigIntConstructor,
@@ -33,6 +34,7 @@ pub enum Intrinsic {
     ArrayConstructor = 0,
     ArrayIteratorPrototype,
     ArrayPrototype,
+    ArrayPrototypeValues,
     BigIntConstructor,
     BigIntPrototype,
     BooleanConstructor,
@@ -168,6 +170,11 @@ impl Intrinsics {
 
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());
+
+        // Properties of other intrinsics
+        let array_prototype = self.get(Intrinsic::ArrayPrototype);
+        let array_prototype_values = must!(get(cx, array_prototype, &cx.names.values()));
+        register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
         add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
     }

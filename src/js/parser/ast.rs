@@ -25,6 +25,12 @@ impl<T: ?Sized> AstPtr<T> {
     }
 }
 
+impl<T: ?Sized> Clone for AstPtr<T> {
+    fn clone(&self) -> AstPtr<T> {
+        AstPtr { ptr: self.ptr }
+    }
+}
+
 // An element of 8.1.7 VarScopedDeclarations
 pub enum VarDecl {
     Func(AstPtr<Function>),
@@ -232,7 +238,7 @@ impl Function {
             has_simple_parameter_list: false,
             has_parameter_expressions: false,
             has_duplicate_parameters: false,
-            is_arguments_object_needed: true,
+            is_arguments_object_needed: false,
             has_use_strict_directive,
         }
     }

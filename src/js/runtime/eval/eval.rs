@@ -222,7 +222,7 @@ fn eval_declaration_instantiation(
             if declared_function_names.insert(name) {
                 if let Some(var_env) = var_env.as_global_environment() {
                     let name_value = id_string_value(cx, func.id.as_deref().unwrap());
-                    if !maybe!(var_env.can_declare_global_function(name_value)) {
+                    if !maybe!(var_env.can_declare_global_function(cx, name_value)) {
                         return type_error_(
                             cx,
                             &format!("cannot declare global function {}", name_value.str()),
@@ -246,7 +246,7 @@ fn eval_declaration_instantiation(
                     let name_value = id_string_value(cx, id);
 
                     if let Some(var_env) = var_env.as_global_environment() {
-                        if !maybe!(var_env.can_declare_global_var(name_value)) {
+                        if !maybe!(var_env.can_declare_global_var(cx, name_value)) {
                             return type_error_(
                                 cx,
                                 &format!("cannot declare global var {}", name_value.str()),

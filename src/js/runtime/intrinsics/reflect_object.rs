@@ -148,7 +148,7 @@ impl ReflectObject {
         let mut target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(target.delete(&key)).into()
+        maybe!(target.delete(cx, &key)).into()
     }
 
     // 28.1.5 Reflect.get
@@ -189,7 +189,7 @@ impl ReflectObject {
         let target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        let desc = maybe!(target.get_own_property(&key));
+        let desc = maybe!(target.get_own_property(cx, &key));
 
         desc.map(|desc| from_property_descriptor(cx, desc).into())
             .unwrap_or(Value::undefined())
@@ -231,7 +231,7 @@ impl ReflectObject {
         let target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(target.has_property(&key)).into()
+        maybe!(target.has_property(cx, &key)).into()
     }
 
     // 28.1.9 Reflect.isExtensible

@@ -59,8 +59,12 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get_own_property",
-        fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
-            self.object().get_own_property(key)
+        fn get_own_property(
+            &self,
+            cx: &mut Context,
+            key: &PropertyKey,
+        ) -> EvalResult<Option<PropertyDescriptor>> {
+            self.object().get_own_property(cx, key)
         }
     );
 
@@ -83,8 +87,8 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "has_property",
-        fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_has_property(self.into(), key)
+        fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+            crate::js::runtime::ordinary_object::ordinary_has_property(cx, self.into(), key)
         }
     );
 
@@ -110,8 +114,8 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "delete",
-        fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_delete(self.into(), key)
+        fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+            crate::js::runtime::ordinary_object::ordinary_delete(cx, self.into(), key)
         }
     );
 

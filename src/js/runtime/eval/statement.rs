@@ -626,7 +626,7 @@ fn eval_for_in_statement(
             }
 
             if let Some(desc) =
-                maybe__!(current_object.get_own_property(&PropertyKey::string(key_string)))
+                maybe__!(current_object.get_own_property(cx, &PropertyKey::string(key_string)))
             {
                 if !desc.is_enumerable() {
                     continue;

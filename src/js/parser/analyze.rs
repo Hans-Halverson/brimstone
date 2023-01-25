@@ -27,10 +27,10 @@ pub struct Analyzer {
     breakable_depth: usize,
     // Number of nested iterable statements the visitor is currently inside
     iterable_depth: usize,
-    // Number of nested functions the visitor is currently inside
-    function_depth: usize,
     // Sets of private names bound classes that the visitor is currently inside
     class_private_names_stack: Vec<HashMap<String, PrivateNameUsage>>,
+    // The function that the visitor is currently inside, if any
+    current_function: Option<AstPtr<Function>>,
 }
 
 // Saved state from entering a function or class that can be restored from
@@ -39,6 +39,7 @@ struct AnalyzerSavedState {
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
+    current_function: Option<AstPtr<Function>>,
 }
 
 pub struct PrivateNameUsage {
@@ -65,8 +66,8 @@ impl<'a> Analyzer {
             label_depth: 0,
             breakable_depth: 0,
             iterable_depth: 0,
-            function_depth: 0,
             class_private_names_stack: vec![],
+            current_function: None,
         }
     }
 
@@ -116,7 +117,7 @@ impl<'a> Analyzer {
     }
 
     fn is_in_function(&self) -> bool {
-        self.function_depth > 0
+        self.current_function.is_some()
     }
 
     // Save state before visiting a function or class. This prevents labels and some context from
@@ -127,6 +128,7 @@ impl<'a> Analyzer {
             label_depth: self.label_depth,
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
+            current_function: self.current_function.clone(),
         };
 
         std::mem::swap(&mut self.labels, &mut state.labels);
@@ -143,6 +145,7 @@ impl<'a> Analyzer {
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
+        self.current_function = state.current_function;
     }
 }
 
@@ -323,6 +326,19 @@ impl<'a> AstVisitor for Analyzer {
 
         default_visit_property(self, prop);
     }
+
+    fn visit_identifier(&mut self, id: &mut Identifier) {
+        // Current function conservatively needs arguments object if its body contains the
+        // identifiers "arguments" or "eval".
+        match id.name.as_str() {
+            "arguments" | "eval" => {
+                if let Some(current_function) = &self.current_function {
+                    current_function.as_mut().is_arguments_object_needed = true;
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 impl Analyzer {
@@ -357,6 +373,7 @@ impl Analyzer {
     fn visit_function_common(&mut self, func: &mut Function) {
         // Save analyzer context before descending into function
         let saved_state = self.save_state();
+        self.current_function = Some(AstPtr::from_ref(func));
 
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_function_param);
@@ -368,7 +385,6 @@ impl Analyzer {
 
         // Visit body inside a new function scope
         self.scope_builder.enter_function_scope(func);
-        self.function_depth += 1;
 
         match *func.body {
             FunctionBody::Block(ref mut block) => {
@@ -382,12 +398,18 @@ impl Analyzer {
         // Static analysis of parameters and other function properties once body has been visited
         let mut has_parameter_expressions = false;
         let mut has_binding_patterns = false;
+        let mut has_rest_parameter = false;
         let mut has_duplicate_parameters = false;
-        // TODO: Initialize as false if function body does not contain "arguments" or "eval"
-        let mut is_arguments_object_needed = func.is_arguments_object_needed && false;
+
+        // Arguments object may have been set to needed based on analysis of function body
+        let mut is_arguments_object_needed = func.is_arguments_object_needed;
         let mut parameter_names = HashSet::new();
 
         for param in &func.params {
+            if let FunctionParam::Rest(_) = param {
+                has_rest_parameter = true;
+            }
+
             param.iter_patterns(&mut |patt| match patt {
                 Pattern::Id(id) => {
                     if parameter_names.contains(&id.name) {
@@ -454,11 +476,11 @@ impl Analyzer {
         }
 
         func.has_parameter_expressions = has_parameter_expressions;
-        func.has_simple_parameter_list = !has_binding_patterns && !has_parameter_expressions;
+        func.has_simple_parameter_list =
+            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
         func.has_duplicate_parameters = has_duplicate_parameters;
         func.is_arguments_object_needed = is_arguments_object_needed;
 
-        self.function_depth -= 1;
         self.scope_builder.exit_scope();
 
         if func.is_strict_mode {

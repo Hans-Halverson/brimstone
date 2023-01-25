@@ -5,6 +5,7 @@ use crate::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
             abstract_operations::define_property_or_throw,
+            arguments_object::{create_mapped_arguments_object, create_unmapped_arguments_object},
             array_object::array_create,
             completion::{Completion, EvalResult},
             environment::{
@@ -103,7 +104,7 @@ pub fn function_declaration_instantiation(
         let arguments_object = if is_strict || !func_node.has_simple_parameter_list {
             create_unmapped_arguments_object(cx, &arguments)
         } else {
-            create_mapped_arguments_object(cx, func_node, &arguments, env)
+            create_mapped_arguments_object(cx, func.into(), &func_node.params, &arguments, env)
         };
 
         let arguments_name_value = cx.get_interned_string("arguments");
@@ -281,19 +282,6 @@ pub fn function_declaration_instantiation(
     }
 
     Completion::empty()
-}
-
-fn create_unmapped_arguments_object(cx: &mut Context, arguments: &[Value]) -> Value {
-    unimplemented!("arguments object")
-}
-
-fn create_mapped_arguments_object(
-    cx: &mut Context,
-    func_node: &ast::Function,
-    arguments: &[Value],
-    env: Gc<dyn Environment>,
-) -> Value {
-    unimplemented!("arguments object")
 }
 
 // 15.2.4 InstantiateOrdinaryFunctionObject

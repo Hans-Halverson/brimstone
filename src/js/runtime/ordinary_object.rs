@@ -317,7 +317,11 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.5 [[GetOwnProperty]]
-    fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>> {
+    fn get_own_property(
+        &self,
+        _: &mut Context,
+        key: &PropertyKey,
+    ) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self, key).into()
     }
 
@@ -332,8 +336,8 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_has_property(self.into(), key)
+    fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+        ordinary_has_property(cx, self.into(), key)
     }
 
     // 10.1.8 [[Get]]
@@ -353,8 +357,8 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_delete(self.into(), key)
+    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+        ordinary_delete(cx, self.into(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
@@ -532,7 +536,7 @@ pub fn ordinary_define_own_property(
     key: &PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let current_desc = maybe!(object.get_own_property(key));
+    let current_desc = maybe!(object.get_own_property(cx, key));
     let is_extensible = maybe!(object.is_extensible());
 
     validate_and_apply_property_descriptor(cx, Some(object), key, is_extensible, desc, current_desc)
@@ -705,15 +709,19 @@ pub fn validate_and_apply_property_descriptor(
 }
 
 // 10.1.7.1 OrdinaryHasProperty
-pub fn ordinary_has_property(object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
-    let own_property = maybe!(object.get_own_property(key));
+pub fn ordinary_has_property(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    key: &PropertyKey,
+) -> EvalResult<bool> {
+    let own_property = maybe!(object.get_own_property(cx, key));
     if own_property.is_some() {
         return true.into();
     }
 
     let parent = maybe!(object.get_prototype_of());
     match parent {
-        Some(parent) => parent.has_property(key),
+        Some(parent) => parent.has_property(cx, key),
         None => false.into(),
     }
 }
@@ -725,7 +733,7 @@ pub fn ordinary_get(
     key: &PropertyKey,
     receiver: Value,
 ) -> EvalResult<Value> {
-    let desc = maybe!(object.get_own_property(key));
+    let desc = maybe!(object.get_own_property(cx, key));
     match desc {
         None => {
             let parent = maybe!(object.get_prototype_of());
@@ -751,7 +759,7 @@ pub fn ordinary_set(
     value: Value,
     receiver: Value,
 ) -> EvalResult<bool> {
-    let own_desc = maybe!(object.get_own_property(key));
+    let own_desc = maybe!(object.get_own_property(cx, key));
     let own_desc = match own_desc {
         None => {
             let parent = maybe!(object.get_prototype_of());
@@ -774,7 +782,7 @@ pub fn ordinary_set(
         }
 
         let mut receiver = receiver.as_object();
-        let existing_descriptor = maybe!(receiver.get_own_property(key));
+        let existing_descriptor = maybe!(receiver.get_own_property(cx, key));
         match existing_descriptor {
             None => create_data_property(cx, receiver, key, value),
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
@@ -798,8 +806,12 @@ pub fn ordinary_set(
 }
 
 // 10.1.10.1 OrdinaryDelete
-pub fn ordinary_delete(mut object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<bool> {
-    let desc = maybe!(object.get_own_property(key));
+pub fn ordinary_delete(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    key: &PropertyKey,
+) -> EvalResult<bool> {
+    let desc = maybe!(object.get_own_property(cx, key));
     match desc {
         None => true.into(),
         Some(desc) => {

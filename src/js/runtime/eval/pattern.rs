@@ -67,8 +67,9 @@ pub fn binding_initialization(
             result
         }
         ast::Pattern::Object(object) => object_binding_initialization(cx, object, value, env),
-        ast::Pattern::Reference(_) => unimplemented!("Reference patterns"),
-        ast::Pattern::Assign(_) => unreachable!(),
+        ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+            unreachable!("invalid pattern for BindingInitialization")
+        }
     }
 }
 

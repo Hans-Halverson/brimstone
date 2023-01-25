@@ -85,7 +85,7 @@ fn global_declaration_instantiation(
                 return syntax_error_(cx, &format!("redeclaration of {}", name_value.str()));
             }
 
-            if maybe!(env.has_restricted_global_property(name_value)) {
+            if maybe!(env.has_restricted_global_property(cx, name_value)) {
                 return syntax_error_(
                     cx,
                     &format!("cannot redeclare restricted global property {}", name_value.str()),
@@ -119,7 +119,7 @@ fn global_declaration_instantiation(
 
             if declared_function_names.insert(name) {
                 let name_value = id_string_value(cx, func.id.as_deref().unwrap());
-                if !maybe__!(env.can_declare_global_function(name_value)) {
+                if !maybe__!(env.can_declare_global_function(cx, name_value)) {
                     return type_error(
                         cx,
                         &format!("cannot declare global function {}", name_value.str()),
@@ -141,7 +141,7 @@ fn global_declaration_instantiation(
                     let name = &id.name;
                     if !declared_function_names.contains(name) {
                         let name_value = id_string_value(cx, id);
-                        if !maybe!(env.can_declare_global_var(name_value)) {
+                        if !maybe!(env.can_declare_global_var(cx, name_value)) {
                             return type_error_(
                                 cx,
                                 &format!("cannot declare global var {}", name_value.str()),

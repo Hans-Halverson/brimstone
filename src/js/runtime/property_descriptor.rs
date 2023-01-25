@@ -204,26 +204,26 @@ pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<Prop
         set: None,
     };
 
-    if maybe!(has_property(object, &cx.names.enumerable())) {
+    if maybe!(has_property(cx, object, &cx.names.enumerable())) {
         let enumerable = maybe!(get(cx, object, &cx.names.enumerable()));
         desc.is_enumerable = Some(to_boolean(enumerable));
     }
 
-    if maybe!(has_property(object, &cx.names.configurable())) {
+    if maybe!(has_property(cx, object, &cx.names.configurable())) {
         let configurable = maybe!(get(cx, object, &cx.names.configurable()));
         desc.is_configurable = Some(to_boolean(configurable));
     }
 
-    if maybe!(has_property(object, &cx.names.value())) {
+    if maybe!(has_property(cx, object, &cx.names.value())) {
         desc.value = Some(maybe!(get(cx, object, &cx.names.value())));
     }
 
-    if maybe!(has_property(object, &cx.names.writable())) {
+    if maybe!(has_property(cx, object, &cx.names.writable())) {
         let writable = maybe!(get(cx, object, &cx.names.writable()));
         desc.is_writable = Some(to_boolean(writable));
     }
 
-    if maybe!(has_property(object, &cx.names.get())) {
+    if maybe!(has_property(cx, object, &cx.names.get())) {
         let get = maybe!(get(cx, object, &cx.names.get()));
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
@@ -236,7 +236,7 @@ pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<Prop
         };
     }
 
-    if maybe!(has_property(object, &cx.names.set())) {
+    if maybe!(has_property(cx, object, &cx.names.set())) {
         let set = maybe!(get(cx, object, &cx.names.set()));
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {

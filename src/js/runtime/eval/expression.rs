@@ -587,7 +587,7 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
             }
 
             let base_object = maybe!(to_object(cx, *object));
-            let delete_status = maybe!(base_object.clone().delete(property));
+            let delete_status = maybe!(base_object.clone().delete(cx, property));
             if !delete_status && reference.is_strict() {
                 return type_error_(cx, "cannot delete property");
             }
@@ -1223,7 +1223,7 @@ fn eval_in_expression(
 
     let property_key = maybe!(to_property_key(cx, left_value));
 
-    let has_property = maybe!(has_property(right_value.as_object(), &property_key));
+    let has_property = maybe!(has_property(cx, right_value.as_object(), &property_key));
     has_property.into()
 }
 

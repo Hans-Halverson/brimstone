@@ -186,7 +186,7 @@ impl ObjectConstructor {
 
         for key in keys {
             let key = must!(PropertyKey::from_value(cx, key));
-            let prop_desc = maybe!(properties.get_own_property(&key));
+            let prop_desc = maybe!(properties.get_own_property(cx, &key));
             if let Some(prop_desc) = prop_desc {
                 if let Some(true) = prop_desc.is_enumerable {
                     let desc_object = maybe!(get(cx, properties, &key));
@@ -246,7 +246,7 @@ impl ObjectConstructor {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        match maybe!(object.get_own_property(&property_key)) {
+        match maybe!(object.get_own_property(cx, &property_key)) {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }
@@ -324,7 +324,7 @@ impl ObjectConstructor {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(has_own_property(object, &key)).into()
+        maybe!(has_own_property(cx, object, &key)).into()
     }
 
     // 20.1.2.14 Object.is

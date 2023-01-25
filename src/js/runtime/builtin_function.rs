@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::impl_gc_into;
+use crate::{impl_gc_into, maybe};
 
 use super::{
     completion::EvalResult,
@@ -28,6 +28,7 @@ pub struct BuiltinFunction {
     script_or_module: Option<ScriptOrModule>,
     pub initial_name: Option<Gc<StringValue>>,
     builtin_func: BuiltinFunctionPtr,
+    closure_environment: Option<Gc<ClosureEnvironment>>,
     has_constructor: bool,
 }
 
@@ -38,6 +39,10 @@ pub type BuiltinFunctionPtr = fn(
     arguments: &[Value],
     new_target: Option<Gc<ObjectValue>>,
 ) -> EvalResult<Value>;
+
+// Generic storage for variables captured by function if it is a closure. Must be cast to specific
+// type for stored variables at each use.
+pub struct ClosureEnvironment {}
 
 impl GcDeref for BuiltinFunction {}
 
@@ -91,12 +96,18 @@ impl BuiltinFunction {
             script_or_module: None,
             initial_name: None,
             builtin_func,
+            closure_environment: None,
             has_constructor: false,
         })
     }
 
     pub fn set_is_constructor(&mut self) {
         self.has_constructor = true;
+    }
+
+    pub fn set_closure_environment<T>(&mut self, closure_environment: Gc<T>) {
+        self.closure_environment =
+            Some(Gc::from_ptr(closure_environment.as_ptr().cast::<ClosureEnvironment>()));
     }
 
     pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
@@ -139,9 +150,13 @@ impl Object for BuiltinFunction {
             is_strict_mode: current_execution_context.is_strict_mode,
         });
 
+        cx.push_closure_environment(self.closure_environment);
         cx.push_execution_context(callee_context);
+
         let result = (self.builtin_func)(cx, this_argument, arguments, None);
+
         cx.pop_execution_context();
+        cx.pop_closure_environment();
 
         result
     }
@@ -164,10 +179,14 @@ impl Object for BuiltinFunction {
             is_strict_mode: current_execution_context.is_strict_mode,
         });
 
+        cx.push_closure_environment(self.closure_environment);
         cx.push_execution_context(callee_context);
+
         let result =
-            crate::maybe!((self.builtin_func)(cx, Value::undefined(), arguments, Some(new_target)));
+            maybe!((self.builtin_func)(cx, Value::undefined(), arguments, Some(new_target)));
+
         cx.pop_execution_context();
+        cx.pop_closure_environment();
 
         result.as_object().into()
     }

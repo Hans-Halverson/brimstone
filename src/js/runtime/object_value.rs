@@ -35,7 +35,11 @@ pub trait Object {
 
     fn prevent_extensions(&mut self) -> EvalResult<bool>;
 
-    fn get_own_property(&self, key: &PropertyKey) -> EvalResult<Option<PropertyDescriptor>>;
+    fn get_own_property(
+        &self,
+        cx: &mut Context,
+        key: &PropertyKey,
+    ) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
@@ -44,7 +48,7 @@ pub trait Object {
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, key: &PropertyKey) -> EvalResult<bool>;
+    fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool>;
 
     fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value>;
 
@@ -56,7 +60,7 @@ pub trait Object {
         receiver: Value,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, key: &PropertyKey) -> EvalResult<bool>;
+    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
 
@@ -148,6 +152,10 @@ pub trait Object {
     }
 
     fn is_regexp_object(&self) -> bool {
+        false
+    }
+
+    fn is_arguments_object(&self) -> bool {
         false
     }
 

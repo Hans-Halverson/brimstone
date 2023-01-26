@@ -20,13 +20,21 @@ pub struct Lexer<'a> {
     buf: &'a str,
     current: char,
     pos: Pos,
+    mode: LexerMode,
     is_new_line_before_current: bool,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum LexerMode {
+    Normal,
+    Template,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
 pub struct SavedLexerState {
     current: char,
     pos: Pos,
+    mode: LexerMode,
 }
 
 type LexResult = ParseResult<(Token, Loc)>;
@@ -80,17 +88,23 @@ impl<'a> Lexer<'a> {
             buf: &source.contents,
             current,
             pos: 0,
+            mode: LexerMode::Normal,
             is_new_line_before_current: false,
         }
     }
 
     pub fn save(&self) -> SavedLexerState {
-        SavedLexerState { current: self.current, pos: self.pos }
+        SavedLexerState { current: self.current, pos: self.pos, mode: self.mode }
     }
 
     pub fn restore(&mut self, save_state: &SavedLexerState) {
         self.current = save_state.current;
         self.pos = save_state.pos;
+        self.mode = save_state.mode;
+    }
+
+    pub fn set_mode(&mut self, mode: LexerMode) {
+        self.mode = mode;
     }
 
     pub fn is_new_line_before_current(&self) -> bool {
@@ -161,10 +175,6 @@ impl<'a> Lexer<'a> {
 
     pub fn next(&mut self) -> LexResult {
         self.is_new_line_before_current = false;
-        self.lex_token()
-    }
-
-    fn lex_token(&mut self) -> LexResult {
         loop {
             // Fast pass for skipping ASCII whitespace and newlines
             loop {
@@ -431,6 +441,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.emit(Token::LeftBrace, start_pos)
                 }
+                '}' if self.mode == LexerMode::Template => self.lex_template_literal(false),
                 '}' => {
                     self.advance();
                     self.emit(Token::RightBrace, start_pos)
@@ -479,6 +490,7 @@ impl<'a> Lexer<'a> {
                 },
                 '1'..='9' => self.lex_decimal_literal(),
                 '"' | '\'' => self.lex_string_literal(),
+                '`' => self.lex_template_literal(true),
                 EOF_CHAR => self.emit(Token::Eof, start_pos),
                 char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
                 // Escape sequence at the start of an identifier
@@ -929,15 +941,154 @@ impl<'a> Lexer<'a> {
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
                 quote if quote == quote_char => break,
-                _ => {
-                    value.push(self.lex_ascii_or_unicode_character()?);
-                }
+                _ => value.push(self.lex_ascii_or_unicode_character()?),
             }
         }
 
         self.advance();
 
         return self.emit(Token::StringLiteral(value), start_pos);
+    }
+
+    fn lex_template_literal(&mut self, is_head: bool) -> LexResult {
+        let start_pos = self.pos;
+        self.advance();
+
+        let mut value = String::new();
+
+        let is_tail;
+        let raw_start_pos = self.pos;
+        let raw_end_pos;
+
+        loop {
+            match self.current {
+                // Escape sequences
+                '\\' => match self.peek() {
+                    // Single character escapes
+                    'n' => {
+                        value.push('\n');
+                        self.advance2()
+                    }
+                    '\\' => {
+                        value.push('\\');
+                        self.advance2()
+                    }
+                    '\'' => {
+                        value.push('\'');
+                        self.advance2()
+                    }
+                    '"' => {
+                        value.push('"');
+                        self.advance2()
+                    }
+                    '`' => {
+                        value.push('`');
+                        self.advance2()
+                    }
+                    't' => {
+                        value.push('\t');
+                        self.advance2()
+                    }
+                    'r' => {
+                        value.push('\r');
+                        self.advance2()
+                    }
+                    'b' => {
+                        value.push('\x08');
+                        self.advance2()
+                    }
+                    'v' => {
+                        value.push('\x0B');
+                        self.advance2()
+                    }
+                    'f' => {
+                        value.push('\x0C');
+                        self.advance2()
+                    }
+                    '0' if self.peek2() < '0' || self.peek2() > '9' => {
+                        value.push('\x00');
+                        self.advance2()
+                    }
+                    // Hex escape sequence
+                    'x' => {
+                        self.advance2();
+
+                        if let Some(x1) = get_hex_value(self.current) {
+                            if let Some(x2) = get_hex_value(self.peek()) {
+                                let escaped_char = std::char::from_u32(x1 * 16 + x2).unwrap();
+                                value.push(escaped_char);
+                                self.advance2();
+                            } else {
+                                let loc = self.mark_loc(self.pos);
+                                self.advance();
+                                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                            }
+                        } else {
+                            let loc = self.mark_loc(self.pos);
+                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                        }
+                    }
+                    // Unicode escape sequence
+                    'u' => {
+                        let escape_start_pos = self.pos;
+                        self.advance2();
+                        let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
+                        value.push(code_point)
+                    }
+                    // Line continuations, either LF, CR, or CRLF
+                    // TODO: Cooked values ignore line continuations
+                    // TODO: Convert \r and \r\n to \n in both raw and cooked values
+                    '\n' => {
+                        value.push('\n');
+                        self.advance2()
+                    }
+                    '\r' => {
+                        value.push('\r');
+                        self.advance2();
+
+                        if self.current == '\n' {
+                            value.push('\n');
+                            self.advance()
+                        }
+                    }
+                    // Not an escape sequence, use '/' directly
+                    _ => {
+                        value.push('/');
+                        self.advance()
+                    }
+                },
+                '$' => match self.peek() {
+                    // Start of an expression in the template literal
+                    '{' => {
+                        raw_end_pos = self.pos;
+                        is_tail = false;
+
+                        self.advance2();
+
+                        break;
+                    }
+                    // Not an escape sequence, use '$' directly
+                    _ => {
+                        value.push('$');
+                        self.advance()
+                    }
+                },
+                // End of the entire template literal
+                '`' => {
+                    raw_end_pos = self.pos;
+                    is_tail = true;
+
+                    self.advance();
+
+                    break;
+                }
+                _ => value.push(self.lex_ascii_or_unicode_character()?),
+            }
+        }
+
+        let raw = String::from(&self.buf[raw_start_pos..raw_end_pos]);
+
+        return self.emit(Token::TemplatePart { raw, cooked: value, is_head, is_tail }, start_pos);
     }
 
     #[inline]

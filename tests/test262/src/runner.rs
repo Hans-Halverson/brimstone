@@ -23,6 +23,9 @@ pub struct TestRunner {
     feature: Option<String>,
 }
 
+// Runner threads have an 8MB stack
+const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
+
 impl TestRunner {
     pub fn new(
         index: TestIndex,
@@ -30,7 +33,10 @@ impl TestRunner {
         filter: Option<String>,
         feature: Option<String>,
     ) -> TestRunner {
-        let thread_pool = ThreadPool::new(num_threads.into());
+        let thread_pool = threadpool::Builder::new()
+            .num_threads(num_threads.into())
+            .thread_stack_size(RUNNER_THREAD_STACK_SIZE)
+            .build();
         TestRunner { index, thread_pool, filter, feature }
     }
 

@@ -62,6 +62,8 @@ pub trait AstVisitor: Sized {
             Expression::Yield(expr) => self.visit_yield_expression(expr),
             Expression::SuperMember(expr) => self.visit_super_member_expression(expr),
             Expression::SuperCall(expr) => self.visit_super_call_expression(expr),
+            Expression::Template(lit) => self.visit_template_literal(lit),
+            Expression::TaggedTemplate(expr) => self.visit_tagged_template_expression(expr),
         }
     }
 
@@ -295,6 +297,16 @@ pub trait AstVisitor: Sized {
 
     fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression) {
         default_visit_super_call_expression(self, expr)
+    }
+
+    fn visit_template_literal(&mut self, expr: &mut TemplateLiteral) {
+        default_visit_template_literal(self, expr)
+    }
+
+    fn visit_template_element(&mut self, expr: &mut TemplateElement) {}
+
+    fn visit_tagged_template_expression(&mut self, expr: &mut TaggedTemplateExpression) {
+        default_visit_tagged_template_expression(self, expr)
     }
 
     fn visit_array_pattern(&mut self, patt: &mut ArrayPattern) {
@@ -647,6 +659,23 @@ pub fn default_visit_super_call_expression<V: AstVisitor>(
     expr: &mut SuperCallExpression,
 ) {
     visit_vec!(visitor, expr.arguments, visit_call_argument);
+}
+
+pub fn default_visit_template_literal<V: AstVisitor>(visitor: &mut V, lit: &mut TemplateLiteral) {
+    visitor.visit_template_element(&mut lit.quasis[0]);
+
+    for i in 1..lit.quasis.len() {
+        visitor.visit_expression(&mut lit.expressions[i - 1]);
+        visitor.visit_template_element(&mut lit.quasis[i]);
+    }
+}
+
+pub fn default_visit_tagged_template_expression<V: AstVisitor>(
+    visitor: &mut V,
+    expr: &mut TaggedTemplateExpression,
+) {
+    visitor.visit_expression(&mut expr.tag);
+    visitor.visit_template_literal(&mut expr.quasi);
 }
 
 pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ArrayPattern) {

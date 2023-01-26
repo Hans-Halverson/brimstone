@@ -490,6 +490,8 @@ impl<'a> Printer<'a> {
             Expression::Yield(expr) => self.print_yield_expression(expr),
             Expression::SuperCall(expr) => self.print_super_call_expression(expr),
             Expression::SuperMember(expr) => self.print_super_member_expression(expr),
+            Expression::Template(lit) => self.print_template_literal(lit),
+            Expression::TaggedTemplate(expr) => self.print_tagged_template_expression(expr),
         }
     }
 
@@ -798,6 +800,48 @@ impl<'a> Printer<'a> {
         self.start_node("CallExpression", &call.loc);
         self.property("callee", &call.super_, Printer::print_super);
         self.array_property("arguments", call.arguments.as_ref(), Printer::print_call_argument);
+        self.end_node();
+    }
+
+    fn print_template_literal(&mut self, lit: &TemplateLiteral) {
+        self.start_node("TemplateLiteral", &lit.loc);
+
+        let num_quasis = lit.quasis.len();
+        let quasis_with_is_tail = lit
+            .quasis
+            .iter()
+            .enumerate()
+            .map(|(i, quasi)| (quasi, i == num_quasis - 1))
+            .collect::<Vec<_>>();
+
+        self.array_property("quasis", &quasis_with_is_tail, Printer::print_template_element);
+        self.array_property("expressions", lit.expressions.as_ref(), Printer::print_expression);
+        self.end_node();
+    }
+
+    fn print_template_element(&mut self, (element, is_tail): &(&TemplateElement, bool)) {
+        self.start_node("TemplateElement", &element.loc);
+        self.property("value", *element, Printer::print_template_element_value);
+        self.property("tail", *is_tail, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_template_element_value(&mut self, element: &TemplateElement) {
+        self.string("{\n");
+        self.inc_indent();
+
+        self.property("cooked", &element.cooked, Printer::print_string);
+        self.property("raw", &element.raw, Printer::print_string);
+
+        self.dec_indent();
+        self.indent();
+        self.string("}");
+    }
+
+    fn print_tagged_template_expression(&mut self, expr: &TaggedTemplateExpression) {
+        self.start_node("TaggedTemplateExpression", &expr.loc);
+        self.property("tag", expr.tag.as_ref(), Printer::print_expression);
+        self.property("quasi", expr.quasi.as_ref(), Printer::print_template_literal);
         self.end_node();
     }
 

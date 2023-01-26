@@ -556,8 +556,8 @@ pub enum Expression {
     Yield(YieldExpression),
     SuperMember(SuperMemberExpression),
     SuperCall(SuperCallExpression),
-    // TODO: TemplateLiteral
-    // TODO: TaggedTemplateExpression
+    Template(TemplateLiteral),
+    TaggedTemplate(TaggedTemplateExpression),
     // TODO: MetaProperty
     // TODO: ImportExpression
     // TODO: ChainExpression
@@ -815,6 +815,24 @@ pub struct SuperCallExpression {
     pub loc: Loc,
     pub super_: Loc,
     pub arguments: Vec<CallArgument>,
+}
+
+pub struct TemplateLiteral {
+    pub loc: Loc,
+    pub quasis: Vec<TemplateElement>,
+    pub expressions: Vec<Expression>,
+}
+
+pub struct TemplateElement {
+    pub loc: Loc,
+    pub raw: String,
+    pub cooked: String,
+}
+
+pub struct TaggedTemplateExpression {
+    pub loc: Loc,
+    pub tag: P<Expression>,
+    pub quasi: P<TemplateLiteral>,
 }
 
 pub enum Pattern {

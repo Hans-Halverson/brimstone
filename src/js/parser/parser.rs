@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use super::ast::*;
-use super::lexer::{Lexer, SavedLexerState};
+use super::lexer::{Lexer, LexerMode, SavedLexerState};
 use super::loc::{find_line_col_for_pos, Loc, Pos, EMPTY_LOC};
 use super::source::Source;
 use super::token::Token;
@@ -14,6 +14,7 @@ pub enum ParseError {
     UnknownToken(String),
     UnexpectedToken(Token),
     ExpectedToken(Token, Token),
+    ExpectedTemplatePart,
     InvalidUnicode,
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
@@ -59,9 +60,8 @@ impl fmt::Display for ParseError {
             ParseError::ExpectedToken(actual, expected) => {
                 write!(f, "Unexpected token {}, expected {}", actual, expected)
             }
-            ParseError::InvalidUnicode => {
-                write!(f, "Invalid utf-8 sequence")
-            }
+            ParseError::ExpectedTemplatePart => write!(f, "Expected }} in template string"),
+            ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
@@ -1846,6 +1846,11 @@ impl<'a> Parser<'a> {
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
             Token::Class => Ok(p(Expression::Class(self.parse_class(false)?))),
+            Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
+                let template_literal =
+                    self.parse_template_literal(raw.clone(), cooked.clone(), *is_tail)?;
+                Ok(p(Expression::Template(template_literal)))
+            }
             _ => {
                 if self.is_function_start()? {
                     return Ok(p(Expression::Function(self.parse_function(false)?)));
@@ -2018,6 +2023,54 @@ impl<'a> Parser<'a> {
             }
             _ => false,
         }
+    }
+
+    fn parse_template_literal(
+        &mut self,
+        raw: String,
+        cooked: String,
+        is_single_quasi: bool,
+    ) -> ParseResult<TemplateLiteral> {
+        let start_pos = self.current_start_pos();
+        self.lexer.set_mode(LexerMode::Template);
+
+        let head_quasi =
+            TemplateElement { loc: self.loc, raw: raw.clone(), cooked: cooked.clone() };
+
+        self.advance()?;
+
+        let mut quasis = vec![head_quasi];
+        let mut expressions = vec![];
+
+        if !is_single_quasi {
+            loop {
+                expressions.push(*self.parse_expression()?);
+
+                match &self.token {
+                    Token::TemplatePart { raw, cooked, is_tail, is_head: false } => {
+                        quasis.push(TemplateElement {
+                            loc: self.loc,
+                            raw: raw.clone(),
+                            cooked: cooked.clone(),
+                        });
+
+                        if *is_tail {
+                            self.lexer.set_mode(LexerMode::Normal);
+                            self.advance()?;
+
+                            break;
+                        } else {
+                            self.advance()?;
+                        }
+                    }
+                    _ => return self.error(self.loc, ParseError::ExpectedTemplatePart),
+                }
+            }
+        }
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(TemplateLiteral { loc, quasis, expressions })
     }
 
     fn parse_spread_element(&mut self) -> ParseResult<SpreadElement> {

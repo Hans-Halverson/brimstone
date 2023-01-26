@@ -89,6 +89,8 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Yield(_) => unimplemented!("yield expression"),
         ast::Expression::SuperMember(expr) => eval_super_member_expression(cx, expr),
         ast::Expression::SuperCall(expr) => eval_super_call_expression(cx, expr),
+        ast::Expression::Template(_) => unimplemented!("template literal"),
+        ast::Expression::TaggedTemplate(_) => unimplemented!("tagged template literal"),
     }
 }
 

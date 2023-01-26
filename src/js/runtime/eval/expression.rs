@@ -89,7 +89,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Yield(_) => unimplemented!("yield expression"),
         ast::Expression::SuperMember(expr) => eval_super_member_expression(cx, expr),
         ast::Expression::SuperCall(expr) => eval_super_call_expression(cx, expr),
-        ast::Expression::Template(_) => unimplemented!("template literal"),
+        ast::Expression::Template(lit) => eval_template_literal(cx, lit),
         ast::Expression::TaggedTemplate(_) => unimplemented!("tagged template literal"),
     }
 }
@@ -293,6 +293,35 @@ pub fn eval_property_name<'a>(
     };
 
     property_key.into()
+}
+
+// 13.2.8.5 Template Literal Evaluation
+fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalResult<Value> {
+    let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
+    let mut total_size = 0;
+
+    let first_quasi_part = cx.get_interned_string(&lit.quasis[0].cooked);
+    string_parts.push(first_quasi_part);
+    total_size += first_quasi_part.str().len();
+
+    for i in 1..lit.quasis.len() {
+        let expr_value = maybe!(eval_expression(cx, &lit.expressions[i - 1]));
+        let expr_string = maybe!(to_string(cx, expr_value));
+
+        string_parts.push(expr_string);
+        total_size += expr_string.str().len();
+
+        let quasi_part = cx.get_interned_string(&lit.quasis[i].cooked);
+        string_parts.push(quasi_part);
+        total_size += quasi_part.str().len();
+    }
+
+    let mut concat_string = String::with_capacity(total_size);
+    for string_part in string_parts {
+        concat_string.push_str(string_part.str());
+    }
+
+    cx.heap.alloc_string(concat_string).into()
 }
 
 // 13.3.2.1 Member Expression Evaluation

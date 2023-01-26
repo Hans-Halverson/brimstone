@@ -20,21 +20,13 @@ pub struct Lexer<'a> {
     buf: &'a str,
     current: char,
     pos: Pos,
-    mode: LexerMode,
     is_new_line_before_current: bool,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum LexerMode {
-    Normal,
-    Template,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
 pub struct SavedLexerState {
     current: char,
     pos: Pos,
-    mode: LexerMode,
 }
 
 type LexResult = ParseResult<(Token, Loc)>;
@@ -88,23 +80,17 @@ impl<'a> Lexer<'a> {
             buf: &source.contents,
             current,
             pos: 0,
-            mode: LexerMode::Normal,
             is_new_line_before_current: false,
         }
     }
 
     pub fn save(&self) -> SavedLexerState {
-        SavedLexerState { current: self.current, pos: self.pos, mode: self.mode }
+        SavedLexerState { current: self.current, pos: self.pos }
     }
 
     pub fn restore(&mut self, save_state: &SavedLexerState) {
         self.current = save_state.current;
         self.pos = save_state.pos;
-        self.mode = save_state.mode;
-    }
-
-    pub fn set_mode(&mut self, mode: LexerMode) {
-        self.mode = mode;
     }
 
     pub fn is_new_line_before_current(&self) -> bool {
@@ -441,7 +427,6 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.emit(Token::LeftBrace, start_pos)
                 }
-                '}' if self.mode == LexerMode::Template => self.lex_template_literal(false),
                 '}' => {
                     self.advance();
                     self.emit(Token::RightBrace, start_pos)
@@ -490,7 +475,11 @@ impl<'a> Lexer<'a> {
                 },
                 '1'..='9' => self.lex_decimal_literal(),
                 '"' | '\'' => self.lex_string_literal(),
-                '`' => self.lex_template_literal(true),
+                '`' => {
+                    let start_pos = self.pos;
+                    self.advance();
+                    self.lex_template_literal(start_pos, true)
+                }
                 EOF_CHAR => self.emit(Token::Eof, start_pos),
                 char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
                 // Escape sequence at the start of an identifier
@@ -950,10 +939,14 @@ impl<'a> Lexer<'a> {
         return self.emit(Token::StringLiteral(value), start_pos);
     }
 
-    fn lex_template_literal(&mut self, is_head: bool) -> LexResult {
-        let start_pos = self.pos;
-        self.advance();
+    // Get the next template part after the end of a template expression. Must be called when the
+    // previously lexed token was a '}'.
+    pub fn next_template_part(&mut self) -> LexResult {
+        let start_pos = self.pos - 1;
+        self.lex_template_literal(start_pos, false)
+    }
 
+    fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult {
         let mut value = String::new();
 
         let is_tail;

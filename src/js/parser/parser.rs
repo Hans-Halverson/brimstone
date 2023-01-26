@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use super::ast::*;
-use super::lexer::{Lexer, LexerMode, SavedLexerState};
+use super::lexer::{Lexer, SavedLexerState};
 use super::loc::{find_line_col_for_pos, Loc, Pos, EMPTY_LOC};
 use super::source::Source;
 use super::token::Token;
@@ -342,6 +342,15 @@ impl<'a> Parser<'a> {
 
     fn advance(&mut self) -> ParseResult<()> {
         let (token, loc) = self.lexer.next()?;
+        self.prev_loc = self.loc;
+        self.token = token;
+        self.loc = loc;
+
+        Ok(())
+    }
+
+    fn advance_template_part(&mut self) -> ParseResult<()> {
+        let (token, loc) = self.lexer.next_template_part()?;
         self.prev_loc = self.loc;
         self.token = token;
         self.loc = loc;
@@ -2032,7 +2041,6 @@ impl<'a> Parser<'a> {
         is_single_quasi: bool,
     ) -> ParseResult<TemplateLiteral> {
         let start_pos = self.current_start_pos();
-        self.lexer.set_mode(LexerMode::Template);
 
         let head_quasi =
             TemplateElement { loc: self.loc, raw: raw.clone(), cooked: cooked.clone() };
@@ -2046,6 +2054,12 @@ impl<'a> Parser<'a> {
             loop {
                 expressions.push(*self.parse_expression()?);
 
+                if self.token != Token::RightBrace {
+                    return self.error_expected_token(self.loc, &self.token, &Token::RightBrace);
+                }
+
+                self.advance_template_part()?;
+
                 match &self.token {
                     Token::TemplatePart { raw, cooked, is_tail, is_head: false } => {
                         quasis.push(TemplateElement {
@@ -2054,16 +2068,14 @@ impl<'a> Parser<'a> {
                             cooked: cooked.clone(),
                         });
 
-                        if *is_tail {
-                            self.lexer.set_mode(LexerMode::Normal);
-                            self.advance()?;
+                        let is_tail = *is_tail;
+                        self.advance()?;
 
+                        if is_tail {
                             break;
-                        } else {
-                            self.advance()?;
                         }
                     }
-                    _ => return self.error(self.loc, ParseError::ExpectedTemplatePart),
+                    _ => unreachable!("advance_template_part always returns a template part"),
                 }
             }
         }

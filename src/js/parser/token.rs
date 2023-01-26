@@ -125,7 +125,18 @@ impl fmt::Display for Token {
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::StringLiteral(lit) => lit,
             Token::BigIntLiteral(lit) => return write!(f, "{}n", lit.to_string()),
-            Token::TemplatePart { raw, .. } => raw,
+            Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {
+                return write!(f, "`{}`", raw)
+            }
+            Token::TemplatePart { raw, is_head: true, is_tail: false, .. } => {
+                return write!(f, "`{}${{`", raw)
+            }
+            Token::TemplatePart { raw, is_head: false, is_tail: true, .. } => {
+                return write!(f, "}}{}`", raw)
+            }
+            Token::TemplatePart { raw, is_head: false, is_tail: false, .. } => {
+                return write!(f, "}}{}${{`", raw)
+            }
             Token::Plus => "+",
             Token::Minus => "-",
             Token::Multiply => "*",

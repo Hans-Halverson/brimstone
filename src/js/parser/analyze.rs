@@ -27,6 +27,8 @@ pub struct Analyzer {
     breakable_depth: usize,
     // Number of nested iterable statements the visitor is currently inside
     iterable_depth: usize,
+    // Number of nested functions the visitor is currently inside, excluding arrow functions
+    non_arrow_function_depth: usize,
     // Sets of private names bound classes that the visitor is currently inside
     class_private_names_stack: Vec<HashMap<String, PrivateNameUsage>>,
     // The function that the visitor is currently inside, if any
@@ -39,6 +41,7 @@ struct AnalyzerSavedState {
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
+    non_arrow_function_depth: usize,
     current_function: Option<AstPtr<Function>>,
 }
 
@@ -66,6 +69,7 @@ impl<'a> Analyzer {
             label_depth: 0,
             breakable_depth: 0,
             iterable_depth: 0,
+            non_arrow_function_depth: 0,
             class_private_names_stack: vec![],
             current_function: None,
         }
@@ -108,12 +112,24 @@ impl<'a> Analyzer {
         self.dec_breakable_depth();
     }
 
+    fn inc_non_arrow_function_depth(&mut self) {
+        self.non_arrow_function_depth += 1
+    }
+
+    fn dec_non_arrow_function_depth(&mut self) {
+        self.non_arrow_function_depth -= 1
+    }
+
     fn is_in_breakable(&self) -> bool {
         self.breakable_depth > 0
     }
 
     fn is_in_iterable(&self) -> bool {
         self.iterable_depth > 0
+    }
+
+    fn is_in_non_arrow_function(&self) -> bool {
+        self.non_arrow_function_depth > 0
     }
 
     fn is_in_function(&self) -> bool {
@@ -128,6 +144,7 @@ impl<'a> Analyzer {
             label_depth: self.label_depth,
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
+            non_arrow_function_depth: self.non_arrow_function_depth,
             current_function: self.current_function.clone(),
         };
 
@@ -145,6 +162,7 @@ impl<'a> Analyzer {
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
+        self.non_arrow_function_depth = state.non_arrow_function_depth;
         self.current_function = state.current_function;
     }
 }
@@ -210,14 +228,14 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_function_expression(&mut self, func: &mut Function) {
-        self.visit_function_common(func)
+        self.visit_function_common(func, false)
     }
 
     fn visit_arrow_function(&mut self, func: &mut Function) {
         // Arrow functions do not provide an arguments object
         func.is_arguments_object_needed = false;
 
-        self.visit_function_common(func);
+        self.visit_function_common(func, true);
     }
 
     fn visit_class_expression(&mut self, class: &mut Class) {
@@ -339,6 +357,17 @@ impl<'a> AstVisitor for Analyzer {
             _ => {}
         }
     }
+
+    fn visit_meta_property(&mut self, expr: &mut MetaProperty) {
+        match expr.kind {
+            MetaPropertyKind::NewTarget => {
+                if !self.is_in_non_arrow_function() {
+                    self.emit_error(expr.loc, ParseError::NewTargetOutsideFunction);
+                }
+            }
+            MetaPropertyKind::ImportMeta => {}
+        }
+    }
 }
 
 impl Analyzer {
@@ -367,13 +396,17 @@ impl Analyzer {
     fn visit_function_declaration_common(&mut self, func: &mut Function, is_lex_scoped_decl: bool) {
         self.scope_builder.add_func_decl(func, is_lex_scoped_decl);
 
-        self.visit_function_common(func);
+        self.visit_function_common(func, false);
     }
 
-    fn visit_function_common(&mut self, func: &mut Function) {
+    fn visit_function_common(&mut self, func: &mut Function, is_arrow_function: bool) {
         // Save analyzer context before descending into function
         let saved_state = self.save_state();
         self.current_function = Some(AstPtr::from_ref(func));
+
+        if !is_arrow_function {
+            self.inc_non_arrow_function_depth();
+        }
 
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_function_param);
@@ -485,6 +518,10 @@ impl Analyzer {
 
         if func.is_strict_mode {
             self.exit_strict_mode_context();
+        }
+
+        if !is_arrow_function {
+            self.dec_non_arrow_function_depth();
         }
 
         // Restore analyzer context after visiting function
@@ -803,12 +840,18 @@ pub fn analyze_for_eval(
     program: &mut Program,
     source: Rc<Source>,
     private_names: Option<HashMap<String, PrivateNameUsage>>,
+    in_function: bool,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source);
 
     // Initialize private names from surrounding context if supplied
     if let Some(private_names) = private_names {
         analyzer.class_private_names_stack.push(private_names);
+    }
+
+    // If in function increment the non-arrow function depth to allow new.target
+    if in_function {
+        analyzer.inc_non_arrow_function_depth();
     }
 
     analyzer.visit_program(program);

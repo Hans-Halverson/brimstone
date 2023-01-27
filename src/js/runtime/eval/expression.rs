@@ -92,6 +92,10 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::SuperCall(expr) => eval_super_call_expression(cx, expr),
         ast::Expression::Template(lit) => eval_template_literal(cx, lit),
         ast::Expression::TaggedTemplate(expr) => eval_tagged_template_expression(cx, expr),
+        ast::Expression::MetaProperty(expr) => match expr.kind {
+            ast::MetaPropertyKind::NewTarget => eval_new_target(cx),
+            ast::MetaPropertyKind::ImportMeta => unimplemented!("import.meta"),
+        },
     }
 }
 
@@ -637,6 +641,14 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
         .insert(AstPtr::from_ref(lit), template_object);
 
     template_object
+}
+
+// 13.3.12.1 NewTarget Evaluation
+fn eval_new_target(cx: &mut Context) -> EvalResult<Value> {
+    match get_new_target(cx) {
+        None => Value::undefined().into(),
+        Some(new_target) => new_target.into(),
+    }
 }
 
 // 13.4.2.1 Postfix Increment Evaluation

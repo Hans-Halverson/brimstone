@@ -64,6 +64,7 @@ pub trait AstVisitor: Sized {
             Expression::SuperCall(expr) => self.visit_super_call_expression(expr),
             Expression::Template(lit) => self.visit_template_literal(lit),
             Expression::TaggedTemplate(expr) => self.visit_tagged_template_expression(expr),
+            Expression::MetaProperty(expr) => self.visit_meta_property(expr),
         }
     }
 
@@ -308,6 +309,8 @@ pub trait AstVisitor: Sized {
     fn visit_tagged_template_expression(&mut self, expr: &mut TaggedTemplateExpression) {
         default_visit_tagged_template_expression(self, expr)
     }
+
+    fn visit_meta_property(&mut self, expr: &mut MetaProperty) {}
 
     fn visit_array_pattern(&mut self, patt: &mut ArrayPattern) {
         default_visit_array_pattern(self, patt)

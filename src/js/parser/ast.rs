@@ -574,7 +574,7 @@ pub enum Expression {
     SuperCall(SuperCallExpression),
     Template(TemplateLiteral),
     TaggedTemplate(TaggedTemplateExpression),
-    // TODO: MetaProperty
+    MetaProperty(MetaProperty),
     // TODO: ImportExpression
     // TODO: ChainExpression
 }
@@ -849,6 +849,16 @@ pub struct TaggedTemplateExpression {
     pub loc: Loc,
     pub tag: P<Expression>,
     pub quasi: P<TemplateLiteral>,
+}
+
+pub struct MetaProperty {
+    pub loc: Loc,
+    pub kind: MetaPropertyKind,
+}
+
+pub enum MetaPropertyKind {
+    NewTarget,
+    ImportMeta,
 }
 
 pub enum Pattern {

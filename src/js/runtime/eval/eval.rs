@@ -88,7 +88,7 @@ pub fn perform_eval(
     };
 
     // Analyze source code
-    let analyze_result = analyze_for_eval(&mut ast, source, private_names);
+    let analyze_result = analyze_for_eval(&mut ast, source, private_names, in_function);
     if let Err(errors) = analyze_result {
         // TODO: Return an aggregate error with all syntax errors
         // Choose an arbitrary syntax error to return

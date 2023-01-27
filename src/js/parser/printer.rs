@@ -492,6 +492,7 @@ impl<'a> Printer<'a> {
             Expression::SuperMember(expr) => self.print_super_member_expression(expr),
             Expression::Template(lit) => self.print_template_literal(lit),
             Expression::TaggedTemplate(expr) => self.print_tagged_template_expression(expr),
+            Expression::MetaProperty(expr) => self.print_meta_property(expr),
         }
     }
 
@@ -845,6 +846,23 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
+    fn print_meta_property(&mut self, expr: &MetaProperty) {
+        self.start_node("MetaProperty", &expr.loc);
+
+        match expr.kind {
+            MetaPropertyKind::NewTarget => {
+                self.property("meta", (&expr.loc, "new"), Printer::print_str_as_identifier);
+                self.property("property", (&expr.loc, "target"), Printer::print_str_as_identifier);
+            }
+            MetaPropertyKind::ImportMeta => {
+                self.property("meta", (&expr.loc, "import"), Printer::print_str_as_identifier);
+                self.property("property", (&expr.loc, "meta"), Printer::print_str_as_identifier);
+            }
+        }
+
+        self.end_node();
+    }
+
     fn print_pattern(&mut self, pattern: &Pattern) {
         match pattern {
             Pattern::Id(id) => self.print_identifier(id),
@@ -858,6 +876,12 @@ impl<'a> Printer<'a> {
     fn print_identifier(&mut self, id: &Identifier) {
         self.start_node("Identifier", &id.loc);
         self.property("name", &id.name, Printer::print_string);
+        self.end_node();
+    }
+
+    fn print_str_as_identifier(&mut self, (loc, string): (&Loc, &str)) {
+        self.start_node("Identifier", loc);
+        self.property("name", string, Printer::print_str);
         self.end_node();
     }
 

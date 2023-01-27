@@ -28,6 +28,7 @@ pub enum ParseError {
     InvalidAssignmentLeftHandSide,
     InvalidForLeftHandSide,
     IdentifierIsReservedWord,
+    ExpectedNewTarget,
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -43,6 +44,7 @@ pub enum ParseError {
     PrivateNameOutsideClass,
     PrivateNameNotDefined(String),
     PrivateNameConstructor,
+    NewTargetOutsideFunction,
 }
 
 // Arbitrary error used to fail try parse
@@ -91,6 +93,9 @@ impl fmt::Display for ParseError {
             ParseError::IdentifierIsReservedWord => {
                 write!(f, "Identifier is a reserved word")
             }
+            ParseError::ExpectedNewTarget => {
+                write!(f, "Expected new.target")
+            }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),
             ParseError::WithInStrictMode => {
@@ -128,6 +133,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::PrivateNameConstructor => {
                 write!(f, "Private name not allowed to be #constructor")
+            }
+            ParseError::NewTargetOutsideFunction => {
+                write!(f, "new.target only allowed in functions")
             }
         }
     }
@@ -1720,11 +1728,39 @@ impl<'a> Parser<'a> {
 
     fn parse_new_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
+
+        // Check whether the `new` keyword has any escape sequences
+        let new_has_escapes = self.loc.end - self.loc.start != 3;
+
         self.advance()?;
 
         let callee_start_pos = self.current_start_pos();
         let callee = match self.token {
             Token::New => self.parse_new_expression()?,
+            // Parse new.target meta property
+            Token::Period if !new_has_escapes => {
+                self.advance()?;
+                let error_loc = if let Some(id) = self.parse_identifier_name()? {
+                    if id.name == "target" {
+                        let target_has_escapes = id.loc.end - id.loc.start != 6;
+                        if !target_has_escapes {
+                            let loc = self.mark_loc(start_pos);
+                            return Ok(p(Expression::MetaProperty(MetaProperty {
+                                loc,
+                                kind: MetaPropertyKind::NewTarget,
+                            })));
+                        } else {
+                            id.loc
+                        }
+                    } else {
+                        id.loc
+                    }
+                } else {
+                    self.loc
+                };
+
+                return self.error(error_loc, ParseError::ExpectedNewTarget);
+            }
             _ => self.parse_primary_expression()?,
         };
 

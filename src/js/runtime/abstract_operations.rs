@@ -199,7 +199,7 @@ pub fn length_of_array_like(cx: &mut Context, object: Gc<ObjectValue>) -> EvalRe
 
 // 7.3.20 CreateListFromArrayLike
 pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResult<Vec<Value>> {
-    if object.is_object() {
+    if !object.is_object() {
         return type_error_(cx, "value is not an object");
     }
 

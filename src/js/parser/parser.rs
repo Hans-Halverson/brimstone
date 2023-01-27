@@ -1700,6 +1700,20 @@ impl<'a> Parser<'a> {
 
                 self.parse_call_expression(member_expr, start_pos, allow_call)
             }
+            Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
+                let quasi =
+                    p(self.parse_template_literal(raw.clone(), cooked.clone(), *is_tail)?);
+                let loc = self.mark_loc(start_pos);
+
+                let tagged_template_expr =
+                    p(Expression::TaggedTemplate(TaggedTemplateExpression {
+                        loc,
+                        tag: expr,
+                        quasi,
+                    }));
+
+                self.parse_call_expression(tagged_template_expr, start_pos, allow_call)
+            }
             _ => Ok(expr),
         }
     }
@@ -2060,22 +2074,21 @@ impl<'a> Parser<'a> {
 
                 self.advance_template_part()?;
 
-                match &self.token {
-                    Token::TemplatePart { raw, cooked, is_tail, is_head: false } => {
-                        quasis.push(TemplateElement {
-                            loc: self.loc,
-                            raw: raw.clone(),
-                            cooked: cooked.clone(),
-                        });
+                if let Token::TemplatePart { raw, cooked, is_tail, is_head: false } = &self.token {
+                    quasis.push(TemplateElement {
+                        loc: self.loc,
+                        raw: raw.clone(),
+                        cooked: cooked.clone(),
+                    });
 
-                        let is_tail = *is_tail;
-                        self.advance()?;
+                    let is_tail = *is_tail;
+                    self.advance()?;
 
-                        if is_tail {
-                            break;
-                        }
+                    if is_tail {
+                        break;
                     }
-                    _ => unreachable!("advance_template_part always returns a template part"),
+                } else {
+                    unreachable!("advance_template_part always returns a template part")
                 }
             }
         }

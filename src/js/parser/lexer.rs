@@ -998,9 +998,19 @@ impl<'a> Lexer<'a> {
                         value.push('\x0C');
                         self.advance2()
                     }
-                    '0' if self.peek2() < '0' || self.peek2() > '9' => {
-                        value.push('\x00');
-                        self.advance2()
+                    '0' => {
+                        if self.peek2() < '0' || self.peek2() > '9' {
+                            value.push('\x00');
+                            self.advance2()
+                        } else {
+                            let loc = self.mark_loc(self.pos);
+                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                        }
+                    }
+                    // Invalid octal escape sequence
+                    '1'..='9' => {
+                        let loc = self.mark_loc(self.pos);
+                        return self.error(loc, ParseError::MalformedEscapeSeqence);
                     }
                     // Hex escape sequence
                     'x' => {

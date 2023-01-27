@@ -1,0 +1,115 @@
+{
+  type: "Program",
+  loc: "1:0-3:12",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:8",
+      kind: {
+        type: "TaggedTemplateExpression",
+        loc: "1:0-1:7",
+        tag: {
+          type: "Identifier",
+          loc: "1:0-1:1",
+          name: "a",
+        },
+        quasi: {
+          type: "TemplateLiteral",
+          loc: "1:1-1:7",
+          quasis: [
+            {
+              type: "TemplateElement",
+              loc: "1:1-1:7",
+              value: {
+                cooked: "text",
+                raw: "text",
+              },
+              tail: true,
+            },
+          ],
+          expressions: [],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:10",
+      kind: {
+        type: "TaggedTemplateExpression",
+        loc: "2:0-2:9",
+        tag: {
+          type: "MemberExpression",
+          loc: "2:0-2:3",
+          object: {
+            type: "Identifier",
+            loc: "2:0-2:1",
+            name: "a",
+          },
+          property: {
+            type: "Identifier",
+            loc: "2:2-2:3",
+            name: "b",
+          },
+          computed: false,
+          optional: false,
+        },
+        quasi: {
+          type: "TemplateLiteral",
+          loc: "2:3-2:9",
+          quasis: [
+            {
+              type: "TemplateElement",
+              loc: "2:3-2:9",
+              value: {
+                cooked: "text",
+                raw: "text",
+              },
+              tail: true,
+            },
+          ],
+          expressions: [],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:12",
+      kind: {
+        type: "BinaryExpression",
+        loc: "3:0-3:11",
+        operator: "+",
+        left: {
+          type: "Identifier",
+          loc: "3:0-3:1",
+          name: "a",
+        },
+        right: {
+          type: "TaggedTemplateExpression",
+          loc: "3:4-3:11",
+          tag: {
+            type: "Identifier",
+            loc: "3:4-3:5",
+            name: "b",
+          },
+          quasi: {
+            type: "TemplateLiteral",
+            loc: "3:5-3:11",
+            quasis: [
+              {
+                type: "TemplateElement",
+                loc: "3:5-3:11",
+                value: {
+                  cooked: "text",
+                  raw: "text",
+                },
+                tail: true,
+              },
+            ],
+            expressions: [],
+          },
+        },
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

@@ -125,6 +125,7 @@ builtin_names!(
     (prevent_extensions, "preventExtensions"),
     (property_is_enumerable, "propertyIsEnumerable"),
     (prototype, "prototype"),
+    (raw, "raw"),
     (replace, "replace"),
     (return_, "return"),
     (search, "search"),

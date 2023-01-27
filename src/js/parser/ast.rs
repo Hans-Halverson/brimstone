@@ -1,3 +1,5 @@
+use std::hash;
+
 use num_bigint::BigInt;
 
 use crate::{js::runtime::completion::EvalResult, maybe};
@@ -28,6 +30,20 @@ impl<T: ?Sized> AstPtr<T> {
 impl<T: ?Sized> Clone for AstPtr<T> {
     fn clone(&self) -> AstPtr<T> {
         AstPtr { ptr: self.ptr }
+    }
+}
+
+impl<T> PartialEq for AstPtr<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr == other.ptr
+    }
+}
+
+impl<T> Eq for AstPtr<T> {}
+
+impl<T> hash::Hash for AstPtr<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.ptr.hash(state);
     }
 }
 

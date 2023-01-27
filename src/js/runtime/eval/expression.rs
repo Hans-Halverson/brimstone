@@ -4,12 +4,12 @@ use num_bigint::{BigInt, Sign};
 
 use crate::{
     js::{
-        parser::ast::{self, UpdateOperator},
+        parser::ast::{self, AstPtr, UpdateOperator},
         runtime::{
             abstract_operations::{
                 call, call_object, construct, copy_data_properties, create_data_property_or_throw,
-                get_method, has_property, initialize_instance_elements, ordinary_has_instance,
-                private_get,
+                define_property_or_throw, get_method, has_property, initialize_instance_elements,
+                ordinary_has_instance, private_get,
             },
             array_object::array_create,
             completion::EvalResult,
@@ -25,6 +25,7 @@ use crate::{
             object_value::{Object, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
+            property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             reference::{Reference, ReferenceBase},
             type_utilities::{
@@ -90,7 +91,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::SuperMember(expr) => eval_super_member_expression(cx, expr),
         ast::Expression::SuperCall(expr) => eval_super_call_expression(cx, expr),
         ast::Expression::Template(lit) => eval_template_literal(cx, lit),
-        ast::Expression::TaggedTemplate(_) => unimplemented!("tagged template literal"),
+        ast::Expression::TaggedTemplate(expr) => eval_tagged_template_expression(cx, expr),
     }
 }
 
@@ -387,18 +388,26 @@ fn eval_new_expression(cx: &mut Context, expr: &ast::NewExpression) -> EvalResul
     maybe!(construct(cx, constructor.as_object(), &arg_values, None)).into()
 }
 
-// 13.3.6.1 Call Expression Evaluation
-fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalResult<Value> {
-    let callee_reference = match expr.callee.as_ref() {
-        ast::Expression::Id(id) => Some(maybe!(eval_identifier_to_reference(cx, &id))),
+#[inline]
+fn maybe_eval_expression_to_reference(
+    cx: &mut Context,
+    expr: &ast::Expression,
+) -> EvalResult<Option<Reference>> {
+    match expr {
+        ast::Expression::Id(id) => Some(maybe!(eval_identifier_to_reference(cx, &id))).into(),
         ast::Expression::Member(expr) => {
-            Some(maybe!(eval_member_expression_to_reference(cx, &expr)))
+            Some(maybe!(eval_member_expression_to_reference(cx, &expr))).into()
         }
         ast::Expression::SuperMember(expr) => {
-            Some(maybe!(eval_super_member_expression_to_reference(cx, &expr)))
+            Some(maybe!(eval_super_member_expression_to_reference(cx, &expr))).into()
         }
-        _ => None,
-    };
+        _ => None.into(),
+    }
+}
+
+// 13.3.6.1 Call Expression Evaluation
+fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalResult<Value> {
+    let callee_reference = maybe!(maybe_eval_expression_to_reference(cx, expr.callee.as_ref()));
 
     let (func_value, this_value) = match callee_reference {
         Some(reference) => {
@@ -552,19 +561,95 @@ fn eval_argument_list(cx: &mut Context, arguments: &[ast::CallArgument]) -> Eval
     arg_values.into()
 }
 
+// 13.3.11.1 Tagged Template Evaluation
+fn eval_tagged_template_expression(
+    cx: &mut Context,
+    expr: &ast::TaggedTemplateExpression,
+) -> EvalResult<Value> {
+    let (func_value, this_value) = match maybe!(maybe_eval_expression_to_reference(cx, &expr.tag)) {
+        Some(reference) => {
+            let func_value = maybe!(reference.get_value(cx));
+
+            let this_value = match reference.base() {
+                ReferenceBase::Property { .. } => reference.get_this_value(),
+                ReferenceBase::Env { env, .. } => match env.with_base_object() {
+                    Some(base_object) => base_object.into(),
+                    None => Value::undefined(),
+                },
+                _ => unreachable!(),
+            };
+
+            (func_value, this_value)
+        }
+        None => {
+            let func_value = maybe!(eval_expression(cx, &expr.tag));
+            (func_value, Value::undefined())
+        }
+    };
+
+    let template_object = get_template_object(cx, &expr.quasi).into();
+
+    let mut arg_values = vec![template_object];
+    for expr in &expr.quasi.expressions {
+        arg_values.push(maybe!(eval_expression(cx, expr)));
+    }
+
+    if !is_callable(func_value) {
+        return type_error_(cx, "value is not a function");
+    }
+
+    call(cx, func_value, this_value, &arg_values)
+}
+
+// 13.2.8.3 GetTemplateObject
+fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<ObjectValue> {
+    // Template object is cached in realm's template registery
+    let realm = cx.current_realm();
+    if let Some(template_object) = realm.template_map.get(&AstPtr::from_ref(lit)) {
+        return *template_object;
+    }
+
+    let num_strings = lit.quasis.len();
+    let template_object: Gc<ObjectValue> = must!(array_create(cx, num_strings as u64, None)).into();
+    let raw_object: Gc<ObjectValue> = must!(array_create(cx, num_strings as u64, None)).into();
+
+    for (i, quasi) in lit.quasis.iter().enumerate() {
+        let index_key = PropertyKey::array_index(i as u32);
+
+        let cooked_value = cx.get_interned_string(&quasi.cooked);
+        let cooked_desc = PropertyDescriptor::data(cooked_value.into(), false, true, false);
+        must!(define_property_or_throw(cx, template_object, &index_key, cooked_desc));
+
+        let raw_value = cx.get_interned_string(&quasi.raw);
+        let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
+        must!(define_property_or_throw(cx, raw_object, &index_key, raw_desc));
+    }
+
+    // TODO: Implement SetIntegrityLevel
+
+    let raw_object_desc = PropertyDescriptor::data(raw_object.into(), false, false, false);
+    must!(define_property_or_throw(cx, template_object, &cx.names.raw(), raw_object_desc));
+
+    // TODO: Implement SetIntegrityLevel
+
+    cx.current_realm()
+        .template_map
+        .insert(AstPtr::from_ref(lit), template_object);
+
+    template_object
+}
+
 // 13.4.2.1 Postfix Increment Evaluation
 // 13.4.3.1 Postfix Decrement Evaluation
 // 13.4.4.1 Prefix Increment Evaluation
 // 13.4.5.1 Prefix Decrement Evaluation
 fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> EvalResult<Value> {
-    let mut argument_reference = match expr.argument.as_ref() {
-        ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
-        ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
-        ast::Expression::SuperMember(expr) => {
-            maybe!(eval_super_member_expression_to_reference(cx, &expr))
-        }
-        _ => return reference_error_(cx, "expected a reference"),
-    };
+    let mut argument_reference =
+        match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
+            Some(reference) => reference,
+            _ => return reference_error_(cx, "expected a reference"),
+        };
+
     let old_value = maybe!(argument_reference.get_value(cx));
     let old_value = maybe!(to_numeric(cx, old_value));
 
@@ -598,14 +683,10 @@ fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> Eva
 
 // 13.5.1.2 Delete Expression Evaluation
 fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
-    let reference = match expr.argument.as_ref() {
-        ast::Expression::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
-        ast::Expression::Member(expr) => maybe!(eval_member_expression_to_reference(cx, &expr)),
-        ast::Expression::SuperMember(expr) => {
-            maybe!(eval_super_member_expression_to_reference(cx, &expr))
-        }
-        other => {
-            maybe!(eval_expression(cx, other));
+    let reference = match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
+        Some(reference) => reference,
+        None => {
+            maybe!(eval_expression(cx, expr.argument.as_ref()));
             return true.into();
         }
     };
@@ -640,32 +721,15 @@ fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalRe
 
 // 13.5.3.1 TypeOf Expression Evaluation
 fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Value> {
-    let value = match expr.argument.as_ref() {
-        ast::Expression::Id(id) => {
-            let reference = maybe!(eval_identifier_to_reference(cx, &id));
+    let value = match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
+        Some(reference) => {
             if reference.is_unresolvable_reference() {
                 return cx.heap.alloc_string(String::from("undefined")).into();
             }
 
             maybe!(reference.get_value(cx))
         }
-        ast::Expression::Member(expr) => {
-            let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
-            if reference.is_unresolvable_reference() {
-                return cx.heap.alloc_string(String::from("undefined")).into();
-            }
-
-            maybe!(reference.get_value(cx))
-        }
-        ast::Expression::SuperMember(expr) => {
-            let reference = maybe!(eval_super_member_expression_to_reference(cx, &expr));
-            if reference.is_unresolvable_reference() {
-                return cx.heap.alloc_string(String::from("undefined")).into();
-            }
-
-            maybe!(reference.get_value(cx))
-        }
-        other => maybe!(eval_expression(cx, other)),
+        None => maybe!(eval_expression(cx, expr.argument.as_ref())),
     };
 
     let type_string = match value.get_tag() {

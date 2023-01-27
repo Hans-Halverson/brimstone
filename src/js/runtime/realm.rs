@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use crate::js::parser::ast::{AstPtr, TemplateLiteral};
+
 use super::{
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
@@ -16,6 +20,7 @@ pub struct Realm {
     pub global_env: Gc<GlobalEnvironment>,
     pub global_object: Gc<ObjectValue>,
     pub intrinsics: Intrinsics,
+    pub template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
 }
 
 impl GcDeref for Realm {}
@@ -30,6 +35,7 @@ impl Realm {
             global_env: Gc::uninit(),
             global_object: Gc::uninit(),
             intrinsics: Intrinsics::new_uninit(),
+            template_map: HashMap::new(),
         });
 
         realm.clone().intrinsics.initialize(cx, realm);

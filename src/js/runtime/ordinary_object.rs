@@ -68,6 +68,10 @@ impl OrdinaryObject {
         }
     }
 
+    pub fn is_extensible_raw(&self) -> bool {
+        self.is_extensible
+    }
+
     #[inline]
     fn expand_dense_properties(&mut self, new_length: u32) {
         if let ArrayProperties::Dense(array) = &mut self.array_properties {
@@ -845,13 +849,28 @@ pub fn ordinary_delete(
 pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
     let mut keys: Vec<Value> = vec![];
 
+    ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
+    ordinary_own_string_symbol_property_keys(cx, object, &mut keys);
+
+    keys
+}
+
+#[inline]
+pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
+    cx: &mut Context,
+    object: &OrdinaryObject,
+    keys: &mut Vec<Value>,
+    filter: F,
+) {
     // Return array index properties in numerical order
     match &object.array_properties {
         ArrayProperties::Dense(array) => {
             for (index, value) in array.iter().enumerate() {
-                if !value.value().is_empty() {
-                    let index_string = cx.heap.alloc_string(index.to_string());
-                    keys.push(Value::string(index_string));
+                if filter(index) {
+                    if !value.value().is_empty() {
+                        let index_string = cx.heap.alloc_string(index.to_string());
+                        keys.push(Value::string(index_string));
+                    }
                 }
             }
         }
@@ -861,14 +880,22 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
             indexes_array.sort();
 
             for index in indexes_array {
-                let index_string = cx.heap.alloc_string(index.to_string());
-                keys.push(Value::string(index_string));
+                if filter(index as usize) {
+                    let index_string = cx.heap.alloc_string(index.to_string());
+                    keys.push(Value::string(index_string));
+                }
             }
         }
     }
+}
 
+#[inline]
+pub fn ordinary_own_string_symbol_property_keys(
+    cx: &mut Context,
+    object: &OrdinaryObject,
+    keys: &mut Vec<Value>,
+) {
     // TODO: Return string and symbol keys in order of property creation
-
     for property_key in object.properties.keys() {
         if property_key.as_symbol().is_none() {
             keys.push(property_key.non_symbol_to_string(cx).into());
@@ -880,8 +907,6 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
             keys.push(sym.into());
         }
     }
-
-    keys
 }
 
 // 10.1.12 OrdinaryObjectCreate

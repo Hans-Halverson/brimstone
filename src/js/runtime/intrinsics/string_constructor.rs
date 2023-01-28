@@ -1,93 +1,14 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
-    impl_gc_into,
     js::runtime::{
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        environment::private_environment::PrivateNameId,
-        function::get_argument,
-        gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{
-            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
-        },
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
-        realm::Realm,
-        type_utilities::to_string,
-        value::{StringValue, Value},
-        Context,
+        builtin_function::BuiltinFunction, completion::EvalResult, function::get_argument, gc::Gc,
+        object_value::ObjectValue, ordinary_object::ordinary_create_from_constructor,
+        property::Property, realm::Realm, string_object::StringObject, type_utilities::to_string,
+        value::Value, Context,
     },
     maybe,
 };
 
 use super::{intrinsics::Intrinsic, symbol_prototype::symbol_descriptive_string};
-
-// 10.4.3 String Exotic Objects
-#[repr(C)]
-pub struct StringObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // The string value wrapped by this object
-    string_data: Gc<StringValue>,
-}
-
-impl GcDeref for StringObject {}
-
-impl_gc_into!(StringObject, ObjectValue);
-
-impl StringObject {
-    const VTABLE: *const () = extract_object_vtable::<StringObject>();
-
-    pub fn new(
-        cx: &mut Context,
-        mut object: OrdinaryObject,
-        string_data: Gc<StringValue>,
-    ) -> StringObject {
-        // String objects have an immutable length property
-        let length = string_data.str().len();
-
-        object.set_property(
-            &cx.names.length(),
-            Property::data((length as f64).into(), false, false, false),
-        );
-
-        StringObject { _vtable: Self::VTABLE, object, string_data }
-    }
-
-    pub fn new_from_value(cx: &mut Context, string_data: Gc<StringValue>) -> Gc<StringObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::StringPrototype);
-        let object = ordinary_object_create(proto);
-
-        let string_object = StringObject::new(cx, object, string_data);
-        cx.heap.alloc(string_object)
-    }
-
-    pub fn string_data(&self) -> Gc<StringValue> {
-        self.string_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for StringObject {
-    fn is_string_object(&self) -> bool {
-        true
-    }
-
-    // TODO: Implement string exotic methods
-}
 
 pub struct StringConstructor;
 

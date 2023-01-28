@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-17:6",
+  loc: "1:0-11:5",
   body: [
     {
       type: "ExpressionStatement",
@@ -64,107 +64,42 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:6",
+      loc: "9:0-9:5",
       kind: {
-        type: "UpdateExpression",
-        loc: "9:0-9:5",
-        operator: "++",
+        type: "UnaryExpression",
+        loc: "9:0-9:4",
+        operator: "!",
         argument: {
           type: "UpdateExpression",
-          loc: "9:2-9:5",
+          loc: "9:1-9:4",
           operator: "++",
           argument: {
             type: "Identifier",
-            loc: "9:4-9:5",
+            loc: "9:1-9:2",
             name: "a",
           },
-          prefix: true,
+          prefix: false,
         },
-        prefix: true,
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:6",
+      loc: "11:0-11:5",
       kind: {
-        type: "UpdateExpression",
-        loc: "11:0-11:5",
-        operator: "--",
+        type: "UnaryExpression",
+        loc: "11:0-11:4",
+        operator: "!",
         argument: {
           type: "UpdateExpression",
-          loc: "11:2-11:5",
+          loc: "11:1-11:4",
           operator: "--",
           argument: {
             type: "Identifier",
-            loc: "11:4-11:5",
-            name: "a",
-          },
-          prefix: true,
-        },
-        prefix: true,
-      },
-    },
-    {
-      type: "ExpressionStatement",
-      loc: "13:0-13:6",
-      kind: {
-        type: "UpdateExpression",
-        loc: "13:0-13:5",
-        operator: "++",
-        argument: {
-          type: "UpdateExpression",
-          loc: "13:0-13:3",
-          operator: "++",
-          argument: {
-            type: "Identifier",
-            loc: "13:0-13:1",
+            loc: "11:1-11:2",
             name: "a",
           },
           prefix: false,
         },
-        prefix: false,
-      },
-    },
-    {
-      type: "ExpressionStatement",
-      loc: "15:0-15:6",
-      kind: {
-        type: "UpdateExpression",
-        loc: "15:0-15:5",
-        operator: "--",
-        argument: {
-          type: "UpdateExpression",
-          loc: "15:0-15:3",
-          operator: "--",
-          argument: {
-            type: "Identifier",
-            loc: "15:0-15:1",
-            name: "a",
-          },
-          prefix: false,
-        },
-        prefix: false,
-      },
-    },
-    {
-      type: "ExpressionStatement",
-      loc: "17:0-17:6",
-      kind: {
-        type: "UpdateExpression",
-        loc: "17:0-17:5",
-        operator: "++",
-        argument: {
-          type: "UpdateExpression",
-          loc: "17:2-17:5",
-          operator: "++",
-          argument: {
-            type: "Identifier",
-            loc: "17:2-17:3",
-            name: "a",
-          },
-          prefix: false,
-        },
-        prefix: true,
       },
     },
   ],

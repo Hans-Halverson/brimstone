@@ -9,12 +9,12 @@ use super::{
     gc::Gc,
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
-        number_constructor::NumberObject, string_constructor::StringObject,
-        symbol_constructor::SymbolObject,
+        number_constructor::NumberObject, symbol_constructor::SymbolObject,
     },
     numeric_constants::MAX_SAFE_INTEGER_F64,
     object_value::ObjectValue,
     property_key::PropertyKey,
+    string_object::StringObject,
     string_parsing::parse_string_to_number,
     value::{
         BigIntValue, StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG,
@@ -344,6 +344,32 @@ pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> 
     }
 }
 
+// 7.1.20 ToLength
+pub fn to_length(cx: &mut Context, value: Value) -> EvalResult<u64> {
+    let len = maybe!(to_integer_or_infinity(cx, value));
+    if len <= 0.0 {
+        return 0.into();
+    }
+
+    let len_in_int_range = f64::min(len, MAX_SAFE_INTEGER_F64);
+
+    // Safe since we have guaranteed that length is positive and within safe range
+    let len_u64: u64 = unsafe { len_in_int_range.to_int_unchecked() };
+
+    len_u64.into()
+}
+
+// 7.1.21 CanonicalNumericIndexString
+pub fn canonical_numeric_index_string(key: &PropertyKey) -> Option<u32> {
+    // TODO: Support full safe integer range instead of just array index range
+    if key.is_array_index() {
+        Some(key.as_array_index())
+    } else {
+        None
+    }
+}
+
+// 7.2.1 RequireObjectCoercible
 pub fn require_object_coercible(cx: &mut Context, value: Value) -> EvalResult<Value> {
     if value.is_nullish() {
         if value.is_null() {
@@ -655,19 +681,4 @@ pub fn same_opt_object_value(
         (Some(value1), Some(value2)) => value1.ptr_eq(&value2),
         _ => false,
     }
-}
-
-// 7.1.20 ToLength
-pub fn to_length(cx: &mut Context, value: Value) -> EvalResult<u64> {
-    let len = maybe!(to_integer_or_infinity(cx, value));
-    if len <= 0.0 {
-        return 0.into();
-    }
-
-    let len_in_int_range = f64::min(len, MAX_SAFE_INTEGER_F64);
-
-    // Safe since we have guaranteed that length is positive and within safe range
-    let len_u64: u64 = unsafe { len_in_int_range.to_int_unchecked() };
-
-    len_u64.into()
 }

@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 brimstone = { path = "../.." }
 clap = { version = "4.0.29", features = ["derive"] }
+regex = "1.7.1"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 threadpool = "1.8.1"

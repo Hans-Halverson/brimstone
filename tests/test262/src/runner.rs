@@ -4,6 +4,7 @@ use threadpool::ThreadPool;
 use std::{fs, panic, path::Path, rc::Rc, sync::mpsc::channel};
 
 use crate::{
+    ignored::IgnoredIndex,
     index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
     utils::GenericResult,
 };
@@ -18,6 +19,7 @@ use brimstone::js::{
 
 pub struct TestRunner {
     index: TestIndex,
+    ignored: IgnoredIndex,
     thread_pool: ThreadPool,
     filter: Option<String>,
     feature: Option<String>,
@@ -29,6 +31,7 @@ const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
 impl TestRunner {
     pub fn new(
         index: TestIndex,
+        ignored: IgnoredIndex,
         num_threads: u8,
         filter: Option<String>,
         feature: Option<String>,
@@ -37,7 +40,7 @@ impl TestRunner {
             .num_threads(num_threads.into())
             .thread_stack_size(RUNNER_THREAD_STACK_SIZE)
             .build();
-        TestRunner { index, thread_pool, filter, feature }
+        TestRunner { index, ignored, thread_pool, filter, feature }
     }
 
     pub fn run(&mut self, verbose: bool) -> TestResults {
@@ -104,16 +107,7 @@ impl TestRunner {
             }
         }
 
-        // Always skip tail-call-optimization tests as they cause stack overflow
-        if test
-            .features
-            .iter()
-            .any(|feature| feature == "tail-call-optimization")
-        {
-            return false;
-        }
-
-        true
+        !self.ignored.should_ignore(test)
     }
 }
 

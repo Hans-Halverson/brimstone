@@ -24,6 +24,7 @@ pub enum ParseError {
     AmbiguousLetBracket,
     InvalidAssignmentLeftHandSide,
     InvalidForLeftHandSide,
+    InvalidUpdateExpressionArgument,
     IdentifierIsReservedWord,
     ExpectedNewTarget,
     DuplicateLabel,
@@ -86,6 +87,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidForLeftHandSide => {
                 write!(f, "Invalid left hand side of for statement")
+            }
+            ParseError::InvalidUpdateExpressionArgument => {
+                write!(f, "Invalid increment/decrement operand")
             }
             ParseError::IdentifierIsReservedWord => {
                 write!(f, "Identifier is a reserved word")

@@ -1,0 +1,43 @@
+{
+  // Tests which are always ignored
+  "always": {
+    "tests": [
+      // Incorrect tests due to changed base/property evaluation order
+      // https://github.com/tc39/test262/issues/3407
+      "language/expressions/compound-assignment/S11.13.2_A7.10_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.10_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.11_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.11_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.1_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.1_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.2_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.2_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.3_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.3_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.4_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.4_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.5_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.5_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.6_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.6_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.7_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.7_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.8_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.8_T2.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.9_T1.js",
+      "language/expressions/compound-assignment/S11.13.2_A7.9_T2.js",
+      "language/expressions/postfix-decrement/S11.3.2_A6_T1.js",
+      "language/expressions/postfix-decrement/S11.3.2_A6_T2.js",
+      "language/expressions/postfix-increment/S11.3.1_A6_T1.js",
+      "language/expressions/postfix-increment/S11.3.1_A6_T2.js",
+      "language/expressions/prefix-decrement/S11.4.5_A6_T1.js",
+      "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
+      "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
+      "language/expressions/prefix-increment/S11.4.4_A6_T2.js"
+    ],
+    "features": [
+      // Always skip tail-call-optimization tests as they cause stack overflow
+      "tail-call-optimization"
+    ]
+  }
+}

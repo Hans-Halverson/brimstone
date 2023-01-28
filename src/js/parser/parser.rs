@@ -1355,6 +1355,10 @@ impl<'a> Parser<'a> {
         let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
+        if !self.is_valid_assignment_target(argument.as_ref()) {
+            return self.error(loc, ParseError::InvalidUpdateExpressionArgument);
+        }
+
         Ok(p(Expression::Update(UpdateExpression {
             loc,
             operator,
@@ -1371,6 +1375,10 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<Expression>> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
+
+        if !self.is_valid_assignment_target(argument.as_ref()) {
+            return self.error(loc, ParseError::InvalidUpdateExpressionArgument);
+        }
 
         Ok(p(Expression::Update(UpdateExpression {
             loc,
@@ -2905,6 +2913,25 @@ impl<'a> Parser<'a> {
                 Some(Pattern::Assign(AssignmentPattern { loc, left, right }))
             }
             other_expr => Some(self.reparse_left_hand_side_expression_as_pattern(other_expr)?),
+        }
+    }
+
+    // 8.5.4 AssignmentTargetType
+    fn is_valid_assignment_target(&self, expr: &Expression) -> bool {
+        match expr {
+            Expression::Id(id) => {
+                // Cannot assign to arguments or eval in strict mode
+                if self.in_strict_mode {
+                    match id.name.as_str() {
+                        "arguments" | "eval" => false,
+                        _ => true,
+                    }
+                } else {
+                    true
+                }
+            }
+            Expression::Member(_) | Expression::SuperMember(_) => true,
+            _ => false,
         }
     }
 }

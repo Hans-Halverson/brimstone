@@ -2,7 +2,9 @@ use clap::Parser;
 
 use std::path::Path;
 
-use brimstone_test262::{index::TestIndex, runner::TestRunner, utils::GenericResult};
+use brimstone_test262::{
+    ignored::IgnoredIndex, index::TestIndex, runner::TestRunner, utils::GenericResult,
+};
 
 #[derive(Parser)]
 #[command(about)]
@@ -14,6 +16,10 @@ struct Args {
     /// Path to the test index
     #[arg(long, default_value_t = String::from("test_index.json"))]
     index_path: String,
+
+    /// Path to the ignore file
+    #[arg(long, default_value_t = String::from("ignored_tests.jsonc"))]
+    ignored_path: String,
 
     /// Reindex the test262 test suite
     #[arg(long, default_value_t = false)]
@@ -45,6 +51,7 @@ fn main_impl() -> GenericResult {
 
     let test262_root = Path::new(&args.test262_path).canonicalize().unwrap();
     let index_path = Path::new(&args.index_path);
+    let ignored_path = Path::new(&args.ignored_path);
 
     if args.reindex {
         println!("Indexing test262 test suite...");
@@ -57,7 +64,8 @@ fn main_impl() -> GenericResult {
     }
 
     let index = TestIndex::load_from_file(index_path)?;
-    let mut runner = TestRunner::new(index, args.threads, args.filter, args.feature);
+    let ignored = IgnoredIndex::load_from_file(ignored_path)?;
+    let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);
 
     results.print_to_console(&test262_root);

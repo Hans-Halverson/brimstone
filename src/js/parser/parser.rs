@@ -14,7 +14,6 @@ pub enum ParseError {
     UnknownToken(String),
     UnexpectedToken(Token),
     ExpectedToken(Token, Token),
-    ExpectedTemplatePart,
     InvalidUnicode,
     UnterminatedStringLiteral,
     MalformedEscapeSeqence,
@@ -45,6 +44,8 @@ pub enum ParseError {
     PrivateNameNotDefined(String),
     PrivateNameConstructor,
     NewTargetOutsideFunction,
+    SuperPropertyOutsideMethod,
+    SuperCallOutsideDerivedConstructor,
 }
 
 // Arbitrary error used to fail try parse
@@ -62,7 +63,6 @@ impl fmt::Display for ParseError {
             ParseError::ExpectedToken(actual, expected) => {
                 write!(f, "Unexpected token {}, expected {}", actual, expected)
             }
-            ParseError::ExpectedTemplatePart => write!(f, "Expected }} in template string"),
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
@@ -136,6 +136,12 @@ impl fmt::Display for ParseError {
             }
             ParseError::NewTargetOutsideFunction => {
                 write!(f, "new.target only allowed in functions")
+            }
+            ParseError::SuperPropertyOutsideMethod => {
+                write!(f, "Super property accesses only allowed in methods")
+            }
+            ParseError::SuperCallOutsideDerivedConstructor => {
+                write!(f, "Super calls only allowed in derived constructors")
             }
         }
     }

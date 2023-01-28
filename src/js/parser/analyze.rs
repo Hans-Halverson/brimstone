@@ -27,12 +27,26 @@ pub struct Analyzer {
     breakable_depth: usize,
     // Number of nested iterable statements the visitor is currently inside
     iterable_depth: usize,
-    // Number of nested functions the visitor is currently inside, excluding arrow functions
-    non_arrow_function_depth: usize,
-    // Sets of private names bound classes that the visitor is currently inside
-    class_private_names_stack: Vec<HashMap<String, PrivateNameUsage>>,
-    // The function that the visitor is currently inside, if any
-    current_function: Option<AstPtr<Function>>,
+    // The functions that the visitor is currently inside, if any
+    function_stack: Vec<FunctionStackEntry>,
+    // The classes that the visitor is currently inside, if any
+    class_stack: Vec<ClassStackEntry>,
+}
+
+struct FunctionStackEntry {
+    // Function is optional in case this is a synthetic function entry, e.g. representing analysis
+    // during eval code.
+    func: Option<AstPtr<Function>>,
+    is_arrow_function: bool,
+    is_method: bool,
+    is_derived_constructor: bool,
+}
+
+struct ClassStackEntry {
+    // All private names bound in the body of this class
+    private_names: HashMap<String, PrivateNameUsage>,
+    // Whether this class extends a base class
+    is_derived: bool,
 }
 
 // Saved state from entering a function or class that can be restored from
@@ -41,8 +55,6 @@ struct AnalyzerSavedState {
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
-    non_arrow_function_depth: usize,
-    current_function: Option<AstPtr<Function>>,
 }
 
 pub struct PrivateNameUsage {
@@ -69,9 +81,8 @@ impl<'a> Analyzer {
             label_depth: 0,
             breakable_depth: 0,
             iterable_depth: 0,
-            non_arrow_function_depth: 0,
-            class_private_names_stack: vec![],
-            current_function: None,
+            function_stack: vec![],
+            class_stack: vec![],
         }
     }
 
@@ -112,14 +123,6 @@ impl<'a> Analyzer {
         self.dec_breakable_depth();
     }
 
-    fn inc_non_arrow_function_depth(&mut self) {
-        self.non_arrow_function_depth += 1
-    }
-
-    fn dec_non_arrow_function_depth(&mut self) {
-        self.non_arrow_function_depth -= 1
-    }
-
     fn is_in_breakable(&self) -> bool {
         self.breakable_depth > 0
     }
@@ -129,11 +132,18 @@ impl<'a> Analyzer {
     }
 
     fn is_in_non_arrow_function(&self) -> bool {
-        self.non_arrow_function_depth > 0
+        self.enclosing_non_arrow_function().is_some()
     }
 
     fn is_in_function(&self) -> bool {
-        self.current_function.is_some()
+        !self.function_stack.is_empty()
+    }
+
+    fn enclosing_non_arrow_function(&self) -> Option<&FunctionStackEntry> {
+        self.function_stack
+            .iter()
+            .rev()
+            .find(|func| !func.is_arrow_function)
     }
 
     // Save state before visiting a function or class. This prevents labels and some context from
@@ -144,8 +154,6 @@ impl<'a> Analyzer {
             label_depth: self.label_depth,
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
-            non_arrow_function_depth: self.non_arrow_function_depth,
-            current_function: self.current_function.clone(),
         };
 
         std::mem::swap(&mut self.labels, &mut state.labels);
@@ -162,8 +170,6 @@ impl<'a> Analyzer {
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
-        self.non_arrow_function_depth = state.non_arrow_function_depth;
-        self.current_function = state.current_function;
     }
 }
 
@@ -228,14 +234,28 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_function_expression(&mut self, func: &mut Function) {
-        self.visit_function_common(func, false)
+        self.function_stack.push(FunctionStackEntry {
+            func: Some(AstPtr::from_ref(func)),
+            is_arrow_function: false,
+            is_method: false,
+            is_derived_constructor: false,
+        });
+
+        self.visit_function_common(func)
     }
 
     fn visit_arrow_function(&mut self, func: &mut Function) {
         // Arrow functions do not provide an arguments object
         func.is_arguments_object_needed = false;
 
-        self.visit_function_common(func, true);
+        self.function_stack.push(FunctionStackEntry {
+            func: Some(AstPtr::from_ref(func)),
+            is_arrow_function: true,
+            is_method: false,
+            is_derived_constructor: false,
+        });
+
+        self.visit_function_common(func);
     }
 
     fn visit_class_expression(&mut self, class: &mut Class) {
@@ -350,8 +370,10 @@ impl<'a> AstVisitor for Analyzer {
         // identifiers "arguments" or "eval".
         match id.name.as_str() {
             "arguments" | "eval" => {
-                if let Some(current_function) = &self.current_function {
-                    current_function.as_mut().is_arguments_object_needed = true;
+                if let Some(FunctionStackEntry { func: Some(func), .. }) =
+                    self.enclosing_non_arrow_function()
+                {
+                    func.as_mut().is_arguments_object_needed = true;
                 }
             }
             _ => {}
@@ -367,6 +389,24 @@ impl<'a> AstVisitor for Analyzer {
             }
             MetaPropertyKind::ImportMeta => {}
         }
+    }
+
+    fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
+        match self.enclosing_non_arrow_function() {
+            Some(FunctionStackEntry { is_method: true, .. }) => {}
+            _ => self.emit_error(expr.loc, ParseError::SuperPropertyOutsideMethod),
+        }
+
+        default_visit_super_member_expression(self, expr)
+    }
+
+    fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression) {
+        match self.enclosing_non_arrow_function() {
+            Some(FunctionStackEntry { is_derived_constructor: true, .. }) => {}
+            _ => self.emit_error(expr.loc, ParseError::SuperCallOutsideDerivedConstructor),
+        }
+
+        default_visit_super_call_expression(self, expr)
     }
 }
 
@@ -396,17 +436,19 @@ impl Analyzer {
     fn visit_function_declaration_common(&mut self, func: &mut Function, is_lex_scoped_decl: bool) {
         self.scope_builder.add_func_decl(func, is_lex_scoped_decl);
 
-        self.visit_function_common(func, false);
+        self.function_stack.push(FunctionStackEntry {
+            func: Some(AstPtr::from_ref(func)),
+            is_arrow_function: false,
+            is_method: false,
+            is_derived_constructor: false,
+        });
+
+        self.visit_function_common(func);
     }
 
-    fn visit_function_common(&mut self, func: &mut Function, is_arrow_function: bool) {
+    fn visit_function_common(&mut self, func: &mut Function) {
         // Save analyzer context before descending into function
         let saved_state = self.save_state();
-        self.current_function = Some(AstPtr::from_ref(func));
-
-        if !is_arrow_function {
-            self.inc_non_arrow_function_depth();
-        }
 
         visit_opt!(self, func.id, visit_identifier);
         visit_vec!(self, func.params, visit_function_param);
@@ -520,9 +562,7 @@ impl Analyzer {
             self.exit_strict_mode_context();
         }
 
-        if !is_arrow_function {
-            self.dec_non_arrow_function_depth();
-        }
+        self.function_stack.pop();
 
         // Restore analyzer context after visiting function
         self.restore_state(saved_state);
@@ -624,7 +664,8 @@ impl Analyzer {
             }
         }
 
-        self.class_private_names_stack.push(private_names);
+        self.class_stack
+            .push(ClassStackEntry { private_names, is_derived: class.super_class.is_some() });
 
         // Mark the construtor if it is found, erroring if multiple are found
         let mut constructor = None;
@@ -650,7 +691,7 @@ impl Analyzer {
 
         class.constructor = constructor;
 
-        self.class_private_names_stack.pop();
+        self.class_stack.pop();
 
         self.exit_strict_mode_context();
 
@@ -687,7 +728,17 @@ impl Analyzer {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }
 
-        default_visit_class_method(self, method);
+        self.visit_expression(&mut method.key);
+
+        self.function_stack.push(FunctionStackEntry {
+            func: Some(AstPtr::from_ref(&method.value)),
+            is_arrow_function: false,
+            is_method: true,
+            is_derived_constructor: method.kind == ClassMethodKind::Constructor
+                && self.class_stack.last().unwrap().is_derived,
+        });
+
+        self.visit_function_common(&mut method.value)
     }
 
     fn visit_class_property(&mut self, prop: &mut ClassProperty) {
@@ -806,13 +857,13 @@ impl Analyzer {
     fn visit_private_name_use(&mut self, expr: &Expression) {
         let id = expr.to_id();
 
-        if self.class_private_names_stack.is_empty() {
+        if self.class_stack.is_empty() {
             self.emit_error(id.loc, ParseError::PrivateNameOutsideClass);
         } else {
             // Check if private name is defined in this class or a parent class in its scope
             let mut is_defined = false;
-            for private_names in self.class_private_names_stack.iter().rev() {
-                if private_names.contains_key(&id.name) {
+            for class_entry in self.class_stack.iter().rev() {
+                if class_entry.private_names.contains_key(&id.name) {
                     is_defined = true;
                     break;
                 }
@@ -841,17 +892,26 @@ pub fn analyze_for_eval(
     source: Rc<Source>,
     private_names: Option<HashMap<String, PrivateNameUsage>>,
     in_function: bool,
+    in_method: bool,
+    in_derived_constructor: bool,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source);
 
     // Initialize private names from surrounding context if supplied
     if let Some(private_names) = private_names {
-        analyzer.class_private_names_stack.push(private_names);
+        analyzer
+            .class_stack
+            .push(ClassStackEntry { private_names, is_derived: false });
     }
 
-    // If in function increment the non-arrow function depth to allow new.target
+    // If in function add a synthetic function entry
     if in_function {
-        analyzer.inc_non_arrow_function_depth();
+        analyzer.function_stack.push(FunctionStackEntry {
+            func: None,
+            is_arrow_function: false,
+            is_method: in_method,
+            is_derived_constructor: in_derived_constructor,
+        });
     }
 
     analyzer.visit_program(program);

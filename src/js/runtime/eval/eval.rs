@@ -88,7 +88,14 @@ pub fn perform_eval(
     };
 
     // Analyze source code
-    let analyze_result = analyze_for_eval(&mut ast, source, private_names, in_function);
+    let analyze_result = analyze_for_eval(
+        &mut ast,
+        source,
+        private_names,
+        in_function,
+        in_method,
+        in_derived_constructor,
+    );
     if let Err(errors) = analyze_result {
         // TODO: Return an aggregate error with all syntax errors
         // Choose an arbitrary syntax error to return
@@ -96,7 +103,7 @@ pub fn perform_eval(
         return syntax_error_(cx, &error.to_string());
     }
 
-    // TODO: Check for NewTarget, SuperProperty, SuperCall, and ContainsArguments
+    // TODO: Check for ContainsArguments in class field initializers
 
     let is_strict_eval = is_strict_caller || ast.has_use_strict_directive;
 

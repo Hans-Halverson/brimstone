@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-27:8",
+  loc: "1:0-31:4",
   body: [
     {
       type: "ExpressionStatement",
@@ -202,6 +202,15 @@
             },
           },
         ],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "31:0-31:4",
+      kind: {
+        type: "Identifier",
+        loc: "31:0-31:3",
+        name: "get",
       },
     },
   ],

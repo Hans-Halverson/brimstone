@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 
 use super::loc::calculate_line_offsets;
-use super::parser::ParseResult;
+use super::parse_error::ParseResult;
 
 pub struct Source {
     pub file_path: String,

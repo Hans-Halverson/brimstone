@@ -224,7 +224,7 @@ pub fn function_declaration_instantiation(
                 if instantiated_var_names.insert(&id.name) {
                     let name_value = id_string_value(cx, id);
 
-                    must!(env.create_mutable_binding(cx, name_value, false));
+                    must!(var_env.create_mutable_binding(cx, name_value, false));
 
                     let initial_value = if !parameter_names.contains(id.name.as_str())
                         || function_names.contains(&id.name)

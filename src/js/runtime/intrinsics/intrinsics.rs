@@ -52,6 +52,7 @@ pub enum Intrinsic {
     NumberPrototype,
     ObjectConstructor,
     ObjectPrototype,
+    ObjectPrototypeToString,
     RangeErrorConstructor,
     RangeErrorPrototype,
     ReferenceErrorConstructor,
@@ -172,6 +173,13 @@ impl Intrinsics {
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());
 
         // Properties of other intrinsics
+        let object_prototype = self.get(Intrinsic::ObjectPrototype);
+        let object_prototype_to_string = must!(get(cx, object_prototype, &cx.names.to_string()));
+        register_existing_intrinsic!(
+            ObjectPrototypeToString,
+            object_prototype_to_string.as_object()
+        );
+
         let array_prototype = self.get(Intrinsic::ArrayPrototype);
         let array_prototype_values = must!(get(cx, array_prototype, &cx.names.values()));
         register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());

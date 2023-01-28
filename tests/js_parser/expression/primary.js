@@ -25,3 +25,7 @@ false;
 [...a,...b,...c];
 
 [...a,];
+
+// Contextually keywords
+
+get;

@@ -615,6 +615,7 @@ pub struct BigIntLiteral {
     pub value: BigInt,
 }
 
+#[derive(PartialEq)]
 pub enum UnaryOperator {
     Plus,
     Minus,

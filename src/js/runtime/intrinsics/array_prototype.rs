@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{length_of_array_like, set},
+        abstract_operations::{call_object, length_of_array_like, set},
         array_object::ArrayObject,
         builtin_function::BuiltinFunction,
         error::type_error_,
@@ -14,7 +14,7 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         to_string,
-        type_utilities::to_object,
+        type_utilities::{is_callable, to_object},
         Context, EvalResult, Value,
     },
     maybe,
@@ -50,6 +50,7 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
         object.intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
+        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
@@ -140,6 +141,26 @@ impl ArrayPrototype {
         maybe!(set(cx, object, &cx.names.length(), new_length_value, true));
 
         new_length_value.into()
+    }
+
+    // 23.1.3.31 Array.prototype.toString
+    fn to_string(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let array = maybe!(to_object(cx, this_value));
+        let func = maybe!(get(cx, array, &cx.names.join()));
+
+        let func = if is_callable(func) {
+            func.as_object()
+        } else {
+            cx.current_realm()
+                .get_intrinsic(Intrinsic::ObjectPrototypeToString)
+        };
+
+        call_object(cx, func, array.into(), &[])
     }
 
     // 23.1.3.33 Array.prototype.values

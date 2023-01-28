@@ -6,8 +6,8 @@ use std::{
 use crate::{visit_opt, visit_vec};
 
 use super::{
-    ast::*, ast_visitor::*, loc::Loc, parser::LocalizedParseError, scope::ScopeBuilder,
-    source::Source, LocalizedParseErrors, ParseError,
+    ast::*, ast_visitor::*, loc::Loc, scope::ScopeBuilder, source::Source, LocalizedParseError,
+    LocalizedParseErrors, ParseError,
 };
 
 pub struct Analyzer {
@@ -362,7 +362,26 @@ impl<'a> AstVisitor for Analyzer {
             self.emit_error(prop.loc, ParseError::InvalidPatternInitializer);
         }
 
-        default_visit_property(self, prop);
+        self.visit_expression(&mut prop.key);
+
+        if prop.is_method {
+            let func = if let Some(Expression::Function(func)) = prop.value.as_deref_mut() {
+                func
+            } else {
+                unreachable!("method must have function value");
+            };
+
+            self.function_stack.push(FunctionStackEntry {
+                func: Some(AstPtr::from_ref(func)),
+                is_arrow_function: false,
+                is_method: true,
+                is_derived_constructor: false,
+            });
+
+            self.visit_function_common(func);
+        } else {
+            visit_opt!(self, prop.value, visit_expression);
+        }
     }
 
     fn visit_identifier(&mut self, id: &mut Identifier) {
@@ -407,6 +426,19 @@ impl<'a> AstVisitor for Analyzer {
         }
 
         default_visit_super_call_expression(self, expr)
+    }
+
+    fn visit_unary_expression(&mut self, expr: &mut UnaryExpression) {
+        if expr.operator == UnaryOperator::Delete {
+            match expr.argument.as_ref() {
+                Expression::Id(_) if self.is_in_strict_mode_context() => {
+                    self.emit_error(expr.loc, ParseError::DeleteIdentifierInStrictMode);
+                }
+                _ => {}
+            }
+        }
+
+        default_visit_unary_expression(self, expr);
     }
 }
 

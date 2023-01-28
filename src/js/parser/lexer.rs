@@ -10,7 +10,7 @@ use crate::js::common::unicode::{
 };
 
 use super::loc::{Loc, Pos};
-use super::parser::{LocalizedParseError, ParseError, ParseResult};
+use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
 use super::token::Token;
 use super::unicode_tables::{ID_CONTINUE, ID_START};

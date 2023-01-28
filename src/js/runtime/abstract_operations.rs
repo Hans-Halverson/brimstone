@@ -4,10 +4,11 @@ use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
     array_object::create_array_from_list,
+    bound_function_object::BoundFunctionObject,
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     error::type_error_,
-    eval::class::ClassFieldDefinition,
+    eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
     gc::Gc,
     object_value::ObjectValue,
@@ -218,17 +219,16 @@ pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResul
 }
 
 // 7.3.22 OrdinaryHasInstance
-pub fn ordinary_has_instance(
-    cx: &mut Context,
-    func: Gc<ObjectValue>,
-    object: Value,
-) -> EvalResult<bool> {
-    if !func.is_callable() {
+pub fn ordinary_has_instance(cx: &mut Context, func: Value, object: Value) -> EvalResult<bool> {
+    if !is_callable(func) {
         return false.into();
     }
 
+    let func = func.as_object();
+
     if func.is_bound_function() {
-        unimplemented!("bound function objects")
+        let bound_func = func.cast::<BoundFunctionObject>();
+        return eval_instanceof_expression(cx, object, bound_func.bound_target_function.into());
     }
 
     if !object.is_object() {

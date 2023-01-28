@@ -530,6 +530,22 @@ pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32)
     must!(define_property_or_throw(cx, func, &cx.names.length(), desc))
 }
 
+// Identical to SetFunctionLength, but a None value represents a length of positive infinity
+pub fn set_function_length_maybe_infinity(
+    cx: &mut Context,
+    func: Gc<ObjectValue>,
+    length: Option<i32>,
+) {
+    let length = if let Some(length) = length {
+        Value::smi(length)
+    } else {
+        Value::number(f64::INFINITY)
+    };
+
+    let desc = PropertyDescriptor::data(length, false, false, true);
+    must!(define_property_or_throw(cx, func, &cx.names.length(), desc))
+}
+
 // 8.5.1 InstantiateFunctionObject
 pub fn instantiate_function_object(
     cx: &mut Context,

@@ -1,24 +1,32 @@
+use std::cmp::max;
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     impl_gc_into,
     js::runtime::{
-        abstract_operations::call_object,
+        abstract_operations::{
+            call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
+        },
+        bound_function_object::BoundFunctionObject,
+        builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
-        function::get_argument,
+        function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         gc::{Gc, GcDeref},
+        get,
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::OrdinaryObject,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
-        type_utilities::is_callable,
+        type_utilities::{is_callable, to_integer_or_infinity},
         value::Value,
         Context,
     },
+    maybe, must,
 };
 
 use super::intrinsics::Intrinsic;
@@ -51,8 +59,31 @@ impl FunctionPrototype {
 
         self.object.intrinsic_name_prop(cx, "");
         self.object.instrinsic_length_prop(cx, 0);
+
+        self.object
+            .intrinsic_func(cx, &cx.names.apply(), Self::apply, 2, realm);
+        self.object
+            .intrinsic_func(cx, &cx.names.bind(), Self::bind, 1, realm);
         self.object
             .intrinsic_func(cx, &cx.names.call(), Self::call_intrinsic, 1, realm);
+
+        // [Function.hasInstance] property
+        let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
+        let has_instance_name = cx.heap.alloc_string(String::from("[Function.hasInstance]"));
+        let has_instance_func = BuiltinFunction::create(
+            cx,
+            Self::has_instance,
+            1,
+            &PropertyKey::string_not_number(has_instance_name),
+            Some(realm),
+            None,
+            None,
+        )
+        .into();
+        self.object.set_property(
+            &has_instance_key,
+            Property::data(has_instance_func, false, false, false),
+        );
     }
 
     #[inline]
@@ -63,6 +94,76 @@ impl FunctionPrototype {
     #[inline]
     fn object_mut(&mut self) -> &mut OrdinaryObject {
         &mut self.object
+    }
+
+    // 20.2.3.1 Function.prototype.apply
+    fn apply(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        if !is_callable(this_value) {
+            return type_error_(cx, "value is not a function");
+        }
+
+        let this_arg = get_argument(arguments, 0);
+        let arg_array = get_argument(arguments, 1);
+
+        if arg_array.is_nullish() {
+            call_object(cx, this_value.as_object(), this_arg, &[])
+        } else {
+            let arg_list = maybe!(create_list_from_array_like(cx, arg_array));
+            call_object(cx, this_value.as_object(), this_arg, &arg_list)
+        }
+    }
+
+    // 20.2.3.2 Function.prototype.bind
+    fn bind(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        if !is_callable(this_value) {
+            return type_error_(cx, "value is not a function");
+        }
+
+        let target = this_value.as_object();
+
+        let this_arg = get_argument(arguments, 0);
+        let bound_args = arguments[1..].to_vec();
+        let num_bound_args = bound_args.len();
+
+        let bound_func: Gc<ObjectValue> =
+            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args)).into();
+
+        let mut length = Some(0);
+
+        // Set function length to an integer or infinity based on the inner function's length
+        if maybe!(has_own_property(cx, bound_func, &cx.names.length())) {
+            let target_length_value = maybe!(get(cx, target, &cx.names.length()));
+            if target_length_value.is_number() {
+                let target_length = target_length_value.as_number();
+                if target_length == f64::INFINITY {
+                    length = None;
+                } else if target_length == f64::NEG_INFINITY {
+                    length = Some(0);
+                } else {
+                    let target_len_as_int =
+                        must!(to_integer_or_infinity(cx, target_length_value)) as usize;
+                    length = Some(max(target_len_as_int - num_bound_args, 0) as i32);
+                }
+            }
+        }
+
+        set_function_length_maybe_infinity(cx, bound_func, length);
+
+        let target_name = maybe!(get(cx, target, &cx.names.name()));
+        let name_key = maybe!(PropertyKey::from_value(cx, target_name));
+        set_function_name(cx, bound_func, &name_key, Some("bound"));
+
+        bound_func.into()
     }
 
     // 20.2.3.3 Function.prototype.call
@@ -77,6 +178,16 @@ impl FunctionPrototype {
         }
 
         call_object(cx, this_value.as_object(), get_argument(arguments, 0), &arguments[1..])
+    }
+
+    // 20.2.3.6 Function.prototype [ @@hasInstance ]
+    fn has_instance(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        maybe!(ordinary_has_instance(cx, this_value, get_argument(arguments, 0))).into()
     }
 }
 

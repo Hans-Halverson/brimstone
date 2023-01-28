@@ -908,7 +908,7 @@ fn eval_binary_expression(cx: &mut Context, expr: &ast::BinaryExpression) -> Eva
         ast::BinaryOperator::InstanceOf => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            eval_instanceof_expression(cx, left_value, right_value)
+            maybe!(eval_instanceof_expression(cx, left_value, right_value)).into()
         }
         ast::BinaryOperator::In => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
@@ -1298,7 +1298,11 @@ fn eval_shift_right_logical(
 }
 
 // 13.10.2 InstanceofOperator
-fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> EvalResult<Value> {
+pub fn eval_instanceof_expression(
+    cx: &mut Context,
+    value: Value,
+    target: Value,
+) -> EvalResult<bool> {
     if !target.is_object() {
         return type_error_(cx, "invalid instanceof operand");
     }
@@ -1315,7 +1319,7 @@ fn eval_instanceof_expression(cx: &mut Context, value: Value, target: Value) -> 
         return type_error_(cx, "invalid 'instanceof' operand");
     }
 
-    let has_instance = maybe!(ordinary_has_instance(cx, target_object, value));
+    let has_instance = maybe!(ordinary_has_instance(cx, target, value));
     has_instance.into()
 }
 

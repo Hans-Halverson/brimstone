@@ -70,6 +70,7 @@ builtin_names!(
     (apply, "apply"),
     (arguments, "arguments"),
     (async_iterator, "asyncIterator"),
+    (bind, "bind"),
     (call, "call"),
     (callee, "callee"),
     (caller, "caller"),

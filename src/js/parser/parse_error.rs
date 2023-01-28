@@ -45,6 +45,7 @@ pub enum ParseError {
     NewTargetOutsideFunction,
     SuperPropertyOutsideMethod,
     SuperCallOutsideDerivedConstructor,
+    DuplicateProtoProperty,
 }
 
 impl fmt::Display for ParseError {
@@ -141,6 +142,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::SuperCallOutsideDerivedConstructor => {
                 write!(f, "Super calls only allowed in derived constructors")
+            }
+            ParseError::DuplicateProtoProperty => {
+                write!(f, "Duplicate __proto__ properties are not allowed in object literals")
             }
         }
     }

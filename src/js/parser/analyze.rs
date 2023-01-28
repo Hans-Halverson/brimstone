@@ -357,6 +357,33 @@ impl<'a> AstVisitor for Analyzer {
         default_visit_binary_expression(self, expr);
     }
 
+    fn visit_object_expression(&mut self, expr: &mut ObjectExpression) {
+        // Do not allow duplicate __proto__ initializer properties
+        let mut has_proto_init = false;
+        for property in &expr.properties {
+            if let PropertyKind::Init = property.kind {
+                // Must be a simple proto initializer
+                if !property.is_computed && !property.is_method && property.value.is_some() {
+                    let is_proto_key = match property.key.as_ref() {
+                        Expression::Id(id) if id.name == "__proto__" => true,
+                        Expression::String(lit) if lit.value == "__proto__" => true,
+                        _ => false,
+                    };
+
+                    if is_proto_key {
+                        if has_proto_init {
+                            self.emit_error(property.loc, ParseError::DuplicateProtoProperty);
+                        }
+
+                        has_proto_init = true;
+                    }
+                }
+            }
+        }
+
+        default_visit_object_expression(self, expr);
+    }
+
     fn visit_property(&mut self, prop: &mut Property) {
         if let PropertyKind::PatternInitializer(_) = prop.kind {
             self.emit_error(prop.loc, ParseError::InvalidPatternInitializer);

@@ -796,7 +796,6 @@ pub struct Property {
     pub kind: PropertyKind,
 }
 
-// #[derive(Clone, PartialEq)]
 pub enum PropertyKind {
     Init,
     Get,

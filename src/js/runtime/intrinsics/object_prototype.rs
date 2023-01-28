@@ -6,6 +6,7 @@ use crate::{
         abstract_operations::{get, has_own_property},
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
+        error::type_error_,
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{
@@ -16,8 +17,8 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
-        type_utilities::{same_object_value, to_object, to_property_key},
-        value::Value,
+        type_utilities::{require_object_coercible, same_object_value, to_object, to_property_key},
+        value::{Value, NULL_TAG, OBJECT_TAG},
         Context,
     },
     maybe,
@@ -71,6 +72,14 @@ impl ObjectPrototype {
             .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
         self.object
             .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+
+        self.object.intrinsic_getter_and_setter(
+            cx,
+            &cx.names.__proto__(),
+            Self::get_proto,
+            Self::set_proto,
+            realm,
+        );
     }
 
     #[inline]
@@ -200,6 +209,47 @@ impl ObjectPrototype {
         cx.heap
             .alloc_string(format!("[object {}]", tag_string))
             .into()
+    }
+
+    // 20.1.3.8.1 get Object.prototype.__proto__
+    fn get_proto(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        match maybe!(object.get_prototype_of()) {
+            None => Value::null().into(),
+            Some(prototype) => prototype.into(),
+        }
+    }
+
+    // 20.1.3.8.2 set Object.prototype.__proto__
+    fn set_proto(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+
+        let proto = get_argument(arguments, 0);
+        let proto = match proto.get_tag() {
+            OBJECT_TAG => Some(proto.as_object()),
+            NULL_TAG => None,
+            _ => return Value::undefined().into(),
+        };
+
+        if !object.is_object() {
+            return Value::undefined().into();
+        }
+
+        if !maybe!(object.as_object().set_prototype_of(proto)) {
+            return type_error_(cx, "failed to set object prototype");
+        }
+
+        Value::undefined().into()
     }
 }
 

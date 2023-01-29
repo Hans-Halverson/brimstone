@@ -316,7 +316,7 @@ impl Function {
             FuncKind::Function(func_node) => {
                 let func_node = func_node.as_ref();
                 if func_node.is_async || func_node.is_generator {
-                    unimplemented!("async and generator functions not yet implemented")
+                    unimplemented!("async and generator functions")
                 }
 
                 // 15.2.3 EvaluateFunctionBody
@@ -558,7 +558,7 @@ pub fn instantiate_function_object(
     private_env: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     if func_node.is_async || func_node.is_generator {
-        unimplemented!("async and generator functions not yet implemented")
+        unimplemented!("async and generator functions")
     }
 
     instantiate_ordinary_function_object(cx, func_node, env, private_env)

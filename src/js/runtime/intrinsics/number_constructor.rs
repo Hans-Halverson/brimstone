@@ -153,7 +153,7 @@ impl NumberConstructor {
         } else {
             let numeric_value = maybe!(to_numeric(cx, get_argument(arguments, 0)));
             if numeric_value.is_bigint() {
-                unimplemented!("BigInt")
+                unimplemented!("BigInt conversion to number")
             } else {
                 numeric_value.as_number()
             }

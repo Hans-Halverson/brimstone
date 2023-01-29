@@ -13,8 +13,6 @@ for (var [a] of 1) {}
 
 try {} catch ([a]) {}
 
-// TODO: Reparse expressions
+for ([a] of 1) {}
 
-// for ([a] of 1) {}
-
-// [a] = 1;
+[a] = 1;

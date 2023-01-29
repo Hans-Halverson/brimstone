@@ -132,7 +132,11 @@ impl FunctionPrototype {
         let target = this_value.as_object();
 
         let this_arg = get_argument(arguments, 0);
-        let bound_args = arguments[1..].to_vec();
+        let bound_args = if arguments.is_empty() {
+            Vec::new()
+        } else {
+            arguments[1..].to_vec()
+        };
         let num_bound_args = bound_args.len();
 
         let bound_func: Gc<ObjectValue> =
@@ -177,7 +181,11 @@ impl FunctionPrototype {
             return type_error_(cx, "value is not a function");
         }
 
-        call_object(cx, this_value.as_object(), get_argument(arguments, 0), &arguments[1..])
+        if arguments.is_empty() {
+            call_object(cx, this_value.as_object(), Value::undefined(), &[])
+        } else {
+            call_object(cx, this_value.as_object(), get_argument(arguments, 0), &arguments[1..])
+        }
     }
 
     // 20.2.3.6 Function.prototype [ @@hasInstance ]

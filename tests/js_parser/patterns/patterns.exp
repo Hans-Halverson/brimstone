@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-14:21",
+  loc: "1:0-18:8",
   body: [
     {
       type: "VariableDeclaration",
@@ -193,6 +193,56 @@
         },
       },
       finalizer: null,
+    },
+    {
+      type: "ForOfStatement",
+      loc: "16:0-16:17",
+      left: {
+        type: "ArrayPattern",
+        loc: "16:5-16:8",
+        elements: [
+          {
+            type: "Identifier",
+            loc: "16:6-16:7",
+            name: "a",
+          },
+        ],
+      },
+      right: {
+        type: "Literal",
+        loc: "16:12-16:13",
+        value: 1,
+      },
+      body: {
+        type: "Block",
+        loc: "16:15-16:17",
+        body: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "18:0-18:8",
+      kind: {
+        type: "AssignmentExpression",
+        loc: "18:0-18:7",
+        operator: "=",
+        left: {
+          type: "ArrayPattern",
+          loc: "18:0-18:3",
+          elements: [
+            {
+              type: "Identifier",
+              loc: "18:1-18:2",
+              name: "a",
+            },
+          ],
+        },
+        right: {
+          type: "Literal",
+          loc: "18:6-18:7",
+          value: 1,
+        },
+      },
     },
   ],
   has_use_strict_directive: false,

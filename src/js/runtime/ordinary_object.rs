@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+
 use std::collections::HashMap;
 
 use crate::{impl_gc_into, maybe, must};
@@ -27,7 +29,7 @@ pub struct OrdinaryObject {
     // None represents the null value
     prototype: Option<Gc<ObjectValue>>,
     // String and symbol properties by their property key
-    properties: HashMap<PropertyKey, Property>,
+    properties: IndexMap<PropertyKey, Property>,
     // Array index properties by their property key
     array_properties: ArrayProperties,
     // Private properties with string keys
@@ -50,7 +52,7 @@ impl OrdinaryObject {
         OrdinaryObject {
             _vtable: Self::VTABLE,
             prototype,
-            properties: HashMap::new(),
+            properties: IndexMap::new(),
             array_properties: ArrayProperties::new(),
             private_properties: HashMap::new(),
             is_extensible,
@@ -61,7 +63,7 @@ impl OrdinaryObject {
         OrdinaryObject {
             _vtable: Self::VTABLE,
             prototype: None,
-            properties: HashMap::new(),
+            properties: IndexMap::new(),
             array_properties: ArrayProperties::new(),
             private_properties: HashMap::new(),
             is_extensible: false,
@@ -895,7 +897,6 @@ pub fn ordinary_own_string_symbol_property_keys(
     object: &OrdinaryObject,
     keys: &mut Vec<Value>,
 ) {
-    // TODO: Return string and symbol keys in order of property creation
     for property_key in object.properties.keys() {
         if property_key.as_symbol().is_none() {
             keys.push(property_key.non_symbol_to_string(cx).into());
@@ -914,7 +915,7 @@ pub fn ordinary_object_create(proto: Gc<ObjectValue>) -> OrdinaryObject {
     OrdinaryObject {
         _vtable: OrdinaryObject::VTABLE,
         prototype: Some(proto),
-        properties: HashMap::new(),
+        properties: IndexMap::new(),
         array_properties: ArrayProperties::new(),
         private_properties: HashMap::new(),
         is_extensible: true,
@@ -925,7 +926,7 @@ pub fn ordinary_object_create_optional_proto(prototype: Option<Gc<ObjectValue>>)
     OrdinaryObject {
         _vtable: OrdinaryObject::VTABLE,
         prototype,
-        properties: HashMap::new(),
+        properties: IndexMap::new(),
         array_properties: ArrayProperties::new(),
         private_properties: HashMap::new(),
         is_extensible: true,

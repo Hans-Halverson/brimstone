@@ -214,8 +214,6 @@ fn eval_declaration_instantiation(
         }
     }
 
-    // TODO: Check that all private identifiers are valid
-
     let mut declared_function_names = HashSet::new();
     // Functions to initialize are in reverse order from spec
     let mut functions_to_initialize = vec![];

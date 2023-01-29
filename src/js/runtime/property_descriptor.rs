@@ -69,6 +69,21 @@ impl PropertyDescriptor {
         }
     }
 
+    pub fn attributes(
+        is_writable: Option<bool>,
+        is_enumerable: Option<bool>,
+        is_configurable: Option<bool>,
+    ) -> PropertyDescriptor {
+        PropertyDescriptor {
+            value: None,
+            is_writable,
+            is_enumerable,
+            is_configurable,
+            get: None,
+            set: None,
+        }
+    }
+
     pub fn is_writable(&self) -> bool {
         match self.is_writable {
             None => false,

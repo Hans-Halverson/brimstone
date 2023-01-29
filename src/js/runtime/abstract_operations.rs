@@ -192,6 +192,83 @@ pub fn construct(
     func.construct(cx, arguments, new_target)
 }
 
+#[derive(PartialEq)]
+pub enum IntegrityLevel {
+    Sealed,
+    Frozen,
+}
+
+// 7.3.16 SetIntegrityLevel
+pub fn set_integrity_level(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    level: IntegrityLevel,
+) -> EvalResult<bool> {
+    if !maybe!(object.prevent_extensions()) {
+        return false.into();
+    }
+
+    let keys = object.own_property_keys(cx);
+
+    match level {
+        IntegrityLevel::Sealed => {
+            for key in keys {
+                let key = must!(PropertyKey::from_value(cx, key));
+                let desc = PropertyDescriptor::attributes(None, None, Some(false));
+                maybe!(define_property_or_throw(cx, object, &key, desc));
+            }
+        }
+        IntegrityLevel::Frozen => {
+            for key in keys {
+                let key = must!(PropertyKey::from_value(cx, key));
+                let current_desc = maybe!(object.get_own_property(cx, &key));
+                if let Some(current_desc) = current_desc {
+                    let desc = if current_desc.is_accessor_descriptor() {
+                        PropertyDescriptor::attributes(None, None, Some(false))
+                    } else {
+                        PropertyDescriptor::attributes(Some(false), None, Some(false))
+                    };
+
+                    maybe!(define_property_or_throw(cx, object, &key, desc));
+                }
+            }
+        }
+    }
+
+    true.into()
+}
+
+// 7.3.17 TestIntegrityLevel
+pub fn test_integrity_level(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    level: IntegrityLevel,
+) -> EvalResult<bool> {
+    if maybe!(object.is_extensible()) {
+        return false.into();
+    }
+
+    let keys = object.own_property_keys(cx);
+
+    for key in keys {
+        let key = must!(PropertyKey::from_value(cx, key));
+        let current_desc = maybe!(object.get_own_property(cx, &key));
+        if let Some(current_desc) = current_desc {
+            if let Some(true) = current_desc.is_configurable {
+                return false.into();
+            }
+
+            if level == IntegrityLevel::Frozen && current_desc.is_data_descriptor() {
+                if let Some(true) = current_desc.is_writable {
+                    return false.into();
+                }
+            }
+        }
+    }
+
+    true.into()
+}
+
 // 7.3.19 LengthOfArrayLike
 pub fn length_of_array_like(cx: &mut Context, object: Gc<ObjectValue>) -> EvalResult<u64> {
     let length_value = maybe!(get(cx, object, &cx.names.length()));

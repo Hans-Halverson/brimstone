@@ -1,8 +1,9 @@
 use crate::{
     js::runtime::{
         abstract_operations::{
-            define_property_or_throw, enumerable_own_property_names, has_own_property,
-            is_extensible, KeyOrValue,
+            create_data_property_or_throw, define_property_or_throw, enumerable_own_property_names,
+            has_own_property, is_extensible, set_integrity_level, test_integrity_level,
+            IntegrityLevel, KeyOrValue,
         },
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
@@ -65,7 +66,15 @@ impl ObjectConstructor {
             2,
             realm,
         );
+        func.intrinsic_func(
+            cx,
+            &cx.names.get_own_property_descriptors(),
+            Self::get_own_property_descriptors,
+            1,
+            realm,
+        );
         func.intrinsic_func(cx, &cx.names.entries(), Self::entries, 1, realm);
+        func.intrinsic_func(cx, &cx.names.freeze(), Self::freeze, 1, realm);
         func.intrinsic_func(
             cx,
             &cx.names.get_own_property_names(),
@@ -84,8 +93,11 @@ impl ObjectConstructor {
         func.intrinsic_func(cx, &cx.names.has_own(), Self::has_own, 2, realm);
         func.intrinsic_func(cx, &cx.names.is(), Self::is, 2, realm);
         func.intrinsic_func(cx, &cx.names.is_extensible(), Self::is_extensible, 1, realm);
+        func.intrinsic_func(cx, &cx.names.is_frozen(), Self::is_frozen, 1, realm);
+        func.intrinsic_func(cx, &cx.names.is_sealed(), Self::is_sealed, 1, realm);
         func.intrinsic_func(cx, &cx.names.keys(), Self::keys, 1, realm);
         func.intrinsic_func(cx, &cx.names.prevent_extensions(), Self::prevent_extensions, 1, realm);
+        func.intrinsic_func(cx, &cx.names.seal(), Self::seal, 1, realm);
         func.intrinsic_func(cx, &cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
         func.intrinsic_func(cx, &cx.names.values(), Self::values, 1, realm);
 
@@ -236,6 +248,25 @@ impl ObjectConstructor {
         create_array_from_list(cx, &name_list).into()
     }
 
+    // 20.1.2.6 Object.freeze
+    fn freeze(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = get_argument(arguments, 0);
+        if !object.is_object() {
+            return object.into();
+        }
+
+        if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Frozen)) {
+            return type_error_(cx, "failed to freeze object");
+        }
+
+        object.into()
+    }
+
     // 20.1.2.8 Object.getOwnPropertyDescriptor
     fn get_own_property_descriptor(
         cx: &mut Context,
@@ -250,6 +281,32 @@ impl ObjectConstructor {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }
+    }
+
+    // 20.1.2.9 Object.getOwnPropertyDescriptors
+    fn get_own_property_descriptors(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+
+        let keys = object.own_property_keys(cx);
+
+        let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let descriptors: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(proto)).into();
+
+        for key in keys {
+            let key = must!(PropertyKey::from_value(cx, key));
+            let desc = maybe!(object.get_own_property(cx, &key));
+            if let Some(desc) = desc {
+                let desc_object = from_property_descriptor(cx, desc);
+                must!(create_data_property_or_throw(cx, descriptors, &key, desc_object.into()));
+            }
+        }
+
+        descriptors.into()
     }
 
     // 20.1.2.10 Object.getOwnPropertyNames
@@ -352,6 +409,36 @@ impl ObjectConstructor {
         maybe!(is_extensible(value.as_object())).into()
     }
 
+    // 20.1.2.16 Object.isFrozen
+    fn is_frozen(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !value.is_object() {
+            return type_error_(cx, "expected object");
+        }
+
+        maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen)).into()
+    }
+
+    // 20.1.2.17 Object.isSealed
+    fn is_sealed(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !value.is_object() {
+            return type_error_(cx, "expected object");
+        }
+
+        maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed)).into()
+    }
+
     // 20.1.2.18 Object.keys
     fn keys(
         cx: &mut Context,
@@ -381,6 +468,25 @@ impl ObjectConstructor {
         }
 
         value.into()
+    }
+
+    // 20.1.2.21 Object.seal
+    fn seal(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = get_argument(arguments, 0);
+        if !object.is_object() {
+            return object.into();
+        }
+
+        if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Sealed)) {
+            return type_error_(cx, "failed to seal object");
+        }
+
+        object.into()
     }
 
     // 20.1.2.22 Object.setPrototypeOf

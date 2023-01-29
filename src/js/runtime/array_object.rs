@@ -3,10 +3,11 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{impl_gc_into, maybe, must};
 
 use super::{
-    abstract_operations::create_data_property_or_throw,
+    abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     environment::private_environment::PrivateNameId,
-    error::range_error_,
+    error::{range_error_, type_error_},
     gc::GcDeref,
+    get,
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
     ordinary_object::{
@@ -16,7 +17,7 @@ use super::{
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
-    type_utilities::{to_number, to_uint32},
+    type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
     Context, EvalResult, Gc, Value,
 };
 
@@ -89,7 +90,7 @@ impl Object for ArrayObject {
     // Not part of spec, but needed to return custom length property
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        _: &mut Context,
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string().str() == "length" {
@@ -149,6 +150,54 @@ pub fn array_create(
     must!(array_object.define_own_property(cx, &cx.names.length(), length_desc));
 
     cx.heap.alloc(array_object).into()
+}
+
+// 10.4.2.3 ArraySpeciesCreate
+pub fn array_species_create(
+    cx: &mut Context,
+    original_array: Gc<ObjectValue>,
+    length: u64,
+) -> EvalResult<Gc<ObjectValue>> {
+    if !original_array.is_array() {
+        let array_object: Gc<ObjectValue> = maybe!(array_create(cx, length, None)).into();
+        return array_object.into();
+    }
+
+    let mut constructor = maybe!(get(cx, original_array, &cx.names.constructor()));
+    if is_constructor(constructor) {
+        let this_realm = cx.current_realm();
+        let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
+
+        if !this_realm.ptr_eq(&constructor_realm)
+            && same_object_value(
+                constructor.as_object(),
+                constructor_realm.get_intrinsic(Intrinsic::ArrayConstructor),
+            )
+        {
+            constructor = Value::undefined();
+        }
+    }
+
+    if constructor.is_object() {
+        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        constructor = maybe!(get(cx, constructor.as_object(), &species_key));
+
+        if constructor.is_null() {
+            constructor = Value::undefined();
+        }
+    }
+
+    if constructor.is_undefined() {
+        let array_object: Gc<ObjectValue> = maybe!(array_create(cx, length, None)).into();
+        return array_object.into();
+    }
+
+    if !is_constructor(constructor) {
+        return type_error_(cx, "expected array constructor");
+    }
+
+    let length_value = Value::from_u64(length);
+    construct(cx, constructor.as_object(), &[length_value], None)
 }
 
 // 10.4.2.4 ArraySetLength

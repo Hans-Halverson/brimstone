@@ -251,6 +251,10 @@ impl Object for Function {
     fn is_constructor(&self) -> bool {
         self.has_construct
     }
+
+    fn get_realm(&self, _: &mut Context) -> EvalResult<Gc<Realm>> {
+        self.realm.into()
+    }
 }
 
 impl Function {

@@ -8,10 +8,10 @@ use super::environment::private_environment::PrivateNameId;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
 use super::type_utilities::same_opt_object_value;
-use super::Context;
 use super::{
     completion::EvalResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
 };
+use super::{Context, Realm};
 
 /// Generic object type encompassing ordinary objects and all forms of exotic objects.
 ///
@@ -112,6 +112,10 @@ pub trait Object {
 
     fn is_constructor(&self) -> bool {
         false
+    }
+
+    fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+        cx.current_realm().into()
     }
 
     // Type refinement functions

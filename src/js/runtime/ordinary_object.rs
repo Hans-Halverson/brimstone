@@ -953,7 +953,7 @@ pub fn get_prototype_from_constructor(
     if proto.is_object() {
         proto.as_object().into()
     } else {
-        let realm = maybe!(get_function_realm(constructor));
+        let realm = maybe!(get_function_realm(cx, constructor));
         realm.get_intrinsic(intrinsic_default_proto).into()
     }
 }

@@ -379,6 +379,11 @@ pub fn enumerable_own_property_names(
     properties.into()
 }
 
+// 7.3.25 GetFunctionRealm
+pub fn get_function_realm(cx: &mut Context, func: Gc<ObjectValue>) -> EvalResult<Gc<Realm>> {
+    func.get_realm(cx)
+}
+
 // 7.3.26 CopyDataProperties
 pub fn copy_data_properties(
     cx: &mut Context,
@@ -502,8 +507,4 @@ pub fn initialize_instance_elements(
     }
 
     ().into()
-}
-
-pub fn get_function_realm(func: Gc<ObjectValue>) -> EvalResult<Realm> {
-    unimplemented!()
 }

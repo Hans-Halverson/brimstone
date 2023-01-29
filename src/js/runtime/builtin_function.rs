@@ -202,6 +202,10 @@ impl Object for BuiltinFunction {
     fn is_constructor(&self) -> bool {
         self.has_constructor
     }
+
+    fn get_realm(&self, _: &mut Context) -> EvalResult<Gc<Realm>> {
+        self.realm.into()
+    }
 }
 
 impl Into<Gc<BuiltinFunction>> for &BuiltinFunction {

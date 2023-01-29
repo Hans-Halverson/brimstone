@@ -9,7 +9,7 @@ use crate::{
             abstract_operations::{
                 call, call_object, construct, copy_data_properties, create_data_property_or_throw,
                 define_property_or_throw, get_method, has_property, initialize_instance_elements,
-                ordinary_has_instance, private_get,
+                ordinary_has_instance, private_get, set_integrity_level, IntegrityLevel,
             },
             array_object::array_create,
             completion::EvalResult,
@@ -629,12 +629,12 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
         must!(define_property_or_throw(cx, raw_object, &index_key, raw_desc));
     }
 
-    // TODO: Implement SetIntegrityLevel
+    must!(set_integrity_level(cx, raw_object.into(), IntegrityLevel::Frozen));
 
     let raw_object_desc = PropertyDescriptor::data(raw_object.into(), false, false, false);
     must!(define_property_or_throw(cx, template_object, &cx.names.raw(), raw_object_desc));
 
-    // TODO: Implement SetIntegrityLevel
+    must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
     cx.current_realm()
         .template_map

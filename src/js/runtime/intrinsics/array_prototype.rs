@@ -1,7 +1,9 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{call_object, length_of_array_like, set},
-        array_object::ArrayObject,
+        abstract_operations::{
+            call_object, create_data_property_or_throw, has_property, length_of_array_like, set,
+        },
+        array_object::{array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
         error::type_error_,
         function::get_argument,
@@ -49,6 +51,7 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
+        object.intrinsic_func(cx, &cx.names.map(), Self::map, 1, realm);
         object.intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
@@ -115,6 +118,42 @@ impl ArrayPrototype {
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
+    }
+
+    // 23.1.3.19 Array.prototype.map
+    fn map(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let callback_function = get_argument(arguments, 0);
+        if !is_callable(callback_function) {
+            return type_error_(cx, "expected function");
+        }
+
+        let callback_function = callback_function.as_object();
+        let this_arg = get_argument(arguments, 1);
+
+        let array = maybe!(array_species_create(cx, object, length));
+
+        for i in 0..length {
+            let index_key = PropertyKey::from_u64(i);
+            if maybe!(has_property(cx, object, &index_key)) {
+                let value = maybe!(get(cx, object, &index_key));
+
+                let index_value = Value::from_u64(i);
+                let arguments = [value, index_value, object.into()];
+
+                let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+                maybe!(create_data_property_or_throw(cx, array, &index_key, mapped_value));
+            }
+        }
+
+        array.into()
     }
 
     // 23.1.3.21 Array.prototype.push

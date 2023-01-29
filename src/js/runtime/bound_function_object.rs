@@ -14,7 +14,7 @@ use super::{
     property_key::PropertyKey,
     type_utilities::same_object_value,
     value::Value,
-    Context,
+    Context, Realm,
 };
 
 // 10.4.1 Bound Function Exotic Objects
@@ -113,5 +113,9 @@ impl Object for BoundFunctionObject {
 
     fn is_bound_function(&self) -> bool {
         true
+    }
+
+    fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+        self.bound_target_function.get_realm(cx)
     }
 }

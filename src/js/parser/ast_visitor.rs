@@ -304,13 +304,13 @@ pub trait AstVisitor: Sized {
         default_visit_template_literal(self, expr)
     }
 
-    fn visit_template_element(&mut self, expr: &mut TemplateElement) {}
+    fn visit_template_element(&mut self, _: &mut TemplateElement) {}
 
     fn visit_tagged_template_expression(&mut self, expr: &mut TaggedTemplateExpression) {
         default_visit_tagged_template_expression(self, expr)
     }
 
-    fn visit_meta_property(&mut self, expr: &mut MetaProperty) {}
+    fn visit_meta_property(&mut self, _: &mut MetaProperty) {}
 
     fn visit_array_pattern(&mut self, patt: &mut ArrayPattern) {
         default_visit_array_pattern(self, patt)

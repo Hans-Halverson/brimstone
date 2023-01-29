@@ -121,6 +121,7 @@ builtin_names!(
     (key_for, "keyFor"),
     (length, "length"),
     (log, "log"),
+    (map, "map"),
     (match_, "match"),
     (match_all, "matchAll"),
     (message, "message"),

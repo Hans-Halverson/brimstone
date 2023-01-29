@@ -597,6 +597,14 @@ impl<'a> Parser<'a> {
                 let var_decl = self.parse_variable_declaration(true)?;
                 match self.token {
                     Token::In | Token::Of => {
+                        // Var decl must consist of a single declaration with no initializer to
+                        // match the `var ForBinding` and `ForDeclaration` productions.
+                        if var_decl.declarations.len() != 1
+                            || var_decl.declarations[0].init.is_some()
+                        {
+                            return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
+                        }
+
                         let init = p(ForEachInit::VarDecl(var_decl));
                         self.parse_for_each_statement(init, start_pos)
                     }
@@ -2310,7 +2318,20 @@ impl<'a> Parser<'a> {
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
-        // TODO: Error if getter or setter has wrong number of params
+        // Check for correct number of parameters
+        match kind {
+            PropertyKind::Get => {
+                if !params.is_empty() {
+                    return self.error(loc, ParseError::GetterWrongNumberOfParams);
+                }
+            }
+            PropertyKind::Set => {
+                if params.len() != 1 {
+                    return self.error(loc, ParseError::SetterWrongNumberOfParams);
+                }
+            }
+            _ => {}
+        }
 
         let property = Property {
             loc,

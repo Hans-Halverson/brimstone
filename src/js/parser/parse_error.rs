@@ -27,10 +27,15 @@ pub enum ParseError {
     InvalidUpdateExpressionArgument,
     IdentifierIsReservedWord,
     ExpectedNewTarget,
+    ForEachInitInvalidVarDecl,
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
     DeleteIdentifierInStrictMode,
+    AssignEvalInStrictMode,
+    AssignArgumentsInStrictMode,
+    UseStrictFunctionNonSimpleParameterList,
+    InvalidDuplicateParameters(InvalidDuplicateParametersReason),
     InvalidLabeledFunction(bool),
     ReturnOutsideFunction,
     ContinueOutsideIterable,
@@ -47,6 +52,17 @@ pub enum ParseError {
     SuperPropertyOutsideMethod,
     SuperCallOutsideDerivedConstructor,
     DuplicateProtoProperty,
+    ConstWithoutInitializer,
+    LetNameInLexicalDeclaration,
+    GetterWrongNumberOfParams,
+    SetterWrongNumberOfParams,
+}
+
+#[derive(Debug)]
+pub enum InvalidDuplicateParametersReason {
+    StrictMode,
+    ArrowFunction,
+    Method,
 }
 
 impl fmt::Display for ParseError {
@@ -97,6 +113,9 @@ impl fmt::Display for ParseError {
             ParseError::ExpectedNewTarget => {
                 write!(f, "Expected new.target")
             }
+            ParseError::ForEachInitInvalidVarDecl => {
+                write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
+            }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),
             ParseError::WithInStrictMode => {
@@ -104,6 +123,23 @@ impl fmt::Display for ParseError {
             }
             ParseError::DeleteIdentifierInStrictMode => {
                 write!(f, "Cannot delete variables in strict mode code")
+            }
+            ParseError::AssignEvalInStrictMode => {
+                write!(f, "Cannot assign to 'eval' in strict mode code")
+            }
+            ParseError::AssignArgumentsInStrictMode => {
+                write!(f, "Cannot assign to 'arguments' in strict mode code")
+            }
+            ParseError::UseStrictFunctionNonSimpleParameterList => {
+                write!(f, "'use strict' only allowed in functions with simple parameter lists")
+            }
+            ParseError::InvalidDuplicateParameters(reason) => {
+                let reason_string = match reason {
+                    InvalidDuplicateParametersReason::StrictMode => "strict mode functions",
+                    InvalidDuplicateParametersReason::ArrowFunction => "arrow functions",
+                    InvalidDuplicateParametersReason::Method => "methods",
+                };
+                write!(f, "Duplicate parameters not allowed in {}", reason_string)
             }
             ParseError::InvalidLabeledFunction(true) => write!(f, "Functions cannot be labeled"),
             ParseError::InvalidLabeledFunction(false) => {
@@ -149,6 +185,18 @@ impl fmt::Display for ParseError {
             }
             ParseError::DuplicateProtoProperty => {
                 write!(f, "Duplicate __proto__ properties are not allowed in object literals")
+            }
+            ParseError::ConstWithoutInitializer => {
+                write!(f, "Const declarations must have an initializer")
+            }
+            ParseError::LetNameInLexicalDeclaration => {
+                write!(f, "Lexical declarations can't define a 'let' binding")
+            }
+            ParseError::GetterWrongNumberOfParams => {
+                write!(f, "Getter functions must have no parameters")
+            }
+            ParseError::SetterWrongNumberOfParams => {
+                write!(f, "Setter functions must exactly one parameter")
             }
         }
     }

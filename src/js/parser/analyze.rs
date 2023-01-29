@@ -6,8 +6,12 @@ use std::{
 use crate::{js::parser::parse_error::InvalidDuplicateParametersReason, visit_opt, visit_vec};
 
 use super::{
-    ast::*, ast_visitor::*, loc::Loc, scope::ScopeBuilder, source::Source, LocalizedParseError,
-    LocalizedParseErrors, ParseError,
+    ast::*,
+    ast_visitor::*,
+    loc::Loc,
+    scope::{NameKind, ScopeBuilder},
+    source::Source,
+    LocalizedParseError, LocalizedParseErrors, ParseError,
 };
 
 pub struct Analyzer {
@@ -171,6 +175,26 @@ impl<'a> Analyzer {
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
     }
+
+    fn add_var_declared_id(&mut self, id: &Identifier, kind: NameKind) {
+        let error_opt = self
+            .scope_builder
+            .add_var_declared_name(&id.name, &id.loc, kind);
+
+        if let Some(error) = error_opt {
+            self.emit_error(id.loc, error);
+        }
+    }
+
+    fn add_lex_declared_id(&mut self, id: &Identifier, kind: NameKind) {
+        let error_opt = self
+            .scope_builder
+            .add_lex_declared_name(&id.name, &id.loc, kind);
+
+        if let Some(error) = error_opt {
+            self.emit_error(id.loc, error);
+        }
+    }
 }
 
 impl<'a> AstVisitor for Analyzer {
@@ -200,6 +224,10 @@ impl<'a> AstVisitor for Analyzer {
 
     fn visit_class_declaration(&mut self, class: &mut Class) {
         self.scope_builder.add_class_decl(class);
+
+        if let Some(class_id) = class.id.as_deref() {
+            self.add_lex_declared_id(class_id, NameKind::Class);
+        }
 
         self.visit_class_common(class)
     }
@@ -315,21 +343,25 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
+        self.scope_builder.enter_for_scope();
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_statement(self, stmt);
 
         self.dec_iterable_depth();
+        self.scope_builder.exit_scope();
     }
 
     fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
+        self.scope_builder.enter_for_scope();
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_each_statement(self, stmt);
 
         self.dec_iterable_depth();
+        self.scope_builder.exit_scope();
     }
 
     fn visit_for_each_init(&mut self, init: &mut ForEachInit) {
@@ -337,6 +369,24 @@ impl<'a> AstVisitor for Analyzer {
             ForEachInit::Pattern(patt) => self.visit_pattern(patt),
             ForEachInit::VarDecl(decl) => self.visit_variable_declaration_common(decl, true),
         }
+    }
+
+    fn visit_catch_clause(&mut self, catch: &mut CatchClause) {
+        self.scope_builder.enter_block_scope(&catch.body);
+
+        if let Some(param) = catch.param.as_deref_mut() {
+            self.visit_pattern(param);
+
+            // Parameter bindings are treated as lexical declarations scoped to the catch body
+            param.iter_bound_names(&mut |id| {
+                self.add_lex_declared_id(id, NameKind::CatchParameter);
+                ().into()
+            });
+        }
+
+        default_visit_block(self, &mut catch.body);
+
+        self.scope_builder.exit_scope();
     }
 
     fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
@@ -489,6 +539,14 @@ impl Analyzer {
     fn visit_function_declaration_common(&mut self, func: &mut Function, is_lex_scoped_decl: bool) {
         self.scope_builder.add_func_decl(func, is_lex_scoped_decl);
 
+        if let Some(func_id) = func.id.as_deref() {
+            if is_lex_scoped_decl {
+                self.add_lex_declared_id(func_id, NameKind::Function);
+            } else {
+                self.add_var_declared_id(func_id, NameKind::Function);
+            }
+        }
+
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
             /*is_derived_constructor */ false,
@@ -530,28 +588,19 @@ impl Analyzer {
             }
         }
 
-        visit_vec!(self, func.params, visit_function_param);
-
-        // Visit body inside a new function scope
+        // Enter function scope for params and body
         self.scope_builder.enter_function_scope(func);
 
-        match *func.body {
-            FunctionBody::Block(ref mut block) => {
-                for stmt in &mut block.body {
-                    self.visit_top_level_declaration_statement(stmt)
-                }
-            }
-            FunctionBody::Expression(ref mut expr) => self.visit_expression(expr),
-        }
+        // Visit and analyze function parameters
+        visit_vec!(self, func.params, visit_function_param);
 
         // Static analysis of parameters and other function properties once body has been visited
         let mut has_parameter_expressions = false;
         let mut has_binding_patterns = false;
         let mut has_rest_parameter = false;
         let mut has_duplicate_parameters = false;
+        let mut has_argument_parameter = false;
 
-        // Arguments object may have been set to needed based on analysis of function body
-        let mut is_arguments_object_needed = func.is_arguments_object_needed;
         let mut parameter_names = HashSet::new();
 
         for param in &func.params {
@@ -567,10 +616,13 @@ impl Analyzer {
                         parameter_names.insert(&id.name);
                     }
 
+                    // Function parameters are treated as variable declarations scoped to func body
+                    self.add_var_declared_id(id, NameKind::FunctionParameter);
+
                     // Arguments object is not needed if "arguments" is a bound name in the
                     // function parameters.
                     if id.name == "arguments" {
-                        is_arguments_object_needed = false;
+                        has_argument_parameter = true;
                     }
                 }
                 Pattern::Array(_) => {
@@ -594,6 +646,47 @@ impl Analyzer {
                 Pattern::Reference(_) => {}
             });
         }
+
+        func.has_parameter_expressions = has_parameter_expressions;
+        func.has_simple_parameter_list =
+            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
+        func.has_duplicate_parameters = has_duplicate_parameters;
+
+        // Functions with an explicit "use strict" in their body must have a simple parameter list
+        if func.has_use_strict_directive && !func.has_simple_parameter_list {
+            self.emit_error(func.loc, ParseError::UseStrictFunctionNonSimpleParameterList);
+        }
+
+        // Duplicate parameters are not allowed in certain contexts
+        if has_duplicate_parameters {
+            let invalid_reason = if self.is_in_strict_mode_context() {
+                Some(InvalidDuplicateParametersReason::StrictMode)
+            } else if is_arrow_function {
+                Some(InvalidDuplicateParametersReason::ArrowFunction)
+            } else if is_method {
+                Some(InvalidDuplicateParametersReason::Method)
+            } else {
+                None
+            };
+
+            if let Some(invalid_reason) = invalid_reason {
+                self.emit_error(func.loc, ParseError::InvalidDuplicateParameters(invalid_reason));
+            }
+        }
+
+        // Visit function body
+        match *func.body {
+            FunctionBody::Block(ref mut block) => {
+                for stmt in &mut block.body {
+                    self.visit_top_level_declaration_statement(stmt)
+                }
+            }
+            FunctionBody::Expression(ref mut expr) => self.visit_expression(expr),
+        }
+
+        // Arguments object may have been set to needed based on analysis of function body
+        let mut is_arguments_object_needed =
+            func.is_arguments_object_needed && !has_argument_parameter;
 
         // Arguments object is not needed if "arguments" appears in the lexically declared names, or
         // as a function var declared name.
@@ -624,33 +717,7 @@ impl Analyzer {
             }
         }
 
-        func.has_parameter_expressions = has_parameter_expressions;
-        func.has_simple_parameter_list =
-            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
-        func.has_duplicate_parameters = has_duplicate_parameters;
         func.is_arguments_object_needed = is_arguments_object_needed;
-
-        // Functions with an explicit "use strict" in their body must have a simple parameter list
-        if func.has_use_strict_directive && !func.has_simple_parameter_list {
-            self.emit_error(func.loc, ParseError::UseStrictFunctionNonSimpleParameterList);
-        }
-
-        // Duplicate parameters are not allowed in certain contexts
-        if has_duplicate_parameters {
-            let invalid_reason = if self.is_in_strict_mode_context() {
-                Some(InvalidDuplicateParametersReason::StrictMode)
-            } else if is_arrow_function {
-                Some(InvalidDuplicateParametersReason::ArrowFunction)
-            } else if is_method {
-                Some(InvalidDuplicateParametersReason::Method)
-            } else {
-                None
-            };
-
-            if let Some(invalid_reason) = invalid_reason {
-                self.emit_error(func.loc, ParseError::InvalidDuplicateParameters(invalid_reason));
-            }
-        }
 
         self.scope_builder.exit_scope();
 
@@ -872,6 +939,17 @@ impl Analyzer {
             declaration.iter_bound_names(&mut |id| {
                 if id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
+                }
+
+                ().into()
+            });
+
+            // Add names to scope, checking for redeclarations
+            declaration.iter_bound_names(&mut |id| {
+                match var_decl.kind {
+                    VarKind::Var => self.add_var_declared_id(id, NameKind::Var),
+                    VarKind::Const => self.add_lex_declared_id(id, NameKind::Const),
+                    VarKind::Let => self.add_lex_declared_id(id, NameKind::Let),
                 }
 
                 ().into()

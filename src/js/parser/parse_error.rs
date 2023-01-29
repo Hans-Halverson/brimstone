@@ -2,9 +2,12 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use super::loc::{find_line_col_for_pos, Loc};
-use super::source::Source;
-use super::token::Token;
+use super::{
+    loc::{find_line_col_for_pos, Loc},
+    scope::NameKind,
+    source::Source,
+    token::Token,
+};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -28,6 +31,7 @@ pub enum ParseError {
     IdentifierIsReservedWord,
     ExpectedNewTarget,
     ForEachInitInvalidVarDecl,
+    NameRedeclaration(String, NameKind),
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -115,6 +119,18 @@ impl fmt::Display for ParseError {
             }
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
+            }
+            ParseError::NameRedeclaration(name, kind) => {
+                let kind_string = match kind {
+                    NameKind::Var => "var",
+                    NameKind::Const => "const",
+                    NameKind::Let => "let",
+                    NameKind::Function => "function",
+                    NameKind::FunctionParameter => "function parameter",
+                    NameKind::Class => "class",
+                    NameKind::CatchParameter => "catch parameter",
+                };
+                write!(f, "Redeclaration of {} {}", kind_string, name)
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),

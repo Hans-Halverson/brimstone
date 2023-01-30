@@ -98,6 +98,10 @@ pub trait WithDecls {
 pub struct Program {
     pub loc: Loc,
     pub toplevels: Vec<Toplevel>,
+    // Whether the function is in strict mode, which could be inherited from surrounding context
+    // (e.g. in a direct eval)
+    pub is_strict_mode: bool,
+    // Whether the program has a "use strict" directive
     pub has_use_strict_directive: bool,
 
     pub var_decls: Vec<VarDecl>,
@@ -105,10 +109,16 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn new(loc: Loc, toplevels: Vec<Toplevel>, has_use_strict_directive: bool) -> Program {
+    pub fn new(
+        loc: Loc,
+        toplevels: Vec<Toplevel>,
+        is_strict_mode: bool,
+        has_use_strict_directive: bool,
+    ) -> Program {
         Program {
             loc,
             toplevels,
+            is_strict_mode,
             has_use_strict_directive,
             var_decls: vec![],
             lex_decls: vec![],

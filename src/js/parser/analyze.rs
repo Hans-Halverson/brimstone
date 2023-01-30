@@ -211,7 +211,7 @@ impl<'a> Analyzer {
 
 impl<'a> AstVisitor for Analyzer {
     fn visit_program(&mut self, program: &mut Program) {
-        if program.has_use_strict_directive {
+        if program.is_strict_mode {
             self.enter_strict_mode_context();
         }
 
@@ -225,7 +225,7 @@ impl<'a> AstVisitor for Analyzer {
 
         self.scope_builder.exit_scope();
 
-        if program.has_use_strict_directive {
+        if program.is_strict_mode {
             self.exit_strict_mode_context();
         }
     }

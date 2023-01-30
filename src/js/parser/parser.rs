@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
-        Ok(Program::new(loc, toplevels, has_use_strict_directive))
+        Ok(Program::new(loc, toplevels, self.in_strict_mode, has_use_strict_directive))
     }
 
     fn parse_use_strict_directive(&mut self) -> ParseResult<bool> {
@@ -2961,6 +2961,22 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
+    parser.advance()?;
+
+    Ok(parser.parse_script()?)
+}
+
+pub fn parse_script_for_eval(
+    source: &Rc<Source>,
+    inherit_strict_mode: bool,
+) -> ParseResult<Program> {
+    // Create and prime parser
+    let lexer = Lexer::new(source);
+    let mut parser = Parser::new(lexer);
+
+    // Inherit strict mode from context
+    parser.in_strict_mode = inherit_strict_mode;
+
     parser.advance()?;
 
     Ok(parser.parse_script()?)

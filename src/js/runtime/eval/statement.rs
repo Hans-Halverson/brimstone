@@ -17,6 +17,7 @@ use crate::{
                 pattern::{binding_initialization, id_string_value},
             },
             execution_context::resolve_binding,
+            function::instantiate_function_object,
             gc::Gc,
             iterator::iter_iterator_values,
             property_key::PropertyKey,
@@ -150,6 +151,20 @@ fn block_declaration_instantiation(
                     let name_value = id_string_value(cx, id);
                     env.create_immutable_binding(cx, name_value, true)
                 }))
+            }
+            LexDecl::Func(func_decl) => {
+                let func_node = func_decl.as_ref();
+                let func_id = func_node.id.as_deref().unwrap();
+                let func_name_value = id_string_value(cx, func_id);
+
+                env.create_mutable_binding(cx, func_name_value, false);
+
+                let env_object = to_trait_object(env);
+                let private_env = cx.current_execution_context().private_env;
+                let func_object =
+                    instantiate_function_object(cx, func_node, env_object, private_env);
+
+                must!(env.initialize_binding(cx, func_name_value, func_object.into()));
             }
             _ => must!(lex_decl.iter_bound_names(&mut |id| {
                 let name_value = id_string_value(cx, id);

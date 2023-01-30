@@ -435,8 +435,8 @@ impl ArrayPrototype {
     // 23.1.3.20 Array.prototype.pop
     fn pop(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
+        this_value: Value,
+        _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, this_value));

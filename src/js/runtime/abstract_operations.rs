@@ -111,7 +111,20 @@ pub fn define_property_or_throw(
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
     if !success {
-        return type_error_(cx, &format!("Cannot define property {}", key));
+        return type_error_(cx, &format!("cannot define property {}", key));
+    }
+
+    ().into()
+}
+
+// 7.3.10 DeletePropertyOrThrow
+pub fn delete_property_or_throw(
+    cx: &mut Context,
+    mut object: Gc<ObjectValue>,
+    key: &PropertyKey,
+) -> EvalResult<()> {
+    if !maybe!(object.delete(cx, key)) {
+        return type_error_(cx, &format!("cannot delete property {}", key));
     }
 
     ().into()

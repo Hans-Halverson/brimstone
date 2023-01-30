@@ -70,7 +70,7 @@ pub trait AstVisitor: Sized {
 
     fn visit_pattern(&mut self, patt: &mut Pattern) {
         match patt {
-            Pattern::Id(id) => self.visit_identifier(id),
+            Pattern::Id(id) => self.visit_identifier_pattern(id),
             Pattern::Array(patt) => self.visit_array_pattern(patt),
             Pattern::Object(patt) => self.visit_object_pattern(patt),
             Pattern::Assign(patt) => self.visit_assignment_pattern(patt),
@@ -311,6 +311,10 @@ pub trait AstVisitor: Sized {
     }
 
     fn visit_meta_property(&mut self, _: &mut MetaProperty) {}
+
+    fn visit_identifier_pattern(&mut self, id: &mut Identifier) {
+        default_visit_identifier_pattern(self, id)
+    }
 
     fn visit_array_pattern(&mut self, patt: &mut ArrayPattern) {
         default_visit_array_pattern(self, patt)
@@ -679,6 +683,9 @@ pub fn default_visit_tagged_template_expression<V: AstVisitor>(
 ) {
     visitor.visit_expression(&mut expr.tag);
     visitor.visit_template_literal(&mut expr.quasi);
+}
+pub fn default_visit_identifier_pattern<V: AstVisitor>(visitor: &mut V, id: &mut Identifier) {
+    visitor.visit_identifier(id);
 }
 
 pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut ArrayPattern) {

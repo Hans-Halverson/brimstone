@@ -195,6 +195,18 @@ impl<'a> Analyzer {
             self.emit_error(id.loc, error);
         }
     }
+
+    fn error_if_strict_eval_or_arguments(&mut self, id: &Identifier) {
+        if !self.is_in_strict_mode_context() {
+            return;
+        }
+
+        match id.name.as_str() {
+            "eval" => self.emit_error(id.loc, ParseError::AssignEvalInStrictMode),
+            "arguments" => self.emit_error(id.loc, ParseError::AssignArgumentsInStrictMode),
+            _ => {}
+        }
+    }
 }
 
 impl<'a> AstVisitor for Analyzer {
@@ -511,6 +523,12 @@ impl<'a> AstVisitor for Analyzer {
 
         default_visit_unary_expression(self, expr);
     }
+
+    fn visit_identifier_pattern(&mut self, id: &mut Identifier) {
+        self.error_if_strict_eval_or_arguments(id);
+
+        default_visit_identifier_pattern(self, id)
+    }
 }
 
 impl Analyzer {
@@ -578,13 +596,9 @@ impl Analyzer {
         // Check function name, which cannot be "eval" or "arguments" in strict mode
         visit_opt!(self, func.id, visit_identifier);
 
-        if self.is_in_strict_mode_context() && !is_method {
+        if !is_method {
             if let Some(func_id) = &func.id {
-                if func_id.name == "eval" {
-                    self.emit_error(func_id.loc, ParseError::AssignEvalInStrictMode);
-                } else if func_id.name == "arguments" {
-                    self.emit_error(func_id.loc, ParseError::AssignArgumentsInStrictMode);
-                }
+                self.error_if_strict_eval_or_arguments(func_id);
             }
         }
 
@@ -737,6 +751,10 @@ impl Analyzer {
 
         // Entire class is in strict mode
         self.enter_strict_mode_context();
+
+        if let Some(class_id) = class.id.as_deref() {
+            self.error_if_strict_eval_or_arguments(class_id);
+        }
 
         if let Some(super_class) = class.super_class.as_deref_mut() {
             self.visit_expression(super_class);
@@ -936,6 +954,7 @@ impl Analyzer {
                 self.emit_error(declaration.loc, ParseError::ConstWithoutInitializer);
             }
 
+            // Check for invalid names depending on context
             declaration.iter_bound_names(&mut |id| {
                 if id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);

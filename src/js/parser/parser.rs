@@ -60,6 +60,10 @@ struct Parser<'a> {
     prev_loc: Loc,
     // Whether the parser is currently parsing in strict mode
     in_strict_mode: bool,
+    // Whether the parser is currently in a context where an await expression is allowed
+    allow_await: bool,
+    // Whether the parser is currently in a context where a yield expression is allowed
+    allow_yield: bool,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -69,6 +73,8 @@ struct ParserSaveState {
     loc: Loc,
     prev_loc: Loc,
     in_strict_mode: bool,
+    allow_await: bool,
+    allow_yield: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -80,6 +86,8 @@ impl<'a> Parser<'a> {
             loc: EMPTY_LOC,
             prev_loc: EMPTY_LOC,
             in_strict_mode: false,
+            allow_await: false,
+            allow_yield: false,
         }
     }
 
@@ -95,6 +103,8 @@ impl<'a> Parser<'a> {
             loc: self.loc,
             prev_loc: self.prev_loc,
             in_strict_mode: self.in_strict_mode,
+            allow_await: self.allow_await,
+            allow_yield: self.allow_yield,
         }
     }
 
@@ -104,6 +114,8 @@ impl<'a> Parser<'a> {
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
         self.in_strict_mode = save_state.in_strict_mode;
+        self.allow_await = save_state.allow_await;
+        self.allow_yield = save_state.allow_yield;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -421,12 +433,19 @@ impl<'a> Parser<'a> {
             None
         };
 
+        // Enter async/generator context for parsing the function arguments and body
+        let did_allow_await = self.allow_await;
+        let did_allow_yield = self.allow_yield;
+
+        self.allow_await = is_async;
+        self.allow_yield = is_generator;
+
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
-        Ok(Function::new(
+        let func = Function::new(
             loc,
             id,
             params,
@@ -435,7 +454,12 @@ impl<'a> Parser<'a> {
             is_generator,
             is_strict_mode,
             has_use_strict_directive,
-        ))
+        );
+
+        self.allow_await = did_allow_await;
+        self.allow_yield = did_allow_yield;
+
+        Ok(func)
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
@@ -914,6 +938,8 @@ impl<'a> Parser<'a> {
             // Then try parsing as an arrow function if that doesn't succeed
             Err(err) => match self.try_parse(Parser::parse_arrow_function) {
                 Ok(expr) => Ok(expr),
+                // Preserve arrow function errors
+                err @ Err(LocalizedParseError { error: ParseError::ArrowOnNewLine, .. }) => err,
                 // Error as if parsing a non-arrow assignment if neither match
                 Err(_) => Err(err),
             },
@@ -922,6 +948,11 @@ impl<'a> Parser<'a> {
 
     fn parse_non_arrow_assignment_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
+
+        if self.allow_yield && self.token == Token::Yield {
+            return Ok(p(Expression::Yield(self.parse_yield_expression()?)));
+        }
+
         let expr = self.parse_conditional_expression()?;
 
         let assignment_op = match self.token {
@@ -1016,7 +1047,16 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.expect(Token::Arrow)?;
+        if self.token == Token::Arrow {
+            if self.lexer.is_new_line_before_current() {
+                return self.error(self.loc, ParseError::ArrowOnNewLine);
+            }
+
+            self.advance()?;
+        } else {
+            self.expect(Token::Arrow)?;
+        }
+
         let (body, has_use_strict_directive, is_strict_mode) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
@@ -1044,6 +1084,37 @@ impl<'a> Parser<'a> {
                 self.in_strict_mode,
             ))
         }
+    }
+
+    fn parse_yield_expression(&mut self) -> ParseResult<YieldExpression> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        // Check for the end of an assignment expression, either due to ASI or encountering a token
+        // that signals the end of an assignment expression.
+        if self.maybe_expect_semicolon()? {
+            let loc = self.mark_loc(start_pos);
+            return Ok(YieldExpression { loc, argument: None, is_delegate: false });
+        }
+
+        let is_assignment_expression_end = match self.token {
+            Token::RightParen | Token::RightBracket | Token::Comma | Token::In | Token::Of => true,
+            _ => false,
+        };
+        if is_assignment_expression_end {
+            let loc = self.mark_loc(start_pos);
+            return Ok(YieldExpression { loc, argument: None, is_delegate: false });
+        }
+
+        let is_delegate = self.token == Token::Multiply;
+        if is_delegate {
+            self.advance()?;
+        }
+
+        let argument = Some(self.parse_assignment_expression()?);
+        let loc = self.mark_loc(start_pos);
+
+        return Ok(YieldExpression { loc, argument, is_delegate });
     }
 
     /// 13.14 ConditionalExpression
@@ -1116,6 +1187,7 @@ impl<'a> Parser<'a> {
             Token::Delete => self.parse_unary_expression(UnaryOperator::Delete),
             Token::Increment => self.parse_update_expression_prefix(UpdateOperator::Increment),
             Token::Decrement => self.parse_update_expression_prefix(UpdateOperator::Decrement),
+            Token::Await if self.allow_await => self.parse_await_expression(),
             _ => self.parse_left_hand_side_expression(),
         }
     }
@@ -1403,6 +1475,15 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         Ok(p(Expression::Unary(UnaryExpression { loc, operator, argument })))
+    }
+
+    fn parse_await_expression(&mut self) -> ParseResult<P<Expression>> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+        let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(Expression::Await(AwaitExpression { loc, argument })))
     }
 
     /// 13.3 LeftHandSideExpression
@@ -1784,6 +1865,21 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(Identifier { loc, name })
             }
+            // Contextually allowed as identifier when not in strict mode and not allowing yield
+            // expressions.
+            Token::Yield if !self.in_strict_mode && !self.allow_yield => {
+                let loc = self.loc;
+                let name = self.token.to_string();
+                self.advance()?;
+                Ok(Identifier { loc, name })
+            }
+            // Contextually allowed as identifier when not allowing await expressions
+            Token::Await if !self.allow_await => {
+                let loc = self.loc;
+                let name = self.token.to_string();
+                self.advance()?;
+                Ok(Identifier { loc, name })
+            }
             other => self.error_unexpected_token(self.loc, other),
         }
     }
@@ -1841,6 +1937,8 @@ impl<'a> Parser<'a> {
             | Token::Set
             | Token::Import
             | Token::Export
+            | Token::Await
+            | Token::Yield
             | Token::Enum => {
                 let loc = self.loc;
                 let name = self.token.to_string();
@@ -2313,6 +2411,13 @@ impl<'a> Parser<'a> {
         is_computed: bool,
         is_private: bool,
     ) -> ParseResult<(Property, bool)> {
+        // Enter async/generator context for parsing the function arguments and body
+        let did_allow_await = self.allow_await;
+        let did_allow_yield = self.allow_yield;
+
+        self.allow_await = is_async;
+        self.allow_yield = is_generator;
+
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
@@ -2350,6 +2455,9 @@ impl<'a> Parser<'a> {
                 has_use_strict_directive,
             )))),
         };
+
+        self.allow_await = did_allow_await;
+        self.allow_yield = did_allow_yield;
 
         Ok((property, is_private))
     }

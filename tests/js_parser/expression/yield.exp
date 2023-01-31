@@ -1,0 +1,134 @@
+{
+  type: "Program",
+  loc: "1:0-17:20",
+  body: [
+    {
+      type: "FunctionDeclaration",
+      loc: "1:0-15:1",
+      id: {
+        type: "Identifier",
+        loc: "1:10-1:13",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "1:16-15:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "2:2-2:8",
+            kind: {
+              type: "YieldExpression",
+              loc: "2:2-2:8",
+              argument: null,
+              delegate: false,
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "4:2-4:7",
+            kind: {
+              type: "YieldExpression",
+              loc: "4:2-4:7",
+              argument: null,
+              delegate: false,
+            },
+          },
+          {
+            type: "Block",
+            loc: "6:2-6:11",
+            body: [
+              {
+                type: "ExpressionStatement",
+                loc: "6:4-6:9",
+                kind: {
+                  type: "YieldExpression",
+                  loc: "6:4-6:9",
+                  argument: null,
+                  delegate: false,
+                },
+              },
+            ],
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "8:2-8:10",
+            kind: {
+              type: "YieldExpression",
+              loc: "8:3-8:8",
+              argument: null,
+              delegate: false,
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "10:2-10:10",
+            kind: {
+              type: "ArrayExpression",
+              loc: "10:2-10:9",
+              elements: [
+                {
+                  type: "YieldExpression",
+                  loc: "10:3-10:8",
+                  argument: null,
+                  delegate: false,
+                },
+              ],
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "12:2-12:10",
+            kind: {
+              type: "YieldExpression",
+              loc: "12:2-12:9",
+              argument: {
+                type: "Literal",
+                loc: "12:8-12:9",
+                value: 1,
+              },
+              delegate: false,
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "14:2-14:11",
+            kind: {
+              type: "YieldExpression",
+              loc: "14:2-14:10",
+              argument: {
+                type: "Literal",
+                loc: "14:9-14:10",
+                value: 1,
+              },
+              delegate: true,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "17:0-17:20",
+      id: {
+        type: "Identifier",
+        loc: "17:10-17:15",
+        name: "yield",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "17:18-17:20",
+        body: [],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
+    },
+  ],
+  has_use_strict_directive: false,
+}

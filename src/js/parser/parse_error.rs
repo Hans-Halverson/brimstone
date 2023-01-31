@@ -24,6 +24,7 @@ pub enum ParseError {
     AdjacentNumericSeparators,
     RestTrailingComma,
     ThrowArgumentOnNewLine,
+    ArrowOnNewLine,
     AmbiguousLetBracket,
     InvalidAssignmentLeftHandSide,
     InvalidForLeftHandSide,
@@ -98,6 +99,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::ThrowArgumentOnNewLine => {
                 write!(f, "No line break is allowed between 'throw' and its expression")
+            }
+            ParseError::ArrowOnNewLine => {
+                write!(f, "No line break is allowed between arrow arguments and '=>'")
             }
             ParseError::AmbiguousLetBracket => {
                 write!(f, "Expression cannot start with ambiguous `let [`")

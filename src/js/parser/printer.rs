@@ -780,7 +780,7 @@ impl<'a> Printer<'a> {
     fn print_yield_expression(&mut self, expr: &YieldExpression) {
         self.start_node("YieldExpression", &expr.loc);
         self.property("argument", expr.argument.as_ref(), Printer::print_optional_expression);
-        self.property("delegate", expr.delegate, Printer::print_bool);
+        self.property("delegate", expr.is_delegate, Printer::print_bool);
         self.end_node();
     }
 

@@ -115,6 +115,8 @@ pub enum Token {
     Set,
     Import,
     Export,
+    Await,
+    Yield,
     Enum,
 }
 
@@ -238,6 +240,8 @@ impl fmt::Display for Token {
             Token::Set => "set",
             Token::Import => "import",
             Token::Export => "export",
+            Token::Await => "await",
+            Token::Yield => "yield",
             Token::Enum => "enum",
         };
 

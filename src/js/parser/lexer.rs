@@ -1302,6 +1302,8 @@ impl<'a> Lexer<'a> {
             "set" => Some(Token::Set),
             "import" => Some(Token::Import),
             "export" => Some(Token::Export),
+            "await" => Some(Token::Await),
+            "yield" => Some(Token::Yield),
             "enum" => Some(Token::Enum),
             _ => None,
         }

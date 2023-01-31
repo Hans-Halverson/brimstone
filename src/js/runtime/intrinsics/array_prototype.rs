@@ -235,8 +235,6 @@ impl ArrayPrototype {
                     let result_index_key = PropertyKey::from_u64(result_index);
                     maybe!(create_data_property_or_throw(cx, array, &result_index_key, value));
 
-                    println!("{:X?}", value.as_raw_bits());
-
                     result_index += 1;
                 }
             }

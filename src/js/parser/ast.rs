@@ -827,7 +827,7 @@ pub struct AwaitExpression {
 pub struct YieldExpression {
     pub loc: Loc,
     pub argument: Option<P<Expression>>,
-    pub delegate: bool,
+    pub is_delegate: bool,
 }
 
 pub struct SuperMemberExpression {

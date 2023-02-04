@@ -6,6 +6,7 @@ use std::{fs, panic, path::Path, rc::Rc, sync::mpsc::channel};
 use crate::{
     ignored::IgnoredIndex,
     index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
+    test_262_object::Test262Object,
     utils::GenericResult,
 };
 
@@ -133,6 +134,10 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
     // Each test is executed in its own realm
     let mut cx = Context::new();
     let realm = initialize_host_defined_realm(&mut cx);
+
+    // Add $262 object to the realm's global object
+    let test_262_object = Test262Object::new(&mut cx, realm);
+    Test262Object::install(&mut cx, realm, test_262_object);
 
     // Default harness files are loaded unless running in raw mode
     if test.mode != TestMode::Raw {

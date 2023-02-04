@@ -44,7 +44,7 @@ impl Realm {
     }
 
     // 9.3.3 SetRealmGlobalObject
-    fn set_global_object(
+    pub fn set_global_object(
         &mut self,
         cx: &mut Context,
         global_object: Option<Gc<ObjectValue>>,

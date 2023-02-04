@@ -136,6 +136,8 @@ builtin_names!(
     (next, "next"),
     (of, "of"),
     (own_keys, "ownKeys"),
+    (parse_float, "parseFloat"),
+    (parse_int, "parseInt"),
     (pop, "pop"),
     (pow, "pow"),
     (prevent_extensions, "preventExtensions"),

@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
 use crate::js::common::unicode::{
-    get_binary_value, get_hex_value, get_octal_value, is_continuation_byte, is_decimal_digit,
-    is_newline, is_whitespace,
+    get_binary_value, get_hex_value, get_octal_value, is_ascii, is_ascii_newline,
+    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_unicode_newline,
+    is_unicode_whitespace,
 };
 
-struct StringLexer<'a> {
+pub struct StringLexer<'a> {
     buf: &'a str,
     // Position to start reading from for the next character
     pos: usize,
@@ -25,6 +26,11 @@ impl<'a> StringLexer<'a> {
         lexer.advance()?;
 
         Some(lexer)
+    }
+
+    #[inline]
+    pub fn current(&self) -> char {
+        self.current
     }
 
     pub fn advance(&mut self) -> Option<()> {
@@ -221,41 +227,7 @@ pub fn parse_string_to_number(str: &str) -> Option<f64> {
     }
 
     let parse_float_start_pos = lexer.current_start_pos();
-
-    // Parse digits before dot
-    let has_digits_before_dot = skip_decimal_digits(&mut lexer)?;
-
-    // Parse optional dot followed by digits
-    let has_dot = if lexer.current == '.' {
-        lexer.advance()?;
-        let has_digits_after_dot = skip_decimal_digits(&mut lexer)?;
-
-        // Invalid numeric literal '.', dot must have digits on at least one side
-        if !has_digits_before_dot && !has_digits_after_dot {
-            return None;
-        }
-
-        true
-    } else {
-        false
-    };
-
-    // Parse optional exponent, but only if there were some digits beforehand or after the dot
-    if (lexer.current == 'e' || lexer.current == 'E') && (has_digits_before_dot || has_dot) {
-        lexer.advance()?;
-
-        // Optional sign in exponent
-        if lexer.current == '-' || lexer.current == '+' {
-            lexer.advance()?;
-        }
-
-        // Exponent must have some digits
-        let has_digits_in_exponent = skip_decimal_digits(&mut lexer)?;
-        if !has_digits_in_exponent {
-            return None;
-        }
-    }
-
+    parse_unsigned_decimal_literal(&mut lexer)?;
     let parse_float_end_pos = lexer.current_start_pos();
 
     skip_string_whitespace(&mut lexer)?;
@@ -275,9 +247,20 @@ pub fn parse_string_to_number(str: &str) -> Option<f64> {
     }
 }
 
-fn skip_string_whitespace(lexer: &mut StringLexer) -> Option<()> {
-    while is_whitespace(lexer.current) || is_newline(lexer.current) {
-        lexer.advance()?;
+pub fn skip_string_whitespace(lexer: &mut StringLexer) -> Option<()> {
+    loop {
+        let char = lexer.current();
+        if is_ascii(char) {
+            if is_ascii_whitespace(char) || is_ascii_newline(char) {
+                lexer.advance()?;
+            }
+        } else {
+            if is_unicode_whitespace(char) || is_unicode_newline(char) {
+                lexer.advance()?;
+            }
+        }
+
+        break;
     }
 
     Some(())
@@ -320,4 +303,45 @@ fn non_numeric_literal_with_base(
     }
 
     Some(value as f64)
+}
+
+// Parse an unsigned decimal literal, returning None if an unsigned decimal literal does not appear
+// at the beginning of the lexer. On success return Some, and the lexer will be one character beyond
+// the end of the parsed literal.
+pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
+    // Parse digits before dot
+    let has_digits_before_dot = skip_decimal_digits(lexer)?;
+
+    // Parse optional dot followed by digits
+    let has_dot = if lexer.current == '.' {
+        lexer.advance()?;
+        let has_digits_after_dot = skip_decimal_digits(lexer)?;
+
+        // Invalid numeric literal '.', dot must have digits on at least one side
+        if !has_digits_before_dot && !has_digits_after_dot {
+            return None;
+        }
+
+        true
+    } else {
+        false
+    };
+
+    // Parse optional exponent, but only if there were some digits beforehand or after the dot
+    if (lexer.current == 'e' || lexer.current == 'E') && (has_digits_before_dot || has_dot) {
+        lexer.advance()?;
+
+        // Optional sign in exponent
+        if lexer.current == '-' || lexer.current == '+' {
+            lexer.advance()?;
+        }
+
+        // Exponent must have some digits
+        let has_digits_in_exponent = skip_decimal_digits(lexer)?;
+        if !has_digits_in_exponent {
+            return None;
+        }
+    }
+
+    Some(())
 }

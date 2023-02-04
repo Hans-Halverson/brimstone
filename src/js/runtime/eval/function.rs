@@ -246,7 +246,7 @@ pub fn function_declaration_instantiation(
         var_env
     };
 
-    let lex_env = if !is_strict {
+    let mut lex_env = if !is_strict {
         // Non-strict functions use a separate Environment Record for top-level lexical declarations
         // so that a direct eval can determine whether any var scoped declarations introduced by the
         // eval code conflict with pre-existing top-level lexically scoped declarations.
@@ -263,12 +263,12 @@ pub fn function_declaration_instantiation(
             LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
                 must!(lex_decl.iter_bound_names(&mut |id| {
                     let name_value = id_string_value(cx, id);
-                    env.create_immutable_binding(cx, name_value, true)
+                    lex_env.create_immutable_binding(cx, name_value, true)
                 }))
             }
             _ => must!(lex_decl.iter_bound_names(&mut |id| {
                 let name_value = id_string_value(cx, id);
-                env.create_mutable_binding(cx, name_value, false)
+                lex_env.create_mutable_binding(cx, name_value, false)
             })),
         }
     }

@@ -4,6 +4,8 @@
     "tests": [
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
+      "language/expressions/assignment/target-member-computed-reference-null.js",
+      "language/expressions/assignment/target-member-computed-reference-undefined.js",
       "language/expressions/compound-assignment/S11.13.2_A7.10_T1.js",
       "language/expressions/compound-assignment/S11.13.2_A7.10_T2.js",
       "language/expressions/compound-assignment/S11.13.2_A7.11_T1.js",
@@ -26,6 +28,9 @@
       "language/expressions/compound-assignment/S11.13.2_A7.8_T2.js",
       "language/expressions/compound-assignment/S11.13.2_A7.9_T1.js",
       "language/expressions/compound-assignment/S11.13.2_A7.9_T2.js",
+      "language/expressions/logical-assignment/lgcl-and-assignment-operator-lhs-before-rhs.js",
+      "language/expressions/logical-assignment/lgcl-nullish-assignment-operator-lhs-before-rhs.js",
+      "language/expressions/logical-assignment/lgcl-or-assignment-operator-lhs-before-rhs.js",
       "language/expressions/postfix-decrement/S11.3.2_A6_T1.js",
       "language/expressions/postfix-decrement/S11.3.2_A6_T2.js",
       "language/expressions/postfix-increment/S11.3.1_A6_T1.js",

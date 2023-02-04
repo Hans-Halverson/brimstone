@@ -15,7 +15,10 @@ use crate::{
             completion::EvalResult,
             environment::environment::Environment,
             error::{range_error_, reference_error_, type_error_},
-            eval::pattern::destructuring_assignment_evaluation,
+            eval::{
+                pattern::destructuring_assignment_evaluation,
+                statement::eval_named_anonymous_function_or_expression_if,
+            },
             execution_context::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
@@ -1427,12 +1430,18 @@ fn eval_assignment_expression(
         }
     };
 
+    let is_non_parenthesized_id_predicate = || match expr.left.as_ref() {
+        ast::Pattern::Id(id) if id.loc.start == expr.loc.start => true,
+        _ => false,
+    };
+
     let result_value = match expr.operator {
         ast::AssignmentOperator::Equals => {
-            maybe!(eval_named_anonymous_function_or_expression(
+            maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key()
+                &reference.name_as_property_key(),
+                is_non_parenthesized_id_predicate
             ))
         }
         ast::AssignmentOperator::Add => {
@@ -1501,10 +1510,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
-            maybe!(eval_named_anonymous_function_or_expression(
+            maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key()
+                &reference.name_as_property_key(),
+                is_non_parenthesized_id_predicate,
             ))
         }
         ast::AssignmentOperator::LogicalOr => {
@@ -1513,10 +1523,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
-            maybe!(eval_named_anonymous_function_or_expression(
+            maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key()
+                &reference.name_as_property_key(),
+                is_non_parenthesized_id_predicate
             ))
         }
         ast::AssignmentOperator::NullishCoalesce => {
@@ -1525,10 +1536,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
-            maybe!(eval_named_anonymous_function_or_expression(
+            maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key()
+                &reference.name_as_property_key(),
+                is_non_parenthesized_id_predicate
             ))
         }
     };

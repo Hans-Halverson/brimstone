@@ -1956,7 +1956,7 @@ impl<'a> Parser<'a> {
             | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false"
             | "finally" | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new"
             | "null" | "return" | "super" | "switch" | "this" | "throw" | "true" | "try"
-            | "typeof" | "var" | "void" | "while" | "with" | "yield" => true,
+            | "typeof" | "var" | "void" | "while" | "with" => true,
             // Names that are only reserved in strict mode
             "let" | "static" | "implements" | "interface" | "package" | "private" | "protected"
             | "public"
@@ -1964,6 +1964,7 @@ impl<'a> Parser<'a> {
             {
                 true
             }
+            "yield" => self.in_strict_mode || self.allow_yield,
             _ => false,
         }
     }

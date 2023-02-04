@@ -896,6 +896,13 @@ impl Pattern {
         }
     }
 
+    pub fn to_assign(&self) -> &AssignmentPattern {
+        match self {
+            Pattern::Assign(assign) => assign,
+            _ => panic!("Expected assignment pattern"),
+        }
+    }
+
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
         f(self);
 

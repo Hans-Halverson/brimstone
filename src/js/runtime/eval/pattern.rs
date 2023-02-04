@@ -13,7 +13,7 @@ use crate::{
                     eval_expression, eval_member_expression_to_reference, eval_property_name,
                     eval_super_member_expression_to_reference,
                 },
-                statement::eval_named_anonymous_function_or_expression,
+                statement::eval_named_anonymous_function_or_expression_if,
             },
             execution_context::resolve_binding,
             gc::Gc,
@@ -163,8 +163,16 @@ fn object_binding_initialization(
                 if property_value.is_undefined() {
                     // Only perform named evaluation if the binding is an identifier pattern
                     if binding_value.is_id() {
-                        property_value = maybe!(eval_named_anonymous_function_or_expression(
-                            cx, init, &name_key
+                        let binding_value_id = binding_value.to_id();
+                        let value_key = id_property_key(cx, binding_value_id);
+                        property_value = maybe!(eval_named_anonymous_function_or_expression_if(
+                            cx,
+                            init,
+                            &value_key,
+                            || {
+                                // Only perform named evaluation if id was not parenthesized
+                                binding_value_id.loc.start == property.value.to_assign().loc.start
+                            }
                         ));
                     } else {
                         property_value = maybe!(eval_expression(cx, init));
@@ -269,7 +277,7 @@ fn iterator_binding_initialization(
         };
 
         match element {
-            ast::ArrayPatternElement::Pattern(_) => {
+            ast::ArrayPatternElement::Pattern(pattern) => {
                 let mut value = Value::undefined();
 
                 // Perform a step of the iterator if it is not complete
@@ -306,10 +314,22 @@ fn iterator_binding_initialization(
                     ReferenceOrBindingPattern::Reference(mut reference, initializer) => {
                         if value.is_undefined() {
                             if let Some(initializer) = initializer {
-                                value = maybe!(eval_named_anonymous_function_or_expression(
+                                value = maybe!(eval_named_anonymous_function_or_expression_if(
                                     cx,
                                     initializer,
                                     &reference.name_as_property_key(),
+                                    || {
+                                        // Only perform named evaluation if pattern is unparenthesized id
+                                        let assign_pattern = pattern.to_assign();
+                                        match assign_pattern.left.as_ref() {
+                                            ast::Pattern::Id(id)
+                                                if id.loc.start == assign_pattern.loc.start =>
+                                            {
+                                                true
+                                            }
+                                            _ => false,
+                                        }
+                                    }
                                 ));
                             }
                         }

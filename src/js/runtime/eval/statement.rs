@@ -253,6 +253,28 @@ pub fn eval_named_anonymous_function_or_expression(
     }
 }
 
+#[inline]
+pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
+    cx: &mut Context,
+    expr: &ast::Expression,
+    name: &PropertyKey,
+    if_predicate: F,
+) -> EvalResult<Value> {
+    match expr {
+        ast::Expression::Function(func @ ast::Function { id: None, .. }) if if_predicate() => {
+            instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
+        }
+        ast::Expression::ArrowFunction(func) if if_predicate() => {
+            instantiate_arrow_function_expression(cx, &func, Some(name)).into()
+        }
+        ast::Expression::Class(class @ ast::Class { id: None, .. }) if if_predicate() => {
+            let value = maybe!(class_definition_evaluation(cx, class, None, name));
+            value.into()
+        }
+        _ => eval_expression(cx, expr),
+    }
+}
+
 // 14.4.1 Empty Statement Evaluation
 fn eval_empty_statement() -> Completion {
     Completion::empty()

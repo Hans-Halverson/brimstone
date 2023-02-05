@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{impl_gc_into, maybe, must};
+use crate::{impl_gc_into, js::runtime::type_utilities::is_array, maybe, must};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
@@ -117,14 +117,14 @@ impl Object for ArrayObject {
     }
 
     // Not part of spec, but needed to add custom length property
-    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
         let mut property_keys = ordinary_own_property_keys(cx, &self.object);
 
         // Insert length property after all the array index properies
         // TODO: Correctly order all properties
         property_keys.push(cx.names.length.as_string().into());
 
-        property_keys
+        property_keys.into()
     }
 }
 
@@ -158,7 +158,7 @@ pub fn array_species_create(
     original_array: Gc<ObjectValue>,
     length: u64,
 ) -> EvalResult<Gc<ObjectValue>> {
-    if !original_array.is_array() {
+    if !maybe!(is_array(cx, original_array.into())) {
         let array_object: Gc<ObjectValue> = maybe!(array_create(cx, length, None)).into();
         return array_object.into();
     }

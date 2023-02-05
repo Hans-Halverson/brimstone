@@ -109,7 +109,7 @@ impl ArrayPrototype {
             return to_boolean(is_spreadable).into();
         }
 
-        is_array(object).into()
+        is_array(cx, object)
     }
 
     #[inline]

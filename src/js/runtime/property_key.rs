@@ -148,6 +148,15 @@ impl PropertyKey {
     }
 
     #[inline]
+    pub fn to_value(&self, cx: &mut Context) -> Value {
+        if let Some(symbol_value) = self.as_symbol() {
+            symbol_value.into()
+        } else {
+            self.non_symbol_to_string(cx).into()
+        }
+    }
+
+    #[inline]
     fn check_is_number(&self) -> bool {
         let number_key = match &mut *self.data.borrow_mut() {
             KeyData::String(string_key @ StringData { can_be_number: true, .. }) => {

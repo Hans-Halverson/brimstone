@@ -14,6 +14,7 @@ use super::{
     numeric_constants::MAX_SAFE_INTEGER_F64,
     object_value::ObjectValue,
     property_key::PropertyKey,
+    proxy_object::ProxyObject,
     string_object::StringObject,
     string_parsing::parse_string_to_number,
     value::{
@@ -383,21 +384,26 @@ pub fn require_object_coercible(cx: &mut Context, value: Value) -> EvalResult<Va
 }
 
 // 7.2.2 IsArray
-pub fn is_array(value: Value) -> bool {
+pub fn is_array(cx: &mut Context, value: Value) -> EvalResult<bool> {
     if !value.is_object() {
-        return false;
+        return false.into();
     }
 
     let object_value = value.as_object();
     if object_value.is_array() {
-        return true;
+        return true.into();
     }
 
     if object_value.is_proxy() {
-        unimplemented!("proxy objects")
+        let proxy = object_value.cast::<ProxyObject>();
+        if proxy.handler().is_none() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        return is_array(cx, proxy.target().unwrap().into());
     }
 
-    return false;
+    return false.into();
 }
 
 // 7.2.3 IsCallable
@@ -419,7 +425,11 @@ pub fn is_constructor(value: Value) -> bool {
         return false;
     }
 
-    value.as_object().is_constructor()
+    is_constructor_object(value.as_object())
+}
+
+pub fn is_constructor_object(value: Gc<ObjectValue>) -> bool {
+    value.is_constructor()
 }
 
 // 7.2.6 IsIntegralNumber

@@ -41,7 +41,7 @@ impl BoundFunctionObject {
         bound_this: Value,
         bound_arguments: Vec<Value>,
     ) -> EvalResult<Gc<BoundFunctionObject>> {
-        let proto = maybe!(target_function.get_prototype_of());
+        let proto = maybe!(target_function.get_prototype_of(cx));
         let object = ordinary_object_create_optional_proto(proto);
 
         cx.heap

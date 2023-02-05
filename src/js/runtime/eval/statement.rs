@@ -651,7 +651,7 @@ fn eval_for_in_statement(
     let mut current_object = object_value;
 
     loop {
-        let own_property_keys = current_object.own_property_keys(cx);
+        let own_property_keys = maybe__!(current_object.own_property_keys(cx));
         for key in own_property_keys {
             if !key.is_string() {
                 continue;
@@ -695,7 +695,7 @@ fn eval_for_in_statement(
             }
         }
 
-        match maybe__!(current_object.get_prototype_of()) {
+        match maybe__!(current_object.get_prototype_of(cx)) {
             None => return last_value.into(),
             Some(proto_object) => {
                 current_object = proto_object;

@@ -122,12 +122,12 @@ impl ArrayConstructor {
 
     // 23.1.2.2 Array.isArray
     fn is_array(
-        _: &mut Context,
+        cx: &mut Context,
         _: Value,
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        is_array(get_argument(arguments, 0)).into()
+        maybe!(is_array(cx, get_argument(arguments, 0))).into()
     }
 
     // 23.1.2.3 Array.of

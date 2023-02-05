@@ -290,13 +290,17 @@ impl ArrayProperties {
 impl Object for OrdinaryObject {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
-    fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
+    fn get_prototype_of(&self, _: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
         self.prototype.into()
     }
 
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
-    fn set_prototype_of(&mut self, new_prototype: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
+    fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        new_prototype: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype, new_prototype) {
             return true.into();
         }
@@ -314,8 +318,11 @@ impl Object for OrdinaryObject {
                         return false.into();
                     }
 
-                    // TODO: Check if p is a Proxy object
-                    current_prototype = must!(current_proto.get_prototype_of());
+                    if current_proto.is_proxy() {
+                        break;
+                    } else {
+                        current_prototype = must!(current_proto.get_prototype_of(cx));
+                    }
                 }
             }
         }
@@ -327,13 +334,13 @@ impl Object for OrdinaryObject {
 
     // 10.1.3 [[IsExtensible]]
     // 10.1.3.1 OrdinaryIsExtensible
-    fn is_extensible(&self) -> EvalResult<bool> {
+    fn is_extensible(&self, _: &mut Context) -> EvalResult<bool> {
         self.is_extensible.into()
     }
 
     // 10.1.4 [[PreventExtensions]]
     // 10.1.4.1 OrdinaryPreventExtensions
-    fn prevent_extensions(&mut self) -> EvalResult<bool> {
+    fn prevent_extensions(&mut self, _: &mut Context) -> EvalResult<bool> {
         self.is_extensible = false;
         true.into()
     }
@@ -384,8 +391,8 @@ impl Object for OrdinaryObject {
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
-        ordinary_own_property_keys(cx, self)
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+        ordinary_own_property_keys(cx, self).into()
     }
 
     // 7.3.27 PrivateElementFind
@@ -559,7 +566,7 @@ pub fn ordinary_define_own_property(
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(cx, key));
-    let is_extensible = maybe!(object.is_extensible());
+    let is_extensible = maybe!(object.is_extensible(cx));
 
     validate_and_apply_property_descriptor(cx, Some(object), key, is_extensible, desc, current_desc)
         .into()
@@ -741,7 +748,7 @@ pub fn ordinary_has_property(
         return true.into();
     }
 
-    let parent = maybe!(object.get_prototype_of());
+    let parent = maybe!(object.get_prototype_of(cx));
     match parent {
         Some(parent) => parent.has_property(cx, key),
         None => false.into(),
@@ -758,7 +765,7 @@ pub fn ordinary_get(
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {
         None => {
-            let parent = maybe!(object.get_prototype_of());
+            let parent = maybe!(object.get_prototype_of(cx));
             match parent {
                 None => Value::undefined().into(),
                 Some(parent) => parent.get(cx, key, receiver),
@@ -784,7 +791,7 @@ pub fn ordinary_set(
     let own_desc = maybe!(object.get_own_property(cx, key));
     let own_desc = match own_desc {
         None => {
-            let parent = maybe!(object.get_prototype_of());
+            let parent = maybe!(object.get_prototype_of(cx));
             match parent {
                 None => PropertyDescriptor::data(Value::undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),

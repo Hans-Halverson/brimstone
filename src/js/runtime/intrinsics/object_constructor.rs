@@ -192,7 +192,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Value> {
         let properties = maybe!(to_object(cx, properties));
 
-        let keys = properties.own_property_keys(cx);
+        let keys = maybe!(properties.own_property_keys(cx));
 
         let mut descriptors = vec![];
 
@@ -292,7 +292,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
 
-        let keys = object.own_property_keys(cx);
+        let keys = maybe!(object.own_property_keys(cx));
 
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
         let descriptors: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(proto)).into();
@@ -339,7 +339,7 @@ impl ObjectConstructor {
         string_keys: bool,
     ) -> EvalResult<Vec<Value>> {
         let object = maybe!(to_object(cx, object));
-        let keys = object.own_property_keys(cx);
+        let keys = maybe!(object.own_property_keys(cx));
 
         let keys_of_type: Vec<Value> = keys
             .into_iter()
@@ -363,7 +363,7 @@ impl ObjectConstructor {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
-        let prototype = maybe!(object.get_prototype_of());
+        let prototype = maybe!(object.get_prototype_of(cx));
 
         match prototype {
             None => Value::null().into(),
@@ -406,7 +406,7 @@ impl ObjectConstructor {
             return type_error_(cx, "expected object");
         }
 
-        maybe!(is_extensible(value.as_object())).into()
+        maybe!(is_extensible(cx, value.as_object())).into()
     }
 
     // 20.1.2.16 Object.isFrozen
@@ -463,7 +463,7 @@ impl ObjectConstructor {
             return type_error_(cx, "expected object");
         }
 
-        if !maybe!(value.as_object().prevent_extensions()) {
+        if !maybe!(value.as_object().prevent_extensions(cx)) {
             return type_error_(cx, "failed to prevent extensions on object");
         }
 
@@ -512,7 +512,7 @@ impl ObjectConstructor {
         }
         let mut object = object.as_object();
 
-        if !maybe!(object.set_prototype_of(proto)) {
+        if !maybe!(object.set_prototype_of(cx, proto)) {
             return type_error_(cx, "failed to set object prototype");
         }
 

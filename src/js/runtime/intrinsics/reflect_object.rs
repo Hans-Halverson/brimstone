@@ -208,7 +208,7 @@ impl ReflectObject {
             return type_error_(cx, "value is not an object");
         }
 
-        let prototype = maybe!(target.as_object().get_prototype_of());
+        let prototype = maybe!(target.as_object().get_prototype_of(cx));
 
         prototype
             .map(|proto| proto.into())
@@ -246,7 +246,7 @@ impl ReflectObject {
             return type_error_(cx, "value is not an object");
         }
 
-        maybe!(target.as_object().is_extensible()).into()
+        maybe!(target.as_object().is_extensible(cx)).into()
     }
 
     // 28.1.10 Reflect.ownKeys
@@ -261,7 +261,7 @@ impl ReflectObject {
             return type_error_(cx, "value is not an object");
         }
 
-        let own_keys = target.as_object().own_property_keys(cx);
+        let own_keys = maybe!(target.as_object().own_property_keys(cx));
 
         create_array_from_list(cx, &own_keys).into()
     }
@@ -278,7 +278,7 @@ impl ReflectObject {
             return type_error_(cx, "value is not an object");
         }
 
-        maybe!(target.as_object().prevent_extensions()).into()
+        maybe!(target.as_object().prevent_extensions(cx)).into()
     }
 
     // 28.1.12 Reflect.set
@@ -326,6 +326,6 @@ impl ReflectObject {
             return type_error_(cx, "prototype must be an object or null");
         };
 
-        maybe!(target.as_object().set_prototype_of(proto)).into()
+        maybe!(target.as_object().set_prototype_of(cx, proto)).into()
     }
 }

@@ -17,7 +17,9 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
-        type_utilities::{require_object_coercible, same_object_value, to_object, to_property_key},
+        type_utilities::{
+            is_array, require_object_coercible, same_object_value, to_object, to_property_key,
+        },
         value::{Value, NULL_TAG, OBJECT_TAG},
         Context,
     },
@@ -122,7 +124,7 @@ impl ObjectPrototype {
         // Walk prototype chain, seeing if this_object is in the prototype chain
         let mut current_value = value.as_object();
         loop {
-            match maybe!(current_value.get_prototype_of()) {
+            match maybe!(current_value.get_prototype_of(cx)) {
                 None => return false.into(),
                 Some(prototype) => {
                     if same_object_value(this_object, prototype) {
@@ -176,6 +178,8 @@ impl ObjectPrototype {
 
         let object = maybe!(to_object(cx, this_value));
 
+        let is_array = maybe!(is_array(cx, object.into()));
+
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let tag = maybe!(get(cx, object, &to_string_tag_key));
 
@@ -184,7 +188,7 @@ impl ObjectPrototype {
                 .heap
                 .alloc_string(format!("[object {}]", tag.as_string().str()))
                 .into();
-        } else if object.is_array() {
+        } else if is_array {
             "Array"
         } else if object.is_arguments_object() {
             "Arguments"
@@ -219,7 +223,7 @@ impl ObjectPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, this_value));
-        match maybe!(object.get_prototype_of()) {
+        match maybe!(object.get_prototype_of(cx)) {
             None => Value::null().into(),
             Some(prototype) => prototype.into(),
         }
@@ -245,7 +249,7 @@ impl ObjectPrototype {
             return Value::undefined().into();
         }
 
-        if !maybe!(object.as_object().set_prototype_of(proto)) {
+        if !maybe!(object.as_object().set_prototype_of(cx, proto)) {
             return type_error_(cx, "failed to set object prototype");
         }
 
@@ -255,8 +259,12 @@ impl ObjectPrototype {
 
 #[wrap_ordinary_object]
 impl Object for ObjectPrototype {
-    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
-        set_immutable_prototype(self.into(), proto)
+    fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        proto: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool> {
+        set_immutable_prototype(cx, self.into(), proto)
     }
 }
 

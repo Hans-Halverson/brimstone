@@ -27,13 +27,17 @@ pub struct ObjectValue {
 pub type ObjectValueVtable = *const ();
 
 pub trait Object {
-    fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>>;
+    fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>>;
 
-    fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool>;
+    fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        proto: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool>;
 
-    fn is_extensible(&self) -> EvalResult<bool>;
+    fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool>;
 
-    fn prevent_extensions(&mut self) -> EvalResult<bool>;
+    fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool>;
 
     fn get_own_property(
         &self,
@@ -62,7 +66,7 @@ pub trait Object {
 
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool>;
 
-    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value>;
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>>;
 
     fn call(
         &self,
@@ -174,10 +178,11 @@ pub trait Object {
 
 // 10.4.7.2 SetImmutablePrototype
 pub fn set_immutable_prototype(
+    cx: &mut Context,
     object: Gc<ObjectValue>,
     proto: Option<Gc<ObjectValue>>,
 ) -> EvalResult<bool> {
-    let current_proto = maybe!(object.get_prototype_of());
+    let current_proto = maybe!(object.get_prototype_of(cx));
     same_opt_object_value(proto, current_proto).into()
 }
 

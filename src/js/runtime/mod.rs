@@ -22,6 +22,7 @@ pub mod ordinary_object;
 mod property;
 mod property_descriptor;
 mod property_key;
+mod proxy_object;
 mod realm;
 mod reference;
 mod string_object;

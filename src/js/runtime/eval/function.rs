@@ -314,6 +314,10 @@ pub fn instantiate_ordinary_function_expression(
     func_node: &ast::Function,
     name: Option<&PropertyKey>,
 ) -> Gc<Function> {
+    if func_node.is_async || func_node.is_generator {
+        unimplemented!("async and generator functions")
+    }
+
     let current_context = cx.current_execution_context();
     let function_prototype = cx
         .current_realm()

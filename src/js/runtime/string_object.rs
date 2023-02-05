@@ -145,7 +145,7 @@ impl Object for StringObject {
     }
 
     // 10.4.3.3 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
         let mut keys = vec![];
 
         let length = self.string_data.str().len();
@@ -160,6 +160,6 @@ impl Object for StringObject {
 
         ordinary_own_string_symbol_property_keys(cx, &self.object, &mut keys);
 
-        keys
+        keys.into()
     }
 }

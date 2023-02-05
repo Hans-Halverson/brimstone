@@ -228,7 +228,7 @@ impl GlobalEnvironment {
             return true.into();
         }
 
-        is_extensible(global_object)
+        is_extensible(cx, global_object)
     }
 
     // 9.1.1.4.16 CanDeclareGlobalFunction
@@ -241,7 +241,7 @@ impl GlobalEnvironment {
         let existing_prop = maybe!(global_object.get_own_property(cx, &PropertyKey::string(name)));
 
         match existing_prop {
-            None => is_extensible(global_object),
+            None => is_extensible(cx, global_object),
             Some(existing_prop) => {
                 if existing_prop.is_configurable() {
                     return true.into();
@@ -267,7 +267,7 @@ impl GlobalEnvironment {
 
         let name_key = PropertyKey::string(name);
         let has_property = maybe!(has_own_property(cx, global_object, &name_key));
-        let is_extensible = maybe!(is_extensible(global_object));
+        let is_extensible = maybe!(is_extensible(cx, global_object));
 
         if !has_property && is_extensible {
             maybe!(self.object_env.create_mutable_binding(cx, name, can_delete));

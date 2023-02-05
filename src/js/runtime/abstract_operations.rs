@@ -23,8 +23,8 @@ use super::{
 
 // 7.2.5 IsExtensible
 #[inline]
-pub fn is_extensible(object: Gc<ObjectValue>) -> EvalResult<bool> {
-    object.is_extensible()
+pub fn is_extensible(cx: &mut Context, object: Gc<ObjectValue>) -> EvalResult<bool> {
+    object.is_extensible(cx)
 }
 
 // 7.3.2 Get
@@ -217,11 +217,11 @@ pub fn set_integrity_level(
     mut object: Gc<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
-    if !maybe!(object.prevent_extensions()) {
+    if !maybe!(object.prevent_extensions(cx)) {
         return false.into();
     }
 
-    let keys = object.own_property_keys(cx);
+    let keys = maybe!(object.own_property_keys(cx));
 
     match level {
         IntegrityLevel::Sealed => {
@@ -257,11 +257,11 @@ pub fn test_integrity_level(
     object: Gc<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
-    if maybe!(object.is_extensible()) {
+    if maybe!(object.is_extensible(cx)) {
         return false.into();
     }
 
-    let keys = object.own_property_keys(cx);
+    let keys = maybe!(object.own_property_keys(cx));
 
     for key in keys {
         let key = must!(PropertyKey::from_value(cx, key));
@@ -334,7 +334,7 @@ pub fn ordinary_has_instance(cx: &mut Context, func: Value, object: Value) -> Ev
     // Walk prototype chain of object, looking for prototype of func
     let mut current_object = object.as_object();
     loop {
-        match maybe!(current_object.get_prototype_of()) {
+        match maybe!(current_object.get_prototype_of(cx)) {
             None => return false.into(),
             Some(current_prototype) => {
                 if same_object_value(target_prototype, current_prototype) {
@@ -359,7 +359,7 @@ pub fn enumerable_own_property_names(
     object: Gc<ObjectValue>,
     kind: KeyOrValue,
 ) -> EvalResult<Vec<Value>> {
-    let keys = object.own_property_keys(cx);
+    let keys = maybe!(object.own_property_keys(cx));
 
     let mut properties = vec![];
 
@@ -409,7 +409,7 @@ pub fn copy_data_properties(
     }
 
     let from = must!(to_object(cx, source));
-    let keys = from.own_property_keys(cx);
+    let keys = maybe!(from.own_property_keys(cx));
 
     for next_key in keys {
         let next_key = must!(PropertyKey::from_value(cx, next_key));

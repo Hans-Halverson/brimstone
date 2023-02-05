@@ -164,13 +164,13 @@ impl FunctionEnvironment {
     }
 
     // 9.1.1.3.5 GetSuperBase
-    pub fn get_super_base(&self) -> EvalResult<Value> {
+    pub fn get_super_base(&self, cx: &mut Context) -> EvalResult<Value> {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
         match &self.function_object.home_object {
             None => Value::undefined().into(),
             Some(home) => {
-                let prototype = maybe!(home.get_prototype_of());
+                let prototype = maybe!(home.get_prototype_of(cx));
                 match prototype {
                     None => Value::null().into(),
                     Some(prototype) => prototype.into(),

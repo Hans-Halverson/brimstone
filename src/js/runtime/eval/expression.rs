@@ -245,10 +245,10 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     let prop_value = maybe!(eval_expression(cx, value));
                     match prop_value.get_tag() {
                         OBJECT_TAG => {
-                            must!(object.set_prototype_of(Some(prop_value.as_object())));
+                            must!(object.set_prototype_of(cx, Some(prop_value.as_object())));
                         }
                         NULL_TAG => {
-                            must!(object.set_prototype_of(None));
+                            must!(object.set_prototype_of(cx, None));
                         }
                         _ => {}
                     }
@@ -508,7 +508,7 @@ pub fn eval_super_member_expression_to_reference(
 
     // 13.3.7.3 MakeSuperPropertyReference inlined
     let is_strict = cx.current_execution_context().is_strict_mode;
-    let base_value = maybe!(env.get_super_base());
+    let base_value = maybe!(env.get_super_base(cx));
 
     Reference::new_property_with_this(base_value, property_key, is_strict, actual_this).into()
 }
@@ -528,7 +528,7 @@ fn eval_super_call_expression(
         unreachable!()
     };
 
-    let func = must!(this_env.function_object.get_prototype_of());
+    let func = must!(this_env.function_object.get_prototype_of(cx));
     let arg_list = maybe!(eval_argument_list(cx, &expr.arguments));
 
     let func = match func {

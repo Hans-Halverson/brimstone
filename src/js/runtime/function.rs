@@ -141,7 +141,7 @@ impl Object for Function {
         // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
         if let FuncKind::DefaultConstructor = self.func_node {
             let new_object = if self.constructor_kind == ConstructorKind::Derived {
-                let func = must!(self.get_prototype_of());
+                let func = must!(self.get_prototype_of(cx));
                 match func {
                     Some(func) if func.is_constructor() => {
                         maybe!(construct(cx, func, arguments, Some(new_target)))
@@ -180,7 +180,7 @@ impl Object for Function {
                 }
             } else {
                 if let FuncKind::DefaultConstructor = self.func_node {
-                    let func = must!(self.get_prototype_of());
+                    let func = must!(self.get_prototype_of(cx));
                     let object = match func {
                         Some(func) if func.is_constructor() => {
                             maybe!(construct(cx, func, arguments, Some(new_target)))

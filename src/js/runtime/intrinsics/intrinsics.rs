@@ -16,9 +16,9 @@ use crate::{
             iterator_prototype::IteratorPrototype, math_object::MathObject, native_error::*,
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            reflect_object::ReflectObject, string_constructor::StringConstructor,
-            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
-            symbol_prototype::SymbolPrototype,
+            proxy_constructor::ProxyConstructor, reflect_object::ReflectObject,
+            string_constructor::StringConstructor, string_prototype::StringPrototype,
+            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -53,6 +53,7 @@ pub enum Intrinsic {
     ObjectConstructor,
     ObjectPrototype,
     ObjectPrototypeToString,
+    ProxyConstructor,
     RangeErrorConstructor,
     RangeErrorPrototype,
     ReferenceErrorConstructor,
@@ -164,6 +165,7 @@ impl Intrinsics {
 
         // Builtin objects
         register_intrinsic!(Math, MathObject);
+        register_intrinsic!(ProxyConstructor, ProxyConstructor);
         register_intrinsic!(Reflect, ReflectObject);
 
         // Builtin functions
@@ -240,7 +242,7 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
         name_desc,
     ));
 
-    throw_type_error_func.prevent_extensions();
+    throw_type_error_func.prevent_extensions(cx);
 
     throw_type_error_func
 }

@@ -31,29 +31,33 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get_prototype_of",
-        fn get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
-            self.object().get_prototype_of()
+        fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+            self.object().get_prototype_of(cx)
         }
     );
 
     implement_if_undefined!(
         "set_prototype_of",
-        fn set_prototype_of(&mut self, proto: Option<Gc<ObjectValue>>) -> EvalResult<bool> {
-            self.object_mut().set_prototype_of(proto)
+        fn set_prototype_of(
+            &mut self,
+            cx: &mut Context,
+            proto: Option<Gc<ObjectValue>>,
+        ) -> EvalResult<bool> {
+            self.object_mut().set_prototype_of(cx, proto)
         }
     );
 
     implement_if_undefined!(
         "is_extensible",
-        fn is_extensible(&self) -> EvalResult<bool> {
-            self.object().is_extensible()
+        fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+            self.object().is_extensible(cx)
         }
     );
 
     implement_if_undefined!(
         "prevent_extensions",
-        fn prevent_extensions(&mut self) -> EvalResult<bool> {
-            self.object_mut().prevent_extensions()
+        fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+            self.object_mut().prevent_extensions(cx)
         }
     );
 
@@ -121,7 +125,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "own_property_keys",
-        fn own_property_keys(&self, cx: &mut Context) -> Vec<Value> {
+        fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
             self.object().own_property_keys(cx)
         }
     );

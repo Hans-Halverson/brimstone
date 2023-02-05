@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
         abstract_operations::{
-            call_object, create_data_property_or_throw, delete_property_or_throw, has_property,
-            length_of_array_like, set,
+            call, call_object, create_data_property_or_throw, delete_property_or_throw,
+            has_property, length_of_array_like, set,
         },
         array_object::{array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
@@ -12,7 +12,7 @@ use crate::{
         get,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::{Object, ObjectValue},
-        ordinary_object::ordinary_object_create,
+        ordinary_object::{ordinary_object_create, ordinary_object_create_optional_proto},
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -23,7 +23,7 @@ use crate::{
         },
         Context, EvalResult, Value,
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{
@@ -61,6 +61,8 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.filter(), Self::filter, 1, realm);
         object.intrinsic_func(cx, &cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, &cx.names.find_index(), Self::find_index, 1, realm);
+        object.intrinsic_func(cx, &cx.names.flat(), Self::flat, 0, realm);
+        object.intrinsic_func(cx, &cx.names.flat_map(), Self::flat_map, 1, realm);
         object.intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
         object.intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
@@ -74,7 +76,9 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.reduce_right(), Self::reduce_right, 1, realm);
         object.intrinsic_func(cx, &cx.names.reverse(), Self::reverse, 0, realm);
         object.intrinsic_func(cx, &cx.names.shift(), Self::shift, 0, realm);
+        object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
+        object.intrinsic_func(cx, &cx.names.splice(), Self::splice, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
@@ -82,6 +86,11 @@ impl ArrayPrototype {
         // 23.1.3.34 Array.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         object.set_property(&iterator_key, Property::data(values_function, true, false, true));
+
+        // 23.1.3.35 Array.prototype [ @@unscopables ]
+        let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
+        let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
+        object.set_property(&unscopables_key, unscopables);
 
         cx.heap.alloc(ArrayObject::new(object)).into()
     }
@@ -490,6 +499,138 @@ impl ArrayPrototype {
         }
 
         Value::number(-1.0).into()
+    }
+
+    // 23.1.3.11 Array.prototype.flat
+    fn flat(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let depth = get_argument(arguments, 0);
+        let depth = if depth.is_undefined() {
+            1.0
+        } else {
+            let depth = maybe!(to_integer_or_infinity(cx, depth));
+            f64::max(depth, 0.0)
+        };
+
+        let array = maybe!(array_species_create(cx, object, 0));
+
+        maybe!(Self::flatten_into_array(
+            cx,
+            array,
+            object,
+            length,
+            0,
+            depth,
+            None,
+            Value::undefined()
+        ));
+
+        array.into()
+    }
+
+    // 23.1.3.11.1 FlattenIntoArray
+    fn flatten_into_array(
+        cx: &mut Context,
+        target: Gc<ObjectValue>,
+        source: Gc<ObjectValue>,
+        source_length: u64,
+        start: u64,
+        depth: f64,
+        mapper_function: Option<Value>,
+        this_arg: Value,
+    ) -> EvalResult<u64> {
+        let mut target_index = start;
+
+        for i in 0..source_length {
+            let source_key = PropertyKey::from_u64(i);
+            if maybe!(has_property(cx, source, &source_key)) {
+                let mut element = maybe!(get(cx, source, &source_key));
+
+                if let Some(mapper_function) = mapper_function {
+                    let arguments = [element, Value::from_u64(i), source.into()];
+                    element = maybe!(call(cx, mapper_function, this_arg, &arguments));
+                }
+
+                let should_flatten = if depth > 0.0 {
+                    maybe!(is_array(cx, element))
+                } else {
+                    false
+                };
+
+                if should_flatten {
+                    let new_depth = if depth == f64::INFINITY {
+                        depth
+                    } else {
+                        depth - 1.0
+                    };
+
+                    let element_object = element.as_object();
+                    let element_length = maybe!(length_of_array_like(cx, element_object));
+
+                    target_index = maybe!(Self::flatten_into_array(
+                        cx,
+                        target,
+                        element_object,
+                        element_length,
+                        target_index,
+                        new_depth,
+                        mapper_function,
+                        this_arg
+                    ));
+                } else {
+                    if target_index >= MAX_SAFE_INTEGER_U64 {
+                        return type_error_(cx, "array is too large");
+                    }
+
+                    let target_key = PropertyKey::from_u64(target_index);
+                    maybe!(create_data_property_or_throw(cx, target, &target_key, element));
+
+                    target_index += 1;
+                }
+            }
+        }
+
+        target_index.into()
+    }
+
+    // 23.1.3.12 Array.prototype.flatMap
+    fn flat_map(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let mapper_function = get_argument(arguments, 0);
+        let this_arg = get_argument(arguments, 1);
+
+        if !is_callable(mapper_function) {
+            return type_error_(cx, "expected function");
+        }
+
+        let array = maybe!(array_species_create(cx, object, 0));
+
+        maybe!(Self::flatten_into_array(
+            cx,
+            array,
+            object,
+            length,
+            0,
+            1.0,
+            Some(mapper_function),
+            this_arg
+        ));
+
+        array.into()
     }
 
     // 23.1.3.13 Array.prototype.forEach
@@ -977,6 +1118,64 @@ impl ArrayPrototype {
         first.into()
     }
 
+    // 23.1.3.26 Array.prototype.slice
+    fn slice(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let end_index = if arguments.len() >= 3 {
+            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        let count = u64::max(end_index - start_index, 0);
+        let array = maybe!(array_species_create(cx, object, count));
+
+        let mut to_index = 0;
+
+        for i in start_index..end_index {
+            let from_key = PropertyKey::from_u64(i);
+            if maybe!(has_property(cx, object, &from_key)) {
+                let value = maybe!(get(cx, object, &from_key));
+                let to_key = PropertyKey::from_u64(to_index);
+                maybe!(create_data_property_or_throw(cx, object, &to_key, value));
+            }
+
+            to_index += 1;
+        }
+
+        maybe!(set(cx, array, &cx.names.length(), Value::from_u64(to_index), true));
+
+        array.into()
+    }
+
     // 23.1.3.27 Array.prototype.some
     fn some(
         cx: &mut Context,
@@ -1011,6 +1210,101 @@ impl ArrayPrototype {
         }
 
         false.into()
+    }
+
+    // 23.1.3.29 Array.prototype.splice
+    fn splice(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let insert_count = u64::max(arguments.len() as u64 - 2, 0);
+
+        let actual_delete_count = if arguments.len() == 0 {
+            0
+        } else if arguments.len() == 1 {
+            length - start_index
+        } else {
+            let delete_count = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+            f64::min(f64::max(delete_count, 0.0), (length - start_index) as f64) as u64
+        };
+
+        let new_length = length + insert_count - actual_delete_count;
+        if new_length > MAX_SAFE_INTEGER_U64 {
+            return type_error_(cx, "array is too large");
+        }
+
+        // Create array containing deleted elements, which will be return value
+        let array = maybe!(array_species_create(cx, object, actual_delete_count));
+
+        for i in 0..actual_delete_count {
+            let from_key = PropertyKey::from_u64(start_index + i);
+            if maybe!(has_property(cx, object, &from_key)) {
+                let from_value = maybe!(get(cx, object, &from_key));
+                let to_key = PropertyKey::from_u64(i);
+                maybe!(create_data_property_or_throw(cx, array, &to_key, from_value));
+            }
+        }
+
+        maybe!(set(cx, array, &cx.names.length(), Value::from_u64(actual_delete_count), true));
+
+        // Move existing items in array to make space for inserted items
+        if insert_count < actual_delete_count {
+            for i in start_index..(length - actual_delete_count) {
+                let from_key = PropertyKey::from_u64(i + actual_delete_count);
+                let to_key = PropertyKey::from_u64(i + insert_count);
+
+                if maybe!(has_property(cx, object, &from_key)) {
+                    let from_value = maybe!(get(cx, object, &from_key));
+                    maybe!(set(cx, object, &to_key, from_value, true));
+                } else {
+                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                }
+            }
+
+            for i in (new_length..length).rev() {
+                maybe!(delete_property_or_throw(cx, object, &PropertyKey::from_u64(i)));
+            }
+        } else {
+            for i in (start_index..(length - actual_delete_count)).rev() {
+                let from_key = PropertyKey::from_u64(i + actual_delete_count);
+                let to_key = PropertyKey::from_u64(i + insert_count);
+
+                if maybe!(has_property(cx, object, &from_key)) {
+                    let from_value = maybe!(get(cx, object, &from_key));
+                    maybe!(set(cx, object, &to_key, from_value, true));
+                } else {
+                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                }
+            }
+        }
+
+        // Insert items into array
+        if arguments.len() > 2 {
+            for (i, item) in (&arguments[2..]).iter().enumerate() {
+                let key = PropertyKey::from_u64(start_index + i as u64);
+                maybe!(set(cx, object, &key, *item, true));
+            }
+        }
+
+        maybe!(set(cx, object, &cx.names.length(), Value::from_u64(new_length), true));
+
+        array.into()
     }
 
     // 23.1.3.31 Array.prototype.toString
@@ -1082,5 +1376,27 @@ impl ArrayPrototype {
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
+    }
+
+    // 23.1.3.35 Array.prototype [ @@unscopables ]
+    fn create_unscopables(cx: &mut Context) -> Gc<ObjectValue> {
+        let list = cx
+            .heap
+            .alloc(ordinary_object_create_optional_proto(None))
+            .into();
+
+        must!(create_data_property_or_throw(cx, list, &cx.names.at(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.copy_within(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.entries(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.fill(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.find(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.find_index(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.flat(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.flat_map(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.includes(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.keys(), true.into()));
+        must!(create_data_property_or_throw(cx, list, &cx.names.values(), true.into()));
+
+        list
     }
 }

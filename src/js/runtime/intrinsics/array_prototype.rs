@@ -17,7 +17,10 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         to_string,
-        type_utilities::{is_array, is_callable, to_boolean, to_object},
+        type_utilities::{
+            is_array, is_callable, is_strictly_equal, same_value_zero, to_boolean,
+            to_integer_or_infinity, to_object,
+        },
         Context, EvalResult, Value,
     },
     maybe,
@@ -49,22 +52,31 @@ impl ArrayPrototype {
         .into();
 
         // Constructor property is added once ArrayConstructor has been created
+        object.intrinsic_func(cx, &cx.names.at(), Self::at, 1, realm);
         object.intrinsic_func(cx, &cx.names.concat(), Self::concat, 1, realm);
+        object.intrinsic_func(cx, &cx.names.copy_within(), Self::copy_within, 2, realm);
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.every(), Self::every, 1, realm);
+        object.intrinsic_func(cx, &cx.names.fill(), Self::fill, 1, realm);
         object.intrinsic_func(cx, &cx.names.filter(), Self::filter, 1, realm);
         object.intrinsic_func(cx, &cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, &cx.names.find_index(), Self::find_index, 1, realm);
         object.intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
+        object.intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
+        object.intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
+        object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.map(), Self::map, 1, realm);
         object.intrinsic_func(cx, &cx.names.pop(), Self::pop, 0, realm);
         object.intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
         object.intrinsic_func(cx, &cx.names.reduce(), Self::reduce, 1, realm);
         object.intrinsic_func(cx, &cx.names.reduce_right(), Self::reduce_right, 1, realm);
+        object.intrinsic_func(cx, &cx.names.reverse(), Self::reverse, 0, realm);
+        object.intrinsic_func(cx, &cx.names.shift(), Self::shift, 0, realm);
         object.intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
@@ -72,6 +84,35 @@ impl ArrayPrototype {
         object.set_property(&iterator_key, Property::data(values_function, true, false, true));
 
         cx.heap.alloc(ArrayObject::new(object)).into()
+    }
+
+    // 23.1.3.1 Array.prototype.at
+    fn at(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let relative_index = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let key = if relative_index >= 0.0 {
+            if relative_index >= length as f64 {
+                return Value::undefined().into();
+            }
+
+            PropertyKey::from_u64(relative_index as u64)
+        } else {
+            if -relative_index > length as f64 {
+                return Value::undefined().into();
+            }
+
+            PropertyKey::from_u64((length as i64 + relative_index as i64) as u64)
+        };
+
+        get(cx, object, &key)
     }
 
     // 23.1.3.2 Array.prototype.concat
@@ -152,6 +193,96 @@ impl ArrayPrototype {
         ().into()
     }
 
+    // 23.1.3.4 Array.prototype.copyWithin
+    fn copy_within(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let relative_target = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let mut from_index = if relative_target < 0.0 {
+            if relative_target == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_target as u64, 0)
+            }
+        } else {
+            u64::min(relative_target as u64, length)
+        };
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let mut to_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let final_index = if arguments.len() >= 3 {
+            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 2)));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        let mut count = u64::min(final_index - from_index, length - to_index);
+
+        if from_index < to_index && to_index < from_index + count {
+            from_index = from_index + count - 1;
+            to_index = to_index + count - 1;
+
+            while count > 0 {
+                let from_key = PropertyKey::from_u64(from_index);
+                let to_key = PropertyKey::from_u64(to_index);
+
+                if maybe!(has_property(cx, object, &from_key)) {
+                    let from_value = maybe!(get(cx, object, &from_key));
+                    maybe!(set(cx, object, &to_key, from_value, true));
+                } else {
+                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                }
+
+                from_index -= 1;
+                to_index -= 1;
+                count -= 1;
+            }
+        } else {
+            while count > 0 {
+                let from_key = PropertyKey::from_u64(from_index);
+                let to_key = PropertyKey::from_u64(to_index);
+
+                if maybe!(has_property(cx, object, &from_key)) {
+                    let from_value = maybe!(get(cx, object, &from_key));
+                    maybe!(set(cx, object, &to_key, from_value, true));
+                } else {
+                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                }
+
+                from_index += 1;
+                to_index += 1;
+                count -= 1;
+            }
+        }
+
+        object.into()
+    }
+
     // 23.1.3.5 Array.prototype.entries
     fn entries(
         cx: &mut Context,
@@ -197,6 +328,52 @@ impl ArrayPrototype {
         }
 
         true.into()
+    }
+
+    // 23.1.3.7 Array.prototype.fill
+    fn fill(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let value = get_argument(arguments, 0);
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let end_index = if arguments.len() >= 3 {
+            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 2)));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        for i in start_index..end_index {
+            maybe!(set(cx, object, &PropertyKey::from_u64(i), value, true));
+        }
+
+        object.into()
     }
 
     // 23.1.3.8 Array.prototype.filter
@@ -348,6 +525,89 @@ impl ArrayPrototype {
         Value::undefined().into()
     }
 
+    // 23.1.3.14 Array.prototype.includes
+    fn includes(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        if length == 0 {
+            return false.into();
+        }
+
+        let search_element = get_argument(arguments, 0);
+
+        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        if n == f64::INFINITY {
+            return false.into();
+        } else if n == f64::NEG_INFINITY {
+            n = 0.0;
+        }
+
+        let start_index = if n >= 0.0 {
+            n as u64
+        } else {
+            u64::max(length + n as u64, 0)
+        };
+
+        for i in start_index..length {
+            let key = PropertyKey::from_u64(i);
+            let element = maybe!(get(cx, object, &key));
+
+            if same_value_zero(search_element, element) {
+                return true.into();
+            }
+        }
+
+        false.into()
+    }
+
+    // 23.1.3.15 Array.prototype.indexOf
+    fn index_of(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        if length == 0 {
+            return Value::smi(-1).into();
+        }
+
+        let search_element = get_argument(arguments, 0);
+
+        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        if n == f64::INFINITY {
+            return Value::smi(-1).into();
+        } else if n == f64::NEG_INFINITY {
+            n = 0.0;
+        }
+
+        let start_index = if n >= 0.0 {
+            n as u64
+        } else {
+            u64::max(length + n as u64, 0)
+        };
+
+        for i in start_index..length {
+            let key = PropertyKey::from_u64(i);
+            if maybe!(has_property(cx, object, &key)) {
+                let element = maybe!(get(cx, object, &key));
+                if is_strictly_equal(search_element, element) {
+                    return Value::from_u64(i).into();
+                }
+            }
+        }
+
+        Value::smi(-1).into()
+    }
+
     // 23.1.3.16 Array.prototype.join
     fn join(
         cx: &mut Context,
@@ -392,6 +652,50 @@ impl ArrayPrototype {
     ) -> EvalResult<Value> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
+    }
+
+    // 23.1.3.18 Array.prototype.lastIndexOf
+    fn last_index_of(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        if length == 0 {
+            return Value::smi(-1).into();
+        }
+
+        let search_element = get_argument(arguments, 0);
+
+        let start_index = if arguments.len() >= 2 {
+            let n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+            if n == f64::NEG_INFINITY {
+                return Value::smi(-1).into();
+            }
+
+            if n >= 0.0 {
+                f64::min(n, (length - 1) as f64) as u64
+            } else {
+                length + n as u64
+            }
+        } else {
+            length - 1
+        };
+
+        for i in (0..=start_index).rev() {
+            let key = PropertyKey::from_u64(i);
+            if maybe!(has_property(cx, object, &key)) {
+                let element = maybe!(get(cx, object, &key));
+                if is_strictly_equal(search_element, element) {
+                    return Value::from_u64(i).into();
+                }
+            }
+        }
+
+        Value::smi(-1).into()
     }
 
     // 23.1.3.19 Array.prototype.map
@@ -587,6 +891,92 @@ impl ArrayPrototype {
         accumulator.into()
     }
 
+    // 23.1.3.24 Array.prototype.reverse
+    fn reverse(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let middle = length / 2;
+        let mut lower = 0;
+        let mut upper = length - 1;
+
+        while lower != middle {
+            let lower_key = PropertyKey::from_u64(lower);
+            let upper_key = PropertyKey::from_u64(upper);
+
+            let lower_exists = maybe!(has_property(cx, object, &lower_key));
+            let upper_exists = maybe!(has_property(cx, object, &upper_key));
+
+            match (lower_exists, upper_exists) {
+                (true, true) => {
+                    let lower_value = maybe!(get(cx, object, &lower_key));
+                    let upper_value = maybe!(get(cx, object, &upper_key));
+
+                    maybe!(set(cx, object, &lower_key, upper_value, true));
+                    maybe!(set(cx, object, &upper_key, lower_value, true));
+                }
+                (true, false) => {
+                    let lower_value = maybe!(get(cx, object, &lower_key));
+
+                    maybe!(delete_property_or_throw(cx, object, &lower_key));
+                    maybe!(set(cx, object, &upper_key, lower_value, true));
+                }
+                (false, true) => {
+                    let upper_value = maybe!(get(cx, object, &upper_key));
+
+                    maybe!(set(cx, object, &lower_key, upper_value, true));
+                    maybe!(delete_property_or_throw(cx, object, &upper_key));
+                }
+                (false, false) => {}
+            }
+
+            lower += 1;
+            upper -= 1;
+        }
+
+        object.into()
+    }
+
+    // 23.1.3.25 Array.prototype.shift
+    fn shift(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        if length == 0 {
+            maybe!(set(cx, object, &cx.names.length(), Value::smi(0), true));
+            return Value::undefined().into();
+        }
+
+        let first = maybe!(get(cx, object, &PropertyKey::array_index(0)));
+
+        for i in 1..length {
+            let from_key = PropertyKey::from_u64(i);
+            let to_key = PropertyKey::from_u64(i - 1);
+
+            if maybe!(has_property(cx, object, &from_key)) {
+                let from_value = maybe!(get(cx, object, &from_key));
+                maybe!(set(cx, object, &to_key, from_value, true));
+            } else {
+                maybe!(delete_property_or_throw(cx, object, &to_key));
+            }
+        }
+
+        maybe!(delete_property_or_throw(cx, object, &PropertyKey::from_u64(length - 1)));
+        maybe!(set(cx, object, &cx.names.length(), Value::from_u64(length - 1), true));
+
+        first.into()
+    }
+
     // 23.1.3.27 Array.prototype.some
     fn some(
         cx: &mut Context,
@@ -641,6 +1031,46 @@ impl ArrayPrototype {
         };
 
         call_object(cx, func, array.into(), &[])
+    }
+
+    // 23.1.3.32 Array.prototype.unshift
+    fn unshift(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let num_arguments = arguments.len() as u64;
+        if num_arguments > 0 {
+            if length + num_arguments > MAX_SAFE_INTEGER_U64 {
+                return type_error_(cx, "array is too large");
+            }
+
+            for i in (0..length).rev() {
+                let from_key = PropertyKey::from_u64(i);
+                let to_key = PropertyKey::from_u64(i + num_arguments);
+
+                if maybe!(has_property(cx, object, &from_key)) {
+                    let from_value = maybe!(get(cx, object, &from_key));
+                    maybe!(set(cx, object, &to_key, from_value, true));
+                } else {
+                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                }
+            }
+
+            for (i, argument) in arguments.iter().enumerate() {
+                let key = PropertyKey::from_u64(i as u64);
+                maybe!(set(cx, object, &key, *argument, true));
+            }
+        }
+
+        let new_length = Value::from_u64(length + num_arguments);
+        maybe!(set(cx, object, &cx.names.length(), new_length, true));
+
+        new_length.into()
     }
 
     // 23.1.3.33 Array.prototype.values

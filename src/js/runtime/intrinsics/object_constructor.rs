@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{
             create_data_property_or_throw, define_property_or_throw, enumerable_own_property_names,
-            has_own_property, is_extensible, set_integrity_level, test_integrity_level,
+            get, has_own_property, is_extensible, set, set_integrity_level, test_integrity_level,
             IntegrityLevel, KeyOrValue,
         },
         array_object::create_array_from_list,
@@ -11,7 +11,6 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::Gc,
-        get,
         object_value::ObjectValue,
         ordinary_object::{
             ordinary_create_from_constructor, ordinary_object_create,
@@ -56,6 +55,7 @@ impl ObjectConstructor {
             ),
         );
 
+        func.intrinsic_func(cx, &cx.names.assign(), Self::assign, 2, realm);
         func.intrinsic_func(cx, &cx.names.create(), Self::create, 2, realm);
         func.intrinsic_func(cx, &cx.names.define_properties(), Self::define_properties, 2, realm);
         func.intrinsic_func(cx, &cx.names.define_property(), Self::define_property, 3, realm);
@@ -138,6 +138,40 @@ impl ObjectConstructor {
         }
 
         must!(to_object(cx, value)).into()
+    }
+
+    // 20.1.2.1 Object.assign
+    fn assign(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let to = maybe!(to_object(cx, get_argument(arguments, 0)));
+
+        if arguments.len() <= 1 {
+            return to.into();
+        }
+
+        for argument in &arguments[1..] {
+            if !argument.is_nullish() {
+                let from = must!(to_object(cx, *argument));
+                let keys = maybe!(from.own_property_keys(cx));
+
+                for next_key in keys {
+                    let property_key = must!(PropertyKey::from_value(cx, next_key));
+                    let desc = maybe!(from.get_own_property(cx, &property_key));
+                    if let Some(desc) = desc {
+                        if let Some(true) = desc.is_enumerable {
+                            let value = maybe!(get(cx, from, &property_key));
+                            maybe!(set(cx, to, &property_key, value, true));
+                        }
+                    }
+                }
+            }
+        }
+
+        to.into()
     }
 
     // 20.1.2.2 Object.create

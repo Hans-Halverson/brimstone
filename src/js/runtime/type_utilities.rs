@@ -469,6 +469,30 @@ pub fn same_value(v1: Value, v2: Value) -> bool {
         }
     }
 
+    same_value_non_numeric(v1, v2)
+}
+
+// 7.2.12 SameValueZero
+pub fn same_value_zero(v1: Value, v2: Value) -> bool {
+    // Same as same)value, but treats differently signed zeros as equal
+    if v1.is_number() {
+        if v2.is_number() {
+            if v1.is_nan() && v2.is_nan() {
+                return true;
+            }
+
+            return v1.as_number() == v2.as_number();
+        } else {
+            return false;
+        }
+    }
+
+    same_value_non_numeric(v1, v2)
+}
+
+// 7.2.13 SameValueNonNumeric, also includes BigInt handling
+#[inline]
+fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
     let tag1 = v1.get_tag();
     if tag1 != v2.get_tag() {
         return false;

@@ -131,13 +131,13 @@ impl ArrayIteratorPrototype {
                 create_iter_result_object(cx, Value::from_u64(current_index), false).into()
             }
             ArrayIteratorKind::Value => {
-                let property_key = PropertyKey::from_u64(current_index);
+                let property_key = PropertyKey::from_u64(cx, current_index);
                 let value = maybe!(array.get(cx, &property_key, array.into()));
                 create_iter_result_object(cx, value, false).into()
             }
             ArrayIteratorKind::KeyAndValue => {
                 let key = Value::from_u64(current_index);
-                let property_key = PropertyKey::from_u64(current_index);
+                let property_key = PropertyKey::from_u64(cx, current_index);
                 let value = maybe!(array.get(cx, &property_key, array.into()));
 
                 let result_pair = create_array_from_list(cx, &[key, value]);

@@ -250,7 +250,7 @@ pub fn create_array_from_list(cx: &mut Context, elements: &[Value]) -> Gc<ArrayO
 
     for (index, element) in elements.iter().enumerate() {
         // TODO: Handle keys out of u32 range
-        let key = PropertyKey::array_index(index as u32);
+        let key = PropertyKey::array_index(cx, index as u32);
         must!(create_data_property_or_throw(cx, array.into(), &key, *element));
     }
 

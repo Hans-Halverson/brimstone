@@ -147,7 +147,7 @@ pub fn function_declaration_instantiation(
                 let mut rest_array = must!(array_create(cx, 0, None));
 
                 for (array_index, arg_index) in (arg_index..arguments.len()).enumerate() {
-                    let array_key = PropertyKey::array_index(array_index as u32);
+                    let array_key = PropertyKey::array_index(cx, array_index as u32);
                     let array_property = Property::data(arguments[arg_index], true, true, true);
                     rest_array.object.set_property(&array_key, array_property);
                 }

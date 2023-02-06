@@ -285,8 +285,10 @@ pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> 
     if value.is_string() {
         return value.as_string().into();
     } else if value.is_double() {
-        // TODO: Implement Number::toString from spec
-        return cx.heap.alloc_string(value.as_double().to_string()).into();
+        return cx
+            .heap
+            .alloc_string(number_to_string(value.as_double()))
+            .into();
     }
 
     match value.get_tag() {
@@ -518,7 +520,7 @@ pub fn to_property_key(cx: &mut Context, value: Value) -> EvalResult<PropertyKey
     if value.is_smi() {
         let smi_value = value.as_smi();
         if smi_value >= 0 {
-            return PropertyKey::array_index(smi_value as u32).into();
+            return PropertyKey::array_index(cx, smi_value as u32).into();
         }
     }
 
@@ -715,4 +717,18 @@ pub fn same_opt_object_value(
         (Some(value1), Some(value2)) => value1.ptr_eq(&value2),
         _ => false,
     }
+}
+
+// 6.1.6.1.20 Number::toString
+pub fn number_to_string(x: f64) -> String {
+    // TODO: Implement Number::toString from spec
+    if x.is_infinite() {
+        if x == f64::INFINITY {
+            return String::from("Infinity");
+        } else {
+            return String::from("-Infinity");
+        }
+    }
+
+    x.to_string()
 }

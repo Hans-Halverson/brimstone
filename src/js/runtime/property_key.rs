@@ -55,19 +55,17 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub const fn array_index(value: u32) -> PropertyKey {
+    pub fn array_index(cx: &mut Context, value: u32) -> PropertyKey {
         if value == u32::MAX {
-            // TODO: Create key with PropertyKey::string_not_number
-            panic!("array index out of range")
+            return PropertyKey::string_not_number(cx.heap.alloc_string(value.to_string()));
         }
 
         PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
     }
 
-    pub const fn from_u64(value: u64) -> PropertyKey {
+    pub fn from_u64(cx: &mut Context, value: u64) -> PropertyKey {
         if value > u32::MAX as u64 {
-            // TODO: Create key with PropertyKey::string_not_number
-            panic!("array index out of range")
+            return PropertyKey::string_not_number(cx.heap.alloc_string(value.to_string()));
         }
 
         PropertyKey {
@@ -79,7 +77,7 @@ impl PropertyKey {
         if is_integral_number(value) {
             let number = value.as_double();
             if number >= 0.0 && number < MAX_U32_AS_F64 {
-                return PropertyKey::array_index(number as u32).into();
+                return PropertyKey::array_index(cx, number as u32).into();
             }
         }
 

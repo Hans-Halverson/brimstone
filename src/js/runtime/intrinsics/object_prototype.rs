@@ -3,7 +3,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     impl_gc_into,
     js::runtime::{
-        abstract_operations::{get, has_own_property},
+        abstract_operations::{get, has_own_property, invoke},
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
@@ -72,6 +72,13 @@ impl ObjectPrototype {
         );
         self.object
             .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        self.object.intrinsic_func(
+            cx,
+            &cx.names.to_locale_string(),
+            Self::to_locale_string,
+            0,
+            realm,
+        );
         self.object
             .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
 
@@ -153,14 +160,14 @@ impl ObjectPrototype {
         }
     }
 
-    // 20.1.3.7 Object.prototype.valueOf
-    fn value_of(
+    // 20.1.3.5 Object.prototype.toLocaleString
+    fn to_locale_string(
         cx: &mut Context,
         this_value: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        maybe!(to_object(cx, this_value)).into()
+        invoke(cx, this_value, &cx.names.to_string(), &[])
     }
 
     // 20.1.3.6 Object.prototype.toString
@@ -213,6 +220,16 @@ impl ObjectPrototype {
         cx.heap
             .alloc_string(format!("[object {}]", tag_string))
             .into()
+    }
+
+    // 20.1.3.7 Object.prototype.valueOf
+    fn value_of(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        maybe!(to_object(cx, this_value)).into()
     }
 
     // 20.1.3.8.1 get Object.prototype.__proto__

@@ -172,6 +172,7 @@ builtin_names!(
     (split, "split"),
     (some, "some"),
     (splice, "splice"),
+    (to_locale_string, "toLocaleString"),
     (to_primitive, "toPrimitive"),
     (to_string, "toString"),
     (to_string_tag, "toStringTag"),

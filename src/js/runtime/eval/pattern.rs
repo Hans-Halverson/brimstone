@@ -403,7 +403,7 @@ fn iterator_binding_initialization(
                         }
                         EvalResult::Ok(next_value) => {
                             let property = Property::data(next_value, true, true, true);
-                            array.set_property(&PropertyKey::array_index(index), property);
+                            array.set_property(&PropertyKey::array_index(cx, index), property);
                             index += 1;
                         }
                     }

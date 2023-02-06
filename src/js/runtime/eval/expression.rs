@@ -33,8 +33,9 @@ use crate::{
             reference::{Reference, ReferenceBase},
             type_utilities::{
                 is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
-                same_object_value, to_boolean, to_int32, to_number, to_numeric, to_object,
-                to_primitive, to_property_key, to_string, to_uint32, ToPrimitivePreferredType,
+                number_to_string, same_object_value, to_boolean, to_int32, to_number, to_numeric,
+                to_object, to_primitive, to_property_key, to_string, to_uint32,
+                ToPrimitivePreferredType,
             },
             value::{
                 Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
@@ -156,14 +157,14 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
     for element in expr.elements.iter() {
         match element {
             ast::ArrayElement::Hole => {
-                let key = PropertyKey::array_index(index);
+                let key = PropertyKey::array_index(cx, index);
                 let desc = Property::data(Value::empty(), true, true, true);
 
                 array.object.set_property(&key, desc);
                 index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
-                let key = PropertyKey::array_index(index);
+                let key = PropertyKey::array_index(cx, index);
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
 
@@ -172,8 +173,8 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
             }
             ast::ArrayElement::Spread(spread) => {
                 let iterable = maybe!(eval_expression(cx, &spread.argument));
-                let completion = iter_iterator_values(cx, iterable, &mut |_, value| {
-                    let key = PropertyKey::array_index(index);
+                let completion = iter_iterator_values(cx, iterable, &mut |cx, value| {
+                    let key = PropertyKey::array_index(cx, index);
                     let desc = Property::data(value, true, true, true);
 
                     array.object.set_property(&key, desc);
@@ -288,12 +289,13 @@ pub fn eval_property_name<'a>(
                 if key_value.is_smi() {
                     let smi_value = key_value.as_smi();
                     if smi_value >= 0 {
-                        return PropertyKey::array_index(smi_value as u32).into();
+                        return PropertyKey::array_index(cx, smi_value as u32).into();
                     }
                 }
 
-                // TODO: Implement Number::toString from spec
-                let string_value = cx.heap.alloc_string(key_value.as_double().to_string());
+                let string_value = cx
+                    .heap
+                    .alloc_string(number_to_string(key_value.as_double()));
                 PropertyKey::string(string_value)
             }
             _ => unreachable!(),
@@ -621,7 +623,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
     let raw_object: Gc<ObjectValue> = must!(array_create(cx, num_strings as u64, None)).into();
 
     for (i, quasi) in lit.quasis.iter().enumerate() {
-        let index_key = PropertyKey::array_index(i as u32);
+        let index_key = PropertyKey::array_index(cx, i as u32);
 
         let cooked_value = cx.get_interned_string(&quasi.cooked);
         let cooked_desc = PropertyDescriptor::data(cooked_value.into(), false, true, false);

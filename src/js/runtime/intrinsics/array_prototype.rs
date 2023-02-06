@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
-            has_property, length_of_array_like, set,
+            has_property, invoke, length_of_array_like, set,
         },
         array_object::{array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
@@ -79,6 +79,7 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
         object.intrinsic_func(cx, &cx.names.splice(), Self::splice, 2, realm);
+        object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
@@ -112,13 +113,13 @@ impl ArrayPrototype {
                 return Value::undefined().into();
             }
 
-            PropertyKey::from_u64(relative_index as u64)
+            PropertyKey::from_u64(cx, relative_index as u64)
         } else {
             if -relative_index > length as f64 {
                 return Value::undefined().into();
             }
 
-            PropertyKey::from_u64((length as i64 + relative_index as i64) as u64)
+            PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64)
         };
 
         get(cx, object, &key)
@@ -178,11 +179,11 @@ impl ArrayPrototype {
             }
 
             for i in 0..length {
-                let element_index_key = PropertyKey::from_u64(i);
+                let element_index_key = PropertyKey::from_u64(cx, i);
 
                 if maybe!(has_property(cx, element, &element_index_key)) {
                     let sub_element = maybe!(get(cx, element, &element_index_key));
-                    let array_index_key = PropertyKey::from_u64(*n);
+                    let array_index_key = PropertyKey::from_u64(cx, *n);
                     maybe!(create_data_property_or_throw(cx, array, &array_index_key, sub_element))
                 }
 
@@ -193,7 +194,7 @@ impl ArrayPrototype {
                 return type_error_(cx, "array is too large");
             }
 
-            let index_key = PropertyKey::from_u64(*n);
+            let index_key = PropertyKey::from_u64(cx, *n);
             maybe!(create_data_property_or_throw(cx, array, &index_key, element));
 
             *n += 1;
@@ -257,8 +258,8 @@ impl ArrayPrototype {
             to_index = to_index + count - 1;
 
             while count > 0 {
-                let from_key = PropertyKey::from_u64(from_index);
-                let to_key = PropertyKey::from_u64(to_index);
+                let from_key = PropertyKey::from_u64(cx, from_index);
+                let to_key = PropertyKey::from_u64(cx, to_index);
 
                 if maybe!(has_property(cx, object, &from_key)) {
                     let from_value = maybe!(get(cx, object, &from_key));
@@ -273,8 +274,8 @@ impl ArrayPrototype {
             }
         } else {
             while count > 0 {
-                let from_key = PropertyKey::from_u64(from_index);
-                let to_key = PropertyKey::from_u64(to_index);
+                let from_key = PropertyKey::from_u64(cx, from_index);
+                let to_key = PropertyKey::from_u64(cx, to_index);
 
                 if maybe!(has_property(cx, object, &from_key)) {
                     let from_value = maybe!(get(cx, object, &from_key));
@@ -322,7 +323,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(arguments, 1);
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -379,7 +380,8 @@ impl ArrayPrototype {
         };
 
         for i in start_index..end_index {
-            maybe!(set(cx, object, &PropertyKey::from_u64(i), value, true));
+            let key = PropertyKey::from_u64(cx, i);
+            maybe!(set(cx, object, &key, value, true));
         }
 
         object.into()
@@ -408,7 +410,7 @@ impl ArrayPrototype {
         let mut result_index = 0;
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -418,7 +420,7 @@ impl ArrayPrototype {
                 let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
 
                 if to_boolean(is_selected) {
-                    let result_index_key = PropertyKey::from_u64(result_index);
+                    let result_index_key = PropertyKey::from_u64(cx, result_index);
                     maybe!(create_data_property_or_throw(cx, array, &result_index_key, value));
 
                     result_index += 1;
@@ -448,7 +450,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(arguments, 1);
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -484,7 +486,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(arguments, 1);
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -549,7 +551,7 @@ impl ArrayPrototype {
         let mut target_index = start;
 
         for i in 0..source_length {
-            let source_key = PropertyKey::from_u64(i);
+            let source_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, source, &source_key)) {
                 let mut element = maybe!(get(cx, source, &source_key));
 
@@ -589,7 +591,7 @@ impl ArrayPrototype {
                         return type_error_(cx, "array is too large");
                     }
 
-                    let target_key = PropertyKey::from_u64(target_index);
+                    let target_key = PropertyKey::from_u64(cx, target_index);
                     maybe!(create_data_property_or_throw(cx, target, &target_key, element));
 
                     target_index += 1;
@@ -652,7 +654,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(arguments, 1);
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -696,7 +698,7 @@ impl ArrayPrototype {
         };
 
         for i in start_index..length {
-            let key = PropertyKey::from_u64(i);
+            let key = PropertyKey::from_u64(cx, i);
             let element = maybe!(get(cx, object, &key));
 
             if same_value_zero(search_element, element) {
@@ -737,7 +739,7 @@ impl ArrayPrototype {
         };
 
         for i in start_index..length {
-            let key = PropertyKey::from_u64(i);
+            let key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &key)) {
                 let element = maybe!(get(cx, object, &key));
                 if is_strictly_equal(search_element, element) {
@@ -773,7 +775,8 @@ impl ArrayPrototype {
                 joined.push_str(separator.str());
             }
 
-            let element = maybe!(get(cx, object, &PropertyKey::from_u64(i)));
+            let key = PropertyKey::from_u64(cx, i);
+            let element = maybe!(get(cx, object, &key));
 
             if !element.is_nullish() {
                 let next = maybe!(to_string(cx, element));
@@ -827,7 +830,7 @@ impl ArrayPrototype {
         };
 
         for i in (0..=start_index).rev() {
-            let key = PropertyKey::from_u64(i);
+            let key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &key)) {
                 let element = maybe!(get(cx, object, &key));
                 if is_strictly_equal(search_element, element) {
@@ -860,7 +863,7 @@ impl ArrayPrototype {
         let array = maybe!(array_species_create(cx, object, length));
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -891,7 +894,7 @@ impl ArrayPrototype {
         }
 
         let new_length = length - 1;
-        let index_key = PropertyKey::from_u64(new_length);
+        let index_key = PropertyKey::from_u64(cx, new_length);
 
         let element = maybe!(get(cx, object, &index_key));
         maybe!(delete_property_or_throw(cx, object, &index_key));
@@ -918,7 +921,7 @@ impl ArrayPrototype {
         }
 
         for (i, argument) in arguments.iter().enumerate() {
-            let key = PropertyKey::from_u64(length + i as u64);
+            let key = PropertyKey::from_u64(cx, length + i as u64);
             maybe!(set(cx, object, &key, *argument, true));
         }
 
@@ -955,7 +958,7 @@ impl ArrayPrototype {
                     return type_error_(cx, "reduce of empty array with no initial value");
                 }
 
-                let index_key = PropertyKey::from_u64(initial_index);
+                let index_key = PropertyKey::from_u64(cx, initial_index);
                 initial_index += 1;
 
                 if maybe!(has_property(cx, object, &index_key)) {
@@ -965,7 +968,7 @@ impl ArrayPrototype {
         };
 
         for i in initial_index..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -1007,7 +1010,7 @@ impl ArrayPrototype {
                     return type_error_(cx, "reduce of empty array with no initial value");
                 }
 
-                let index_key = PropertyKey::from_u64(initial_index as u64);
+                let index_key = PropertyKey::from_u64(cx, initial_index as u64);
                 initial_index -= 1;
 
                 if maybe!(has_property(cx, object, &index_key)) {
@@ -1017,7 +1020,7 @@ impl ArrayPrototype {
         };
 
         for i in (0..=initial_index).rev() {
-            let index_key = PropertyKey::from_u64(i as u64);
+            let index_key = PropertyKey::from_u64(cx, i as u64);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -1047,8 +1050,8 @@ impl ArrayPrototype {
         let mut upper = length - 1;
 
         while lower != middle {
-            let lower_key = PropertyKey::from_u64(lower);
-            let upper_key = PropertyKey::from_u64(upper);
+            let lower_key = PropertyKey::from_u64(cx, lower);
+            let upper_key = PropertyKey::from_u64(cx, upper);
 
             let lower_exists = maybe!(has_property(cx, object, &lower_key));
             let upper_exists = maybe!(has_property(cx, object, &upper_key));
@@ -1098,11 +1101,12 @@ impl ArrayPrototype {
             return Value::undefined().into();
         }
 
-        let first = maybe!(get(cx, object, &PropertyKey::array_index(0)));
+        let first_key = PropertyKey::array_index(cx, 0);
+        let first = maybe!(get(cx, object, &first_key));
 
         for i in 1..length {
-            let from_key = PropertyKey::from_u64(i);
-            let to_key = PropertyKey::from_u64(i - 1);
+            let from_key = PropertyKey::from_u64(cx, i);
+            let to_key = PropertyKey::from_u64(cx, i - 1);
 
             if maybe!(has_property(cx, object, &from_key)) {
                 let from_value = maybe!(get(cx, object, &from_key));
@@ -1112,7 +1116,8 @@ impl ArrayPrototype {
             }
         }
 
-        maybe!(delete_property_or_throw(cx, object, &PropertyKey::from_u64(length - 1)));
+        let last_key = PropertyKey::from_u64(cx, length - 1);
+        maybe!(delete_property_or_throw(cx, object, &last_key));
         maybe!(set(cx, object, &cx.names.length(), Value::from_u64(length - 1), true));
 
         first.into()
@@ -1161,10 +1166,10 @@ impl ArrayPrototype {
         let mut to_index = 0;
 
         for i in start_index..end_index {
-            let from_key = PropertyKey::from_u64(i);
+            let from_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &from_key)) {
                 let value = maybe!(get(cx, object, &from_key));
-                let to_key = PropertyKey::from_u64(to_index);
+                let to_key = PropertyKey::from_u64(cx, to_index);
                 maybe!(create_data_property_or_throw(cx, object, &to_key, value));
             }
 
@@ -1195,7 +1200,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(arguments, 1);
 
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(i);
+            let index_key = PropertyKey::from_u64(cx, i);
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
@@ -1253,10 +1258,10 @@ impl ArrayPrototype {
         let array = maybe!(array_species_create(cx, object, actual_delete_count));
 
         for i in 0..actual_delete_count {
-            let from_key = PropertyKey::from_u64(start_index + i);
+            let from_key = PropertyKey::from_u64(cx, start_index + i);
             if maybe!(has_property(cx, object, &from_key)) {
                 let from_value = maybe!(get(cx, object, &from_key));
-                let to_key = PropertyKey::from_u64(i);
+                let to_key = PropertyKey::from_u64(cx, i);
                 maybe!(create_data_property_or_throw(cx, array, &to_key, from_value));
             }
         }
@@ -1266,8 +1271,8 @@ impl ArrayPrototype {
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {
             for i in start_index..(length - actual_delete_count) {
-                let from_key = PropertyKey::from_u64(i + actual_delete_count);
-                let to_key = PropertyKey::from_u64(i + insert_count);
+                let from_key = PropertyKey::from_u64(cx, i + actual_delete_count);
+                let to_key = PropertyKey::from_u64(cx, i + insert_count);
 
                 if maybe!(has_property(cx, object, &from_key)) {
                     let from_value = maybe!(get(cx, object, &from_key));
@@ -1278,12 +1283,13 @@ impl ArrayPrototype {
             }
 
             for i in (new_length..length).rev() {
-                maybe!(delete_property_or_throw(cx, object, &PropertyKey::from_u64(i)));
+                let key = PropertyKey::from_u64(cx, i);
+                maybe!(delete_property_or_throw(cx, object, &key));
             }
         } else {
             for i in (start_index..(length - actual_delete_count)).rev() {
-                let from_key = PropertyKey::from_u64(i + actual_delete_count);
-                let to_key = PropertyKey::from_u64(i + insert_count);
+                let from_key = PropertyKey::from_u64(cx, i + actual_delete_count);
+                let to_key = PropertyKey::from_u64(cx, i + insert_count);
 
                 if maybe!(has_property(cx, object, &from_key)) {
                     let from_value = maybe!(get(cx, object, &from_key));
@@ -1297,7 +1303,7 @@ impl ArrayPrototype {
         // Insert items into array
         if arguments.len() > 2 {
             for (i, item) in (&arguments[2..]).iter().enumerate() {
-                let key = PropertyKey::from_u64(start_index + i as u64);
+                let key = PropertyKey::from_u64(cx, start_index + i as u64);
                 maybe!(set(cx, object, &key, *item, true));
             }
         }
@@ -1305,6 +1311,38 @@ impl ArrayPrototype {
         maybe!(set(cx, object, &cx.names.length(), Value::from_u64(new_length), true));
 
         array.into()
+    }
+
+    // 23.1.3.30 Array.prototype.toLocaleString
+    fn to_locale_string(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let mut result = String::new();
+
+        for i in 0..length {
+            if i > 0 {
+                result.push_str(", ");
+            }
+
+            let key = PropertyKey::from_u64(cx, i);
+            let next_element = maybe!(get(cx, object, &key));
+
+            if !next_element.is_nullish() {
+                let string_result =
+                    maybe!(invoke(cx, next_element, &cx.names.to_locale_string(), &[]));
+                let string_result = maybe!(to_string(cx, string_result));
+
+                result.push_str(string_result.str());
+            }
+        }
+
+        cx.heap.alloc_string(result).into()
     }
 
     // 23.1.3.31 Array.prototype.toString
@@ -1344,8 +1382,8 @@ impl ArrayPrototype {
             }
 
             for i in (0..length).rev() {
-                let from_key = PropertyKey::from_u64(i);
-                let to_key = PropertyKey::from_u64(i + num_arguments);
+                let from_key = PropertyKey::from_u64(cx, i);
+                let to_key = PropertyKey::from_u64(cx, i + num_arguments);
 
                 if maybe!(has_property(cx, object, &from_key)) {
                     let from_value = maybe!(get(cx, object, &from_key));
@@ -1356,7 +1394,7 @@ impl ArrayPrototype {
             }
 
             for (i, argument) in arguments.iter().enumerate() {
-                let key = PropertyKey::from_u64(i as u64);
+                let key = PropertyKey::from_u64(cx, i as u64);
                 maybe!(set(cx, object, &key, *argument, true));
             }
         }

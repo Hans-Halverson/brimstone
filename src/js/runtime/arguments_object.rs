@@ -230,7 +230,7 @@ pub fn create_unmapped_arguments_object(cx: &mut Context, arguments: &[Value]) -
 
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(i as u32);
+        let index_key = PropertyKey::array_index(cx, i as u32);
         must!(create_data_property_or_throw(cx, object, &index_key, *argument));
     }
 
@@ -274,7 +274,7 @@ pub fn create_mapped_arguments_object(
 
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(i as u32);
+        let index_key = PropertyKey::array_index(cx, i as u32);
         must!(create_data_property_or_throw(cx, object.into(), &index_key, *argument));
     }
 
@@ -306,11 +306,8 @@ pub fn create_mapped_arguments_object(
         let desc =
             PropertyDescriptor::accessor(Some(getter.into()), Some(setter.into()), false, true);
 
-        must!(object.parameter_map.define_own_property(
-            cx,
-            &PropertyKey::array_index(i as u32),
-            desc
-        ));
+        let key = PropertyKey::array_index(cx, i as u32);
+        must!(object.parameter_map.define_own_property(cx, &key, desc));
     }
 
     // Set @@iterator to Array.prototype.values

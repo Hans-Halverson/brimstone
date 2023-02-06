@@ -568,7 +568,7 @@ impl Object for ProxyObject {
         let mut unchecked_result_keys = HashSet::new();
 
         for i in 0..length {
-            let key = PropertyKey::array_index(i as u32);
+            let key = PropertyKey::array_index(cx, i as u32);
             let next = maybe!(get(cx, trap_result_object, &key));
             trap_result_keys.push(next);
 

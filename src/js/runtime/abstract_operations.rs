@@ -300,12 +300,23 @@ pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResul
     let mut vec = Vec::with_capacity(length as usize);
 
     for i in 0..length {
-        let key = PropertyKey::array_index(i as u32);
+        let key = PropertyKey::array_index(cx, i as u32);
         let next = maybe!(get(cx, object, &key));
         vec.push(next);
     }
 
     vec.into()
+}
+
+// 7.3.21 Invoke
+pub fn invoke(
+    cx: &mut Context,
+    value: Value,
+    key: &PropertyKey,
+    arguments: &[Value],
+) -> EvalResult<Value> {
+    let func = maybe!(get_v(cx, value, key));
+    call(cx, func, value, arguments)
 }
 
 // 7.3.22 OrdinaryHasInstance

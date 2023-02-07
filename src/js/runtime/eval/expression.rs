@@ -299,6 +299,10 @@ pub fn eval_property_name<'a>(
                     .alloc_string(number_to_string(key_value.as_double()));
                 PropertyKey::string(string_value)
             }
+            ast::Expression::BigInt(lit) => {
+                let string_value = cx.heap.alloc_string(lit.value.to_string());
+                PropertyKey::string(string_value)
+            }
             _ => unreachable!(),
         }
     };

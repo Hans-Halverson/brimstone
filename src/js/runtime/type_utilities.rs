@@ -571,14 +571,18 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
     let y_is_bigint = num_y.is_bigint();
     if x_is_bigint == y_is_bigint {
         if x_is_bigint {
-            return x.as_bigint().bigint().lt(y.as_bigint().bigint()).into();
+            return num_x
+                .as_bigint()
+                .bigint()
+                .lt(num_y.as_bigint().bigint())
+                .into();
         } else {
             // Both are numbers
-            if x.is_nan() || y.is_nan() {
+            if num_x.is_nan() || num_y.is_nan() {
                 return Value::undefined().into();
             }
 
-            (x.as_number() < y.as_number()).into()
+            (num_x.as_number() < num_y.as_number()).into()
         }
     } else {
         // One number and one BigInt

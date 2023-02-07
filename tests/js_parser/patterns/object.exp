@@ -253,15 +253,15 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "13:0-13:36",
+      loc: "13:0-13:43",
       kind: "var",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "13:4-13:35",
+          loc: "13:4-13:42",
           id: {
             type: "ObjectPattern",
-            loc: "13:4-13:31",
+            loc: "13:4-13:38",
             properties: [
               {
                 type: "Property",
@@ -308,11 +308,27 @@
                 },
                 computed: false,
               },
+              {
+                type: "Property",
+                loc: "13:31-13:36",
+                key: {
+                  type: "Literal",
+                  loc: "13:31-13:33",
+                  value: null,
+                  bigint: "1",
+                },
+                value: {
+                  type: "Identifier",
+                  loc: "13:35-13:36",
+                  name: "f",
+                },
+                computed: false,
+              },
             ],
           },
           init: {
             type: "Literal",
-            loc: "13:34-13:35",
+            loc: "13:41-13:42",
             value: 1,
           },
         },

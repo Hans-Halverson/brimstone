@@ -435,12 +435,11 @@ impl<'a> Parser<'a> {
             self.advance()?
         }
 
-        // Id is optional only for function expresssions
-        let id = if self.token != Token::LeftParen || is_decl {
-            Some(p(self.parse_binding_identifier()?))
-        } else {
-            None
-        };
+        // For declarations name is required and await/yield inherited from surrounding context
+        let mut id = None;
+        if is_decl {
+            id = Some(p(self.parse_binding_identifier()?))
+        }
 
         // Enter async/generator context for parsing the function arguments and body
         let did_allow_await = self.allow_await;
@@ -448,6 +447,11 @@ impl<'a> Parser<'a> {
 
         self.allow_await = is_async;
         self.allow_yield = is_generator;
+
+        // For expressions name is optional and is within this function's await/yield context
+        if !is_decl && self.token != Token::LeftParen {
+            id = Some(p(self.parse_binding_identifier()?))
+        }
 
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
@@ -1107,7 +1111,12 @@ impl<'a> Parser<'a> {
         }
 
         let is_assignment_expression_end = match self.token {
-            Token::RightParen | Token::RightBracket | Token::Comma | Token::In | Token::Of => true,
+            Token::RightParen
+            | Token::RightBracket
+            | Token::Comma
+            | Token::Colon
+            | Token::In
+            | Token::Of => true,
             _ => false,
         };
         if is_assignment_expression_end {
@@ -2341,7 +2350,9 @@ impl<'a> Parser<'a> {
                 is_computed = true;
                 expr
             }
-            Token::NumberLiteral(_) | Token::StringLiteral(_) => self.parse_primary_expression()?,
+            Token::NumberLiteral(_) | Token::StringLiteral(_) | Token::BigIntLiteral(_) => {
+                self.parse_primary_expression()?
+            }
             // Private properties are only allowed in classes
             Token::Hash if prop_context == PropertyContext::Class => {
                 is_private = true;

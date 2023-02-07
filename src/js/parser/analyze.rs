@@ -956,7 +956,7 @@ impl Analyzer {
 
             // Check for invalid names depending on context
             declaration.iter_bound_names(&mut |id| {
-                if id.name == "let" {
+                if var_decl.kind != VarKind::Var && id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
                 }
 

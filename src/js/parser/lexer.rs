@@ -5,7 +5,7 @@ use num_bigint::BigInt;
 
 use crate::js::common::unicode::{
     get_binary_value, get_hex_value, get_octal_value, is_ascii, is_ascii_newline,
-    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_unicode_newline,
+    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_newline, is_unicode_newline,
     is_unicode_whitespace,
 };
 
@@ -936,7 +936,98 @@ impl<'a> Lexer<'a> {
 
         self.advance();
 
-        return self.emit(Token::StringLiteral(value), start_pos);
+        self.emit(Token::StringLiteral(value), start_pos)
+    }
+
+    // Lex a regexp literal. Must be called when the previously lexed token was a '/'.
+    pub fn next_regexp_literal(&mut self) -> LexResult {
+        let start_pos = self.pos - 1;
+        let pattern_start_pos = self.pos;
+
+        // RegularExpressionFirstChar
+        self.lex_regex_character(false)?;
+
+        // RegularExpressionChars
+        while self.current != '/' {
+            self.lex_regex_character(false)?;
+        }
+
+        let pattern_end_pos = self.pos;
+
+        self.advance();
+
+        // Consume optional flags, which are IdentifierPartChars
+        let flags_start_pos = self.pos;
+
+        loop {
+            // EOF signals the end of the flags
+            if self.current == EOF_CHAR {
+                break;
+            }
+
+            if is_ascii(self.current) {
+                if is_id_part_ascii(self.current) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            } else {
+                // Otherwise must be a utf-8 encoded codepoint
+                let save_state = self.save();
+                let code_point = self.lex_utf8_codepoint()?;
+                if is_id_part_unicode(code_point) {
+                    continue;
+                } else {
+                    // Restore to before codepoint if not part of the flags
+                    self.restore(&save_state);
+                    break;
+                }
+            }
+        }
+
+        let pattern = String::from(&self.buf[pattern_start_pos..pattern_end_pos]);
+        let flags = String::from(&self.buf[flags_start_pos..self.pos]);
+        let raw = String::from(&self.buf[start_pos..self.pos]);
+
+        self.emit(Token::RegexpLiteral { raw, pattern, flags }, start_pos)
+    }
+
+    fn lex_regex_character(&mut self, in_class: bool) -> ParseResult<()> {
+        match self.current {
+            '\\' => {
+                self.advance();
+                self.lex_regexp_character_non_line_terminator()?;
+            }
+            EOF_CHAR => {
+                let loc = self.mark_loc(self.pos);
+                return self.error(loc, ParseError::UnterminatedRegexpLiteral);
+            }
+            '[' if !in_class => {
+                self.advance();
+
+                while self.current != ']' {
+                    self.lex_regex_character(true)?;
+                }
+
+                self.advance();
+            }
+            _ => {
+                self.lex_regexp_character_non_line_terminator()?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn lex_regexp_character_non_line_terminator(&mut self) -> ParseResult<()> {
+        let char = self.lex_ascii_or_unicode_character()?;
+
+        if is_newline(char) {
+            let loc = self.mark_loc(self.pos);
+            self.error(loc, ParseError::UnterminatedRegexpLiteral)
+        } else {
+            Ok(())
+        }
     }
 
     // Get the next template part after the end of a template expression. Must be called when the

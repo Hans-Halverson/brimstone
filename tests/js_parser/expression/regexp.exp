@@ -1,0 +1,98 @@
+{
+  type: "Program",
+  loc: "1:0-9:9",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:4",
+      kind: {
+        type: "Literal",
+        loc: "1:0-1:3",
+        raw: "/a/",
+        value: {
+          pattern: "a",
+          flags: "",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:6",
+      kind: {
+        type: "Literal",
+        loc: "2:0-2:5",
+        raw: "/a/sm",
+        value: {
+          pattern: "a",
+          flags: "sm",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:0-4:13",
+      kind: {
+        type: "Literal",
+        loc: "4:0-4:12",
+        raw: "/[asdf]asdf/",
+        value: {
+          pattern: "[asdf]asdf",
+          flags: "",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:12",
+      kind: {
+        type: "Literal",
+        loc: "5:0-5:11",
+        raw: "/[asdf[f]]/",
+        value: {
+          pattern: "[asdf[f]]",
+          flags: "",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:9",
+      kind: {
+        type: "Literal",
+        loc: "7:0-7:8",
+        raw: "/\[asdf/",
+        value: {
+          pattern: "\[asdf",
+          flags: "",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "8:0-8:5",
+      kind: {
+        type: "Literal",
+        loc: "8:0-8:4",
+        raw: "/\//",
+        value: {
+          pattern: "\/",
+          flags: "",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:9",
+      kind: {
+        type: "Literal",
+        loc: "9:0-9:8",
+        raw: "/\a\b\c/",
+        value: {
+          pattern: "\a\b\c",
+          flags: "",
+        },
+      },
+    },
+  ],
+  has_use_strict_directive: false,
+}

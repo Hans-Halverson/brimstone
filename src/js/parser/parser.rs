@@ -146,6 +146,15 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn advance_regexp_literal(&mut self) -> ParseResult<()> {
+        let (token, loc) = self.lexer.next_regexp_literal()?;
+        self.prev_loc = self.loc;
+        self.token = token;
+        self.loc = loc;
+
+        Ok(())
+    }
+
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
             return self.error(self.loc, ParseError::ExpectedToken(self.token.clone(), token));
@@ -1746,6 +1755,7 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(p(Expression::BigInt(BigIntLiteral { loc, value })))
             }
+            Token::Divide => Ok(p(Expression::Regexp(self.parse_regexp_literal()?))),
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;
@@ -1966,6 +1976,25 @@ impl<'a> Parser<'a> {
             }
             "yield" => self.in_strict_mode || self.allow_yield,
             _ => false,
+        }
+    }
+
+    fn parse_regexp_literal(&mut self) -> ParseResult<RegexpLiteral> {
+        let start_pos = self.current_start_pos();
+
+        self.advance_regexp_literal()?;
+
+        if let Token::RegexpLiteral { raw, pattern, flags } = &self.token {
+            let raw = raw.clone();
+            let pattern = pattern.clone();
+            let flags = flags.clone();
+
+            self.advance()?;
+            let loc = self.mark_loc(start_pos);
+
+            Ok(RegexpLiteral { loc, raw, pattern, flags })
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
         }
     }
 

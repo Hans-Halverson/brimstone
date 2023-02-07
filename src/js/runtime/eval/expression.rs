@@ -66,6 +66,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Number(lit) => eval_number_literal(lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
         ast::Expression::BigInt(lit) => eval_bigint_literal(cx, lit),
+        ast::Expression::Regexp(_) => unimplemented!("regexp literal"),
         ast::Expression::Unary(expr) => match expr.operator {
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),

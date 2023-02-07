@@ -8,6 +8,7 @@ pub enum Token {
     NumberLiteral(f64),
     StringLiteral(String),
     BigIntLiteral(BigInt),
+    RegexpLiteral { raw: String, pattern: String, flags: String },
     TemplatePart { raw: String, cooked: String, is_head: bool, is_tail: bool },
     Eof,
     // Operators
@@ -127,6 +128,7 @@ impl fmt::Display for Token {
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::StringLiteral(lit) => lit,
             Token::BigIntLiteral(lit) => return write!(f, "{}n", lit.to_string()),
+            Token::RegexpLiteral { raw, .. } => return write!(f, "{}", raw),
             Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {
                 return write!(f, "`{}`", raw)
             }

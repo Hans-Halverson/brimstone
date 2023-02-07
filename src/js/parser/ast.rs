@@ -562,6 +562,7 @@ pub enum Expression {
     Number(NumberLiteral),
     String(StringLiteral),
     BigInt(BigIntLiteral),
+    Regexp(RegexpLiteral),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
     Logical(LogicalExpression),
@@ -623,6 +624,13 @@ pub struct StringLiteral {
 pub struct BigIntLiteral {
     pub loc: Loc,
     pub value: BigInt,
+}
+
+pub struct RegexpLiteral {
+    pub loc: Loc,
+    pub raw: String,
+    pub pattern: String,
+    pub flags: String,
 }
 
 #[derive(PartialEq)]

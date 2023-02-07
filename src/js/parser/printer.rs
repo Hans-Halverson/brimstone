@@ -470,6 +470,7 @@ impl<'a> Printer<'a> {
             Expression::Number(lit) => self.print_number_literal(lit),
             Expression::String(lit) => self.print_string_literal(lit),
             Expression::BigInt(lit) => self.print_bigint_literal(lit),
+            Expression::Regexp(lit) => self.print_regexp_literal(lit),
             Expression::Unary(unary) => self.print_unary_expression(unary),
             Expression::Binary(binary) => self.print_binary_expression(binary),
             Expression::Logical(logical) => self.print_logical_expression(logical),
@@ -525,6 +526,25 @@ impl<'a> Printer<'a> {
         self.property("value", (), Printer::print_null_in_property);
         self.property("bigint", &lit.value.to_string(), Printer::print_string);
         self.end_node();
+    }
+
+    fn print_regexp_literal(&mut self, lit: &RegexpLiteral) {
+        self.start_node("Literal", &lit.loc);
+        self.property("raw", &lit.raw, Printer::print_string);
+        self.property("value", lit, Printer::print_regex_value);
+        self.end_node();
+    }
+
+    fn print_regex_value(&mut self, lit: &RegexpLiteral) {
+        self.string("{\n");
+        self.inc_indent();
+
+        self.property("pattern", &lit.pattern, Printer::print_string);
+        self.property("flags", &lit.flags, Printer::print_string);
+
+        self.dec_indent();
+        self.indent();
+        self.string("}");
     }
 
     fn print_unary_operator(&mut self, op: &UnaryOperator) {

@@ -8,10 +8,14 @@ use crate::{index::Test, utils::GenericError};
 pub struct IgnoredIndex {
     ignored_tests: HashSet<String>,
     ignored_features: HashSet<String>,
+    ignore_async_generator: bool,
 }
 
 impl IgnoredIndex {
-    pub fn load_from_file(ignored_path: &Path) -> Result<IgnoredIndex, GenericError> {
+    pub fn load_from_file(
+        ignored_path: &Path,
+        ignore_async_generator: bool,
+    ) -> Result<IgnoredIndex, GenericError> {
         let ignored_string = fs::read_to_string(ignored_path)?;
 
         // Strip line comments so that serde_json can parse the file
@@ -32,11 +36,21 @@ impl IgnoredIndex {
             ignored_features.insert(String::from(feature.as_str().unwrap()));
         }
 
-        Ok(IgnoredIndex { ignored_tests, ignored_features })
+        Ok(IgnoredIndex { ignored_tests, ignored_features, ignore_async_generator })
     }
 
     pub fn should_ignore(&self, test: &Test) -> bool {
         if self.ignored_tests.contains(&test.path) {
+            return true;
+        }
+
+        // Crudely ignore tests with certain keywords in name if we are filtering async/generator
+        if self.ignore_async_generator
+            && (test.path.contains("async")
+                || test.path.contains("await")
+                || test.path.contains("generator")
+                || test.path.contains("yield"))
+        {
             return true;
         }
 
@@ -47,5 +61,9 @@ impl IgnoredIndex {
         }
 
         return false;
+    }
+
+    pub fn ignore_async_generator(&self) -> bool {
+        self.ignore_async_generator
     }
 }

@@ -21,6 +21,10 @@ struct Args {
     #[arg(long, default_value_t = String::from("ignored_tests.jsonc"))]
     ignored_path: String,
 
+    /// Ignore async and generator tests
+    #[arg(long, default_value_t = false)]
+    ignore_async_generator: bool,
+
     /// Reindex the test262 test suite
     #[arg(long, default_value_t = false)]
     reindex: bool,
@@ -64,7 +68,7 @@ fn main_impl() -> GenericResult {
     }
 
     let index = TestIndex::load_from_file(index_path)?;
-    let ignored = IgnoredIndex::load_from_file(ignored_path)?;
+    let ignored = IgnoredIndex::load_from_file(ignored_path, args.ignore_async_generator)?;
     let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);
 

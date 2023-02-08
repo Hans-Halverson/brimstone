@@ -56,6 +56,8 @@ impl TestRunner {
             }
 
             let test262_root = self.index.test262_root.clone();
+            let ignore_async_generator = self.ignored.ignore_async_generator();
+
             let test = test.clone();
             let sender = sender.clone();
             num_jobs += 1;
@@ -79,12 +81,15 @@ impl TestRunner {
                             None => String::from("<panic message not found>"),
                         };
 
-                        sender
-                            .send(TestResult::failure(
-                                &test,
-                                format!("Thread panicked:\n{}", message),
-                            ))
-                            .unwrap()
+                        let result = if ignore_async_generator
+                            && message == "not implemented: async and generator functions"
+                        {
+                            TestResult::skipped(&test)
+                        } else {
+                            TestResult::failure(&test, format!("Thread panicked:\n{}", message))
+                        };
+
+                        sender.send(result).unwrap()
                     }
                 }
             });
@@ -344,6 +349,7 @@ struct TestResult {
 enum TestResultCompletion {
     Success,
     Failure(String),
+    Skipped,
 }
 
 impl TestResult {
@@ -358,6 +364,13 @@ impl TestResult {
         TestResult {
             path: test.path.clone(),
             result: TestResultCompletion::Failure(message),
+        }
+    }
+
+    fn skipped(test: &Test) -> TestResult {
+        TestResult {
+            path: test.path.clone(),
+            result: TestResultCompletion::Skipped,
         }
     }
 }
@@ -387,6 +400,9 @@ impl TestResults {
                 }
                 TestResultCompletion::Failure(_) => {
                     collated.failed.push(result);
+                }
+                TestResultCompletion::Skipped => {
+                    collated.num_skipped += 1;
                 }
             }
         }

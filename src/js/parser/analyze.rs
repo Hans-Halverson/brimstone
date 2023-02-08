@@ -23,7 +23,7 @@ pub struct Analyzer {
     // Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     // Set of labels defined where the visitor is currently in
-    labels: HashMap<String, LabelId>,
+    labels: HashMap<String, LabelInfo>,
     // Number of labeled statements that the visitor is currently inside. Multiple labels on the
     // same statement all count as a single "label depth", and will receive the same label id.
     label_depth: LabelId,
@@ -53,9 +53,16 @@ struct ClassStackEntry {
     is_derived: bool,
 }
 
+struct LabelInfo {
+    // Id of this label
+    label_id: LabelId,
+    // Whether this label can be a continue target
+    is_continue_target: bool,
+}
+
 // Saved state from entering a function or class that can be restored from
 struct AnalyzerSavedState {
-    labels: HashMap<String, LabelId>,
+    labels: HashMap<String, LabelInfo>,
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
@@ -254,7 +261,21 @@ impl<'a> AstVisitor for Analyzer {
         self.scope_builder.enter_switch_scope(stmt);
         self.inc_breakable_depth();
 
-        default_visit_switch_statement(self, stmt);
+        let mut seen_default = false;
+
+        self.visit_expression(&mut stmt.discriminant);
+
+        for case in &mut stmt.cases {
+            if case.test.is_none() {
+                if !seen_default {
+                    seen_default = true;
+                } else {
+                    self.emit_error(case.loc, ParseError::SwitchMultipleDefaults);
+                }
+            }
+
+            self.visit_switch_case(case);
+        }
 
         self.dec_breakable_depth();
         self.scope_builder.exit_scope();
@@ -302,7 +323,7 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_break_statement(&mut self, stmt: &mut BreakStatement) {
-        self.visit_label_use(stmt.label.as_mut());
+        self.visit_label_use(stmt.label.as_mut(), false);
 
         if stmt.label.is_none() && !self.is_in_breakable() {
             self.emit_error(stmt.loc, ParseError::UnlabeledBreakOutsideBreakable);
@@ -310,7 +331,7 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_continue_statement(&mut self, stmt: &mut ContinueStatement) {
-        self.visit_label_use(stmt.label.as_mut());
+        self.visit_label_use(stmt.label.as_mut(), true);
 
         if !self.is_in_iterable() {
             self.emit_error(stmt.loc, ParseError::ContinueOutsideIterable);
@@ -679,6 +700,8 @@ impl Analyzer {
                 Some(InvalidDuplicateParametersReason::ArrowFunction)
             } else if is_method {
                 Some(InvalidDuplicateParametersReason::Method)
+            } else if !func.has_simple_parameter_list {
+                Some(InvalidDuplicateParametersReason::NonSimpleParameters)
             } else {
                 None
             };
@@ -704,7 +727,7 @@ impl Analyzer {
 
         // Arguments object is not needed if "arguments" appears in the lexically declared names, or
         // as a function var declared name.
-        if is_arguments_object_needed {
+        if is_arguments_object_needed && !func.has_parameter_expressions {
             for var_decl in func.var_decls() {
                 match var_decl {
                     VarDecl::Func(_) => {
@@ -991,7 +1014,7 @@ impl Analyzer {
         self.label_depth += 1;
 
         let mut labels = vec![];
-        // Deep track of duplicate labels so that we don't pop the duplicate labels at the end
+        // Keep track of duplicate labels so that we don't pop the duplicate labels at the end
         let is_label_duplicate = self.visit_label_def(stmt, label_id);
         labels.push((stmt.label.label.name.clone(), is_label_duplicate));
 
@@ -1001,6 +1024,22 @@ impl Analyzer {
             labels.push((stmt.label.label.name.clone(), is_label_duplicate));
 
             inner_stmt = stmt.body.as_mut()
+        }
+
+        // Only some statements can be a continue target
+        let is_continue_target = match inner_stmt {
+            Statement::While(_)
+            | Statement::DoWhile(_)
+            | Statement::For(_)
+            | Statement::ForEach(_)
+            | Statement::Switch(_) => true,
+            _ => false,
+        };
+
+        if is_continue_target {
+            for (label, _) in &labels {
+                self.labels.get_mut(label).unwrap().is_continue_target = true;
+            }
         }
 
         (inner_stmt, labels)
@@ -1024,7 +1063,8 @@ impl Analyzer {
         if is_duplicate {
             self.emit_error(stmt.label.label.loc, ParseError::DuplicateLabel);
         } else {
-            self.labels.insert(label_name.clone(), label_id);
+            self.labels
+                .insert(label_name.clone(), LabelInfo { label_id, is_continue_target: false });
         }
 
         stmt.label.id = label_id;
@@ -1060,12 +1100,15 @@ impl Analyzer {
         }
     }
 
-    fn visit_label_use(&mut self, label: Option<&mut Label>) {
+    fn visit_label_use(&mut self, label: Option<&mut Label>, is_continue: bool) {
         if let Some(label) = label {
             match self.labels.get(&label.label.name) {
                 None => self.emit_error(label.label.loc, ParseError::LabelNotFound),
-                Some(label_id) => {
-                    label.id = *label_id;
+                Some(label_info) if is_continue && !label_info.is_continue_target => {
+                    self.emit_error(label.label.loc, ParseError::LabelNotFound)
+                }
+                Some(label_info) => {
+                    label.id = label_info.label_id;
                 }
             }
         }

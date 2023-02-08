@@ -32,6 +32,7 @@ pub enum ParseError {
     InvalidUpdateExpressionArgument,
     IdentifierIsReservedWord,
     ExpectedNewTarget,
+    ExponentLHSUnary,
     ForEachInitInvalidVarDecl,
     NameRedeclaration(String, NameKind),
     DuplicateLabel,
@@ -46,6 +47,7 @@ pub enum ParseError {
     ReturnOutsideFunction,
     ContinueOutsideIterable,
     UnlabeledBreakOutsideBreakable,
+    SwitchMultipleDefaults,
     MultipleConstructors,
     NonSimpleConstructor,
     ClassStaticPrototype,
@@ -69,6 +71,7 @@ pub enum InvalidDuplicateParametersReason {
     StrictMode,
     ArrowFunction,
     Method,
+    NonSimpleParameters,
 }
 
 impl fmt::Display for ParseError {
@@ -123,6 +126,12 @@ impl fmt::Display for ParseError {
             ParseError::ExpectedNewTarget => {
                 write!(f, "Expected new.target")
             }
+            ParseError::ExponentLHSUnary => {
+                write!(
+                    f,
+                    "Unparenthesized unary expression can't appear on the left hand side of '**'"
+                )
+            }
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
             }
@@ -160,6 +169,9 @@ impl fmt::Display for ParseError {
                     InvalidDuplicateParametersReason::StrictMode => "strict mode functions",
                     InvalidDuplicateParametersReason::ArrowFunction => "arrow functions",
                     InvalidDuplicateParametersReason::Method => "methods",
+                    InvalidDuplicateParametersReason::NonSimpleParameters => {
+                        "functions with non-simple parameter lists"
+                    }
                 };
                 write!(f, "Duplicate parameters not allowed in {}", reason_string)
             }
@@ -171,6 +183,9 @@ impl fmt::Display for ParseError {
             ParseError::ContinueOutsideIterable => write!(f, "Continue must be inside loop"),
             ParseError::UnlabeledBreakOutsideBreakable => {
                 write!(f, "Unlabeled break must be inside loop or switch")
+            }
+            ParseError::SwitchMultipleDefaults => {
+                write!(f, "More than one default case in switch")
             }
             ParseError::MultipleConstructors => {
                 write!(f, "Class can only have a single constructor")

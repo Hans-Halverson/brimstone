@@ -488,6 +488,10 @@ fn for_body_evaluation(
             last_value = body_result.value()
         }
 
+        if let Some(per_iteration_decl) = per_iteration_decl {
+            create_per_iteration_environment(cx, per_iteration_decl);
+        }
+
         if let Some(update) = stmt.update.as_deref() {
             maybe__!(eval_expression(cx, update));
         }

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use rand::{rngs::StdRng, SeedableRng};
+
 use crate::js::parser::ast::{AstPtr, TemplateLiteral};
 
 use super::{
@@ -21,6 +23,7 @@ pub struct Realm {
     pub global_object: Gc<ObjectValue>,
     pub intrinsics: Intrinsics,
     pub template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
+    pub rand: StdRng,
 }
 
 impl GcDeref for Realm {}
@@ -36,6 +39,7 @@ impl Realm {
             global_object: Gc::uninit(),
             intrinsics: Intrinsics::new_uninit(),
             template_map: HashMap::new(),
+            rand: StdRng::from_entropy(),
         });
 
         realm.clone().intrinsics.initialize(cx, realm);

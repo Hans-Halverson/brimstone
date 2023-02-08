@@ -13,7 +13,7 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
     if base.is_nan() {
         return f64::NAN;
     } else if base.is_infinite() {
-        return if exponent == f64::INFINITY {
+        return if base == f64::INFINITY {
             if exponent > 0.0 {
                 f64::INFINITY
             } else {
@@ -21,11 +21,11 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
             }
         } else {
             let is_exponent_integral_value = is_integral_number(Value::number(exponent));
-            let is_exponent_odd = exponent % 2.0 == 1.0;
+            let is_exponent_odd = exponent % 2.0 != 0.0;
             let is_exponent_odd_integral_value = is_exponent_odd && is_exponent_integral_value;
 
             if exponent > 0.0 {
-                if is_exponent_integral_value {
+                if is_exponent_odd_integral_value {
                     f64::NEG_INFINITY
                 } else {
                     f64::INFINITY
@@ -47,7 +47,7 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
             }
         } else {
             let is_exponent_integral_value = is_integral_number(Value::number(exponent));
-            let is_exponent_odd = exponent % 2.0 == 1.0;
+            let is_exponent_odd = exponent % 2.0 != 0.0;
             let is_exponent_odd_integral_value = is_exponent_odd && is_exponent_integral_value;
 
             if exponent > 0.0 {
@@ -57,7 +57,7 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
                     0.0
                 }
             } else {
-                if is_exponent_integral_value {
+                if is_exponent_odd_integral_value {
                     f64::NEG_INFINITY
                 } else {
                     f64::INFINITY

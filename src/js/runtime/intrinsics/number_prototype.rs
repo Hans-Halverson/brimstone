@@ -51,7 +51,7 @@ impl NumberPrototype {
     ) -> EvalResult<Value> {
         let number_value = maybe!(this_number_value(cx, this_value));
 
-        let mut radix = get_argument(arguments, 0);
+        let radix = get_argument(arguments, 0);
 
         let is_radix_10 = if radix.is_undefined() {
             true

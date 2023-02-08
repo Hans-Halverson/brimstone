@@ -338,6 +338,26 @@ pub trait AstVisitor: Sized {
     fn visit_assignment_pattern(&mut self, patt: &mut AssignmentPattern) {
         default_visit_assignment_pattern(self, patt)
     }
+
+    fn visit_import_declaration(&mut self, import: &mut ImportDeclaration) {
+        default_visit_import_declaration(self, import)
+    }
+
+    fn visit_import_specifier(&mut self, spec: &mut ImportSpecifier) {
+        default_visit_import_specifier(self, spec)
+    }
+
+    fn visit_import_default_specifier(&mut self, spec: &mut ImportDefaultSpecifier) {
+        default_visit_import_default_specifier(self, spec)
+    }
+
+    fn visit_import_named_specifier(&mut self, spec: &mut ImportNamedSpecifier) {
+        default_visit_import_named_specifier(self, spec)
+    }
+
+    fn visit_import_namespace_specifier(&mut self, spec: &mut ImportNamespaceSpecifier) {
+        default_visit_import_namespace_specifier(self, spec)
+    }
 }
 
 #[macro_export]
@@ -365,6 +385,7 @@ pub fn default_visit_program<V: AstVisitor>(visitor: &mut V, program: &mut Progr
 pub fn default_visit_toplevel<V: AstVisitor>(visitor: &mut V, toplevel: &mut Toplevel) {
     match toplevel {
         Toplevel::Statement(stmt) => visitor.visit_statement(stmt),
+        Toplevel::Import(import) => visitor.visit_import_declaration(import),
     }
 }
 
@@ -723,4 +744,42 @@ pub fn default_visit_assignment_pattern<V: AstVisitor>(
 ) {
     visitor.visit_pattern(&mut patt.left);
     visitor.visit_expression(&mut patt.right);
+}
+
+pub fn default_visit_import_declaration<V: AstVisitor>(
+    visitor: &mut V,
+    import: &mut ImportDeclaration,
+) {
+    visit_vec!(visitor, import.specifiers, visit_import_specifier);
+    visitor.visit_string_literal(&mut import.source);
+}
+
+pub fn default_visit_import_specifier<V: AstVisitor>(visitor: &mut V, spec: &mut ImportSpecifier) {
+    match spec {
+        ImportSpecifier::Default(spec) => visitor.visit_import_default_specifier(spec),
+        ImportSpecifier::Named(spec) => visitor.visit_import_named_specifier(spec),
+        ImportSpecifier::Namespace(spec) => visitor.visit_import_namespace_specifier(spec),
+    }
+}
+
+pub fn default_visit_import_default_specifier<V: AstVisitor>(
+    visitor: &mut V,
+    spec: &mut ImportDefaultSpecifier,
+) {
+    visitor.visit_identifier(&mut spec.local);
+}
+
+pub fn default_visit_import_named_specifier<V: AstVisitor>(
+    visitor: &mut V,
+    spec: &mut ImportNamedSpecifier,
+) {
+    visit_opt!(visitor, spec.imported, visit_expression);
+    visitor.visit_identifier(&mut spec.local);
+}
+
+pub fn default_visit_import_namespace_specifier<V: AstVisitor>(
+    visitor: &mut V,
+    spec: &mut ImportNamespaceSpecifier,
+) {
+    visitor.visit_identifier(&mut spec.local);
 }

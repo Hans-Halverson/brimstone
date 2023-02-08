@@ -34,7 +34,7 @@ pub use abstract_operations::get;
 pub use completion::{Completion, CompletionKind, EvalResult};
 pub use console::to_console_string;
 pub use context::Context;
-pub use eval::{evaluate::evaluate, script::eval_script};
+pub use eval::{evaluate::evaluate, module::eval_module, script::eval_script};
 pub use gc::Gc;
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;

@@ -127,6 +127,7 @@ impl<'a> Printer<'a> {
     fn print_program(&mut self, program: &Program) {
         self.start_node("Program", &program.loc);
         self.array_property("body", &program.toplevels, Printer::print_toplevel);
+        self.property("sourceType", &program.kind, Printer::print_program_kind);
         self.property(
             "has_use_strict_directive",
             program.has_use_strict_directive,
@@ -135,9 +136,18 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
+    fn print_program_kind(&mut self, program_kind: &ProgramKind) {
+        let str = match program_kind {
+            ProgramKind::Script => "script",
+            ProgramKind::Module => "module",
+        };
+        self.print_str(str)
+    }
+
     fn print_toplevel(&mut self, toplevel: &Toplevel) {
         match toplevel {
             Toplevel::Statement(stmt) => self.print_statement(stmt),
+            Toplevel::Import(import) => self.print_import_declaration(import),
         }
     }
 
@@ -958,6 +968,44 @@ impl<'a> Printer<'a> {
         self.start_node("AssignmentPattern", &patt.loc);
         self.property("left", patt.left.as_ref(), Printer::print_pattern);
         self.property("right", patt.right.as_ref(), Printer::print_expression);
+        self.end_node();
+    }
+
+    fn print_import_declaration(&mut self, import: &ImportDeclaration) {
+        self.start_node("ImportDeclaration", &import.loc);
+        self.array_property(
+            "specifiers",
+            import.specifiers.as_ref(),
+            Printer::print_import_specifier,
+        );
+        self.property("source", import.source.as_ref(), Printer::print_string_literal);
+        self.end_node();
+    }
+
+    fn print_import_specifier(&mut self, specifier: &ImportSpecifier) {
+        match specifier {
+            ImportSpecifier::Default(spec) => self.print_import_default_specifier(spec),
+            ImportSpecifier::Named(spec) => self.print_import_named_specifier(spec),
+            ImportSpecifier::Namespace(spec) => self.print_import_namespace_specifier(spec),
+        }
+    }
+
+    fn print_import_default_specifier(&mut self, spec: &ImportDefaultSpecifier) {
+        self.start_node("ImportDefaultSpecifier", &spec.loc);
+        self.property("local", spec.local.as_ref(), Printer::print_identifier);
+        self.end_node();
+    }
+
+    fn print_import_named_specifier(&mut self, spec: &ImportNamedSpecifier) {
+        self.start_node("ImportSpecifier", &spec.loc);
+        self.property("imported", spec.imported.as_ref(), Printer::print_optional_expression);
+        self.property("local", spec.local.as_ref(), Printer::print_identifier);
+        self.end_node();
+    }
+
+    fn print_import_namespace_specifier(&mut self, spec: &ImportNamespaceSpecifier) {
+        self.start_node("ImportNamespaceSpecifier", &spec.loc);
+        self.property("local", spec.local.as_ref(), Printer::print_identifier);
         self.end_node();
     }
 

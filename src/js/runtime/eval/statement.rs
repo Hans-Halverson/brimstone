@@ -70,6 +70,7 @@ pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Comp
                     return result;
                 }
             }
+            ast::Toplevel::Import(_) => unimplemented!("import declaration"),
         }
     }
 

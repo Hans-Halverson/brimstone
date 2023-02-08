@@ -2,5 +2,6 @@
   type: "Program",
   loc: "1:0-1:0",
   body: [],
+  sourceType: "script",
   has_use_strict_directive: false,
 }

@@ -1,0 +1,298 @@
+{
+  type: "Program",
+  loc: "1:0-23:37",
+  body: [
+    {
+      type: "ImportDeclaration",
+      loc: "1:0-1:11",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "1:7-1:10",
+        value: "a",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "3:0-3:23",
+      specifiers: [
+        {
+          type: "ImportNamespaceSpecifier",
+          loc: "3:7-3:13",
+          local: {
+            type: "Identifier",
+            loc: "3:12-3:13",
+            name: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "3:19-3:22",
+        value: "b",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "6:0-6:18",
+      specifiers: [
+        {
+          type: "ImportDefaultSpecifier",
+          loc: "6:7-6:8",
+          local: {
+            type: "Identifier",
+            loc: "6:7-6:8",
+            name: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "6:14-6:17",
+        value: "b",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "8:0-8:26",
+      specifiers: [
+        {
+          type: "ImportDefaultSpecifier",
+          loc: "8:7-8:8",
+          local: {
+            type: "Identifier",
+            loc: "8:7-8:8",
+            name: "a",
+          },
+        },
+        {
+          type: "ImportNamespaceSpecifier",
+          loc: "8:10-8:16",
+          local: {
+            type: "Identifier",
+            loc: "8:15-8:16",
+            name: "b",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "8:22-8:25",
+        value: "c",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "10:0-10:25",
+      specifiers: [
+        {
+          type: "ImportDefaultSpecifier",
+          loc: "10:7-10:8",
+          local: {
+            type: "Identifier",
+            loc: "10:7-10:8",
+            name: "a",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "10:12-10:13",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "10:12-10:13",
+            name: "b",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "10:21-10:24",
+        value: "c",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "13:0-13:19",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "13:15-13:18",
+        value: "a",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "15:0-15:20",
+      specifiers: [
+        {
+          type: "ImportSpecifier",
+          loc: "15:8-15:9",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "15:8-15:9",
+            name: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "15:16-15:19",
+        value: "b",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "17:0-17:21",
+      specifiers: [
+        {
+          type: "ImportSpecifier",
+          loc: "17:8-17:9",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "17:8-17:9",
+            name: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "17:17-17:20",
+        value: "b",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "19:0-19:26",
+      specifiers: [
+        {
+          type: "ImportSpecifier",
+          loc: "19:8-19:9",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "19:8-19:9",
+            name: "a",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "19:11-19:12",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "19:11-19:12",
+            name: "b",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "19:14-19:15",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "19:14-19:15",
+            name: "c",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "19:22-19:25",
+        value: "d",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "21:0-21:36",
+      specifiers: [
+        {
+          type: "ImportSpecifier",
+          loc: "21:8-21:14",
+          imported: {
+            type: "Identifier",
+            loc: "21:8-21:9",
+            name: "a",
+          },
+          local: {
+            type: "Identifier",
+            loc: "21:13-21:14",
+            name: "b",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "21:16-21:17",
+          imported: null,
+          local: {
+            type: "Identifier",
+            loc: "21:16-21:17",
+            name: "c",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "21:19-21:25",
+          imported: {
+            type: "Identifier",
+            loc: "21:19-21:20",
+            name: "d",
+          },
+          local: {
+            type: "Identifier",
+            loc: "21:24-21:25",
+            name: "e",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "21:32-21:35",
+        value: "f",
+      },
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "23:0-23:37",
+      specifiers: [
+        {
+          type: "ImportSpecifier",
+          loc: "23:8-23:16",
+          imported: {
+            type: "Literal",
+            loc: "23:8-23:11",
+            value: "a",
+          },
+          local: {
+            type: "Identifier",
+            loc: "23:15-23:16",
+            name: "b",
+          },
+        },
+        {
+          type: "ImportSpecifier",
+          loc: "23:18-23:26",
+          imported: {
+            type: "Literal",
+            loc: "23:18-23:21",
+            value: "c",
+          },
+          local: {
+            type: "Identifier",
+            loc: "23:25-23:26",
+            name: "d",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "23:33-23:36",
+        value: "e",
+      },
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

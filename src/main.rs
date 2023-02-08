@@ -12,6 +12,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     print_ast: bool,
 
+    /// Parse as module instead of script
+    #[arg(long, default_value_t = false)]
+    module: bool,
+
     file: String,
 }
 
@@ -19,7 +23,12 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let source = Rc::new(js::parser::source::Source::new_from_file(&args.file)?);
-    let mut ast = js::parser::parse_script(&source)?;
+    let mut ast = if args.module {
+        js::parser::parse_module(&source)?
+    } else {
+        js::parser::parse_script(&source)?
+    };
+
     js::parser::analyze::analyze(&mut ast, source.clone())?;
 
     let ast = Rc::new(ast);

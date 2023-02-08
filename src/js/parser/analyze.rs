@@ -227,6 +227,7 @@ impl<'a> AstVisitor for Analyzer {
         for toplevel in &mut program.toplevels {
             match toplevel {
                 Toplevel::Statement(stmt) => self.visit_top_level_declaration_statement(stmt),
+                Toplevel::Import(import) => self.visit_import_declaration(import),
             }
         }
 

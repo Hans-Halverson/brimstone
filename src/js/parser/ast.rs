@@ -98,8 +98,9 @@ pub trait WithDecls {
 pub struct Program {
     pub loc: Loc,
     pub toplevels: Vec<Toplevel>,
+    pub kind: ProgramKind,
     // Whether the function is in strict mode, which could be inherited from surrounding context
-    // (e.g. in a direct eval)
+    // (e.g. in a direct eval or module)
     pub is_strict_mode: bool,
     // Whether the program has a "use strict" directive
     pub has_use_strict_directive: bool,
@@ -112,18 +113,26 @@ impl Program {
     pub fn new(
         loc: Loc,
         toplevels: Vec<Toplevel>,
+        kind: ProgramKind,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Program {
         Program {
             loc,
             toplevels,
+            kind,
             is_strict_mode,
             has_use_strict_directive,
             var_decls: vec![],
             lex_decls: vec![],
         }
     }
+}
+
+#[derive(PartialEq)]
+pub enum ProgramKind {
+    Script,
+    Module,
 }
 
 impl WithDecls for Program {
@@ -146,6 +155,7 @@ impl WithDecls for Program {
 
 pub enum Toplevel {
     Statement(Statement),
+    Import(ImportDeclaration),
 }
 
 pub struct Identifier {
@@ -1024,4 +1034,33 @@ impl AssignmentPattern {
     ) -> EvalResult<()> {
         self.left.iter_bound_names(f)
     }
+}
+
+pub struct ImportDeclaration {
+    pub loc: Loc,
+    pub specifiers: Vec<ImportSpecifier>,
+    pub source: P<StringLiteral>,
+}
+
+pub enum ImportSpecifier {
+    Default(ImportDefaultSpecifier),
+    Named(ImportNamedSpecifier),
+    Namespace(ImportNamespaceSpecifier),
+}
+
+pub struct ImportDefaultSpecifier {
+    pub loc: Loc,
+    pub local: P<Identifier>,
+}
+
+pub struct ImportNamedSpecifier {
+    pub loc: Loc,
+    // Must be either a string literal or identifier
+    pub imported: Option<P<Expression>>,
+    pub local: P<Identifier>,
+}
+
+pub struct ImportNamespaceSpecifier {
+    pub loc: Loc,
+    pub local: P<Identifier>,
 }

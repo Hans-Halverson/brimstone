@@ -232,7 +232,13 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
-        Ok(Program::new(loc, toplevels, self.in_strict_mode, has_use_strict_directive))
+        Ok(Program::new(
+            loc,
+            toplevels,
+            ProgramKind::Script,
+            self.in_strict_mode,
+            has_use_strict_directive,
+        ))
     }
 
     fn parse_use_strict_directive(&mut self) -> ParseResult<bool> {
@@ -255,6 +261,30 @@ impl<'a> Parser<'a> {
             }
             _ => Ok(false),
         }
+    }
+
+    fn parse_module(&mut self) -> ParseResult<Program> {
+        let has_use_strict_directive = self.parse_use_strict_directive()?;
+        self.in_strict_mode = true;
+
+        let mut toplevels = vec![];
+        while self.token != Token::Eof {
+            match self.token {
+                Token::Import => toplevels.push(Toplevel::Import(self.parse_import_declaration()?)),
+                _ => toplevels.push(self.parse_toplevel()?),
+            }
+        }
+
+        // Start out at beginning of file
+        let loc = self.mark_loc(0);
+
+        Ok(Program::new(
+            loc,
+            toplevels,
+            ProgramKind::Module,
+            self.in_strict_mode,
+            has_use_strict_directive,
+        ))
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -1907,6 +1937,10 @@ impl<'a> Parser<'a> {
         self.parse_identifier()
     }
 
+    fn parse_imported_identifier(&mut self) -> ParseResult<Identifier> {
+        self.parse_identifier()
+    }
+
     fn parse_identifier(&mut self) -> ParseResult<Identifier> {
         match &self.token {
             Token::Identifier(name) => {
@@ -2942,6 +2976,140 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_import_declaration(&mut self) -> ParseResult<ImportDeclaration> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        // No specifiers
+        if let Token::StringLiteral(value) = &self.token {
+            let source = p(StringLiteral { loc: self.loc, value: value.clone() });
+            self.advance()?;
+            self.expect_semicolon()?;
+
+            let loc = self.mark_loc(start_pos);
+
+            return Ok(ImportDeclaration { loc, specifiers: vec![], source });
+        }
+
+        // Check for default specifier, which must be at start
+        let mut specifiers = vec![];
+
+        if let Token::Identifier(_) = self.token {
+            // Starts with default specifier
+            let local = p(self.parse_imported_identifier()?);
+            let default_specifier = ImportDefaultSpecifier { loc: local.loc, local };
+            specifiers.push(ImportSpecifier::Default(default_specifier));
+
+            // May be optionally followed by named or namespace specifier
+            if self.token == Token::Comma {
+                self.advance()?;
+                self.parse_import_named_or_namespace_specifier(&mut specifiers)?;
+            }
+        } else {
+            // Otherwise is only a named or namespace specifier
+            self.parse_import_named_or_namespace_specifier(&mut specifiers)?;
+        }
+
+        self.expect(Token::From)?;
+
+        if let Token::StringLiteral(value) = &self.token {
+            let source = p(StringLiteral { loc: self.loc, value: value.clone() });
+            self.advance()?;
+            self.expect_semicolon()?;
+
+            let loc = self.mark_loc(start_pos);
+
+            return Ok(ImportDeclaration { loc, specifiers, source });
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
+        }
+    }
+
+    fn parse_import_named_or_namespace_specifier(
+        &mut self,
+        specifiers: &mut Vec<ImportSpecifier>,
+    ) -> ParseResult<()> {
+        match self.token {
+            Token::Multiply => {
+                specifiers.push(self.parse_import_namespace_specifier()?);
+                Ok(())
+            }
+            Token::LeftBrace => {
+                self.parse_named_specifiers(specifiers)?;
+                Ok(())
+            }
+            _ => return self.error_unexpected_token(self.loc, &self.token),
+        }
+    }
+
+    fn parse_import_namespace_specifier(&mut self) -> ParseResult<ImportSpecifier> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        self.expect(Token::As)?;
+
+        let local = p(self.parse_imported_identifier()?);
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ImportSpecifier::Namespace(ImportNamespaceSpecifier { loc, local }))
+    }
+
+    fn parse_named_specifiers(&mut self, specifiers: &mut Vec<ImportSpecifier>) -> ParseResult<()> {
+        self.advance()?;
+
+        while self.token != Token::RightBrace {
+            let start_pos = self.current_start_pos();
+            let start_token = self.token.clone();
+
+            // String literal must be the start of an import as specifier
+            let spec = if let Token::StringLiteral(value) = &self.token {
+                let imported =
+                    Expression::String(StringLiteral { loc: self.loc, value: value.clone() });
+                self.advance()?;
+
+                self.expect(Token::As)?;
+
+                let local = p(self.parse_imported_identifier()?);
+                let loc = self.mark_loc(start_pos);
+
+                ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
+            } else if let Some(id) = self.parse_identifier_name()? {
+                // This is an import as specifier, so the id can be any name including reserved words
+                if self.token == Token::As {
+                    self.advance()?;
+
+                    let local = p(self.parse_imported_identifier()?);
+                    let loc = self.mark_loc(start_pos);
+
+                    ImportNamedSpecifier { loc, imported: Some(p(Expression::Id(id))), local }
+                } else {
+                    // This is the binding for a simple named specifier, identifier cannot be a
+                    // reserved word.
+                    if self.identifier_is_reserved_word(&id) {
+                        return self.error_unexpected_token(id.loc, &start_token);
+                    }
+
+                    ImportNamedSpecifier { loc: id.loc, imported: None, local: p(id) }
+                }
+            } else {
+                return self.error_unexpected_token(self.loc, &self.token);
+            };
+
+            specifiers.push(ImportSpecifier::Named(spec));
+
+            // List of specifiers has optional trailing comma
+            if self.token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+
+        self.expect(Token::RightBrace)?;
+
+        Ok(())
+    }
+
     fn reparse_expression_as_assignment_left_hand_side(
         &self,
         expr: Expression,
@@ -3169,6 +3337,15 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
     parser.advance()?;
 
     Ok(parser.parse_script()?)
+}
+
+pub fn parse_module(source: &Rc<Source>) -> ParseResult<Program> {
+    // Create and prime parser
+    let lexer = Lexer::new(source);
+    let mut parser = Parser::new(lexer);
+    parser.advance()?;
+
+    Ok(parser.parse_module()?)
 }
 
 pub fn parse_script_for_eval(

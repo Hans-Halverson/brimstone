@@ -111,5 +111,6 @@
       },
     },
   ],
+  sourceType: "script",
   has_use_strict_directive: false,
 }

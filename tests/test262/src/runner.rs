@@ -13,8 +13,8 @@ use crate::{
 use brimstone::js::{
     self,
     runtime::{
-        eval_script, get, initialize_host_defined_realm, to_console_string, to_string, Completion,
-        CompletionKind, Context, EvalResult, Gc, Realm, Value,
+        eval_module, eval_script, get, initialize_host_defined_realm, to_console_string, to_string,
+        Completion, CompletionKind, Context, EvalResult, Gc, Realm, Value,
     },
 };
 
@@ -156,7 +156,7 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
     }
 
     // Try to parse file
-    let parse_result = parse_file(&test.path, test262_root, force_strict_mode);
+    let parse_result = parse_file(&test.path, Some(test), test262_root, force_strict_mode);
     let mut ast_and_source = match parse_result {
         Ok(ast_and_source) => ast_and_source,
         // An error during parse may be a success or failure depending on the expected result of
@@ -199,12 +199,18 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         }
     }
 
-    let completion = eval_script(&mut cx, Rc::new(ast_and_source.0), realm);
+    let completion = if test.mode == TestMode::Module {
+        eval_module(&mut cx, Rc::new(ast_and_source.0), realm)
+    } else {
+        eval_script(&mut cx, Rc::new(ast_and_source.0), realm)
+    };
+
     check_expected_completion(&mut cx, test, completion)
 }
 
 fn parse_file(
     file: &str,
+    test: Option<&Test>,
     test262_root: &str,
     force_strict_mode: bool,
 ) -> js::parser::ParseResult<(js::parser::ast::Program, Rc<js::parser::source::Source>)> {
@@ -212,21 +218,28 @@ fn parse_file(
 
     let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
-    // Manually insert use strict directive when forcing strict mode
-    if force_strict_mode {
-        source.contents.insert_str(0, "\"use strict\";\n");
+    if let Some(Test { mode: TestMode::Module, .. }) = test {
+        let source = Rc::new(source);
+        let ast = js::parser::parse_module(&source)?;
+
+        Ok((ast, source))
+    } else {
+        // Manually insert use strict directive when forcing strict mode
+        if force_strict_mode {
+            source.contents.insert_str(0, "\"use strict\";\n");
+        }
+
+        let source = Rc::new(source);
+        let ast = js::parser::parse_script(&source)?;
+
+        Ok((ast, source))
     }
-
-    let source = Rc::new(source);
-    let ast = js::parser::parse_script(&source)?;
-
-    Ok((ast, source))
 }
 
 fn load_harness_test_file(cx: &mut Context, realm: Gc<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), test262_root, false)
+    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), None, test262_root, false)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
     js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)

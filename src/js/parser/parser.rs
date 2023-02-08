@@ -508,6 +508,36 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
+    fn parse_function_params_without_parens(&mut self) -> ParseResult<Vec<FunctionParam>> {
+        // Read all function params until EOF
+        let mut params = vec![];
+
+        while self.token != Token::Eof {
+            if self.token == Token::Spread {
+                let rest_element = self.parse_rest_element()?;
+                params.push(FunctionParam::Rest(rest_element));
+
+                // Trailing commas are not allowed after rest elements, nor are any other params
+                if self.token == Token::Comma {
+                    return self.error(self.loc, ParseError::RestTrailingComma);
+                } else {
+                    break;
+                }
+            }
+
+            let pattern = self.parse_pattern_including_assignment_pattern()?;
+            params.push(FunctionParam::Pattern(pattern));
+
+            if self.token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(params)
+    }
+
     fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool, bool)> {
         let start_pos = self.current_start_pos();
         self.expect(Token::LeftBrace)?;
@@ -533,6 +563,27 @@ impl<'a> Parser<'a> {
         self.in_strict_mode = old_in_strict_mode;
 
         Ok((Block::new(loc, body), has_use_strict_directive, is_strict_mode))
+    }
+
+    fn parse_function_body_statements(&mut self) -> ParseResult<Vec<Statement>> {
+        let has_use_strict_directive = self.parse_use_strict_directive()?;
+
+        // Enter strict mode if applicable, saving strict mode context from before this function
+        let old_in_strict_mode = self.in_strict_mode;
+        if has_use_strict_directive {
+            self.in_strict_mode = true;
+        }
+
+        let mut body = vec![];
+        while self.token != Token::Eof {
+            body.push(self.parse_statement_list_item()?)
+        }
+
+        // Restore to strict mode context from before this function
+        let is_strict_mode = self.in_strict_mode;
+        self.in_strict_mode = old_in_strict_mode;
+
+        Ok(body)
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -3134,4 +3185,45 @@ pub fn parse_script_for_eval(
     parser.advance()?;
 
     Ok(parser.parse_script()?)
+}
+
+pub fn parse_function_params_for_function_constructor(
+    source: &Rc<Source>,
+    is_async: bool,
+    is_generator: bool,
+) -> ParseResult<Vec<FunctionParam>> {
+    // Create and prime parser
+    let lexer = Lexer::new(source);
+    let mut parser = Parser::new(lexer);
+    parser.advance()?;
+
+    parser.allow_await = is_async;
+    parser.allow_yield = is_generator;
+
+    Ok(parser.parse_function_params_without_parens()?)
+}
+
+pub fn parse_function_body_for_function_constructor(
+    source: &Rc<Source>,
+    is_async: bool,
+    is_generator: bool,
+) -> ParseResult<Vec<Statement>> {
+    // Create and prime parser
+    let lexer = Lexer::new(source);
+    let mut parser = Parser::new(lexer);
+    parser.advance()?;
+
+    parser.allow_await = is_async;
+    parser.allow_yield = is_generator;
+
+    Ok(parser.parse_function_body_statements()?)
+}
+
+pub fn parse_function_for_function_constructor(source: &Rc<Source>) -> ParseResult<P<Function>> {
+    // Create and prime parser
+    let lexer = Lexer::new(source);
+    let mut parser = Parser::new(lexer);
+    parser.advance()?;
+
+    Ok(p(parser.parse_function(false)?))
 }

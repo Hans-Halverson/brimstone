@@ -4,7 +4,7 @@ mod ast_visitor;
 mod lexer;
 pub mod loc;
 mod parse_error;
-mod parser;
+pub mod parser;
 mod printer;
 mod scope;
 pub mod source;

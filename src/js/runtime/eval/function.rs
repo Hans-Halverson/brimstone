@@ -1,8 +1,17 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc};
 
 use crate::{
     js::{
-        parser::ast::{self, LexDecl, VarDecl, WithDecls},
+        parser::{
+            analyze::analyze_function_for_function_constructor,
+            ast::{self, LexDecl, VarDecl, WithDecls},
+            parser::{
+                parse_function_body_for_function_constructor,
+                parse_function_for_function_constructor,
+                parse_function_params_for_function_constructor,
+            },
+            source::Source,
+        },
         runtime::{
             abstract_operations::define_property_or_throw,
             arguments_object::{create_mapped_arguments_object, create_unmapped_arguments_object},
@@ -13,6 +22,7 @@ use crate::{
                 environment::{to_trait_object, Environment},
                 private_environment::PrivateEnvironment,
             },
+            error::syntax_error_,
             eval::pattern::id_property_key,
             execution_context::resolve_binding,
             function::{
@@ -22,14 +32,16 @@ use crate::{
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
             object_value::{Object, ObjectValue},
+            ordinary_object::get_prototype_from_constructor,
             property::{PrivateProperty, Property},
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
+            to_string,
             value::Value,
             Context,
         },
     },
-    maybe__, must,
+    maybe, maybe__, must,
 };
 
 use super::{
@@ -520,4 +532,89 @@ pub fn private_method_definition_evaluation(
         }
         _ => unreachable!(),
     }
+}
+
+// 20.2.1.1.1 CreateDynamicFunction
+pub fn create_dynamic_function(
+    cx: &mut Context,
+    constructor: Gc<ObjectValue>,
+    new_target: Option<Gc<ObjectValue>>,
+    args: &[Value],
+) -> EvalResult<Gc<Function>> {
+    let new_target = new_target.unwrap_or(constructor);
+
+    let prefix = "function";
+    let fallback_proto = Intrinsic::FunctionPrototype;
+    let is_async = false;
+    let is_generator = false;
+
+    let arg_count = args.len();
+
+    // Construct text for params, body, and entire function
+    let mut params_string = String::new();
+
+    let body_arg = if arg_count == 0 {
+        cx.names.empty_string().as_string().into()
+    } else if arg_count == 1 {
+        args[0]
+    } else {
+        params_string.push_str(maybe!(to_string(cx, args[0])).str());
+
+        for arg in &args[1..(args.len() - 1)] {
+            params_string.push(',');
+            params_string.push_str(maybe!(to_string(cx, *arg)).str());
+        }
+
+        args[args.len() - 1]
+    };
+
+    let body_string = maybe!(to_string(cx, body_arg));
+    let body_string = format!("\n{}\n", body_string.str());
+
+    let source_string = format!("{} anonymous({}\n) {{{}}}", prefix, params_string, body_string);
+
+    // Make sure that parameter list and body are valid by themselves. Only need to check that they
+    // parse correctly, full analysis will be performed on entire function text.
+    let params_source = Source::new_from_string("", params_string);
+    if let Err(err) = parse_function_params_for_function_constructor(
+        &Rc::new(params_source),
+        is_async,
+        is_generator,
+    ) {
+        return syntax_error_(cx, &format!("could not parse function parameters: {}", err));
+    }
+
+    let body_source = Source::new_from_string("", body_string);
+    if let Err(err) =
+        parse_function_body_for_function_constructor(&Rc::new(body_source), is_async, is_generator)
+    {
+        return syntax_error_(cx, &format!("could not parse function body: {}", err));
+    }
+
+    // Parse and anlyze entire function
+    let full_source = Rc::new(Source::new_from_string("", source_string));
+    let mut func_node = match parse_function_for_function_constructor(&full_source) {
+        Ok(func_node) => func_node,
+        Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),
+    };
+
+    if let Err(errs) = analyze_function_for_function_constructor(&mut func_node, full_source) {
+        return syntax_error_(cx, &format!("could not parse function: {}", errs));
+    }
+
+    // Create function object
+    let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
+    let env = cx.current_realm().global_env;
+
+    let func = ordinary_function_create(cx, proto, &func_node, false, to_trait_object(env), None);
+    set_function_name(cx, func.into(), &cx.names.anonymous(), None);
+
+    if !is_async && !is_generator {
+        make_constructor(cx, func, None, None);
+    }
+
+    // TODO: Need better way to save ASTs, following same pattern a eval for now
+    cx.function_constructor_asts.push(func_node);
+
+    func.into()
 }

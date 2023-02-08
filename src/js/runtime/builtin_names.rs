@@ -71,6 +71,7 @@ builtin_names!(
     (abs, "abs"),
     (acos, "acos"),
     (acosh, "acosh"),
+    (anonymous, "anonymous"),
     (apply, "apply"),
     (arguments, "arguments"),
     (asin, "asin"),

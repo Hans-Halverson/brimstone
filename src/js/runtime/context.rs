@@ -34,9 +34,11 @@ pub struct Context {
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: Gc<dyn Environment>,
 
-    // All ASTs produced by eval in this context. Saved here so that they are not freed while the
-    // context is still running, as they may be needed e.g. due to functions returned from an eval.
+    // All ASTs produced by eval and function constructors in this context. Saved here so that they
+    // are not freed while the context is still running, as they may be needed e.g. due to functions
+    // returned from an eval.
     pub eval_asts: Vec<ast::Program>,
+    pub function_constructor_asts: Vec<ast::P<ast::Function>>,
 }
 
 impl Context {
@@ -56,6 +58,7 @@ impl Context {
             closure_environments: vec![],
             uninit_environment,
             eval_asts: vec![],
+            function_constructor_asts: vec![],
         }
     }
 

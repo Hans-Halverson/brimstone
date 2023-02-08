@@ -1,6 +1,10 @@
-use crate::js::runtime::{
-    builtin_function::BuiltinFunction, completion::EvalResult, gc::Gc, object_value::ObjectValue,
-    property::Property, realm::Realm, value::Value, Context,
+use crate::{
+    js::runtime::{
+        builtin_function::BuiltinFunction, completion::EvalResult,
+        eval::function::create_dynamic_function, gc::Gc, object_value::ObjectValue,
+        property::Property, realm::Realm, value::Value, Context,
+    },
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -41,6 +45,7 @@ impl FunctionConstructor {
         arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        unimplemented!("Function constructor")
+        let constructor = cx.current_execution_context().function.unwrap();
+        maybe!(create_dynamic_function(cx, constructor, new_target, arguments)).into()
     }
 }

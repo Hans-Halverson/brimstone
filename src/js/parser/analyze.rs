@@ -1182,3 +1182,17 @@ pub fn analyze_for_eval(
         Err(LocalizedParseErrors::new(analyzer.errors))
     }
 }
+
+pub fn analyze_function_for_function_constructor(
+    func: &mut Function,
+    source: Rc<Source>,
+) -> Result<(), LocalizedParseErrors> {
+    let mut analyzer = Analyzer::new(source);
+    analyzer.visit_function_expression(func);
+
+    if analyzer.errors.is_empty() {
+        Ok(())
+    } else {
+        Err(LocalizedParseErrors::new(analyzer.errors))
+    }
+}

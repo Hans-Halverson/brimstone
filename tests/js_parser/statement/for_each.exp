@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-14:25",
+  loc: "1:0-18:25",
   body: [
     {
       type: "ForOfStatement",
@@ -32,6 +32,7 @@
         loc: "1:17-1:19",
         body: [],
       },
+      await: false,
     },
     {
       type: "ForInStatement",
@@ -94,6 +95,7 @@
         loc: "5:17-5:19",
         body: [],
       },
+      await: false,
     },
     {
       type: "ForOfStatement",
@@ -125,6 +127,7 @@
         loc: "7:19-7:21",
         body: [],
       },
+      await: false,
     },
     {
       type: "ForOfStatement",
@@ -144,6 +147,7 @@
         loc: "9:13-9:15",
         body: [],
       },
+      await: false,
     },
     {
       type: "ForInStatement",
@@ -165,19 +169,58 @@
       },
     },
     {
+      type: "FunctionDeclaration",
+      loc: "13:0-15:1",
+      id: {
+        type: "Identifier",
+        loc: "13:15-13:18",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "13:21-15:1",
+        body: [
+          {
+            type: "ForOfStatement",
+            loc: "14:2-14:23",
+            left: {
+              type: "Identifier",
+              loc: "14:13-14:14",
+              name: "a",
+            },
+            right: {
+              type: "Identifier",
+              loc: "14:18-14:19",
+              name: "b",
+            },
+            body: {
+              type: "Block",
+              loc: "14:21-14:23",
+              body: [],
+            },
+            await: true,
+          },
+        ],
+      },
+      async: true,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+    {
       type: "ForInStatement",
-      loc: "14:0-14:25",
+      loc: "18:0-18:25",
       left: {
         type: "VariableDeclaration",
-        loc: "14:5-14:10",
+        loc: "18:5-18:10",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "14:9-14:10",
+            loc: "18:9-18:10",
             id: {
               type: "Identifier",
-              loc: "14:9-14:10",
+              loc: "18:9-18:10",
               name: "a",
             },
             init: null,
@@ -186,28 +229,28 @@
       },
       right: {
         type: "SequenceExpression",
-        loc: "14:14-14:21",
+        loc: "18:14-18:21",
         expressions: [
           {
             type: "Literal",
-            loc: "14:14-14:15",
+            loc: "18:14-18:15",
             value: 1,
           },
           {
             type: "Literal",
-            loc: "14:17-14:18",
+            loc: "18:17-18:18",
             value: 2,
           },
           {
             type: "Literal",
-            loc: "14:20-14:21",
+            loc: "18:20-18:21",
             value: 3,
           },
         ],
       },
       body: {
         type: "Block",
-        loc: "14:23-14:25",
+        loc: "18:23-18:25",
         body: [],
       },
     },

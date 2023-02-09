@@ -364,6 +364,11 @@ impl<'a> Printer<'a> {
         self.property("left", stmt.left.as_ref(), Printer::print_for_each_init);
         self.property("right", stmt.right.as_ref(), Printer::print_expression);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
+
+        if stmt.kind == ForEachKind::Of {
+            self.property("await", stmt.is_await, Printer::print_bool);
+        }
+
         self.end_node();
     }
 

@@ -163,6 +163,7 @@
         loc: "12:19-12:21",
         body: [],
       },
+      await: false,
     },
     {
       type: "TryStatement",
@@ -218,6 +219,7 @@
         loc: "16:15-16:17",
         body: [],
       },
+      await: false,
     },
     {
       type: "ExpressionStatement",

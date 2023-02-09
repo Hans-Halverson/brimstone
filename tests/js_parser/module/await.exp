@@ -1,0 +1,41 @@
+{
+  type: "Program",
+  loc: "1:0-3:21",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:8",
+      kind: {
+        type: "AwaitExpression",
+        loc: "1:0-1:7",
+        argument: {
+          type: "Literal",
+          loc: "1:6-1:7",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ForOfStatement",
+      loc: "3:0-3:21",
+      left: {
+        type: "Identifier",
+        loc: "3:11-3:12",
+        name: "x",
+      },
+      right: {
+        type: "Identifier",
+        loc: "3:16-3:17",
+        name: "y",
+      },
+      body: {
+        type: "Block",
+        loc: "3:19-3:21",
+        body: [],
+      },
+      await: true,
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

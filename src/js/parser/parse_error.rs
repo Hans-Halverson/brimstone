@@ -30,6 +30,7 @@ pub enum ParseError {
     InvalidAssignmentLeftHandSide,
     InvalidForLeftHandSide,
     InvalidUpdateExpressionArgument,
+    InvalidForAwait,
     IdentifierIsReservedWord,
     ExpectedNewTarget,
     ExpectedImportMeta,
@@ -121,6 +122,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidUpdateExpressionArgument => {
                 write!(f, "Invalid increment/decrement operand")
+            }
+            ParseError::InvalidForAwait => {
+                write!(f, "Await can only appear on for-of loops")
             }
             ParseError::IdentifierIsReservedWord => {
                 write!(f, "Identifier is a reserved word")

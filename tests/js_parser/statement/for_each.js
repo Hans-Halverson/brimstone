@@ -10,5 +10,9 @@ for (a of b) {}
 
 for (a in b) {}
 
+async function foo() {
+  for await (a of b) {}
+}
+
 // Sequence expression allowed in for-in
 for (var a in 1, 2, 3) {}

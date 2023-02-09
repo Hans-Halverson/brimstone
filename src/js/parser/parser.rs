@@ -264,8 +264,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_module(&mut self) -> ParseResult<Program> {
+        // Modules are always in struct mode
         let has_use_strict_directive = self.parse_use_strict_directive()?;
         self.in_strict_mode = true;
+
+        // Allow top level await
+        self.allow_await = true;
 
         let mut toplevels = vec![];
         while self.token != Token::Eof {
@@ -706,10 +710,17 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
+        // Optional await keyword signifies a for-await-of
+        let await_loc = self.loc;
+        let is_await = self.allow_await && self.token == Token::Await;
+        if is_await {
+            self.advance()?;
+        }
+
         self.expect(Token::LeftParen)?;
 
         // Init statement, if it exists
-        match self.token {
+        let for_stmt = match self.token {
             // Both for and for each loops can start with a variable declaration
             // TODO: Restrict variable declaration inits in for each statements
             Token::Var | Token::Let | Token::Const => {
@@ -725,19 +736,19 @@ impl<'a> Parser<'a> {
                         }
 
                         let init = p(ForEachInit::VarDecl(var_decl));
-                        self.parse_for_each_statement(init, start_pos)
+                        self.parse_for_each_statement(init, start_pos, is_await)?
                     }
                     _ => {
                         let init = Some(p(ForInit::VarDecl(var_decl)));
                         self.expect(Token::Semicolon)?;
-                        self.parse_for_statement(init, start_pos)
+                        self.parse_for_statement(init, start_pos)?
                     }
                 }
             }
             // Empty init, but we know this is a regular for loop
             Token::Semicolon => {
                 self.advance()?;
-                self.parse_for_statement(None, start_pos)
+                self.parse_for_statement(None, start_pos)?
             }
             _ => {
                 let expr_start_pos = self.current_start_pos();
@@ -748,7 +759,7 @@ impl<'a> Parser<'a> {
                         let pattern =
                             self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
                         let left = p(ForEachInit::Pattern(pattern));
-                        self.parse_for_each_statement(left, start_pos)
+                        self.parse_for_each_statement(left, start_pos, is_await)?
                     }
                     // An in expression is actually `for (expr in right)`
                     (
@@ -767,24 +778,33 @@ impl<'a> Parser<'a> {
                         let body = p(self.parse_statement()?);
                         let loc = self.mark_loc(start_pos);
 
-                        Ok(Statement::ForEach(ForEachStatement {
+                        Statement::ForEach(ForEachStatement {
                             loc,
                             kind: ForEachKind::In,
                             left,
                             right,
                             body,
                             is_await: false,
-                        }))
+                        })
                     }
                     // Otherwise this is a regular for loop and the expression is used directly
                     (_, expr) => {
                         let init = Some(p(ForInit::Expression(expr)));
                         self.expect(Token::Semicolon)?;
-                        self.parse_for_statement(init, start_pos)
+                        self.parse_for_statement(init, start_pos)?
                     }
                 }
             }
+        };
+
+        if is_await {
+            match &for_stmt {
+                Statement::ForEach(ForEachStatement { kind: ForEachKind::Of, .. }) => {}
+                _ => return self.error(await_loc, ParseError::InvalidForAwait),
+            }
         }
+
+        Ok(for_stmt)
     }
 
     fn parse_for_statement(
@@ -814,6 +834,7 @@ impl<'a> Parser<'a> {
         &mut self,
         left: P<ForEachInit>,
         start_pos: Pos,
+        is_await: bool,
     ) -> ParseResult<Statement> {
         let kind = match self.token {
             Token::In => ForEachKind::In,
@@ -832,14 +853,7 @@ impl<'a> Parser<'a> {
         let body = p(self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::ForEach(ForEachStatement {
-            loc,
-            kind,
-            left,
-            right,
-            body,
-            is_await: false,
-        }))
+        Ok(Statement::ForEach(ForEachStatement { loc, kind, left, right, body, is_await }))
     }
 
     fn parse_while_statement(&mut self) -> ParseResult<Statement> {

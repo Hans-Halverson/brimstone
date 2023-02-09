@@ -156,6 +156,9 @@ impl WithDecls for Program {
 pub enum Toplevel {
     Statement(Statement),
     Import(ImportDeclaration),
+    ExportDefault(ExportDefaultDeclaration),
+    ExportNamed(ExportNamedDeclaration),
+    ExportAll(ExportAllDeclaration),
 }
 
 pub struct Identifier {
@@ -1055,12 +1058,42 @@ pub struct ImportDefaultSpecifier {
 
 pub struct ImportNamedSpecifier {
     pub loc: Loc,
-    // Must be either a string literal or identifier
-    pub imported: Option<P<Expression>>,
+    pub imported: Option<P<ModuleName>>,
     pub local: P<Identifier>,
 }
 
 pub struct ImportNamespaceSpecifier {
     pub loc: Loc,
     pub local: P<Identifier>,
+}
+
+pub struct ExportNamedDeclaration {
+    pub loc: Loc,
+    // Must be variable declaration, function declaration, or class declaration
+    pub declaration: Option<P<Statement>>,
+    pub specifiers: Vec<ExportSpecifier>,
+    pub source: Option<P<StringLiteral>>,
+}
+
+pub struct ExportSpecifier {
+    pub loc: Loc,
+    pub local: P<ModuleName>,
+    pub exported: Option<P<ModuleName>>,
+}
+
+pub struct ExportDefaultDeclaration {
+    pub loc: Loc,
+    // Must be function declaration, class declaration, or expression statement
+    pub declaration: P<Statement>,
+}
+
+pub struct ExportAllDeclaration {
+    pub loc: Loc,
+    pub exported: Option<P<ModuleName>>,
+    pub source: P<StringLiteral>,
+}
+
+pub enum ModuleName {
+    Id(Identifier),
+    String(StringLiteral),
 }

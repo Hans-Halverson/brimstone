@@ -148,6 +148,9 @@ impl<'a> Printer<'a> {
         match toplevel {
             Toplevel::Statement(stmt) => self.print_statement(stmt),
             Toplevel::Import(import) => self.print_import_declaration(import),
+            Toplevel::ExportDefault(export) => self.print_export_default_declaration(export),
+            Toplevel::ExportNamed(export) => self.print_export_named_declaration(export),
+            Toplevel::ExportAll(export) => self.print_export_all_declaration(export),
         }
     }
 
@@ -998,7 +1001,7 @@ impl<'a> Printer<'a> {
 
     fn print_import_named_specifier(&mut self, spec: &ImportNamedSpecifier) {
         self.start_node("ImportSpecifier", &spec.loc);
-        self.property("imported", spec.imported.as_ref(), Printer::print_optional_expression);
+        self.property("imported", spec.imported.as_ref(), Printer::print_optional_module_name);
         self.property("local", spec.local.as_ref(), Printer::print_identifier);
         self.end_node();
     }
@@ -1007,6 +1010,49 @@ impl<'a> Printer<'a> {
         self.start_node("ImportNamespaceSpecifier", &spec.loc);
         self.property("local", spec.local.as_ref(), Printer::print_identifier);
         self.end_node();
+    }
+
+    fn print_export_default_declaration(&mut self, export: &ExportDefaultDeclaration) {
+        self.start_node("ExportDefaultDeclaration", &export.loc);
+        self.property("declaration", export.declaration.as_ref(), Printer::print_statement);
+        self.end_node();
+    }
+
+    fn print_export_named_declaration(&mut self, export: &ExportNamedDeclaration) {
+        self.start_node("ExportNamedDeclaration", &export.loc);
+        self.property(
+            "declaration",
+            export.declaration.as_ref(),
+            Printer::print_optional_statement,
+        );
+        self.array_property(
+            "specifiers",
+            export.specifiers.as_ref(),
+            Printer::print_export_specifier,
+        );
+        self.property("source", export.source.as_ref(), Printer::print_optional_string_literal);
+        self.end_node();
+    }
+
+    fn print_export_all_declaration(&mut self, export: &ExportAllDeclaration) {
+        self.start_node("ExportAllDeclaration", &export.loc);
+        self.property("exported", export.exported.as_ref(), Printer::print_optional_module_name);
+        self.property("source", export.source.as_ref(), Printer::print_string_literal);
+        self.end_node();
+    }
+
+    fn print_export_specifier(&mut self, spec: &ExportSpecifier) {
+        self.start_node("ExportSpecifier", &spec.loc);
+        self.property("exported", spec.exported.as_ref(), Printer::print_optional_module_name);
+        self.property("local", spec.local.as_ref(), Printer::print_module_name);
+        self.end_node();
+    }
+
+    fn print_module_name(&mut self, module_name: &ModuleName) {
+        match module_name {
+            ModuleName::Id(id) => self.print_identifier(id),
+            ModuleName::String(lit) => self.print_string_literal(lit),
+        }
     }
 
     fn print_optional_expression(&mut self, expr: Option<&P<Expression>>) {
@@ -1048,6 +1094,20 @@ impl<'a> Printer<'a> {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),
+        }
+    }
+
+    fn print_optional_string_literal(&mut self, lit: Option<&P<StringLiteral>>) {
+        match lit {
+            None => self.print_null(),
+            Some(lit) => self.print_string_literal(lit),
+        }
+    }
+
+    fn print_optional_module_name(&mut self, module_name: Option<&P<ModuleName>>) {
+        match module_name {
+            None => self.print_null(),
+            Some(module_name) => self.print_module_name(module_name),
         }
     }
 }

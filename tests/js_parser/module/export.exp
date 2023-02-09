@@ -1,0 +1,618 @@
+{
+  type: "Program",
+  loc: "1:0-37:29",
+  body: [
+    {
+      type: "ExportNamedDeclaration",
+      loc: "1:0-1:10",
+      declaration: null,
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "2:0-2:19",
+      declaration: null,
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "2:15-2:18",
+        value: "a",
+      },
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "4:0-4:10",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "4:8-4:9",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "4:8-4:9",
+            name: "a",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "5:0-5:11",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "5:8-5:9",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "5:8-5:9",
+            name: "a",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "6:0-6:16",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "6:8-6:9",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "6:8-6:9",
+            name: "a",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "6:11-6:12",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "6:11-6:12",
+            name: "b",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "6:14-6:15",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "6:14-6:15",
+            name: "c",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "7:0-7:17",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "7:8-7:9",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "7:8-7:9",
+            name: "a",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "7:11-7:12",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "7:11-7:12",
+            name: "b",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "7:14-7:15",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "7:14-7:15",
+            name: "c",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "8:0-8:19",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "8:8-8:9",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "8:8-8:9",
+            name: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "8:16-8:19",
+        value: "b",
+      },
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "10:0-10:26",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "10:8-10:14",
+          exported: {
+            type: "Identifier",
+            loc: "10:13-10:14",
+            name: "b",
+          },
+          local: {
+            type: "Identifier",
+            loc: "10:8-10:9",
+            name: "a",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "10:16-10:17",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "10:16-10:17",
+            name: "c",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "10:19-10:25",
+          exported: {
+            type: "Identifier",
+            loc: "10:24-10:25",
+            name: "e",
+          },
+          local: {
+            type: "Identifier",
+            loc: "10:19-10:20",
+            name: "d",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "12:0-12:25",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "12:8-12:18",
+          exported: {
+            type: "Literal",
+            loc: "12:15-12:18",
+            value: "b",
+          },
+          local: {
+            type: "Literal",
+            loc: "12:8-12:11",
+            value: "a",
+          },
+        },
+        {
+          type: "ExportSpecifier",
+          loc: "12:20-12:23",
+          exported: null,
+          local: {
+            type: "Literal",
+            loc: "12:20-12:23",
+            value: "c",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "14:0-14:17",
+      declaration: {
+        type: "VariableDeclaration",
+        loc: "14:7-14:17",
+        kind: "var",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "14:11-14:16",
+            id: {
+              type: "Identifier",
+              loc: "14:11-14:12",
+              name: "a",
+            },
+            init: {
+              type: "Literal",
+              loc: "14:15-14:16",
+              value: 1,
+            },
+          },
+        ],
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "15:0-15:17",
+      declaration: {
+        type: "VariableDeclaration",
+        loc: "15:7-15:17",
+        kind: "let",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "15:11-15:16",
+            id: {
+              type: "Identifier",
+              loc: "15:11-15:12",
+              name: "a",
+            },
+            init: {
+              type: "Literal",
+              loc: "15:15-15:16",
+              value: 1,
+            },
+          },
+        ],
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "16:0-16:19",
+      declaration: {
+        type: "VariableDeclaration",
+        loc: "16:7-16:19",
+        kind: "const",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "16:13-16:18",
+            id: {
+              type: "Identifier",
+              loc: "16:13-16:14",
+              name: "a",
+            },
+            init: {
+              type: "Literal",
+              loc: "16:17-16:18",
+              value: 1,
+            },
+          },
+        ],
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "17:0-17:24",
+      declaration: {
+        type: "VariableDeclaration",
+        loc: "17:7-17:24",
+        kind: "const",
+        declarations: [
+          {
+            type: "VariableDeclarator",
+            loc: "17:13-17:23",
+            id: {
+              type: "ArrayPattern",
+              loc: "17:13-17:19",
+              elements: [
+                {
+                  type: "Identifier",
+                  loc: "17:14-17:15",
+                  name: "a",
+                },
+                {
+                  type: "Identifier",
+                  loc: "17:17-17:18",
+                  name: "b",
+                },
+              ],
+            },
+            init: {
+              type: "Literal",
+              loc: "17:22-17:23",
+              value: 1,
+            },
+          },
+        ],
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "19:0-19:17",
+      declaration: {
+        type: "ClassDeclaration",
+        loc: "19:7-19:17",
+        id: {
+          type: "Identifier",
+          loc: "19:13-19:14",
+          name: "C",
+        },
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "19:7-19:17",
+          body: [],
+        },
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "EmptyStatement",
+      loc: "19:17-19:18",
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "21:0-21:24",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "21:7-21:24",
+        id: {
+          type: "Identifier",
+          loc: "21:16-21:19",
+          name: "foo",
+        },
+        params: [],
+        body: {
+          type: "Block",
+          loc: "21:22-21:24",
+          body: [],
+        },
+        async: false,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "22:0-22:30",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "22:7-22:30",
+        id: {
+          type: "Identifier",
+          loc: "22:22-22:25",
+          name: "foo",
+        },
+        params: [],
+        body: {
+          type: "Block",
+          loc: "22:28-22:30",
+          body: [],
+        },
+        async: true,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+      specifiers: [],
+      source: null,
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "24:0-24:32",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "24:15-24:32",
+        id: {
+          type: "Identifier",
+          loc: "24:24-24:27",
+          name: "foo",
+        },
+        params: [],
+        body: {
+          type: "Block",
+          loc: "24:30-24:32",
+          body: [],
+        },
+        async: false,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "25:0-25:29",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "25:15-25:29",
+        id: null,
+        params: [],
+        body: {
+          type: "Block",
+          loc: "25:27-25:29",
+          body: [],
+        },
+        async: false,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "26:0-26:38",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "26:15-26:38",
+        id: {
+          type: "Identifier",
+          loc: "26:30-26:33",
+          name: "foo",
+        },
+        params: [],
+        body: {
+          type: "Block",
+          loc: "26:36-26:38",
+          body: [],
+        },
+        async: true,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "27:0-27:35",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "27:15-27:35",
+        id: null,
+        params: [],
+        body: {
+          type: "Block",
+          loc: "27:33-27:35",
+          body: [],
+        },
+        async: true,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "29:0-29:25",
+      declaration: {
+        type: "ClassDeclaration",
+        loc: "29:15-29:25",
+        id: {
+          type: "Identifier",
+          loc: "29:21-29:22",
+          name: "C",
+        },
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "29:15-29:25",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "30:0-30:23",
+      declaration: {
+        type: "ClassDeclaration",
+        loc: "30:15-30:23",
+        id: null,
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "30:15-30:23",
+          body: [],
+        },
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "32:0-32:17",
+      declaration: {
+        type: "ExpressionStatement",
+        loc: "32:15-32:17",
+        kind: {
+          type: "Identifier",
+          loc: "32:15-32:16",
+          name: "a",
+        },
+      },
+    },
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "33:0-33:21",
+      declaration: {
+        type: "ExpressionStatement",
+        loc: "33:15-33:21",
+        kind: {
+          type: "BinaryExpression",
+          loc: "33:15-33:20",
+          operator: "+",
+          left: {
+            type: "Literal",
+            loc: "33:15-33:16",
+            value: 1,
+          },
+          right: {
+            type: "Literal",
+            loc: "33:19-33:20",
+            value: 2,
+          },
+        },
+      },
+    },
+    {
+      type: "ExportAllDeclaration",
+      loc: "35:0-35:22",
+      exported: null,
+      source: {
+        type: "Literal",
+        loc: "35:14-35:21",
+        value: "other",
+      },
+    },
+    {
+      type: "ExportAllDeclaration",
+      loc: "36:0-36:27",
+      exported: {
+        type: "Identifier",
+        loc: "36:12-36:13",
+        name: "a",
+      },
+      source: {
+        type: "Literal",
+        loc: "36:19-36:26",
+        value: "other",
+      },
+    },
+    {
+      type: "ExportAllDeclaration",
+      loc: "37:0-37:29",
+      exported: {
+        type: "Literal",
+        loc: "37:12-37:15",
+        value: "a",
+      },
+      source: {
+        type: "Literal",
+        loc: "37:21-37:28",
+        value: "other",
+      },
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

@@ -228,6 +228,9 @@ impl<'a> AstVisitor for Analyzer {
             match toplevel {
                 Toplevel::Statement(stmt) => self.visit_top_level_declaration_statement(stmt),
                 Toplevel::Import(import) => self.visit_import_declaration(import),
+                Toplevel::ExportDefault(export) => self.visit_export_default_declaration(export),
+                Toplevel::ExportNamed(export) => self.visit_export_named_declaration(export),
+                Toplevel::ExportAll(export) => self.visit_export_all_declaration(export),
             }
         }
 

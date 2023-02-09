@@ -271,6 +271,7 @@ impl<'a> Parser<'a> {
         while self.token != Token::Eof {
             match self.token {
                 Token::Import => toplevels.push(Toplevel::Import(self.parse_import_declaration()?)),
+                Token::Export => toplevels.push(self.parse_export_declaration()?),
                 _ => toplevels.push(self.parse_toplevel()?),
             }
         }
@@ -2593,7 +2594,7 @@ impl<'a> Parser<'a> {
         Ok((property, is_private))
     }
 
-    fn parse_class(&mut self, is_decl: bool) -> ParseResult<Class> {
+    fn parse_class(&mut self, is_name_required: bool) -> ParseResult<Class> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -2602,7 +2603,9 @@ impl<'a> Parser<'a> {
         self.in_strict_mode = true;
 
         // Id is optional only for class expresssions
-        let id = if is_decl || (self.token != Token::LeftBrace && self.token != Token::Extends) {
+        let id = if is_name_required
+            || (self.token != Token::LeftBrace && self.token != Token::Extends)
+        {
             Some(p(self.parse_binding_identifier()?))
         } else {
             None
@@ -3010,19 +3013,10 @@ impl<'a> Parser<'a> {
             self.parse_import_named_or_namespace_specifier(&mut specifiers)?;
         }
 
-        self.expect(Token::From)?;
+        let source = p(self.parse_source()?);
+        let loc = self.mark_loc(start_pos);
 
-        if let Token::StringLiteral(value) = &self.token {
-            let source = p(StringLiteral { loc: self.loc, value: value.clone() });
-            self.advance()?;
-            self.expect_semicolon()?;
-
-            let loc = self.mark_loc(start_pos);
-
-            return Ok(ImportDeclaration { loc, specifiers, source });
-        } else {
-            self.error_unexpected_token(self.loc, &self.token)
-        }
+        Ok(ImportDeclaration { loc, specifiers, source })
     }
 
     fn parse_import_named_or_namespace_specifier(
@@ -3064,7 +3058,7 @@ impl<'a> Parser<'a> {
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
                 let imported =
-                    Expression::String(StringLiteral { loc: self.loc, value: value.clone() });
+                    ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -3081,7 +3075,7 @@ impl<'a> Parser<'a> {
                     let local = p(self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
-                    ImportNamedSpecifier { loc, imported: Some(p(Expression::Id(id))), local }
+                    ImportNamedSpecifier { loc, imported: Some(p(ModuleName::Id(id))), local }
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
@@ -3108,6 +3102,160 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
 
         Ok(())
+    }
+
+    fn parse_export_declaration(&mut self) -> ParseResult<Toplevel> {
+        let start_pos = self.current_start_pos();
+        self.advance()?;
+
+        match self.token {
+            // Export named specifiers within braces
+            Token::LeftBrace => {
+                self.advance()?;
+
+                let mut specifiers = vec![];
+
+                // Parse list of specifiers between braces
+                while self.token != Token::RightBrace {
+                    let start_pos = self.current_start_pos();
+                    let local = p(self.parse_module_name()?);
+
+                    // Specifiers optionally have an export alias
+                    let exported = if self.token == Token::As {
+                        self.advance()?;
+                        Some(p(self.parse_module_name()?))
+                    } else {
+                        None
+                    };
+
+                    let loc = self.mark_loc(start_pos);
+
+                    specifiers.push(ExportSpecifier { loc, local, exported });
+
+                    // List of specifiers has optional trailing comma
+                    if self.token == Token::Comma {
+                        self.advance()?;
+                    } else {
+                        break;
+                    }
+                }
+
+                self.expect(Token::RightBrace)?;
+
+                let source = if self.token == Token::From {
+                    Some(p(self.parse_source()?))
+                } else {
+                    None
+                };
+
+                self.expect_semicolon()?;
+                let loc = self.mark_loc(start_pos);
+
+                Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
+                    loc,
+                    declaration: None,
+                    specifiers,
+                    source,
+                }))
+            }
+            // Export all declaration
+            Token::Multiply => {
+                self.advance()?;
+
+                // Optional exported alias
+                let exported = if self.token == Token::As {
+                    self.advance()?;
+                    Some(p(self.parse_module_name()?))
+                } else {
+                    None
+                };
+
+                // Required source
+                let source = p(self.parse_source()?);
+                let loc = self.mark_loc(start_pos);
+
+                Ok(Toplevel::ExportAll(ExportAllDeclaration { loc, exported, source }))
+            }
+            // Export named declaration with a declaration statement
+            Token::Function
+            | Token::Async
+            | Token::Class
+            | Token::Var
+            | Token::Let
+            | Token::Const => {
+                let declaration = Some(p(self.parse_statement_list_item()?));
+                let loc = self.mark_loc(start_pos);
+
+                Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
+                    loc,
+                    declaration,
+                    specifiers: vec![],
+                    source: None,
+                }))
+            }
+            // Export default declaration
+            Token::Default => {
+                self.advance()?;
+
+                // Default function and class declarations have an optional name
+                match self.token {
+                    Token::Function | Token::Async => {
+                        let declaration = p(Statement::FuncDecl(self.parse_function(false)?));
+                        let loc = self.mark_loc(start_pos);
+
+                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
+                    }
+                    Token::Class => {
+                        let declaration = p(Statement::ClassDecl(self.parse_class(false)?));
+                        let loc = self.mark_loc(start_pos);
+
+                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
+                    }
+                    // Otherwise default export is an expression
+                    _ => {
+                        let expr_start_pos = self.current_start_pos();
+                        let expr = self.parse_assignment_expression()?;
+
+                        self.expect_semicolon()?;
+                        let loc = self.mark_loc(start_pos);
+
+                        let expr_stmt_loc = self.mark_loc(expr_start_pos);
+                        let declaration =
+                            p(Statement::Expr(ExpressionStatement { loc: expr_stmt_loc, expr }));
+
+                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
+                    }
+                }
+            }
+            _ => self.error_unexpected_token(self.loc, &self.token),
+        }
+    }
+
+    fn parse_module_name(&mut self) -> ParseResult<ModuleName> {
+        if let Token::StringLiteral(value) = &self.token {
+            let imported =
+                ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
+            self.advance()?;
+            Ok(imported)
+        } else if let Some(id) = self.parse_identifier_name()? {
+            Ok(ModuleName::Id(id))
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
+        }
+    }
+
+    fn parse_source(&mut self) -> ParseResult<StringLiteral> {
+        self.expect(Token::From)?;
+
+        if let Token::StringLiteral(value) = &self.token {
+            let source = StringLiteral { loc: self.loc, value: value.clone() };
+            self.advance()?;
+            self.expect_semicolon()?;
+
+            Ok(source)
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
+        }
     }
 
     fn reparse_expression_as_assignment_left_hand_side(
@@ -3402,5 +3550,5 @@ pub fn parse_function_for_function_constructor(source: &Rc<Source>) -> ParseResu
     let mut parser = Parser::new(lexer);
     parser.advance()?;
 
-    Ok(p(parser.parse_function(false)?))
+    Ok(p(parser.parse_function(true)?))
 }

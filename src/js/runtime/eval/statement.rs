@@ -71,6 +71,9 @@ pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Comp
                 }
             }
             ast::Toplevel::Import(_) => unimplemented!("import declaration"),
+            ast::Toplevel::ExportDefault(_) => unimplemented!("export default declaration"),
+            ast::Toplevel::ExportNamed(_) => unimplemented!("export named declaration"),
+            ast::Toplevel::ExportAll(_) => unimplemented!("export all declaration"),
         }
     }
 

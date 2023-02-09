@@ -358,6 +358,26 @@ pub trait AstVisitor: Sized {
     fn visit_import_namespace_specifier(&mut self, spec: &mut ImportNamespaceSpecifier) {
         default_visit_import_namespace_specifier(self, spec)
     }
+
+    fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration) {
+        default_visit_export_default_declaration(self, export)
+    }
+
+    fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
+        default_visit_export_named_declaration(self, export)
+    }
+
+    fn visit_export_specifier(&mut self, spec: &mut ExportSpecifier) {
+        default_visit_export_specifier(self, spec)
+    }
+
+    fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration) {
+        default_visit_export_all_declaration(self, export)
+    }
+
+    fn visit_module_name(&mut self, module_name: &mut ModuleName) {
+        default_visit_module_name(self, module_name)
+    }
 }
 
 #[macro_export]
@@ -386,6 +406,9 @@ pub fn default_visit_toplevel<V: AstVisitor>(visitor: &mut V, toplevel: &mut Top
     match toplevel {
         Toplevel::Statement(stmt) => visitor.visit_statement(stmt),
         Toplevel::Import(import) => visitor.visit_import_declaration(import),
+        Toplevel::ExportDefault(import) => visitor.visit_export_default_declaration(import),
+        Toplevel::ExportNamed(import) => visitor.visit_export_named_declaration(import),
+        Toplevel::ExportAll(import) => visitor.visit_export_all_declaration(import),
     }
 }
 
@@ -773,8 +796,37 @@ pub fn default_visit_import_named_specifier<V: AstVisitor>(
     visitor: &mut V,
     spec: &mut ImportNamedSpecifier,
 ) {
-    visit_opt!(visitor, spec.imported, visit_expression);
+    visit_opt!(visitor, spec.imported, visit_module_name);
     visitor.visit_identifier(&mut spec.local);
+}
+
+pub fn default_visit_export_default_declaration<V: AstVisitor>(
+    visitor: &mut V,
+    export: &mut ExportDefaultDeclaration,
+) {
+    visitor.visit_statement(&mut export.declaration);
+}
+
+pub fn default_visit_export_named_declaration<V: AstVisitor>(
+    visitor: &mut V,
+    export: &mut ExportNamedDeclaration,
+) {
+    visit_opt!(visitor, export.declaration, visit_statement);
+    visit_vec!(visitor, export.specifiers, visit_export_specifier);
+    visit_opt!(visitor, export.source, visit_string_literal);
+}
+
+pub fn default_visit_export_specifier<V: AstVisitor>(visitor: &mut V, spec: &mut ExportSpecifier) {
+    visitor.visit_module_name(&mut spec.local);
+    visit_opt!(visitor, spec.exported, visit_module_name);
+}
+
+pub fn default_visit_export_all_declaration<V: AstVisitor>(
+    visitor: &mut V,
+    export: &mut ExportAllDeclaration,
+) {
+    visit_opt!(visitor, export.exported, visit_module_name);
+    visitor.visit_string_literal(&mut export.source);
 }
 
 pub fn default_visit_import_namespace_specifier<V: AstVisitor>(
@@ -782,4 +834,11 @@ pub fn default_visit_import_namespace_specifier<V: AstVisitor>(
     spec: &mut ImportNamespaceSpecifier,
 ) {
     visitor.visit_identifier(&mut spec.local);
+}
+
+pub fn default_visit_module_name<V: AstVisitor>(visitor: &mut V, module_name: &mut ModuleName) {
+    match module_name {
+        ModuleName::Id(id) => visitor.visit_identifier(id),
+        ModuleName::String(lit) => visitor.visit_string_literal(lit),
+    }
 }

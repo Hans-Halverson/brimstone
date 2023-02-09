@@ -490,6 +490,7 @@ impl<'a> Printer<'a> {
             Expression::Assign(assign) => self.print_assignment_expression(assign),
             Expression::Update(update) => self.print_update_expression(update),
             Expression::Member(member) => self.print_member_expression(member),
+            Expression::Chain(chain) => self.print_chain_expression(chain),
             Expression::Conditional(cond) => self.print_conditional_expression(cond),
             Expression::Call(call) => self.print_call_expression(call),
             Expression::New(new) => self.print_new_expression(new),
@@ -698,6 +699,12 @@ impl<'a> Printer<'a> {
 
         self.property("computed", member.is_computed, Printer::print_bool);
         self.property("optional", member.is_optional, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_chain_expression(&mut self, chain: &ChainExpression) {
+        self.start_node("ChainExpression", &chain.loc);
+        self.property("expression", chain.expression.as_ref(), Printer::print_expression);
         self.end_node();
     }
 

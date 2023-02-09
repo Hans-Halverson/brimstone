@@ -582,6 +582,7 @@ pub enum Expression {
     Assign(AssignmentExpression),
     Update(UpdateExpression),
     Member(MemberExpression),
+    Chain(ChainExpression),
     Conditional(ConditionalExpression),
     Call(CallExpression),
     New(NewExpression),
@@ -600,7 +601,6 @@ pub enum Expression {
     TaggedTemplate(TaggedTemplateExpression),
     MetaProperty(MetaProperty),
     Import(ImportExpression),
-    // TODO: ChainExpression
 }
 
 impl Expression {
@@ -760,6 +760,11 @@ pub struct MemberExpression {
     pub is_computed: bool,
     pub is_optional: bool,
     pub is_private: bool,
+}
+
+pub struct ChainExpression {
+    pub loc: Loc,
+    pub expression: P<Expression>,
 }
 
 pub struct ConditionalExpression {

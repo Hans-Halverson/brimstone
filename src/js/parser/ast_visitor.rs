@@ -49,6 +49,7 @@ pub trait AstVisitor: Sized {
             Expression::Assign(assign) => self.visit_assignment_expression(assign),
             Expression::Update(update) => self.visit_update_expression(update),
             Expression::Member(member) => self.visit_member_expression(member),
+            Expression::Chain(chain) => self.visit_chain_expression(chain),
             Expression::Conditional(cond) => self.visit_conditional_expression(cond),
             Expression::Call(call) => self.visit_call_expression(call),
             Expression::New(new) => self.visit_new_expression(new),
@@ -236,6 +237,10 @@ pub trait AstVisitor: Sized {
 
     fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
         default_visit_member_expression(self, expr)
+    }
+
+    fn visit_chain_expression(&mut self, expr: &mut ChainExpression) {
+        default_visit_chain_expression(self, expr)
     }
 
     fn visit_conditional_expression(&mut self, expr: &mut ConditionalExpression) {
@@ -625,6 +630,10 @@ pub fn default_visit_member_expression<V: AstVisitor>(
 ) {
     visitor.visit_expression(&mut expr.object);
     visitor.visit_expression(&mut expr.property);
+}
+
+pub fn default_visit_chain_expression<V: AstVisitor>(visitor: &mut V, expr: &mut ChainExpression) {
+    visitor.visit_expression(&mut expr.expression);
 }
 
 pub fn default_visit_conditional_expression<V: AstVisitor>(

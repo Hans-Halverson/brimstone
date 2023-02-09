@@ -81,6 +81,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
         ast::Expression::Update(expr) => eval_update_expression(cx, expr),
         ast::Expression::Member(expr) => eval_member_expression(cx, expr),
+        ast::Expression::Chain(_) => unimplemented!("optional chain expression"),
         ast::Expression::Conditional(expr) => eval_conditional_expression(cx, expr),
         ast::Expression::Call(expr) => eval_call_expression(cx, expr),
         ast::Expression::New(expr) => eval_new_expression(cx, expr),

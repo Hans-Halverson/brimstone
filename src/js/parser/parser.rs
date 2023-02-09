@@ -1601,7 +1601,9 @@ impl<'a> Parser<'a> {
             _ => self.parse_primary_expression()?,
         };
 
-        self.parse_call_expression(expr, start_pos, true)
+        self.parse_call_expression(
+            expr, start_pos, /* allow_call */ true, /* in_optional_chain */ false,
+        )
     }
 
     fn parse_call_expression(
@@ -1609,8 +1611,9 @@ impl<'a> Parser<'a> {
         expr: P<Expression>,
         start_pos: Pos,
         allow_call: bool,
+        in_optional_chain: bool,
     ) -> ParseResult<P<Expression>> {
-        let expr = self.parse_member_expression(expr, start_pos, allow_call)?;
+        let expr = self.parse_member_expression(expr, start_pos, allow_call, in_optional_chain)?;
         match self.token {
             Token::LeftParen if allow_call => {
                 let arguments = self.parse_call_arguments()?;
@@ -1623,7 +1626,7 @@ impl<'a> Parser<'a> {
                     is_optional: false,
                 }));
 
-                self.parse_call_expression(call_expr, start_pos, allow_call)
+                self.parse_call_expression(call_expr, start_pos, allow_call, in_optional_chain)
             }
             _ => Ok(expr),
         }
@@ -1634,52 +1637,26 @@ impl<'a> Parser<'a> {
         expr: P<Expression>,
         start_pos: Pos,
         allow_call: bool,
+        in_optional_chain: bool,
     ) -> ParseResult<P<Expression>> {
         match &self.token {
             Token::Period => {
                 self.advance()?;
 
-                let is_private = self.token == Token::Hash;
-                if is_private {
-                    self.advance()?;
-                }
+                let member_expr = self.parse_property_member_expression(expr, start_pos, false)?;
 
-                let property = match self.parse_identifier_name()? {
-                    Some(id) => id,
-                    None => return self.error_unexpected_token(self.loc, &self.token),
-                };
-
-                let loc = self.mark_loc(start_pos);
-
-                let member_expr = p(Expression::Member(MemberExpression {
-                    loc,
-                    object: expr,
-                    property: p(Expression::Id(property)),
-                    is_computed: false,
-                    is_optional: false,
-                    is_private,
-                }));
-
-                self.parse_call_expression(member_expr, start_pos, allow_call)
+                self.parse_call_expression(member_expr, start_pos, allow_call, in_optional_chain)
             }
             Token::LeftBracket => {
-                self.advance()?;
-                let property = self.parse_expression()?;
-                self.expect(Token::RightBracket)?;
-                let loc = self.mark_loc(start_pos);
+                let member_expr = self.parse_computed_member_expression(expr, start_pos, false)?;
 
-                let member_expr = p(Expression::Member(MemberExpression {
-                    loc,
-                    object: expr,
-                    property,
-                    is_computed: true,
-                    is_optional: false,
-                    is_private: false,
-                }));
-
-                self.parse_call_expression(member_expr, start_pos, allow_call)
+                self.parse_call_expression(member_expr, start_pos, allow_call, in_optional_chain)
             }
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
+                if in_optional_chain {
+                    return self.error(self.loc, ParseError::TaggedTemplateInChain);
+                }
+
                 let quasi =
                     p(self.parse_template_literal(raw.clone(), cooked.clone(), *is_tail)?);
                 let loc = self.mark_loc(start_pos);
@@ -1691,10 +1668,126 @@ impl<'a> Parser<'a> {
                         quasi,
                     }));
 
-                self.parse_call_expression(tagged_template_expr, start_pos, allow_call)
+                self.parse_call_expression(
+                    tagged_template_expr,
+                    start_pos,
+                    allow_call,
+                    in_optional_chain,
+                )
+            }
+            // Start of an optional chain
+            Token::QuestionDot => {
+                self.advance()?;
+
+                match self.token {
+                    // Optional call
+                    Token::LeftParen => {
+                        let arguments = self.parse_call_arguments()?;
+                        let loc = self.mark_loc(start_pos);
+
+                        let call_expr = p(Expression::Call(CallExpression {
+                            loc,
+                            callee: expr,
+                            arguments,
+                            is_optional: true,
+                        }));
+
+                        let full_expr =
+                            self.parse_call_expression(call_expr, start_pos, allow_call, true)?;
+
+                        // Wrap in chain expression if this is the first optional part
+                        if !in_optional_chain {
+                            let loc = self.mark_loc(start_pos);
+                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                        } else {
+                            Ok(full_expr)
+                        }
+                    }
+                    // Optional computed member access
+                    Token::LeftBracket => {
+                        let member_expr =
+                            self.parse_computed_member_expression(expr, start_pos, true)?;
+
+                        let full_expr =
+                            self.parse_call_expression(member_expr, start_pos, allow_call, true)?;
+
+                        // Wrap in chain expression if this is the first optional part
+                        if !in_optional_chain {
+                            let loc = self.mark_loc(start_pos);
+                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                        } else {
+                            Ok(full_expr)
+                        }
+                    }
+                    // Optional simple property access
+                    _ => {
+                        let member_expr =
+                            self.parse_property_member_expression(expr, start_pos, true)?;
+
+                        let full_expr =
+                            self.parse_call_expression(member_expr, start_pos, allow_call, true)?;
+
+                        // Wrap in chain expression if this is the first optional part
+                        if !in_optional_chain {
+                            let loc = self.mark_loc(start_pos);
+                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                        } else {
+                            Ok(full_expr)
+                        }
+                    }
+                }
             }
             _ => Ok(expr),
         }
+    }
+
+    fn parse_property_member_expression(
+        &mut self,
+        object: P<Expression>,
+        start_pos: Pos,
+        is_optional: bool,
+    ) -> ParseResult<P<Expression>> {
+        let is_private = self.token == Token::Hash;
+        if is_private {
+            self.advance()?;
+        }
+
+        let property = match self.parse_identifier_name()? {
+            Some(id) => id,
+            None => return self.error_unexpected_token(self.loc, &self.token),
+        };
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(Expression::Member(MemberExpression {
+            loc,
+            object,
+            property: p(Expression::Id(property)),
+            is_computed: false,
+            is_optional,
+            is_private,
+        })))
+    }
+
+    fn parse_computed_member_expression(
+        &mut self,
+        object: P<Expression>,
+        start_pos: Pos,
+        is_optional: bool,
+    ) -> ParseResult<P<Expression>> {
+        self.advance()?;
+        let property = self.parse_expression()?;
+        self.expect(Token::RightBracket)?;
+        let loc = self.mark_loc(start_pos);
+
+        Ok(p(Expression::Member(MemberExpression {
+            loc,
+            object,
+            property,
+            is_computed: true,
+            is_optional,
+            is_private: false,
+        })))
     }
 
     fn parse_new_expression(&mut self) -> ParseResult<P<Expression>> {
@@ -1736,7 +1829,7 @@ impl<'a> Parser<'a> {
         };
 
         // Disallow call since parenthesized arguments should be attached to this new instead
-        let callee = self.parse_member_expression(callee, callee_start_pos, false)?;
+        let callee = self.parse_member_expression(callee, callee_start_pos, false, false)?;
 
         let arguments = if self.token == Token::LeftParen {
             self.parse_call_arguments()?

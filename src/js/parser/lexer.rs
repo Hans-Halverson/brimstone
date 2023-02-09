@@ -310,6 +310,10 @@ impl<'a> Lexer<'a> {
                             self.emit(Token::NullishCoalesce, start_pos)
                         }
                     },
+                    '.' => {
+                        self.advance2();
+                        self.emit(Token::QuestionDot, start_pos)
+                    }
                     _ => {
                         self.advance();
                         self.emit(Token::Question, start_pos)

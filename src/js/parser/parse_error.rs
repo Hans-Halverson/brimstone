@@ -34,6 +34,7 @@ pub enum ParseError {
     ExpectedNewTarget,
     ExpectedImportMeta,
     ExponentLHSUnary,
+    TaggedTemplateInChain,
     ForEachInitInvalidVarDecl,
     NameRedeclaration(String, NameKind),
     DuplicateLabel,
@@ -135,6 +136,9 @@ impl fmt::Display for ParseError {
                     f,
                     "Unparenthesized unary expression can't appear on the left hand side of '**'"
                 )
+            }
+            ParseError::TaggedTemplateInChain => {
+                write!(f, "Tagged template cannot be used in optional chain")
             }
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")

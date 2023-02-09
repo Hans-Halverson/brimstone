@@ -599,7 +599,7 @@ pub enum Expression {
     Template(TemplateLiteral),
     TaggedTemplate(TaggedTemplateExpression),
     MetaProperty(MetaProperty),
-    // TODO: ImportExpression
+    Import(ImportExpression),
     // TODO: ChainExpression
 }
 
@@ -890,6 +890,11 @@ pub struct MetaProperty {
 pub enum MetaPropertyKind {
     NewTarget,
     ImportMeta,
+}
+
+pub struct ImportExpression {
+    pub loc: Loc,
+    pub source: P<Expression>,
 }
 
 pub enum Pattern {

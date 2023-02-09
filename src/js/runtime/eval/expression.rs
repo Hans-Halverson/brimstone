@@ -101,6 +101,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
             ast::MetaPropertyKind::NewTarget => eval_new_target(cx),
             ast::MetaPropertyKind::ImportMeta => unimplemented!("import.meta"),
         },
+        ast::Expression::Import(_) => unimplemented!("import expression"),
     }
 }
 

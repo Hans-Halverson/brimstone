@@ -32,6 +32,7 @@ pub enum ParseError {
     InvalidUpdateExpressionArgument,
     IdentifierIsReservedWord,
     ExpectedNewTarget,
+    ExpectedImportMeta,
     ExponentLHSUnary,
     ForEachInitInvalidVarDecl,
     NameRedeclaration(String, NameKind),
@@ -125,6 +126,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::ExpectedNewTarget => {
                 write!(f, "Expected new.target")
+            }
+            ParseError::ExpectedImportMeta => {
+                write!(f, "Expected import.meta")
             }
             ParseError::ExponentLHSUnary => {
                 write!(

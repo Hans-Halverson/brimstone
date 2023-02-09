@@ -66,6 +66,7 @@ pub trait AstVisitor: Sized {
             Expression::Template(lit) => self.visit_template_literal(lit),
             Expression::TaggedTemplate(expr) => self.visit_tagged_template_expression(expr),
             Expression::MetaProperty(expr) => self.visit_meta_property(expr),
+            Expression::Import(expr) => self.visit_import_expression(expr),
         }
     }
 
@@ -314,6 +315,10 @@ pub trait AstVisitor: Sized {
     }
 
     fn visit_meta_property(&mut self, _: &mut MetaProperty) {}
+
+    fn visit_import_expression(&mut self, expr: &mut ImportExpression) {
+        default_visit_import_expression(self, expr)
+    }
 
     fn visit_identifier_pattern(&mut self, id: &mut Identifier) {
         default_visit_identifier_pattern(self, id)
@@ -731,6 +736,14 @@ pub fn default_visit_tagged_template_expression<V: AstVisitor>(
     visitor.visit_expression(&mut expr.tag);
     visitor.visit_template_literal(&mut expr.quasi);
 }
+
+pub fn default_visit_import_expression<V: AstVisitor>(
+    visitor: &mut V,
+    expr: &mut ImportExpression,
+) {
+    visitor.visit_expression(&mut expr.source);
+}
+
 pub fn default_visit_identifier_pattern<V: AstVisitor>(visitor: &mut V, id: &mut Identifier) {
     visitor.visit_identifier(id);
 }

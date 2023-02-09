@@ -1,0 +1,44 @@
+{
+  type: "Program",
+  loc: "1:0-3:14",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:10",
+      kind: {
+        type: "ImportExpression",
+        loc: "1:0-1:9",
+        source: {
+          type: "Identifier",
+          loc: "1:7-1:8",
+          name: "a",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:14",
+      kind: {
+        type: "ImportExpression",
+        loc: "3:0-3:13",
+        source: {
+          type: "BinaryExpression",
+          loc: "3:7-3:12",
+          operator: "+",
+          left: {
+            type: "Identifier",
+            loc: "3:7-3:8",
+            name: "a",
+          },
+          right: {
+            type: "Identifier",
+            loc: "3:11-3:12",
+            name: "b",
+          },
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

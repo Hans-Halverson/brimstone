@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-23:37",
+  loc: "1:0-27:10",
   body: [
     {
       type: "ImportDeclaration",
@@ -290,6 +290,32 @@
         type: "Literal",
         loc: "23:33-23:36",
         value: "e",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "25:0-25:9",
+      kind: {
+        type: "ImportExpression",
+        loc: "25:0-25:9",
+        source: {
+          type: "Identifier",
+          loc: "25:7-25:8",
+          name: "a",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "27:0-27:10",
+      kind: {
+        type: "ImportExpression",
+        loc: "27:0-27:9",
+        source: {
+          type: "Identifier",
+          loc: "27:7-27:8",
+          name: "a",
+        },
       },
     },
   ],

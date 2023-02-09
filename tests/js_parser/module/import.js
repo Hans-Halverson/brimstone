@@ -21,3 +21,7 @@ import {a, b, c} from 'd';
 import {a as b, c, d as e} from 'f';
 
 import {'a' as b, 'c' as d} from 'e';
+
+import(a)
+
+import(a);

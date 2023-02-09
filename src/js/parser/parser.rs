@@ -270,7 +270,7 @@ impl<'a> Parser<'a> {
         let mut toplevels = vec![];
         while self.token != Token::Eof {
             match self.token {
-                Token::Import => toplevels.push(Toplevel::Import(self.parse_import_declaration()?)),
+                Token::Import => toplevels.push(self.parse_import_declaration()?),
                 Token::Export => toplevels.push(self.parse_export_declaration()?),
                 _ => toplevels.push(self.parse_toplevel()?),
             }
@@ -1597,6 +1597,7 @@ impl<'a> Parser<'a> {
         let expr = match &self.token {
             Token::New => self.parse_new_expression()?,
             Token::Super => self.parse_super_expression()?,
+            Token::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression()?,
         };
 
@@ -1793,6 +1794,51 @@ impl<'a> Parser<'a> {
                 })))
             }
             _ => self.error_expected_token(self.loc, &self.token, &Token::LeftParen),
+        }
+    }
+
+    fn parse_import_expression(&mut self) -> ParseResult<P<Expression>> {
+        let start_pos = self.current_start_pos();
+
+        // Check whether the `import` keyword has any escape sequences
+        let import_has_escapes = self.loc.end - self.loc.start != 6;
+
+        self.advance()?;
+
+        match &self.token {
+            // Parse import.meta meta property
+            Token::Period if !import_has_escapes => {
+                self.advance()?;
+                let error_loc = if let Some(id) = self.parse_identifier_name()? {
+                    if id.name == "meta" {
+                        let meta_has_escapes = id.loc.end - id.loc.start != 4;
+                        if !meta_has_escapes {
+                            let loc = self.mark_loc(start_pos);
+                            return Ok(p(Expression::MetaProperty(MetaProperty {
+                                loc,
+                                kind: MetaPropertyKind::ImportMeta,
+                            })));
+                        } else {
+                            id.loc
+                        }
+                    } else {
+                        id.loc
+                    }
+                } else {
+                    self.loc
+                };
+
+                self.error(error_loc, ParseError::ExpectedImportMeta)
+            }
+            _ => {
+                self.expect(Token::LeftParen)?;
+                let source = self.parse_assignment_expression()?;
+                self.expect(Token::RightParen)?;
+
+                let loc = self.mark_loc(start_pos);
+
+                Ok(p(Expression::Import(ImportExpression { loc, source })))
+            }
         }
     }
 
@@ -2979,9 +3025,26 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_import_declaration(&mut self) -> ParseResult<ImportDeclaration> {
+    fn parse_import_declaration(&mut self) -> ParseResult<Toplevel> {
         let start_pos = self.current_start_pos();
         self.advance()?;
+
+        // May be the start of a toplevel import expression
+        if self.token == Token::LeftParen {
+            self.advance()?;
+            let source = self.parse_assignment_expression()?;
+            self.expect(Token::RightParen)?;
+
+            let loc = self.mark_loc(start_pos);
+            let import_expr = Expression::Import(ImportExpression { loc, source });
+
+            self.expect_semicolon()?;
+            let loc = self.mark_loc(start_pos);
+
+            let expr_stmt = Statement::Expr(ExpressionStatement { loc, expr: p(import_expr) });
+
+            return Ok(Toplevel::Statement(expr_stmt));
+        }
 
         // No specifiers
         if let Token::StringLiteral(value) = &self.token {
@@ -2991,7 +3054,7 @@ impl<'a> Parser<'a> {
 
             let loc = self.mark_loc(start_pos);
 
-            return Ok(ImportDeclaration { loc, specifiers: vec![], source });
+            return Ok(Toplevel::Import(ImportDeclaration { loc, specifiers: vec![], source }));
         }
 
         // Check for default specifier, which must be at start
@@ -3016,7 +3079,7 @@ impl<'a> Parser<'a> {
         let source = p(self.parse_source()?);
         let loc = self.mark_loc(start_pos);
 
-        Ok(ImportDeclaration { loc, specifiers, source })
+        Ok(Toplevel::Import(ImportDeclaration { loc, specifiers, source }))
     }
 
     fn parse_import_named_or_namespace_specifier(

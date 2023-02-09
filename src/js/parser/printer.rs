@@ -507,6 +507,7 @@ impl<'a> Printer<'a> {
             Expression::Template(lit) => self.print_template_literal(lit),
             Expression::TaggedTemplate(expr) => self.print_tagged_template_expression(expr),
             Expression::MetaProperty(expr) => self.print_meta_property(expr),
+            Expression::Import(expr) => self.print_import_expression(expr),
         }
     }
 
@@ -893,6 +894,12 @@ impl<'a> Printer<'a> {
             }
         }
 
+        self.end_node();
+    }
+
+    fn print_import_expression(&mut self, expr: &ImportExpression) {
+        self.start_node("ImportExpression", &expr.loc);
+        self.property("source", expr.source.as_ref(), Printer::print_expression);
         self.end_node();
     }
 

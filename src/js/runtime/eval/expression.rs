@@ -81,7 +81,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<V
         ast::Expression::Assign(expr) => eval_assignment_expression(cx, expr),
         ast::Expression::Update(expr) => eval_update_expression(cx, expr),
         ast::Expression::Member(expr) => eval_member_expression(cx, expr),
-        ast::Expression::Chain(_) => unimplemented!("optional chain expression"),
+        ast::Expression::Chain(expr) => eval_chain_expression(cx, expr),
         ast::Expression::Conditional(expr) => eval_conditional_expression(cx, expr),
         ast::Expression::Call(expr) => eval_call_expression(cx, expr),
         ast::Expression::New(expr) => eval_new_expression(cx, expr),
@@ -374,7 +374,14 @@ pub fn eval_member_expression_to_reference(
     expr: &ast::MemberExpression,
 ) -> EvalResult<Reference> {
     let base_value = maybe!(eval_expression(cx, &expr.object));
+    eval_member_expression_to_reference_with_base(cx, expr, base_value)
+}
 
+fn eval_member_expression_to_reference_with_base(
+    cx: &mut Context,
+    expr: &ast::MemberExpression,
+    base_value: Value,
+) -> EvalResult<Reference> {
     let is_strict = cx.current_execution_context().is_strict_mode;
 
     if expr.is_computed {
@@ -416,6 +423,9 @@ fn maybe_eval_expression_to_reference(
         }
         ast::Expression::SuperMember(expr) => {
             Some(maybe!(eval_super_member_expression_to_reference(cx, &expr))).into()
+        }
+        ast::Expression::Chain(expr) => {
+            Some(maybe!(eval_chain_expression_to_reference(cx, expr))).into()
         }
         _ => None.into(),
     }
@@ -575,6 +585,96 @@ fn eval_argument_list(cx: &mut Context, arguments: &[ast::CallArgument]) -> Eval
     }
 
     arg_values.into()
+}
+
+// 13.3.9.1 Optional Chain Evaluation
+fn eval_chain_expression(cx: &mut Context, expr: &ast::ChainExpression) -> EvalResult<Value> {
+    maybe!(eval_chain_expression_part(cx, &expr.expression))
+        .0
+        .into()
+}
+
+fn eval_chain_expression_to_reference(
+    cx: &mut Context,
+    expr: &ast::ChainExpression,
+) -> EvalResult<Reference> {
+    maybe!(eval_chain_expression_part(cx, &expr.expression))
+        .1
+        .into()
+}
+
+fn eval_chain_expression_part(
+    cx: &mut Context,
+    expr: &ast::Expression,
+) -> EvalResult<(Value, Reference)> {
+    match expr {
+        ast::Expression::Member(member_expr) => {
+            let base_value = maybe!(eval_chain_expression_part(cx, &member_expr.object)).0;
+            if base_value.is_nullish() {
+                return (Value::undefined(), Reference::EMPTY).into();
+            }
+
+            let reference =
+                maybe!(eval_member_expression_to_reference_with_base(cx, member_expr, base_value));
+            let value = maybe!(reference.get_value(cx));
+
+            (value, reference).into()
+        }
+        // Logic partially duplicated from eval_call_expression, returns early for nullish functions
+        ast::Expression::Call(call_expr) => {
+            let callee_reference: Option<Reference> = match call_expr.callee.as_ref() {
+                // Check for a member callee so that we can short circuit
+                ast::Expression::Member(expr) => {
+                    let base_value = maybe!(eval_chain_expression_part(cx, &expr.object)).0;
+                    if base_value.is_nullish() {
+                        return (Value::undefined(), Reference::EMPTY).into();
+                    }
+
+                    Some(maybe!(eval_member_expression_to_reference_with_base(
+                        cx, &expr, base_value
+                    )))
+                    .into()
+                }
+                other_expr => {
+                    maybe!(maybe_eval_expression_to_reference(cx, &other_expr))
+                }
+            };
+
+            // Evaluate callee and find this value, returns early if callee is nullish
+            let (func_value, this_value) = match callee_reference {
+                Some(reference) => {
+                    let func_value = maybe!(reference.get_value(cx));
+                    if func_value.is_nullish() {
+                        return (Value::undefined(), Reference::EMPTY).into();
+                    }
+
+                    let this_value = match reference.base() {
+                        ReferenceBase::Property { .. } => reference.get_this_value(),
+                        ReferenceBase::Env { env, .. } => match env.with_base_object() {
+                            Some(base_object) => base_object.into(),
+                            None => Value::undefined(),
+                        },
+                        _ => unreachable!(),
+                    };
+
+                    (func_value, this_value)
+                }
+                None => {
+                    let func_value = maybe!(eval_chain_expression_part(cx, &call_expr.callee)).0;
+                    if func_value.is_nullish() {
+                        return (Value::undefined(), Reference::EMPTY).into();
+                    }
+
+                    (func_value, Value::undefined())
+                }
+            };
+
+            let value = maybe!(eval_call(cx, func_value, this_value, &call_expr.arguments));
+
+            (value, Reference::EMPTY).into()
+        }
+        other_expr => (maybe!(eval_expression(cx, other_expr)), Reference::EMPTY).into(),
+    }
 }
 
 // 13.3.11.1 Tagged Template Evaluation

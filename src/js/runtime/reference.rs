@@ -36,6 +36,17 @@ pub enum ReferenceBase {
 }
 
 impl Reference {
+    // An empty reference that will never be used
+    pub const EMPTY: Reference = Reference {
+        base: ReferenceBase::Property {
+            object: Value::undefined(),
+            property: PropertyKey::from_u8(0),
+            private_id: None,
+        },
+        is_strict: false,
+        this_value: None,
+    };
+
     pub fn new_unresolvable(name: Gc<StringValue>, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Unresolvable { name },

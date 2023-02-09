@@ -63,6 +63,12 @@ impl PropertyKey {
         PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
     }
 
+    pub const fn from_u8(value: u8) -> PropertyKey {
+        PropertyKey {
+            data: RefCell::new(KeyData::ArrayIndex { value: value as u32 }),
+        }
+    }
+
     pub fn from_u64(cx: &mut Context, value: u64) -> PropertyKey {
         if value > u32::MAX as u64 {
             return PropertyKey::string_not_number(cx.heap.alloc_string(value.to_string()));

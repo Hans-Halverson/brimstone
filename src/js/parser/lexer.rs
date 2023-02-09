@@ -310,7 +310,8 @@ impl<'a> Lexer<'a> {
                             self.emit(Token::NullishCoalesce, start_pos)
                         }
                     },
-                    '.' => {
+                    // ?.d is parsed as a question mark followed by a decimal literal
+                    '.' if !is_decimal_digit(self.peek2()) => {
                         self.advance2();
                         self.emit(Token::QuestionDot, start_pos)
                     }

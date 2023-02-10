@@ -37,6 +37,7 @@ pub enum ParseError {
     ExpectedImportMeta,
     ExponentLHSUnary,
     TaggedTemplateInChain,
+    HashNotFollowedByIdentifier,
     ForEachInitInvalidVarDecl,
     NameRedeclaration(String, NameKind),
     DuplicateLabel,
@@ -148,6 +149,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::TaggedTemplateInChain => {
                 write!(f, "Tagged template cannot be used in optional chain")
+            }
+            ParseError::HashNotFollowedByIdentifier => {
+                write!(f, "Expected '#' to be immediately followed by an identifier")
             }
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")

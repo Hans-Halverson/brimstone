@@ -1768,7 +1768,13 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<Expression>> {
         let is_private = self.token == Token::Hash;
         if is_private {
+            let hash_loc = self.loc;
             self.advance()?;
+
+            // Hash must be directly followed by the identifier, without any characters between
+            if self.loc.start != hash_loc.end {
+                return self.error(hash_loc, ParseError::HashNotFollowedByIdentifier);
+            }
         }
 
         let property = match self.parse_identifier_name()? {
@@ -2799,7 +2805,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_private_name(&mut self) -> ParseResult<Identifier> {
+        let hash_loc = self.loc;
         self.expect(Token::Hash)?;
+
+        // Hash must be directly followed by the identifier, without any characters between
+        if self.loc.start != hash_loc.end {
+            return self.error(hash_loc, ParseError::HashNotFollowedByIdentifier);
+        }
 
         match self.parse_identifier_name()? {
             Some(id) => Ok(id),

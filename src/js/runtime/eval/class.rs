@@ -132,7 +132,7 @@ pub fn class_definition_evaluation(
             {
                 let id = key.to_id();
                 if !class_private_env.names.contains_key(&id.name) {
-                    class_private_env.add_private_name(id.name.clone())
+                    class_private_env.add_private_name(cx, id.name.clone())
                 }
             }
             _ => {}

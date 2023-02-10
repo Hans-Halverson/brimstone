@@ -14,7 +14,6 @@ pub type PrivateNameId = NonZeroU64;
 pub struct PrivateEnvironment {
     pub names: HashMap<String, PrivateNameId>,
     pub outer: Option<Gc<PrivateEnvironment>>,
-    next_id: NonZeroU64,
 }
 
 impl GcDeref for PrivateEnvironment {}
@@ -22,11 +21,8 @@ impl GcDeref for PrivateEnvironment {}
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
     pub fn new(cx: &mut Context, outer: Option<Gc<PrivateEnvironment>>) -> Gc<PrivateEnvironment> {
-        cx.heap.alloc(PrivateEnvironment {
-            names: HashMap::new(),
-            outer,
-            next_id: NonZeroU64::new(1).unwrap(),
-        })
+        cx.heap
+            .alloc(PrivateEnvironment { names: HashMap::new(), outer })
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier
@@ -37,8 +33,8 @@ impl PrivateEnvironment {
         }
     }
 
-    pub fn add_private_name(&mut self, description: String) {
-        self.names.insert(description, self.next_id);
-        self.next_id = self.next_id.checked_add(1).unwrap();
+    pub fn add_private_name(&mut self, cx: &mut Context, description: String) {
+        let next_id = cx.next_private_name_id();
+        self.names.insert(description, next_id);
     }
 }

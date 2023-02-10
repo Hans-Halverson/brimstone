@@ -2683,6 +2683,11 @@ impl<'a> Parser<'a> {
             return self.error_expected_token(self.loc, &self.token, &expected_token);
         };
 
+        // In classes, properties must be followed by a semicolon
+        if prop_context == PropertyContext::Class {
+            self.expect_semicolon()?;
+        }
+
         let loc = self.mark_loc(start_pos);
 
         let property = Property {

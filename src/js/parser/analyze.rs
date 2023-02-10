@@ -543,10 +543,13 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_unary_expression(&mut self, expr: &mut UnaryExpression) {
-        if expr.operator == UnaryOperator::Delete {
+        if expr.operator == UnaryOperator::Delete && self.is_in_strict_mode_context() {
             match expr.argument.as_ref() {
-                Expression::Id(_) if self.is_in_strict_mode_context() => {
+                Expression::Id(_) => {
                     self.emit_error(expr.loc, ParseError::DeleteIdentifierInStrictMode);
+                }
+                Expression::Member(member_expr) if member_expr.is_private => {
+                    self.emit_error(expr.loc, ParseError::DeletePrivateProperty);
                 }
                 _ => {}
             }
@@ -945,11 +948,11 @@ impl Analyzer {
             }
         };
 
-        // Constructors may be simple methods, without beign async, generator, getter, or setter.
+        // Constructors may be simple methods, without being async, generator, getter, or setter.
         // Static constructors are allowed however.
         let is_bad_constructor = match method.kind {
             ClassMethodKind::Constructor => method.value.is_async || method.value.is_generator,
-            ClassMethodKind::Get | ClassMethodKind::Set => {
+            ClassMethodKind::Get | ClassMethodKind::Set if !method.is_static => {
                 key_name.map_or(false, |name| name == "constructor")
             }
             _ => false,
@@ -959,7 +962,10 @@ impl Analyzer {
             self.emit_error(method.loc, ParseError::NonSimpleConstructor);
         }
 
-        if method.is_static && key_name.map_or(false, |name| name == "prototype") {
+        if method.is_static
+            && !method.is_private
+            && key_name.map_or(false, |name| name == "prototype")
+        {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }
 

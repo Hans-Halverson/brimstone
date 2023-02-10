@@ -44,6 +44,7 @@ pub enum ParseError {
     LabelNotFound,
     WithInStrictMode,
     DeleteIdentifierInStrictMode,
+    DeletePrivateProperty,
     LegacyOctalLiteralInStrictMode,
     AssignEvalInStrictMode,
     AssignArgumentsInStrictMode,
@@ -176,6 +177,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::DeleteIdentifierInStrictMode => {
                 write!(f, "Cannot delete variables in strict mode code")
+            }
+            ParseError::DeletePrivateProperty => {
+                write!(f, "Cannot delete private properties")
             }
             ParseError::LegacyOctalLiteralInStrictMode => {
                 write!(f, "Cannot use '0'-prefixed octal literals in struct mode code")

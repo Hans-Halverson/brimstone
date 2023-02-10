@@ -330,6 +330,8 @@ pub fn class_definition_evaluation(
                             }
                         }
                     }
+
+                    continue;
                 }
 
                 let result = (|| {

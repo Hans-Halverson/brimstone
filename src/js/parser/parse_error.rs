@@ -62,6 +62,7 @@ pub enum ParseError {
     PrivateNameOutsideClass,
     PrivateNameNotDefined(String),
     PrivateNameConstructor,
+    ArgumentsInClassInitializer,
     NewTargetOutsideFunction,
     SuperPropertyOutsideMethod,
     SuperCallOutsideDerivedConstructor,
@@ -234,6 +235,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::PrivateNameConstructor => {
                 write!(f, "Private name not allowed to be #constructor")
+            }
+            ParseError::ArgumentsInClassInitializer => {
+                write!(f, "'arguments' is not allowed in class field initializer or static initialization block")
             }
             ParseError::NewTargetOutsideFunction => {
                 write!(f, "new.target only allowed in functions")

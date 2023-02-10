@@ -35,6 +35,8 @@ pub struct Analyzer {
     function_stack: Vec<FunctionStackEntry>,
     // The classes that the visitor is currently inside, if any
     class_stack: Vec<ClassStackEntry>,
+    // Whether the "arguments" identifier is currently disallowed due to being in a class initializer
+    allow_arguments: bool,
 }
 
 struct FunctionStackEntry {
@@ -66,6 +68,7 @@ struct AnalyzerSavedState {
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
+    allow_arguments: bool,
 }
 
 pub struct PrivateNameUsage {
@@ -94,6 +97,7 @@ impl<'a> Analyzer {
             iterable_depth: 0,
             function_stack: vec![],
             class_stack: vec![],
+            allow_arguments: true,
         }
     }
 
@@ -165,6 +169,7 @@ impl<'a> Analyzer {
             label_depth: self.label_depth,
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
+            allow_arguments: self.allow_arguments,
         };
 
         std::mem::swap(&mut self.labels, &mut state.labels);
@@ -181,6 +186,7 @@ impl<'a> Analyzer {
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
+        self.allow_arguments = state.allow_arguments;
     }
 
     fn add_var_declared_id(&mut self, id: &Identifier, kind: NameKind) {
@@ -300,7 +306,7 @@ impl<'a> AstVisitor for Analyzer {
     fn visit_function_expression(&mut self, func: &mut Function) {
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
-            /*is_derived_constructor */ false,
+            /*is_derived_constructor */ false, /* is_static_initializer */ false,
         );
     }
 
@@ -310,7 +316,7 @@ impl<'a> AstVisitor for Analyzer {
 
         self.visit_function_common(
             func, /* is_arrow_function */ true, /* is_method */ false,
-            /*is_derived_constructor */ false,
+            /*is_derived_constructor */ false, /* is_static_initializer */ false,
         );
     }
 
@@ -485,7 +491,7 @@ impl<'a> AstVisitor for Analyzer {
 
             self.visit_function_common(
                 func, /* is_arrow_function */ false, /* is_method */ true,
-                /*is_derived_constructor */ false,
+                /*is_derived_constructor */ false, /* is_static_initializer */ false,
             );
         } else {
             visit_opt!(self, prop.value, visit_expression);
@@ -549,8 +555,20 @@ impl<'a> AstVisitor for Analyzer {
         default_visit_unary_expression(self, expr);
     }
 
+    fn visit_identifier_expression(&mut self, id: &mut Identifier) {
+        if id.name == "arguments" && !self.allow_arguments {
+            self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
+        }
+
+        default_visit_identifier_expression(self, id)
+    }
+
     fn visit_identifier_pattern(&mut self, id: &mut Identifier) {
-        self.error_if_strict_eval_or_arguments(id);
+        if id.name == "arguments" && !self.allow_arguments {
+            self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
+        } else {
+            self.error_if_strict_eval_or_arguments(id);
+        }
 
         default_visit_identifier_pattern(self, id)
     }
@@ -592,7 +610,7 @@ impl Analyzer {
 
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
-            /*is_derived_constructor */ false,
+            /*is_derived_constructor */ false, /* is_static_initializer */ false,
         );
     }
 
@@ -602,6 +620,7 @@ impl Analyzer {
         is_arrow_function: bool,
         is_method: bool,
         is_derived_constructor: bool,
+        is_static_initializer: bool,
     ) {
         self.function_stack.push(FunctionStackEntry {
             func: Some(AstPtr::from_ref(func)),
@@ -616,6 +635,14 @@ impl Analyzer {
         // Enter strict mode context if applicable
         if func.is_strict_mode {
             self.enter_strict_mode_context();
+        }
+
+        // Arguments are always allowed directly within non-arrow functions, but not within static
+        // initializers. Arrow functions inherit from lexical context.
+        if is_static_initializer {
+            self.allow_arguments = false;
+        } else if !is_arrow_function {
+            self.allow_arguments = true;
         }
 
         // Check function name, which cannot be "eval" or "arguments" in strict mode
@@ -946,6 +973,7 @@ impl Analyzer {
             /* is_arrow_function */ false,
             /* is_method */ true,
             is_derived_constructor,
+            method.kind == ClassMethodKind::StaticInitializer,
         );
     }
 
@@ -968,7 +996,15 @@ impl Analyzer {
             _ => {}
         }
 
-        default_visit_class_property(self, prop)
+        self.visit_expression(&mut prop.key);
+
+        // "arguments" is not allowed in initializer (but is allowed in key)
+        let old_allow_arguments = self.allow_arguments;
+        self.allow_arguments = false;
+
+        visit_opt!(self, prop.value, visit_expression);
+
+        self.allow_arguments = old_allow_arguments;
     }
 
     fn visit_variable_declaration_common(
@@ -1160,6 +1196,7 @@ pub fn analyze_for_eval(
     in_function: bool,
     in_method: bool,
     in_derived_constructor: bool,
+    in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source);
 
@@ -1178,6 +1215,11 @@ pub fn analyze_for_eval(
             is_method: in_method,
             is_derived_constructor: in_derived_constructor,
         });
+    }
+
+    // If in class field initializer then "arguments" is not allowed
+    if in_class_field_initializer {
+        analyzer.allow_arguments = false;
     }
 
     analyzer.visit_program(program);

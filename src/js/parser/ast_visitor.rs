@@ -36,7 +36,7 @@ pub trait AstVisitor: Sized {
 
     fn visit_expression(&mut self, expr: &mut Expression) {
         match expr {
-            Expression::Id(id) => self.visit_identifier(id),
+            Expression::Id(id) => self.visit_identifier_expression(id),
             Expression::Null(lit) => self.visit_null_literal(lit),
             Expression::Boolean(lit) => self.visit_boolean_literal(lit),
             Expression::Number(lit) => self.visit_number_literal(lit),
@@ -202,6 +202,10 @@ pub trait AstVisitor: Sized {
     fn visit_empty_statement(&mut self, _: &mut Loc) {}
 
     fn visit_debugger_statement(&mut self, _: &mut Loc) {}
+
+    fn visit_identifier_expression(&mut self, id: &mut Identifier) {
+        default_visit_identifier_expression(self, id)
+    }
 
     fn visit_null_literal(&mut self, _: &mut Loc) {}
 
@@ -587,6 +591,10 @@ pub fn default_visit_labeled_statement<V: AstVisitor>(
     stmt: &mut LabeledStatement,
 ) {
     visitor.visit_statement(&mut stmt.body)
+}
+
+pub fn default_visit_identifier_expression<V: AstVisitor>(visitor: &mut V, id: &mut Identifier) {
+    visitor.visit_identifier(id)
 }
 
 pub fn default_visit_unary_expression<V: AstVisitor>(visitor: &mut V, expr: &mut UnaryExpression) {

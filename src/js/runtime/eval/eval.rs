@@ -18,7 +18,7 @@ use crate::{
             },
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
-            function::{instantiate_function_object, ConstructorKind},
+            function::{instantiate_function_object, ConstructorKind, FuncKind},
             value::StringValue,
             Completion, CompletionKind, Context, EvalResult, Gc, Value,
         },
@@ -55,7 +55,10 @@ pub fn perform_eval(
 
             let func = func_env.function_object;
             in_derived_constructor = func.constructor_kind == ConstructorKind::Derived;
-            // TODO: Check class initializer field name
+
+            if let FuncKind::ClassProperty(..) = func.func_node {
+                in_class_field_initializer = true;
+            }
         }
     }
 
@@ -95,6 +98,7 @@ pub fn perform_eval(
         in_function,
         in_method,
         in_derived_constructor,
+        in_class_field_initializer,
     );
     if let Err(errors) = analyze_result {
         // TODO: Return an aggregate error with all syntax errors
@@ -102,8 +106,6 @@ pub fn perform_eval(
         let error = &errors.errors[0];
         return syntax_error_(cx, &error.to_string());
     }
-
-    // TODO: Check for ContainsArguments in class field initializers
 
     let is_strict_eval = is_strict_caller || ast.has_use_strict_directive;
 

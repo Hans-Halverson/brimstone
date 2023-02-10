@@ -967,6 +967,8 @@ impl Analyzer {
             }
             _ => {}
         }
+
+        default_visit_class_property(self, prop)
     }
 
     fn visit_variable_declaration_common(

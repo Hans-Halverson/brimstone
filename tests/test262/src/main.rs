@@ -25,6 +25,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     ignore_async_generator: bool,
 
+    /// Ignore Annex B tests
+    #[arg(long, default_value_t = false)]
+    ignore_annex_b: bool,
+
     /// Reindex the test262 test suite
     #[arg(long, default_value_t = false)]
     reindex: bool,
@@ -68,7 +72,12 @@ fn main_impl() -> GenericResult {
     }
 
     let index = TestIndex::load_from_file(index_path)?;
-    let ignored = IgnoredIndex::load_from_file(ignored_path, args.ignore_async_generator)?;
+    let ignored = IgnoredIndex::load_from_file(
+        ignored_path,
+        args.ignore_async_generator,
+        args.ignore_annex_b,
+    )?;
+
     let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);
 

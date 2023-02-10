@@ -42,7 +42,15 @@
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow
-      "tail-call-optimization"
+      "tail-call-optimization",
+      // Stage < 4 proposals
+      "array-grouping",
+      "decorators",
+      "import-assertions",
+      "resizable-arraybuffer",
+      "Atomics.waitAsync",
+      "Temporal",
+      "ShadowRealm"
     ]
   }
 }

@@ -21,6 +21,7 @@ pub struct Lexer<'a> {
     current: char,
     pos: Pos,
     is_new_line_before_current: bool,
+    pub in_strict_mode: bool,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
@@ -81,6 +82,7 @@ impl<'a> Lexer<'a> {
             current,
             pos: 0,
             is_new_line_before_current: false,
+            in_strict_mode: false,
         }
     }
 
@@ -458,7 +460,9 @@ impl<'a> Lexer<'a> {
                         self.advance3();
                         self.emit(Token::Spread, start_pos)
                     } else if is_decimal_digit(next_char) {
-                        self.lex_decimal_literal()
+                        let token = self.lex_decimal_literal()?;
+                        self.error_if_cannot_follow_numeric_literal()?;
+                        Ok(token)
                     } else {
                         self.advance();
                         self.emit(Token::Period, start_pos)
@@ -472,13 +476,35 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.emit(Token::Hash, start_pos)
                 }
-                '0' => match self.peek() {
-                    'b' | 'B' => self.lex_binary_literal(),
-                    'o' | 'O' => self.lex_octal_literal(),
-                    'x' | 'X' => self.lex_hex_literal(),
-                    _ => self.lex_decimal_literal(),
-                },
-                '1'..='9' => self.lex_decimal_literal(),
+                '0' => {
+                    let token = match self.peek() {
+                        'b' | 'B' => self.lex_binary_literal()?,
+                        'o' | 'O' => self.lex_octal_literal()?,
+                        'x' | 'X' => self.lex_hex_literal()?,
+                        '0'..='9' if self.in_strict_mode => {
+                            self.advance();
+                            let loc = self.mark_loc(start_pos);
+                            return self.error(loc, ParseError::LegacyOctalLiteralInStrictMode);
+                        }
+                        '0'..='9' => {
+                            let start_pos = self.pos;
+                            if let Some(token) = self.lex_legacy_octal_literal() {
+                                self.emit(token, start_pos)?
+                            } else {
+                                self.lex_decimal_literal()?
+                            }
+                        }
+                        _ => self.lex_decimal_literal()?,
+                    };
+
+                    self.error_if_cannot_follow_numeric_literal()?;
+                    Ok(token)
+                }
+                '1'..='9' => {
+                    let token = self.lex_decimal_literal()?;
+                    self.error_if_cannot_follow_numeric_literal()?;
+                    Ok(token)
+                }
                 '"' | '\'' => self.lex_string_literal(),
                 '`' => {
                     let start_pos = self.pos;
@@ -829,6 +855,59 @@ impl<'a> Lexer<'a> {
 
     fn lex_hex_literal(&mut self) -> LexResult {
         self.lex_literal_with_base(16, 4, get_hex_value)
+    }
+
+    fn lex_legacy_octal_literal(&mut self) -> Option<Token> {
+        let save_state = self.save();
+
+        let mut value: u64 = 0;
+
+        while let Some(digit) = get_octal_value(self.current) {
+            value <<= 3;
+            value += digit as u64;
+
+            self.advance();
+        }
+
+        // Reparse as decimal literal if we encounter a digit outside hex range
+        if self.current == '8' || self.current == '9' {
+            self.restore(&save_state);
+            return None;
+        }
+
+        Some(Token::NumberLiteral(value as f64))
+    }
+
+    fn error_if_cannot_follow_numeric_literal(&mut self) -> ParseResult<()> {
+        let start_pos = self.pos;
+
+        let cannot_follow_numeric_literal;
+        let end_pos;
+
+        if is_ascii(self.current) {
+            cannot_follow_numeric_literal =
+                is_id_start_ascii(self.current) || is_decimal_digit(self.current);
+            end_pos = self.pos + 1;
+        } else if self.current == EOF_CHAR {
+            cannot_follow_numeric_literal = false;
+            end_pos = self.pos;
+        } else {
+            // Peek at next code point
+            let save_state = self.save();
+            let code_point = self.lex_utf8_codepoint()?;
+
+            cannot_follow_numeric_literal = is_id_start_unicode(code_point);
+            end_pos = self.pos;
+
+            self.restore(&save_state);
+        }
+
+        if cannot_follow_numeric_literal {
+            let loc = Loc { start: start_pos, end: end_pos };
+            self.error(loc, ParseError::InvalidNumericLiteralNextChar)
+        } else {
+            Ok(())
+        }
     }
 
     fn lex_string_literal(&mut self) -> LexResult {

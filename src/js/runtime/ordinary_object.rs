@@ -526,7 +526,8 @@ impl Object for OrdinaryObject {
             return;
         }
 
-        self.properties.remove(key);
+        // TODO: Removal is currently O(n) to maintain order, improve if possible
+        self.properties.shift_remove(key);
     }
 }
 

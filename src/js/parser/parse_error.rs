@@ -21,6 +21,7 @@ pub enum ParseError {
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
     BigIntLeadingZero,
+    InvalidNumericLiteralNextChar,
     TrailingNumericSeparator,
     AdjacentNumericSeparators,
     RestTrailingComma,
@@ -42,6 +43,7 @@ pub enum ParseError {
     LabelNotFound,
     WithInStrictMode,
     DeleteIdentifierInStrictMode,
+    LegacyOctalLiteralInStrictMode,
     AssignEvalInStrictMode,
     AssignArgumentsInStrictMode,
     UseStrictFunctionNonSimpleParameterList,
@@ -95,6 +97,9 @@ impl fmt::Display for ParseError {
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
             ParseError::BigIntLeadingZero => write!(f, "BigInt cannot have a leading zero"),
+            ParseError::InvalidNumericLiteralNextChar => {
+                write!(f, "This character cannot appear immediately after a numeric literal")
+            }
             ParseError::TrailingNumericSeparator => write!(
                 f,
                 "Underscore can appear only between digits, not after the last digit in a number"
@@ -166,6 +171,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::DeleteIdentifierInStrictMode => {
                 write!(f, "Cannot delete variables in strict mode code")
+            }
+            ParseError::LegacyOctalLiteralInStrictMode => {
+                write!(f, "Cannot use '0'-prefixed octal literals in struct mode code")
             }
             ParseError::AssignEvalInStrictMode => {
                 write!(f, "Cannot assign to 'eval' in strict mode code")

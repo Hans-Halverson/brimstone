@@ -113,9 +113,14 @@ impl<'a> Parser<'a> {
         self.token = save_state.token;
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
-        self.in_strict_mode = save_state.in_strict_mode;
+        self.set_in_strict_mode(save_state.in_strict_mode);
         self.allow_await = save_state.allow_await;
         self.allow_yield = save_state.allow_yield;
+    }
+
+    fn set_in_strict_mode(&mut self, in_strict_mode: bool) {
+        self.in_strict_mode = in_strict_mode;
+        self.lexer.in_strict_mode = in_strict_mode;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -221,7 +226,7 @@ impl<'a> Parser<'a> {
     fn parse_script(&mut self) -> ParseResult<Program> {
         let has_use_strict_directive = self.parse_use_strict_directive()?;
         if has_use_strict_directive {
-            self.in_strict_mode = true;
+            self.set_in_strict_mode(true);
         }
 
         let mut toplevels = vec![];
@@ -266,7 +271,7 @@ impl<'a> Parser<'a> {
     fn parse_module(&mut self) -> ParseResult<Program> {
         // Modules are always in struct mode
         let has_use_strict_directive = self.parse_use_strict_directive()?;
-        self.in_strict_mode = true;
+        self.set_in_strict_mode(true);
 
         // Allow top level await
         self.allow_await = true;
@@ -582,7 +587,7 @@ impl<'a> Parser<'a> {
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
         if has_use_strict_directive {
-            self.in_strict_mode = true;
+            self.set_in_strict_mode(true);
         }
 
         let mut body = vec![];
@@ -595,7 +600,7 @@ impl<'a> Parser<'a> {
 
         // Restore to strict mode context from before this function
         let is_strict_mode = self.in_strict_mode;
-        self.in_strict_mode = old_in_strict_mode;
+        self.set_in_strict_mode(old_in_strict_mode);
 
         Ok((Block::new(loc, body), has_use_strict_directive, is_strict_mode))
     }
@@ -606,7 +611,7 @@ impl<'a> Parser<'a> {
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
         if has_use_strict_directive {
-            self.in_strict_mode = true;
+            self.set_in_strict_mode(true);
         }
 
         let mut body = vec![];
@@ -616,7 +621,7 @@ impl<'a> Parser<'a> {
 
         // Restore to strict mode context from before this function
         let is_strict_mode = self.in_strict_mode;
-        self.in_strict_mode = old_in_strict_mode;
+        self.set_in_strict_mode(old_in_strict_mode);
 
         Ok(body)
     }
@@ -2753,7 +2758,7 @@ impl<'a> Parser<'a> {
 
         // Enter strict mode for entire class, saving strict mode context from beforehand
         let old_in_strict_mode = self.in_strict_mode;
-        self.in_strict_mode = true;
+        self.set_in_strict_mode(true);
 
         // Id is optional only for class expresssions
         let id = if is_name_required
@@ -2788,7 +2793,7 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         // Restore to strict mode context from beforehand
-        self.in_strict_mode = old_in_strict_mode;
+        self.set_in_strict_mode(old_in_strict_mode);
 
         Ok(Class::new(loc, id, super_class, body))
     }
@@ -3675,7 +3680,7 @@ pub fn parse_script_for_eval(
     let mut parser = Parser::new(lexer);
 
     // Inherit strict mode from context
-    parser.in_strict_mode = inherit_strict_mode;
+    parser.set_in_strict_mode(inherit_strict_mode);
 
     parser.advance()?;
 

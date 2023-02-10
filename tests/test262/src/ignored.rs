@@ -9,12 +9,14 @@ pub struct IgnoredIndex {
     ignored_tests: HashSet<String>,
     ignored_features: HashSet<String>,
     ignore_async_generator: bool,
+    ignore_annex_b: bool,
 }
 
 impl IgnoredIndex {
     pub fn load_from_file(
         ignored_path: &Path,
         ignore_async_generator: bool,
+        ignore_annex_b: bool,
     ) -> Result<IgnoredIndex, GenericError> {
         let ignored_string = fs::read_to_string(ignored_path)?;
 
@@ -36,7 +38,12 @@ impl IgnoredIndex {
             ignored_features.insert(String::from(feature.as_str().unwrap()));
         }
 
-        Ok(IgnoredIndex { ignored_tests, ignored_features, ignore_async_generator })
+        Ok(IgnoredIndex {
+            ignored_tests,
+            ignored_features,
+            ignore_async_generator,
+            ignore_annex_b,
+        })
     }
 
     pub fn should_ignore(&self, test: &Test) -> bool {
@@ -44,13 +51,17 @@ impl IgnoredIndex {
             return true;
         }
 
-        // Crudely ignore tests with certain keywords in name if we are filtering async/generator
+        // Crudely ignore tests with certain keywords in name for some filters
         if self.ignore_async_generator
             && (test.path.contains("async")
                 || test.path.contains("await")
                 || test.path.contains("generator")
                 || test.path.contains("yield"))
         {
+            return true;
+        }
+
+        if self.ignore_annex_b && test.path.contains("annexB/") {
             return true;
         }
 

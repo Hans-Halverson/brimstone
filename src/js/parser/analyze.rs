@@ -846,11 +846,11 @@ impl Analyzer {
                             let is_duplicate = if *kind == ClassMethodKind::Get {
                                 let had_getter = usage.has_getter;
                                 usage.has_getter = true;
-                                !had_getter && *is_static == usage.is_static
+                                had_getter || *is_static != usage.is_static
                             } else if *kind == ClassMethodKind::Set {
-                                let had_setter = usage.has_getter;
+                                let had_setter = usage.has_setter;
                                 usage.has_setter = true;
-                                !had_setter && *is_static == usage.is_static
+                                had_setter || *is_static != usage.is_static
                             } else {
                                 true
                             };

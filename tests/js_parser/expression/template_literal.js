@@ -9,6 +9,11 @@
 
 `$ ' "`;
 
+// Newlines
+`before
+
+after`;
+
 // Line continuation
 `before\
 \

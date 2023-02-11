@@ -33,6 +33,10 @@ macro_rules! builtin_names {
 
 builtin_names!(
     (empty_string, ""),
+    (__define_getter__, "__defineGetter__"),
+    (__define_setter__, "__defineSetter__"),
+    (__lookup_getter__, "__lookupGetter__"),
+    (__lookup_setter__, "__lookupSetter__"),
     (__proto__, "__proto__"),
     (e, "E"),
     (epsilon, "EPSILON"),

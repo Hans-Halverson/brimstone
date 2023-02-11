@@ -3,7 +3,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     impl_gc_into,
     js::runtime::{
-        abstract_operations::{get, has_own_property, invoke},
+        abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
@@ -18,7 +18,8 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::{
-            is_array, require_object_coercible, same_object_value, to_object, to_property_key,
+            is_array, is_callable, require_object_coercible, same_object_value, to_object,
+            to_property_key,
         },
         value::{Value, NULL_TAG, OBJECT_TAG},
         Context,
@@ -87,6 +88,35 @@ impl ObjectPrototype {
             &cx.names.__proto__(),
             Self::get_proto,
             Self::set_proto,
+            realm,
+        );
+
+        self.object.intrinsic_func(
+            cx,
+            &cx.names.__define_getter__(),
+            Self::define_getter,
+            2,
+            realm,
+        );
+        self.object.intrinsic_func(
+            cx,
+            &cx.names.__define_setter__(),
+            Self::define_setter,
+            2,
+            realm,
+        );
+        self.object.intrinsic_func(
+            cx,
+            &cx.names.__lookup_getter__(),
+            Self::lookup_getter,
+            1,
+            realm,
+        );
+        self.object.intrinsic_func(
+            cx,
+            &cx.names.__lookup_setter__(),
+            Self::lookup_setter,
+            1,
             realm,
         );
     }
@@ -271,6 +301,114 @@ impl ObjectPrototype {
         }
 
         Value::undefined().into()
+    }
+
+    // 20.1.3.9.1 Object.prototype.__defineGetter__
+    fn define_getter(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+
+        let getter = get_argument(arguments, 0);
+        if !is_callable(getter) {
+            return type_error_(cx, "getter must be a function");
+        }
+
+        let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let desc = PropertyDescriptor::accessor(Some(getter.as_object()), None, true, true);
+
+        maybe!(define_property_or_throw(cx, object, &key, desc));
+
+        Value::undefined().into()
+    }
+
+    // 20.1.3.9.2 Object.prototype.__defineSetter__
+    fn define_setter(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+
+        let setter = get_argument(arguments, 0);
+        if !is_callable(setter) {
+            return type_error_(cx, "setter must be a function");
+        }
+
+        let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let desc = PropertyDescriptor::accessor(None, Some(setter.as_object()), true, true);
+
+        maybe!(define_property_or_throw(cx, object, &key, desc));
+
+        Value::undefined().into()
+    }
+
+    // 20.1.3.9.3 Object.prototype.__lookupGetter__
+    fn lookup_getter(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+
+        let mut current_object = object;
+        loop {
+            let desc = maybe!(current_object.get_own_property(cx, &key));
+            match desc {
+                Some(desc) => {
+                    return if desc.is_accessor_descriptor() {
+                        match desc.get {
+                            Some(get) => get.into(),
+                            None => Value::undefined().into(),
+                        }
+                    } else {
+                        Value::undefined().into()
+                    }
+                }
+                None => match maybe!(current_object.get_prototype_of(cx)) {
+                    Some(proto) => current_object = proto,
+                    None => return Value::undefined().into(),
+                },
+            }
+        }
+    }
+
+    // 20.1.3.9.4 Object.prototype.__lookupSetter__
+    fn lookup_setter(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(to_object(cx, this_value));
+        let key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+
+        let mut current_object = object;
+        loop {
+            let desc = maybe!(current_object.get_own_property(cx, &key));
+            match desc {
+                Some(desc) => {
+                    return if desc.is_accessor_descriptor() {
+                        match desc.set {
+                            Some(set) => set.into(),
+                            None => Value::undefined().into(),
+                        }
+                    } else {
+                        Value::undefined().into()
+                    }
+                }
+                None => match maybe!(current_object.get_prototype_of(cx)) {
+                    Some(proto) => current_object = proto,
+                    None => return Value::undefined().into(),
+                },
+            }
+        }
     }
 }
 

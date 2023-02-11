@@ -177,7 +177,7 @@
         body: [
           {
             type: "PropertyDefinition",
-            loc: "15:10-15:11",
+            loc: "15:10-15:12",
             key: {
               type: "Identifier",
               loc: "15:10-15:11",
@@ -189,7 +189,7 @@
           },
           {
             type: "PropertyDefinition",
-            loc: "15:13-15:14",
+            loc: "15:13-15:15",
             key: {
               type: "Identifier",
               loc: "15:13-15:14",
@@ -713,7 +713,7 @@
         body: [
           {
             type: "PropertyDefinition",
-            loc: "48:2-48:5",
+            loc: "48:2-48:6",
             key: {
               type: "Identifier",
               loc: "48:2-48:5",
@@ -725,7 +725,7 @@
           },
           {
             type: "PropertyDefinition",
-            loc: "49:2-49:5",
+            loc: "49:2-49:6",
             key: {
               type: "Identifier",
               loc: "49:2-49:5",
@@ -737,7 +737,7 @@
           },
           {
             type: "PropertyDefinition",
-            loc: "50:2-50:7",
+            loc: "50:2-50:8",
             key: {
               type: "Identifier",
               loc: "50:2-50:7",
@@ -749,7 +749,7 @@
           },
           {
             type: "PropertyDefinition",
-            loc: "51:2-51:8",
+            loc: "51:2-51:9",
             key: {
               type: "Identifier",
               loc: "51:2-51:8",

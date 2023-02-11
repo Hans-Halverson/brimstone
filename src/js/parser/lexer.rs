@@ -963,7 +963,7 @@ impl<'a> Lexer<'a> {
                         value.push('\x00');
                         self.advance2()
                     }
-                    // Legacy octal escape 
+                    // Legacy octal escape
                     first_digit @ ('0'..='7') => {
                         let start_pos = self.pos;
                         self.advance();

@@ -243,6 +243,37 @@ pub fn to_uint32(cx: &mut Context, value: Value) -> EvalResult<u32> {
     (u32_number as u32).into()
 }
 
+// 7.1.9 ToUint16
+pub fn to_uint16(cx: &mut Context, value: Value) -> EvalResult<u16> {
+    // Fast pass if the value is a non-negative smi
+    if value.is_smi() {
+        let i32_value = value.as_smi();
+        if i32_value >= 0 {
+            return (i32_value as u16).into();
+        }
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // All zeros, infinities, and NaNs map to 0
+    if f64_number == 0.0 || !f64_number.is_finite() {
+        return 0.into();
+    }
+
+    // Round float to an integer
+    let mut u16_number = f64_number.abs().floor() as i64;
+    if f64_number < 0.0 {
+        u16_number = -u16_number;
+    }
+
+    // Compute modulus according to spec
+    let u16_max = u16::MAX as i64 + 1;
+    u16_number = ((u16_number % u16_max) + u16_max) % u16_max;
+
+    (u16_number as u16).into()
+}
+
 // 7.1.4.1.1 StringToNumber
 fn string_to_number(value: Gc<StringValue>) -> Value {
     match parse_string_to_number(value.str()) {

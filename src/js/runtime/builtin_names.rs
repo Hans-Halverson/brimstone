@@ -126,6 +126,8 @@ builtin_names!(
     (for_, "for"),
     (for_each, "forEach"),
     (freeze, "freeze"),
+    (from_char_code, "fromCharCode"),
+    (from_code_point, "fromCodePoint"),
     (fround, "fround"),
     (get, "get"),
     (get_own_property_descriptor, "getOwnPropertyDescriptor"),

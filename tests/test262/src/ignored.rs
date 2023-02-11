@@ -6,7 +6,7 @@ use std::{collections::HashSet, fs, path::Path};
 use crate::{index::Test, utils::GenericError};
 
 pub struct IgnoredIndex {
-    ignored_tests: HashSet<String>,
+    ignored_tests_regex: Regex,
     ignored_features: HashSet<String>,
     ignore_async_generator: bool,
     ignore_module: bool,
@@ -32,10 +32,20 @@ impl IgnoredIndex {
 
         let always_ignored = &ignored_json["always"];
 
-        let mut ignored_tests = HashSet::new();
+        // Create ignored tests regex
+        let mut ignored_tests_strings = vec![];
         for test in always_ignored["tests"].as_array().unwrap() {
-            ignored_tests.insert(String::from(test.as_str().unwrap()));
+            // Convert from glob pattern to regex
+            let ignored_test_string = String::from(test.as_str().unwrap())
+                // Escape period characters
+                .replace(".", "\\.")
+                // Convert glob wildcard to regex
+                .replace("*", ".*");
+
+            ignored_tests_strings.push(ignored_test_string);
         }
+
+        let ignored_tests_regex = Regex::new(&format!("^({})$", ignored_tests_strings.join("|")))?;
 
         let mut ignored_features = HashSet::new();
         for feature in always_ignored["features"].as_array().unwrap() {
@@ -43,7 +53,7 @@ impl IgnoredIndex {
         }
 
         Ok(IgnoredIndex {
-            ignored_tests,
+            ignored_tests_regex,
             ignored_features,
             ignore_async_generator,
             ignore_module,
@@ -53,7 +63,7 @@ impl IgnoredIndex {
     }
 
     pub fn should_ignore(&self, test: &Test) -> bool {
-        if self.ignored_tests.contains(&test.path) {
+        if self.ignored_tests_regex.is_match(&test.path) {
             return true;
         }
 

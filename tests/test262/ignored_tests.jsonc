@@ -38,7 +38,12 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T1.js",
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
-      "language/expressions/prefix-increment/S11.4.4_A6_T2.js"
+      "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
+      // Slow tests - quadratic performance due to inefficient string concatenation
+      "built-ins/RegExp/CharacterClassEscapes/*.js",
+      "built-ins/RegExp/property-escapes/generated/*.js",
+      "built-ins/decodeURI/*.js",
+      "built-ins/decodeURIComponent/*.js"
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow

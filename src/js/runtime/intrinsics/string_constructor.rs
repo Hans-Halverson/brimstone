@@ -1,9 +1,18 @@
 use crate::{
     js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, function::get_argument, gc::Gc,
-        object_value::ObjectValue, ordinary_object::ordinary_create_from_constructor,
-        property::Property, realm::Realm, string_object::StringObject, type_utilities::to_string,
-        value::Value, Context,
+        builtin_function::BuiltinFunction,
+        completion::EvalResult,
+        error::range_error_,
+        function::get_argument,
+        gc::Gc,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_create_from_constructor,
+        property::Property,
+        realm::Realm,
+        string_object::StringObject,
+        type_utilities::{to_number, to_string, to_uint16},
+        value::Value,
+        Context,
     },
     maybe,
 };
@@ -35,6 +44,9 @@ impl StringConstructor {
                 false,
             ),
         );
+
+        func.intrinsic_func(cx, &cx.names.from_char_code(), Self::from_char_code, 1, realm);
+        func.intrinsic_func(cx, &cx.names.from_code_point(), Self::from_code_point, 1, realm);
 
         func
     }
@@ -70,5 +82,53 @@ impl StringConstructor {
                 cx.heap.alloc(string_object).into()
             }
         }
+    }
+
+    // 22.1.2.1 String.fromCharCode
+    fn from_char_code(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let mut string_value = String::new();
+
+        for arg in arguments {
+            let code_unit = maybe!(to_uint16(cx, *arg));
+            let char = unsafe { char::from_u32_unchecked(code_unit as u32) };
+            string_value.push(char);
+        }
+
+        cx.heap.alloc_string(string_value).into()
+    }
+
+    // 22.1.2.2 String.fromCodePoint
+    fn from_code_point(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let mut string_value = String::new();
+
+        for arg in arguments {
+            let code_point = maybe!(to_number(cx, *arg));
+
+            // All valid code points are integers in the smi range
+            if !code_point.is_smi() {
+                return range_error_(cx, &format!("invalid code point {}", code_point.as_number()));
+            }
+
+            let code_point = code_point.as_smi();
+
+            if code_point < 0 || code_point > 0x10FFFF {
+                return range_error_(cx, &format!("invalid code point {}", code_point));
+            }
+
+            let char = unsafe { char::from_u32_unchecked(code_point as u32) };
+            string_value.push(char);
+        }
+
+        cx.heap.alloc_string(string_value).into()
     }
 }

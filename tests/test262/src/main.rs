@@ -25,6 +25,14 @@ struct Args {
     #[arg(long, default_value_t = false)]
     ignore_async_generator: bool,
 
+    /// Ignore module tests
+    #[arg(long, default_value_t = false)]
+    ignore_module: bool,
+
+    /// Ignore regexp tests
+    #[arg(long, default_value_t = false)]
+    ignore_regexp: bool,
+
     /// Ignore Annex B tests
     #[arg(long, default_value_t = false)]
     ignore_annex_b: bool,
@@ -75,6 +83,8 @@ fn main_impl() -> GenericResult {
     let ignored = IgnoredIndex::load_from_file(
         ignored_path,
         args.ignore_async_generator,
+        args.ignore_module,
+        args.ignore_regexp,
         args.ignore_annex_b,
     )?;
 

@@ -3181,10 +3181,18 @@ impl<'a> Parser<'a> {
             let loc = self.mark_loc(start_pos);
             let import_expr = Expression::Import(ImportExpression { loc, source });
 
+            // Finish parsing rest of expression started by this import expression
+            let full_expr = self.parse_call_expression(
+                p(import_expr),
+                start_pos,
+                /* allow_call */ true,
+                /* in_optional_chain */ false,
+            )?;
+
             self.expect_semicolon()?;
             let loc = self.mark_loc(start_pos);
 
-            let expr_stmt = Statement::Expr(ExpressionStatement { loc, expr: p(import_expr) });
+            let expr_stmt = Statement::Expr(ExpressionStatement { loc, expr: full_expr });
 
             return Ok(Toplevel::Statement(expr_stmt));
         }

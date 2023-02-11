@@ -46,6 +46,8 @@ pub enum ParseError {
     DeleteIdentifierInStrictMode,
     DeletePrivateProperty,
     LegacyOctalLiteralInStrictMode,
+    LegacyOctalEscapeSequenceInStrictMode,
+    LegacyNonOctalEscapeSequenceInStrictMode,
     AssignEvalInStrictMode,
     AssignArgumentsInStrictMode,
     UseStrictFunctionNonSimpleParameterList,
@@ -176,19 +178,25 @@ impl fmt::Display for ParseError {
                 write!(f, "Strict mode code may not contain 'with' statements")
             }
             ParseError::DeleteIdentifierInStrictMode => {
-                write!(f, "Cannot delete variables in strict mode code")
+                write!(f, "Cannot delete variables in strict mode")
             }
             ParseError::DeletePrivateProperty => {
                 write!(f, "Cannot delete private properties")
             }
             ParseError::LegacyOctalLiteralInStrictMode => {
-                write!(f, "Cannot use '0'-prefixed octal literals in struct mode code")
+                write!(f, "Cannot use '0'-prefixed octal literals in strict mode")
+            }
+            ParseError::LegacyOctalEscapeSequenceInStrictMode => {
+                write!(f, "Octal escape sequences are not allowed in strict mode")
+            }
+            ParseError::LegacyNonOctalEscapeSequenceInStrictMode => {
+                write!(f, "\\8 and \\9 escape sequences are not allowed in strict mode")
             }
             ParseError::AssignEvalInStrictMode => {
-                write!(f, "Cannot assign to 'eval' in strict mode code")
+                write!(f, "Cannot assign to 'eval' in strict mode")
             }
             ParseError::AssignArgumentsInStrictMode => {
-                write!(f, "Cannot assign to 'arguments' in strict mode code")
+                write!(f, "Cannot assign to 'arguments' in strict mode")
             }
             ParseError::UseStrictFunctionNonSimpleParameterList => {
                 write!(f, "'use strict' only allowed in functions with simple parameter lists")

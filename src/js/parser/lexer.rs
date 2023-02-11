@@ -958,9 +958,53 @@ impl<'a> Lexer<'a> {
                         value.push('\x0C');
                         self.advance2()
                     }
-                    '0' if self.peek2() < '0' || self.peek2() > '9' => {
+                    // Null character escape
+                    '0' if !is_decimal_digit(self.peek2()) => {
                         value.push('\x00');
                         self.advance2()
+                    }
+                    // Legacy octal escape 
+                    first_digit @ ('0'..='7') => {
+                        let start_pos = self.pos;
+                        self.advance();
+
+                        let mut octal_value = get_octal_value(first_digit).unwrap();
+                        self.advance();
+
+                        if let Some(next_digit) = get_octal_value(self.current) {
+                            octal_value *= 8;
+                            octal_value += next_digit;
+                            self.advance();
+                        }
+
+                        if first_digit <= '3' {
+                            if let Some(next_digit) = get_octal_value(self.current) {
+                                octal_value *= 8;
+                                octal_value += next_digit;
+                                self.advance();
+                            }
+                        }
+
+                        if self.in_strict_mode {
+                            let loc = self.mark_loc(start_pos);
+                            return self
+                                .error(loc, ParseError::LegacyOctalEscapeSequenceInStrictMode);
+                        }
+
+                        let char_value = unsafe { char::from_u32_unchecked(octal_value) };
+                        value.push(char_value)
+                    }
+                    // Legacy non-octal escape
+                    char @ ('8' | '9') => {
+                        self.advance2();
+
+                        if self.in_strict_mode {
+                            let loc = self.mark_loc(self.pos);
+                            return self
+                                .error(loc, ParseError::LegacyNonOctalEscapeSequenceInStrictMode);
+                        }
+
+                        value.push(char)
                     }
                     // Hex escape sequence
                     'x' => {

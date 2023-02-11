@@ -223,11 +223,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_script(&mut self) -> ParseResult<Program> {
+    fn parse_script(&mut self, initial_state: ParserSaveState) -> ParseResult<Program> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
+
+        // Restore to initial state, then reparse directives with strict mode properly set
+        self.restore(initial_state);
+
         if has_use_strict_directive {
             self.set_in_strict_mode(true);
         }
+
+        // Re-prime the parser
+        self.advance()?;
 
         let mut toplevels = vec![];
         while self.token != Token::Eof {
@@ -247,15 +254,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_directive_prologue(&mut self) -> ParseResult<bool> {
-        // Early return if there is definitely not a directive prologue
-        if let Token::StringLiteral(_) = &self.token {
-            // continue
-        } else {
-            return Ok(false);
-        }
-
-        let saved_state = self.save();
-
         // Parse a sequence of string literals followed by semicolons. If any is the literal
         // "use strict" then we are in strict mode. Be sure to restore to original state
         // afterwards, as earlier literals may need to be reparsed in strict mode.
@@ -275,8 +273,6 @@ impl<'a> Parser<'a> {
                 has_use_strict_directive = true;
             }
         }
-
-        self.restore(saved_state);
 
         Ok(has_use_strict_directive)
     }
@@ -592,15 +588,25 @@ impl<'a> Parser<'a> {
 
     fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool, bool)> {
         let start_pos = self.current_start_pos();
+
+        // Save state before the first potential directive token is lexed
+        let before_directive_state = self.save();
+
         self.expect(Token::LeftBrace)?;
 
         let has_use_strict_directive = self.parse_directive_prologue()?;
+
+        // Restore to state before first directive token, then reparse directives with strict mode set
+        self.restore(before_directive_state);
 
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
         if has_use_strict_directive {
             self.set_in_strict_mode(true);
         }
+
+        // Advance past left brace again
+        self.advance()?;
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
@@ -617,14 +623,23 @@ impl<'a> Parser<'a> {
         Ok((Block::new(loc, body), has_use_strict_directive, is_strict_mode))
     }
 
-    fn parse_function_body_statements(&mut self) -> ParseResult<Vec<Statement>> {
+    fn parse_function_body_statements(
+        &mut self,
+        initial_state: ParserSaveState,
+    ) -> ParseResult<Vec<Statement>> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
+
+        // Restore to initial state, then reparse directives with strict mode properly set
+        self.restore(initial_state);
 
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
         if has_use_strict_directive {
             self.set_in_strict_mode(true);
         }
+
+        // Re-prime the parser
+        self.advance()?;
 
         let mut body = vec![];
         while self.token != Token::Eof {
@@ -3696,9 +3711,11 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
+
+    let initial_state = parser.save();
     parser.advance()?;
 
-    Ok(parser.parse_script()?)
+    Ok(parser.parse_script(initial_state)?)
 }
 
 pub fn parse_module(source: &Rc<Source>) -> ParseResult<Program> {
@@ -3721,9 +3738,10 @@ pub fn parse_script_for_eval(
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);
 
+    let initial_state = parser.save();
     parser.advance()?;
 
-    Ok(parser.parse_script()?)
+    Ok(parser.parse_script(initial_state)?)
 }
 
 pub fn parse_function_params_for_function_constructor(
@@ -3734,10 +3752,11 @@ pub fn parse_function_params_for_function_constructor(
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
-    parser.advance()?;
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
+
+    parser.advance()?;
 
     Ok(parser.parse_function_params_without_parens()?)
 }
@@ -3750,12 +3769,14 @@ pub fn parse_function_body_for_function_constructor(
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
-    parser.advance()?;
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
 
-    Ok(parser.parse_function_body_statements()?)
+    let initial_state = parser.save();
+    parser.advance()?;
+
+    Ok(parser.parse_function_body_statements(initial_state)?)
 }
 
 pub fn parse_function_for_function_constructor(source: &Rc<Source>) -> ParseResult<P<Function>> {

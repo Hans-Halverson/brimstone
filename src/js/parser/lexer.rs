@@ -1032,28 +1032,33 @@ impl<'a> Lexer<'a> {
                         let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
                         value.push(code_point)
                     }
-                    // Line continuations, either LF, CR, or CRLF
-                    '\n' => {
-                        value.push('\n');
-                        self.advance2()
-                    }
+                    // Line continuations, either LF, CR, or CRLF. Ignored in string value.
+                    '\n' => self.advance2(),
                     '\r' => {
-                        value.push('\r');
                         self.advance2();
 
                         if self.current == '\n' {
-                            value.push('\n');
                             self.advance()
                         }
                     }
-                    // Not an escape sequence, use '/' directly
-                    _ => {
-                        value.push('/');
-                        self.advance()
+                    // Non-escape character, use character directly
+                    other => {
+                        if is_ascii(other) {
+                            self.advance2();
+                            value.push(other);
+                        } else {
+                            self.advance();
+                            let code_point = self.lex_utf8_codepoint()?;
+
+                            // Unicode line continuations are ignored in string value
+                            if !is_unicode_newline(code_point) {
+                                value.push(code_point);
+                            }
+                        }
                     }
                 },
                 // Unterminated string literal
-                '\n' | EOF_CHAR => {
+                '\n' | '\r' | EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
@@ -1172,6 +1177,8 @@ impl<'a> Lexer<'a> {
         let raw_start_pos = self.pos;
         let raw_end_pos;
 
+        let mut has_cr = false;
+
         loop {
             match self.current {
                 // Escape sequences
@@ -1257,26 +1264,31 @@ impl<'a> Lexer<'a> {
                         let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
                         value.push(code_point)
                     }
-                    // Line continuations, either LF, CR, or CRLF
-                    // TODO: Cooked values ignore line continuations
-                    // TODO: Convert \r and \r\n to \n in both raw and cooked values
-                    '\n' => {
-                        value.push('\n');
-                        self.advance2()
-                    }
+                    // Line continuations, either LF, CR, or CRLF, which are excluded in cooked value
+                    '\n' => self.advance2(),
                     '\r' => {
-                        value.push('\r');
                         self.advance2();
 
+                        has_cr = true;
+
                         if self.current == '\n' {
-                            value.push('\n');
                             self.advance()
                         }
                     }
-                    // Not an escape sequence, use '/' directly
-                    _ => {
-                        value.push('/');
-                        self.advance()
+                    // Non-escape character, use character directly
+                    other => {
+                        if is_ascii(other) {
+                            self.advance2();
+                            value.push(other);
+                        } else {
+                            self.advance();
+                            let code_point = self.lex_utf8_codepoint()?;
+
+                            // Unicode line continuations are ignored in string value
+                            if !is_unicode_newline(code_point) {
+                                value.push(code_point);
+                            }
+                        }
                     }
                 },
                 '$' => match self.peek() {
@@ -1304,11 +1316,28 @@ impl<'a> Lexer<'a> {
 
                     break;
                 }
+                // CR and CRLF are converted to LF to both raw and cooked strings
+                '\r' => {
+                    self.advance();
+
+                    has_cr = true;
+                    value.push('\n');
+
+                    if self.current == '\n' {
+                        self.advance()
+                    }
+                }
                 _ => value.push(self.lex_ascii_or_unicode_character()?),
             }
         }
 
-        let raw = String::from(&self.buf[raw_start_pos..raw_end_pos]);
+        let mut raw = String::from(&self.buf[raw_start_pos..raw_end_pos]);
+
+        // CR and CRLF are both converted to LF in raw string. This requires copying the string
+        // again, so only perform the replace if a CR was encountered.
+        if has_cr {
+            raw = raw.replace("\r\n", "\n").replace("\r", "\n");
+        }
 
         return self.emit(Token::TemplatePart { raw, cooked: value, is_head, is_tail }, start_pos);
     }

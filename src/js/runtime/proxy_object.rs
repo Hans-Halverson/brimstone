@@ -11,8 +11,9 @@ use super::{
     error::type_error_,
     gc::GcDeref,
     get,
+    intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    ordinary_object::is_compatible_property_descriptor,
+    ordinary_object::{is_compatible_property_descriptor, ordinary_object_create, OrdinaryObject},
     property::{PrivateProperty, Property},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
@@ -23,6 +24,7 @@ use super::{
 // 10.5 Proxy Object
 pub struct ProxyObject {
     _vtable: ObjectValueVtable,
+    object: OrdinaryObject,
     proxy_handler: Option<Gc<ObjectValue>>,
     proxy_target: Option<Gc<ObjectValue>>,
     is_callable: bool,
@@ -37,13 +39,18 @@ impl ProxyObject {
     const VTABLE: *const () = extract_object_vtable::<ProxyObject>();
 
     pub fn new(
+        cx: &mut Context,
         proxy_target: Gc<ObjectValue>,
         proxy_handler: Gc<ObjectValue>,
         is_callable: bool,
         is_constructor: bool,
     ) -> ProxyObject {
+        let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let object = ordinary_object_create(object_proto);
+
         ProxyObject {
             _vtable: ProxyObject::VTABLE,
+            object,
             proxy_handler: Some(proxy_handler),
             proxy_target: Some(proxy_target),
             is_callable,
@@ -713,22 +720,28 @@ impl Object for ProxyObject {
         unreachable!("property accessor and mutators not called on proxy objects")
     }
 
-    // Private property methods cannot be called on proxy objects
-    fn private_element_find(&mut self, _: PrivateNameId) -> Option<&mut PrivateProperty> {
-        unreachable!("property accessor and mutators not called on proxy objects")
+    // Private property methods defer to wrapped object
+    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty> {
+        self.object.private_element_find(private_id)
     }
 
-    fn private_field_add(&mut self, _: &mut Context, _: PrivateNameId, _: Value) -> EvalResult<()> {
-        unreachable!("property accessor and mutators not called on proxy objects")
+    fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        value: Value,
+    ) -> EvalResult<()> {
+        self.object.private_field_add(cx, private_id, value)
     }
 
     fn private_method_or_accessor_add(
         &mut self,
-        _: &mut Context,
-        _: PrivateNameId,
-        _: PrivateProperty,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        private_method: PrivateProperty,
     ) -> EvalResult<()> {
-        unreachable!("property accessor and mutators not called on proxy objects")
+        self.object
+            .private_method_or_accessor_add(cx, private_id, private_method)
     }
 
     fn is_proxy(&self) -> bool {
@@ -772,7 +785,7 @@ pub fn proxy_create(
     let is_callable = is_callable_object(target_object);
     let is_constructor = is_constructor_object(target_object);
 
-    let proxy = ProxyObject::new(target_object, handler_object, is_callable, is_constructor);
+    let proxy = ProxyObject::new(cx, target_object, handler_object, is_callable, is_constructor);
 
     cx.heap.alloc(proxy).into()
 }

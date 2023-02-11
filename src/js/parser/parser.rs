@@ -2882,9 +2882,12 @@ impl<'a> Parser<'a> {
                 )));
             }
 
+            // If `static` has escape characters it must be an identifier not a keyword
+            let has_escapes = static_loc.end - static_loc.start != 6;
+
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
-            if is_init_property || self.is_property_end(PropertyContext::Class) {
+            if is_init_property || self.is_property_end(PropertyContext::Class) || has_escapes {
                 let name =
                     p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
 

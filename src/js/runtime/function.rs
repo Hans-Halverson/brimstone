@@ -333,7 +333,7 @@ impl Function {
             // Initializer evaluation in EvaluateBody
             FuncKind::ClassProperty(prop, name) => {
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name,));
+                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name));
 
                 Completion::return_(value)
             }
@@ -481,9 +481,14 @@ pub fn define_method_property(
     key: &PropertyKey,
     closure: Gc<Function>,
     is_enumerable: bool,
-) {
+) -> EvalResult<()> {
     let desc = PropertyDescriptor::data(closure.into(), true, is_enumerable, true);
-    must!(define_property_or_throw(cx, home_object, key, desc));
+
+    // Spec says this cannot throw, but this is not true since the home_object may already have a
+    // non-configurable property that cannot be redefined (e.g. "prototype").
+    maybe!(define_property_or_throw(cx, home_object, key, desc));
+
+    ().into()
 }
 
 // 10.2.9 SetFunctionName

@@ -33,7 +33,7 @@ use crate::{
 use super::{
     expression::{eval_expression, eval_property_name},
     function::{define_method, method_definition_evaluation, private_method_definition_evaluation},
-    pattern::{id_property_key, id_string_value},
+    pattern::{id_string_value, private_id_property_key},
 };
 
 // 6.2.10 ClassFieldDefinition Record
@@ -237,7 +237,7 @@ pub fn class_definition_evaluation(
                     let (property_key, field_def_name) = if prop.is_private {
                         let id = prop.key.to_id();
                         let private_id = class_private_env.names.get(&id.name).unwrap();
-                        let property_key = id_property_key(cx, id);
+                        let property_key = private_id_property_key(cx, id);
                         let field_def_name = ClassFieldDefinitionName::Private(*private_id);
                         (property_key, field_def_name)
                     } else {
@@ -301,7 +301,7 @@ pub fn class_definition_evaluation(
                     // Resolve private name to id
                     let id = method.key.to_id();
                     let private_id = *class_private_env.names.get(&id.name).unwrap();
-                    let property_key = id_property_key(cx, id);
+                    let property_key = private_id_property_key(cx, id);
 
                     let private_property = private_method_definition_evaluation(
                         cx,
@@ -385,7 +385,7 @@ pub fn class_definition_evaluation(
     // Define static private methods as private properties of the constructor function
     for (private_id, static_private_method) in static_private_methods {
         let mut func_object: Gc<ObjectValue> = func.into();
-        must!(func_object.private_method_or_accessor_add(cx, private_id, static_private_method,));
+        must!(func_object.private_method_or_accessor_add(cx, private_id, static_private_method));
     }
 
     // Initialize static fields

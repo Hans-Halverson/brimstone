@@ -527,7 +527,7 @@ pub fn to_property_key(cx: &mut Context, value: Value) -> EvalResult<PropertyKey
     let key = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
     if key.is_string() {
         return PropertyKey::string(key.as_string()).into();
-    } else if value.is_symbol() {
+    } else if key.is_symbol() {
         return PropertyKey::symbol(key.as_symbol()).into();
     }
 

@@ -454,6 +454,11 @@ pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
     PropertyKey::string(cx.get_interned_string(&id.name))
 }
 
+#[inline]
+pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
+    PropertyKey::string(cx.heap.alloc_string(format!("#{}", id.name)))
+}
+
 // Initializers are represented as an assignment pattern as the value, wrapping the binding pattern.
 // Unwrap this structure into the inner binding pattern and the initializer, if one exists.
 pub fn maybe_extract_initializer(

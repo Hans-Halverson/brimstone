@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_script(&mut self) -> ParseResult<Program> {
-        let has_use_strict_directive = self.parse_use_strict_directive()?;
+        let has_use_strict_directive = self.parse_directive_prologue()?;
         if has_use_strict_directive {
             self.set_in_strict_mode(true);
         }
@@ -246,31 +246,43 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_use_strict_directive(&mut self) -> ParseResult<bool> {
-        // Try to parse "use strict" directive
-        match &self.token {
-            Token::StringLiteral(str) if str == "use strict" => {
-                let saved_state = self.save();
-
-                self.advance()?;
-
-                // If "use strict" is followed by a semicolon we should use strict mode. Otherwise
-                // this is the start of an expression so restore to beginning.
-                if self.token == Token::Semicolon {
-                    self.advance()?;
-                    Ok(true)
-                } else {
-                    self.restore(saved_state);
-                    Ok(false)
-                }
-            }
-            _ => Ok(false),
+    fn parse_directive_prologue(&mut self) -> ParseResult<bool> {
+        // Early return if there is definitely not a directive prologue
+        if let Token::StringLiteral(_) = &self.token {
+            // continue
+        } else {
+            return Ok(false);
         }
+
+        let saved_state = self.save();
+
+        // Parse a sequence of string literals followed by semicolons. If any is the literal
+        // "use strict" then we are in strict mode. Be sure to restore to original state
+        // afterwards, as earlier literals may need to be reparsed in strict mode.
+        let mut has_use_strict_directive = false;
+
+        while let Token::StringLiteral(str) = &self.token {
+            // Use strict directive cannot have any escape characters in it, so check length
+            let is_unscaped_use_strict = str == "use strict" && self.loc.end - self.loc.start == 12;
+
+            self.advance()?;
+
+            if !self.maybe_expect_semicolon()? {
+                break;
+            }
+
+            if is_unscaped_use_strict {
+                has_use_strict_directive = true;
+            }
+        }
+
+        self.restore(saved_state);
+
+        Ok(has_use_strict_directive)
     }
 
     fn parse_module(&mut self) -> ParseResult<Program> {
-        // Modules are always in struct mode
-        let has_use_strict_directive = self.parse_use_strict_directive()?;
+        // Modules are always in strict mode
         self.set_in_strict_mode(true);
 
         // Allow top level await
@@ -293,7 +305,7 @@ impl<'a> Parser<'a> {
             toplevels,
             ProgramKind::Module,
             self.in_strict_mode,
-            has_use_strict_directive,
+            /* has_use_strict_directive */ false,
         ))
     }
 
@@ -582,7 +594,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.expect(Token::LeftBrace)?;
 
-        let has_use_strict_directive = self.parse_use_strict_directive()?;
+        let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
@@ -606,7 +618,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_body_statements(&mut self) -> ParseResult<Vec<Statement>> {
-        let has_use_strict_directive = self.parse_use_strict_directive()?;
+        let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Enter strict mode if applicable, saving strict mode context from before this function
         let old_in_strict_mode = self.in_strict_mode;
@@ -620,7 +632,6 @@ impl<'a> Parser<'a> {
         }
 
         // Restore to strict mode context from before this function
-        let is_strict_mode = self.in_strict_mode;
         self.set_in_strict_mode(old_in_strict_mode);
 
         Ok(body)

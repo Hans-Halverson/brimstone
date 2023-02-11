@@ -1,7 +1,16 @@
 {
   type: "Program",
-  loc: "1:0-32:1",
+  loc: "1:0-42:1",
   body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:13",
+      kind: {
+        type: "Literal",
+        loc: "1:0-1:12",
+        value: "use strict",
+      },
+    },
     {
       type: "ExpressionStatement",
       loc: "4:0-4:13",
@@ -24,6 +33,15 @@
         type: "Block",
         loc: "6:15-9:1",
         body: [
+          {
+            type: "ExpressionStatement",
+            loc: "7:2-7:15",
+            kind: {
+              type: "Literal",
+              loc: "7:2-7:14",
+              value: "use strict",
+            },
+          },
           {
             type: "ExpressionStatement",
             loc: "8:2-8:4",
@@ -52,6 +70,15 @@
         type: "Block",
         loc: "11:15-14:1",
         body: [
+          {
+            type: "ExpressionStatement",
+            loc: "12:2-12:15",
+            kind: {
+              type: "Literal",
+              loc: "12:2-12:14",
+              value: "use strict",
+            },
+          },
           {
             type: "ExpressionStatement",
             loc: "13:2-13:4",
@@ -89,6 +116,15 @@
               type: "Block",
               loc: "16:16-19:1",
               body: [
+                {
+                  type: "ExpressionStatement",
+                  loc: "17:2-17:15",
+                  kind: {
+                    type: "Literal",
+                    loc: "17:2-17:14",
+                    value: "use strict",
+                  },
+                },
                 {
                   type: "ExpressionStatement",
                   loc: "18:2-18:4",
@@ -133,6 +169,15 @@
                 body: [
                   {
                     type: "ExpressionStatement",
+                    loc: "23:4-23:17",
+                    kind: {
+                      type: "Literal",
+                      loc: "23:4-23:16",
+                      value: "use strict",
+                    },
+                  },
+                  {
+                    type: "ExpressionStatement",
                     loc: "24:4-24:6",
                     kind: {
                       type: "Literal",
@@ -169,19 +214,84 @@
         body: [
           {
             type: "ExpressionStatement",
-            loc: "30:2-30:4",
+            loc: "30:2-30:14",
             kind: {
               type: "Literal",
-              loc: "30:2-30:3",
+              loc: "30:2-30:14",
+              value: "use strict",
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "31:2-31:4",
+            kind: {
+              type: "Literal",
+              loc: "31:2-31:3",
+              value: 1,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: true,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "35:0-38:1",
+      id: {
+        type: "Identifier",
+        loc: "35:9-35:12",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "35:15-38:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "36:2-36:4",
+            kind: {
+              type: "Literal",
+              loc: "36:2-36:3",
               value: 1,
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "31:2-31:15",
+            loc: "37:2-37:15",
             kind: {
               type: "Literal",
-              loc: "31:2-31:14",
+              loc: "37:2-37:14",
+              value: "use strict",
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "40:0-42:1",
+      id: {
+        type: "Identifier",
+        loc: "40:9-40:12",
+        name: "foo",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "40:15-42:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "41:2-41:22",
+            kind: {
+              type: "Literal",
+              loc: "41:2-41:21",
               value: "use strict",
             },
           },

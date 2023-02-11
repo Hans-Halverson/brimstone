@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
+use num_bigint::BigInt;
+
 use crate::js::common::unicode::{
-    get_binary_value, get_hex_value, get_octal_value, is_ascii, is_ascii_newline,
-    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_unicode_newline,
-    is_unicode_whitespace,
+    get_binary_value, get_decimal_value, get_hex_value, get_octal_value, is_continuation_byte,
+    is_decimal_digit, is_newline, is_whitespace,
 };
 
 pub struct StringLexer<'a> {
@@ -250,17 +251,11 @@ pub fn parse_string_to_number(str: &str) -> Option<f64> {
 pub fn skip_string_whitespace(lexer: &mut StringLexer) -> Option<()> {
     loop {
         let char = lexer.current();
-        if is_ascii(char) {
-            if is_ascii_whitespace(char) || is_ascii_newline(char) {
-                lexer.advance()?;
-            }
+        if is_whitespace(char) || is_newline(char) {
+            lexer.advance()?;
         } else {
-            if is_unicode_whitespace(char) || is_unicode_newline(char) {
-                lexer.advance()?;
-            }
+            break;
         }
-
-        break;
     }
 
     Some(())
@@ -344,4 +339,118 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
     }
 
     Some(())
+}
+
+// Parse string to a BigInt following the grammar in:
+// 7.1.14.1 StringIntegerLiteral Grammar
+//
+// Return None if the string does not conform to the grammar.
+pub fn parse_string_to_bigint(str: &str) -> Option<BigInt> {
+    let mut lexer = StringLexer::new(str)?;
+
+    skip_string_whitespace(&mut lexer)?;
+
+    // Empty or pure whitespace string is treated as 0
+    if lexer.is_end() {
+        return Some(BigInt::from(0));
+    }
+
+    // Check if we have a non-decimal BigInt literal prefix
+    if lexer.current == '0' {
+        match lexer.peek_ascii_char() {
+            'x' | 'X' => {
+                lexer.advance();
+                lexer.advance();
+
+                let value = bigint_literal_with_base(&mut lexer, 16, get_hex_value)?;
+                skip_string_whitespace(&mut lexer)?;
+
+                if !lexer.is_end() {
+                    return None;
+                }
+
+                return Some(value);
+            }
+            'o' | 'O' => {
+                lexer.advance();
+                lexer.advance();
+
+                let value = bigint_literal_with_base(&mut lexer, 8, get_octal_value)?;
+                skip_string_whitespace(&mut lexer)?;
+
+                if !lexer.is_end() {
+                    return None;
+                }
+
+                return Some(value);
+            }
+            'b' | 'B' => {
+                lexer.advance();
+                lexer.advance();
+
+                let value = bigint_literal_with_base(&mut lexer, 2, get_binary_value)?;
+                skip_string_whitespace(&mut lexer)?;
+
+                if !lexer.is_end() {
+                    return None;
+                }
+
+                return Some(value);
+            }
+            _ => {}
+        }
+    }
+
+    // Parse optional leading sign
+    let is_negative = match lexer.current {
+        '-' => {
+            lexer.advance()?;
+            true
+        }
+        '+' => {
+            lexer.advance()?;
+            false
+        }
+        _ => false,
+    };
+
+    // Parse decimal digits, building bigint
+    let value = bigint_literal_with_base(&mut lexer, 10, get_decimal_value)?;
+    skip_string_whitespace(&mut lexer)?;
+
+    // We must be at end of string otherwise string was not fully parsed
+    if !lexer.is_end() {
+        return None;
+    }
+
+    // Apply sign
+    if is_negative {
+        Some(-value)
+    } else {
+        Some(value)
+    }
+}
+
+#[inline]
+fn bigint_literal_with_base(
+    lexer: &mut StringLexer,
+    base: u32,
+    char_to_digit: fn(char) -> Option<u32>,
+) -> Option<BigInt> {
+    let mut value = BigInt::from(0);
+    let mut has_digit = false;
+
+    while let Some(digit) = char_to_digit(lexer.current) {
+        value *= base;
+        value += digit;
+
+        has_digit = true;
+        lexer.advance()?;
+    }
+
+    if !has_digit {
+        return None;
+    }
+
+    Some(value)
 }

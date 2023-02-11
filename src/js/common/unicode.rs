@@ -66,6 +66,13 @@ pub fn is_newline(char: char) -> bool {
     is_ascii_newline(char) || is_unicode_newline(char)
 }
 
+pub fn get_decimal_value(char: char) -> Option<u32> {
+    match char {
+        '0'..='9' => Some(char as u32 - '0' as u32),
+        _ => None,
+    }
+}
+
 pub fn get_binary_value(char: char) -> Option<u32> {
     match char {
         '0' => Some(0),

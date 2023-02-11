@@ -16,7 +16,7 @@ use super::{
     property_key::PropertyKey,
     proxy_object::ProxyObject,
     string_object::StringObject,
-    string_parsing::parse_string_to_number,
+    string_parsing::{parse_string_to_bigint, parse_string_to_number},
     value::{
         BigIntValue, StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG,
         STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
@@ -543,7 +543,7 @@ fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
 
 // 7.1.14 StringToBigInt
 fn string_to_bigint(value: Gc<StringValue>) -> Option<BigInt> {
-    unimplemented!("StringToBigInt")
+    parse_string_to_bigint(value.str())
 }
 
 // 7.1.19 ToPropertyKey
@@ -586,7 +586,7 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
     }
 
     if x_tag == BIGINT_TAG && y_tag == STRING_TAG {
-        let y_bigint = string_to_bigint(x.as_string());
+        let y_bigint = string_to_bigint(y.as_string());
 
         return if let Some(y_bigint) = y_bigint {
             x.as_bigint().bigint().lt(&y_bigint).into()

@@ -1,4 +1,6 @@
-use num_bigint::BigInt;
+use std::cmp::Ordering;
+
+use num_bigint::{BigInt, ToBigInt};
 
 use crate::maybe;
 
@@ -615,9 +617,68 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
 
             (num_x.as_number() < num_y.as_number()).into()
         }
+    } else if x_is_bigint {
+        // x is a BigInt and y is a number
+        if num_y.is_nan() {
+            return Value::undefined().into();
+        }
+
+        let y_f64 = num_y.as_number();
+        if y_f64 == f64::INFINITY {
+            return true.into();
+        } else if y_f64 == f64::NEG_INFINITY {
+            return false.into();
+        }
+
+        // BigInt conversion truncates towards 0, so we must account for the possible fraction part
+        let y_has_fract = y_f64.trunc() != y_f64;
+        let y_bigint = y_f64.to_bigint().unwrap();
+
+        match num_x.as_bigint().bigint().cmp(&y_bigint) {
+            Ordering::Less => true.into(),
+            Ordering::Equal => {
+                // If y had a fractional part it was truncated towards 0. This means that if y had a
+                // fractional part and is positive it is greater than x, and if y had a fractional
+                // part and is negative it is less than x.
+                if y_has_fract {
+                    (y_f64 > 0.0).into()
+                } else {
+                    false.into()
+                }
+            }
+            Ordering::Greater => false.into(),
+        }
     } else {
-        // One number and one BigInt
-        unimplemented!("BigInt comparison to number")
+        // x is a number and y is a BigInt
+        if num_x.is_nan() {
+            return Value::undefined().into();
+        }
+
+        let x_f64 = num_x.as_number();
+        if x_f64 == f64::INFINITY {
+            return false.into();
+        } else if x_f64 == f64::NEG_INFINITY {
+            return true.into();
+        }
+
+        // BigInt conversion truncates towards 0, so we must account for the possible fraction part
+        let x_has_fract = x_f64.trunc() != x_f64;
+        let x_bigint = x_f64.to_bigint().unwrap();
+
+        match x_bigint.cmp(num_y.as_bigint().bigint()) {
+            Ordering::Less => true.into(),
+            Ordering::Equal => {
+                // If x had a fractional part it was truncated towards 0. This means that if x had a
+                // fractional part and is positive it is greater than y, and if x had a fractional
+                // part and is negative it is less than y.
+                if x_has_fract {
+                    (x_f64 < 0.0).into()
+                } else {
+                    false.into()
+                }
+            }
+            Ordering::Greater => false.into(),
+        }
     }
 }
 
@@ -645,7 +706,24 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
                 let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
                 is_loosely_equal(cx, v1, primitive_v2)
             }
-            BIGINT_TAG => unimplemented!("BigInt comparison to number"),
+            BIGINT_TAG => {
+                if v1.is_nan() || v1.is_infinity() {
+                    return false.into();
+                }
+
+                let v1_f64 = v1.as_number();
+
+                // Number must be an integer to be equal to a BigInt
+                if v1_f64.trunc() != v1_f64 {
+                    return false.into();
+                }
+
+                // Now that we know number is an integer, it can losslessly be converted to a BigInt
+                let v1_bigint = v1_f64.to_bigint().unwrap();
+                let v2_bigint = v2.as_bigint().bigint();
+
+                (v1_bigint == *v2_bigint).into()
+            }
             _ => false.into(),
         };
     }
@@ -685,7 +763,24 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
             let v2_number = maybe!(to_number(cx, v2));
             is_loosely_equal(cx, v1, v2_number)
         }
-        (BIGINT_TAG, _) if v2.is_number() => unimplemented!("BigInt comparison to number"),
+        (BIGINT_TAG, _) if v2.is_number() => {
+            if v2.is_nan() || v2.is_infinity() {
+                return false.into();
+            }
+
+            let v2_f64 = v2.as_number();
+
+            // Number must be an integer to be equal to a BigInt
+            if v2_f64.trunc() != v2_f64 {
+                return false.into();
+            }
+
+            // Now that we know number is an integer, it can losslessly be converted to a BigInt
+            let v2_bigint = v2_f64.to_bigint().unwrap();
+            let v1_bigint = v1.as_bigint().bigint();
+
+            (*v1_bigint == v2_bigint).into()
+        }
         (BIGINT_TAG, STRING_TAG) => {
             let v2_bigint = string_to_bigint(v2.as_string());
             if let Some(v2_bigint) = v2_bigint {

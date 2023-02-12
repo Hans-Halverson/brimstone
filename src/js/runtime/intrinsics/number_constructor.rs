@@ -1,5 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
+use std::str::FromStr;
+
 use crate::{
     impl_gc_into,
     js::runtime::{
@@ -153,7 +155,9 @@ impl NumberConstructor {
         } else {
             let numeric_value = maybe!(to_numeric(cx, get_argument(arguments, 0)));
             if numeric_value.is_bigint() {
-                unimplemented!("BigInt conversion to number")
+                // TODO: Create better conversion directly from BigInt to f64 instead of through string
+                let bigint_string = numeric_value.as_bigint().bigint().to_string();
+                f64::from_str(&bigint_string).unwrap().into()
             } else {
                 numeric_value.as_number()
             }

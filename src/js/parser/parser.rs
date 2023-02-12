@@ -25,8 +25,12 @@ enum Precedence {
     BitwiseXor = 9,
     BitwiseOr = 10,
     LogicalAnd = 11,
-    LogicalOr = 12, // Includes nullish coalescing
-    Conditional = 13,
+    LogicalOr = 12,
+    // Lower precedence than both logical operators so that we can check for unparenthesized child
+    // logical operators after parsing a nullish coalesce expression. Exact precedence does not matter
+    // in comparison to logical operators as they are not allowed to be directly next to each other.
+    NullishCoalesce = 13,
+    Conditional = 14,
 }
 
 impl Precedence {
@@ -1516,14 +1520,9 @@ impl<'a> Parser<'a> {
                     LogicalOperator::Or,
                     Precedence::LogicalOr,
                 ),
-            Token::NullishCoalesce if precedence.is_weaker_than(Precedence::LogicalOr) => self
-                .parse_logical_expression(
-                    left,
-                    start_pos,
-                    LogicalOperator::NullishCoalesce,
-                    Precedence::LogicalOr,
-                ),
-
+            Token::NullishCoalesce if precedence.is_weaker_than(Precedence::NullishCoalesce) => {
+                self.parse_nullish_coalesce_expression(left, start_pos)
+            }
             // Update expressions
             Token::Increment
                 if precedence.is_weaker_than(Precedence::PostfixUpdate)
@@ -1569,6 +1568,39 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         Ok(p(Expression::Logical(LogicalExpression { loc, left, right, operator })))
+    }
+
+    fn parse_nullish_coalesce_expression(
+        &mut self,
+        left: P<Expression>,
+        start_pos: Pos,
+    ) -> ParseResult<P<Expression>> {
+        self.advance()?;
+        let right = self.parse_expression_with_precedence(Precedence::NullishCoalesce)?;
+        let loc = self.mark_loc(start_pos);
+
+        // Check if mixed with an unparenthesized logical left or right expression. Can check for
+        // parens by comparing parent expression start/end pos to inner expression start/end pos.
+        if let Expression::Logical(left_expr) = left.as_ref() {
+            if left_expr.operator != LogicalOperator::NullishCoalesce
+                && left_expr.loc.start == loc.start
+            {
+                return self.error(loc, ParseError::NullishCoalesceMixedWithLogical);
+            }
+        } else if let Expression::Logical(right_expr) = right.as_ref() {
+            if right_expr.operator != LogicalOperator::NullishCoalesce
+                && right_expr.loc.end == loc.end
+            {
+                return self.error(loc, ParseError::NullishCoalesceMixedWithLogical);
+            }
+        }
+
+        Ok(p(Expression::Logical(LogicalExpression {
+            loc,
+            left,
+            right,
+            operator: LogicalOperator::NullishCoalesce,
+        })))
     }
 
     fn parse_update_expression_prefix(

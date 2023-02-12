@@ -699,6 +699,7 @@ pub struct BinaryExpression {
     pub right: P<Expression>,
 }
 
+#[derive(PartialEq)]
 pub enum LogicalOperator {
     And,
     Or,

@@ -627,13 +627,20 @@ fn for_each_body_evaluation_shared(
             let iteration_env = to_trait_object(iteration_env);
             current_execution_context.lexical_env = iteration_env;
 
-            match declarations[0].id.as_ref() {
+            let status = match declarations[0].id.as_ref() {
                 ast::Pattern::Id(id) => {
                     let mut reference = maybe!(eval_identifier_to_reference(cx, id));
                     reference.initialize_referenced_binding(cx, right_value)
                 }
                 pattern => binding_initialization(cx, pattern, right_value, Some(iteration_env)),
+            };
+
+            // Be sure to restore old execution context on failure
+            if let EvalResult::Throw(_) = status {
+                current_execution_context.lexical_env = old_env;
             }
+
+            status
         }
     }
 }
@@ -649,6 +656,8 @@ fn eval_for_in_statement(
     if right_value.is_nullish() {
         return Completion::break_(EMPTY_LABEL);
     }
+
+    let old_env = cx.current_execution_context().lexical_env;
 
     let object_value = maybe__!(to_object(cx, right_value));
     let mut last_value = Value::undefined();
@@ -681,6 +690,9 @@ fn eval_for_in_statement(
 
                 // Part of ForIn/OfBodyEvaluation that is specific to enumeration
                 let completion = eval_statement(cx, &stmt.body);
+
+                cx.current_execution_context().lexical_env = old_env;
+
                 if !loop_continues(&completion, stmt_label_id) {
                     let completion = completion.update_if_empty(last_value);
 
@@ -723,6 +735,8 @@ fn eval_for_of_statement(
 
     let right_value = maybe__!(for_each_head_evaluation_shared(cx, stmt));
 
+    let old_env = cx.current_execution_context().lexical_env;
+
     let mut last_value = Value::undefined();
     let mut last_completion = None;
 
@@ -734,6 +748,8 @@ fn eval_for_of_statement(
 
         // Part of ForIn/OfBodyEvaluation that is specific to enumeration
         let completion = eval_statement(cx, &stmt.body);
+
+        cx.current_execution_context().lexical_env = old_env;
 
         if !loop_continues(&completion, stmt_label_id) {
             let completion = completion.update_if_empty(last_value);

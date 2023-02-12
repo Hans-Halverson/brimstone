@@ -11,12 +11,12 @@ use crate::{
         to_string,
         type_utilities::{require_object_coercible, to_integer_or_infinity},
         value::Value,
-        Context,
+        Context, PropertyKey,
     },
     maybe,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, string_iterator::StringIterator};
 
 pub struct StringPrototype;
 
@@ -31,6 +31,10 @@ impl StringPrototype {
         object.intrinsic_func(cx, &cx.names.char_at(), Self::char_at, 1, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+
+        // 22.1.3.34 String.prototype [ @@iterator ]
+        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        object.intrinsic_func(cx, &iterator_key, Self::iterator, 0, realm);
 
         let string_value = cx.heap.alloc_string(String::new());
         let string_object = StringObject::new(cx, object, string_value);
@@ -107,6 +111,19 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         this_string_value(cx, this_value)
+    }
+
+    // 22.1.3.34 String.prototype [ @@iterator ]
+    fn iterator(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        StringIterator::new(cx, string).into()
     }
 }
 

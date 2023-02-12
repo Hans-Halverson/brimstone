@@ -106,7 +106,7 @@ impl ArrayIteratorPrototype {
     }
 
     // 23.1.5.2.1 %ArrayIteratorPrototype%.next
-    // Adapter from the abstract closure in 23.1.5.1 CreateArrayIterator
+    // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
     fn next(
         cx: &mut Context,
         this_value: Value,

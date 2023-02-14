@@ -142,7 +142,7 @@ impl Object for BuiltinFunction {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
-            realm: current_execution_context.realm,
+            realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,
@@ -171,7 +171,7 @@ impl Object for BuiltinFunction {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.into()),
-            realm: current_execution_context.realm,
+            realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
             variable_env: cx.uninit_environment,

@@ -654,7 +654,7 @@ fn eval_for_in_statement(
 
     // Part of ForIn/OfHeadEvaluation that is specific to enumeration
     if right_value.is_nullish() {
-        return Completion::break_(EMPTY_LABEL);
+        return Value::undefined().into();
     }
 
     let old_env = cx.current_execution_context().lexical_env;

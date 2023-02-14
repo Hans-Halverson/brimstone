@@ -1,0 +1,17 @@
+{
+  type: "Program",
+  loc: "1:0-3:2",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:2",
+      kind: {
+        type: "Literal",
+        loc: "3:0-3:1",
+        value: 1,
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

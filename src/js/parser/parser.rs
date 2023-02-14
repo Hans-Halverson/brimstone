@@ -127,6 +127,10 @@ impl<'a> Parser<'a> {
         self.lexer.in_strict_mode = in_strict_mode;
     }
 
+    fn prevent_hashbang_comment(&mut self) {
+        self.lexer.allow_hashbang_comment = false;
+    }
+
     /// Try parsing, restoring to state before this function was called if an error occurs.
     fn try_parse<T>(&mut self, try_fn: fn(&mut Self) -> ParseResult<T>) -> ParseResult<T> {
         let save_state = self.save();
@@ -3787,6 +3791,7 @@ pub fn parse_function_params_for_function_constructor(
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
+    parser.prevent_hashbang_comment();
 
     parser.advance()?;
 
@@ -3804,6 +3809,7 @@ pub fn parse_function_body_for_function_constructor(
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
+    parser.prevent_hashbang_comment();
 
     let initial_state = parser.save();
     parser.advance()?;

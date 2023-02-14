@@ -22,6 +22,7 @@ pub struct Lexer<'a> {
     pos: Pos,
     is_new_line_before_current: bool,
     pub in_strict_mode: bool,
+    pub allow_hashbang_comment: bool,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
@@ -83,6 +84,7 @@ impl<'a> Lexer<'a> {
             pos: 0,
             is_new_line_before_current: false,
             in_strict_mode: false,
+            allow_hashbang_comment: true,
         }
     }
 
@@ -473,6 +475,13 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::Colon, start_pos)
                 }
                 '#' => {
+                    // Parse hashbang comment if it starts at the first byte in the file
+                    if self.pos == 0 && self.peek() == '!' && self.allow_hashbang_comment {
+                        self.advance2();
+                        self.skip_line_comment()?;
+                        continue;
+                    }
+
                     self.advance();
                     self.emit(Token::Hash, start_pos)
                 }

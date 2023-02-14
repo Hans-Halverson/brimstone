@@ -482,6 +482,23 @@ pub fn is_integral_number(value: Value) -> bool {
     number.trunc() == number
 }
 
+// 7.2.8 IsRegExp
+pub fn is_regexp(cx: &mut Context, value: Value) -> EvalResult<bool> {
+    if !value.is_object() {
+        return false.into();
+    }
+
+    let object = value.as_object();
+    let match_key = PropertyKey::symbol(cx.well_known_symbols.match_);
+    let matcher = maybe!(get(cx, object, &match_key));
+
+    if !matcher.is_undefined() {
+        return to_boolean(matcher).into();
+    }
+
+    object.is_regexp_object().into()
+}
+
 // 7.2.11 SameValue
 pub fn same_value(v1: Value, v2: Value) -> bool {
     // Same as is_strictly_equal, but treats NaN as equal to itself, and does not treat differently

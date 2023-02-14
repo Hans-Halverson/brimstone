@@ -9,7 +9,7 @@ use crate::{
         realm::Realm,
         string_object::StringObject,
         to_string,
-        type_utilities::{require_object_coercible, to_integer_or_infinity},
+        type_utilities::{is_regexp, require_object_coercible, to_integer_or_infinity, to_number},
         value::Value,
         Context, PropertyKey,
     },
@@ -29,6 +29,11 @@ impl StringPrototype {
         // Constructor property is added once StringConstructor has been created
         object.intrinsic_func(cx, &cx.names.at(), Self::at, 1, realm);
         object.intrinsic_func(cx, &cx.names.char_at(), Self::char_at, 1, realm);
+        object.intrinsic_func(cx, &cx.names.char_code_at(), Self::char_code_at, 1, realm);
+        object.intrinsic_func(cx, &cx.names.code_point_at(), Self::code_point_at, 1, realm);
+        object.intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
+        object.intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
+        object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
@@ -89,8 +94,144 @@ impl StringPrototype {
             return cx.names.empty_string.as_string().into();
         }
 
+        // TODO: Handle UTF-16 strings and return correct char
         let char_string = String::from(str.as_bytes()[position as usize] as char);
         cx.heap.alloc_string(char_string).into()
+    }
+
+    // 22.1.3.3 String.prototype.charCodeAt
+    fn char_code_at(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+        let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let str = string.str();
+        if position < 0.0 || position >= str.len() as f64 {
+            return cx.names.empty_string.as_string().into();
+        }
+
+        // TODO: Handle UTF-16 strings and return correct char code
+        let char_string = String::from(str.as_bytes()[position as usize] as char);
+        cx.heap.alloc_string(char_string).into()
+    }
+
+    // 22.1.3.4 String.prototype.codePointAt
+    fn code_point_at(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+        let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let str = string.str();
+        if position < 0.0 || position >= str.len() as f64 {
+            return cx.names.empty_string.as_string().into();
+        }
+
+        // TODO: Handle UTF-16 strings and return correct code point
+        let char_string = String::from(str.as_bytes()[position as usize] as char);
+        cx.heap.alloc_string(char_string).into()
+    }
+
+    // 22.1.3.8 String.prototype.includes
+    fn includes(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let search_string = get_argument(arguments, 0);
+        if maybe!(is_regexp(cx, search_string)) {
+            return type_error_(cx, "String.prototype.includes cannot take a regular expression");
+        }
+
+        let search_string = maybe!(to_string(cx, search_string));
+
+        let pos = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        if pos == f64::INFINITY {
+            return Value::smi(-1).into();
+        }
+
+        let pos = pos as usize;
+        if pos >= string.str().len() {
+            return Value::smi(-1).into();
+        }
+
+        let string_slice = &string.str()[pos..];
+
+        string_slice.contains(search_string.str()).into()
+    }
+
+    // 22.1.3.9 String.prototype.indexOf
+    fn index_of(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
+
+        let pos = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        if pos == f64::INFINITY {
+            return Value::smi(-1).into();
+        }
+
+        let pos = pos as usize;
+        if pos >= string.str().len() {
+            return Value::smi(-1).into();
+        }
+
+        let string_slice = &string.str()[pos..];
+
+        match string_slice.find(search_string.str()) {
+            None => Value::smi(-1).into(),
+            Some(index) => Value::from_u64((pos + index) as u64).into(),
+        }
+    }
+
+    // 22.1.3.10 String.prototype.lastIndexOf
+    fn last_index_of(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
+
+        let mut string_end = search_string.str().len();
+
+        let num_pos = maybe!(to_number(cx, get_argument(arguments, 1)));
+
+        if !num_pos.is_nan() {
+            let pos = maybe!(to_integer_or_infinity(cx, num_pos));
+            if pos != f64::INFINITY {
+                string_end = usize::clamp(pos as usize, 0, string_end);
+            }
+        }
+
+        let string_slice = &string.str()[..string_end];
+
+        match string_slice.rfind(search_string.str()) {
+            None => Value::smi(-1).into(),
+            Some(index) => Value::from_u64(index as u64).into(),
+        }
     }
 
     // 22.1.3.28 String.prototype.toString

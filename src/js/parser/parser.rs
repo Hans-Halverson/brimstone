@@ -68,6 +68,8 @@ struct Parser<'a> {
     allow_await: bool,
     // Whether the parser is currently in a context where a yield expression is allowed
     allow_yield: bool,
+    // Whether the parser is currently in a context where an in expression is allowed
+    allow_in: bool,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -79,6 +81,13 @@ struct ParserSaveState {
     in_strict_mode: bool,
     allow_await: bool,
     allow_yield: bool,
+    allow_in: bool,
+}
+
+fn swap_and_save<T: Copy>(reference: &mut T, new_value: T) -> T {
+    let old_value = *reference;
+    *reference = new_value;
+    old_value
 }
 
 impl<'a> Parser<'a> {
@@ -92,6 +101,7 @@ impl<'a> Parser<'a> {
             in_strict_mode: false,
             allow_await: false,
             allow_yield: false,
+            allow_in: true,
         }
     }
 
@@ -109,6 +119,7 @@ impl<'a> Parser<'a> {
             in_strict_mode: self.in_strict_mode,
             allow_await: self.allow_await,
             allow_yield: self.allow_yield,
+            allow_in: self.allow_in,
         }
     }
 
@@ -120,6 +131,7 @@ impl<'a> Parser<'a> {
         self.set_in_strict_mode(save_state.in_strict_mode);
         self.allow_await = save_state.allow_await;
         self.allow_yield = save_state.allow_yield;
+        self.allow_in = save_state.allow_in;
     }
 
     fn set_in_strict_mode(&mut self, in_strict_mode: bool) {
@@ -498,11 +510,8 @@ impl<'a> Parser<'a> {
         }
 
         // Enter async/generator context for parsing the function arguments and body
-        let did_allow_await = self.allow_await;
-        let did_allow_yield = self.allow_yield;
-
-        self.allow_await = is_async;
-        self.allow_yield = is_generator;
+        let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
+        let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
         // For expressions name is optional and is within this function's await/yield context
         if !is_decl && self.token != Token::LeftParen {
@@ -761,9 +770,12 @@ impl<'a> Parser<'a> {
         // Init statement, if it exists
         let for_stmt = match self.token {
             // Both for and for each loops can start with a variable declaration
-            // TODO: Restrict variable declaration inits in for each statements
             Token::Var | Token::Let | Token::Const => {
+                // Restrict "in" when parsing for init
+                let old_allow_in = swap_and_save(&mut self.allow_in, false);
                 let var_decl = self.parse_variable_declaration(true)?;
+                self.allow_in = old_allow_in;
+
                 match self.token {
                     Token::In | Token::Of => {
                         // Var decl must consist of a single declaration with no initializer to
@@ -791,7 +803,12 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr_start_pos = self.current_start_pos();
+
+                // Restrict "in" when parsing for init
+                let old_allow_in = swap_and_save(&mut self.allow_in, false);
                 let expr = self.parse_expression()?;
+                self.allow_in = old_allow_in;
+
                 match (self.token.clone(), *expr) {
                     // If this is a for each loop the parsed expression must actually be a pattern
                     (Token::In, expr) | (Token::Of, expr) => {
@@ -1277,7 +1294,12 @@ impl<'a> Parser<'a> {
 
         if self.token == Token::Question {
             self.advance()?;
+
+            // In expressions can always appear in consequent
+            let old_allow_in = swap_and_save(&mut self.allow_in, true);
             let conseq = self.parse_assignment_expression()?;
+            self.allow_in = old_allow_in;
+
             self.expect(Token::Colon)?;
             let altern = self.parse_assignment_expression()?;
             let loc = self.mark_loc(start_pos);
@@ -1305,7 +1327,10 @@ impl<'a> Parser<'a> {
         if self.token == Token::Hash {
             let private_name = p(Expression::Id(self.parse_private_name()?));
 
-            if self.token == Token::In && precedence.is_weaker_than(Precedence::Relational) {
+            if self.token == Token::In
+                && precedence.is_weaker_than(Precedence::Relational)
+                && self.allow_in
+            {
                 return self.parse_binary_expression(
                     private_name,
                     start_pos,
@@ -1317,7 +1342,13 @@ impl<'a> Parser<'a> {
             return self.error_unexpected_token(self.loc, &self.token);
         }
 
+        // In expressions can always appear in (unary > LHS > primary) expressions in recursive
+        // calls below this point. For example in grouped expressions, functions/classes, objects
+        // initializers, array initializers, call arguments, etc.
+        let old_allow_in = swap_and_save(&mut self.allow_in, true);
         let mut current_expr = self.parse_expression_prefix()?;
+        self.allow_in = old_allow_in;
+
         loop {
             let current_expr_ref = current_expr.as_ref() as *const Expression;
             let next_expr = self.parse_expression_infix(current_expr, precedence, start_pos)?;
@@ -1494,7 +1525,7 @@ impl<'a> Parser<'a> {
                     BinaryOperator::GreaterThanOrEqual,
                     Precedence::Relational,
                 ),
-            Token::In if precedence.is_weaker_than(Precedence::Relational) => self
+            Token::In if precedence.is_weaker_than(Precedence::Relational) && self.allow_in => self
                 .parse_binary_expression(
                     left,
                     start_pos,
@@ -2775,11 +2806,8 @@ impl<'a> Parser<'a> {
         is_private: bool,
     ) -> ParseResult<(Property, bool)> {
         // Enter async/generator context for parsing the function arguments and body
-        let did_allow_await = self.allow_await;
-        let did_allow_yield = self.allow_yield;
-
-        self.allow_await = is_async;
-        self.allow_yield = is_generator;
+        let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
+        let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
@@ -3080,6 +3108,10 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
+        // In expressions are always allowed within array patterns. Needed in case an array pattern
+        // with in expression initializer appears in for init.
+        let old_allow_in = swap_and_save(&mut self.allow_in, true);
+
         let mut elements = vec![];
         while self.token != Token::RightBracket {
             match self.token {
@@ -3113,6 +3145,8 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBracket)?;
         let loc = self.mark_loc(start_pos);
 
+        self.allow_in = old_allow_in;
+
         Ok(Pattern::Array(ArrayPattern { loc, elements }))
     }
 
@@ -3129,6 +3163,10 @@ impl<'a> Parser<'a> {
     fn parse_object_pattern(&mut self) -> ParseResult<Pattern> {
         let start_pos = self.current_start_pos();
         self.advance()?;
+
+        // In expressions are always allowed within object patterns. Needed in case an object pattern
+        // with in expression initializer appears in for init.
+        let old_allow_in = swap_and_save(&mut self.allow_in, true);
 
         let mut properties = vec![];
         while self.token != Token::RightBrace {
@@ -3154,6 +3192,8 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
+
+        self.allow_in = old_allow_in;
 
         Ok(Pattern::Object(ObjectPattern { loc, properties }))
     }

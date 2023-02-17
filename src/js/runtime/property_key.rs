@@ -183,7 +183,7 @@ impl PropertyKey {
                     return false;
                 }
 
-                // Try parsing as integer index, cacheing failure
+                // Try parsing as integer index, caching failure
                 match str::parse::<u32>(str) {
                     Err(_) => {
                         string_key.can_be_number = false;

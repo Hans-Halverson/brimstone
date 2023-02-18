@@ -589,7 +589,7 @@ pub fn create_dynamic_function(
         return syntax_error_(cx, &format!("could not parse function body: {}", err));
     }
 
-    // Parse and anlyze entire function
+    // Parse and analyze entire function
     let full_source = Rc::new(Source::new_from_string("", source_string));
     let mut func_node = match parse_function_for_function_constructor(&full_source) {
         Ok(func_node) => func_node,

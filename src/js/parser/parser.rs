@@ -180,6 +180,14 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn peek(&mut self) -> ParseResult<Token> {
+        let lexer_state = self.lexer.save();
+        let (token, _) = self.lexer.next()?;
+        self.lexer.restore(&lexer_state);
+
+        Ok(token)
+    }
+
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
             return self.error(self.loc, ParseError::ExpectedToken(self.token.clone(), token));
@@ -332,8 +340,13 @@ impl<'a> Parser<'a> {
 
     fn parse_statement_list_item(&mut self) -> ParseResult<Statement> {
         match self.token {
-            Token::Let | Token::Const => {
-                Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
+            Token::Const => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
+            Token::Let => {
+                if self.is_let_declaration_start()? {
+                    Ok(Statement::VarDecl(self.parse_variable_declaration(false)?))
+                } else {
+                    self.parse_statement()
+                }
             }
             Token::Class => Ok(Statement::ClassDecl(self.parse_class(true)?)),
             _ => {
@@ -381,13 +394,9 @@ impl<'a> Parser<'a> {
                     // The form 'let [` is ambiguous as it could be the start of a let declaration
                     // with an array pattern, or a computed member access expression statement.
                     let let_loc = self.loc;
-                    let save_state = self.save();
-                    self.advance()?;
-                    if self.token == Token::LeftBracket {
+                    if self.peek()? == Token::LeftBracket {
                         return self.error(let_loc, ParseError::AmbiguousLetBracket);
                     }
-
-                    self.restore(save_state);
                 }
 
                 let start_pos = self.current_start_pos();
@@ -427,15 +436,33 @@ impl<'a> Parser<'a> {
     fn is_function_start(&mut self) -> ParseResult<bool> {
         match self.token {
             Token::Function => Ok(true),
-            Token::Async => {
-                let save_state = self.save();
-                self.advance()?;
-                let is_function = self.token == Token::Function;
-                self.restore(save_state);
-
-                Ok(is_function)
-            }
+            Token::Async => Ok(self.peek()? == Token::Function),
             _ => Ok(false),
+        }
+    }
+
+    /// Called when the current token is "let", return true if this is the start of a let
+    /// declaration. Otherwise this is the start of an expression or expression statement.
+    fn is_let_declaration_start(&mut self) -> ParseResult<bool> {
+        if self.in_strict_mode {
+            Ok(true)
+        } else {
+            let next_token = self.peek()?;
+
+            // All tokens that can appear at the start of a pattern
+            let is_decl_start = next_token == Token::LeftBrace
+                || next_token == Token::LeftBracket
+                // Await and yield are allowed as identifiers here to prevent ASI in cases such as:
+                //   let
+                //   await 0;
+                || Self::is_identifier(
+                    &next_token,
+                    /* in_strict_mode */ false,
+                    /* allow_await */ false,
+                    /* allow_yield */ false,
+                );
+
+            Ok(is_decl_start)
         }
     }
 
@@ -767,88 +794,87 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::LeftParen)?;
 
+        // Both for and for each loops can start with a variable declaration
+        let is_var_decl = self.token == Token::Var
+            || self.token == Token::Const
+            || (self.token == Token::Let && self.is_let_declaration_start()?);
+
         // Init statement, if it exists
-        let for_stmt = match self.token {
-            // Both for and for each loops can start with a variable declaration
-            Token::Var | Token::Let | Token::Const => {
-                // Restrict "in" when parsing for init
-                let old_allow_in = swap_and_save(&mut self.allow_in, false);
-                let var_decl = self.parse_variable_declaration(true)?;
-                self.allow_in = old_allow_in;
+        let for_stmt = if is_var_decl {
+            // Restrict "in" when parsing for init
+            let old_allow_in = swap_and_save(&mut self.allow_in, false);
+            let var_decl = self.parse_variable_declaration(true)?;
+            self.allow_in = old_allow_in;
 
-                match self.token {
-                    Token::In | Token::Of => {
-                        // Var decl must consist of a single declaration with no initializer to
-                        // match the `var ForBinding` and `ForDeclaration` productions.
-                        if var_decl.declarations.len() != 1
-                            || var_decl.declarations[0].init.is_some()
-                        {
-                            return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
-                        }
+            match self.token {
+                Token::In | Token::Of => {
+                    // Var decl must consist of a single declaration with no initializer to
+                    // match the `var ForBinding` and `ForDeclaration` productions.
+                    if var_decl.declarations.len() != 1 || var_decl.declarations[0].init.is_some() {
+                        return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
+                    }
 
-                        let init = p(ForEachInit::VarDecl(var_decl));
-                        self.parse_for_each_statement(init, start_pos, is_await)?
-                    }
-                    _ => {
-                        let init = Some(p(ForInit::VarDecl(var_decl)));
-                        self.expect(Token::Semicolon)?;
-                        self.parse_for_statement(init, start_pos)?
-                    }
+                    let init = p(ForEachInit::VarDecl(var_decl));
+                    self.parse_for_each_statement(init, start_pos, is_await)?
+                }
+                _ => {
+                    let init = Some(p(ForInit::VarDecl(var_decl)));
+                    self.expect(Token::Semicolon)?;
+                    self.parse_for_statement(init, start_pos)?
                 }
             }
+        } else if self.token == Token::Semicolon {
             // Empty init, but we know this is a regular for loop
-            Token::Semicolon => {
-                self.advance()?;
-                self.parse_for_statement(None, start_pos)?
-            }
-            _ => {
-                let expr_start_pos = self.current_start_pos();
+            self.advance()?;
+            self.parse_for_statement(None, start_pos)?
+        } else {
+            // Otherwise init is an expression
+            let expr_start_pos = self.current_start_pos();
 
-                // Restrict "in" when parsing for init
-                let old_allow_in = swap_and_save(&mut self.allow_in, false);
-                let expr = self.parse_expression()?;
-                self.allow_in = old_allow_in;
+            // Restrict "in" when parsing for init
+            let old_allow_in = swap_and_save(&mut self.allow_in, false);
+            let expr = self.parse_expression()?;
+            self.allow_in = old_allow_in;
 
-                match (self.token.clone(), *expr) {
-                    // If this is a for each loop the parsed expression must actually be a pattern
-                    (Token::In, expr) | (Token::Of, expr) => {
-                        let pattern =
-                            self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
-                        let left = p(ForEachInit::Pattern(pattern));
-                        self.parse_for_each_statement(left, start_pos, is_await)?
-                    }
-                    // An in expression is actually `for (expr in right)`
-                    (
-                        _,
-                        Expression::Binary(BinaryExpression {
-                            operator: BinaryOperator::In,
-                            left,
-                            right,
-                            ..
-                        }),
-                    ) => {
-                        self.expect(Token::RightParen)?;
-                        let pattern =
-                            self.reparse_expression_as_for_left_hand_side(*left, expr_start_pos)?;
-                        let left = p(ForEachInit::Pattern(pattern));
-                        let body = p(self.parse_statement()?);
-                        let loc = self.mark_loc(start_pos);
+            match (self.token.clone(), *expr) {
+                // If this is a for each loop the parsed expression must actually be a pattern
+                (Token::In, expr) | (Token::Of, expr) => {
+                    let pattern =
+                        self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
+                    let left = p(ForEachInit::Pattern(pattern));
+                    self.parse_for_each_statement(left, start_pos, is_await)?
+                }
+                // An in expression is actually `for (expr in right)`
+                (
+                    _,
+                    Expression::Binary(BinaryExpression {
+                        operator: BinaryOperator::In,
+                        left,
+                        right,
+                        ..
+                    }),
+                ) => {
+                    self.expect(Token::RightParen)?;
+                    let pattern =
+                        self.reparse_expression_as_for_left_hand_side(*left, expr_start_pos)?;
+                    let left = p(ForEachInit::Pattern(pattern));
+                    let body = p(self.parse_statement()?);
+                    let loc = self.mark_loc(start_pos);
 
-                        Statement::ForEach(ForEachStatement {
-                            loc,
-                            kind: ForEachKind::In,
-                            left,
-                            right,
-                            body,
-                            is_await: false,
-                        })
-                    }
-                    // Otherwise this is a regular for loop and the expression is used directly
-                    (_, expr) => {
-                        let init = Some(p(ForInit::Expression(expr)));
-                        self.expect(Token::Semicolon)?;
-                        self.parse_for_statement(init, start_pos)?
-                    }
+                    Statement::ForEach(ForEachStatement {
+                        loc,
+                        kind: ForEachKind::In,
+                        left,
+                        right,
+                        body,
+                        is_await: false,
+                    })
+                }
+                // Otherwise this is a regular for loop and the expression is used directly
+                (_, expr) => {
+                    let init = Some(p(ForInit::Expression(expr)));
+                    self.expect(Token::Semicolon)?;
+                    self.parse_for_statement(init, start_pos)?
                 }
             }
         };
@@ -2200,54 +2226,57 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_identifier(&mut self) -> ParseResult<Identifier> {
-        match &self.token {
+        if Self::is_identifier(&self.token, self.in_strict_mode, self.allow_await, self.allow_yield)
+        {
+            if let Token::Identifier(name) = &self.token {
+                let loc = self.loc;
+                let name = name.clone();
+                self.advance()?;
+                Ok(Identifier { loc, name })
+            } else {
+                let loc = self.loc;
+                let name = self.token.to_string();
+                self.advance()?;
+                Ok(Identifier { loc, name })
+            }
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
+        }
+    }
+
+    /// Whether the current token represents an identifier in the given context
+    #[inline]
+    fn is_identifier(
+        token: &Token,
+        in_strict_mode: bool,
+        allow_await: bool,
+        allow_yield: bool,
+    ) -> bool {
+        match token {
             Token::Identifier(name) => {
                 // Names that are contextually disallowed as identifiers when in strict mode
-                if self.in_strict_mode {
+                if in_strict_mode {
                     match name.as_str() {
                         "implements" | "interface" | "package" | "private" | "protected"
                         | "public" => {
-                            return self.error_unexpected_token(self.loc, &self.token);
+                            return false;
                         }
                         _ => {}
                     }
                 }
 
-                let loc = self.loc;
-                let name = name.clone();
-                self.advance()?;
-                Ok(Identifier { loc, name })
+                true
             }
             // Tokens that are always allowed as identifiers
-            Token::Async | Token::Of | Token::From | Token::As | Token::Get | Token::Set => {
-                let loc = self.loc;
-                let name = self.token.to_string();
-                self.advance()?;
-                Ok(Identifier { loc, name })
-            }
+            Token::Async | Token::Of | Token::From | Token::As | Token::Get | Token::Set => true,
             // Tokens that are contextually allowed as identifiers, when not in strict mode
-            Token::Let | Token::Static if !self.in_strict_mode => {
-                let loc = self.loc;
-                let name = self.token.to_string();
-                self.advance()?;
-                Ok(Identifier { loc, name })
-            }
+            Token::Let | Token::Static if !in_strict_mode => true,
             // Contextually allowed as identifier when not in strict mode and not allowing yield
             // expressions.
-            Token::Yield if !self.in_strict_mode && !self.allow_yield => {
-                let loc = self.loc;
-                let name = self.token.to_string();
-                self.advance()?;
-                Ok(Identifier { loc, name })
-            }
+            Token::Yield if !in_strict_mode && !allow_yield => true,
             // Contextually allowed as identifier when not allowing await expressions
-            Token::Await if !self.allow_await => {
-                let loc = self.loc;
-                let name = self.token.to_string();
-                self.advance()?;
-                Ok(Identifier { loc, name })
-            }
-            other => self.error_unexpected_token(self.loc, other),
+            Token::Await if !allow_await => true,
+            _ => false,
         }
     }
 

@@ -511,7 +511,7 @@ fn create_per_iteration_environment(
     let last_iteration_env = current_execution_context.lexical_env;
     let mut this_iteration_env = cx
         .heap
-        .alloc(DeclarativeEnvironment::new(Some(last_iteration_env)));
+        .alloc(DeclarativeEnvironment::new(last_iteration_env.outer()));
 
     maybe!(per_iteration_decl.iter_bound_names(&mut |id| {
         let name_value = id_string_value(cx, id);

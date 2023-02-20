@@ -4,6 +4,7 @@ use crate::maybe;
 
 use super::{
     numeric_constants::MAX_U32_AS_F64,
+    string_parsing::parse_string_to_u32,
     to_string,
     type_utilities::is_integral_number,
     value::{StringValue, SymbolValue},
@@ -166,30 +167,13 @@ impl PropertyKey {
             KeyData::String(string_key @ StringData { can_be_number: true, .. }) => {
                 let str = string_key.value.str();
 
-                // Empty string can never be number
-                if str.is_empty() {
-                    string_key.can_be_number = false;
-                    return false;
-                }
-
-                // First character must be numeric to be a canonical array index string
-                let first_char = str.chars().nth(0).unwrap();
-                if first_char < '0' || first_char > '9' {
-                    string_key.can_be_number = false;
-                    return false;
-                } else if first_char == '0' && str.len() > 1 {
-                    // First character can be a 0 only if it is not a leading zero
-                    string_key.can_be_number = false;
-                    return false;
-                }
-
                 // Try parsing as integer index, caching failure
-                match str::parse::<u32>(str) {
-                    Err(_) => {
+                match parse_string_to_u32(str) {
+                    None => {
                         string_key.can_be_number = false;
                         return false;
                     }
-                    Ok(num) => num,
+                    Some(array_index) => array_index,
                 }
             }
             _ => return false,

@@ -454,3 +454,38 @@ fn bigint_literal_with_base(
 
     Some(value)
 }
+
+/// Parse string to a u32,. String must be the canonical representation of a u32, and overflow is
+/// checked. This is used when converting a string to an array property key if possible.
+pub fn parse_string_to_u32(str: &str) -> Option<u32> {
+    let mut lexer = StringLexer::new(str)?;
+
+    let mut result;
+
+    if let Some(digit) = get_decimal_value(lexer.current) {
+        lexer.advance()?;
+
+        // First digit can be a 0 only if it is not a leading zero
+        if digit == 0 && !lexer.is_end() {
+            return None;
+        }
+
+        result = digit;
+    } else {
+        return None;
+    }
+
+    // Consume remaining digits, checking for overlow as they are added to the result number
+    while !lexer.is_end() {
+        if let Some(digit) = get_decimal_value(lexer.current) {
+            result = result.checked_mul(10)?;
+            result = result.checked_add(digit)?;
+
+            lexer.advance()?;
+        } else {
+            return None;
+        }
+    }
+
+    Some(result)
+}

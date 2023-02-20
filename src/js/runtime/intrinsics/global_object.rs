@@ -278,9 +278,9 @@ fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
         let digit = if '0' <= char && char < numeric_digit_upper_bound {
             char as u32 - '0' as u32
         } else if 'a' <= char && char < lowercase_digit_upper_bound {
-            char as u32 - 'a' as u32
+            (char as u32 - 'a' as u32) + 10
         } else if 'A' <= char && char < uppercase_digit_upper_bound {
-            char as u32 - 'A' as u32
+            (char as u32 - 'A' as u32) + 10
         } else {
             break;
         };

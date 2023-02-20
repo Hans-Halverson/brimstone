@@ -240,7 +240,10 @@ macro_rules! builtin_symbols {
             pub fn new(heap: &mut Heap) -> BuiltinSymbols {
                 BuiltinSymbols {
                     $(
-                        $rust_name: heap.alloc(SymbolValue::new(Some(String::from($description)))),
+                        $rust_name: {
+                            let description = heap.alloc_string(String::from($description));
+                            heap.alloc(SymbolValue::new(Some(description)))
+                        },
                     )*
                 }
             }

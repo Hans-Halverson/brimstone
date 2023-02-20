@@ -13,7 +13,8 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
     realm::Realm,
-    value::{StringValue, SymbolValue},
+    string_value::StringValue,
+    value::SymbolValue,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -22,7 +23,7 @@ use super::{
 pub struct Context {
     execution_context_stack: Vec<Gc<ExecutionContext>>,
     pub heap: Heap,
-    pub global_symbol_registry: HashMap<String, Gc<SymbolValue>>,
+    pub global_symbol_registry: HashMap<Gc<StringValue>, Gc<SymbolValue>>,
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
 

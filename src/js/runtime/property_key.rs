@@ -3,11 +3,8 @@ use std::{cell::RefCell, fmt, hash};
 use crate::maybe;
 
 use super::{
-    numeric_constants::MAX_U32_AS_F64,
-    string_parsing::parse_string_to_u32,
-    to_string,
-    type_utilities::is_integral_number,
-    value::{StringValue, SymbolValue},
+    numeric_constants::MAX_U32_AS_F64, string_parsing::parse_string_to_u32,
+    string_value::StringValue, to_string, type_utilities::is_integral_number, value::SymbolValue,
     Context, EvalResult, Gc, Value,
 };
 
@@ -165,10 +162,10 @@ impl PropertyKey {
     fn check_is_number(&self) -> bool {
         let number_key = match &mut *self.data.borrow_mut() {
             KeyData::String(string_key @ StringData { can_be_number: true, .. }) => {
-                let str = string_key.value.str();
+                let string = string_key.value;
 
                 // Try parsing as integer index, caching failure
-                match parse_string_to_u32(str) {
+                match parse_string_to_u32(string) {
                     None => {
                         string_key.can_be_number = false;
                         return false;
@@ -197,7 +194,7 @@ impl PartialEq for PropertyKey {
             (
                 KeyData::String(StringData { value: str1, .. }),
                 KeyData::String(StringData { value: str2, .. }),
-            ) => str1.str() == str2.str(),
+            ) => str1 == str2,
             (KeyData::ArrayIndex { value: num1 }, KeyData::ArrayIndex { value: num2 }) => {
                 *num1 == *num2
             }
@@ -215,13 +212,13 @@ impl hash::Hash for PropertyKey {
 
         match &*self.data.borrow() {
             KeyData::String(StringData { value, .. }) => {
-                value.str().hash(state);
+                value.hash(state);
             }
             KeyData::ArrayIndex { value } => {
                 value.hash(state);
             }
             KeyData::Symbol { value } => {
-                value.description().as_deref().unwrap_or("").hash(state);
+                value.description().hash(state);
             }
         }
     }
@@ -230,10 +227,11 @@ impl hash::Hash for PropertyKey {
 impl fmt::Display for PropertyKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => f.write_str(value.str()),
-            KeyData::Symbol { value } => {
-                write!(f, "Symbol({})", value.description().as_deref().unwrap_or(""))
-            }
+            KeyData::String(StringData { value, .. }) => value.fmt(f),
+            KeyData::Symbol { value } => match value.description() {
+                None => write!(f, "Symbol()"),
+                Some(description) => write!(f, "Symbol({})", description),
+            },
             KeyData::ArrayIndex { value, .. } => write!(f, "{}", value),
         }
     }

@@ -1,9 +1,6 @@
 use crate::js::runtime::{
-    completion::EvalResult,
-    gc::Gc,
-    object_value::ObjectValue,
-    value::{StringValue, Value},
-    Context,
+    completion::EvalResult, gc::Gc, object_value::ObjectValue, string_value::StringValue,
+    value::Value, Context,
 };
 
 use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};

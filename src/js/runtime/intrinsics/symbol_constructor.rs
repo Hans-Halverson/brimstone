@@ -155,8 +155,7 @@ impl SymbolConstructor {
         let description_value = if description_arg.is_undefined() {
             None
         } else {
-            let string_value = maybe!(to_string(cx, description_arg));
-            Some(String::from(string_value.str()))
+            Some(maybe!(to_string(cx, description_arg)))
         };
 
         cx.heap.alloc(SymbolValue::new(description_value)).into()
@@ -170,13 +169,13 @@ impl SymbolConstructor {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let string_key = maybe!(to_string(cx, get_argument(arguments, 0)));
-        if let Some(symbol_value) = cx.global_symbol_registry.get(string_key.str()) {
+        if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key) {
             return symbol_value.clone().into();
         }
 
-        let string = String::from(string_key.str());
-        let new_symbol = cx.heap.alloc(SymbolValue::new(Some(string.clone())));
-        cx.global_symbol_registry.insert(string, new_symbol.clone());
+        let new_symbol = cx.heap.alloc(SymbolValue::new(Some(string_key)));
+        cx.global_symbol_registry
+            .insert(string_key, new_symbol.clone());
 
         new_symbol.into()
     }
@@ -194,9 +193,9 @@ impl SymbolConstructor {
         }
         let symbol_value = symbol_value.as_symbol();
 
-        for (str, symbol) in &cx.global_symbol_registry {
+        for (string, symbol) in &cx.global_symbol_registry {
             if symbol.ptr_eq(&symbol_value) {
-                return cx.heap.alloc_string(str.clone()).into();
+                return (*string).into();
             }
         }
 

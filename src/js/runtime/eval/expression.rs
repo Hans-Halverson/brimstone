@@ -31,6 +31,7 @@ use crate::{
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             reference::{Reference, ReferenceBase},
+            string_value::StringValue,
             type_utilities::{
                 is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
                 number_to_string, same_object_value, to_boolean, to_int32, to_number, to_numeric,
@@ -315,30 +316,26 @@ pub fn eval_property_name<'a>(
 // 13.2.8.5 Template Literal Evaluation
 fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalResult<Value> {
     let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
-    let mut total_size = 0;
 
     let first_quasi_part = cx.get_interned_string(&lit.quasis[0].cooked);
     string_parts.push(first_quasi_part);
-    total_size += first_quasi_part.str().len();
 
     for i in 1..lit.quasis.len() {
         let expr_value = maybe!(eval_expression(cx, &lit.expressions[i - 1]));
         let expr_string = maybe!(to_string(cx, expr_value));
 
         string_parts.push(expr_string);
-        total_size += expr_string.str().len();
 
         let quasi_part = cx.get_interned_string(&lit.quasis[i].cooked);
         string_parts.push(quasi_part);
-        total_size += quasi_part.str().len();
     }
 
-    let mut concat_string = String::with_capacity(total_size);
+    let mut concat_string = cx.names.empty_string().as_string();
     for string_part in string_parts {
-        concat_string.push_str(string_part.str());
+        concat_string = StringValue::concat(cx, concat_string, string_part);
     }
 
-    cx.heap.alloc_string(concat_string).into()
+    concat_string.into()
 }
 
 // 13.3.2.1 Member Expression Evaluation
@@ -390,7 +387,7 @@ fn eval_member_expression_to_reference_with_base(
 
         Reference::new_property(base_value, property_key, is_strict).into()
     } else if expr.is_private {
-        let property_name = id_string_value(cx, expr.property.to_id());
+        let property_name = &expr.property.to_id().name;
         Reference::make_private_reference(cx, base_value, property_name).into()
     } else {
         let property_key = id_property_key(cx, expr.property.to_id());
@@ -445,7 +442,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                 let is_non_property_eval_reference = match reference.base() {
                     ReferenceBase::Property { .. } => false,
                     ReferenceBase::Unresolvable { name } | ReferenceBase::Env { name, .. } => {
-                        name.str() == "eval"
+                        *name == cx.names.eval().as_string()
                     }
                 };
 
@@ -1041,10 +1038,7 @@ fn eval_add(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResu
         let left_string = maybe!(to_string(cx, left_prim));
         let right_string = maybe!(to_string(cx, right_prim));
 
-        return cx
-            .heap
-            .alloc_string(format!("{}{}", left_string.str(), right_string.str()))
-            .into();
+        return StringValue::concat(cx, left_string, right_string).into();
     }
 
     let left_num = maybe!(to_numeric(cx, left_prim));

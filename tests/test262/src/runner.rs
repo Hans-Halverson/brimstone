@@ -283,7 +283,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                         // Check if thrown error type has the same name as the expected error
                         match get(cx, thrown_object, &cx.names.name()) {
                             EvalResult::Ok(name_value) if name_value.is_string() => {
-                                name_value.as_string().str() == type_
+                                &name_value.as_string().to_string() == type_
                             }
                             _ => false,
                         }
@@ -292,7 +292,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                         // so check the if the message starts with "Test262Error".
                         match to_string(cx, thrown_value) {
                             EvalResult::Ok(message_value) => {
-                                message_value.str().starts_with("Test262Error")
+                                message_value.to_string().starts_with("Test262Error")
                             }
                             _ => false,
                         }
@@ -342,7 +342,7 @@ fn to_console_string_test262(cx: &mut Context, value: Value) -> String {
     if value.is_object() {
         match to_string(cx, value) {
             EvalResult::Ok(message_value) => {
-                let message = message_value.str();
+                let message = message_value.to_string();
                 if message.starts_with("Test262Error") {
                     return String::from(message);
                 }

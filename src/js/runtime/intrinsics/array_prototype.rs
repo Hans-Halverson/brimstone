@@ -16,6 +16,7 @@ use crate::{
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
+        string_value::StringValue,
         to_string,
         type_utilities::{
             is_array, is_callable, is_strictly_equal, same_value_zero, to_boolean,
@@ -768,11 +769,11 @@ impl ArrayPrototype {
             maybe!(to_string(cx, separator))
         };
 
-        let mut joined = String::new();
+        let mut joined = cx.names.empty_string().as_string();
 
         for i in 0..length {
             if i > 0 {
-                joined.push_str(separator.str());
+                joined = StringValue::concat(cx, joined, separator);
             }
 
             let key = PropertyKey::from_u64(cx, i);
@@ -780,11 +781,11 @@ impl ArrayPrototype {
 
             if !element.is_nullish() {
                 let next = maybe!(to_string(cx, element));
-                joined.push_str(next.str());
+                joined = StringValue::concat(cx, joined, next);
             }
         }
 
-        cx.heap.alloc_string(joined).into()
+        joined.into()
     }
 
     // 23.1.3.17 Array.prototype.keys
@@ -1323,11 +1324,12 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let mut result = String::new();
+        let mut result = cx.names.empty_string().as_string();
+        let separator = cx.get_interned_string(", ");
 
         for i in 0..length {
             if i > 0 {
-                result.push_str(", ");
+                result = StringValue::concat(cx, result, separator);
             }
 
             let key = PropertyKey::from_u64(cx, i);
@@ -1338,11 +1340,11 @@ impl ArrayPrototype {
                     maybe!(invoke(cx, next_element, &cx.names.to_locale_string(), &[]));
                 let string_result = maybe!(to_string(cx, string_result));
 
-                result.push_str(string_result.str());
+                result = StringValue::concat(cx, result, string_result);
             }
         }
 
-        cx.heap.alloc_string(result).into()
+        result.into()
     }
 
     // 23.1.3.31 Array.prototype.toString

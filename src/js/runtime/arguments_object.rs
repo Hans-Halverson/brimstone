@@ -29,8 +29,8 @@ use super::{
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    string_value::StringValue,
     type_utilities::same_object_value,
-    value::StringValue,
     Context, EvalResult, Gc, Value,
 };
 

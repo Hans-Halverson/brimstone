@@ -8,7 +8,8 @@ use crate::js::runtime::{
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
-    value::{StringValue, Value},
+    string_value::StringValue,
+    value::Value,
     Context,
 };
 use crate::{maybe, must};
@@ -75,7 +76,7 @@ impl Environment for GlobalEnvironment {
         can_delete: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env.has_binding(cx, name)) {
-            return type_error_(cx, &format!("Redeclaration of {}", name.str()));
+            return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
         self.decl_env.create_mutable_binding(cx, name, can_delete)
@@ -89,7 +90,7 @@ impl Environment for GlobalEnvironment {
         is_strict: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env.has_binding(cx, name)) {
-            return type_error_(cx, &format!("Redeclaration of {}", name.str()));
+            return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
         self.decl_env.create_immutable_binding(cx, name, is_strict)

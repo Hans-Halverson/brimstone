@@ -19,9 +19,10 @@ use super::{
     proxy_object::ProxyObject,
     string_object::StringObject,
     string_parsing::{parse_string_to_bigint, parse_string_to_number},
+    string_value::StringValue,
     value::{
-        BigIntValue, StringValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG,
-        STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG,
+        BigIntValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG, STRING_TAG,
+        SYMBOL_TAG, UNDEFINED_TAG,
     },
     Context,
 };
@@ -278,7 +279,7 @@ pub fn to_uint16(cx: &mut Context, value: Value) -> EvalResult<u16> {
 
 // 7.1.4.1.1 StringToNumber
 fn string_to_number(value: Gc<StringValue>) -> Value {
-    match parse_string_to_number(value.str()) {
+    match parse_string_to_number(value) {
         None => Value::nan(),
         Some(num) => Value::number(num),
     }
@@ -551,7 +552,7 @@ fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
     }
 
     match tag1 {
-        STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
+        STRING_TAG => v1.as_string() == v2.as_string(),
         BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
         // Null, Undefined, and Bool all have a single canonical bit representation for each value,
         // so the bits can be compared directly. For Objects and Symbols there is a single
@@ -562,7 +563,7 @@ fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
 
 // 7.1.14 StringToBigInt
 fn string_to_bigint(value: Gc<StringValue>) -> Option<BigInt> {
-    parse_string_to_bigint(value.str())
+    parse_string_to_bigint(value)
 }
 
 // 7.1.19 ToPropertyKey
@@ -592,7 +593,7 @@ pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
     let y_tag = y.get_tag();
     if x_tag == STRING_TAG {
         if y_tag == STRING_TAG {
-            return (x.as_string().str() < y.as_string().str()).into();
+            return (x.as_string() < y.as_string()).into();
         } else if y_tag == BIGINT_TAG {
             let x_bigint = string_to_bigint(x.as_string());
 
@@ -749,7 +750,7 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
     let tag2 = v2.get_tag();
     if tag1 == tag2 {
         return match tag1 {
-            STRING_TAG => (v1.as_string().as_ref() == v2.as_string().as_ref()).into(),
+            STRING_TAG => (v1.as_string() == v2.as_string()).into(),
             BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into(),
             // Null, Undefined, and Bool all have a single canonical bit representation for each value,
             // so the bits can be compared directly. For Objects and Symbols there is a single
@@ -838,7 +839,7 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
     }
 
     match tag1 {
-        STRING_TAG => v1.as_string().as_ref() == v2.as_string().as_ref(),
+        STRING_TAG => v1.as_string() == v2.as_string(),
         BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
         // Null, Undefined, and Bool all have a single canonical bit representation for each value,
         // so the bits can be compared directly. For Objects and Symbols there is a single

@@ -27,6 +27,7 @@ mod realm;
 mod reference;
 mod string_object;
 mod string_parsing;
+mod string_value;
 mod type_utilities;
 mod value;
 

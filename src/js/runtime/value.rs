@@ -1,10 +1,9 @@
-use std::{fmt, hash};
-
 use num_bigint::BigInt;
 
 use super::{
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
+    string_value::StringValue,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
@@ -396,68 +395,18 @@ impl From<Gc<AccessorValue>> for Value {
     }
 }
 
-pub struct StringValue(String);
-
-impl StringValue {
-    pub fn new(str: String) -> StringValue {
-        StringValue(str)
-    }
-}
-
-impl Gc<StringValue> {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn str<'a, 'b>(&'a self) -> &'b str {
-        // Intentionally break lifetime, as StringValues are managed by the Gc heap
-        unsafe { std::mem::transmute(self.0.as_str()) }
-    }
-}
-
-impl GcDeref for StringValue {}
-
-impl fmt::Display for StringValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl PartialEq for StringValue {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl PartialEq for Gc<StringValue> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.as_ref() == other.as_ref()
-    }
-}
-
-impl Eq for Gc<StringValue> {}
-
-impl hash::Hash for Gc<StringValue> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_ref().0.hash(state);
-    }
-}
-
-pub struct SymbolValue(Option<String>);
+pub struct SymbolValue(Option<Gc<StringValue>>);
 
 impl SymbolValue {
-    pub fn new(description: Option<String>) -> SymbolValue {
+    pub fn new(description: Option<Gc<StringValue>>) -> SymbolValue {
         SymbolValue(description)
     }
 }
 
 impl Gc<SymbolValue> {
-    pub fn description<'a, 'b>(&'a self) -> Option<&'b str> {
+    pub fn description(&self) -> Option<Gc<StringValue>> {
         // Intentionally break lifetime, as SymbolValues are managed by the Gc heap
         self.0
-            .as_ref()
-            .map(|desc| unsafe { std::mem::transmute(desc.as_str()) })
     }
 }
 

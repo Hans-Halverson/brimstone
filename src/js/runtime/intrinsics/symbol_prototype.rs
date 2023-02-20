@@ -9,7 +9,8 @@ use crate::{
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
-        value::{StringValue, SymbolValue, Value},
+        string_value::StringValue,
+        value::{SymbolValue, Value},
         Context,
     },
     maybe,
@@ -66,7 +67,7 @@ impl SymbolPrototype {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         match symbol_value.as_symbol().description() {
             None => Value::undefined().into(),
-            Some(desc) => cx.heap.alloc_string(String::from(desc)).into(),
+            Some(desc) => desc.into(),
         }
     }
 
@@ -119,7 +120,9 @@ fn this_symbol_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
 
 // 20.4.3.3.1 SymbolDescriptiveString
 pub fn symbol_descriptive_string(cx: &mut Context, symbol: Gc<SymbolValue>) -> Gc<StringValue> {
-    let description = symbol.description().unwrap_or("");
-    let descriptive_string = format!("Symbol({})", description);
+    let descriptive_string = match symbol.description() {
+        None => format!("Symbol()"),
+        Some(description) => format!("Symbol({})", description),
+    };
     cx.heap.alloc_string(descriptive_string).into()
 }

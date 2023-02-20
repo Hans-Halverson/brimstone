@@ -556,18 +556,18 @@ pub fn create_dynamic_function(
     } else if arg_count == 1 {
         args[0]
     } else {
-        params_string.push_str(maybe!(to_string(cx, args[0])).str());
+        params_string.push_str(&maybe!(to_string(cx, args[0])).to_string());
 
         for arg in &args[1..(args.len() - 1)] {
             params_string.push(',');
-            params_string.push_str(maybe!(to_string(cx, *arg)).str());
+            params_string.push_str(&maybe!(to_string(cx, *arg)).to_string());
         }
 
         args[args.len() - 1]
     };
 
     let body_string = maybe!(to_string(cx, body_arg));
-    let body_string = format!("\n{}\n", body_string.str());
+    let body_string = format!("\n{}\n", body_string);
 
     let source_string = format!("{} anonymous({}\n) {{{}}}", prefix, params_string, body_string);
 

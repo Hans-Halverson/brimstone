@@ -7,8 +7,9 @@ use crate::{
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
+        string_value::StringValue,
         type_utilities::to_boolean,
-        value::{StringValue, Value},
+        value::Value,
         Context,
     },
     maybe,
@@ -106,7 +107,7 @@ impl Environment for ObjectEnvironment {
         let name_key = PropertyKey::string(name);
         let still_exists = maybe!(has_property(cx, self.binding_object, &name_key));
         if !still_exists && is_strict {
-            return err_not_defined_(cx, name.str());
+            return err_not_defined_(cx, name);
         }
 
         maybe!(set(cx, self.binding_object, &name_key, value, is_strict));
@@ -125,7 +126,7 @@ impl Environment for ObjectEnvironment {
             return if !is_strict {
                 Value::undefined().into()
             } else {
-                err_not_defined_(cx, name.str())
+                err_not_defined_(cx, name)
             };
         }
 

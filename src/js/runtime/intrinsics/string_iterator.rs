@@ -1,9 +1,9 @@
-use std::{ops::Deref, str::Chars};
+use std::ops::Deref;
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn,
+    cast_from_value_fn, impl_gc_into,
     js::runtime::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
@@ -16,7 +16,8 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
-        value::{StringValue, Value},
+        string_value::{CodePointIterator, StringValue},
+        value::Value,
         Context,
     },
     maybe,
@@ -26,35 +27,19 @@ use super::intrinsics::Intrinsic;
 
 // 22.1.5 String Iterator Objects
 #[repr(C)]
-pub struct StringIterator<'a> {
+pub struct StringIterator {
     _vtable: ObjectValueVtable,
     object: OrdinaryObject,
     // String is not used directly, but it held so that it is not GC'd while iterator exists
     string: Gc<StringValue>,
-    chars_iter: Chars<'a>,
+    code_points_iter: CodePointIterator,
 }
 
-impl<'a> GcDeref for StringIterator<'a> {}
+impl GcDeref for StringIterator {}
 
-impl<'a> Into<Gc<ObjectValue>> for Gc<StringIterator<'a>> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self.as_ref() as *const _ as *mut ObjectValue)
-    }
-}
+impl_gc_into!(StringIterator, ObjectValue);
 
-impl<'a> Into<Gc<ObjectValue>> for &StringIterator<'a> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
-    }
-}
-
-impl<'a> Into<Gc<ObjectValue>> for &mut StringIterator<'a> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
-    }
-}
-
-impl<'a> StringIterator<'a> {
+impl StringIterator {
     const VTABLE: *const () = extract_object_vtable::<StringIterator>();
 
     pub fn new(cx: &mut Context, string: Gc<StringValue>) -> Gc<StringIterator> {
@@ -67,7 +52,7 @@ impl<'a> StringIterator<'a> {
             _vtable: Self::VTABLE,
             object,
             string,
-            chars_iter: string.str().chars(),
+            code_points_iter: string.iter_code_points(),
         })
     }
 
@@ -85,7 +70,7 @@ impl<'a> StringIterator<'a> {
 }
 
 #[wrap_ordinary_object]
-impl<'a> Object for StringIterator<'a> {}
+impl Object for StringIterator {}
 
 // 22.1.5.1 The %StringIteratorPrototype% Object
 pub struct StringIteratorPrototype;
@@ -117,11 +102,11 @@ impl StringIteratorPrototype {
     ) -> EvalResult<Value> {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
-        match string_iterator.chars_iter.next() {
+        match string_iterator.code_points_iter.next() {
             None => create_iter_result_object(cx, Value::undefined(), true).into(),
-            Some(next_char) => {
-                let char_string = cx.heap.alloc_string(String::from(next_char));
-                create_iter_result_object(cx, char_string.into(), false).into()
+            Some(next_code_point) => {
+                let code_point_string = StringValue::from_code_point(cx, next_code_point);
+                create_iter_result_object(cx, code_point_string.into(), false).into()
             }
         }
     }

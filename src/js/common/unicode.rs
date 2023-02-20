@@ -1,3 +1,40 @@
+/// A single unicode code unit. Value may be in the surrogate pair range.
+pub type CodeUnit = u16;
+
+/// A single unicode code point. Value may be in the surrogate pair range, but is guaranteed to
+/// be within the full unicode range [0x0-0x10FFFF].
+pub type CodePoint = u32;
+
+// Start of high surrogate range, inclusive
+const HIGH_SURROGATE_START: CodeUnit = 0xD800;
+// End of high surrogate range, inclusive
+const HIGH_SURROGATE_END: CodeUnit = 0xDBFF;
+
+// Start of low surrogate range, inclusive
+const LOW_SURROGATE_START: CodeUnit = 0xDC00;
+// End of low surrogate range, inclusive
+const LOW_SURROGATE_END: CodeUnit = 0xDFFF;
+
+#[inline]
+pub fn is_high_surrogate_code_unit(code_unit: CodeUnit) -> bool {
+    code_unit >= HIGH_SURROGATE_START && code_unit <= HIGH_SURROGATE_END
+}
+
+#[inline]
+pub fn is_low_surrogate_code_unit(code_unit: CodeUnit) -> bool {
+    code_unit >= LOW_SURROGATE_START && code_unit <= LOW_SURROGATE_END
+}
+
+pub fn code_point_from_surrogate_pair(low: CodeUnit, high: CodeUnit) -> CodePoint {
+    // Low 10 bits are encoded in the low surrogate
+    let low_bits = (low - LOW_SURROGATE_START) as u32;
+
+    // High 10 bits are encoded in the the high surrogate
+    let high_bits = (high - HIGH_SURROGATE_START) as u32;
+
+    low_bits | (high_bits << 10)
+}
+
 #[inline]
 pub fn is_continuation_byte(byte: u8) -> bool {
     (byte & 0xC0) == 0x80

@@ -9,7 +9,8 @@ use super::{
     object_value::ObjectValue,
     realm::Realm,
     reference::Reference,
-    value::{StringValue, Value},
+    string_value::StringValue,
+    value::Value,
     Context,
 };
 

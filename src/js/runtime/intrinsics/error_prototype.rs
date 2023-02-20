@@ -57,7 +57,7 @@ impl ErrorPrototype {
         } else if message_string.is_empty() {
             name_string.into()
         } else {
-            let error_string = format!("{}: {}", name_string.str(), message_string.str());
+            let error_string = format!("{}: {}", name_string, message_string);
             cx.heap.alloc_string(error_string).into()
         }
     }

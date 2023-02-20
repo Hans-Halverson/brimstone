@@ -14,7 +14,8 @@ use crate::{
             function::instantiate_function_object,
             gc::Gc,
             realm::Realm,
-            value::{StringValue, Value},
+            string_value::StringValue,
+            value::Value,
             Context,
         },
     },
@@ -82,13 +83,13 @@ fn global_declaration_instantiation(
             if env.has_var_declaration(name_value)
                 || must!(env.has_lexical_declaration(cx, name_value))
             {
-                return syntax_error_(cx, &format!("redeclaration of {}", name_value.str()));
+                return syntax_error_(cx, &format!("redeclaration of {}", name_value));
             }
 
             if maybe!(env.has_restricted_global_property(cx, name_value)) {
                 return syntax_error_(
                     cx,
-                    &format!("cannot redeclare restricted global property {}", name_value.str()),
+                    &format!("cannot redeclare restricted global property {}", name_value),
                 );
             }
 
@@ -100,7 +101,7 @@ fn global_declaration_instantiation(
         maybe__!(var_decl.iter_bound_names(&mut |id| {
             let name_value = id_string_value(cx, id);
             if must!(env.has_lexical_declaration(cx, name_value)) {
-                return syntax_error_(cx, &format!("redeclaration of {}", name_value.str()));
+                return syntax_error_(cx, &format!("redeclaration of {}", name_value));
             }
 
             ().into()
@@ -122,7 +123,7 @@ fn global_declaration_instantiation(
                 if !maybe__!(env.can_declare_global_function(cx, name_value)) {
                     return type_error(
                         cx,
-                        &format!("cannot declare global function {}", name_value.str()),
+                        &format!("cannot declare global function {}", name_value),
                     );
                 }
 
@@ -144,7 +145,7 @@ fn global_declaration_instantiation(
                         if !maybe!(env.can_declare_global_var(cx, name_value)) {
                             return type_error_(
                                 cx,
-                                &format!("cannot declare global var {}", name_value.str()),
+                                &format!("cannot declare global var {}", name_value),
                             );
                         }
 

@@ -675,7 +675,7 @@ fn eval_for_in_statement(
             }
 
             let key_string = key.as_string();
-            if !collected.insert(key_string.str()) {
+            if !collected.insert(key_string) {
                 continue;
             }
 

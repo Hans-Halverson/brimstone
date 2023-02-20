@@ -19,7 +19,7 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind, FuncKind},
-            value::StringValue,
+            string_value::StringValue,
             Completion, CompletionKind, Context, EvalResult, Gc, Value,
         },
     },
@@ -83,7 +83,7 @@ pub fn perform_eval(
     };
 
     // Parse source code
-    let source = Rc::new(Source::new_from_string("<eval>", String::from(code.str())));
+    let source = Rc::new(Source::new_from_string("<eval>", code.to_string()));
     let parse_result = parse_script_for_eval(&source, is_strict_caller);
     let mut ast = match parse_result {
         Ok(ast) => ast,
@@ -182,7 +182,7 @@ fn eval_declaration_instantiation(
                     if maybe!(var_env.has_lexical_declaration(cx, name_value)) {
                         return syntax_error_(
                             cx,
-                            &format!("identifier '{}' has already been declared", name_value.str()),
+                            &format!("identifier '{}' has already been declared", name_value),
                         );
                     }
 
@@ -200,10 +200,7 @@ fn eval_declaration_instantiation(
                         if must!(this_env.has_binding(cx, name_value)) {
                             return syntax_error_(
                                 cx,
-                                &format!(
-                                    "identifier '{}' has already been declared",
-                                    name_value.str()
-                                ),
+                                &format!("identifier '{}' has already been declared", name_value),
                             );
                         }
 
@@ -232,7 +229,7 @@ fn eval_declaration_instantiation(
                     if !maybe!(var_env.can_declare_global_function(cx, name_value)) {
                         return type_error_(
                             cx,
-                            &format!("cannot declare global function {}", name_value.str()),
+                            &format!("cannot declare global function {}", name_value),
                         );
                     }
                 }
@@ -256,7 +253,7 @@ fn eval_declaration_instantiation(
                         if !maybe!(var_env.can_declare_global_var(cx, name_value)) {
                             return type_error_(
                                 cx,
-                                &format!("cannot declare global var {}", name_value.str()),
+                                &format!("cannot declare global var {}", name_value),
                             );
                         }
                     }

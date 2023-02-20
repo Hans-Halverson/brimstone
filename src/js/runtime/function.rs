@@ -516,8 +516,7 @@ pub fn set_function_name(
         None => {
             let string_value = name.non_symbol_to_string(cx);
             if let Some(prefix) = prefix {
-                cx.heap
-                    .alloc_string(format!("{} {}", prefix, string_value.str()))
+                cx.heap.alloc_string(format!("{} {}", prefix, string_value))
             } else {
                 string_value
             }

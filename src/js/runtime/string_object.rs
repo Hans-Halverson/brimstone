@@ -11,7 +11,8 @@ use crate::{
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
-        value::{StringValue, Value},
+        string_value::StringValue,
+        value::Value,
         Context,
     },
 };
@@ -48,7 +49,7 @@ impl StringObject {
         string_data: Gc<StringValue>,
     ) -> StringObject {
         // String objects have an immutable length property
-        let length = string_data.str().len();
+        let length = string_data.len();
 
         object.set_property(
             &cx.names.length(),
@@ -96,15 +97,14 @@ impl StringObject {
             return None;
         };
 
-        let str = self.string_data.str();
-        if index as usize >= str.len() {
+        let string = self.string_data;
+        if index as usize >= string.len() {
             return None;
         }
 
-        let char_string = String::from(str.as_bytes()[index as usize] as char);
-        let char_value = cx.heap.alloc_string(char_string).into();
+        let char_string = StringValue::from_code_unit(cx, string.code_unit_at(index as usize));
 
-        Some(PropertyDescriptor::data(char_value, false, true, false))
+        Some(PropertyDescriptor::data(char_string.into(), false, true, false))
     }
 }
 
@@ -148,7 +148,7 @@ impl Object for StringObject {
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
         let mut keys = vec![];
 
-        let length = self.string_data.str().len();
+        let length = self.string_data.len();
         for i in 0..length {
             let index_string = cx.heap.alloc_string(i.to_string());
             keys.push(Value::string(index_string));

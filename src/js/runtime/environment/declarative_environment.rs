@@ -5,7 +5,8 @@ use crate::js::runtime::{
     error::{err_not_defined_, err_uninitialized_, type_error_},
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
-    value::{StringValue, Value},
+    string_value::StringValue,
+    value::Value,
     Context,
 };
 
@@ -99,7 +100,7 @@ impl Environment for DeclarativeEnvironment {
         is_strict: bool,
     ) -> EvalResult<()> {
         match self.bindings.get_mut(&name) {
-            None if is_strict => err_not_defined_(cx, name.str()),
+            None if is_strict => err_not_defined_(cx, name),
             None => {
                 self.create_mutable_binding(cx, name, true);
                 self.initialize_binding(cx, name, value);
@@ -109,13 +110,13 @@ impl Environment for DeclarativeEnvironment {
                 let s = if binding.is_strict { true } else { is_strict };
 
                 if !binding.is_initialized {
-                    return err_uninitialized_(cx, name.str());
+                    return err_uninitialized_(cx, name);
                 }
 
                 if binding.is_mutable {
                     binding.value = value;
                 } else if s {
-                    return type_error_(cx, &format!("{} is immutable", name.str()));
+                    return type_error_(cx, &format!("{} is immutable", name));
                 }
 
                 ().into()
@@ -132,7 +133,7 @@ impl Environment for DeclarativeEnvironment {
     ) -> EvalResult<Value> {
         let binding = self.bindings.get(&name).unwrap();
         if !binding.is_initialized {
-            return err_uninitialized_(cx, name.str());
+            return err_uninitialized_(cx, name);
         }
 
         binding.value.into()

@@ -80,7 +80,7 @@ impl Object for ArrayObject {
             }
 
             true.into()
-        } else if key.is_string() && key.as_string().str() == "length" {
+        } else if key.is_string() && key.as_string() == cx.names.length().as_string() {
             array_set_length(cx, self, desc)
         } else {
             ordinary_define_own_property(cx, self.into(), key, desc)
@@ -90,10 +90,10 @@ impl Object for ArrayObject {
     // Not part of spec, but needed to return custom length property
     fn get_own_property(
         &self,
-        _: &mut Context,
+        cx: &mut Context,
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        if key.is_string() && key.as_string().str() == "length" {
+        if key.is_string() && key.as_string() == cx.names.length().as_string() {
             let length_value = self.object.array_properties_length();
             return Some(PropertyDescriptor::data(
                 Value::number(length_value.into()),
@@ -109,7 +109,7 @@ impl Object for ArrayObject {
 
     // Not part of spec, but needed to handle attempts to delete custom length property
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        if key.is_string() && key.as_string().str() == "length" {
+        if key.is_string() && key.as_string() == cx.names.length().as_string() {
             return false.into();
         }
 

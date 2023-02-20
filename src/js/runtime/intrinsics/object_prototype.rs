@@ -223,7 +223,7 @@ impl ObjectPrototype {
         let tag_string = if tag.is_string() {
             return cx
                 .heap
-                .alloc_string(format!("[object {}]", tag.as_string().str()))
+                .alloc_string(format!("[object {}]", tag.as_string()))
                 .into();
         } else if is_array {
             "Array"

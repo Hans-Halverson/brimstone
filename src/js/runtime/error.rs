@@ -1,8 +1,9 @@
 use super::{
     completion::{Completion, EvalResult},
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError},
+    string_value::StringValue,
     value::Value,
-    Context,
+    Context, Gc,
 };
 
 fn syntax_error_value(cx: &mut Context, message: &str) -> Value {
@@ -41,10 +42,10 @@ pub fn range_error_<T>(cx: &mut Context, message: &str) -> EvalResult<T> {
     EvalResult::Throw(range_error_value(cx, message))
 }
 
-pub fn err_not_defined_<T>(cx: &mut Context, name: &str) -> EvalResult<T> {
+pub fn err_not_defined_<T>(cx: &mut Context, name: Gc<StringValue>) -> EvalResult<T> {
     reference_error_(cx, &format!("{} is not defined", name))
 }
 
-pub fn err_uninitialized_<T>(cx: &mut Context, name: &str) -> EvalResult<T> {
+pub fn err_uninitialized_<T>(cx: &mut Context, name: Gc<StringValue>) -> EvalResult<T> {
     reference_error_(cx, &format!("{} is not initialized", name))
 }

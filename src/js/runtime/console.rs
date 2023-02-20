@@ -48,7 +48,7 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
     match value.get_tag() {
         NULL_TAG => return "null".to_owned(),
         UNDEFINED_TAG => return "undefined".to_owned(),
-        STRING_TAG => return value.as_string().str().to_owned(),
+        STRING_TAG => return format!("{}", value.as_string()),
         BOOL_TAG => {
             return if value.as_bool() {
                 "true".to_owned()
@@ -57,8 +57,10 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
             }
         }
         SYMBOL_TAG => {
-            let description = value.as_symbol().description().unwrap_or("");
-            return format!("Symbol({})", description);
+            return match value.as_symbol().description() {
+                None => String::from("Symbol()"),
+                Some(description) => format!("Symbol({})", description),
+            };
         }
         BIGINT_TAG => {
             return format!("{}n", value.as_bigint().bigint().to_string());
@@ -71,15 +73,15 @@ pub fn to_console_string(cx: &mut Context, value: Value) -> String {
 
     if object.is_error() {
         let name = match get(cx, object, &cx.names.name()) {
-            EvalResult::Ok(name_value) if name_value.is_string() => name_value.as_string().str(),
-            _ => "Error",
+            EvalResult::Ok(name_value) if name_value.is_string() => name_value.as_string(),
+            _ => cx.names.error.as_string(),
         };
 
         match get(cx, object, &cx.names.message()) {
             EvalResult::Ok(message_value) => {
                 format!("{}: {}", name, to_console_string(cx, message_value))
             }
-            EvalResult::Throw(_) => name.to_owned(),
+            EvalResult::Throw(_) => format!("{}", name),
         }
     } else if object.is_callable() {
         "[Function]".to_owned()

@@ -15,7 +15,8 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
-    value::{StringValue, Value},
+    string_value::StringValue,
+    value::Value,
     Context,
 };
 

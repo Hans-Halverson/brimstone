@@ -3,7 +3,8 @@ use crate::js::parser::ast::LabelId;
 use super::{
     gc::Gc,
     object_value::ObjectValue,
-    value::{BigIntValue, StringValue, SymbolValue, Value},
+    string_value::StringValue,
+    value::{BigIntValue, SymbolValue, Value},
 };
 
 /// 6.2.3 Completion Record

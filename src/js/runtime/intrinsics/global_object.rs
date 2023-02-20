@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
     js::runtime::{
         abstract_operations::define_property_or_throw,
@@ -9,10 +7,13 @@ use crate::{
         function::get_argument,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
-        string_parsing::{parse_unsigned_decimal_literal, skip_string_whitespace, StringLexer},
+        string_parsing::{
+            parse_between_ptrs_to_f64, parse_unsigned_decimal_literal, skip_string_whitespace,
+            StringLexer,
+        },
+        string_value::StringValue,
         to_string,
         type_utilities::{to_int32, to_number},
-        value::StringValue,
         Context, EvalResult, Gc, Realm, Value,
     },
     maybe,
@@ -153,34 +154,32 @@ fn parse_float(
     _: Option<Gc<ObjectValue>>,
 ) -> EvalResult<Value> {
     let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
-    let str = input_string.str();
 
-    match parse_float_with_string_lexer(str) {
+    match parse_float_with_string_lexer(input_string) {
         Some(float) => Value::number(float).into(),
         None => Value::nan().into(),
     }
 }
 
-fn parse_float_with_string_lexer(str: &str) -> Option<f64> {
-    let mut lexer = StringLexer::new(str)?;
+fn parse_float_with_string_lexer(string: Gc<StringValue>) -> Option<f64> {
+    let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
 
     // Skip leading prefix
     let mut is_negative = false;
-    if lexer.current() == '-' {
-        lexer.advance()?;
+    if lexer.current_equals('-') {
+        lexer.advance();
         is_negative = true;
-    } else if lexer.current() == '+' {
-        lexer.advance()?;
+    } else if lexer.current_equals('+') {
+        lexer.advance();
     }
 
-    let start_pos = lexer.current_start_pos();
+    let start_ptr = lexer.current_ptr();
     parse_unsigned_decimal_literal(&mut lexer)?;
-    let end_pos = lexer.current_start_pos();
+    let end_ptr = lexer.current_ptr();
 
-    // Parse portion of string using rust stdlib
-    let number = f64::from_str(&str[start_pos..end_pos]).unwrap();
+    let number = parse_between_ptrs_to_f64(start_ptr, end_ptr);
 
     if is_negative {
         Some(-number)
@@ -207,18 +206,18 @@ fn parse_int(
 
 #[inline]
 fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
-    let mut lexer = StringLexer::new(string.str())?;
+    let mut lexer = StringLexer::new(string);
 
     // Trim whitespace from start of string
-    skip_string_whitespace(&mut lexer)?;
+    skip_string_whitespace(&mut lexer);
 
     // Strip + or - prefix from start of string
     let mut is_negative = false;
-    if lexer.current() == '-' {
+    if lexer.current_equals('-') {
         is_negative = true;
-        lexer.advance()?;
-    } else if lexer.current() == '+' {
-        lexer.advance()?;
+        lexer.advance();
+    } else if lexer.current_equals('+') {
+        lexer.advance();
     }
 
     let mut radix = radix;
@@ -235,10 +234,10 @@ fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
     }
 
     if strip_prefix {
-        if lexer.current() == '0' {
-            if let 'x' | 'X' = lexer.peek_ascii_char() {
-                lexer.advance()?;
-                lexer.advance()?;
+        if lexer.current_equals('0') {
+            if let Some('x' | 'X') = lexer.peek_ascii_char() {
+                lexer.advance();
+                lexer.advance();
 
                 radix = 16;
             }
@@ -273,14 +272,12 @@ fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
     let radix_f64 = radix as f64;
 
     while !lexer.is_end() {
-        let char = lexer.current();
-
-        let digit = if '0' <= char && char < numeric_digit_upper_bound {
-            char as u32 - '0' as u32
-        } else if 'a' <= char && char < lowercase_digit_upper_bound {
-            (char as u32 - 'a' as u32) + 10
-        } else if 'A' <= char && char < uppercase_digit_upper_bound {
-            (char as u32 - 'A' as u32) + 10
+        let digit = if let Some(digit) = lexer.current_digit_value('0', numeric_digit_upper_bound) {
+            digit
+        } else if let Some(digit) = lexer.current_digit_value('a', lowercase_digit_upper_bound) {
+            digit + 10
+        } else if let Some(digit) = lexer.current_digit_value('A', uppercase_digit_upper_bound) {
+            digit + 10
         } else {
             break;
         };
@@ -289,7 +286,7 @@ fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
         value += digit as f64;
 
         has_digits = true;
-        lexer.advance()?;
+        lexer.advance();
     }
 
     if !has_digits {

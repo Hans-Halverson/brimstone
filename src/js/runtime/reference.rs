@@ -8,8 +8,9 @@ use super::{
     execution_context::get_global_object,
     gc::Gc,
     property_key::PropertyKey,
+    string_value::StringValue,
     type_utilities::to_object,
-    value::{StringValue, Value},
+    value::Value,
     Context,
 };
 
@@ -119,7 +120,7 @@ impl Reference {
     pub fn get_value(&self, cx: &mut Context) -> EvalResult<Value> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
-                reference_error_(cx, &format!("Could not resolve {}", name.str()))
+                reference_error_(cx, &format!("Could not resolve {}", name))
             }
             ReferenceBase::Property { object, ref property, private_id } => {
                 let base = maybe!(to_object(cx, object));
@@ -137,7 +138,7 @@ impl Reference {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 if self.is_strict {
-                    return reference_error_(cx, &format!("Could not resolve {}", name.str()));
+                    return reference_error_(cx, &format!("Could not resolve {}", name));
                 }
 
                 let global_obj = get_global_object(cx);
@@ -195,15 +196,17 @@ impl Reference {
     pub fn make_private_reference(
         cx: &mut Context,
         base_value: Value,
-        private_name: Gc<StringValue>,
+        private_name: &str,
     ) -> Reference {
         let private_env = cx.current_execution_context().private_env.unwrap();
-        let private_id = private_env.resolve_private_identifier(private_name.str());
+        let private_id = private_env.resolve_private_identifier(private_name);
+
+        let property_key = PropertyKey::string(cx.get_interned_string(private_name));
 
         Reference {
             base: ReferenceBase::Property {
                 object: base_value,
-                property: PropertyKey::string(private_name),
+                property: property_key,
                 private_id: Some(private_id),
             },
             is_strict: true,

@@ -1,24 +1,19 @@
 use std::str::FromStr;
 
 use crate::{
-    js::{
-        common::unicode::{
-            is_ascii, is_ascii_newline, is_ascii_whitespace, is_unicode_newline,
-            is_unicode_whitespace,
-        },
-        runtime::{
-            abstract_operations::define_property_or_throw,
-            builtin_function::BuiltinFunction,
-            console::ConsoleObject,
-            eval::eval::perform_eval,
-            function::get_argument,
-            object_value::ObjectValue,
-            property_descriptor::PropertyDescriptor,
-            string_parsing::{parse_unsigned_decimal_literal, skip_string_whitespace, StringLexer},
-            to_string,
-            type_utilities::{to_int32, to_number},
-            Context, EvalResult, Gc, Realm, Value,
-        },
+    js::runtime::{
+        abstract_operations::define_property_or_throw,
+        builtin_function::BuiltinFunction,
+        console::ConsoleObject,
+        eval::eval::perform_eval,
+        function::get_argument,
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        string_parsing::{parse_unsigned_decimal_literal, skip_string_whitespace, StringLexer},
+        to_string,
+        type_utilities::{to_int32, to_number},
+        value::StringValue,
+        Context, EvalResult, Gc, Realm, Value,
     },
     maybe,
 };
@@ -202,39 +197,36 @@ fn parse_int(
     _: Option<Gc<ObjectValue>>,
 ) -> EvalResult<Value> {
     let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
-    let mut chars = input_string.str().chars().peekable();
-    let mut current_char = chars.next();
+    let radix = maybe!(to_int32(cx, get_argument(arguments, 1)));
+
+    match parse_int_impl(input_string, radix) {
+        Some(number) => Value::number(number).into(),
+        None => Value::nan().into(),
+    }
+}
+
+#[inline]
+fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
+    let mut lexer = StringLexer::new(string.str())?;
 
     // Trim whitespace from start of string
-    while let Some(char) = current_char {
-        if is_ascii(char) {
-            if is_ascii_whitespace(char) || is_ascii_newline(char) {
-                current_char = chars.next();
-            }
-        } else {
-            if is_unicode_whitespace(char) || is_unicode_newline(char) {
-                current_char = chars.next();
-            }
-        }
-
-        break;
-    }
+    skip_string_whitespace(&mut lexer)?;
 
     // Strip + or - prefix from start of string
     let mut is_negative = false;
-    if let Some('-') = current_char {
+    if lexer.current() == '-' {
         is_negative = true;
-        current_char = chars.next();
-    } else if let Some('+') = current_char {
-        current_char = chars.next();
+        lexer.advance()?;
+    } else if lexer.current() == '+' {
+        lexer.advance()?;
     }
 
-    let mut radix = maybe!(to_int32(cx, get_argument(arguments, 1)));
-
+    let mut radix = radix;
     let mut strip_prefix = true;
+
     if radix != 0 {
         if radix < 2 || radix > 36 {
-            return Value::nan().into();
+            return None;
         } else if radix != 16 {
             strip_prefix = false;
         }
@@ -243,9 +235,11 @@ fn parse_int(
     }
 
     if strip_prefix {
-        if let Some('0') = current_char {
-            if let Some('x' | 'X') = chars.peek() {
-                current_char = chars.nth(1);
+        if lexer.current() == '0' {
+            if let 'x' | 'X' = lexer.peek_ascii_char() {
+                lexer.advance()?;
+                lexer.advance()?;
+
                 radix = 16;
             }
         }
@@ -278,7 +272,9 @@ fn parse_int(
 
     let radix_f64 = radix as f64;
 
-    while let Some(char) = current_char {
+    while !lexer.is_end() {
+        let char = lexer.current();
+
         let digit = if '0' <= char && char < numeric_digit_upper_bound {
             char as u32 - '0' as u32
         } else if 'a' <= char && char < lowercase_digit_upper_bound {
@@ -293,16 +289,16 @@ fn parse_int(
         value += digit as f64;
 
         has_digits = true;
-        current_char = chars.next();
+        lexer.advance()?;
     }
 
     if !has_digits {
-        return Value::nan().into();
+        return None;
     }
 
     if is_negative {
-        Value::number(-value).into()
+        Some(-value)
     } else {
-        Value::number(value).into()
+        Some(value)
     }
 }

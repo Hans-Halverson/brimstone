@@ -7,7 +7,7 @@ use crate::js::common::unicode::{
 };
 
 use super::{
-    string_value::{CodeUnitIterator, StringValue},
+    string_value::{CodeUnitIterator, StringValue, StringWidth},
     Gc,
 };
 
@@ -149,6 +149,10 @@ impl StringLexer {
             _ => None,
         }
     }
+
+    pub fn width(&self) -> StringWidth {
+        self.iter.width()
+    }
 }
 
 // Parse string to a number following the grammar in:
@@ -254,7 +258,7 @@ pub fn parse_string_to_number(string: Gc<StringValue>) -> Option<f64> {
         return None;
     }
 
-    let number = parse_between_ptrs_to_f64(parse_float_start_ptr, parse_float_end_ptr);
+    let number = parse_between_ptrs_to_f64(&lexer, parse_float_start_ptr, parse_float_end_ptr);
 
     if is_negative {
         Some(-number)
@@ -502,11 +506,36 @@ pub fn parse_string_to_u32(string: Gc<StringValue>) -> Option<u32> {
 }
 
 /// Parse portion of string between two pointers using rust stdlib
-pub fn parse_between_ptrs_to_f64(start_ptr: *const u8, end_ptr: *const u8) -> f64 {
-    let str = unsafe {
-        let bytes = std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize);
-        std::str::from_utf8_unchecked(bytes)
-    };
+pub fn parse_between_ptrs_to_f64(
+    lexer: &StringLexer,
+    start_ptr: *const u8,
+    end_ptr: *const u8,
+) -> f64 {
+    if lexer.width() == StringWidth::OneByte {
+        // If string is one-byte we can directly read from a slice, treating it as UTF-8 (since it
+        // is guaranteed that all code units are ASCII).
+        let str = unsafe {
+            let bytes =
+                std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize);
+            std::str::from_utf8_unchecked(bytes)
+        };
 
-    f64::from_str(str).unwrap()
+        f64::from_str(str).unwrap()
+    } else {
+        // Otherwise we must copy string to a UTF-8 buffer before parsing
+        let start_ptr = start_ptr as *const u16;
+        let end_ptr = end_ptr as *const u16;
+        let code_units = unsafe {
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+        };
+
+        let mut utf8_string = String::with_capacity(code_units.len());
+        for code_unit in code_units {
+            utf8_string.push(*code_unit as u8 as char)
+        }
+
+        f64::from_str(&utf8_string).unwrap()
+    }
+
+    // println!("The str is {} with len {} and ptrs {:?} {:?}", str, str.len(), start_ptr, end_ptr);
 }

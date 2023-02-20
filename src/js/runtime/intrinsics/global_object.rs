@@ -179,7 +179,7 @@ fn parse_float_with_string_lexer(string: Gc<StringValue>) -> Option<f64> {
     parse_unsigned_decimal_literal(&mut lexer)?;
     let end_ptr = lexer.current_ptr();
 
-    let number = parse_between_ptrs_to_f64(start_ptr, end_ptr);
+    let number = parse_between_ptrs_to_f64(&lexer, start_ptr, end_ptr);
 
     if is_negative {
         Some(-number)

@@ -55,7 +55,7 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
 
         let length = string.len() as i64;
 
@@ -85,14 +85,13 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
         }
 
-        // TODO: Handle UTF-16 strings and return correct char
         StringValue::from_code_unit(cx, string.code_unit_at(position as usize)).into()
     }
 
@@ -104,15 +103,15 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
         }
 
-        // TODO: Handle UTF-16 strings and return correct char code
-        StringValue::from_code_unit(cx, string.code_unit_at(position as usize)).into()
+        let code_unit = string.code_unit_at(position as usize);
+        Value::smi(code_unit as i32).into()
     }
 
     // 22.1.3.4 String.prototype.codePointAt
@@ -123,14 +122,13 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
         }
 
-        // TODO: Handle UTF-16 strings and return correct code point
         let char = char::from_u32(string.code_point_at(position as usize)).unwrap();
         cx.heap.alloc_string(String::from(char)).into()
     }
@@ -143,7 +141,7 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
 
         let search_string = get_argument(arguments, 0);
         if maybe!(is_regexp(cx, search_string)) {
@@ -173,7 +171,7 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
 
         let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
 
@@ -189,7 +187,7 @@ impl StringPrototype {
 
         match string.find(search_string, pos) {
             None => Value::smi(-1).into(),
-            Some(index) => Value::from_u64((pos + index) as u64).into(),
+            Some(index) => Value::from_u64(index as u64).into(),
         }
     }
 
@@ -201,7 +199,7 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let object = maybe!(require_object_coercible(cx, this_value));
-        let mut string = maybe!(to_string(cx, object));
+        let string = maybe!(to_string(cx, object));
 
         let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
 

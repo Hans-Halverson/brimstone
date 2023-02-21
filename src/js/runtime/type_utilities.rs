@@ -869,14 +869,6 @@ pub fn same_opt_object_value(
 
 // 6.1.6.1.20 Number::toString
 pub fn number_to_string(x: f64) -> String {
-    // TODO: Implement Number::toString from spec
-    if x.is_infinite() {
-        if x == f64::INFINITY {
-            return String::from("Infinity");
-        } else {
-            return String::from("-Infinity");
-        }
-    }
-
-    x.to_string()
+    let mut buf = ryu_js::Buffer::new();
+    buf.format(x).to_string()
 }

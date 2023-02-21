@@ -349,7 +349,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = maybe!(to_property_key(cx, property_name_value));
 
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, &property_key, base.into())
+        base.get(cx, &property_key, base_value)
     } else if expr.is_private {
         let base = maybe!(to_object(cx, base_value));
         let private_env = cx.current_execution_context().private_env.unwrap();
@@ -361,7 +361,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = id_property_key(cx, expr.property.to_id());
         let base = maybe!(to_object(cx, base_value));
 
-        base.get(cx, &property_key, base.into())
+        base.get(cx, &property_key, base_value)
     }
 }
 

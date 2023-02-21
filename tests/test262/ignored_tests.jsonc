@@ -48,6 +48,8 @@
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow
       "tail-call-optimization",
+      // Non-standard extension
+      "caller",
       // Stage < 4 proposals
       "array-grouping",
       "decorators",

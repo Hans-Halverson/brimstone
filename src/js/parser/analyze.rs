@@ -46,6 +46,8 @@ struct FunctionStackEntry {
     is_arrow_function: bool,
     is_method: bool,
     is_derived_constructor: bool,
+    // Whether this function stack entry is synthetic and represents eval code directly within a function
+    is_direct_eval_toplevel: bool,
 }
 
 struct ClassStackEntry {
@@ -148,10 +150,6 @@ impl<'a> Analyzer {
 
     fn is_in_non_arrow_function(&self) -> bool {
         self.enclosing_non_arrow_function().is_some()
-    }
-
-    fn is_in_function(&self) -> bool {
-        !self.function_stack.is_empty()
     }
 
     fn enclosing_non_arrow_function(&self) -> Option<&FunctionStackEntry> {
@@ -325,8 +323,13 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
-        if !self.is_in_function() {
-            self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction);
+        match self.function_stack.last() {
+            // Return statements must appear within a function, but cannot appear at the top level
+            // of a direct eval (even if the direct eval is within a function).
+            Some(FunctionStackEntry { is_direct_eval_toplevel: false, .. }) => {}
+            _ => {
+                self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction);
+            }
         }
 
         default_visit_return_statement(self, stmt);
@@ -630,6 +633,7 @@ impl Analyzer {
             is_arrow_function,
             is_method,
             is_derived_constructor,
+            is_direct_eval_toplevel: false,
         });
 
         // Save analyzer context before descending into function
@@ -1220,6 +1224,7 @@ pub fn analyze_for_eval(
             is_arrow_function: false,
             is_method: in_method,
             is_derived_constructor: in_derived_constructor,
+            is_direct_eval_toplevel: true,
         });
     }
 

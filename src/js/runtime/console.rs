@@ -6,6 +6,7 @@ use super::{
     object_value::ObjectValue,
     ordinary_object::OrdinaryObject,
     realm::Realm,
+    type_utilities::number_to_string,
     value::{Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG},
     Context,
 };
@@ -42,7 +43,7 @@ impl ConsoleObject {
 /// Format for printing value to console
 pub fn to_console_string(cx: &mut Context, value: Value) -> String {
     if value.is_number() {
-        return value.as_number().to_string();
+        return number_to_string(value.as_number());
     }
 
     match value.get_tag() {

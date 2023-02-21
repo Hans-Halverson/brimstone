@@ -147,7 +147,7 @@ macro_rules! create_native_error {
                 object.intrinsic_name_prop(cx, stringify!($native_error));
                 object.intrinsic_data_prop(
                     &cx.names.message(),
-                    cx.heap.alloc_string(String::new()).into(),
+                    cx.names.empty_string().as_string().into(),
                 );
 
                 cx.heap.alloc(object).into()

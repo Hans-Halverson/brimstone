@@ -120,9 +120,13 @@ fn this_symbol_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
 
 // 20.4.3.3.1 SymbolDescriptiveString
 pub fn symbol_descriptive_string(cx: &mut Context, symbol: Gc<SymbolValue>) -> Gc<StringValue> {
-    let descriptive_string = match symbol.description() {
-        None => format!("Symbol()"),
-        Some(description) => format!("Symbol({})", description),
-    };
-    cx.heap.alloc_string(descriptive_string).into()
+    match symbol.description() {
+        None => cx.heap.alloc_string(String::from("Symbol()")),
+        Some(description) => {
+            let symbol_prefix = cx.heap.alloc_string(String::from("Symbol("));
+            let symbol_suffix = cx.heap.alloc_string(String::from(")"));
+
+            StringValue::concat_all(cx, &[symbol_prefix, description, symbol_suffix])
+        }
+    }
 }

@@ -42,8 +42,7 @@ impl StringPrototype {
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         object.intrinsic_func(cx, &iterator_key, Self::iterator, 0, realm);
 
-        let string_value = cx.heap.alloc_string(String::new());
-        let string_object = StringObject::new(cx, object, string_value);
+        let string_object = StringObject::new(cx, object, cx.names.empty_string().as_string());
         cx.heap.alloc(string_object).into()
     }
 
@@ -129,8 +128,8 @@ impl StringPrototype {
             return cx.names.empty_string.as_string().into();
         }
 
-        let char = char::from_u32(string.code_point_at(position as usize)).unwrap();
-        cx.heap.alloc_string(String::from(char)).into()
+        let code_point = string.code_point_at(position as usize);
+        Value::smi(code_point as i32).into()
     }
 
     // 22.1.3.8 String.prototype.includes

@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::get, completion::EvalResult, error::type_error_, gc::Gc,
         object_value::ObjectValue, ordinary_object::OrdinaryObject, realm::Realm,
-        type_utilities::to_string, value::Value, Context,
+        string_value::StringValue, type_utilities::to_string, value::Value, Context,
     },
     maybe,
 };
@@ -19,7 +19,7 @@ impl ErrorPrototype {
 
         // Constructor property is added once ErrorConstructor has been created
         object.intrinsic_name_prop(cx, "Error");
-        object.intrinsic_data_prop(&cx.names.message(), cx.heap.alloc_string(String::new()).into());
+        object.intrinsic_data_prop(&cx.names.message(), cx.names.empty_string().as_string().into());
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
 
         cx.heap.alloc(object).into()
@@ -40,14 +40,14 @@ impl ErrorPrototype {
 
         let name_value = maybe!(get(cx, this_object, &cx.names.name()));
         let name_string = if name_value.is_undefined() {
-            cx.heap.alloc_string("Error".to_owned()).into()
+            cx.names.error().as_string().into()
         } else {
             maybe!(to_string(cx, name_value))
         };
 
         let message_value = maybe!(get(cx, this_object, &cx.names.message()));
         let message_string = if message_value.is_undefined() {
-            cx.heap.alloc_string(String::new()).into()
+            cx.names.empty_string().as_string().into()
         } else {
             maybe!(to_string(cx, message_value))
         };
@@ -57,8 +57,8 @@ impl ErrorPrototype {
         } else if message_string.is_empty() {
             name_string.into()
         } else {
-            let error_string = format!("{}: {}", name_string, message_string);
-            cx.heap.alloc_string(error_string).into()
+            let separator = cx.heap.alloc_string(String::from(": "));
+            StringValue::concat_all(cx, &[name_string, separator, message_string]).into()
         }
     }
 }

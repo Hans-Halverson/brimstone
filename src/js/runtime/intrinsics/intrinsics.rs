@@ -236,8 +236,8 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
     ));
 
     // Is anonymous function so name is empty
-    let name = cx.heap.alloc_string(String::new());
-    let name_desc = PropertyDescriptor::data(name.into(), false, false, false);
+    let name = cx.names.empty_string().as_string().into();
+    let name_desc = PropertyDescriptor::data(name, false, false, false);
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),

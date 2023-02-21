@@ -181,6 +181,19 @@ impl StringValue {
 
         cx.heap.alloc_string_value(StringValue::new(concat_string))
     }
+
+    pub fn concat_all(cx: &mut Context, strings: &[Gc<StringValue>]) -> Gc<StringValue> {
+        if strings.is_empty() {
+            cx.names.empty_string().as_string()
+        } else {
+            let mut concat_string = strings[0];
+            for string in &strings[1..] {
+                concat_string = StringValue::concat(cx, concat_string, *string);
+            }
+
+            concat_string
+        }
+    }
 }
 
 impl Gc<StringValue> {

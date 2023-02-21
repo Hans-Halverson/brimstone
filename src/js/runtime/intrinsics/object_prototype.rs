@@ -17,6 +17,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
+        string_value::StringValue,
         type_utilities::{
             is_array, is_callable, require_object_coercible, same_object_value, to_object,
             to_property_key,
@@ -221,9 +222,10 @@ impl ObjectPrototype {
         let tag = maybe!(get(cx, object, &to_string_tag_key));
 
         let tag_string = if tag.is_string() {
-            return cx
-                .heap
-                .alloc_string(format!("[object {}]", tag.as_string()))
+            let string_prefix = cx.heap.alloc_string(String::from("[object "));
+            let string_suffix = cx.heap.alloc_string(String::from("]"));
+
+            return StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])
                 .into();
         } else if is_array {
             "Array"

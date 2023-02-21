@@ -30,6 +30,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
+    string_value::StringValue,
     type_utilities::to_object,
     value::Value,
     Context,
@@ -498,29 +499,27 @@ pub fn set_function_name(
     name: &PropertyKey,
     prefix: Option<&str>,
 ) {
-    // Format name including prefix, converting to string value
+    // Convert name to string value, property formatting symbol name
     let name_string = match name.as_symbol() {
         Some(sym) => {
-            let description = if let Some(description) = sym.description() {
-                format!("[{}]", description)
-            } else {
-                String::new()
-            };
+            if let Some(description) = sym.description() {
+                let left_paren = cx.heap.alloc_string(String::from("["));
+                let right_paren = cx.heap.alloc_string(String::from("]"));
 
-            if let Some(prefix) = prefix {
-                cx.heap.alloc_string(format!("{} {}", prefix, description))
+                StringValue::concat_all(cx, &[left_paren, description, right_paren])
             } else {
-                cx.heap.alloc_string(description)
+                cx.names.empty_string().as_string()
             }
         }
-        None => {
-            let string_value = name.non_symbol_to_string(cx);
-            if let Some(prefix) = prefix {
-                cx.heap.alloc_string(format!("{} {}", prefix, string_value))
-            } else {
-                string_value
-            }
-        }
+        None => name.non_symbol_to_string(cx),
+    };
+
+    // Add prefix to name
+    let name_string = if let Some(prefix) = prefix {
+        let prefix_string = cx.heap.alloc_string(format!("{} ", prefix));
+        StringValue::concat(cx, prefix_string, name_string)
+    } else {
+        name_string
     };
 
     if let Some(mut builtin_func) = func.as_builtin_function_opt() {

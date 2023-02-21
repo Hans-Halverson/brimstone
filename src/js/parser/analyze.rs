@@ -37,6 +37,8 @@ pub struct Analyzer {
     class_stack: Vec<ClassStackEntry>,
     // Whether the "arguments" identifier is currently disallowed due to being in a class initializer
     allow_arguments: bool,
+    // Whether a return statement is allowed
+    allow_return_stack: Vec<bool>,
 }
 
 struct FunctionStackEntry {
@@ -46,8 +48,6 @@ struct FunctionStackEntry {
     is_arrow_function: bool,
     is_method: bool,
     is_derived_constructor: bool,
-    // Whether this function stack entry is synthetic and represents eval code directly within a function
-    is_direct_eval_toplevel: bool,
 }
 
 struct ClassStackEntry {
@@ -100,6 +100,7 @@ impl<'a> Analyzer {
             function_stack: vec![],
             class_stack: vec![],
             allow_arguments: true,
+            allow_return_stack: vec![false],
         }
     }
 
@@ -323,13 +324,9 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
-        match self.function_stack.last() {
-            // Return statements must appear within a function, but cannot appear at the top level
-            // of a direct eval (even if the direct eval is within a function).
-            Some(FunctionStackEntry { is_direct_eval_toplevel: false, .. }) => {}
-            _ => {
-                self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction);
-            }
+        match self.allow_return_stack.last() {
+            Some(true) => {}
+            _ => self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction),
         }
 
         default_visit_return_statement(self, stmt);
@@ -633,8 +630,10 @@ impl Analyzer {
             is_arrow_function,
             is_method,
             is_derived_constructor,
-            is_direct_eval_toplevel: false,
         });
+
+        // Return is not allowed in static initializers, but is allowed in all other functions
+        self.allow_return_stack.push(!is_static_initializer);
 
         // Save analyzer context before descending into function
         let saved_state = self.save_state();
@@ -800,6 +799,7 @@ impl Analyzer {
             self.exit_strict_mode_context();
         }
 
+        self.allow_return_stack.pop();
         self.function_stack.pop();
 
         // Restore analyzer context after visiting function
@@ -1224,7 +1224,6 @@ pub fn analyze_for_eval(
             is_arrow_function: false,
             is_method: in_method,
             is_derived_constructor: in_derived_constructor,
-            is_direct_eval_toplevel: true,
         });
     }
 

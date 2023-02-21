@@ -291,7 +291,7 @@ pub fn class_definition_evaluation(
 
                 if method.kind == ClassMethodKind::StaticInitializer {
                     let body_function =
-                        class_static_block_definition_evaluation(cx, method, home_object);
+                        class_static_block_definition_evaluation(cx, method, func.into());
 
                     static_elements.push(StaticElement::Initializer(body_function));
 

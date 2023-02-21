@@ -39,6 +39,8 @@ pub struct Analyzer {
     allow_arguments: bool,
     // Whether a return statement is allowed
     allow_return_stack: Vec<bool>,
+    // Whether a super member expression is allowed
+    allow_super_member_stack: Vec<bool>,
 }
 
 struct FunctionStackEntry {
@@ -101,6 +103,7 @@ impl<'a> Analyzer {
             class_stack: vec![],
             allow_arguments: true,
             allow_return_stack: vec![false],
+            allow_super_member_stack: vec![false],
         }
     }
 
@@ -525,8 +528,8 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
-        match self.enclosing_non_arrow_function() {
-            Some(FunctionStackEntry { is_method: true, .. }) => {}
+        match self.allow_super_member_stack.last() {
+            Some(true) => {}
             _ => self.emit_error(expr.loc, ParseError::SuperPropertyOutsideMethod),
         }
 
@@ -634,6 +637,12 @@ impl Analyzer {
 
         // Return is not allowed in static initializers, but is allowed in all other functions
         self.allow_return_stack.push(!is_static_initializer);
+
+        // Super member expressions are allowed in methods, and in arrow functions are inherited
+        // from surrounding context.
+        if !is_arrow_function {
+            self.allow_super_member_stack.push(is_method);
+        }
 
         // Save analyzer context before descending into function
         let saved_state = self.save_state();
@@ -799,6 +808,10 @@ impl Analyzer {
             self.exit_strict_mode_context();
         }
 
+        if !is_arrow_function {
+            self.allow_super_member_stack.pop();
+        }
+
         self.allow_return_stack.pop();
         self.function_stack.pop();
 
@@ -908,8 +921,9 @@ impl Analyzer {
 
         self.class_stack
             .push(ClassStackEntry { private_names, is_derived: class.super_class.is_some() });
+        self.allow_super_member_stack.push(true);
 
-        // Mark the construtor if it is found, erroring if multiple are found
+        // Mark the constructor if it is found, erroring if multiple are found
         let mut constructor = None;
 
         for element in &mut class.body {
@@ -933,6 +947,7 @@ impl Analyzer {
 
         class.constructor = constructor;
 
+        self.allow_super_member_stack.pop();
         self.class_stack.pop();
 
         self.exit_strict_mode_context();
@@ -1225,6 +1240,10 @@ pub fn analyze_for_eval(
             is_method: in_method,
             is_derived_constructor: in_derived_constructor,
         });
+
+        if in_method {
+            analyzer.allow_super_member_stack.push(true);
+        }
     }
 
     // If in class field initializer then "arguments" is not allowed

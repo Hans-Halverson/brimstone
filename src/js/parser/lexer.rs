@@ -1187,6 +1187,7 @@ impl<'a> Lexer<'a> {
         let raw_end_pos;
 
         let mut has_cr = false;
+        let mut malformed_error_loc = None;
 
         loop {
             match self.current {
@@ -1238,14 +1239,14 @@ impl<'a> Lexer<'a> {
                             value.push('\x00');
                             self.advance2()
                         } else {
-                            let loc = self.mark_loc(self.pos);
-                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                            malformed_error_loc = Some(self.mark_loc(self.pos));
+                            self.advance2()
                         }
                     }
                     // Invalid octal escape sequence
                     '1'..='9' => {
-                        let loc = self.mark_loc(self.pos);
-                        return self.error(loc, ParseError::MalformedEscapeSeqence);
+                        malformed_error_loc = Some(self.mark_loc(self.pos));
+                        self.advance2();
                     }
                     // Hex escape sequence
                     'x' => {
@@ -1259,19 +1260,21 @@ impl<'a> Lexer<'a> {
                             } else {
                                 let loc = self.mark_loc(self.pos);
                                 self.advance();
-                                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                                malformed_error_loc = Some(loc);
                             }
                         } else {
-                            let loc = self.mark_loc(self.pos);
-                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                            malformed_error_loc = Some(self.mark_loc(self.pos));
                         }
                     }
                     // Unicode escape sequence
                     'u' => {
                         let escape_start_pos = self.pos;
                         self.advance2();
-                        let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;
-                        value.push(code_point)
+
+                        match self.lex_unicode_escape_sequence(escape_start_pos) {
+                            Ok(code_point) => value.push(code_point),
+                            Err(err) => malformed_error_loc = Some(err.source_loc.unwrap().0),
+                        }
                     }
                     // Line continuations, either LF, CR, or CRLF, which are excluded in cooked value
                     '\n' => self.advance2(),
@@ -1348,7 +1351,13 @@ impl<'a> Lexer<'a> {
             raw = raw.replace("\r\n", "\n").replace("\r", "\n");
         }
 
-        return self.emit(Token::TemplatePart { raw, cooked: value, is_head, is_tail }, start_pos);
+        // Only return cooked string if a malformed error location was not found
+        let cooked = match malformed_error_loc {
+            None => Ok(value),
+            Some(loc) => Err(loc),
+        };
+
+        return self.emit(Token::TemplatePart { raw, cooked, is_head, is_tail }, start_pos);
     }
 
     #[inline]

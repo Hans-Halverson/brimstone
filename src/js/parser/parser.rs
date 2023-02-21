@@ -1795,8 +1795,19 @@ impl<'a> Parser<'a> {
                     return self.error(self.loc, ParseError::TaggedTemplateInChain);
                 }
 
-                let quasi =
-                    p(self.parse_template_literal(raw.clone(), cooked.clone(), *is_tail)?);
+                // Malformed escape sequence errors are swalled in tagged template, and cooked
+                // string is marked as None.
+                let cooked = match cooked {
+                    Ok(cooked) => Some(cooked.clone()),
+                    Err(_) => None,
+                };
+
+                let quasi = p(self.parse_template_literal(
+                    raw.clone(),
+                    cooked,
+                    *is_tail,
+                    /* is_tagged */ true,
+                )?);
                 let loc = self.mark_loc(start_pos);
 
                 let tagged_template_expr =
@@ -2160,8 +2171,18 @@ impl<'a> Parser<'a> {
             Token::LeftBracket => self.parse_array_expression(),
             Token::Class => Ok(p(Expression::Class(self.parse_class(false)?))),
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
-                let template_literal =
-                    self.parse_template_literal(raw.clone(), cooked.clone(), *is_tail)?;
+                // Non-tagged template literals error on malformed escape sequences
+                let cooked = match cooked {
+                    Ok(cooked) => Some(cooked.clone()),
+                    Err(loc) => return self.error(*loc, ParseError::MalformedEscapeSeqence),
+                };
+
+                let template_literal = self.parse_template_literal(
+                    raw.clone(),
+                    cooked,
+                    *is_tail,
+                    /* is_tagged */ false,
+                )?;
                 Ok(p(Expression::Template(template_literal)))
             }
             _ => {
@@ -2387,13 +2408,13 @@ impl<'a> Parser<'a> {
     fn parse_template_literal(
         &mut self,
         raw: String,
-        cooked: String,
+        cooked: Option<String>,
         is_single_quasi: bool,
+        is_tagged: bool,
     ) -> ParseResult<TemplateLiteral> {
         let start_pos = self.current_start_pos();
 
-        let head_quasi =
-            TemplateElement { loc: self.loc, raw: raw.clone(), cooked: cooked.clone() };
+        let head_quasi = TemplateElement { loc: self.loc, raw: raw.clone(), cooked };
 
         self.advance()?;
 
@@ -2411,6 +2432,19 @@ impl<'a> Parser<'a> {
                 self.advance_template_part()?;
 
                 if let Token::TemplatePart { raw, cooked, is_tail, is_head: false } = &self.token {
+                    // In non-tagged templates malformed escape sequences throw an error, otherwise
+                    // malformed sequences are swallowed and cooked string is marked as None.
+                    let cooked = match cooked {
+                        Ok(cooked) => Some(cooked.clone()),
+                        Err(loc) => {
+                            if is_tagged {
+                                None
+                            } else {
+                                return self.error(*loc, ParseError::MalformedEscapeSeqence);
+                            }
+                        }
+                    };
+
                     quasis.push(TemplateElement {
                         loc: self.loc,
                         raw: raw.clone(),

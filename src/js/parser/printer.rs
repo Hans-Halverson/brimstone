@@ -877,7 +877,7 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("cooked", &element.cooked, Printer::print_string);
+        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_string);
         self.property("raw", &element.raw, Printer::print_string);
 
         self.dec_indent();
@@ -1120,6 +1120,13 @@ impl<'a> Printer<'a> {
         match lit {
             None => self.print_null(),
             Some(lit) => self.print_string_literal(lit),
+        }
+    }
+
+    fn print_optional_string(&mut self, string: Option<&String>) {
+        match string {
+            None => self.print_null(),
+            Some(string) => self.print_string(string),
         }
     }
 

@@ -2,7 +2,7 @@
 pub type Pos = usize;
 
 /// Half open interval describing a source location.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Loc {
     pub start: Pos,
     pub end: Pos,

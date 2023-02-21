@@ -2,14 +2,26 @@ use std::fmt;
 
 use num_bigint::BigInt;
 
+use super::loc::Loc;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(String),
     NumberLiteral(f64),
     StringLiteral(String),
     BigIntLiteral(BigInt),
-    RegexpLiteral { raw: String, pattern: String, flags: String },
-    TemplatePart { raw: String, cooked: String, is_head: bool, is_tail: bool },
+    RegexpLiteral {
+        raw: String,
+        pattern: String,
+        flags: String,
+    },
+    TemplatePart {
+        raw: String,
+        // Either a successful string, or a malformed escape sequence error at the given loc
+        cooked: Result<String, Loc>,
+        is_head: bool,
+        is_tail: bool,
+    },
     Eof,
     // Operators
     Plus,

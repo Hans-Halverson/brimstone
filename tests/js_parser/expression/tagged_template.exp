@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-3:12",
+  loc: "1:0-6:32",
   body: [
     {
       type: "ExpressionStatement",
@@ -107,6 +107,64 @@
             ],
             expressions: [],
           },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:0-6:32",
+      kind: {
+        type: "TaggedTemplateExpression",
+        loc: "6:0-6:31",
+        tag: {
+          type: "Identifier",
+          loc: "6:0-6:1",
+          name: "a",
+        },
+        quasi: {
+          type: "TemplateLiteral",
+          loc: "6:1-6:31",
+          quasis: [
+            {
+              type: "TemplateElement",
+              loc: "6:1-6:11",
+              value: {
+                cooked: null,
+                raw: "text\01",
+              },
+              tail: false,
+            },
+            {
+              type: "TemplateElement",
+              loc: "6:12-6:21",
+              value: {
+                cooked: null,
+                raw: "foo\uX",
+              },
+              tail: false,
+            },
+            {
+              type: "TemplateElement",
+              loc: "6:22-6:31",
+              value: {
+                cooked: "allowed",
+                raw: "allowed",
+              },
+              tail: true,
+            },
+          ],
+          expressions: [
+            {
+              type: "Literal",
+              loc: "6:11-6:12",
+              value: 2,
+            },
+            {
+              type: "Literal",
+              loc: "6:21-6:22",
+              value: 3,
+            },
+          ],
         },
       },
     },

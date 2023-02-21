@@ -879,7 +879,7 @@ pub struct TemplateLiteral {
 pub struct TemplateElement {
     pub loc: Loc,
     pub raw: String,
-    pub cooked: String,
+    pub cooked: Option<String>,
 }
 
 pub struct TaggedTemplateExpression {

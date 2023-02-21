@@ -317,7 +317,7 @@ pub fn eval_property_name<'a>(
 fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalResult<Value> {
     let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
 
-    let first_quasi_part = cx.get_interned_string(&lit.quasis[0].cooked);
+    let first_quasi_part = cx.get_interned_string(&lit.quasis[0].cooked.as_deref().unwrap());
     string_parts.push(first_quasi_part);
 
     for i in 1..lit.quasis.len() {
@@ -326,7 +326,7 @@ fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalRe
 
         string_parts.push(expr_string);
 
-        let quasi_part = cx.get_interned_string(&lit.quasis[i].cooked);
+        let quasi_part = cx.get_interned_string(&lit.quasis[i].cooked.as_deref().unwrap());
         string_parts.push(quasi_part);
     }
 
@@ -729,8 +729,11 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
     for (i, quasi) in lit.quasis.iter().enumerate() {
         let index_key = PropertyKey::array_index(cx, i as u32);
 
-        let cooked_value = cx.get_interned_string(&quasi.cooked);
-        let cooked_desc = PropertyDescriptor::data(cooked_value.into(), false, true, false);
+        let cooked_value = match &quasi.cooked {
+            None => Value::undefined(),
+            Some(cooked) => cx.get_interned_string(cooked).into(),
+        };
+        let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, &index_key, cooked_desc));
 
         let raw_value = cx.get_interned_string(&quasi.raw);

@@ -112,7 +112,7 @@ impl ObjectConstructor {
         new_target: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         if let Some(new_target) = new_target {
-            if cx
+            if !cx
                 .current_execution_context()
                 .function
                 .unwrap()

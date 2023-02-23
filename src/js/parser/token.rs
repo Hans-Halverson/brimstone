@@ -131,6 +131,8 @@ pub enum Token {
     Export,
     Await,
     Yield,
+    Target,
+    Meta,
     Enum,
 }
 
@@ -258,6 +260,8 @@ impl fmt::Display for Token {
             Token::Export => "export",
             Token::Await => "await",
             Token::Yield => "yield",
+            Token::Target => "target",
+            Token::Meta => "meta",
             Token::Enum => "enum",
         };
 

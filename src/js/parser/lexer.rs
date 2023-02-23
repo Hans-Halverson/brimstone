@@ -1446,16 +1446,35 @@ impl<'a> Lexer<'a> {
             } else if self.current == EOF_CHAR {
                 break;
             } else {
-                // Start of an escape sequence so bail to slow path, copying over ASCII string that
-                // has been created so far.
-                let string_builder = String::from(&self.buf[start_pos..self.pos]);
+                // Peek at the next code point, which is either a unicode character or an escape
+                // sequence. This may be part of the identifier.
+                let save_state = self.save();
+                let ascii_end_pos = self.pos;
+
+                let code_point = if self.current == '\\' {
+                    self.lex_identifier_unicode_escape_sequence()?
+                } else {
+                    self.lex_utf8_codepoint()?
+                };
+
+                // If not an id part then this is a pure ASCII identifier
+                if !is_id_part_ascii(code_point) && !is_id_part_unicode(code_point) {
+                    self.restore(&save_state);
+                    break;
+                }
+
+                // Otherwise the non-ASCII character is part of the identifier so bail to slow path,
+                // copying over ASCII string and code point that has been created so far.
+                let mut string_builder = String::from(&self.buf[start_pos..ascii_end_pos]);
+                string_builder.push(code_point);
+
                 return self.lex_identifier_non_ascii(start_pos, string_builder);
             }
         }
 
         let id_string = &self.buf[start_pos..self.pos];
 
-        if let Some(keyword_token) = self.id_to_keyword(id_string) {
+        if let Some(keyword_token) = self.ascii_id_to_keyword(id_string) {
             self.emit(keyword_token, start_pos)
         } else {
             self.emit(Token::Identifier(String::from(id_string)), start_pos)
@@ -1500,12 +1519,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        // Escape characters can be used in keywords
-        if let Some(keyword_token) = self.id_to_keyword(&string_builder) {
-            self.emit(keyword_token, start_pos)
-        } else {
-            self.emit(Token::Identifier(string_builder), start_pos)
-        }
+        self.emit(Token::Identifier(string_builder), start_pos)
     }
 
     fn lex_identifier_unicode_escape_sequence(&mut self) -> ParseResult<char> {
@@ -1523,7 +1537,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn id_to_keyword(&mut self, id_string: &str) -> Option<Token> {
+    fn ascii_id_to_keyword(&mut self, id_string: &str) -> Option<Token> {
         match id_string {
             "var" => Some(Token::Var),
             "let" => Some(Token::Let),
@@ -1570,6 +1584,8 @@ impl<'a> Lexer<'a> {
             "export" => Some(Token::Export),
             "await" => Some(Token::Await),
             "yield" => Some(Token::Yield),
+            "target" => Some(Token::Target),
+            "meta" => Some(Token::Meta),
             "enum" => Some(Token::Enum),
             _ => None,
         }

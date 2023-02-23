@@ -1948,37 +1948,25 @@ impl<'a> Parser<'a> {
     fn parse_new_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
 
-        // Check whether the `new` keyword has any escape sequences
-        let new_has_escapes = self.loc.end - self.loc.start != 3;
-
         self.advance()?;
 
         let callee_start_pos = self.current_start_pos();
         let callee = match self.token {
             Token::New => self.parse_new_expression()?,
             // Parse new.target meta property
-            Token::Period if !new_has_escapes => {
+            Token::Period => {
                 self.advance()?;
-                let error_loc = if let Some(id) = self.parse_identifier_name()? {
-                    if id.name == "target" {
-                        let target_has_escapes = id.loc.end - id.loc.start != 6;
-                        if !target_has_escapes {
-                            let loc = self.mark_loc(start_pos);
-                            return Ok(p(Expression::MetaProperty(MetaProperty {
-                                loc,
-                                kind: MetaPropertyKind::NewTarget,
-                            })));
-                        } else {
-                            id.loc
-                        }
-                    } else {
-                        id.loc
-                    }
-                } else {
-                    self.loc
-                };
+                return if self.token == Token::Target {
+                    self.advance()?;
+                    let loc = self.mark_loc(start_pos);
 
-                return self.error(error_loc, ParseError::ExpectedNewTarget);
+                    Ok(p(Expression::MetaProperty(MetaProperty {
+                        loc,
+                        kind: MetaPropertyKind::NewTarget,
+                    })))
+                } else {
+                    self.error(self.loc, ParseError::ExpectedNewTarget)
+                };
             }
             _ => self.parse_primary_expression()?,
         };
@@ -2048,35 +2036,23 @@ impl<'a> Parser<'a> {
     fn parse_import_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
 
-        // Check whether the `import` keyword has any escape sequences
-        let import_has_escapes = self.loc.end - self.loc.start != 6;
-
         self.advance()?;
 
         match &self.token {
             // Parse import.meta meta property
-            Token::Period if !import_has_escapes => {
+            Token::Period => {
                 self.advance()?;
-                let error_loc = if let Some(id) = self.parse_identifier_name()? {
-                    if id.name == "meta" {
-                        let meta_has_escapes = id.loc.end - id.loc.start != 4;
-                        if !meta_has_escapes {
-                            let loc = self.mark_loc(start_pos);
-                            return Ok(p(Expression::MetaProperty(MetaProperty {
-                                loc,
-                                kind: MetaPropertyKind::ImportMeta,
-                            })));
-                        } else {
-                            id.loc
-                        }
-                    } else {
-                        id.loc
-                    }
-                } else {
-                    self.loc
-                };
+                return if self.token == Token::Meta {
+                    self.advance()?;
+                    let loc = self.mark_loc(start_pos);
 
-                self.error(error_loc, ParseError::ExpectedImportMeta)
+                    Ok(p(Expression::MetaProperty(MetaProperty {
+                        loc,
+                        kind: MetaPropertyKind::ImportMeta,
+                    })))
+                } else {
+                    self.error(self.loc, ParseError::ExpectedImportMeta)
+                };
             }
             _ => {
                 self.expect(Token::LeftParen)?;
@@ -2274,22 +2250,17 @@ impl<'a> Parser<'a> {
         allow_yield: bool,
     ) -> bool {
         match token {
-            Token::Identifier(name) => {
-                // Names that are contextually disallowed as identifiers when in strict mode
-                if in_strict_mode {
-                    match name.as_str() {
-                        "implements" | "interface" | "package" | "private" | "protected"
-                        | "public" => {
-                            return false;
-                        }
-                        _ => {}
-                    }
-                }
-
-                true
-            }
+            // Identifier's value cannot be a reserved word (e.g. due to escape characters)
+            Token::Identifier(name) => !Self::is_reserved_word(name, in_strict_mode, allow_yield),
             // Tokens that are always allowed as identifiers
-            Token::Async | Token::Of | Token::From | Token::As | Token::Get | Token::Set => true,
+            Token::Async
+            | Token::Of
+            | Token::From
+            | Token::As
+            | Token::Get
+            | Token::Set
+            | Token::Target
+            | Token::Meta => true,
             // Tokens that are contextually allowed as identifiers, when not in strict mode
             Token::Let | Token::Static if !in_strict_mode => true,
             // Contextually allowed as identifier when not in strict mode and not allowing yield
@@ -2356,6 +2327,8 @@ impl<'a> Parser<'a> {
             | Token::Export
             | Token::Await
             | Token::Yield
+            | Token::Target
+            | Token::Meta
             | Token::Enum => {
                 let loc = self.loc;
                 let name = self.token.to_string();
@@ -2366,8 +2339,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn identifier_is_reserved_word(&self, id: &Identifier) -> bool {
-        match id.name.as_str() {
+    fn is_reserved_word_in_current_context(&self, str: &str) -> bool {
+        Self::is_reserved_word(str, self.in_strict_mode, self.allow_yield)
+    }
+
+    fn is_reserved_word(str: &str, in_strict_mode: bool, allow_yield: bool) -> bool {
+        match str {
             // Names that are always reserved
             "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger"
             | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false"
@@ -2377,11 +2354,11 @@ impl<'a> Parser<'a> {
             // Names that are only reserved in strict mode
             "let" | "static" | "implements" | "interface" | "package" | "private" | "protected"
             | "public"
-                if self.in_strict_mode =>
+                if in_strict_mode =>
             {
                 true
             }
-            "yield" => self.in_strict_mode || self.allow_yield,
+            "yield" => in_strict_mode || allow_yield,
             _ => false,
         }
     }
@@ -2557,11 +2534,10 @@ impl<'a> Parser<'a> {
 
         // Handle getters and setters
         match self.token {
-            // Only allow "get" or "set" literals without escapes
-            Token::Get | Token::Set if self.loc.end - self.loc.start == 3 => {
+            Token::Get | Token::Set => {
                 let id_loc = self.loc;
                 let id_token = self.token.clone();
-                let kind = if self.token == Token::Get {
+                let kind = if let Token::Get = self.token {
                     PropertyKind::Get
                 } else {
                     PropertyKind::Set
@@ -2803,7 +2779,7 @@ impl<'a> Parser<'a> {
         let value = if is_shorthand {
             if prop_context != PropertyContext::Class {
                 let key_id = key.to_id();
-                if self.identifier_is_reserved_word(key_id) {
+                if self.is_reserved_word_in_current_context(&key_id.name) {
                     return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
                 }
             }
@@ -3035,12 +3011,9 @@ impl<'a> Parser<'a> {
                 )));
             }
 
-            // If `static` has escape characters it must be an identifier not a keyword
-            let has_escapes = static_loc.end - static_loc.start != 6;
-
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
-            if is_init_property || self.is_property_end(PropertyContext::Class) || has_escapes {
+            if is_init_property || self.is_property_end(PropertyContext::Class) {
                 let name =
                     p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
 
@@ -3269,7 +3242,7 @@ impl<'a> Parser<'a> {
         // Shorthand property
         if property_name.is_shorthand {
             let value = if let Expression::Id(id) = *property_name.key {
-                if self.identifier_is_reserved_word(&id) {
+                if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
 
@@ -3447,7 +3420,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
-                    if self.identifier_is_reserved_word(&id) {
+                    if self.is_reserved_word_in_current_context(&id.name) {
                         return self.error_unexpected_token(id.loc, &start_token);
                     }
 

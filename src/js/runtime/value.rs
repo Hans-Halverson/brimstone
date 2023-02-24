@@ -1,9 +1,12 @@
+use std::{collections::HashMap, hash};
+
 use num_bigint::BigInt;
 
 use super::{
     gc::{Gc, GcDeref},
     object_value::ObjectValue,
     string_value::StringValue,
+    type_utilities::same_value_zero,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
@@ -435,3 +438,76 @@ pub struct AccessorValue {
 }
 
 impl GcDeref for AccessorValue {}
+
+/// A wrapper around values that are used as keys in ValueMap and ValueSet.
+struct ValueCollectionKey(Value);
+
+impl From<Value> for ValueCollectionKey {
+    fn from(value: Value) -> Self {
+        ValueCollectionKey(value)
+    }
+}
+
+impl PartialEq for ValueCollectionKey {
+    fn eq(&self, other: &Self) -> bool {
+        same_value_zero(self.0, other.0)
+    }
+}
+
+impl Eq for ValueCollectionKey {}
+
+impl hash::Hash for ValueCollectionKey {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        if self.0.is_number() {
+            // Make sure that -0 has the same hash as +0
+            return if self.0.is_negative_zero() {
+                (0 as u64).hash(state);
+            } else {
+                self.0.as_raw_bits().hash(state);
+            };
+        }
+
+        let tag = self.0.get_tag();
+        if tag == STRING_TAG {
+            self.0.as_string().hash(state);
+        } else if tag == BIGINT_TAG {
+            self.0.as_bigint().bigint().hash(state);
+        } else {
+            self.0.as_raw_bits().hash(state);
+        }
+    }
+}
+
+pub struct ValueMap<T> {
+    map: HashMap<ValueCollectionKey, T>,
+}
+
+impl<T> ValueMap<T> {
+    pub fn new() -> ValueMap<T> {
+        ValueMap { map: HashMap::new() }
+    }
+
+    pub fn clear(&mut self) {
+        self.map.clear()
+    }
+
+    pub fn contains_key(&self, key: Value) -> bool {
+        self.map.contains_key(&key.into())
+    }
+
+    pub fn get(&self, key: Value) -> Option<&T> {
+        self.map.get(&key.into())
+    }
+
+    pub fn insert(&mut self, key: Value, value: T) -> Option<T> {
+        self.map.insert(key.into(), value)
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn remove(&mut self, key: Value) -> Option<T> {
+        self.map.remove(&key.into())
+    }
+}

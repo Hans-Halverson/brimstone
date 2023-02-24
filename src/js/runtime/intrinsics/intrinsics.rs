@@ -13,7 +13,8 @@ use crate::{
             boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype, global_object::create_eval,
-            iterator_prototype::IteratorPrototype, math_object::MathObject, native_error::*,
+            iterator_prototype::IteratorPrototype, map_constructor::MapConstructor,
+            map_prototype::MapPrototype, math_object::MathObject, native_error::*,
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
             proxy_constructor::ProxyConstructor, reflect_object::ReflectObject,
@@ -48,6 +49,8 @@ pub enum Intrinsic {
     FunctionConstructor,
     FunctionPrototype,
     IteratorPrototype,
+    MapConstructor,
+    MapPrototype,
     Math,
     NumberConstructor,
     NumberPrototype,
@@ -152,6 +155,7 @@ impl Intrinsics {
         register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
         register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
+        register_intrinsic_pair!(MapPrototype, MapConstructor);
 
         // Native errors
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);

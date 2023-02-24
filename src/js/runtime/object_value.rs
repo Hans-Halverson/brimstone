@@ -163,6 +163,10 @@ pub trait Object {
         false
     }
 
+    fn is_map_object(&self) -> bool {
+        false
+    }
+
     fn is_arguments_object(&self) -> bool {
         false
     }

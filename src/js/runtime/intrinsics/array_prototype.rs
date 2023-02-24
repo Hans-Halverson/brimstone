@@ -70,7 +70,7 @@ impl ArrayPrototype {
         object.intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
         object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        object.intrinsic_func(cx, &cx.names.map(), Self::map, 1, realm);
+        object.intrinsic_func(cx, &cx.names.map_(), Self::map, 1, realm);
         object.intrinsic_func(cx, &cx.names.pop(), Self::pop, 0, realm);
         object.intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
         object.intrinsic_func(cx, &cx.names.reduce(), Self::reduce, 1, realm);

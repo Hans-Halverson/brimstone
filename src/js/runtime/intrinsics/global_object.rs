@@ -86,10 +86,17 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.array_buffer(), ArrayBufferConstructor);
     intrinsic_prop!(&cx.names.array(), ArrayConstructor);
     intrinsic_prop!(&cx.names.bigint(), BigIntConstructor);
+    intrinsic_prop!(&cx.names.big_int64_array(), BigInt64ArrayConstructor);
+    intrinsic_prop!(&cx.names.big_uint64_array(), BigUInt64ArrayConstructor);
     intrinsic_prop!(&cx.names.boolean(), BooleanConstructor);
     intrinsic_prop!(&cx.names.error(), ErrorConstructor);
     intrinsic_prop!(&cx.names.eval_error(), EvalErrorConstructor);
+    intrinsic_prop!(&cx.names.float32_array(), Float32ArrayConstructor);
+    intrinsic_prop!(&cx.names.float64_array(), Float64ArrayConstructor);
     intrinsic_prop!(&cx.names.function(), FunctionConstructor);
+    intrinsic_prop!(&cx.names.int8_array(), Int8ArrayConstructor);
+    intrinsic_prop!(&cx.names.int16_array(), Int16ArrayConstructor);
+    intrinsic_prop!(&cx.names.int32_array(), Int32ArrayConstructor);
     intrinsic_prop!(&cx.names.map(), MapConstructor);
     intrinsic_prop!(&cx.names.number(), NumberConstructor);
     intrinsic_prop!(&cx.names.object(), ObjectConstructor);
@@ -101,6 +108,10 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.symbol(), SymbolConstructor);
     intrinsic_prop!(&cx.names.syntax_error(), SyntaxErrorConstructor);
     intrinsic_prop!(&cx.names.type_error(), TypeErrorConstructor);
+    intrinsic_prop!(&cx.names.uint8_array(), UInt8ArrayConstructor);
+    intrinsic_prop!(&cx.names.uint8_clamped_array(), UInt8ClampedArrayConstructor);
+    intrinsic_prop!(&cx.names.uint16_array(), UInt16ArrayConstructor);
+    intrinsic_prop!(&cx.names.uint32_array(), UInt32ArrayConstructor);
     intrinsic_prop!(&cx.names.uri_error(), URIErrorConstructor);
 
     // 19.4 Other Properties of the Global Object

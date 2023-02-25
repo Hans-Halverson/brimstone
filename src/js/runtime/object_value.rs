@@ -5,6 +5,7 @@ use crate::maybe;
 
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
+use super::intrinsics::typed_array::TypedArray;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
 use super::type_utilities::same_opt_object_value;
@@ -122,11 +123,6 @@ pub trait Object {
         cx.current_realm().into()
     }
 
-    // Type refinement functions
-    fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
-        None
-    }
-
     fn is_array(&self) -> bool {
         false
     }
@@ -179,6 +175,10 @@ pub trait Object {
         false
     }
 
+    fn is_typed_array(&self) -> bool {
+        false
+    }
+
     fn is_arguments_object(&self) -> bool {
         false
     }
@@ -189,6 +189,15 @@ pub trait Object {
 
     fn is_bound_function(&self) -> bool {
         false
+    }
+
+    // Type refinement functions
+    fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
+        None
+    }
+
+    fn as_typed_array(&self) -> Gc<dyn TypedArray> {
+        unreachable!("as_typed_array can only be called on typed arrays")
     }
 }
 

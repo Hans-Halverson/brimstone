@@ -44,7 +44,7 @@ impl ArrayBufferObject {
     const VTABLE: *const () = extract_object_vtable::<ArrayBufferObject>();
 
     // 25.1.2.1 AllocateArrayBuffer
-    fn new(
+    pub fn new(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
         byte_length: usize,

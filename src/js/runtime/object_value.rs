@@ -167,6 +167,10 @@ pub trait Object {
         false
     }
 
+    fn is_set_object(&self) -> bool {
+        false
+    }
+
     fn is_arguments_object(&self) -> bool {
         false
     }

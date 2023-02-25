@@ -471,7 +471,7 @@ impl Object for ProxyObject {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.set()));
+        let trap = maybe!(get_method(cx, handler, &cx.names.set_()));
 
         if trap.is_none() {
             return target.set(cx, key, value, receiver);

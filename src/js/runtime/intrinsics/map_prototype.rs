@@ -27,7 +27,7 @@ impl MapPrototype {
         object.intrinsic_func(cx, &cx.names.delete(), Self::delete, 1, realm);
         object.intrinsic_func(cx, &cx.names.get(), Self::get, 1, realm);
         object.intrinsic_func(cx, &cx.names.has(), Self::has, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set(), Self::set, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_(), Self::set, 2, realm);
         object.intrinsic_getter(cx, &cx.names.size(), Self::size, realm);
 
         // 24.1.3.13 Map.prototype [ @@toStringTag ]

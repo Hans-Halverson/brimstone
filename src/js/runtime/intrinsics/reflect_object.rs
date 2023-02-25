@@ -52,7 +52,7 @@ impl ReflectObject {
             1,
             realm,
         );
-        object.intrinsic_func(cx, &cx.names.set(), Self::set, 3, realm);
+        object.intrinsic_func(cx, &cx.names.set_(), Self::set, 3, realm);
         object.intrinsic_func(cx, &cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
 
         // 28.1.14 Reflect [ @@toStringTag ]

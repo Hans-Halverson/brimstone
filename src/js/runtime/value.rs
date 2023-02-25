@@ -1,4 +1,7 @@
-use std::{collections::HashMap, hash};
+use std::{
+    collections::{HashMap, HashSet},
+    hash,
+};
 
 use num_bigint::BigInt;
 
@@ -440,6 +443,7 @@ pub struct AccessorValue {
 impl GcDeref for AccessorValue {}
 
 /// A wrapper around values that are used as keys in ValueMap and ValueSet.
+/// Uses the SameValueZero algorithm to check equality, and hash function conforms to SameValueZero.
 struct ValueCollectionKey(Value);
 
 impl From<Value> for ValueCollectionKey {
@@ -473,6 +477,7 @@ impl hash::Hash for ValueCollectionKey {
         } else if tag == BIGINT_TAG {
             self.0.as_bigint().bigint().hash(state);
         } else {
+            // TODO: Hash for objects and symbols must be stable across GCs
             self.0.as_raw_bits().hash(state);
         }
     }
@@ -509,5 +514,35 @@ impl<T> ValueMap<T> {
 
     pub fn remove(&mut self, key: Value) -> Option<T> {
         self.map.remove(&key.into())
+    }
+}
+
+pub struct ValueSet {
+    set: HashSet<ValueCollectionKey>,
+}
+
+impl ValueSet {
+    pub fn new() -> ValueSet {
+        ValueSet { set: HashSet::new() }
+    }
+
+    pub fn clear(&mut self) {
+        self.set.clear()
+    }
+
+    pub fn contains(&self, key: Value) -> bool {
+        self.set.contains(&key.into())
+    }
+
+    pub fn insert(&mut self, key: Value) -> bool {
+        self.set.insert(key.into())
+    }
+
+    pub fn len(&self) -> usize {
+        self.set.len()
+    }
+
+    pub fn remove(&mut self, key: Value) -> bool {
+        self.set.remove(&key.into())
     }
 }

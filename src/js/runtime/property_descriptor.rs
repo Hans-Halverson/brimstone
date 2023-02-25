@@ -178,7 +178,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
     }
 
     if let Some(set) = desc.set {
-        must!(create_data_property_or_throw(cx, object.into(), &cx.names.set(), set.into(),));
+        must!(create_data_property_or_throw(cx, object.into(), &cx.names.set_(), set.into(),));
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {
@@ -251,8 +251,8 @@ pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<Prop
         };
     }
 
-    if maybe!(has_property(cx, object, &cx.names.set())) {
-        let set = maybe!(get(cx, object, &cx.names.set()));
+    if maybe!(has_property(cx, object, &cx.names.set_())) {
+        let set = maybe!(get(cx, object, &cx.names.set_()));
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
             return type_error_(cx, "setter is not callable");

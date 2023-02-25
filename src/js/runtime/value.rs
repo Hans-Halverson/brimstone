@@ -442,11 +442,18 @@ impl GcDeref for AccessorValue {}
 
 /// A wrapper around values that are used as keys in ValueMap and ValueSet.
 /// Uses the SameValueZero algorithm to check equality, and hash function conforms to SameValueZero.
-struct ValueCollectionKey(Value);
+#[derive(Clone, Copy)]
+pub struct ValueCollectionKey(Value);
 
 impl From<Value> for ValueCollectionKey {
     fn from(value: Value) -> Self {
         ValueCollectionKey(value)
+    }
+}
+
+impl From<ValueCollectionKey> for Value {
+    fn from(value: ValueCollectionKey) -> Self {
+        value.0
     }
 }
 
@@ -519,6 +526,8 @@ pub struct ValueSet {
     set: IndexSet<ValueCollectionKey>,
 }
 
+pub type ValueSetIter<'a> = indexmap::set::Iter<'a, ValueCollectionKey>;
+
 impl ValueSet {
     pub fn new() -> ValueSet {
         ValueSet { set: IndexSet::new() }
@@ -542,5 +551,12 @@ impl ValueSet {
 
     pub fn remove(&mut self, value: Value) -> bool {
         self.set.remove(&ValueCollectionKey::from(value))
+    }
+
+    pub fn iter<'a, 'b>(&'a self) -> ValueSetIter<'b> {
+        unsafe {
+            // Intentionally break lifetime
+            std::mem::transmute::<ValueSetIter<'a>, ValueSetIter<'b>>(self.set.iter())
+        }
     }
 }

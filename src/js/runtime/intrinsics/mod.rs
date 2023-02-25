@@ -23,6 +23,7 @@ mod object_prototype;
 mod proxy_constructor;
 mod reflect_object;
 mod set_constructor;
+mod set_iterator;
 mod set_prototype;
 pub mod string_constructor;
 mod string_iterator;

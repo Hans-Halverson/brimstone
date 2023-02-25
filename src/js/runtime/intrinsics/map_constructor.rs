@@ -13,9 +13,7 @@ use crate::{
         get,
         iterator::iter_iterator_values,
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{
-            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
-        },
+        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,

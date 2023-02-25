@@ -18,10 +18,10 @@ use crate::{
             number_constructor::NumberConstructor, number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
             proxy_constructor::ProxyConstructor, reflect_object::ReflectObject,
-            set_constructor::SetConstructor, set_prototype::SetPrototype,
-            string_constructor::StringConstructor, string_iterator::StringIteratorPrototype,
-            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
-            symbol_prototype::SymbolPrototype,
+            set_constructor::SetConstructor, set_iterator::SetIteratorPrototype,
+            set_prototype::SetPrototype, string_constructor::StringConstructor,
+            string_iterator::StringIteratorPrototype, string_prototype::StringPrototype,
+            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -65,6 +65,7 @@ pub enum Intrinsic {
     ReferenceErrorPrototype,
     Reflect,
     SetConstructor,
+    SetIteratorPrototype,
     SetPrototype,
     StringConstructor,
     StringIteratorPrototype,
@@ -173,6 +174,7 @@ impl Intrinsics {
         register_intrinsic!(IteratorPrototype, IteratorPrototype);
         register_intrinsic!(ArrayIteratorPrototype, ArrayIteratorPrototype);
         register_intrinsic!(StringIteratorPrototype, StringIteratorPrototype);
+        register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
 
         // Builtin objects
         register_intrinsic!(Math, MathObject);

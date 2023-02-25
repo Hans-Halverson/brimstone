@@ -1,8 +1,6 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash,
-};
+use std::hash;
 
+use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
 
 use super::{
@@ -484,12 +482,12 @@ impl hash::Hash for ValueCollectionKey {
 }
 
 pub struct ValueMap<T> {
-    map: HashMap<ValueCollectionKey, T>,
+    map: IndexMap<ValueCollectionKey, T>,
 }
 
 impl<T> ValueMap<T> {
     pub fn new() -> ValueMap<T> {
-        ValueMap { map: HashMap::new() }
+        ValueMap { map: IndexMap::new() }
     }
 
     pub fn clear(&mut self) {
@@ -497,11 +495,11 @@ impl<T> ValueMap<T> {
     }
 
     pub fn contains_key(&self, key: Value) -> bool {
-        self.map.contains_key(&key.into())
+        self.map.contains_key(&ValueCollectionKey::from(key))
     }
 
     pub fn get(&self, key: Value) -> Option<&T> {
-        self.map.get(&key.into())
+        self.map.get(&ValueCollectionKey::from(key))
     }
 
     pub fn insert(&mut self, key: Value, value: T) -> Option<T> {
@@ -513,36 +511,36 @@ impl<T> ValueMap<T> {
     }
 
     pub fn remove(&mut self, key: Value) -> Option<T> {
-        self.map.remove(&key.into())
+        self.map.remove(&ValueCollectionKey::from(key))
     }
 }
 
 pub struct ValueSet {
-    set: HashSet<ValueCollectionKey>,
+    set: IndexSet<ValueCollectionKey>,
 }
 
 impl ValueSet {
     pub fn new() -> ValueSet {
-        ValueSet { set: HashSet::new() }
+        ValueSet { set: IndexSet::new() }
     }
 
     pub fn clear(&mut self) {
         self.set.clear()
     }
 
-    pub fn contains(&self, key: Value) -> bool {
-        self.set.contains(&key.into())
+    pub fn contains(&self, value: Value) -> bool {
+        self.set.contains(&ValueCollectionKey::from(value))
     }
 
-    pub fn insert(&mut self, key: Value) -> bool {
-        self.set.insert(key.into())
+    pub fn insert(&mut self, value: Value) -> bool {
+        self.set.insert(value.into())
     }
 
     pub fn len(&self) -> usize {
         self.set.len()
     }
 
-    pub fn remove(&mut self, key: Value) -> bool {
-        self.set.remove(&key.into())
+    pub fn remove(&mut self, value: Value) -> bool {
+        self.set.remove(&ValueCollectionKey::from(value))
     }
 }

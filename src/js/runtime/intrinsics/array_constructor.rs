@@ -10,7 +10,6 @@ use crate::{
         property::Property,
         property_key::PropertyKey,
         type_utilities::{is_array, is_constructor, to_uint32},
-        value::AccessorValue,
         Context, EvalResult, Gc, Realm, Value,
     },
     maybe, must,
@@ -47,22 +46,9 @@ impl ArrayConstructor {
         func.intrinsic_func(cx, &cx.names.is_array(), Self::is_array, 1, realm);
         func.intrinsic_func(cx, &cx.names.of(), Self::of, 0, realm);
 
-        // [Symbol.species] property
+        // 23.1.2.5 get Array [ @@species ]
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        let species_name = cx.heap.alloc_string(String::from("[Symbol.species]"));
-        let species_func = BuiltinFunction::create(
-            cx,
-            Self::get_species,
-            0,
-            &PropertyKey::string_not_number(species_name),
-            Some(realm),
-            None,
-            Some("get"),
-        );
-        let species_accessor = cx
-            .heap
-            .alloc(AccessorValue { get: Some(species_func.into()), set: None });
-        func.set_property(&species_key, Property::accessor(species_accessor.into(), false, true));
+        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
 
         func
     }

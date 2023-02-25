@@ -129,6 +129,16 @@ impl BuiltinFunction {
     ) {
         self.object.intrinsic_func(cx, name, func, length, realm);
     }
+
+    pub fn intrinsic_getter(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        func: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        self.object.intrinsic_getter(cx, name, func, realm)
+    }
 }
 
 #[wrap_ordinary_object]

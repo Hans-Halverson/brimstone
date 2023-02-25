@@ -3,19 +3,28 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     impl_gc_into,
     js::runtime::{
+        abstract_operations::call_object,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
+        error::{type_error, type_error_},
+        function::get_argument,
         gc::{Gc, GcDeref},
+        get,
+        iterator::iter_iterator_values,
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        ordinary_object::{
+            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
+        },
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
+        type_utilities::is_callable,
         value::{Value, ValueMap},
-        Context,
+        Completion, Context,
     },
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -35,10 +44,7 @@ impl_gc_into!(MapObject, ObjectValue);
 impl MapObject {
     const VTABLE: *const () = extract_object_vtable::<MapObject>();
 
-    pub fn new_from_value(cx: &mut Context) -> Gc<MapObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::MapPrototype);
-        let object = ordinary_object_create(proto);
-
+    pub fn new(cx: &mut Context, object: OrdinaryObject) -> Gc<MapObject> {
         let map_object = MapObject { _vtable: Self::VTABLE, object, map_data: ValueMap::new() };
         cx.heap.alloc(map_object)
     }
@@ -91,16 +97,92 @@ impl MapConstructor {
             ),
         );
 
+        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+
         func
     }
 
     // 24.1.1.1 Map
     fn construct(
-        _: &mut Context,
+        cx: &mut Context,
         _: Value,
+        arguments: &[Value],
+        new_target: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let new_target = if let Some(new_target) = new_target {
+            new_target
+        } else {
+            return type_error_(cx, "Map constructor must be called with new");
+        };
+
+        let object =
+            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::MapPrototype));
+        let map_object: Gc<ObjectValue> = MapObject::new(cx, object).into();
+
+        let iterable = get_argument(arguments, 0);
+        if iterable.is_nullish() {
+            return map_object.into();
+        }
+
+        let adder = maybe!(get(cx, map_object, &cx.names.set_()));
+        if !is_callable(adder) {
+            return type_error_(cx, "map must contain a set method");
+        }
+
+        add_entries_from_iterable(cx, map_object.into(), iterable, adder.as_object())
+    }
+
+    // 24.1.2.2 get Map [ @@species ]
+    fn get_species(
+        _: &mut Context,
+        this_value: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        unimplemented!("Map constructor")
+        this_value.into()
     }
+}
+
+// 24.1.1.2 AddEntriesFromIterable
+fn add_entries_from_iterable(
+    cx: &mut Context,
+    target: Value,
+    iterable: Value,
+    adder: Gc<ObjectValue>,
+) -> EvalResult<Value> {
+    let completion = iter_iterator_values(cx, iterable, &mut |cx, entry| {
+        if !entry.is_object() {
+            return Some(type_error(cx, "entry must be an object"));
+        }
+
+        let entry = entry.as_object();
+
+        // Extract key from entry, returning throw completion on error
+        let key_index = PropertyKey::array_index(cx, 0);
+        let key_result = get(cx, entry, &key_index);
+        let key = match key_result {
+            EvalResult::Ok(key) => key,
+            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+        };
+
+        // Extract value from entry, returning throw completion on error
+        let value_index = PropertyKey::array_index(cx, 1);
+        let value_result = get(cx, entry, &value_index);
+        let value = match value_result {
+            EvalResult::Ok(value) => value,
+            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+        };
+
+        // Add key and value to target
+        let result = call_object(cx, adder, target, &[key, value]);
+        match result {
+            EvalResult::Ok(_) => None,
+            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+        }
+    });
+
+    maybe!(completion.into_eval_result());
+
+    target.into()
 }

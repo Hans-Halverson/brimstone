@@ -1,3 +1,5 @@
+mod aggregate_error_constructor;
+mod aggregate_error_prototype;
 mod array_constructor;
 mod array_iterator;
 mod array_prototype;

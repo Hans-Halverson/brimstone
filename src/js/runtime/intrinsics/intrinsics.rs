@@ -7,6 +7,8 @@ use crate::{
         gc::Gc,
         get,
         intrinsics::{
+            aggregate_error_constructor::AggregateErrorConstructor,
+            aggregate_error_prototype::AggregateErrorPrototype,
             array_constructor::ArrayConstructor, array_iterator::ArrayIteratorPrototype,
             array_prototype::ArrayPrototype, bigint_constructor::BigIntConstructor,
             bigint_prototype::BigIntPrototype, boolean_constructor::BooleanConstructor,
@@ -36,6 +38,8 @@ use crate::{
 #[repr(u8)]
 pub enum Intrinsic {
     ArrayConstructor = 0,
+    AggregateErrorConstructor,
+    AggregateErrorPrototype,
     ArrayIteratorPrototype,
     ArrayPrototype,
     ArrayPrototypeValues,
@@ -165,6 +169,7 @@ impl Intrinsics {
         register_intrinsic_pair!(SetPrototype, SetConstructor);
 
         // Native errors
+        register_intrinsic_pair!(AggregateErrorPrototype, AggregateErrorConstructor);
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);
         register_intrinsic_pair!(RangeErrorPrototype, RangeErrorConstructor);
         register_intrinsic_pair!(ReferenceErrorPrototype, ReferenceErrorConstructor);

@@ -174,7 +174,7 @@ impl SetPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).into()
+        Value::undefined().into()
     }
 
     // 24.2.3.7 Set.prototype.has

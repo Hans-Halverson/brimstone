@@ -492,6 +492,8 @@ pub struct ValueMap<T> {
     map: IndexMap<ValueCollectionKey, T>,
 }
 
+pub type ValueMapIter<'a, T> = indexmap::map::Iter<'a, ValueCollectionKey, T>;
+
 impl<T> ValueMap<T> {
     pub fn new() -> ValueMap<T> {
         ValueMap { map: IndexMap::new() }
@@ -519,6 +521,13 @@ impl<T> ValueMap<T> {
 
     pub fn remove(&mut self, key: Value) -> Option<T> {
         self.map.remove(&ValueCollectionKey::from(key))
+    }
+
+    pub fn iter<'a, 'b>(&'a self) -> ValueMapIter<'b, T> {
+        unsafe {
+            // Intentionally break lifetime
+            std::mem::transmute::<ValueMapIter<'a, T>, ValueMapIter<'b, T>>(self.map.iter())
+        }
     }
 }
 

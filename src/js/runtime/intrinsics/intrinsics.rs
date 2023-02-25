@@ -14,14 +14,15 @@ use crate::{
             error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype, global_object::create_eval,
             iterator_prototype::IteratorPrototype, map_constructor::MapConstructor,
-            map_prototype::MapPrototype, math_object::MathObject, native_error::*,
-            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
-            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
-            proxy_constructor::ProxyConstructor, reflect_object::ReflectObject,
-            set_constructor::SetConstructor, set_iterator::SetIteratorPrototype,
-            set_prototype::SetPrototype, string_constructor::StringConstructor,
-            string_iterator::StringIteratorPrototype, string_prototype::StringPrototype,
-            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
+            map_iterator::MapIteratorPrototype, map_prototype::MapPrototype,
+            math_object::MathObject, native_error::*, number_constructor::NumberConstructor,
+            number_prototype::NumberPrototype, object_constructor::ObjectConstructor,
+            object_prototype::ObjectPrototype, proxy_constructor::ProxyConstructor,
+            reflect_object::ReflectObject, set_constructor::SetConstructor,
+            set_iterator::SetIteratorPrototype, set_prototype::SetPrototype,
+            string_constructor::StringConstructor, string_iterator::StringIteratorPrototype,
+            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
+            symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -51,6 +52,7 @@ pub enum Intrinsic {
     FunctionPrototype,
     IteratorPrototype,
     MapConstructor,
+    MapIteratorPrototype,
     MapPrototype,
     Math,
     NumberConstructor,
@@ -174,6 +176,7 @@ impl Intrinsics {
         register_intrinsic!(IteratorPrototype, IteratorPrototype);
         register_intrinsic!(ArrayIteratorPrototype, ArrayIteratorPrototype);
         register_intrinsic!(StringIteratorPrototype, StringIteratorPrototype);
+        register_intrinsic!(MapIteratorPrototype, MapIteratorPrototype);
         register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
 
         // Builtin objects

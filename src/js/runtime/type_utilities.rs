@@ -7,7 +7,7 @@ use crate::maybe;
 use super::{
     abstract_operations::{call_object, get, get_method},
     completion::EvalResult,
-    error::{syntax_error_, type_error_},
+    error::{range_error_, syntax_error_, type_error_},
     gc::Gc,
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
@@ -403,6 +403,27 @@ pub fn canonical_numeric_index_string(key: &PropertyKey) -> Option<u32> {
         Some(key.as_array_index())
     } else {
         None
+    }
+}
+
+// 7.1.22 ToIndex
+pub fn to_index(cx: &mut Context, value: Value) -> EvalResult<usize> {
+    if value.is_smi() {
+        let smi = value.as_smi();
+        if smi < 0 {
+            0.into()
+        } else {
+            (smi as usize).into()
+        }
+    } else if value.is_undefined() {
+        0.into()
+    } else {
+        let integer = maybe!(to_integer_or_infinity(cx, value));
+        if integer < 0.0 || integer > MAX_SAFE_INTEGER_F64 {
+            range_error_(cx, &format!("{} is out of range for an array index", integer))
+        } else {
+            (integer as usize).into()
+        }
     }
 }
 

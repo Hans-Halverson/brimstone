@@ -9,22 +9,23 @@ use crate::{
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
             aggregate_error_prototype::AggregateErrorPrototype,
-            array_constructor::ArrayConstructor, array_iterator::ArrayIteratorPrototype,
-            array_prototype::ArrayPrototype, bigint_constructor::BigIntConstructor,
-            bigint_prototype::BigIntPrototype, boolean_constructor::BooleanConstructor,
-            boolean_prototype::BooleanPrototype, error_constructor::ErrorConstructor,
-            error_prototype::ErrorPrototype, function_constructor::FunctionConstructor,
-            function_prototype::FunctionPrototype, global_object::create_eval,
-            iterator_prototype::IteratorPrototype, map_constructor::MapConstructor,
-            map_iterator::MapIteratorPrototype, map_prototype::MapPrototype,
-            math_object::MathObject, native_error::*, number_constructor::NumberConstructor,
-            number_prototype::NumberPrototype, object_constructor::ObjectConstructor,
-            object_prototype::ObjectPrototype, proxy_constructor::ProxyConstructor,
-            reflect_object::ReflectObject, set_constructor::SetConstructor,
-            set_iterator::SetIteratorPrototype, set_prototype::SetPrototype,
-            string_constructor::StringConstructor, string_iterator::StringIteratorPrototype,
-            string_prototype::StringPrototype, symbol_constructor::SymbolConstructor,
-            symbol_prototype::SymbolPrototype,
+            array_buffer_constructor::ArrayBufferConstructor,
+            array_buffer_prototype::ArrayBufferPrototype, array_constructor::ArrayConstructor,
+            array_iterator::ArrayIteratorPrototype, array_prototype::ArrayPrototype,
+            bigint_constructor::BigIntConstructor, bigint_prototype::BigIntPrototype,
+            boolean_constructor::BooleanConstructor, boolean_prototype::BooleanPrototype,
+            error_constructor::ErrorConstructor, error_prototype::ErrorPrototype,
+            function_constructor::FunctionConstructor, function_prototype::FunctionPrototype,
+            global_object::create_eval, iterator_prototype::IteratorPrototype,
+            map_constructor::MapConstructor, map_iterator::MapIteratorPrototype,
+            map_prototype::MapPrototype, math_object::MathObject, native_error::*,
+            number_constructor::NumberConstructor, number_prototype::NumberPrototype,
+            object_constructor::ObjectConstructor, object_prototype::ObjectPrototype,
+            proxy_constructor::ProxyConstructor, reflect_object::ReflectObject,
+            set_constructor::SetConstructor, set_iterator::SetIteratorPrototype,
+            set_prototype::SetPrototype, string_constructor::StringConstructor,
+            string_iterator::StringIteratorPrototype, string_prototype::StringPrototype,
+            symbol_constructor::SymbolConstructor, symbol_prototype::SymbolPrototype,
         },
         object_value::{Object, ObjectValue},
         property_descriptor::PropertyDescriptor,
@@ -37,7 +38,9 @@ use crate::{
 
 #[repr(u8)]
 pub enum Intrinsic {
-    ArrayConstructor = 0,
+    ArrayBufferConstructor = 0,
+    ArrayBufferPrototype,
+    ArrayConstructor,
     AggregateErrorConstructor,
     AggregateErrorPrototype,
     ArrayIteratorPrototype,
@@ -165,6 +168,7 @@ impl Intrinsics {
         register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
         register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
+        register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
         register_intrinsic_pair!(MapPrototype, MapConstructor);
         register_intrinsic_pair!(SetPrototype, SetConstructor);
 

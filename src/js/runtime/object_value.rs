@@ -171,6 +171,14 @@ pub trait Object {
         false
     }
 
+    fn is_array_buffer(&self) -> bool {
+        false
+    }
+
+    fn is_shared_array_buffer(&self) -> bool {
+        false
+    }
+
     fn is_arguments_object(&self) -> bool {
         false
     }

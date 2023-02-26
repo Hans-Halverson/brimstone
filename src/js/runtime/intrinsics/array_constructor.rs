@@ -142,7 +142,7 @@ impl ArrayConstructor {
 
     // 23.1.2.5 get Array [ @@species ]
     fn get_species(
-        cx: &mut Context,
+        _: &mut Context,
         this_value: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,

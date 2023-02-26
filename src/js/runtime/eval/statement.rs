@@ -670,18 +670,16 @@ fn eval_for_in_statement(
     loop {
         let own_property_keys = maybe__!(current_object.own_property_keys(cx));
         for key in own_property_keys {
-            if !key.is_string() {
+            if key.is_symbol() {
                 continue;
             }
 
-            let key_string = key.as_string();
-            if !collected.insert(key_string) {
+            let property_key = must!(PropertyKey::from_value(cx, key));
+            if !collected.insert(property_key.clone()) {
                 continue;
             }
 
-            if let Some(desc) =
-                maybe__!(current_object.get_own_property(cx, &PropertyKey::string(key_string)))
-            {
+            if let Some(desc) = maybe__!(current_object.get_own_property(cx, &property_key)) {
                 if !desc.is_enumerable() {
                     continue;
                 }

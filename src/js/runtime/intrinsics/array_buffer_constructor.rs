@@ -157,3 +157,26 @@ impl ArrayBufferConstructor {
         this_value.into()
     }
 }
+
+// 25.1.2.4 CloneArrayBuffer
+pub fn clone_array_buffer(
+    cx: &mut Context,
+    mut source_buffer: Gc<ArrayBufferObject>,
+    source_byte_offset: usize,
+    source_length: usize,
+    clone_constructor: Gc<ObjectValue>,
+) -> EvalResult<Gc<ArrayBufferObject>> {
+    let mut target_buffer = maybe!(ArrayBufferObject::new(cx, clone_constructor, source_length));
+
+    if source_buffer.is_detached() {
+        return type_error_(cx, "detached array buffer cannot be cloned");
+    }
+
+    // Copy a portion of the source buffer after the given offset to the target buffer
+    let source_buffer_view =
+        &source_buffer.data()[source_byte_offset..(source_byte_offset + source_length)];
+
+    target_buffer.data().copy_from_slice(source_buffer_view);
+
+    target_buffer.into()
+}

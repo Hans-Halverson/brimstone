@@ -187,6 +187,31 @@ pub fn iter_iterator_values<F: FnMut(&mut Context, Value) -> Option<Completion>>
     }
 }
 
+pub fn iter_iterator_method_values<F: FnMut(&mut Context, Value) -> Option<Completion>>(
+    cx: &mut Context,
+    object: Value,
+    method: Gc<ObjectValue>,
+    f: &mut F,
+) -> Completion {
+    let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, Some(method)));
+
+    loop {
+        let iter_result = maybe__!(iterator_step(cx, &iterator));
+        match iter_result {
+            None => return Completion::empty(),
+            Some(iter_result) => {
+                let value = maybe__!(iterator_value(cx, iter_result));
+
+                let completion = f(cx, value);
+
+                if let Some(completion) = completion {
+                    return maybe_!(iterator_close(cx, &iterator, completion)).into();
+                }
+            }
+        }
+    }
+}
+
 // 27.1.4.1 CreateAsyncFromSyncIterator
 fn create_async_from_sync_iterator(sync_iterator_record: Iterator) -> Iterator {
     unimplemented!("CreateAsyncFromSyncIterator")

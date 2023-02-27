@@ -16,7 +16,9 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
-    type_utilities::{is_callable, is_callable_object, same_object_value, to_length, to_object},
+    type_utilities::{
+        is_callable, is_callable_object, is_constructor, same_object_value, to_length, to_object,
+    },
     value::Value,
     Context,
 };
@@ -356,6 +358,36 @@ pub fn ordinary_has_instance(cx: &mut Context, func: Value, object: Value) -> Ev
             }
         }
     }
+}
+
+// 7.3.23 SpeciesConstructor
+pub fn species_constructor(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    default_constructor: Gc<ObjectValue>,
+) -> EvalResult<Gc<ObjectValue>> {
+    let constructor = maybe!(get(cx, object, &cx.names.constructor()));
+
+    if constructor.is_undefined() {
+        return default_constructor.into();
+    }
+
+    if !constructor.is_object() {
+        return type_error_(cx, "constructor must be a function");
+    }
+
+    let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+    let species = maybe!(get(cx, constructor.as_object(), &species_key));
+
+    if species.is_nullish() {
+        return default_constructor.into();
+    }
+
+    if is_constructor(species) {
+        return species.as_object().into();
+    }
+
+    type_error_(cx, "species must be a constructor")
 }
 
 pub enum KeyOrValue {

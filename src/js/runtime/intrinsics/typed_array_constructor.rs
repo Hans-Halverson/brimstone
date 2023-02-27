@@ -48,6 +48,22 @@ impl TypedArrayConstructor {
 #[macro_export]
 macro_rules! create_typed_array_constructor {
     ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
+        macro_rules! element_size {
+            () => {
+                std::mem::size_of::<$element_type>()
+            };
+        }
+
+        macro_rules! content_type {
+            () => {
+                if std::mem::size_of::<$element_type>() == 8 {
+                    ContentType::BigInt
+                } else {
+                    ContentType::Number
+                }
+            };
+        }
+
         #[repr(C)]
         pub struct $typed_array {
             _vtable: ObjectValueVtable,
@@ -80,6 +96,39 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
+            fn alloc(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                viewed_array_buffer: Gc<ArrayBufferObject>,
+                byte_length: usize,
+                byte_offset: usize,
+                array_length: usize,
+            ) -> Gc<ObjectValue> {
+                let typed_array = $typed_array::new(
+                    object,
+                    viewed_array_buffer,
+                    byte_length,
+                    byte_offset,
+                    array_length,
+                );
+
+                cx.heap.alloc(typed_array).into()
+            }
+
+            #[inline]
+            fn write_element(
+                mut array_buffer: Gc<ArrayBufferObject>,
+                byte_index: usize,
+                value: $element_type,
+            ) {
+                unsafe {
+                    let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
+                    let element_ptr = byte_ptr.cast::<$element_type>();
+
+                    element_ptr.write(value)
+                }
+            }
+
             #[inline]
             fn object(&self) -> &OrdinaryObject {
                 &self.object
@@ -102,20 +151,15 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get_own_property(&self.object, key).into(),
                     Some(index) => {
-                        let mut array_buffer = self.viewed_array_buffer;
+                        let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
                             return None.into();
                         }
 
-                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
-                            + self.byte_offset;
+                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        let element = unsafe {
-                            let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
-                            byte_ptr.cast::<$element_type>().read()
-                        };
+                        let value = self.read_element_value(cx, array_buffer, byte_index);
 
-                        let value = $from_element(cx, element);
                         let desc = PropertyDescriptor::data(value, true, true, true);
 
                         (Some(desc)).into()
@@ -146,7 +190,7 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_define_own_property(cx, self.into(), key, desc),
                     Some(index) => {
-                        let mut array_buffer = self.viewed_array_buffer;
+                        let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
                             return false.into();
                         }
@@ -164,16 +208,9 @@ macro_rules! create_typed_array_constructor {
                         if let Some(value) = desc.value {
                             let element_value = maybe!($to_element(cx, value));
 
-                            let byte_index = (index as usize)
-                                * std::mem::size_of::<$element_type>()
-                                + self.byte_offset;
+                            let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                            unsafe {
-                                let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
-                                let element_ptr = byte_ptr.cast::<$element_type>();
-
-                                element_ptr.write(element_value)
-                            }
+                            Self::write_element(array_buffer, byte_index, element_value);
                         }
 
                         true.into()
@@ -191,20 +228,14 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get(cx, self.into(), key, receiver),
                     Some(index) => {
-                        let mut array_buffer = self.viewed_array_buffer;
+                        let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
                             return Value::undefined().into();
                         }
 
-                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
-                            + self.byte_offset;
+                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        let element = unsafe {
-                            let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
-                            byte_ptr.cast::<$element_type>().read()
-                        };
-
-                        $from_element(cx, element).into()
+                        self.read_element_value(cx, array_buffer, byte_index).into()
                     }
                 }
             }
@@ -222,20 +253,14 @@ macro_rules! create_typed_array_constructor {
                     Some(index) => {
                         let element_value = maybe!($to_element(cx, value));
 
-                        let mut array_buffer = self.viewed_array_buffer;
+                        let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
                             return true.into();
                         }
 
-                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
-                            + self.byte_offset;
+                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        unsafe {
-                            let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
-                            let element_ptr = byte_ptr.cast::<$element_type>();
-
-                            element_ptr.write(element_value)
-                        }
+                        Self::write_element(array_buffer, byte_index, element_value);
 
                         true.into()
                     }
@@ -302,11 +327,26 @@ macro_rules! create_typed_array_constructor {
             }
 
             fn content_type(&self) -> ContentType {
-                if std::mem::size_of::<$element_type>() == 8 {
-                    ContentType::BigInt
-                } else {
-                    ContentType::Number
-                }
+                content_type!()
+            }
+
+            fn kind(&self) -> TypedArrayKind {
+                TypedArrayKind::$typed_array
+            }
+
+            #[inline]
+            fn read_element_value(
+                &self,
+                cx: &mut Context,
+                mut array_buffer: Gc<ArrayBufferObject>,
+                byte_index: usize,
+            ) -> Value {
+                let element = unsafe {
+                    let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
+                    byte_ptr.cast::<$element_type>().read()
+                };
+
+                $from_element(cx, element)
             }
         }
 
@@ -339,12 +379,7 @@ macro_rules! create_typed_array_constructor {
 
                 func.set_property(
                     &cx.names.bytes_per_element(),
-                    Property::data(
-                        Value::smi(std::mem::size_of::<$element_type>() as i32),
-                        false,
-                        false,
-                        false,
-                    ),
+                    Property::data(Value::smi(element_size!() as i32), false, false, false),
                 );
 
                 func
@@ -370,16 +405,44 @@ macro_rules! create_typed_array_constructor {
                     return Self::allocate_with_length(cx, new_target, 0);
                 }
 
+                let proto =
+                    maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
+                let object = ordinary_object_create(proto);
+
                 let argument = get_argument(arguments, 0);
                 if !argument.is_object() {
                     let length = maybe!(to_index(cx, argument));
                     return Self::allocate_with_length(cx, new_target, length);
                 }
 
-                unimplemented!(
-                    "{} constructor from ArrayBuffer, TypedArray, Array, or iterable",
-                    &cx.names.$rust_name()
-                );
+                let argument = argument.as_object();
+                if argument.is_typed_array() {
+                    return Self::initialize_typed_array_from_typed_array(
+                        cx,
+                        object,
+                        argument.as_typed_array(),
+                    );
+                } else if argument.is_array_buffer() {
+                    let byte_offset = get_argument(arguments, 1);
+                    let length = get_argument(arguments, 2);
+
+                    return Self::initialize_typed_array_from_array_buffer(
+                        cx,
+                        object,
+                        argument.cast::<ArrayBufferObject>(),
+                        byte_offset,
+                        length,
+                    );
+                }
+
+                let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+                let iterator = maybe!(get_method(cx, argument.into(), &iterator_key));
+
+                if let Some(iterator) = iterator {
+                    Self::initialize_typed_array_from_list(cx, object, argument.into(), iterator)
+                } else {
+                    Self::initialize_typed_array_from_array_like(cx, object, argument)
+                }
             }
 
             // 23.2.5.1.1 AllocateTypedArray
@@ -393,7 +456,16 @@ macro_rules! create_typed_array_constructor {
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
                 let object = ordinary_object_create(proto);
 
-                let byte_length = std::mem::size_of::<$element_type>() * length;
+                maybe!(Self::allocate_from_object_with_length(cx, object, length)).into()
+            }
+
+            #[inline]
+            fn allocate_from_object_with_length(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                length: usize,
+            ) -> EvalResult<Gc<ObjectValue>> {
+                let byte_length = element_size!() * length;
 
                 let array_buffer_constructor = cx
                     .current_realm()
@@ -401,10 +473,210 @@ macro_rules! create_typed_array_constructor {
                 let array_buffer =
                     maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, byte_length));
 
-                let typed_array = $typed_array::new(object, array_buffer, byte_length, 0, length);
-                let typed_array_object: Gc<ObjectValue> = cx.heap.alloc(typed_array).into();
+                $typed_array::alloc(cx, object, array_buffer, byte_length, 0, length).into()
+            }
 
-                return typed_array_object.into();
+            // 23.2.5.1.2 InitializeTypedArrayFromTypedArray
+            fn initialize_typed_array_from_typed_array(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                source_typed_array: Gc<dyn TypedArray>,
+            ) -> EvalResult<Value> {
+                let source_data = source_typed_array.viewed_array_buffer();
+                if source_data.is_detached() {
+                    return type_error_(cx, "cannot create typed array from detached array buffer");
+                }
+
+                // TODO: Handle SharedArrayBuffers
+
+                let array_buffer_constructor = cx
+                    .current_realm()
+                    .get_intrinsic(Intrinsic::ArrayBufferPrototype);
+                let buffer_constructor =
+                    maybe!(species_constructor(cx, source_data.into(), array_buffer_constructor));
+
+                let source_byte_offset = source_typed_array.byte_offset();
+                let source_array_length = source_typed_array.array_length();
+                let byte_length = source_array_length * element_size!();
+
+                if source_typed_array.kind() == TypedArrayKind::$typed_array {
+                    // If arrays have the same type then directly copy array buffer
+                    let data = maybe!(clone_array_buffer(
+                        cx,
+                        source_data,
+                        source_byte_offset,
+                        byte_length,
+                        buffer_constructor
+                    ));
+
+                    $typed_array::alloc(cx, object, data, byte_length, 0, source_array_length)
+                        .into()
+                } else {
+                    // Otherwise arrays have different type, so allocate buffer that holds the same
+                    // number of elements as the source array.
+                    let data = maybe!(ArrayBufferObject::new(cx, buffer_constructor, byte_length));
+
+                    if source_data.is_detached() {
+                        return type_error_(
+                            cx,
+                            "cannot create typed array from detached array buffer",
+                        );
+                    }
+
+                    if source_typed_array.content_type() != content_type!() {
+                        return type_error_(
+                            cx,
+                            "typed arrays must both contain either numbers or BigInts",
+                        );
+                    }
+
+                    // Copy elements one at a time from source to target array, converting types
+                    let mut source_byte_index = source_byte_offset;
+                    let mut target_byte_index = 0;
+
+                    for _ in 0..source_array_length {
+                        // Read element from source array
+                        let value = source_typed_array.read_element_value(
+                            cx,
+                            source_data,
+                            source_byte_index,
+                        );
+
+                        // Convert element to target type
+                        let target_element_value = maybe!($to_element(cx, value));
+
+                        // Write element to target array
+                        $typed_array::write_element(data, target_byte_index, target_element_value);
+
+                        source_byte_index += element_size!();
+                        target_byte_index += element_size!();
+                    }
+
+                    $typed_array::alloc(cx, object, data, byte_length, 0, source_array_length)
+                        .into()
+                }
+            }
+
+            // 23.2.5.1.3 InitializeTypedArrayFromArrayBuffer
+            fn initialize_typed_array_from_array_buffer(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                mut array_buffer: Gc<ArrayBufferObject>,
+                byte_offset: Value,
+                length: Value,
+            ) -> EvalResult<Value> {
+                let offset = maybe!(to_index(cx, byte_offset));
+                if offset % element_size!() != 0 {
+                    return range_error_(
+                        cx,
+                        &format!(
+                            "byte offset must be a multiple of {} but found {}",
+                            element_size!(),
+                            offset
+                        ),
+                    );
+                }
+
+                let mut new_length = 0;
+                if !length.is_undefined() {
+                    new_length = maybe!(to_index(cx, length));
+                }
+
+                if array_buffer.is_detached() {
+                    return type_error_(cx, "cannot create typed array from detached array buffer");
+                }
+
+                let byte_length = array_buffer.data().len();
+                let new_byte_length;
+
+                if length.is_undefined() {
+                    if byte_length % element_size!() != 0 {
+                        return range_error_(
+                            cx,
+                            &format!(
+                                "array buffer length must be a multiple of {} but found {}",
+                                element_size!(),
+                                byte_length
+                            ),
+                        );
+                    }
+
+                    let maybe_negative_new_byte_length = byte_length as i64 - offset as i64;
+
+                    if maybe_negative_new_byte_length < 0 {
+                        return range_error_(cx, "byte offset larger than array buffer length");
+                    }
+
+                    new_byte_length = maybe_negative_new_byte_length as usize;
+                } else {
+                    new_byte_length = new_length * element_size!();
+
+                    if offset + new_byte_length as usize > byte_length {
+                        return range_error_(cx, "byte offset larger than array buffer length");
+                    }
+                };
+
+                $typed_array::alloc(
+                    cx,
+                    object,
+                    array_buffer,
+                    new_byte_length,
+                    offset,
+                    new_byte_length / element_size!(),
+                )
+                .into()
+            }
+
+            // 23.2.5.1.4 InitializeTypedArrayFromList
+            fn initialize_typed_array_from_list(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                iterable: Value,
+                iterator: Gc<ObjectValue>,
+            ) -> EvalResult<Value> {
+                // Collect all values from iterator
+                let mut values = vec![];
+                let completion =
+                    iter_iterator_method_values(cx, iterable, iterator, &mut |_, value| {
+                        values.push(value);
+                        None
+                    });
+
+                maybe!(completion.into_eval_result());
+
+                // Allocated typed array
+                let length = values.len();
+                let typed_array_object =
+                    maybe!(Self::allocate_from_object_with_length(cx, object, length));
+
+                // Add each value from iterator into typed array
+                for (i, value) in values.into_iter().enumerate() {
+                    let key = PropertyKey::from_u64(cx, i as u64);
+                    maybe!(set(cx, typed_array_object, &key, value, true));
+                }
+
+                typed_array_object.into()
+            }
+
+            // 23.2.5.1.5 InitializeTypedArrayFromArrayLike
+            fn initialize_typed_array_from_array_like(
+                cx: &mut Context,
+                object: OrdinaryObject,
+                array_like: Gc<ObjectValue>,
+            ) -> EvalResult<Value> {
+                // Allocated typed array
+                let length = maybe!(length_of_array_like(cx, array_like));
+                let typed_array_object =
+                    maybe!(Self::allocate_from_object_with_length(cx, object, length as usize));
+
+                // Add each value from array into typed array
+                for i in 0..length {
+                    let key = PropertyKey::from_u64(cx, i);
+                    let value = maybe!(get(cx, array_like, &key));
+                    maybe!(set(cx, typed_array_object, &key, value, true));
+                }
+
+                typed_array_object.into()
             }
         }
     };

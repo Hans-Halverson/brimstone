@@ -4,12 +4,14 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     create_typed_array_constructor, create_typed_array_prototype, impl_gc_into,
     js::runtime::{
+        abstract_operations::{get, get_method, length_of_array_like, set, species_constructor},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
-        error::type_error_,
+        error::{range_error_, type_error_},
         function::get_argument,
         gc::{Gc, GcDeref},
+        iterator::iter_iterator_method_values,
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
         ordinary_object::{
             get_prototype_from_constructor, ordinary_define_own_property, ordinary_delete,
@@ -31,8 +33,12 @@ use crate::{
     maybe,
 };
 
-use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
+use super::{
+    array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
+    intrinsics::Intrinsic,
+};
 
+#[derive(PartialEq)]
 pub enum ContentType {
     Number,
     BigInt,
@@ -51,9 +57,33 @@ pub trait TypedArray {
     fn name(&self, cx: &mut Context) -> Gc<StringValue>;
 
     fn content_type(&self) -> ContentType;
+
+    fn kind(&self) -> TypedArrayKind;
+
+    fn read_element_value(
+        &self,
+        cx: &mut Context,
+        array_buffer: Gc<ArrayBufferObject>,
+        byte_index: usize,
+    ) -> Value;
 }
 
 impl GcDeref for dyn TypedArray {}
+
+#[derive(PartialEq)]
+pub enum TypedArrayKind {
+    Int8Array,
+    UInt8Array,
+    UInt8ClampedArray,
+    Int16Array,
+    UInt16Array,
+    Int32Array,
+    UInt32Array,
+    BigInt64Array,
+    BigUInt64Array,
+    Float32Array,
+    Float64Array,
+}
 
 macro_rules! create_typed_array {
     ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {

@@ -34,6 +34,7 @@ pub struct ArrayIterator {
     array: Gc<ObjectValue>,
     kind: ArrayIteratorKind,
     current_index: usize,
+    get_length: fn(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64>,
 }
 
 pub enum ArrayIteratorKind {
@@ -59,13 +60,35 @@ impl ArrayIterator {
             .get_intrinsic(Intrinsic::ArrayIteratorPrototype);
         let object = ordinary_object_create(proto);
 
+        // Only difference between array and typed array iterators is length getter, so calculate
+        // on iterator start to avoid computing on every iteration.
+        let get_length = if array.is_typed_array() {
+            Self::get_typed_array_length
+        } else {
+            Self::get_array_like_length
+        };
+
         cx.heap.alloc(ArrayIterator {
             _vtable: Self::VTABLE,
             object,
             array,
             kind,
             current_index: 0,
+            get_length,
         })
+    }
+
+    fn get_typed_array_length(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64> {
+        let typed_array = array.as_typed_array();
+        if typed_array.viewed_array_buffer().is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        (typed_array.array_length() as u64).into()
+    }
+
+    fn get_array_like_length(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64> {
+        length_of_array_like(cx, array)
     }
 
     #[inline]
@@ -116,8 +139,8 @@ impl ArrayIteratorPrototype {
         let mut array_iterator = maybe!(ArrayIterator::cast_from_value(cx, this_value));
         let array = array_iterator.array;
 
-        // TODO: Handle TypedArray objects and ArrayBuffers
-        let length = maybe!(length_of_array_like(cx, array.into()));
+        // Dispatches based on whether this is array or typed array
+        let length = maybe!((array_iterator.get_length)(array, cx));
 
         let current_index = array_iterator.current_index as u64;
         if current_index >= length {

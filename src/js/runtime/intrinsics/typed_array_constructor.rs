@@ -348,6 +348,11 @@ macro_rules! create_typed_array_constructor {
 
                 $from_element(cx, element)
             }
+
+            #[inline]
+            fn into_object_value(&self) -> Gc<ObjectValue> {
+                self.into()
+            }
         }
 
         pub struct $constructor;

@@ -66,6 +66,8 @@ pub trait TypedArray {
         array_buffer: Gc<ArrayBufferObject>,
         byte_index: usize,
     ) -> Value;
+
+    fn into_object_value(&self) -> Gc<ObjectValue>;
 }
 
 impl GcDeref for dyn TypedArray {}

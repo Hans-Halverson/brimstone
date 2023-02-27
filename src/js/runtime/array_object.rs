@@ -196,7 +196,7 @@ pub fn array_species_create(
         return type_error_(cx, "expected array constructor");
     }
 
-    let length_value = Value::from_u64(length);
+    let length_value = Value::from(length);
     construct(cx, constructor.as_object(), &[length_value], None)
 }
 

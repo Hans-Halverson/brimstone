@@ -186,7 +186,7 @@ impl StringPrototype {
 
         match string.find(search_string, pos) {
             None => Value::smi(-1).into(),
-            Some(index) => Value::from_u64(index as u64).into(),
+            Some(index) => Value::from(index).into(),
         }
     }
 
@@ -215,7 +215,7 @@ impl StringPrototype {
 
         match string.rfind(search_string, string_end) {
             None => Value::smi(-1).into(),
-            Some(index) => Value::from_u64(index as u64).into(),
+            Some(index) => Value::from(index).into(),
         }
     }
 

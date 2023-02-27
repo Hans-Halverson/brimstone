@@ -85,7 +85,7 @@ impl ArrayConstructor {
                 1
             };
 
-            must!(set(cx, array.into(), &cx.names.length(), Value::from_u64(int_len as u64), true));
+            must!(set(cx, array.into(), &cx.names.length(), Value::from(int_len), true));
 
             return array.into();
         } else {
@@ -120,7 +120,7 @@ impl ArrayConstructor {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let length = arguments.len();
-        let length_value = Value::from_u64(length as u64);
+        let length_value = Value::from(length);
 
         let array = if is_constructor(this_value) {
             maybe!(construct(cx, this_value.as_object(), &[length_value], None))

@@ -1403,7 +1403,7 @@ fn eval_shift_right_logical(
     // Shift modulus 32
     let shift = right_u32 & 0x1F;
 
-    return Value::from_u64((left_smi >> shift) as u64).into();
+    return Value::from(left_smi >> shift).into();
 }
 
 // 13.10.2 InstanceofOperator

@@ -249,7 +249,7 @@ impl MapPrototype {
             return type_error_(cx, "size accessor must be called on map");
         };
 
-        Value::from_u64(map.map_data().len() as u64).into()
+        Value::from(map.map_data().len()).into()
     }
 
     // 24.1.3.11 Map.prototype.values

@@ -208,7 +208,7 @@ impl SetPrototype {
             return type_error_(cx, "size accessor must be called on set");
         };
 
-        Value::from_u64(set.set_data().len() as u64).into()
+        Value::from(set.set_data().len()).into()
     }
 
     // 24.2.3.10 Set.prototype.values

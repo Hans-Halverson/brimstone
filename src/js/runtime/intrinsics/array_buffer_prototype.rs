@@ -43,7 +43,7 @@ impl ArrayBufferPrototype {
             if this_object.is_array_buffer() {
                 let mut array_buffer = this_object.cast::<ArrayBufferObject>();
 
-                return Value::from_u64(array_buffer.data().len() as u64).into();
+                return Value::from(array_buffer.data().len()).into();
             } else if this_object.is_shared_array_buffer() {
                 return type_error_(cx, "cannot access byteLength of shared array buffer");
             }

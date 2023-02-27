@@ -328,7 +328,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -415,7 +415,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -455,7 +455,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
@@ -491,7 +491,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
@@ -557,7 +557,7 @@ impl ArrayPrototype {
                 let mut element = maybe!(get(cx, source, &source_key));
 
                 if let Some(mapper_function) = mapper_function {
-                    let arguments = [element, Value::from_u64(i), source.into()];
+                    let arguments = [element, Value::from(i), source.into()];
                     element = maybe!(call(cx, mapper_function, this_arg, &arguments));
                 }
 
@@ -659,7 +659,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -744,7 +744,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &key)) {
                 let element = maybe!(get(cx, object, &key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from_u64(i).into();
+                    return Value::from(i).into();
                 }
             }
         }
@@ -835,7 +835,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &key)) {
                 let element = maybe!(get(cx, object, &key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from_u64(i).into();
+                    return Value::from(i).into();
                 }
             }
         }
@@ -868,7 +868,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -900,7 +900,7 @@ impl ArrayPrototype {
         let element = maybe!(get(cx, object, &index_key));
         maybe!(delete_property_or_throw(cx, object, &index_key));
 
-        let new_length_value = Value::from_u64(new_length);
+        let new_length_value = Value::from(new_length);
         maybe!(set(cx, object, &cx.names.length(), new_length_value, true));
 
         element.into()
@@ -926,7 +926,7 @@ impl ArrayPrototype {
             maybe!(set(cx, object, &key, *argument, true));
         }
 
-        let new_length_value = Value::from_u64(new_length);
+        let new_length_value = Value::from(new_length);
         maybe!(set(cx, object, &cx.names.length(), new_length_value, true));
 
         new_length_value.into()
@@ -973,7 +973,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator =
@@ -1025,7 +1025,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i as u64);
+                let index_value = Value::from(i);
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator =
@@ -1119,7 +1119,7 @@ impl ArrayPrototype {
 
         let last_key = PropertyKey::from_u64(cx, length - 1);
         maybe!(delete_property_or_throw(cx, object, &last_key));
-        maybe!(set(cx, object, &cx.names.length(), Value::from_u64(length - 1), true));
+        maybe!(set(cx, object, &cx.names.length(), Value::from(length - 1), true));
 
         first.into()
     }
@@ -1177,7 +1177,7 @@ impl ArrayPrototype {
             to_index += 1;
         }
 
-        maybe!(set(cx, array, &cx.names.length(), Value::from_u64(to_index), true));
+        maybe!(set(cx, array, &cx.names.length(), Value::from(to_index), true));
 
         array.into()
     }
@@ -1205,7 +1205,7 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, &index_key)) {
                 let value = maybe!(get(cx, object, &index_key));
 
-                let index_value = Value::from_u64(i);
+                let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -1267,7 +1267,7 @@ impl ArrayPrototype {
             }
         }
 
-        maybe!(set(cx, array, &cx.names.length(), Value::from_u64(actual_delete_count), true));
+        maybe!(set(cx, array, &cx.names.length(), Value::from(actual_delete_count), true));
 
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {
@@ -1309,7 +1309,7 @@ impl ArrayPrototype {
             }
         }
 
-        maybe!(set(cx, object, &cx.names.length(), Value::from_u64(new_length), true));
+        maybe!(set(cx, object, &cx.names.length(), Value::from(new_length), true));
 
         array.into()
     }
@@ -1401,7 +1401,7 @@ impl ArrayPrototype {
             }
         }
 
-        let new_length = Value::from_u64(length + num_arguments);
+        let new_length = Value::from(length + num_arguments);
         maybe!(set(cx, object, &cx.names.length(), new_length, true));
 
         new_length.into()

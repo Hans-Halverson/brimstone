@@ -1,3 +1,4 @@
+use num_bigint::{BigInt, Sign};
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -10,13 +11,20 @@ use crate::{
         function::get_argument,
         gc::{Gc, GcDeref},
         object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{get_prototype_from_constructor, ordinary_object_create, OrdinaryObject},
+        ordinary_object::{
+            get_prototype_from_constructor, ordinary_define_own_property, ordinary_delete,
+            ordinary_get, ordinary_get_own_property, ordinary_has_property, ordinary_object_create,
+            ordinary_own_string_symbol_property_keys, ordinary_set, OrdinaryObject,
+        },
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
         string_value::StringValue,
-        type_utilities::to_index,
+        type_utilities::{
+            canonical_numeric_index_string, to_big_int64, to_big_uint64, to_index, to_int16,
+            to_int32, to_int8, to_number, to_uint16, to_uint32, to_uint8, to_uint8_clamp,
+        },
         value::Value,
         Context,
     },
@@ -48,13 +56,15 @@ pub trait TypedArray {
 impl GcDeref for dyn TypedArray {}
 
 macro_rules! create_typed_array {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident) => {
+    ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
         create_typed_array_constructor!(
             $typed_array,
             $rust_name,
             $element_type,
             $prototype,
-            $constructor
+            $constructor,
+            $to_element,
+            $from_element
         );
         create_typed_array_prototype!(
             $typed_array,
@@ -66,54 +76,240 @@ macro_rules! create_typed_array {
     };
 }
 
-create_typed_array!(Int8Array, int8_array, i8, Int8ArrayPrototype, Int8ArrayConstructor);
+#[inline]
+fn to_int8_element(cx: &mut Context, value: Value) -> EvalResult<i8> {
+    to_int8(cx, value)
+}
 
-create_typed_array!(UInt8Array, uint8_array, u8, UInt8ArrayPrototype, UInt8ArrayConstructor);
+#[inline]
+fn from_int8_element(_: &mut Context, element: i8) -> Value {
+    Value::from(element)
+}
+
+create_typed_array!(
+    Int8Array,
+    int8_array,
+    i8,
+    Int8ArrayPrototype,
+    Int8ArrayConstructor,
+    to_int8_element,
+    from_int8_element
+);
+
+#[inline]
+fn to_uint8_element(cx: &mut Context, value: Value) -> EvalResult<u8> {
+    to_uint8(cx, value)
+}
+
+#[inline]
+fn from_uint8_element(_: &mut Context, element: u8) -> Value {
+    Value::from(element)
+}
+
+create_typed_array!(
+    UInt8Array,
+    uint8_array,
+    u8,
+    UInt8ArrayPrototype,
+    UInt8ArrayConstructor,
+    to_uint8_element,
+    from_uint8_element
+);
+
+#[inline]
+fn to_uint8_clamped_element(cx: &mut Context, value: Value) -> EvalResult<u8> {
+    to_uint8_clamp(cx, value)
+}
+
+#[inline]
+fn from_uint8_clamped_element(_: &mut Context, element: u8) -> Value {
+    Value::from(element)
+}
 
 create_typed_array!(
     UInt8ClampedArray,
     uint8_clamped_array,
     u8,
     UInt8ClampedArrayPrototype,
-    UInt8ClampedArrayConstructor
+    UInt8ClampedArrayConstructor,
+    to_uint8_clamped_element,
+    from_uint8_clamped_element
 );
 
-create_typed_array!(Int16Array, int16_array, i16, Int16ArrayPrototype, Int16ArrayConstructor);
+#[inline]
+fn to_int16_element(cx: &mut Context, value: Value) -> EvalResult<i16> {
+    to_int16(cx, value)
+}
 
-create_typed_array!(UInt16Array, uint16_array, u16, UInt16ArrayPrototype, UInt16ArrayConstructor);
+#[inline]
+fn from_int16_element(_: &mut Context, element: i16) -> Value {
+    Value::from(element)
+}
 
-create_typed_array!(Int32Array, int32_array, i32, Int32ArrayPrototype, Int32ArrayConstructor);
+create_typed_array!(
+    Int16Array,
+    int16_array,
+    i16,
+    Int16ArrayPrototype,
+    Int16ArrayConstructor,
+    to_int16_element,
+    from_int16_element
+);
 
-create_typed_array!(UInt32Array, uint32_array, u32, UInt32ArrayPrototype, UInt32ArrayConstructor);
+#[inline]
+fn to_uint16_element(cx: &mut Context, value: Value) -> EvalResult<u16> {
+    to_uint16(cx, value)
+}
+
+#[inline]
+fn from_uint16_element(_: &mut Context, element: u16) -> Value {
+    Value::from(element)
+}
+
+create_typed_array!(
+    UInt16Array,
+    uint16_array,
+    u16,
+    UInt16ArrayPrototype,
+    UInt16ArrayConstructor,
+    to_uint16_element,
+    from_uint16_element
+);
+
+#[inline]
+fn to_int32_element(cx: &mut Context, value: Value) -> EvalResult<i32> {
+    to_int32(cx, value)
+}
+
+#[inline]
+fn from_int32_element(_: &mut Context, element: i32) -> Value {
+    Value::from(element)
+}
+
+create_typed_array!(
+    Int32Array,
+    int32_array,
+    i32,
+    Int32ArrayPrototype,
+    Int32ArrayConstructor,
+    to_int32_element,
+    from_int32_element
+);
+
+#[inline]
+fn to_uint32_element(cx: &mut Context, value: Value) -> EvalResult<u32> {
+    to_uint32(cx, value)
+}
+
+#[inline]
+fn from_uint32_element(_: &mut Context, element: u32) -> Value {
+    Value::from(element)
+}
+
+create_typed_array!(
+    UInt32Array,
+    uint32_array,
+    u32,
+    UInt32ArrayPrototype,
+    UInt32ArrayConstructor,
+    to_uint32_element,
+    from_uint32_element
+);
+
+#[inline]
+fn to_big_int64_element(cx: &mut Context, value: Value) -> EvalResult<i64> {
+    let bigint = maybe!(to_big_int64(cx, value));
+
+    // Guaranteed to have a single u64 component in i64 range from checks in to_big_int64
+    let (sign, digits) = bigint.to_u64_digits();
+
+    if sign == Sign::Minus {
+        (-(digits[0] as i64)).into()
+    } else {
+        (digits[0] as i64).into()
+    }
+}
+
+#[inline]
+fn from_big_int64_element(cx: &mut Context, element: i64) -> Value {
+    let bigint = BigInt::from(element);
+    cx.heap.alloc_bigint(bigint).into()
+}
 
 create_typed_array!(
     BigInt64Array,
     big_int64_array,
     i64,
     BigInt64ArrayPrototype,
-    BigInt64ArrayConstructor
+    BigInt64ArrayConstructor,
+    to_big_int64_element,
+    from_big_int64_element
 );
+
+#[inline]
+fn to_big_uint64_element(cx: &mut Context, value: Value) -> EvalResult<u64> {
+    let bigint = maybe!(to_big_uint64(cx, value));
+
+    // Guaranteed to have a single u64 component from checks in to_big_uint64
+    let (_, digits) = bigint.to_u64_digits();
+
+    digits[0].into()
+}
+
+#[inline]
+fn from_big_uint64_element(cx: &mut Context, element: u64) -> Value {
+    let bigint = BigInt::from(element);
+    cx.heap.alloc_bigint(bigint).into()
+}
 
 create_typed_array!(
     BigUInt64Array,
     big_uint64_array,
     u64,
     BigUInt64ArrayPrototype,
-    BigUInt64ArrayConstructor
+    BigUInt64ArrayConstructor,
+    to_big_uint64_element,
+    from_big_uint64_element
 );
+
+#[inline]
+fn to_float32_element(cx: &mut Context, value: Value) -> EvalResult<f32> {
+    let number = maybe!(to_number(cx, value));
+    (number.as_number() as f32).into()
+}
+
+#[inline]
+fn from_float32_element(_: &mut Context, element: f32) -> Value {
+    Value::from(element)
+}
 
 create_typed_array!(
     Float32Array,
     float32_array,
     f32,
     Float32ArrayPrototype,
-    Float32ArrayConstructor
+    Float32ArrayConstructor,
+    to_float32_element,
+    from_float32_element
 );
+
+#[inline]
+fn to_float64_element(cx: &mut Context, value: Value) -> EvalResult<f64> {
+    let number = maybe!(to_number(cx, value));
+    number.as_number().into()
+}
+
+#[inline]
+fn from_float64_element(_: &mut Context, element: f64) -> Value {
+    Value::from(element)
+}
 
 create_typed_array!(
     Float64Array,
     float64_array,
     f64,
     Float64ArrayPrototype,
-    Float64ArrayConstructor
+    Float64ArrayConstructor,
+    to_float64_element,
+    from_float64_element
 );

@@ -13,7 +13,7 @@ use super::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
         number_constructor::NumberObject, symbol_constructor::SymbolObject,
     },
-    numeric_constants::MAX_SAFE_INTEGER_F64,
+    numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
     object_value::ObjectValue,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
@@ -160,6 +160,14 @@ pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
     }
 }
 
+// 7.1.4.1.1 StringToNumber
+fn string_to_number(value: Gc<StringValue>) -> Value {
+    match parse_string_to_number(value) {
+        None => Value::nan(),
+        Some(num) => Value::number(num),
+    }
+}
+
 // 7.1.5 ToIntegerOrInfinity
 pub fn to_integer_or_infinity(cx: &mut Context, value: Value) -> EvalResult<f64> {
     let number = maybe!(to_number(cx, value));
@@ -246,9 +254,42 @@ pub fn to_uint32(cx: &mut Context, value: Value) -> EvalResult<u32> {
     (u32_number as u32).into()
 }
 
+// 7.1.8 ToInt16
+pub fn to_int16(cx: &mut Context, value: Value) -> EvalResult<i16> {
+    // Fast path if the value is a smi
+    if value.is_smi() {
+        return (value.as_smi() as i16).into();
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // All zeros, infinities, and NaNs map to 0
+    if f64_number == 0.0 || !f64_number.is_finite() {
+        return 0.into();
+    }
+
+    // Round float to an integer
+    let mut i16_number = f64_number.abs().floor() as i64;
+    if f64_number < 0.0 {
+        i16_number = -i16_number;
+    }
+
+    // Compute modulus according to spec
+    let u16_max = u16::MAX as i64 + 1;
+    i16_number = ((i16_number % u16_max) + u16_max) % u16_max;
+
+    // Then center in i16 range around 0
+    if i16_number > (i16::MAX as i64) {
+        i16_number -= u16_max;
+    }
+
+    (i16_number as i16).into()
+}
+
 // 7.1.9 ToUint16
 pub fn to_uint16(cx: &mut Context, value: Value) -> EvalResult<u16> {
-    // Fast pass if the value is a non-negative smi
+    // Fast path if the value is a non-negative smi
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
@@ -277,11 +318,111 @@ pub fn to_uint16(cx: &mut Context, value: Value) -> EvalResult<u16> {
     (u16_number as u16).into()
 }
 
-// 7.1.4.1.1 StringToNumber
-fn string_to_number(value: Gc<StringValue>) -> Value {
-    match parse_string_to_number(value) {
-        None => Value::nan(),
-        Some(num) => Value::number(num),
+// 7.1.10 ToInt8
+pub fn to_int8(cx: &mut Context, value: Value) -> EvalResult<i8> {
+    // Fast path if the value is a smi
+    if value.is_smi() {
+        return (value.as_smi() as i8).into();
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // All zeros, infinities, and NaNs map to 0
+    if f64_number == 0.0 || !f64_number.is_finite() {
+        return 0.into();
+    }
+
+    // Round float to an integer
+    let mut i8_number = f64_number.abs().floor() as i64;
+    if f64_number < 0.0 {
+        i8_number = -i8_number;
+    }
+
+    // Compute modulus according to spec
+    let u8_max = u8::MAX as i64 + 1;
+    i8_number = ((i8_number % u8_max) + u8_max) % u8_max;
+
+    // Then center in i8 range around 0
+    if i8_number > (i8::MAX as i64) {
+        i8_number -= u8_max;
+    }
+
+    (i8_number as i8).into()
+}
+
+// 7.1.11 ToUint8
+pub fn to_uint8(cx: &mut Context, value: Value) -> EvalResult<u8> {
+    // Fast path if the value is a non-negative smi
+    if value.is_smi() {
+        let i32_value = value.as_smi();
+        if i32_value >= 0 {
+            return (i32_value as u8).into();
+        }
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // All zeros, infinities, and NaNs map to 0
+    if f64_number == 0.0 || !f64_number.is_finite() {
+        return 0.into();
+    }
+
+    // Round float to an integer
+    let mut u8_number = f64_number.abs().floor() as i64;
+    if f64_number < 0.0 {
+        u8_number = -u8_number;
+    }
+
+    // Compute modulus according to spec
+    let u8_max = u8::MAX as i64 + 1;
+    u8_number = ((u8_number % u8_max) + u8_max) % u8_max;
+
+    (u8_number as u8).into()
+}
+
+// 7.1.12 ToUint8Clamp
+pub fn to_uint8_clamp(cx: &mut Context, value: Value) -> EvalResult<u8> {
+    // Fast path if the value is a smi
+    if value.is_smi() {
+        let i32_value = value.as_smi();
+
+        // Clamp within range
+        if i32_value <= 0 {
+            return 0.into();
+        } else if i32_value >= (u8::MAX as i32) {
+            return u8::MAX.into();
+        } else {
+            return (i32_value as u8).into();
+        }
+    }
+
+    let number_value = maybe!(to_number(cx, value));
+    let f64_number = number_value.as_number();
+
+    // Clamp within range
+    if f64_number <= 0.0 {
+        return 0.into();
+    } else if f64_number >= MAX_U8_AS_F64 {
+        return u8::MAX.into();
+    } else if f64_number.is_nan() {
+        return 0.into();
+    }
+
+    // Round to closest integer
+    let floor = f64_number.floor();
+    if floor + 0.5 < f64_number {
+        return ((floor + 1.0) as u8).into();
+    } else if f64_number < floor + 0.5 {
+        return (floor as u8).into();
+    }
+
+    // Round ties to even
+    if floor % 2.0 == 1.0 {
+        return ((floor + 1.0) as u8).into();
+    } else {
+        return (floor as u8).into();
     }
 }
 
@@ -312,6 +453,33 @@ pub fn to_bigint(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> 
         }
         _ => type_error_(cx, "value cannot be converted to BigInt"),
     }
+}
+
+// 7.1.15 ToBigInt64
+pub fn to_big_int64(cx: &mut Context, value: Value) -> EvalResult<BigInt> {
+    let bigint = maybe!(to_bigint(cx, value)).bigint();
+
+    // Compute modulus according to spec
+    let u64_max = (u64::MAX) as u128 + 1;
+    let mut i64_number = ((bigint % u64_max) + u64_max) % u64_max;
+
+    // TODO: Do not create BigInt here
+    if i64_number > BigInt::from(i64::MAX) {
+        i64_number -= u64_max;
+    }
+
+    i64_number.into()
+}
+
+// 7.1.16 ToBigUint64
+pub fn to_big_uint64(cx: &mut Context, value: Value) -> EvalResult<BigInt> {
+    let bigint = maybe!(to_bigint(cx, value)).bigint();
+
+    // Compute modulus according to spec
+    let u64_max = (u64::MAX) as u128 + 1;
+    let u64_number = ((bigint % u64_max) + u64_max) % u64_max;
+
+    u64_number.into()
 }
 
 // 7.1.17 ToString

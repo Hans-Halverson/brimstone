@@ -47,7 +47,7 @@ impl TypedArrayConstructor {
 
 #[macro_export]
 macro_rules! create_typed_array_constructor {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident) => {
+    ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
         #[repr(C)]
         pub struct $typed_array {
             _vtable: ObjectValueVtable,
@@ -93,6 +93,184 @@ macro_rules! create_typed_array_constructor {
 
         #[wrap_ordinary_object]
         impl Object for $typed_array {
+            // 10.4.5.1 [[GetOwnProperty]]
+            fn get_own_property(
+                &self,
+                cx: &mut Context,
+                key: &PropertyKey,
+            ) -> EvalResult<Option<PropertyDescriptor>> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_get_own_property(&self.object, key).into(),
+                    Some(index) => {
+                        let mut array_buffer = self.viewed_array_buffer;
+                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                            return None.into();
+                        }
+
+                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
+                            + self.byte_offset;
+
+                        let element = unsafe {
+                            let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
+                            byte_ptr.cast::<$element_type>().read()
+                        };
+
+                        let value = $from_element(cx, element);
+                        let desc = PropertyDescriptor::data(value, true, true, true);
+
+                        (Some(desc)).into()
+                    }
+                }
+            }
+
+            // 10.4.5.2 [[HasProperty]]
+            fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_has_property(cx, self.into(), key),
+                    Some(index) => {
+                        let is_valid_index = !self.viewed_array_buffer.is_detached()
+                            && (index as usize) < self.array_length;
+
+                        is_valid_index.into()
+                    }
+                }
+            }
+
+            // 10.4.5.3 [[DefineOwnProperty]]
+            fn define_own_property(
+                &mut self,
+                cx: &mut Context,
+                key: &PropertyKey,
+                desc: PropertyDescriptor,
+            ) -> EvalResult<bool> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_define_own_property(cx, self.into(), key, desc),
+                    Some(index) => {
+                        let mut array_buffer = self.viewed_array_buffer;
+                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                            return false.into();
+                        }
+
+                        if let Some(false) = desc.is_configurable {
+                            return false.into();
+                        } else if let Some(false) = desc.is_enumerable {
+                            return false.into();
+                        } else if desc.is_accessor_descriptor() {
+                            return false.into();
+                        } else if let Some(false) = desc.is_writable {
+                            return false.into();
+                        }
+
+                        if let Some(value) = desc.value {
+                            let element_value = maybe!($to_element(cx, value));
+
+                            let byte_index = (index as usize)
+                                * std::mem::size_of::<$element_type>()
+                                + self.byte_offset;
+
+                            unsafe {
+                                let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
+                                let element_ptr = byte_ptr.cast::<$element_type>();
+
+                                element_ptr.write(element_value)
+                            }
+                        }
+
+                        true.into()
+                    }
+                }
+            }
+
+            // 10.4.5.4 [[Get]]
+            fn get(
+                &self,
+                cx: &mut Context,
+                key: &PropertyKey,
+                receiver: Value,
+            ) -> EvalResult<Value> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_get(cx, self.into(), key, receiver),
+                    Some(index) => {
+                        let mut array_buffer = self.viewed_array_buffer;
+                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                            return Value::undefined().into();
+                        }
+
+                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
+                            + self.byte_offset;
+
+                        let element = unsafe {
+                            let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
+                            byte_ptr.cast::<$element_type>().read()
+                        };
+
+                        $from_element(cx, element).into()
+                    }
+                }
+            }
+
+            // 10.4.5.5 [[Set]]
+            fn set(
+                &mut self,
+                cx: &mut Context,
+                key: &PropertyKey,
+                value: Value,
+                receiver: Value,
+            ) -> EvalResult<bool> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_set(cx, self.into(), key, value, receiver),
+                    Some(index) => {
+                        let element_value = maybe!($to_element(cx, value));
+
+                        let mut array_buffer = self.viewed_array_buffer;
+                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                            return true.into();
+                        }
+
+                        let byte_index = (index as usize) * std::mem::size_of::<$element_type>()
+                            + self.byte_offset;
+
+                        unsafe {
+                            let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
+                            let element_ptr = byte_ptr.cast::<$element_type>();
+
+                            element_ptr.write(element_value)
+                        }
+
+                        true.into()
+                    }
+                }
+            }
+
+            // 10.4.5.6 [[Delete]]
+            fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+                match canonical_numeric_index_string(key) {
+                    None => ordinary_delete(cx, self.into(), key),
+                    Some(index) => {
+                        let is_invalid_index = self.viewed_array_buffer.is_detached()
+                            || (index as usize) >= self.array_length;
+
+                        is_invalid_index.into()
+                    }
+                }
+            }
+
+            // 10.4.5.7 [[OwnPropertyKeys]]
+            fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+                let mut keys = vec![];
+
+                if !self.viewed_array_buffer.is_detached() {
+                    for i in 0..self.array_length {
+                        let index_string = cx.heap.alloc_string(i.to_string());
+                        keys.push(Value::string(index_string));
+                    }
+                }
+
+                ordinary_own_string_symbol_property_keys(cx, &self.object, &mut keys);
+
+                keys.into()
+            }
+
             fn is_typed_array(&self) -> bool {
                 true
             }
@@ -215,12 +393,13 @@ macro_rules! create_typed_array_constructor {
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
                 let object = ordinary_object_create(proto);
 
+                let byte_length = std::mem::size_of::<$element_type>() * length;
+
                 let array_buffer_constructor = cx
                     .current_realm()
                     .get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                let array_buffer = maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, 0));
-
-                let byte_length = std::mem::size_of::<$element_type>() * length;
+                let array_buffer =
+                    maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, byte_length));
 
                 let typed_array = $typed_array::new(object, array_buffer, byte_length, 0, length);
                 let typed_array_object: Gc<ObjectValue> = cx.heap.alloc(typed_array).into();

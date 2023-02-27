@@ -357,15 +357,77 @@ impl From<bool> for Value {
     }
 }
 
-impl From<f64> for Value {
-    fn from(value: f64) -> Self {
-        Value::number(value)
+impl From<u8> for Value {
+    fn from(value: u8) -> Self {
+        Value::smi(value as i32)
+    }
+}
+
+impl From<i8> for Value {
+    fn from(value: i8) -> Self {
+        Value::smi(value as i32)
+    }
+}
+
+impl From<u16> for Value {
+    fn from(value: u16) -> Self {
+        Value::smi(value as i32)
+    }
+}
+
+impl From<i16> for Value {
+    fn from(value: i16) -> Self {
+        Value::smi(value as i32)
+    }
+}
+
+impl From<u32> for Value {
+    fn from(value: u32) -> Self {
+        if value > i32::MAX as u32 {
+            return Value { raw_bits: f64::to_bits(value as f64) };
+        }
+
+        Value::smi(value as i32)
     }
 }
 
 impl From<i32> for Value {
     fn from(value: i32) -> Self {
         Value::smi(value)
+    }
+}
+
+impl From<u64> for Value {
+    fn from(value: u64) -> Self {
+        if value > i32::MAX as u64 {
+            // TODO: This conversion is lossy
+            return Value { raw_bits: f64::to_bits(value as f64) };
+        }
+
+        Value::smi(value as i32)
+    }
+}
+
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        if value > i32::MAX as i64 || value < i32::MIN as i64 {
+            // TODO: This conversion is lossy
+            return Value { raw_bits: f64::to_bits(value as f64) };
+        }
+
+        Value::smi(value as i32)
+    }
+}
+
+impl From<f32> for Value {
+    fn from(value: f32) -> Self {
+        Value::number(value as f64)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::number(value)
     }
 }
 

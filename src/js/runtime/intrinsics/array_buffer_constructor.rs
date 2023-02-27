@@ -75,6 +75,10 @@ impl ArrayBufferObject {
         &mut self.data
     }
 
+    pub fn is_detached(&self) -> bool {
+        self.is_detached
+    }
+
     #[inline]
     fn object(&self) -> &OrdinaryObject {
         &self.object

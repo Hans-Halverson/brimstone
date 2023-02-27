@@ -35,8 +35,12 @@ impl TypedArrayPrototype {
         )
         .into();
 
+        object.intrinsic_getter(cx, &cx.names.buffer(), Self::buffer, realm);
+        object.intrinsic_getter(cx, &cx.names.byte_length(), Self::byte_length, realm);
+        object.intrinsic_getter(cx, &cx.names.byte_offset(), Self::byte_offset, realm);
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
+        object.intrinsic_getter(cx, &cx.names.length(), Self::length, realm);
         object.intrinsic_data_prop(&cx.names.values(), values_function);
 
         // 23.2.3.32 %TypedArray%.prototype [ @@iterator ]
@@ -48,6 +52,49 @@ impl TypedArrayPrototype {
         object.intrinsic_getter(cx, &to_string_tag_key, Self::get_to_string_tag, realm);
 
         cx.heap.alloc(object).into()
+    }
+
+    // 23.2.3.2 get %TypedArray%.prototype.buffer
+    fn buffer(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(require_typed_array(cx, this_value));
+        typed_array.viewed_array_buffer().into()
+    }
+
+    // 23.2.3.3 get %TypedArray%.prototype.byteLength
+    fn byte_length(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(require_typed_array(cx, this_value));
+
+        if typed_array.viewed_array_buffer().is_detached() {
+            return Value::smi(0).into();
+        }
+
+        Value::from(typed_array.byte_length()).into()
+    }
+
+    // 23.2.3.4 get %TypedArray%.prototype.byteOffset
+    fn byte_offset(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(require_typed_array(cx, this_value));
+
+        if typed_array.viewed_array_buffer().is_detached() {
+            return Value::smi(0).into();
+        }
+
+        Value::from(typed_array.byte_offset()).into()
     }
 
     // 23.2.3.7 %TypedArray%.prototype.entries
@@ -70,6 +117,22 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Value> {
         let typed_array = maybe!(validate_typed_array(cx, this_value)).into_object_value();
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Key).into()
+    }
+
+    // 23.2.3.19 get %TypedArray%.prototype.length
+    fn length(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(require_typed_array(cx, this_value));
+
+        if typed_array.viewed_array_buffer().is_detached() {
+            return Value::smi(0).into();
+        }
+
+        Value::from(typed_array.array_length()).into()
     }
 
     // 23.2.3.31 %TypedArray%.prototype.values
@@ -133,9 +196,8 @@ macro_rules! create_typed_array_prototype {
     };
 }
 
-// 23.2.4.3 ValidateTypedArray
 #[inline]
-fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn TypedArray>> {
+fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn TypedArray>> {
     if !value.is_object() {
         return type_error_(cx, "expected typed array");
     }
@@ -145,7 +207,14 @@ fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn Typ
         return type_error_(cx, "expected typed array");
     }
 
-    let typed_array = object.as_typed_array();
+    object.as_typed_array().into()
+}
+
+// 23.2.4.3 ValidateTypedArray
+#[inline]
+fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn TypedArray>> {
+    let typed_array = maybe!(require_typed_array(cx, value));
+
     if typed_array.viewed_array_buffer().is_detached() {
         return type_error_(cx, "array buffer is detached");
     }

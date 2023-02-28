@@ -51,6 +51,7 @@ impl TypedArrayPrototype {
         object.intrinsic_getter(cx, &cx.names.buffer(), Self::buffer, realm);
         object.intrinsic_getter(cx, &cx.names.byte_length(), Self::byte_length, realm);
         object.intrinsic_getter(cx, &cx.names.byte_offset(), Self::byte_offset, realm);
+        object.intrinsic_func(cx, &cx.names.copy_within(), Self::copy_within, 2, realm);
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, &cx.names.fill(), Self::fill, 1, realm);
@@ -161,6 +162,106 @@ impl TypedArrayPrototype {
         Value::from(typed_array.byte_offset()).into()
     }
 
+    // 23.2.3.6 %TypedArray%.prototype.copyWithin
+    fn copy_within(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
+
+        let relative_target = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let from_index = if relative_target < 0.0 {
+            if relative_target == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_target as u64, 0)
+            }
+        } else {
+            u64::min(relative_target as u64, length)
+        };
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let to_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let final_index = if arguments.len() >= 3 {
+            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 2)));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        let count = u64::min(final_index - from_index, length - to_index);
+        if count == 0 {
+            return object.into();
+        }
+
+        let byte_offset = typed_array.byte_offset() as u64;
+        let element_size = typed_array.element_size() as u64;
+
+        let to_byte_index = to_index * element_size + byte_offset;
+        let from_byte_index = from_index * element_size + byte_offset;
+        let mut count_bytes = count * element_size;
+
+        let mut array_buffer = typed_array.viewed_array_buffer();
+        if array_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        let data_ptr = array_buffer.data().as_mut_ptr();
+
+        // Copy bytes one at a time from from_ptr to to_ptr
+        unsafe {
+            if from_byte_index < to_byte_index && to_byte_index < from_byte_index + count_bytes {
+                let mut from_ptr = data_ptr.add((from_byte_index + count_bytes - 1) as usize);
+                let mut to_ptr = data_ptr.add((to_byte_index + count_bytes - 1) as usize);
+
+                while count_bytes > 0 {
+                    let byte = from_ptr.read();
+                    to_ptr.write(byte);
+
+                    from_ptr = from_ptr.sub(1);
+                    to_ptr = to_ptr.sub(1);
+                    count_bytes -= 1;
+                }
+            } else {
+                let mut from_ptr = data_ptr.add(from_byte_index as usize);
+                let mut to_ptr = data_ptr.add(to_byte_index as usize);
+
+                while count_bytes > 0 {
+                    let byte = from_ptr.read();
+                    to_ptr.write(byte);
+
+                    from_ptr = from_ptr.add(1);
+                    to_ptr = to_ptr.add(1);
+                    count_bytes -= 1;
+                }
+            }
+        }
+
+        object.into()
+    }
+
     // 23.2.3.7 %TypedArray%.prototype.entries
     fn entries(
         cx: &mut Context,
@@ -249,6 +350,10 @@ impl TypedArrayPrototype {
         } else {
             length
         };
+
+        if typed_array.viewed_array_buffer().is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
 
         for i in start_index..end_index {
             let key = PropertyKey::from_u64(cx, i);

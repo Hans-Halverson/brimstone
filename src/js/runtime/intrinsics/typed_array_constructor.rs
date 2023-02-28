@@ -208,9 +208,14 @@ macro_rules! create_typed_array_constructor {
                         if let Some(value) = desc.value {
                             let element_value = maybe!($to_element(cx, value));
 
-                            let byte_index = (index as usize) * element_size!() + self.byte_offset;
+                            // The element conversion could have detached the array buffer as a side
+                            // effect, so check again.
+                            if !array_buffer.is_detached() {
+                                let byte_index =
+                                    (index as usize) * element_size!() + self.byte_offset;
 
-                            Self::write_element(array_buffer, byte_index, element_value);
+                                Self::write_element(array_buffer, byte_index, element_value);
+                            }
                         }
 
                         true.into()
@@ -332,6 +337,10 @@ macro_rules! create_typed_array_constructor {
 
             fn kind(&self) -> TypedArrayKind {
                 TypedArrayKind::$typed_array
+            }
+
+            fn element_size(&self) -> usize {
+                element_size!()
             }
 
             #[inline]

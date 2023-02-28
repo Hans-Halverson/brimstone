@@ -9,7 +9,10 @@ use brimstone::{
             error::{syntax_error_, type_error_},
             eval::script::eval_script,
             function::get_argument,
-            intrinsics::{global_object::set_default_global_bindings, intrinsics::Intrinsic},
+            intrinsics::{
+                array_buffer_constructor::ArrayBufferObject,
+                global_object::set_default_global_bindings, intrinsics::Intrinsic,
+            },
             object_value::ObjectValue,
             ordinary_object::OrdinaryObject,
             Context, EvalResult, Gc, PropertyDescriptor, PropertyKey, Realm, Value,
@@ -34,6 +37,10 @@ impl Test262Object {
 
         let global_key = PropertyKey::string(cx.heap.alloc_string(String::from("global")));
         object.intrinsic_data_prop(&global_key, realm.global_object.into());
+
+        let detach_array_buffer_key =
+            PropertyKey::string(cx.heap.alloc_string(String::from("detachArrayBuffer")));
+        object.intrinsic_func(cx, &detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
 
         cx.heap.alloc(object).into()
     }
@@ -100,5 +107,27 @@ impl Test262Object {
                 panic!("unexpected abnormal completion")
             }
         }
+    }
+
+    fn detach_array_buffer(
+        cx: &mut Context,
+        _: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let value = get_argument(arguments, 0);
+        if !value.is_object() {
+            return Value::undefined().into();
+        }
+
+        let object = value.as_object();
+        if !object.is_array_buffer() {
+            return Value::undefined().into();
+        }
+
+        let mut array_buffer = object.cast::<ArrayBufferObject>();
+        array_buffer.detach();
+
+        Value::undefined().into()
     }
 }

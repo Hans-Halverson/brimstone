@@ -79,6 +79,12 @@ impl ArrayBufferObject {
         self.is_detached
     }
 
+    // 25.1.2.3 DetachArrayBuffer
+    pub fn detach(&mut self) {
+        self.data = Vec::new();
+        self.is_detached = true;
+    }
+
     #[inline]
     fn object(&self) -> &OrdinaryObject {
         &self.object

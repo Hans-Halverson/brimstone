@@ -60,6 +60,8 @@ pub trait TypedArray {
 
     fn kind(&self) -> TypedArrayKind;
 
+    fn element_size(&self) -> usize;
+
     fn read_element_value(
         &self,
         cx: &mut Context,

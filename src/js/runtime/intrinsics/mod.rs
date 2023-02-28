@@ -1,6 +1,6 @@
 mod aggregate_error_constructor;
 mod aggregate_error_prototype;
-mod array_buffer_constructor;
+pub mod array_buffer_constructor;
 mod array_buffer_prototype;
 mod array_constructor;
 mod array_iterator;

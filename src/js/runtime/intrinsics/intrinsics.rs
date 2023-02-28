@@ -74,6 +74,7 @@ pub enum Intrinsic {
     AggregateErrorPrototype,
     ArrayIteratorPrototype,
     ArrayPrototype,
+    ArrayPrototypeToString,
     ArrayPrototypeValues,
     BigInt64ArrayConstructor,
     BigInt64ArrayPrototype,
@@ -225,6 +226,21 @@ impl Intrinsics {
         register_intrinsic_pair!(MapPrototype, MapConstructor);
         register_intrinsic_pair!(SetPrototype, SetConstructor);
 
+        // Properties of basic intrinsics
+        let object_prototype = self.get(Intrinsic::ObjectPrototype);
+        let object_prototype_to_string = must!(get(cx, object_prototype, &cx.names.to_string()));
+        register_existing_intrinsic!(
+            ObjectPrototypeToString,
+            object_prototype_to_string.as_object()
+        );
+
+        let array_prototype = self.get(Intrinsic::ArrayPrototype);
+        let array_prototype_values = must!(get(cx, array_prototype, &cx.names.values()));
+        register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
+
+        let array_prototype_to_string = must!(get(cx, array_prototype, &cx.names.to_string()));
+        register_existing_intrinsic!(ArrayPrototypeToString, array_prototype_to_string.as_object());
+
         // Native errors
         register_intrinsic_pair!(AggregateErrorPrototype, AggregateErrorConstructor);
         register_intrinsic_pair!(EvalErrorPrototype, EvalErrorConstructor);
@@ -265,18 +281,6 @@ impl Intrinsics {
 
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());
-
-        // Properties of other intrinsics
-        let object_prototype = self.get(Intrinsic::ObjectPrototype);
-        let object_prototype_to_string = must!(get(cx, object_prototype, &cx.names.to_string()));
-        register_existing_intrinsic!(
-            ObjectPrototypeToString,
-            object_prototype_to_string.as_object()
-        );
-
-        let array_prototype = self.get(Intrinsic::ArrayPrototype);
-        let array_prototype_values = must!(get(cx, array_prototype, &cx.names.values()));
-        register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
         add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
     }

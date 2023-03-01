@@ -1145,8 +1145,9 @@ impl ArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_index = if arguments.len() >= 3 {
-            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let end_argument = get_argument(arguments, 1);
+        let end_index = if !end_argument.is_undefined() {
+            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {

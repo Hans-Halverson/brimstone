@@ -1,9 +1,24 @@
-use crate::js::runtime::{
-    builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_, gc::Gc,
-    object_value::ObjectValue, property::Property, value::Value, Context, Realm,
+use crate::{
+    js::runtime::{
+        abstract_operations::{call_object, get_method, length_of_array_like, set},
+        builtin_function::BuiltinFunction,
+        completion::EvalResult,
+        error::type_error_,
+        function::get_argument,
+        gc::Gc,
+        get,
+        intrinsics::typed_array_prototype::typed_array_create_object,
+        iterator::iter_iterator_method_values,
+        object_value::ObjectValue,
+        property::Property,
+        type_utilities::{is_callable, is_constructor, to_object},
+        value::Value,
+        Context, PropertyKey, Realm,
+    },
+    maybe, must,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, typed_array_prototype::typed_array_create};
 
 // 23.2.1 The %TypedArray% Intrinsic Object
 pub struct TypedArrayConstructor;
@@ -31,6 +46,9 @@ impl TypedArrayConstructor {
             ),
         );
 
+        func.intrinsic_func(cx, &cx.names.from(), Self::from, 1, realm);
+        func.intrinsic_func(cx, &cx.names.of(), Self::of, 0, realm);
+
         func.into()
     }
 
@@ -42,6 +60,125 @@ impl TypedArrayConstructor {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         type_error_(cx, "TypedArray constructor is abstract and cannot be called")
+    }
+
+    // 23.2.2.1 %TypedArray%.from
+    fn from(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        if !is_constructor(this_value) {
+            return type_error_(cx, "TypedArray.from must be called on constructor");
+        }
+
+        let this_constructor = this_value.as_object();
+
+        let map_function = {
+            let argument = get_argument(arguments, 1);
+            if argument.is_undefined() {
+                None
+            } else if !is_callable(argument) {
+                return type_error_(cx, "map function must be a function");
+            } else {
+                Some(argument.as_object())
+            }
+        };
+
+        let source = get_argument(arguments, 0);
+        let this_argument = get_argument(arguments, 2);
+
+        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator = maybe!(get_method(cx, source, &iterator_key));
+
+        // If source is iterable then add all values from iterator
+        if let Some(iterator) = iterator {
+            // Collect all values from iterator
+            let mut values = vec![];
+            let completion = iter_iterator_method_values(cx, source, iterator, &mut |_, value| {
+                values.push(value);
+                None
+            });
+
+            maybe!(completion.into_eval_result());
+
+            let length = values.len();
+
+            let target_object = maybe!(typed_array_create_object(
+                cx,
+                this_constructor,
+                &[Value::from(length)],
+                Some(length)
+            ));
+
+            for (i, value) in values.into_iter().enumerate() {
+                let key = PropertyKey::from_u64(cx, i as u64);
+
+                let value = if let Some(map_function) = map_function {
+                    maybe!(call_object(cx, map_function, this_argument, &[value, Value::from(i)]))
+                } else {
+                    value
+                };
+
+                maybe!(set(cx, target_object, &key, value, true));
+            }
+
+            return target_object.into();
+        }
+
+        // Otherwise treat source like an array and add its values
+        let array_like = must!(to_object(cx, source));
+        let length = maybe!(length_of_array_like(cx, array_like)) as usize;
+
+        let target_object = maybe!(typed_array_create_object(
+            cx,
+            this_constructor,
+            &[Value::from(length)],
+            Some(length)
+        ));
+
+        for i in 0..length {
+            let key = PropertyKey::from_u64(cx, i as u64);
+
+            let value = maybe!(get(cx, array_like, &key));
+
+            let value = if let Some(map_function) = map_function {
+                maybe!(call_object(cx, map_function, this_argument, &[value, Value::from(i)]))
+            } else {
+                value
+            };
+
+            maybe!(set(cx, target_object, &key, value, true));
+        }
+
+        target_object.into()
+    }
+
+    // 23.2.2.2 %TypedArray%.of
+    fn of(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        if !is_constructor(this_value) {
+            return type_error_(cx, "TypedArray.of must be called on constructor");
+        }
+
+        let this_constructor = this_value.as_object();
+        let length = arguments.len();
+
+        let typed_array =
+            maybe!(typed_array_create(cx, this_constructor, &[Value::from(length)], Some(length)));
+        let object = typed_array.into_object_value();
+
+        for (i, value) in arguments.iter().enumerate() {
+            let key = PropertyKey::from_u64(cx, i as u64);
+            maybe!(set(cx, object, &key, *value, true));
+        }
+
+        object.into()
     }
 }
 

@@ -1,6 +1,8 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{call_object, has_property, invoke, set},
+        abstract_operations::{
+            call_object, construct, has_property, invoke, set, species_constructor,
+        },
         builtin_function::BuiltinFunction,
         error::type_error_,
         function::get_argument,
@@ -22,7 +24,7 @@ use crate::{
 
 use super::{
     intrinsics::Intrinsic,
-    typed_array::{ContentType, TypedArray},
+    typed_array::{ContentType, TypedArray, TypedArrayKind},
 };
 
 pub struct TypedArrayPrototype;
@@ -55,6 +57,7 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, &cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, &cx.names.fill(), Self::fill, 1, realm);
+        object.intrinsic_func(cx, &cx.names.filter(), Self::filter, 1, realm);
         object.intrinsic_func(cx, &cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, &cx.names.find_index(), Self::find_index, 1, realm);
         object.intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
@@ -64,10 +67,13 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
         object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_getter(cx, &cx.names.length(), Self::length, realm);
+        object.intrinsic_func(cx, &cx.names.map_(), Self::map, 1, realm);
         object.intrinsic_func(cx, &cx.names.reduce(), Self::reduce, 1, realm);
         object.intrinsic_func(cx, &cx.names.reduce_right(), Self::reduce_right, 1, realm);
         object.intrinsic_func(cx, &cx.names.reverse(), Self::reverse, 0, realm);
+        object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
+        object.intrinsic_func(cx, &cx.names.subarray(), Self::subarray, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
@@ -361,6 +367,59 @@ impl TypedArrayPrototype {
         }
 
         object.into()
+    }
+
+    // 23.2.3.10 %TypedArray%.prototype.filter
+    fn filter(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
+
+        let callback_function = get_argument(arguments, 0);
+        if !is_callable(callback_function) {
+            return type_error_(cx, "expected function");
+        }
+
+        let callback_function = callback_function.as_object();
+        let this_arg = get_argument(arguments, 1);
+
+        let mut kept_values = vec![];
+
+        // First collect all values that pass the predicate
+        for i in 0..length {
+            let index_key = PropertyKey::from_u64(cx, i);
+            let value = maybe!(get(cx, object, &index_key));
+
+            let index_value = Value::from(i);
+            let arguments = [value, index_value, object.into()];
+
+            let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+
+            if to_boolean(is_selected) {
+                kept_values.push(value)
+            }
+        }
+
+        // Then create a new array that contains the kept values
+        let num_kept_values = kept_values.len();
+        let array = maybe!(typed_array_species_create_object(
+            cx,
+            typed_array,
+            &[Value::from(num_kept_values)],
+            Some(num_kept_values)
+        ));
+
+        for (i, value) in kept_values.into_iter().enumerate() {
+            let index_key = PropertyKey::from_u64(cx, i as u64);
+            must!(set(cx, array, &index_key, value, true));
+        }
+
+        array.into()
     }
 
     // 23.2.3.11 %TypedArray%.prototype.find
@@ -659,6 +718,46 @@ impl TypedArrayPrototype {
         Value::from(typed_array.array_length()).into()
     }
 
+    // 23.2.3.20 %TypedArray%.prototype.map
+    fn map(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length();
+
+        let callback_function = get_argument(arguments, 0);
+        if !is_callable(callback_function) {
+            return type_error_(cx, "expected function");
+        }
+
+        let callback_function = callback_function.as_object();
+        let this_arg = get_argument(arguments, 1);
+
+        let array = maybe!(typed_array_species_create_object(
+            cx,
+            typed_array,
+            &[Value::from(length)],
+            Some(length)
+        ));
+
+        for i in 0..length {
+            let index_key = PropertyKey::from_u64(cx, i as u64);
+            let value = must!(get(cx, object, &index_key));
+
+            let index_value = Value::from(i);
+            let arguments = [value, index_value, object.into()];
+
+            let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            maybe!(set(cx, array, &index_key, mapped_value, true));
+        }
+
+        array.into()
+    }
+
     // 23.2.3.21 %TypedArray%.prototype.reduce
     fn reduce(
         cx: &mut Context,
@@ -700,7 +799,7 @@ impl TypedArrayPrototype {
         accumulator.into()
     }
 
-    // 23.2.3.21 %TypedArray%.prototype.reduce
+    // 23.2.3.22 %TypedArray%.prototype.reduceRight
     fn reduce_right(
         cx: &mut Context,
         this_value: Value,
@@ -773,6 +872,102 @@ impl TypedArrayPrototype {
         object.into()
     }
 
+    // 23.2.3.25 %TypedArray%.prototype.slice
+    fn slice(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let end_argument = get_argument(arguments, 1);
+        let end_index = if !end_argument.is_undefined() {
+            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        let count = u64::max(end_index - start_index, 0);
+        let new_typed_array = maybe!(typed_array_species_create(
+            cx,
+            typed_array,
+            &[Value::from(count)],
+            Some(count as usize)
+        ));
+        let array = new_typed_array.into_object_value();
+
+        if count == 0 {
+            return array.into();
+        }
+
+        let array_buffer = typed_array.viewed_array_buffer();
+        if array_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        // If types are different then must call get and set and convert types
+        if typed_array.kind() != new_typed_array.kind() {
+            let mut current_index = start_index;
+            for i in 0..count {
+                let from_key = PropertyKey::from_u64(cx, current_index);
+                let to_key = PropertyKey::from_u64(cx, i);
+
+                let value = maybe!(get(cx, object, &from_key));
+                maybe!(set(cx, array, &to_key, value, true));
+
+                current_index += 1;
+            }
+        } else {
+            // Otherwse copy bytes directly instead of performing any conversions
+            let mut source_buffer = typed_array.viewed_array_buffer();
+            let mut target_buffer = new_typed_array.viewed_array_buffer();
+            let element_size = typed_array.element_size();
+
+            let source_byte_offset = typed_array.byte_offset();
+            let source_byte_index = (start_index as usize) * element_size + source_byte_offset;
+            let target_byte_index = new_typed_array.byte_offset();
+
+            unsafe {
+                let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
+                let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
+
+                for _ in 0..(count as usize * element_size) {
+                    let byte = from_ptr.read();
+                    to_ptr.write(byte);
+
+                    from_ptr = from_ptr.add(1);
+                    to_ptr = to_ptr.add(1);
+                }
+            }
+        }
+
+        array.into()
+    }
+
     // 23.2.3.26 %TypedArray%.prototype.some
     fn some(
         cx: &mut Context,
@@ -806,6 +1001,64 @@ impl TypedArrayPrototype {
         }
 
         false.into()
+    }
+
+    // 23.2.3.28 %TypedArray%.prototype.subarray
+    fn subarray(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let length = typed_array.array_length() as u64;
+        let buffer = typed_array.viewed_array_buffer();
+
+        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                u64::max(length + relative_start as u64, 0)
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let end_index = if arguments.len() >= 3 {
+            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+
+            if relative_end < 0.0 {
+                if relative_end == f64::NEG_INFINITY {
+                    0
+                } else {
+                    u64::max(length + relative_end as u64, 0)
+                }
+            } else {
+                u64::min(relative_end as u64, length)
+            }
+        } else {
+            length
+        };
+
+        let new_length = u64::max(end_index - start_index, 0);
+
+        let element_size = typed_array.element_size();
+        let source_byte_offset = typed_array.byte_offset();
+        let begin_byte_offset = source_byte_offset + (start_index as usize) * element_size;
+
+        let subarray = maybe!(typed_array_species_create_object(
+            cx,
+            typed_array,
+            &[
+                buffer.into(),
+                Value::from(begin_byte_offset),
+                Value::from(new_length),
+            ],
+            None,
+        ));
+
+        subarray.into()
     }
 
     // 23.2.3.29 %TypedArray%.prototype.toLocaleString
@@ -915,6 +1168,79 @@ fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn Type
     }
 
     object.as_typed_array().into()
+}
+
+// 23.2.4.1 TypedArraySpeciesCreate
+fn typed_array_species_create_object(
+    cx: &mut Context,
+    exemplar: Gc<dyn TypedArray>,
+    arguments: &[Value],
+    length: Option<usize>,
+) -> EvalResult<Gc<ObjectValue>> {
+    let result = maybe!(typed_array_species_create(cx, exemplar, arguments, length));
+    result.into_object_value().into()
+}
+fn typed_array_species_create(
+    cx: &mut Context,
+    exemplar: Gc<dyn TypedArray>,
+    arguments: &[Value],
+    length: Option<usize>,
+) -> EvalResult<Gc<dyn TypedArray>> {
+    let intrinsic = match exemplar.kind() {
+        TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
+        TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
+        TypedArrayKind::UInt8ClampedArray => Intrinsic::UInt8ClampedArrayConstructor,
+        TypedArrayKind::Int16Array => Intrinsic::Int16ArrayConstructor,
+        TypedArrayKind::UInt16Array => Intrinsic::UInt16ArrayConstructor,
+        TypedArrayKind::Int32Array => Intrinsic::Int32ArrayConstructor,
+        TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
+        TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
+        TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
+        TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
+    };
+
+    let default_constructor = cx.current_realm().get_intrinsic(intrinsic);
+    let constructor =
+        maybe!(species_constructor(cx, exemplar.into_object_value(), default_constructor));
+
+    let result = maybe!(typed_array_create(cx, constructor, arguments, length));
+
+    if result.content_type() != exemplar.content_type() {
+        return type_error_(cx, "typed arrays must both contain either numbers or BigInts");
+    }
+
+    result.into()
+}
+
+// 23.2.4.2 TypedArrayCreate
+pub fn typed_array_create_object(
+    cx: &mut Context,
+    constructor: Gc<ObjectValue>,
+    arguments: &[Value],
+    length: Option<usize>,
+) -> EvalResult<Gc<ObjectValue>> {
+    let result = maybe!(typed_array_create(cx, constructor, arguments, length));
+    result.into_object_value().into()
+}
+
+pub fn typed_array_create(
+    cx: &mut Context,
+    constructor: Gc<ObjectValue>,
+    arguments: &[Value],
+    length: Option<usize>,
+) -> EvalResult<Gc<dyn TypedArray>> {
+    let new_typed_array = maybe!(construct(cx, constructor, arguments, None));
+
+    let new_typed_array = maybe!(validate_typed_array(cx, new_typed_array.into()));
+
+    if let Some(length) = length {
+        if new_typed_array.array_length() != length {
+            return type_error_(cx, "typed array does not have expected length");
+        }
+    }
+
+    new_typed_array.into()
 }
 
 // 23.2.4.3 ValidateTypedArray

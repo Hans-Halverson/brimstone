@@ -122,6 +122,9 @@ impl SymbolConstructor {
         let search = cx.well_known_symbols.search;
         func.intrinsic_frozen_property(&cx.names.search(), search.into());
 
+        let species = cx.well_known_symbols.species;
+        func.intrinsic_frozen_property(&cx.names.species(), species.into());
+
         let split = cx.well_known_symbols.split;
         func.intrinsic_frozen_property(&cx.names.split(), split.into());
 

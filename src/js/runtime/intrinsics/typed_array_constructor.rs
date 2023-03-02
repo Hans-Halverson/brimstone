@@ -49,6 +49,10 @@ impl TypedArrayConstructor {
         func.intrinsic_func(cx, &cx.names.from(), Self::from, 1, realm);
         func.intrinsic_func(cx, &cx.names.of(), Self::of, 0, realm);
 
+        // 23.2.2.4 get %TypedArray% [ @@species ]
+        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+
         func.into()
     }
 
@@ -179,6 +183,16 @@ impl TypedArrayConstructor {
         }
 
         object.into()
+    }
+
+    // 23.2.2.4 get %TypedArray% [ @@species ]
+    fn get_species(
+        _: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        this_value.into()
     }
 }
 

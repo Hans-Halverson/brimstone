@@ -257,10 +257,10 @@ fn to_big_int64_element(cx: &mut Context, value: Value) -> EvalResult<i64> {
     // Guaranteed to have a single u64 component in i64 range from checks in to_big_int64
     let (sign, digits) = bigint.to_u64_digits();
 
-    if sign == Sign::Minus {
-        (-(digits[0] as i64)).into()
-    } else {
-        (digits[0] as i64).into()
+    match sign {
+        Sign::Plus => (digits[0] as i64).into(),
+        Sign::NoSign => 0.into(),
+        Sign::Minus => (-(digits[0] as i64)).into(),
     }
 }
 
@@ -285,9 +285,13 @@ fn to_big_uint64_element(cx: &mut Context, value: Value) -> EvalResult<u64> {
     let bigint = maybe!(to_big_uint64(cx, value));
 
     // Guaranteed to have a single u64 component from checks in to_big_uint64
-    let (_, digits) = bigint.to_u64_digits();
+    let (sign, digits) = bigint.to_u64_digits();
 
-    digits[0].into()
+    if sign == Sign::NoSign {
+        0.into()
+    } else {
+        digits[0].into()
+    }
 }
 
 #[inline]

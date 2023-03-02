@@ -180,35 +180,36 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length() as u64;
 
         let relative_target = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
-        let from_index = if relative_target < 0.0 {
+        let to_index = if relative_target < 0.0 {
             if relative_target == f64::NEG_INFINITY {
                 0
             } else {
-                u64::max(length + relative_target as u64, 0)
+                i64::max(length as i64 + relative_target as i64, 0) as u64
             }
         } else {
             u64::min(relative_target as u64, length)
         };
 
         let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
-        let to_index = if relative_start < 0.0 {
+        let from_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
-                u64::max(length + relative_start as u64, 0)
+                i64::max(length as i64 + relative_start as i64, 0) as u64
             }
         } else {
             u64::min(relative_start as u64, length)
         };
 
-        let final_index = if arguments.len() >= 3 {
-            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 2)));
+        let end_argument = get_argument(arguments, 2);
+        let from_end_index = if !end_argument.is_undefined() {
+            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
                     0
                 } else {
-                    u64::max(length + relative_end as u64, 0)
+                    i64::max(length as i64 + relative_end as i64, 0) as u64
                 }
             } else {
                 u64::min(relative_end as u64, length)
@@ -217,7 +218,7 @@ impl TypedArrayPrototype {
             length
         };
 
-        let count = u64::min(final_index - from_index, length - to_index);
+        let count = u64::min(from_end_index - from_index, length - to_index);
         if count == 0 {
             return object.into();
         }
@@ -335,20 +336,21 @@ impl TypedArrayPrototype {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
-                u64::max(length + relative_start as u64, 0)
+                i64::max(length as i64 + relative_start as i64, 0) as u64
             }
         } else {
             u64::min(relative_start as u64, length)
         };
 
-        let end_index = if arguments.len() >= 3 {
-            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 2)));
+        let end_argument = get_argument(arguments, 2);
+        let end_index = if !end_argument.is_undefined() {
+            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
                     0
                 } else {
-                    u64::max(length + relative_end as u64, 0)
+                    i64::max(length as i64 + relative_end as i64, 0) as u64
                 }
             } else {
                 u64::min(relative_end as u64, length)
@@ -551,7 +553,7 @@ impl TypedArrayPrototype {
         let start_index = if n >= 0.0 {
             n as u64
         } else {
-            u64::max(length + n as u64, 0)
+            i64::max(length as i64 + n as i64, 0) as u64
         };
 
         for i in start_index..length {
@@ -593,7 +595,7 @@ impl TypedArrayPrototype {
         let start_index = if n >= 0.0 {
             n as u64
         } else {
-            u64::max(length + n as u64, 0)
+            i64::max(length as i64 + n as i64, 0) as u64
         };
 
         for i in start_index..length {
@@ -681,9 +683,15 @@ impl TypedArrayPrototype {
             }
 
             if n >= 0.0 {
-                f64::min(n, (length - 1) as f64) as u64
+                u64::min(n as u64, length - 1)
             } else {
-                length + n as u64
+                let start_index = length as i64 + n as i64;
+
+                if start_index < 0 {
+                    return Value::smi(-1).into();
+                }
+
+                start_index as u64
             }
         } else {
             length - 1
@@ -888,7 +896,7 @@ impl TypedArrayPrototype {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
-                u64::max(length + relative_start as u64, 0)
+                i64::max(length as i64 + relative_start as i64, 0) as u64
             }
         } else {
             u64::min(relative_start as u64, length)
@@ -902,7 +910,7 @@ impl TypedArrayPrototype {
                 if relative_end == f64::NEG_INFINITY {
                     0
                 } else {
-                    u64::max(length + relative_end as u64, 0)
+                    i64::max(length as i64 + relative_end as i64, 0) as u64
                 }
             } else {
                 u64::min(relative_end as u64, length)
@@ -1019,20 +1027,21 @@ impl TypedArrayPrototype {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
-                u64::max(length + relative_start as u64, 0)
+                i64::max(length as i64 + relative_start as i64, 0) as u64
             }
         } else {
             u64::min(relative_start as u64, length)
         };
 
-        let end_index = if arguments.len() >= 3 {
-            let relative_end = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let end_argument = get_argument(arguments, 1);
+        let end_index = if !end_argument.is_undefined() {
+            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
                     0
                 } else {
-                    u64::max(length + relative_end as u64, 0)
+                    i64::max(length as i64 + relative_end as i64, 0) as u64
                 }
             } else {
                 u64::min(relative_end as u64, length)

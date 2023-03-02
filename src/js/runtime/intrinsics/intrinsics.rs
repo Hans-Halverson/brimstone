@@ -18,6 +18,8 @@ use crate::{
             bigint_prototype::BigIntPrototype,
             boolean_constructor::BooleanConstructor,
             boolean_prototype::BooleanPrototype,
+            data_view_constructor::DataViewConstructor,
+            data_view_prototype::DataViewPrototype,
             error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype,
             function_constructor::FunctionConstructor,
@@ -84,6 +86,8 @@ pub enum Intrinsic {
     BigIntPrototype,
     BooleanConstructor,
     BooleanPrototype,
+    DataViewConstructor,
+    DataViewPrototype,
     ErrorConstructor,
     ErrorPrototype,
     Eval,
@@ -223,6 +227,7 @@ impl Intrinsics {
         register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
         register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
+        register_intrinsic_pair!(DataViewPrototype, DataViewConstructor);
         register_intrinsic_pair!(MapPrototype, MapConstructor);
         register_intrinsic_pair!(SetPrototype, SetConstructor);
 

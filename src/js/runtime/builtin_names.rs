@@ -61,6 +61,7 @@ builtin_names!(
     (big_int64_array, "BigInt64Array"),
     (big_uint64_array, "BigUint64Array"),
     (boolean, "Boolean"),
+    (data_view, "DataView"),
     (error, "Error"),
     (eval_error, "EvalError"),
     (float32_array, "Float32Array"),

@@ -89,6 +89,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     intrinsic_prop!(&cx.names.big_int64_array(), BigInt64ArrayConstructor);
     intrinsic_prop!(&cx.names.big_uint64_array(), BigUInt64ArrayConstructor);
     intrinsic_prop!(&cx.names.boolean(), BooleanConstructor);
+    intrinsic_prop!(&cx.names.data_view(), DataViewConstructor);
     intrinsic_prop!(&cx.names.error(), ErrorConstructor);
     intrinsic_prop!(&cx.names.eval_error(), EvalErrorConstructor);
     intrinsic_prop!(&cx.names.float32_array(), Float32ArrayConstructor);

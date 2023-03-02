@@ -9,6 +9,8 @@ pub mod bigint_constructor;
 mod bigint_prototype;
 pub mod boolean_constructor;
 mod boolean_prototype;
+mod data_view_constructor;
+mod data_view_prototype;
 mod error_constructor;
 mod error_prototype;
 mod function_constructor;

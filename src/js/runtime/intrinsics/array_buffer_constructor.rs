@@ -122,7 +122,7 @@ impl ArrayBufferConstructor {
         func.set_property(
             &cx.names.prototype(),
             Property::data(
-                realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
+                realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
                 false,
                 false,
                 false,

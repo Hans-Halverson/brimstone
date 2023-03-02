@@ -105,7 +105,7 @@ impl DataViewConstructor {
         func.set_property(
             &cx.names.prototype(),
             Property::data(
-                realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
+                realm.get_intrinsic(Intrinsic::DataViewPrototype).into(),
                 false,
                 false,
                 false,

@@ -198,20 +198,10 @@ impl TypedArrayConstructor {
 
 #[macro_export]
 macro_rules! create_typed_array_constructor {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
+    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
         macro_rules! element_size {
             () => {
                 std::mem::size_of::<$element_type>()
-            };
-        }
-
-        macro_rules! content_type {
-            () => {
-                if std::mem::size_of::<$element_type>() == 8 {
-                    ContentType::BigInt
-                } else {
-                    ContentType::Number
-                }
             };
         }
 
@@ -483,7 +473,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             fn content_type(&self) -> ContentType {
-                content_type!()
+                $content_type
             }
 
             fn kind(&self) -> TypedArrayKind {
@@ -688,7 +678,7 @@ macro_rules! create_typed_array_constructor {
                         );
                     }
 
-                    if source_typed_array.content_type() != content_type!() {
+                    if source_typed_array.content_type() != $content_type {
                         return type_error_(
                             cx,
                             "typed arrays must both contain either numbers or BigInts",

@@ -181,7 +181,7 @@ pub fn to_integer_or_infinity(cx: &mut Context, value: Value) -> EvalResult<f64>
         return number_f64.into();
     }
 
-    let mut integer_f64 = number_f64.floor().abs();
+    let mut integer_f64 = number_f64.abs().floor();
 
     if number_f64 < 0.0 {
         integer_f64 = -integer_f64;
@@ -579,7 +579,7 @@ pub fn to_index(cx: &mut Context, value: Value) -> EvalResult<usize> {
     if value.is_smi() {
         let smi = value.as_smi();
         if smi < 0 {
-            0.into()
+            range_error_(cx, &format!("{} is out of range for an array index", smi))
         } else {
             (smi as usize).into()
         }

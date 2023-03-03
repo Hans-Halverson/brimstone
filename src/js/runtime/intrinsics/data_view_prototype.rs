@@ -22,6 +22,7 @@ use super::{
         from_uint16_element, from_uint32_element, from_uint8_element, to_big_int64_element,
         to_big_uint64_element, to_float32_element, to_float64_element, to_int16_element,
         to_int32_element, to_int8_element, to_uint16_element, to_uint32_element, to_uint8_element,
+        ContentType,
     },
 };
 
@@ -47,16 +48,16 @@ impl DataViewPrototype {
         object.intrinsic_func(cx, &cx.names.get_uint8(), Self::get_uint8, 1, realm);
         object.intrinsic_func(cx, &cx.names.get_uint16(), Self::get_uint16, 1, realm);
         object.intrinsic_func(cx, &cx.names.get_uint32(), Self::get_uint32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_big_int64(), Self::set_big_int64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_big_uint64(), Self::set_big_uint64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_float32(), Self::set_float32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_float64(), Self::set_float64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_int8(), Self::set_int8, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_int16(), Self::set_int16, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_int32(), Self::set_int32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint8(), Self::set_uint8, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint16(), Self::set_uint16, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint32(), Self::set_uint32, 1, realm);
+        object.intrinsic_func(cx, &cx.names.set_big_int64(), Self::set_big_int64, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_float32(), Self::set_float32, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_float64(), Self::set_float64, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_int8(), Self::set_int8, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_int16(), Self::set_int16, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_int32(), Self::set_int32, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_uint8(), Self::set_uint8, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_uint16(), Self::set_uint16, 2, realm);
+        object.intrinsic_func(cx, &cx.names.set_uint32(), Self::set_uint32, 2, realm);
 
         // 25.3.4.25 DataView.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
@@ -224,7 +225,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_big_int64_element, i64::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::BigInt,
+            to_big_int64_element,
+            i64::swap_bytes,
+        )
     }
 
     // 25.3.4.16 DataView.prototype.setBigUint64
@@ -234,7 +242,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_big_uint64_element, u64::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::BigInt,
+            to_big_uint64_element,
+            u64::swap_bytes,
+        )
     }
 
     // 25.3.4.17 DataView.prototype.setFloat32
@@ -244,10 +259,17 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_float32_element, |element| {
-            let bits = f32::to_bits(element);
-            f32::from_bits(bits.swap_bytes())
-        })
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_float32_element,
+            |element| {
+                let bits = f32::to_bits(element);
+                f32::from_bits(bits.swap_bytes())
+            },
+        )
     }
 
     // 25.3.4.18 DataView.prototype.setFloat64
@@ -257,10 +279,17 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_float64_element, |element| {
-            let bits = f64::to_bits(element);
-            f64::from_bits(bits.swap_bytes())
-        })
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_float64_element,
+            |element| {
+                let bits = f64::to_bits(element);
+                f64::from_bits(bits.swap_bytes())
+            },
+        )
     }
 
     // 25.3.4.19 DataView.prototype.setInt8
@@ -270,7 +299,9 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_int8_element, |element| element)
+        set_view_value(cx, this_value, arguments, ContentType::Number, to_int8_element, |element| {
+            element
+        })
     }
 
     // 25.3.4.20 DataView.prototype.setInt16
@@ -280,7 +311,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_int16_element, i16::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_int16_element,
+            i16::swap_bytes,
+        )
     }
 
     // 25.3.4.21 DataView.prototype.setInt32
@@ -290,7 +328,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_int32_element, i32::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_int32_element,
+            i32::swap_bytes,
+        )
     }
 
     // 25.3.4.22 DataView.prototype.setUint8
@@ -300,7 +345,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_uint8_element, |element| element)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_uint8_element,
+            |element| element,
+        )
     }
 
     // 25.3.4.23 DataView.prototype.setUint16
@@ -310,7 +362,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_uint16_element, u16::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_uint16_element,
+            u16::swap_bytes,
+        )
     }
 
     // 25.3.4.24 DataView.prototype.setUint32
@@ -320,7 +379,14 @@ impl DataViewPrototype {
         arguments: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        set_view_value(cx, this_value, arguments, to_uint32_element, u32::swap_bytes)
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_uint32_element,
+            u32::swap_bytes,
+        )
     }
 }
 
@@ -394,6 +460,7 @@ fn set_view_value<T>(
     cx: &mut Context,
     this_value: Value,
     arguments: &[Value],
+    content_type: ContentType,
     to_element_fn: fn(&mut Context, Value) -> EvalResult<T>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Value> {
@@ -402,8 +469,7 @@ fn set_view_value<T>(
     let get_index = maybe!(to_index(cx, get_argument(arguments, 0)));
     let is_little_endian = to_boolean(get_argument(arguments, 2));
 
-    let element_size = std::mem::size_of::<T>();
-    let value = if element_size == 8 {
+    let value = if content_type == ContentType::BigInt {
         maybe!(to_bigint(cx, get_argument(arguments, 1))).into()
     } else {
         maybe!(to_number(cx, get_argument(arguments, 1)))
@@ -417,6 +483,7 @@ fn set_view_value<T>(
 
     let view_offset = data_view.byte_offset();
 
+    let element_size = std::mem::size_of::<T>();
     if get_index + element_size > data_view.byte_length() {
         return range_error_(cx, "byte offset is too large");
     }

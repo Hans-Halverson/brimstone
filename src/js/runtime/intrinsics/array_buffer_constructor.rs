@@ -62,8 +62,7 @@ impl ArrayBufferObject {
             );
         }
 
-        let mut data = Vec::with_capacity(byte_length);
-        unsafe { data.set_len(byte_length) };
+        let data = vec![0; byte_length];
 
         let array_buffer =
             ArrayBufferObject { _vtable: Self::VTABLE, object, data, is_detached: false };

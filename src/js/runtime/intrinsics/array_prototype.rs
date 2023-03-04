@@ -253,7 +253,14 @@ impl ArrayPrototype {
             length
         };
 
-        let mut count = u64::min(from_end_index - from_index, length - to_index);
+        let count =
+            i64::min(from_end_index as i64 - from_index as i64, length as i64 - to_index as i64);
+
+        if count <= 0 {
+            return object.into();
+        }
+
+        let mut count = count as u64;
 
         if from_index < to_index && to_index < from_index + count {
             from_index = from_index + count - 1;
@@ -960,6 +967,8 @@ impl ArrayPrototype {
 
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(arguments, 1)
+        } else if length == 0 {
+            return type_error_(cx, "reduce does not have initial value");
         } else {
             // Find the first value in the array if an initial value was not specified
             loop {
@@ -1012,6 +1021,8 @@ impl ArrayPrototype {
 
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(arguments, 1)
+        } else if length == 0 {
+            return type_error_(cx, "reduceRight does not have initial value");
         } else {
             // Find the first value in the array if an initial value was not specified
             loop {
@@ -1056,7 +1067,8 @@ impl ArrayPrototype {
 
         let middle = length / 2;
         let mut lower = 0;
-        let mut upper = length - 1;
+        // Safe to wrap as this only occurs when length is 0 and loop will be skipped
+        let mut upper = length.wrapping_sub(1);
 
         while lower != middle {
             let lower_key = PropertyKey::from_u64(cx, lower);
@@ -1170,7 +1182,7 @@ impl ArrayPrototype {
             length
         };
 
-        let count = u64::max(end_index - start_index, 0);
+        let count = end_index.saturating_sub(start_index);
         let array = maybe!(array_species_create(cx, object, count));
 
         let mut to_index = 0;

@@ -169,9 +169,12 @@ pub fn clone_array_buffer(
     mut source_buffer: Gc<ArrayBufferObject>,
     source_byte_offset: usize,
     source_length: usize,
-    clone_constructor: Gc<ObjectValue>,
 ) -> EvalResult<Gc<ArrayBufferObject>> {
-    let mut target_buffer = maybe!(ArrayBufferObject::new(cx, clone_constructor, source_length));
+    let array_buffer_constructor = cx
+        .current_realm()
+        .get_intrinsic(Intrinsic::ArrayBufferConstructor);
+    let mut target_buffer =
+        maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, source_length));
 
     if source_buffer.is_detached() {
         return type_error_(cx, "detached array buffer cannot be cloned");

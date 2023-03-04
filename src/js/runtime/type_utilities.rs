@@ -436,7 +436,7 @@ pub fn to_bigint(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> 
         return type_error_(cx, "value cannot be converted to BigInt");
     }
 
-    match value.get_tag() {
+    match primitive.get_tag() {
         BOOL_TAG => {
             if value.as_bool() {
                 cx.heap.alloc_bigint(1.into()).into()
@@ -445,7 +445,7 @@ pub fn to_bigint(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> 
             }
         }
         STRING_TAG => {
-            if let Some(bigint) = string_to_bigint(value.as_string()) {
+            if let Some(bigint) = string_to_bigint(primitive.as_string()) {
                 cx.heap.alloc_bigint(bigint).into()
             } else {
                 syntax_error_(cx, "string does not represent a BigInt")

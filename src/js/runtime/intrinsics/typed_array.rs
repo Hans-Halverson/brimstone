@@ -4,7 +4,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     create_typed_array_constructor, create_typed_array_prototype, impl_gc_into,
     js::runtime::{
-        abstract_operations::{get, get_method, length_of_array_like, set, species_constructor},
+        abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,

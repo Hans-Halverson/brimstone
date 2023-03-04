@@ -50,6 +50,9 @@
       "tail-call-optimization",
       // Non-standard extension
       "caller",
+      // Expected in ES2023
+      "array-find-from-last",
+      "change-array-by-copy",
       // Stage < 4 proposals
       "array-grouping",
       "decorators",

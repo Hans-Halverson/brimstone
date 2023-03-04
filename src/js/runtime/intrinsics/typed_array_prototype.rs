@@ -191,7 +191,7 @@ impl TypedArrayPrototype {
         };
 
         let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
-        let from_index = if relative_start < 0.0 {
+        let from_start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
@@ -218,8 +218,11 @@ impl TypedArrayPrototype {
             length
         };
 
-        let count = u64::min(from_end_index - from_index, length - to_index);
-        if count == 0 {
+        let count = i64::min(
+            from_end_index as i64 - from_start_index as i64,
+            length as i64 - to_index as i64,
+        );
+        if count <= 0 {
             return object.into();
         }
 
@@ -227,8 +230,8 @@ impl TypedArrayPrototype {
         let element_size = typed_array.element_size() as u64;
 
         let to_byte_index = to_index * element_size + byte_offset;
-        let from_byte_index = from_index * element_size + byte_offset;
-        let mut count_bytes = count * element_size;
+        let from_byte_index = from_start_index * element_size + byte_offset;
+        let mut count_bytes = count as u64 * element_size;
 
         let mut array_buffer = typed_array.viewed_array_buffer();
         if array_buffer.is_detached() {
@@ -787,6 +790,8 @@ impl TypedArrayPrototype {
 
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(arguments, 1)
+        } else if length == 0 {
+            return type_error_(cx, "reduce does not have initial value");
         } else {
             initial_index = 1;
             let first_index_key = PropertyKey::array_index(cx, 0);
@@ -828,6 +833,8 @@ impl TypedArrayPrototype {
 
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(arguments, 1)
+        } else if length == 0 {
+            return type_error_(cx, "reduceRight does not have initial value");
         } else {
             let last_index_key = PropertyKey::from_u64(cx, initial_index as u64);
             initial_index -= 1;
@@ -861,7 +868,8 @@ impl TypedArrayPrototype {
 
         let middle = length / 2;
         let mut lower = 0;
-        let mut upper = length - 1;
+        // Safe to wrap as this only occurs when length is 0 and loop will be skipped
+        let mut upper = length.wrapping_sub(1);
 
         while lower != middle {
             let lower_key = PropertyKey::from_u64(cx, lower);
@@ -919,7 +927,7 @@ impl TypedArrayPrototype {
             length
         };
 
-        let count = u64::max(end_index - start_index, 0);
+        let count = end_index.saturating_sub(start_index);
         let new_typed_array = maybe!(typed_array_species_create(
             cx,
             typed_array,
@@ -1050,7 +1058,7 @@ impl TypedArrayPrototype {
             length
         };
 
-        let new_length = u64::max(end_index - start_index, 0);
+        let new_length = end_index.saturating_sub(start_index);
 
         let element_size = typed_array.element_size();
         let source_byte_offset = typed_array.byte_offset();
@@ -1244,7 +1252,7 @@ pub fn typed_array_create(
     let new_typed_array = maybe!(validate_typed_array(cx, new_typed_array.into()));
 
     if let Some(length) = length {
-        if new_typed_array.array_length() != length {
+        if new_typed_array.array_length() < length {
             return type_error_(cx, "typed array does not have expected length");
         }
     }

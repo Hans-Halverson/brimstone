@@ -644,12 +644,6 @@ macro_rules! create_typed_array_constructor {
 
                 // TODO: Handle SharedArrayBuffers
 
-                let array_buffer_constructor = cx
-                    .current_realm()
-                    .get_intrinsic(Intrinsic::ArrayBufferPrototype);
-                let buffer_constructor =
-                    maybe!(species_constructor(cx, source_data.into(), array_buffer_constructor));
-
                 let source_byte_offset = source_typed_array.byte_offset();
                 let source_array_length = source_typed_array.array_length();
                 let byte_length = source_array_length * element_size!();
@@ -661,7 +655,6 @@ macro_rules! create_typed_array_constructor {
                         source_data,
                         source_byte_offset,
                         byte_length,
-                        buffer_constructor
                     ));
 
                     $typed_array::alloc(cx, object, data, byte_length, 0, source_array_length)
@@ -669,6 +662,9 @@ macro_rules! create_typed_array_constructor {
                 } else {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
+                    let buffer_constructor = cx
+                        .current_realm()
+                        .get_intrinsic(Intrinsic::ArrayBufferConstructor);
                     let data = maybe!(ArrayBufferObject::new(cx, buffer_constructor, byte_length));
 
                     if source_data.is_detached() {

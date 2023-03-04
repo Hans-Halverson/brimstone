@@ -39,6 +39,9 @@ impl StringPrototype {
         object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, &cx.names.substring(), Self::substring, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, &cx.names.trim(), Self::trim, 0, realm);
+        object.intrinsic_func(cx, &cx.names.trim_end(), Self::trim_end, 0, realm);
+        object.intrinsic_func(cx, &cx.names.trim_start(), Self::trim_start, 0, realm);
         object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
         // 22.1.3.34 String.prototype [ @@iterator ]
@@ -327,6 +330,45 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         this_string_value(cx, this_value)
+    }
+
+    // 22.1.3.30 String.prototype.trim
+    fn trim(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.trim(cx, true, true).into()
+    }
+
+    // 22.1.3.31 String.prototype.trimEnd
+    fn trim_end(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.trim(cx, false, true).into()
+    }
+
+    // 22.1.3.32 String.prototype.trimStart
+    fn trim_start(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.trim(cx, true, false).into()
     }
 
     // 22.1.3.33 String.prototype.valueOf

@@ -7,7 +7,7 @@ use std::{
 
 use crate::js::common::unicode::{
     code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1_char,
-    is_latin1_code_point, is_low_surrogate_code_unit, needs_surrogate_pair,
+    is_latin1_code_point, is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
     try_encode_surrogate_pair, CodePoint, CodeUnit,
 };
 
@@ -449,6 +449,63 @@ impl Gc<StringValue> {
         }
     }
 
+    pub fn trim(&self, cx: &mut Context, trim_start: bool, trim_end: bool) -> Gc<StringValue> {
+        let mut code_points_iter = self.iter_code_points();
+
+        let mut start_ptr = code_points_iter.ptr();
+
+        if trim_start {
+            while let Some(code_point) = code_points_iter.next() {
+                let char = unsafe { char::from_u32_unchecked(code_point) };
+                if !is_whitespace(char) {
+                    break;
+                }
+
+                start_ptr = code_points_iter.ptr();
+            }
+        }
+
+        let mut end_ptr = code_points_iter.ptr_back();
+
+        if trim_end {
+            while let Some(code_point) = code_points_iter.next_back() {
+                let char = unsafe { char::from_u32_unchecked(code_point) };
+                if !is_whitespace(char) {
+                    break;
+                }
+
+                end_ptr = code_points_iter.ptr_back();
+            }
+        }
+
+        if code_points_iter.is_end() {
+            return cx.names.empty_string.as_string();
+        }
+
+        match code_points_iter.width() {
+            StringWidth::OneByte => {
+                let slice = unsafe {
+                    let length = end_ptr.offset_from(start_ptr);
+                    std::slice::from_raw_parts(start_ptr, length as usize)
+                };
+
+                let string = OneByteString::from_slice(slice);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+            }
+            StringWidth::TwoByte => {
+                let slice = unsafe {
+                    let length = (end_ptr as *const u16).offset_from(start_ptr as *const u16);
+                    std::slice::from_raw_parts(start_ptr as *const u16, length as usize)
+                };
+
+                let string = TwoByteString::from_slice(slice);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+            }
+        }
+    }
+
     pub fn iter_code_units(&self) -> CodeUnitIterator {
         match self.value() {
             StringKind::Concat(_) => {
@@ -552,8 +609,26 @@ impl CodeUnitIterator {
         }
     }
 
+    pub fn peek_back(&self) -> Option<CodeUnit> {
+        if self.is_end() {
+            None
+        } else {
+            unsafe {
+                if self.width == StringWidth::OneByte {
+                    Some(self.end.sub(1).read() as u16)
+                } else {
+                    Some((self.end.sub(2) as *const u16).read())
+                }
+            }
+        }
+    }
+
     pub fn ptr(&self) -> *const u8 {
         self.ptr
+    }
+
+    pub fn ptr_back(&self) -> *const u8 {
+        self.end
     }
 
     pub fn width(&self) -> StringWidth {
@@ -613,6 +688,22 @@ impl CodePointIterator {
     fn from_two_byte(string: &TwoByteString) -> Self {
         CodePointIterator { iter: CodeUnitIterator::from_two_byte(string) }
     }
+
+    fn is_end(&self) -> bool {
+        self.iter.is_end()
+    }
+
+    fn ptr(&self) -> *const u8 {
+        self.iter.ptr()
+    }
+
+    fn ptr_back(&self) -> *const u8 {
+        self.iter.ptr_back()
+    }
+
+    fn width(&self) -> StringWidth {
+        self.iter.width()
+    }
 }
 
 impl Iterator for CodePointIterator {
@@ -630,11 +721,37 @@ impl Iterator for CodePointIterator {
                             self.iter.next();
                             Some(code_point_from_surrogate_pair(code_unit, next_code_unit))
                         }
-                        // Low surrogate was not the start of a surrogate pair so return it directly
+                        // High surrogate was not the start of a surrogate pair so return it directly
                         _ => Some(code_unit as u32),
                     }
                 } else {
                     // Both non-surrogate and high surrogate code points are returned directly as
+                    // they are not the start of a surrogate pair.
+                    Some(code_unit as u32)
+                }
+            }
+        }
+    }
+}
+
+impl DoubleEndedIterator for CodePointIterator {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.iter.next_back() {
+            None => None,
+            Some(code_unit) => {
+                // Low surrogate may followa high surrogate, in which case the surrogate pair
+                // encodes the full code point.
+                if is_low_surrogate_code_unit(code_unit) {
+                    match self.iter.peek_back() {
+                        Some(prev_code_unit) if is_high_surrogate_code_unit(prev_code_unit) => {
+                            self.iter.next();
+                            Some(code_point_from_surrogate_pair(prev_code_unit, code_unit))
+                        }
+                        // Low surrogate was not the start of a surrogate pair so return it directly
+                        _ => Some(code_unit as u32),
+                    }
+                } else {
+                    // Both non-surrogate and low surrogate code points are returned directly as
                     // they are not the start of a surrogate pair.
                     Some(code_unit as u32)
                 }

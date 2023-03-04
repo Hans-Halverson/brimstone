@@ -108,6 +108,11 @@ pub fn is_unicode_whitespace(char: char) -> bool {
 }
 
 #[inline]
+pub fn is_whitespace(char: char) -> bool {
+    is_ascii_whitespace(char) || is_unicode_whitespace(char)
+}
+
+#[inline]
 pub fn is_unicode_newline(char: char) -> bool {
     char == '\u{2028}' || char == '\u{2029}'
 }

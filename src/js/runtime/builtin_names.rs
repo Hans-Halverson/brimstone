@@ -228,6 +228,7 @@ builtin_names!(
     (raw, "raw"),
     (reduce, "reduce"),
     (reduce_right, "reduceRight"),
+    (repeat, "repeat"),
     (replace, "replace"),
     (return_, "return"),
     (reverse, "reverse"),

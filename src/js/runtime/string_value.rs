@@ -506,6 +506,27 @@ impl Gc<StringValue> {
         }
     }
 
+    pub fn repeat(&self, cx: &mut Context, n: u64) -> Gc<StringValue> {
+        match self.value() {
+            StringKind::Concat(_) => {
+                self.flatten();
+                self.repeat(cx, n)
+            }
+            StringKind::OneByte(str) => {
+                let repeated_buf = str.as_slice().repeat(n as usize);
+                let string = OneByteString::from_vec(repeated_buf);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+            }
+            StringKind::TwoByte(str) => {
+                let repeated_buf = str.as_slice().repeat(n as usize);
+                let string = TwoByteString::from_vec(repeated_buf);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+            }
+        }
+    }
+
     pub fn substring_equals(&self, search: Gc<StringValue>, start_index: usize) -> bool {
         let mut slice_code_units =
             self.iter_slice_code_units(start_index, start_index + search.len());

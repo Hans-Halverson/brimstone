@@ -1,7 +1,9 @@
 use crate::{
     js::runtime::{
+        abstract_operations::{call_object, get_method},
+        array_object::{array_create, create_array_from_list},
         completion::EvalResult,
-        error::type_error_,
+        error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
         object_value::ObjectValue,
@@ -10,7 +12,9 @@ use crate::{
         string_object::StringObject,
         string_value::StringValue,
         to_string,
-        type_utilities::{is_regexp, require_object_coercible, to_integer_or_infinity, to_number},
+        type_utilities::{
+            is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
+        },
         value::Value,
         Context, PropertyKey,
     },
@@ -37,7 +41,9 @@ impl StringPrototype {
         object.intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
         object.intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
+        object.intrinsic_func(cx, &cx.names.repeat(), Self::repeat, 1, realm);
         object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
+        object.intrinsic_func(cx, &cx.names.split(), Self::split, 2, realm);
         object.intrinsic_func(cx, &cx.names.starts_with(), Self::starts_with, 1, realm);
         object.intrinsic_func(cx, &cx.names.substring(), Self::substring, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
@@ -196,14 +202,10 @@ impl StringPrototype {
             return true.into();
         }
 
-        println!("got here and {} {}", end_index, search_length);
-
         let start_index = match end_index.checked_sub(search_length) {
             Some(start_index) => start_index,
             None => return false.into(),
         };
-
-        println!("got here and {} {}", start_index, end_index);
 
         string.substring_equals(search_string, start_index).into()
     }
@@ -295,6 +297,26 @@ impl StringPrototype {
         }
     }
 
+    // 22.1.3.17 String.prototype.repeat
+    fn repeat(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        if n < 0.0 || n == f64::INFINITY {
+            return range_error_(cx, "count must be a finite, positive number");
+        } else if n == 0.0 {
+            return cx.names.empty_string.as_string().into();
+        }
+
+        string.repeat(cx, n as u64).into()
+    }
+
     // 22.1.3.21 String.prototype.slice
     fn slice(
         cx: &mut Context,
@@ -341,6 +363,93 @@ impl StringPrototype {
         let substring = string.substring(cx, start_index as usize, end_index as usize);
 
         substring.into()
+    }
+
+    // 22.1.3.22 String.prototype.split
+    fn split(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+
+        let separator_argument = get_argument(arguments, 0);
+        let limit_argument = get_argument(arguments, 1);
+
+        // Use the @@split method of the separator if one exists
+        if !separator_argument.is_nullish() {
+            let split_key = PropertyKey::symbol(cx.well_known_symbols.split);
+            let splitter = maybe!(get_method(cx, separator_argument, &split_key));
+
+            if let Some(splitter) = splitter {
+                return call_object(cx, splitter, separator_argument, &[object, limit_argument]);
+            }
+        }
+
+        let string = maybe!(to_string(cx, object));
+
+        // Limit defaults to 2^32 - 1
+        let limit = if limit_argument.is_undefined() {
+            u32::MAX
+        } else {
+            maybe!(to_uint32(cx, limit_argument))
+        };
+
+        let separator = maybe!(to_string(cx, separator_argument));
+
+        if limit == 0 {
+            let array_object = maybe!(array_create(cx, 0, None));
+            return array_object.into();
+        } else if separator_argument.is_undefined() {
+            return create_array_from_list(cx, &[string.into()]).into();
+        }
+
+        // If separator is empty then return each code unit individually, up to the given limit
+        let separator_length = separator.len();
+        if separator_length == 0 {
+            let mut code_unit_strings = vec![];
+            let limit = usize::min(limit as usize, string.len());
+
+            for code_unit in string.iter_slice_code_units(0, limit) {
+                let code_unit_string = StringValue::from_code_unit(cx, code_unit);
+                code_unit_strings.push(code_unit_string.into());
+            }
+
+            return create_array_from_list(cx, &code_unit_strings).into();
+        }
+
+        // If the string is empty then it is the only substring
+        if string.len() == 0 {
+            return create_array_from_list(cx, &[string.into()]).into();
+        }
+
+        let mut substrings = vec![];
+
+        // Find the index of the first separator
+        let mut i = 0;
+        let mut next_separator_index_opt = string.find(separator, i);
+
+        while let Some(next_separator_index) = next_separator_index_opt {
+            // Add the substring up until the next separator
+            let substring = string.substring(cx, i, next_separator_index);
+            substrings.push(substring.into());
+
+            // If we have reached the limit of substrings then return them
+            if substrings.len() == limit as usize {
+                return create_array_from_list(cx, &substrings).into();
+            }
+
+            // Find and skip the next separator
+            i = next_separator_index + separator_length;
+            next_separator_index_opt = string.find(separator, i);
+        }
+
+        // Now that the last separator has the rest of the string is the last subtring
+        let last_substring = string.substring(cx, i, string.len());
+        substrings.push(last_substring.into());
+
+        create_array_from_list(cx, &substrings).into()
     }
 
     // 22.1.3.23 String.prototype.startsWith

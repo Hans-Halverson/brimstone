@@ -506,6 +506,14 @@ impl Gc<StringValue> {
         }
     }
 
+    pub fn substring_equals(&self, search: Gc<StringValue>, start_index: usize) -> bool {
+        let mut slice_code_units =
+            self.iter_slice_code_units(start_index, start_index + search.len());
+        let mut search_code_units = search.iter_code_units();
+
+        slice_code_units.consume_equals(&mut search_code_units)
+    }
+
     pub fn iter_code_units(&self) -> CodeUnitIterator {
         match self.value() {
             StringKind::Concat(_) => {
@@ -633,6 +641,21 @@ impl CodeUnitIterator {
 
     pub fn width(&self) -> StringWidth {
         self.width
+    }
+
+    #[inline]
+    pub fn consume_equals(&mut self, other: &mut CodeUnitIterator) -> bool {
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return true,
+                (None, Some(_)) | (Some(_), None) => return false,
+                (Some(code_unit_1), Some(code_unit_2)) => {
+                    if code_unit_1 != code_unit_2 {
+                        return false;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -785,17 +808,7 @@ impl PartialEq for Gc<StringValue> {
         let mut iter1 = self.iter_code_units();
         let mut iter2 = other.iter_code_units();
 
-        loop {
-            match (iter1.next(), iter2.next()) {
-                (None, None) => return true,
-                (None, Some(_)) | (Some(_), None) => return false,
-                (Some(code_unit_1), Some(code_unit_2)) => {
-                    if code_unit_1 != code_unit_2 {
-                        return false;
-                    }
-                }
-            }
-        }
+        iter1.consume_equals(&mut iter2)
     }
 }
 

@@ -33,10 +33,12 @@ impl StringPrototype {
         object.intrinsic_func(cx, &cx.names.char_code_at(), Self::char_code_at, 1, realm);
         object.intrinsic_func(cx, &cx.names.code_point_at(), Self::code_point_at, 1, realm);
         object.intrinsic_func(cx, &cx.names.concat(), Self::concat, 1, realm);
+        object.intrinsic_func(cx, &cx.names.ends_with(), Self::ends_with, 1, realm);
         object.intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
         object.intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
+        object.intrinsic_func(cx, &cx.names.starts_with(), Self::starts_with, 1, realm);
         object.intrinsic_func(cx, &cx.names.substring(), Self::substring, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.trim(), Self::trim, 0, realm);
@@ -154,6 +156,56 @@ impl StringPrototype {
         }
 
         concat_string.into()
+    }
+
+    // 22.1.3.7 String.prototype.endsWith
+    fn ends_with(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+        let length = string.len();
+
+        let search_value = get_argument(arguments, 0);
+        if search_value.is_object() && search_value.as_object().is_regexp_object() {
+            return type_error_(cx, "first argument to startsWith cannot be a RegExp");
+        }
+
+        let search_string = maybe!(to_string(cx, search_value));
+
+        let end_index_argument = get_argument(arguments, 1);
+        let end_index = if end_index_argument.is_undefined() {
+            length
+        } else {
+            let end_index = maybe!(to_integer_or_infinity(cx, end_index_argument));
+
+            if end_index < 0.0 {
+                0
+            } else if end_index > (length as f64) {
+                length
+            } else {
+                end_index as usize
+            }
+        };
+
+        let search_length = search_string.len();
+        if search_length == 0 {
+            return true.into();
+        }
+
+        println!("got here and {} {}", end_index, search_length);
+
+        let start_index = match end_index.checked_sub(search_length) {
+            Some(start_index) => start_index,
+            None => return false.into(),
+        };
+
+        println!("got here and {} {}", start_index, end_index);
+
+        string.substring_equals(search_string, start_index).into()
     }
 
     // 22.1.3.8 String.prototype.includes
@@ -289,6 +341,52 @@ impl StringPrototype {
         let substring = string.substring(cx, start_index as usize, end_index as usize);
 
         substring.into()
+    }
+
+    // 22.1.3.23 String.prototype.startsWith
+    fn starts_with(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+        let length = string.len();
+
+        let search_value = get_argument(arguments, 0);
+        if search_value.is_object() && search_value.as_object().is_regexp_object() {
+            return type_error_(cx, "first argument to startsWith cannot be a RegExp");
+        }
+
+        let search_string = maybe!(to_string(cx, search_value));
+
+        let start_index_argument = get_argument(arguments, 1);
+        let start_index = if start_index_argument.is_undefined() {
+            0
+        } else {
+            let start_index = maybe!(to_integer_or_infinity(cx, start_index_argument));
+
+            if start_index < 0.0 {
+                0
+            } else if start_index > (length as f64) {
+                length
+            } else {
+                start_index as usize
+            }
+        };
+
+        let search_length = search_string.len();
+        if search_length == 0 {
+            return true.into();
+        }
+
+        let end_index = start_index + search_length;
+        if end_index > length {
+            return false.into();
+        }
+
+        string.substring_equals(search_string, start_index).into()
     }
 
     // 22.1.3.24 String.prototype.substring

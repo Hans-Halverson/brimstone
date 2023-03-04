@@ -271,6 +271,28 @@ impl Gc<StringValue> {
         }
     }
 
+    /// Return a substring of this string between the given indices. Indices refer to a half-open
+    /// range of code units in the string. This function does not bounds check, so caller must make
+    /// sure that 0 <= start <= end < string length.
+    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Gc<StringValue> {
+        match self.value() {
+            StringKind::Concat(_) => {
+                self.flatten();
+                self.substring(cx, start, end)
+            }
+            StringKind::OneByte(str) => {
+                let one_byte_string = OneByteString::from_slice(&str.as_slice()[start..end]);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::OneByte(one_byte_string)))
+            }
+            StringKind::TwoByte(str) => {
+                let two_byte_string = TwoByteString::from_slice(&str.as_slice()[start..end]);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::TwoByte(two_byte_string)))
+            }
+        }
+    }
+
     /// Return the index of the first occurrence of the search string in this string, starting after
     /// a given index (inclusive). This function does not bounds check the after index, so caller
     /// must be make sure to only pass an after index that is less than the length of the string.
@@ -704,6 +726,15 @@ impl OneByteString {
         string
     }
 
+    fn from_slice(slice: &[u8]) -> Self {
+        // Copy slice to buffer
+        let mut buf = Vec::with_capacity(slice.len());
+        unsafe { buf.set_len(slice.len()) }
+        buf.copy_from_slice(slice);
+
+        Self::from_vec(buf)
+    }
+
     #[inline]
     pub const fn as_slice(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
@@ -718,6 +749,15 @@ impl TwoByteString {
         std::mem::forget(buf);
 
         string
+    }
+
+    fn from_slice(slice: &[u16]) -> Self {
+        // Copy slice to buffer
+        let mut buf = Vec::with_capacity(slice.len());
+        unsafe { buf.set_len(slice.len()) }
+        buf.copy_from_slice(slice);
+
+        Self::from_vec(buf)
     }
 
     #[inline]

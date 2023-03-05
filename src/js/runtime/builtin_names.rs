@@ -269,6 +269,7 @@ builtin_names!(
     (to_locale_string, "toLocaleString"),
     (to_locale_upper_case, "toLocaleUpperCase"),
     (to_lower_case, "toLowerCase"),
+    (to_fixed, "toFixed"),
     (to_primitive, "toPrimitive"),
     (to_string, "toString"),
     (to_string_tag, "toStringTag"),

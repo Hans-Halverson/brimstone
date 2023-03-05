@@ -7,7 +7,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::OrdinaryObject,
         realm::Realm,
-        type_utilities::to_integer_or_infinity,
+        type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,
         Context,
     },
@@ -27,9 +27,58 @@ impl NumberPrototype {
         // Constructor property is added once NumberConstructor has been created
         object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 1, realm);
+        object.intrinsic_func(cx, &cx.names.to_fixed(), Self::to_fixed, 1, realm);
         object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
         cx.heap.alloc(NumberObject::new(object, 0.0)).into()
+    }
+
+    // 21.1.3.3 Number.prototype.toFixed
+    fn to_fixed(
+        cx: &mut Context,
+        this_value: Value,
+        arguments: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let number_value = maybe!(this_number_value(cx, this_value));
+        let mut number = number_value.as_number();
+
+        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        if !num_fraction_digits.is_finite()
+            || num_fraction_digits < 0.0
+            || num_fraction_digits > 100.0
+        {
+            return range_error_(cx, "number of fraction digits must between 0 and 100");
+        }
+
+        let num_fraction_digits = num_fraction_digits as u8;
+
+        if !number.is_finite() {
+            return cx.heap.alloc_string(number_to_string(number)).into();
+        }
+
+        let is_negative = number < 0.0;
+        if is_negative {
+            number = -number;
+        }
+
+        let mut m;
+        if number >= 1e21 {
+            m = number_to_string(number)
+        } else {
+            if number == 0.0 {
+                number = 0.0;
+            }
+
+            let num_fraction_digits = num_fraction_digits as usize;
+            m = format!("{number:.num_fraction_digits$}");
+        };
+
+        if is_negative {
+            m = format!("-{}", m);
+        }
+
+        cx.heap.alloc_string(m).into()
     }
 
     // 21.1.3.4 Number.prototype.toLocaleString

@@ -535,6 +535,132 @@ impl Gc<StringValue> {
         slice_code_units.consume_equals(&mut search_code_units)
     }
 
+    pub fn to_lower_case(&self, cx: &mut Context) -> Gc<StringValue> {
+        match self.value() {
+            StringKind::Concat(_) => {
+                self.flatten();
+                self.to_lower_case(cx)
+            }
+            StringKind::OneByte(string) => {
+                // One byte fast path. Know the length of the result string in advance, and can
+                // convert to lowercase with bitwise operations.
+                let mut lowercased = Vec::with_capacity(string.len);
+
+                for latin1_byte in string.as_slice() {
+                    let set_lowercase = if *latin1_byte < 0x80 {
+                        // ASCII lowercase
+                        *latin1_byte >= ('A' as u8) && *latin1_byte <= ('Z' as u8)
+                    } else {
+                        // Latin1 lowercase
+                        *latin1_byte >= ('À' as u8) && *latin1_byte <= ('Þ' as u8)
+                    };
+
+                    if set_lowercase {
+                        lowercased.push(*latin1_byte ^ 0x20);
+                    } else {
+                        lowercased.push(*latin1_byte);
+                    }
+                }
+
+                let string = OneByteString::from_vec(lowercased);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+            }
+            StringKind::TwoByte(string) => {
+                // Two byte slow path. Must convert each code point to lowercase one by one, each of
+                // which can map to multiple code points.
+                let mut lowercased = vec![];
+
+                let code_point_iter = CodePointIterator::from_two_byte(string);
+                for code_point in code_point_iter {
+                    match char::from_u32(code_point) {
+                        // Must be an unpaired surrogate, which should be written back to buffer
+                        None => lowercased.push(code_point as u16),
+                        Some(char) => {
+                            // May becomes multiple code points when lowercased
+                            for lowercase_char in char.to_lowercase() {
+                                match try_encode_surrogate_pair(lowercase_char as CodePoint) {
+                                    // Single code unit so write back to buffer
+                                    None => lowercased.push(lowercase_char as u16),
+                                    // Write both surrogate code units back to buffer
+                                    Some((high_surrogate, low_surrogate)) => {
+                                        lowercased.push(high_surrogate);
+                                        lowercased.push(low_surrogate);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let string = TwoByteString::from_vec(lowercased);
+                cx.heap
+                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+            }
+        }
+    }
+
+    pub fn to_upper_case(&self, cx: &mut Context) -> Gc<StringValue> {
+        let code_point_iter = match self.value() {
+            StringKind::Concat(_) => {
+                self.flatten();
+                return self.to_upper_case(cx);
+            }
+            StringKind::OneByte(string) => {
+                // Fast path for ASCII-only string, as uppercased Latin1 code points may be out of
+                // one byte range or map to multiple code points.
+                if string.is_ascii() {
+                    let mut uppercased = Vec::with_capacity(string.len);
+
+                    for ascii_byte in string.as_slice() {
+                        if *ascii_byte >= ('a' as u8) && *ascii_byte <= ('z' as u8) {
+                            uppercased.push(*ascii_byte ^ 0x20);
+                        } else {
+                            uppercased.push(*ascii_byte);
+                        }
+                    }
+
+                    let string = OneByteString::from_vec(uppercased);
+                    return cx
+                        .heap
+                        .alloc_string_value(StringValue::new(StringKind::OneByte(string)));
+                }
+
+                CodePointIterator::from_one_byte(string)
+            }
+            StringKind::TwoByte(string) => CodePointIterator::from_two_byte(string),
+        };
+
+        // Slow path pessimistically generates two byte strings. Must convert each code point to
+        // uppercase one by one, each of which can map to multiple code points.
+        let mut uppercased = vec![];
+
+        for code_point in code_point_iter {
+            match char::from_u32(code_point) {
+                // Must be an unpaired surrogate, which should be written back to buffer
+                None => uppercased.push(code_point as u16),
+                Some(char) => {
+                    // May becomes multiple code points when uppercased
+                    for uppercase_char in char.to_uppercase() {
+                        match try_encode_surrogate_pair(uppercase_char as CodePoint) {
+                            // Single code unit so write back to buffer
+                            None => uppercased.push(uppercase_char as u16),
+                            // Write both surrogate code units back to buffer
+                            Some((high_surrogate, low_surrogate)) => {
+                                uppercased.push(high_surrogate);
+                                uppercased.push(low_surrogate);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let string = TwoByteString::from_vec(uppercased);
+        cx.heap
+            .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+    }
+
     pub fn iter_code_units(&self) -> CodeUnitIterator {
         match self.value() {
             StringKind::Concat(_) => {
@@ -889,6 +1015,17 @@ impl OneByteString {
     #[inline]
     pub const fn as_slice(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+
+    fn is_ascii(&self) -> bool {
+        // TODO: Optimize by checking multiple bytes at a time using multi-byte mask
+        for byte in self.as_slice() {
+            if *byte >= 0x80 {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

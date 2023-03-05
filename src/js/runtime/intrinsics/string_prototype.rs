@@ -47,6 +47,22 @@ impl StringPrototype {
         object.intrinsic_func(cx, &cx.names.starts_with(), Self::starts_with, 1, realm);
         object.intrinsic_func(cx, &cx.names.substring(), Self::substring, 2, realm);
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(
+            cx,
+            &cx.names.to_locale_lower_case(),
+            Self::to_locale_lower_case,
+            0,
+            realm,
+        );
+        object.intrinsic_func(
+            cx,
+            &cx.names.to_locale_upper_case(),
+            Self::to_locale_upper_case,
+            0,
+            realm,
+        );
+        object.intrinsic_func(cx, &cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
+        object.intrinsic_func(cx, &cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
         object.intrinsic_func(cx, &cx.names.trim(), Self::trim, 0, realm);
         object.intrinsic_func(cx, &cx.names.trim_end(), Self::trim_end, 0, realm);
         object.intrinsic_func(cx, &cx.names.trim_start(), Self::trim_start, 0, realm);
@@ -529,6 +545,45 @@ impl StringPrototype {
         substring.into()
     }
 
+    // 22.1.3.25 String.prototype.toLocaleLowerCase
+    fn to_locale_lower_case(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.to_lower_case(cx).into()
+    }
+
+    // 22.1.3.26 String.prototype.toLocaleUpperCase
+    fn to_locale_upper_case(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.to_upper_case(cx).into()
+    }
+
+    // 22.1.3.27 String.prototype.toLowerCase
+    fn to_lower_case(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.to_lower_case(cx).into()
+    }
+
     // 22.1.3.28 String.prototype.toString
     fn to_string(
         cx: &mut Context,
@@ -537,6 +592,19 @@ impl StringPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         this_string_value(cx, this_value)
+    }
+
+    // 22.1.3.29 String.prototype.toUpperCase
+    fn to_upper_case(
+        cx: &mut Context,
+        this_value: Value,
+        _: &[Value],
+        _: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<Value> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.to_upper_case(cx).into()
     }
 
     // 22.1.3.30 String.prototype.trim

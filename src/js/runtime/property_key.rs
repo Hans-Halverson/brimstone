@@ -170,6 +170,11 @@ impl PropertyKey {
                         string_key.can_be_number = false;
                         return false;
                     }
+                    // 2 ^ 32 - 1 is outside the array index range
+                    Some (array_index) if array_index == u32::MAX => {
+                        string_key.can_be_number = false;
+                        return false;
+                    }
                     Some(array_index) => array_index,
                 }
             }

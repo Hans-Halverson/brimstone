@@ -33,7 +33,7 @@ impl TypedArrayPrototype {
     // 23.2.3 Properties of the %TypedArray% Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once TypedArrayConstructor has been created
 
@@ -92,7 +92,7 @@ impl TypedArrayPrototype {
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.intrinsic_getter(cx, &to_string_tag_key, Self::get_to_string_tag, realm);
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 23.2.3.1 %TypedArray%.prototype.at
@@ -1152,6 +1152,7 @@ macro_rules! create_typed_array_prototype {
             // 23.2.7 Properties of the TypedArray Prototype Objects
             pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
                 let mut object = OrdinaryObject::new(
+                    cx,
                     Some(realm.get_intrinsic(Intrinsic::TypedArrayPrototype)),
                     true,
                 );
@@ -1167,7 +1168,7 @@ macro_rules! create_typed_array_prototype {
                     ),
                 );
 
-                cx.heap.alloc(object).into()
+                object.into()
             }
         }
     };

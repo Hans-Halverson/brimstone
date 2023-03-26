@@ -1,14 +1,14 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{impl_gc_into, maybe};
+use crate::{extend_object, impl_gc_into, maybe};
 
 use super::{
     abstract_operations::{call_object, construct},
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     gc::{Gc, GcDeref},
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    ordinary_object::{ordinary_object_create_optional_proto, OrdinaryObject},
+    object_value::{extract_object_vtable, Object, ObjectValue},
+    ordinary_object::object_ordinary_init_optional_proto,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -18,13 +18,12 @@ use super::{
 };
 
 // 10.4.1 Bound Function Exotic Objects
-#[repr(C)]
-pub struct BoundFunctionObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    pub bound_target_function: Gc<ObjectValue>,
-    bound_this: Value,
-    bound_arguments: Vec<Value>,
+extend_object! {
+    pub struct BoundFunctionObject {
+        pub bound_target_function: Gc<ObjectValue>,
+        bound_this: Value,
+        bound_arguments: Vec<Value>,
+    }
 }
 
 impl GcDeref for BoundFunctionObject {}
@@ -42,27 +41,17 @@ impl BoundFunctionObject {
         bound_arguments: Vec<Value>,
     ) -> EvalResult<Gc<BoundFunctionObject>> {
         let proto = maybe!(target_function.get_prototype_of(cx));
-        let object = ordinary_object_create_optional_proto(proto);
 
-        cx.heap
-            .alloc(BoundFunctionObject {
-                _vtable: Self::VTABLE,
-                object,
-                bound_target_function: target_function,
-                bound_this,
-                bound_arguments,
-            })
-            .into()
-    }
+        let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
+        object._vtable = Self::VTABLE;
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        object_ordinary_init_optional_proto(object.object_mut(), proto);
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object.bound_target_function = target_function;
+        object.bound_this = bound_this;
+        object.bound_arguments = bound_arguments;
+
+        object.into()
     }
 }
 

@@ -15,14 +15,14 @@ impl ErrorPrototype {
     // 20.5.3 Properties of the Error Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once ErrorConstructor has been created
         object.intrinsic_name_prop(cx, "Error");
         object.intrinsic_data_prop(&cx.names.message(), cx.names.empty_string().as_string().into());
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 20.5.3.4 Error.prototype.toString

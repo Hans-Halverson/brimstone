@@ -8,7 +8,6 @@ use crate::{
             function::get_argument,
             gc::Gc,
             object_value::ObjectValue,
-            ordinary_object::ordinary_create_from_constructor,
             property::Property,
             realm::Realm,
             string_object::StringObject,
@@ -76,14 +75,9 @@ impl StringConstructor {
         match new_target {
             None => string_value.into(),
             Some(new_target) => {
-                let object = maybe!(ordinary_create_from_constructor(
-                    cx,
-                    new_target,
-                    Intrinsic::StringPrototype
-                ));
-
-                let string_object = StringObject::new(cx, object, string_value);
-                cx.heap.alloc(string_object).into()
+                let string_object =
+                    maybe!(StringObject::new_from_constructor(cx, new_target, string_value));
+                string_object.into()
             }
         }
     }

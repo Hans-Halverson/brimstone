@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
@@ -9,8 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -25,12 +25,11 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 21.2 BigInt Objects
-#[repr(C)]
-pub struct BigIntObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // The BigInt value wrapped by this object
-    bigint_data: Gc<BigIntValue>,
+extend_object! {
+    pub struct BigIntObject {
+        // The BigInt value wrapped by this object
+        bigint_data: Gc<BigIntValue>,
+    }
 }
 
 impl GcDeref for BigIntObject {}
@@ -42,24 +41,19 @@ impl BigIntObject {
 
     pub fn new_from_value(cx: &mut Context, bigint_data: Gc<BigIntValue>) -> Gc<BigIntObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::BigIntPrototype);
-        let object = ordinary_object_create(proto);
 
-        let bigint_object = BigIntObject { _vtable: Self::VTABLE, object, bigint_data };
-        cx.heap.alloc(bigint_object)
+        let mut object = cx.heap.alloc_uninit::<BigIntObject>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), proto);
+
+        object.bigint_data = bigint_data;
+
+        object
     }
 
     pub fn bigint_data(&self) -> Gc<BigIntValue> {
         self.bigint_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 

@@ -32,7 +32,7 @@ impl DataViewPrototype {
     // 25.3.4 Properties of the DataView Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once DataViewConstructor has been created
         object.intrinsic_getter(cx, &cx.names.buffer(), Self::get_buffer, realm);
@@ -66,7 +66,7 @@ impl DataViewPrototype {
             Property::data(cx.names.data_view().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 25.3.4.1 get DataView.prototype.buffer

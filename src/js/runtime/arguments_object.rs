@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::{
         parser::ast,
         runtime::{builtin_function::BuiltinFunction, eval::pattern::id_string_value},
@@ -20,11 +20,10 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
+    object_value::{extract_object_vtable, Object, ObjectValue},
     ordinary_object::{
-        ordinary_define_own_property, ordinary_delete, ordinary_get, ordinary_get_own_property,
-        ordinary_object_create, ordinary_object_create_optional_proto, ordinary_set,
-        OrdinaryObject,
+        object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
+        ordinary_get_own_property, ordinary_object_create_optional_proto, ordinary_set,
     },
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -36,10 +35,8 @@ use super::{
 
 // An unmapped arguments that is identical to an ordinary object, but has the is_arguments_object
 // method overridden. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
-#[repr(C)]
-pub struct UnmappedArgumentsObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
+extend_object! {
+    pub struct UnmappedArgumentsObject {}
 }
 
 impl GcDeref for UnmappedArgumentsObject {}
@@ -51,20 +48,12 @@ impl UnmappedArgumentsObject {
 
     pub fn new(cx: &mut Context) -> Gc<UnmappedArgumentsObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let object = ordinary_object_create(proto);
+        let mut object = cx.heap.alloc_uninit::<UnmappedArgumentsObject>();
+        object._vtable = Self::VTABLE;
 
-        cx.heap
-            .alloc(UnmappedArgumentsObject { _vtable: Self::VTABLE, object })
-    }
+        object_ordinary_init(object.object_mut(), proto);
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object
     }
 }
 
@@ -77,11 +66,10 @@ impl Object for UnmappedArgumentsObject {
 
 // A mapped arguments exotic argument, as specified in:
 // 10.4.4 Arguments Exotic Objects
-#[repr(C)]
-pub struct MappedArgumentsObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    parameter_map: Gc<ObjectValue>,
+extend_object! {
+    pub struct MappedArgumentsObject {
+        parameter_map: Gc<ObjectValue>,
+    }
 }
 
 impl GcDeref for MappedArgumentsObject {}
@@ -93,20 +81,14 @@ impl MappedArgumentsObject {
 
     pub fn new(cx: &mut Context, parameter_map: Gc<ObjectValue>) -> Gc<MappedArgumentsObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let object = ordinary_object_create(proto);
+        let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
+        object._vtable = Self::VTABLE;
 
-        cx.heap
-            .alloc(MappedArgumentsObject { _vtable: Self::VTABLE, object, parameter_map })
-    }
+        object_ordinary_init(object.object_mut(), proto);
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        object.parameter_map = parameter_map;
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object
     }
 }
 
@@ -259,7 +241,7 @@ pub fn create_mapped_arguments_object(
     arguments: &[Value],
     env: Gc<dyn Environment>,
 ) -> Value {
-    let parameter_map = cx.heap.alloc(ordinary_object_create_optional_proto(None));
+    let parameter_map = ordinary_object_create_optional_proto(cx, None);
     let mut object = MappedArgumentsObject::new(cx, parameter_map.into());
 
     // Gather parameter names. All parameters are guaranteed to be simple identifiers in order for

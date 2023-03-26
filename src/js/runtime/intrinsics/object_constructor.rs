@@ -118,22 +118,20 @@ impl ObjectConstructor {
                 .unwrap()
                 .ptr_eq(&new_target)
             {
-                let new_object = maybe!(ordinary_create_from_constructor(
+                let new_value: Value = maybe!(ordinary_create_from_constructor(
                     cx,
                     new_target,
                     Intrinsic::ObjectConstructor
-                ));
-                let new_value: Value = cx.heap.alloc(new_object).into();
+                ))
+                .into();
                 return new_value.into();
             }
         }
 
         let value = get_argument(arguments, 0);
         if value.is_nullish() {
-            let new_object = ordinary_object_create(
-                cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype),
-            );
-            let new_value: Value = cx.heap.alloc(new_object).into();
+            let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+            let new_value: Value = ordinary_object_create(cx, object_proto).into();
             return new_value.into();
         }
 
@@ -190,10 +188,7 @@ impl ObjectConstructor {
             return type_error_(cx, "prototype must be an object or null");
         };
 
-        let object: Gc<ObjectValue> = cx
-            .heap
-            .alloc(ordinary_object_create_optional_proto(proto))
-            .into();
+        let object: Gc<ObjectValue> = ordinary_object_create_optional_proto(cx, proto).into();
 
         let properties = get_argument(arguments, 1);
         if properties.is_undefined() {
@@ -329,7 +324,7 @@ impl ObjectConstructor {
         let keys = maybe!(object.own_property_keys(cx));
 
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let descriptors: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(proto)).into();
+        let descriptors: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
 
         for key in keys {
             let key = must!(PropertyKey::from_value(cx, key));

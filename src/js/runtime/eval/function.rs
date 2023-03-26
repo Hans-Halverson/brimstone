@@ -161,7 +161,9 @@ pub fn function_declaration_instantiation(
                 for (array_index, arg_index) in (arg_index..arguments.len()).enumerate() {
                     let array_key = PropertyKey::array_index(cx, array_index as u32);
                     let array_property = Property::data(arguments[arg_index], true, true, true);
-                    rest_array.object.set_property(&array_key, array_property);
+                    rest_array
+                        .object_mut()
+                        .set_property(&array_key, array_property);
                 }
 
                 value = rest_array.into();

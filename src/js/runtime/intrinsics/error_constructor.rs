@@ -1,16 +1,16 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::Gc,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        gc::{Gc, GcDeref},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -24,29 +24,32 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-#[repr(C)]
-pub struct ErrorObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
+extend_object! {
+    pub struct ErrorObject {}
 }
+
+impl GcDeref for ErrorObject {}
 
 impl_gc_into!(ErrorObject, ObjectValue);
 
 impl ErrorObject {
     const VTABLE: *const () = extract_object_vtable::<ErrorObject>();
 
-    fn new(object: OrdinaryObject) -> ErrorObject {
-        ErrorObject { _vtable: Self::VTABLE, object }
-    }
+    fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+    ) -> EvalResult<Gc<ErrorObject>> {
+        let mut object = cx.heap.alloc_uninit::<ErrorObject>();
+        object._vtable = Self::VTABLE;
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::ErrorPrototype
+        ));
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object.into()
     }
 }
 
@@ -99,9 +102,8 @@ impl ErrorConstructor {
             cx.current_execution_context().function.unwrap()
         };
 
-        let ordinary_object =
-            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::ErrorPrototype));
-        let object: Gc<ObjectValue> = cx.heap.alloc(ErrorObject::new(ordinary_object)).into();
+        let object: Gc<ObjectValue> =
+            maybe!(ErrorObject::new_from_constructor(cx, new_target)).into();
 
         let message = get_argument(arguments, 0);
         if !message.is_undefined() {

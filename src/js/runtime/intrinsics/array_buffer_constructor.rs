@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
@@ -9,8 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -28,12 +28,11 @@ use super::intrinsics::Intrinsic;
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
 
 // 25.1 ArrayBuffer Objects
-#[repr(C)]
-pub struct ArrayBufferObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    data: Vec<u8>,
-    is_detached: bool,
+extend_object! {
+    pub struct ArrayBufferObject {
+        data: Vec<u8>,
+        is_detached: bool,
+    }
 }
 
 impl GcDeref for ArrayBufferObject {}
@@ -49,8 +48,12 @@ impl ArrayBufferObject {
         constructor: Gc<ObjectValue>,
         byte_length: usize,
     ) -> EvalResult<Gc<ArrayBufferObject>> {
-        let object = maybe!(ordinary_create_from_constructor(
+        let mut object = cx.heap.alloc_uninit::<ArrayBufferObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
             cx,
+            object.object_mut(),
             constructor,
             Intrinsic::ArrayBufferPrototype
         ));
@@ -64,10 +67,10 @@ impl ArrayBufferObject {
 
         let data = vec![0; byte_length];
 
-        let array_buffer =
-            ArrayBufferObject { _vtable: Self::VTABLE, object, data, is_detached: false };
+        object.data = data;
+        object.is_detached = false;
 
-        cx.heap.alloc(array_buffer).into()
+        object.into()
     }
 
     pub fn data(&mut self) -> &mut [u8] {
@@ -82,16 +85,6 @@ impl ArrayBufferObject {
     pub fn detach(&mut self) {
         self.data = Vec::new();
         self.is_detached = true;
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 

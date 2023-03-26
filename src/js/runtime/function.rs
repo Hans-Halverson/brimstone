@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::parser::ast::{self, AstPtr},
     maybe, maybe_, maybe__, must,
 };
@@ -24,8 +24,10 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    ordinary_object::{ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject},
+    object_value::{extract_object_vtable, Object, ObjectValue},
+    ordinary_object::{
+        object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
+    },
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -50,25 +52,24 @@ pub enum ConstructorKind {
 }
 
 // 10.2 ECMAScript Function Object
-#[repr(C)]
-pub struct Function {
-    _vtable: ObjectValueVtable,
-    is_strict: bool,
-    is_class_constructor: bool,
-    // Whether this function has a [[Construct]] internal slot
-    has_construct: bool,
-    pub constructor_kind: ConstructorKind,
-    pub this_mode: ThisMode,
-    // Object properties of this function
-    object: OrdinaryObject,
-    pub home_object: Option<Gc<ObjectValue>>,
-    realm: Gc<Realm>,
-    script_or_module: Option<ScriptOrModule>,
-    pub func_node: FuncKind,
-    pub environment: Gc<dyn Environment>,
-    pub private_environment: Option<Gc<PrivateEnvironment>>,
-    pub fields: Vec<ClassFieldDefinition>,
-    pub private_methods: Vec<(PrivateNameId, PrivateProperty)>,
+extend_object! {
+    pub struct Function {
+        is_strict: bool,
+        is_class_constructor: bool,
+        // Whether this function has a [[Construct]] internal slot
+        has_construct: bool,
+        pub constructor_kind: ConstructorKind,
+        pub this_mode: ThisMode,
+        // Object properties of this function
+        pub home_object: Option<Gc<ObjectValue>>,
+        realm: Gc<Realm>,
+        script_or_module: Option<ScriptOrModule>,
+        pub func_node: FuncKind,
+        pub environment: Gc<dyn Environment>,
+        pub private_environment: Option<Gc<PrivateEnvironment>>,
+        pub fields: Vec<ClassFieldDefinition>,
+        pub private_methods: Vec<(PrivateNameId, PrivateProperty)>,
+    }
 }
 
 // Function objects may have special kinds, such as executing a class property node instead of a
@@ -83,17 +84,46 @@ impl GcDeref for Function {}
 
 impl_gc_into!(Function, ObjectValue);
 
-const VTABLE: *const () = extract_object_vtable::<Function>();
-
 impl Function {
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+    const VTABLE: *const () = extract_object_vtable::<Function>();
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+    fn new(
+        cx: &mut Context,
+        prototype: Gc<ObjectValue>,
+        func_node: FuncKind,
+        is_lexical_this: bool,
+        is_strict: bool,
+        environment: Gc<dyn Environment>,
+        private_environment: Option<Gc<PrivateEnvironment>>,
+    ) -> Gc<Function> {
+        let this_mode = if is_lexical_this {
+            ThisMode::Lexical
+        } else if is_strict {
+            ThisMode::Strict
+        } else {
+            ThisMode::Global
+        };
+
+        let mut object = cx.heap.alloc_uninit::<Function>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), prototype);
+
+        object.is_strict = is_strict;
+        object.is_class_constructor = false;
+        object.has_construct = false;
+        object.constructor_kind = ConstructorKind::Base;
+        object.this_mode = this_mode;
+        object.home_object = None;
+        object.realm = cx.current_realm();
+        object.script_or_module = cx.get_active_script_or_module();
+        object.environment = environment;
+        object.private_environment = private_environment;
+        object.func_node = func_node;
+        object.fields = vec![];
+        object.private_methods = vec![];
+
+        object
     }
 }
 
@@ -150,12 +180,8 @@ impl Object for Function {
                     _ => return type_error_(cx, "super class must be a constructor"),
                 }
             } else {
-                let object = maybe!(ordinary_create_from_constructor(
-                    cx,
-                    new_target,
-                    Intrinsic::ObjectPrototype
-                ));
-                cx.heap.alloc(object).into()
+                maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::ObjectPrototype))
+                    .into()
             };
 
             maybe!(initialize_instance_elements(cx, new_object, self.into()));
@@ -169,9 +195,8 @@ impl Object for Function {
                     cx,
                     new_target,
                     Intrinsic::ObjectPrototype
-                ));
-
-                let object = cx.heap.alloc(object).into();
+                ))
+                .into();
 
                 if let FuncKind::DefaultConstructor = self.func_node {
                     maybe!(initialize_instance_elements(cx, object, self.into()));
@@ -355,35 +380,19 @@ pub fn ordinary_function_create(
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     let is_strict = func_node.is_strict_mode;
-    let this_mode = if is_lexical_this {
-        ThisMode::Lexical
-    } else if is_strict {
-        ThisMode::Strict
-    } else {
-        ThisMode::Global
-    };
-    let object = ordinary_object_create(function_prototype);
     let argument_count = expected_argument_count(func_node);
+    let func_node = FuncKind::Function(AstPtr::from_ref(func_node));
 
-    let func = Function {
-        _vtable: VTABLE,
+    let func = Function::new(
+        cx,
+        function_prototype,
+        func_node,
+        is_lexical_this,
         is_strict,
-        is_class_constructor: false,
-        has_construct: false,
-        constructor_kind: ConstructorKind::Base,
-        this_mode,
-        object,
-        home_object: None,
-        realm: cx.current_realm(),
-        script_or_module: cx.get_active_script_or_module(),
         environment,
         private_environment,
-        func_node: FuncKind::Function(AstPtr::from_ref(func_node)),
-        fields: vec![],
-        private_methods: vec![],
-    };
+    );
 
-    let func = cx.heap.alloc(func);
     set_function_length(cx, func.into(), argument_count);
 
     func
@@ -401,34 +410,16 @@ pub fn ordinary_function_create_special_kind(
     environment: Gc<dyn Environment>,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
-    let this_mode = if is_lexical_this {
-        ThisMode::Lexical
-    } else if is_strict {
-        ThisMode::Strict
-    } else {
-        ThisMode::Global
-    };
-    let object = ordinary_object_create(function_prototype);
-
-    let func = Function {
-        _vtable: VTABLE,
+    let func = Function::new(
+        cx,
+        function_prototype,
+        func_node,
+        is_lexical_this,
         is_strict,
-        is_class_constructor: false,
-        has_construct: false,
-        constructor_kind: ConstructorKind::Base,
-        this_mode,
-        object,
-        home_object: None,
-        realm: cx.current_realm(),
-        script_or_module: cx.get_active_script_or_module(),
         environment,
         private_environment,
-        func_node,
-        fields: vec![],
-        private_methods: vec![],
-    };
+    );
 
-    let func = cx.heap.alloc(func);
     set_function_length(cx, func.into(), argument_count);
 
     func
@@ -451,8 +442,7 @@ pub fn make_constructor(
         Some(prototype) => prototype,
         None => {
             let object_prototype = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-            let ordinary_object = ordinary_object_create(object_prototype);
-            let prototype = cx.heap.alloc(ordinary_object).into();
+            let prototype = ordinary_object_create(cx, object_prototype).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
             must!(define_property_or_throw(cx, prototype, &cx.names.constructor(), desc));

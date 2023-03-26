@@ -30,7 +30,7 @@ impl SetPrototype {
     // 24.2.3 Properties of the Set Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Create values function as it is referenced by multiple properties
         let values_function = BuiltinFunction::create(
@@ -66,7 +66,7 @@ impl SetPrototype {
             Property::data(cx.names.set().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 24.2.3.1 Set.prototype.add

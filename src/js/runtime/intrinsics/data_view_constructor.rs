@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
@@ -9,8 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -25,13 +25,12 @@ use crate::{
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
 
 // 25.3 DataView Objects
-#[repr(C)]
-pub struct DataViewObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    viewed_array_buffer: Gc<ArrayBufferObject>,
-    byte_length: usize,
-    byte_offset: usize,
+extend_object! {
+    pub struct DataViewObject {
+        viewed_array_buffer: Gc<ArrayBufferObject>,
+        byte_length: usize,
+        byte_offset: usize,
+    }
 }
 
 impl GcDeref for DataViewObject {}
@@ -41,19 +40,33 @@ impl_gc_into!(DataViewObject, ObjectValue);
 impl DataViewObject {
     const VTABLE: *const () = extract_object_vtable::<DataViewObject>();
 
-    pub fn new(
-        object: OrdinaryObject,
+    pub fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
         viewed_array_buffer: Gc<ArrayBufferObject>,
         byte_length: usize,
         byte_offset: usize,
-    ) -> DataViewObject {
-        DataViewObject {
-            _vtable: Self::VTABLE,
-            object,
-            viewed_array_buffer,
-            byte_length,
-            byte_offset,
+    ) -> EvalResult<Gc<DataViewObject>> {
+        let mut object = cx.heap.alloc_uninit::<DataViewObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::DataViewPrototype
+        ));
+
+        // Be sure to check for array buffer detachment since constructor may have run user code
+        if viewed_array_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
         }
+
+        object.viewed_array_buffer = viewed_array_buffer;
+        object.byte_length = byte_length;
+        object.byte_offset = byte_offset;
+
+        object.into()
     }
 
     pub fn viewed_array_buffer(&self) -> Gc<ArrayBufferObject> {
@@ -66,16 +79,6 @@ impl DataViewObject {
 
     pub fn byte_offset(&self) -> usize {
         self.byte_offset
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 
@@ -170,16 +173,14 @@ impl DataViewConstructor {
             view_byte_length
         };
 
-        let object =
-            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::DataViewPrototype));
+        let data_view = maybe!(DataViewObject::new_from_constructor(
+            cx,
+            new_target,
+            buffer_object,
+            view_byte_length,
+            offset,
+        ));
 
-        if buffer_object.is_detached() {
-            return type_error_(cx, "array buffer is detached");
-        }
-
-        let data_view = DataViewObject::new(object, buffer_object, view_byte_length, offset);
-        let data_view_object: Gc<ObjectValue> = cx.heap.alloc(data_view).into();
-
-        data_view_object.into()
+        data_view.into()
     }
 }

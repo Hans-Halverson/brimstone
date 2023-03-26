@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         completion::EvalResult, error::type_error_, gc::Gc, object_value::ObjectValue,
-        ordinary_object::OrdinaryObject, realm::Realm, value::Value, Context,
+        realm::Realm, value::Value, Context,
     },
     maybe,
 };
@@ -13,14 +13,18 @@ pub struct BooleanPrototype;
 impl BooleanPrototype {
     // 20.3.3 Properties of the Boolean Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-        let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+        let mut object = BooleanObject::new_with_proto(cx, object_proto, false);
 
         // Constructor property is added once BooleanConstructor has been created
-        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        object
+            .object_mut()
+            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object
+            .object_mut()
+            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
-        cx.heap.alloc(BooleanObject::new(object, false)).into()
+        object.into()
     }
 
     // 20.3.3.2 Boolean.prototype.toString

@@ -24,7 +24,7 @@ impl SymbolPrototype {
     // 20.4.3 Properties of the Symbol Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once SymbolConstructor has been created
         object.intrinsic_getter(cx, &cx.names.description(), Self::get_description, realm);
@@ -54,7 +54,7 @@ impl SymbolPrototype {
             Property::data(cx.names.symbol().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 20.4.3.2 get Symbol.prototype.description

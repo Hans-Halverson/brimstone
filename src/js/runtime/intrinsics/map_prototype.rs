@@ -30,7 +30,7 @@ impl MapPrototype {
     // 24.1.3 Properties of the Map Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Create values function as it is referenced by multiple properties
         let entries_function = BuiltinFunction::create(
@@ -67,7 +67,7 @@ impl MapPrototype {
             Property::data(cx.names.map().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 24.1.3.1 Map.prototype.clear

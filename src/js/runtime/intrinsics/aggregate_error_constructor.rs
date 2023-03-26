@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::{
             create_non_enumerable_data_property_or_throw, define_property_or_throw, get,
@@ -12,10 +12,10 @@ use crate::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, GcDeref},
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -30,29 +30,32 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 20.5.7 AggregateError Objects
-#[repr(C)]
-pub struct AggregateErrorObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
+extend_object! {
+    pub struct AggregateErrorObject {}
 }
+
+impl GcDeref for AggregateErrorObject {}
 
 impl_gc_into!(AggregateErrorObject, ObjectValue);
 
 impl AggregateErrorObject {
     const VTABLE: *const () = extract_object_vtable::<AggregateErrorObject>();
 
-    fn new(object: OrdinaryObject) -> AggregateErrorObject {
-        AggregateErrorObject { _vtable: Self::VTABLE, object }
-    }
+    fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+    ) -> EvalResult<Gc<AggregateErrorObject>> {
+        let mut object = cx.heap.alloc_uninit::<AggregateErrorObject>();
+        object._vtable = Self::VTABLE;
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::AggregateErrorPrototype
+        ));
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object.into()
     }
 }
 
@@ -105,15 +108,8 @@ impl AggregateErrorConstructor {
             cx.current_execution_context().function.unwrap()
         };
 
-        let ordinary_object = maybe!(ordinary_create_from_constructor(
-            cx,
-            new_target,
-            Intrinsic::AggregateErrorPrototype
-        ));
-        let object: Gc<ObjectValue> = cx
-            .heap
-            .alloc(AggregateErrorObject::new(ordinary_object))
-            .into();
+        let object: Gc<ObjectValue> =
+            maybe!(AggregateErrorObject::new_from_constructor(cx, new_target)).into();
 
         let errors = get_argument(arguments, 0);
         let message = get_argument(arguments, 1);

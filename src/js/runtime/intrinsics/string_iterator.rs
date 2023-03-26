@@ -3,15 +3,15 @@ use std::ops::Deref;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn, impl_gc_into,
+    cast_from_value_fn, extend_object, impl_gc_into,
     js::runtime::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
         gc::{Gc, GcDeref},
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -26,13 +26,12 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 22.1.5 String Iterator Objects
-#[repr(C)]
-pub struct StringIterator {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // String is not used directly, but it held so that it is not GC'd while iterator exists
-    string: Gc<StringValue>,
-    code_points_iter: CodePointIterator,
+extend_object! {
+    pub struct StringIterator {
+        // String is not used directly, but it held so that it is not GC'd while iterator exists
+        string: Gc<StringValue>,
+        code_points_iter: CodePointIterator,
+    }
 }
 
 impl GcDeref for StringIterator {}
@@ -46,24 +45,16 @@ impl StringIterator {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::StringIteratorPrototype);
-        let object = ordinary_object_create(proto);
 
-        cx.heap.alloc(StringIterator {
-            _vtable: Self::VTABLE,
-            object,
-            string,
-            code_points_iter: string.iter_code_points(),
-        })
-    }
+        let mut object = cx.heap.alloc_uninit::<StringIterator>();
+        object._vtable = Self::VTABLE;
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        object_ordinary_init(object.object_mut(), proto);
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object.string = string;
+        object.code_points_iter = string.iter_code_points();
+
+        object
     }
 
     cast_from_value_fn!(StringIterator, "String Iterator");
@@ -77,8 +68,8 @@ pub struct StringIteratorPrototype;
 
 impl StringIteratorPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-        let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+        let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
+        let mut object = OrdinaryObject::new(cx, Some(proto), true);
 
         object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
 
@@ -90,7 +81,7 @@ impl StringIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 22.1.5.1.1 %StringIteratorPrototype%.next

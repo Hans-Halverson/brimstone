@@ -1,17 +1,15 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{
-            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
-        },
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -26,12 +24,11 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 20.3 Boolean Objects
-#[repr(C)]
-pub struct BooleanObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // The boolean value wrapped by this object
-    boolean_data: bool,
+extend_object! {
+    pub struct BooleanObject {
+        // The boolean value wrapped by this object
+        boolean_data: bool,
+    }
 }
 
 impl GcDeref for BooleanObject {}
@@ -41,31 +38,51 @@ impl_gc_into!(BooleanObject, ObjectValue);
 impl BooleanObject {
     const VTABLE: *const () = extract_object_vtable::<BooleanObject>();
 
-    pub fn new(object: OrdinaryObject, boolean_data: bool) -> BooleanObject {
-        BooleanObject { _vtable: Self::VTABLE, object, boolean_data }
+    pub fn new_with_proto(
+        cx: &mut Context,
+        proto: Gc<ObjectValue>,
+        boolean_data: bool,
+    ) -> Gc<BooleanObject> {
+        let mut object = cx.heap.alloc_uninit::<BooleanObject>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), proto);
+
+        object.boolean_data = boolean_data;
+
+        object
     }
 
     pub fn new_from_value(cx: &mut Context, boolean_data: bool) -> Gc<BooleanObject> {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::BooleanPrototype);
-        let object = ordinary_object_create(proto);
 
-        cx.heap.alloc(BooleanObject::new(object, boolean_data))
+        Self::new_with_proto(cx, proto, boolean_data)
+    }
+
+    pub fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+        boolean_data: bool,
+    ) -> EvalResult<Gc<BooleanObject>> {
+        let mut object = cx.heap.alloc_uninit::<BooleanObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::BooleanPrototype
+        ));
+
+        object.boolean_data = boolean_data;
+
+        object.into()
     }
 
     pub fn boolean_data(&self) -> bool {
         self.boolean_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 
@@ -117,13 +134,7 @@ impl BooleanConstructor {
         match new_target {
             None => bool_value.into(),
             Some(new_target) => {
-                let object = maybe!(ordinary_create_from_constructor(
-                    cx,
-                    new_target,
-                    Intrinsic::BooleanPrototype
-                ));
-
-                cx.heap.alloc(BooleanObject::new(object, bool_value)).into()
+                maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value)).into()
             }
         }
     }

@@ -3,7 +3,7 @@ use std::ops::Deref;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn, impl_gc_into,
+    cast_from_value_fn, extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
@@ -12,8 +12,8 @@ use crate::{
         error::type_error_,
         gc::{Gc, GcDeref},
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -27,14 +27,13 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 23.1.5 Array Iterator Objects
-#[repr(C)]
-pub struct ArrayIterator {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    array: Gc<ObjectValue>,
-    kind: ArrayIteratorKind,
-    current_index: usize,
-    get_length: fn(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64>,
+extend_object! {
+    pub struct ArrayIterator {
+        array: Gc<ObjectValue>,
+        kind: ArrayIteratorKind,
+        current_index: usize,
+        get_length: fn(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64>,
+    }
 }
 
 pub enum ArrayIteratorKind {
@@ -58,7 +57,11 @@ impl ArrayIterator {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::ArrayIteratorPrototype);
-        let object = ordinary_object_create(proto);
+
+        let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), proto);
 
         // Only difference between array and typed array iterators is length getter, so calculate
         // on iterator start to avoid computing on every iteration.
@@ -68,14 +71,12 @@ impl ArrayIterator {
             Self::get_array_like_length
         };
 
-        cx.heap.alloc(ArrayIterator {
-            _vtable: Self::VTABLE,
-            object,
-            array,
-            kind,
-            current_index: 0,
-            get_length,
-        })
+        object.array = array;
+        object.kind = kind;
+        object.current_index = 0;
+        object.get_length = get_length;
+
+        object
     }
 
     fn get_typed_array_length(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64> {
@@ -91,16 +92,6 @@ impl ArrayIterator {
         length_of_array_like(cx, array)
     }
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
-    }
-
     cast_from_value_fn!(ArrayIterator, "Array Iterator");
 }
 
@@ -112,8 +103,8 @@ pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-        let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+        let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
+        let mut object = OrdinaryObject::new(cx, Some(proto), true);
 
         object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
 
@@ -125,7 +116,7 @@ impl ArrayIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 23.1.5.2.1 %ArrayIteratorPrototype%.next

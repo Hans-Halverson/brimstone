@@ -205,55 +205,41 @@ macro_rules! create_typed_array_constructor {
             };
         }
 
-        #[repr(C)]
-        pub struct $typed_array {
-            _vtable: ObjectValueVtable,
-            object: OrdinaryObject,
-            viewed_array_buffer: Gc<ArrayBufferObject>,
-            byte_length: usize,
-            byte_offset: usize,
-            array_length: usize,
+        extend_object! {
+            pub struct $typed_array {
+                viewed_array_buffer: Gc<ArrayBufferObject>,
+                byte_length: usize,
+                byte_offset: usize,
+                array_length: usize,
+            }
         }
+
+        impl GcDeref for $typed_array {}
 
         impl_gc_into!($typed_array, ObjectValue);
 
         impl $typed_array {
             const VTABLE: *const () = extract_object_vtable::<$typed_array>();
 
-            fn new(
-                object: OrdinaryObject,
-                viewed_array_buffer: Gc<ArrayBufferObject>,
-                byte_length: usize,
-                byte_offset: usize,
-                array_length: usize,
-            ) -> $typed_array {
-                $typed_array {
-                    _vtable: Self::VTABLE,
-                    object,
-                    viewed_array_buffer,
-                    byte_length,
-                    byte_offset,
-                    array_length,
-                }
-            }
-
-            fn alloc(
+            fn new_with_proto(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 viewed_array_buffer: Gc<ArrayBufferObject>,
                 byte_length: usize,
                 byte_offset: usize,
                 array_length: usize,
             ) -> Gc<ObjectValue> {
-                let typed_array = $typed_array::new(
-                    object,
-                    viewed_array_buffer,
-                    byte_length,
-                    byte_offset,
-                    array_length,
-                );
+                let mut object = cx.heap.alloc_uninit::<$typed_array>();
+                object._vtable = Self::VTABLE;
 
-                cx.heap.alloc(typed_array).into()
+                object_ordinary_init(object.object_mut(), proto);
+
+                object.viewed_array_buffer = viewed_array_buffer;
+                object.byte_length = byte_length;
+                object.byte_offset = byte_offset;
+                object.array_length = array_length;
+
+                object.into()
             }
 
             #[inline]
@@ -269,16 +255,6 @@ macro_rules! create_typed_array_constructor {
                     element_ptr.write(value)
                 }
             }
-
-            #[inline]
-            fn object(&self) -> &OrdinaryObject {
-                &self.object
-            }
-
-            #[inline]
-            fn object_mut(&mut self) -> &mut OrdinaryObject {
-                &mut self.object
-            }
         }
 
         #[wrap_ordinary_object]
@@ -290,7 +266,7 @@ macro_rules! create_typed_array_constructor {
                 key: &PropertyKey,
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_get_own_property(&self.object, key).into(),
+                    None => ordinary_get_own_property(self.object(), key).into(),
                     Some(index) => {
                         let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
@@ -437,7 +413,7 @@ macro_rules! create_typed_array_constructor {
                     }
                 }
 
-                ordinary_own_string_symbol_property_keys(cx, &self.object, &mut keys);
+                ordinary_own_string_symbol_property_keys(cx, self.object(), &mut keys);
 
                 keys.into()
             }
@@ -562,7 +538,6 @@ macro_rules! create_typed_array_constructor {
 
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
-                let object = ordinary_object_create(proto);
 
                 let argument = get_argument(arguments, 0);
                 if !argument.is_object() {
@@ -574,7 +549,7 @@ macro_rules! create_typed_array_constructor {
                 if argument.is_typed_array() {
                     return Self::initialize_typed_array_from_typed_array(
                         cx,
-                        object,
+                        proto,
                         argument.as_typed_array(),
                     );
                 } else if argument.is_array_buffer() {
@@ -583,7 +558,7 @@ macro_rules! create_typed_array_constructor {
 
                     return Self::initialize_typed_array_from_array_buffer(
                         cx,
-                        object,
+                        proto,
                         argument.cast::<ArrayBufferObject>(),
                         byte_offset,
                         length,
@@ -594,9 +569,9 @@ macro_rules! create_typed_array_constructor {
                 let iterator = maybe!(get_method(cx, argument.into(), &iterator_key));
 
                 if let Some(iterator) = iterator {
-                    Self::initialize_typed_array_from_list(cx, object, argument.into(), iterator)
+                    Self::initialize_typed_array_from_list(cx, proto, argument.into(), iterator)
                 } else {
-                    Self::initialize_typed_array_from_array_like(cx, object, argument)
+                    Self::initialize_typed_array_from_array_like(cx, proto, argument)
                 }
             }
 
@@ -609,15 +584,14 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Value> {
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
-                let object = ordinary_object_create(proto);
 
-                maybe!(Self::allocate_from_object_with_length(cx, object, length)).into()
+                maybe!(Self::allocate_from_object_with_length(cx, proto, length)).into()
             }
 
             #[inline]
             fn allocate_from_object_with_length(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 length: usize,
             ) -> EvalResult<Gc<ObjectValue>> {
                 let byte_length = element_size!() * length;
@@ -628,13 +602,13 @@ macro_rules! create_typed_array_constructor {
                 let array_buffer =
                     maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, byte_length));
 
-                $typed_array::alloc(cx, object, array_buffer, byte_length, 0, length).into()
+                $typed_array::new_with_proto(cx, proto, array_buffer, byte_length, 0, length).into()
             }
 
             // 23.2.5.1.2 InitializeTypedArrayFromTypedArray
             fn initialize_typed_array_from_typed_array(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 source_typed_array: Gc<dyn TypedArray>,
             ) -> EvalResult<Value> {
                 let source_data = source_typed_array.viewed_array_buffer();
@@ -657,8 +631,15 @@ macro_rules! create_typed_array_constructor {
                         byte_length,
                     ));
 
-                    $typed_array::alloc(cx, object, data, byte_length, 0, source_array_length)
-                        .into()
+                    $typed_array::new_with_proto(
+                        cx,
+                        proto,
+                        data,
+                        byte_length,
+                        0,
+                        source_array_length,
+                    )
+                    .into()
                 } else {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
@@ -703,15 +684,22 @@ macro_rules! create_typed_array_constructor {
                         target_byte_index += element_size!();
                     }
 
-                    $typed_array::alloc(cx, object, data, byte_length, 0, source_array_length)
-                        .into()
+                    $typed_array::new_with_proto(
+                        cx,
+                        proto,
+                        data,
+                        byte_length,
+                        0,
+                        source_array_length,
+                    )
+                    .into()
                 }
             }
 
             // 23.2.5.1.3 InitializeTypedArrayFromArrayBuffer
             fn initialize_typed_array_from_array_buffer(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 mut array_buffer: Gc<ArrayBufferObject>,
                 byte_offset: Value,
                 length: Value,
@@ -767,9 +755,9 @@ macro_rules! create_typed_array_constructor {
                     }
                 };
 
-                $typed_array::alloc(
+                $typed_array::new_with_proto(
                     cx,
-                    object,
+                    proto,
                     array_buffer,
                     new_byte_length,
                     offset,
@@ -781,7 +769,7 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.4 InitializeTypedArrayFromList
             fn initialize_typed_array_from_list(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 iterable: Value,
                 iterator: Gc<ObjectValue>,
             ) -> EvalResult<Value> {
@@ -798,7 +786,7 @@ macro_rules! create_typed_array_constructor {
                 // Allocated typed array
                 let length = values.len();
                 let typed_array_object =
-                    maybe!(Self::allocate_from_object_with_length(cx, object, length));
+                    maybe!(Self::allocate_from_object_with_length(cx, proto, length));
 
                 // Add each value from iterator into typed array
                 for (i, value) in values.into_iter().enumerate() {
@@ -812,13 +800,13 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.5 InitializeTypedArrayFromArrayLike
             fn initialize_typed_array_from_array_like(
                 cx: &mut Context,
-                object: OrdinaryObject,
+                proto: Gc<ObjectValue>,
                 array_like: Gc<ObjectValue>,
             ) -> EvalResult<Value> {
                 // Allocated typed array
                 let length = maybe!(length_of_array_like(cx, array_like));
                 let typed_array_object =
-                    maybe!(Self::allocate_from_object_with_length(cx, object, length as usize));
+                    maybe!(Self::allocate_from_object_with_length(cx, proto, length as usize));
 
                 // Add each value from array into typed array
                 for i in 0..length {

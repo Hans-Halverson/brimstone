@@ -3,7 +3,7 @@ use std::cmp::max;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::{
             call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
@@ -16,8 +16,8 @@ use crate::{
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         gc::{Gc, GcDeref},
         get,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::OrdinaryObject,
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -31,10 +31,8 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-#[repr(C)]
-pub struct FunctionPrototype {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
+extend_object! {
+    pub struct FunctionPrototype {}
 }
 
 impl GcDeref for FunctionPrototype {}
@@ -46,25 +44,25 @@ impl FunctionPrototype {
 
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<FunctionPrototype> {
-        let func_prototype =
-            FunctionPrototype { _vtable: Self::VTABLE, object: OrdinaryObject::new_uninit() };
+        let mut object = cx.heap.alloc_uninit::<FunctionPrototype>();
+        object._vtable = Self::VTABLE;
 
-        cx.heap.alloc(func_prototype)
+        object
     }
 
     // 20.2.3 Properties of the Function Prototype Object
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
-        self.object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+        object_ordinary_init(self.object_mut(), object_proto);
 
-        self.object.intrinsic_name_prop(cx, "");
-        self.object.instrinsic_length_prop(cx, 0);
+        self.object_mut().intrinsic_name_prop(cx, "");
+        self.object_mut().instrinsic_length_prop(cx, 0);
 
-        self.object
+        self.object_mut()
             .intrinsic_func(cx, &cx.names.apply(), Self::apply, 2, realm);
-        self.object
+        self.object_mut()
             .intrinsic_func(cx, &cx.names.bind(), Self::bind, 1, realm);
-        self.object
+        self.object_mut()
             .intrinsic_func(cx, &cx.names.call(), Self::call_intrinsic, 1, realm);
 
         // [Function.hasInstance] property
@@ -80,20 +78,10 @@ impl FunctionPrototype {
             None,
         )
         .into();
-        self.object.set_property(
+        self.object_mut().set_property(
             &has_instance_key,
             Property::data(has_instance_func, false, false, false),
         );
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 
     // 20.2.3.1 Function.prototype.apply

@@ -16,7 +16,7 @@ impl ArrayBufferPrototype {
     // 25.1.5 Properties of the ArrayBuffer Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once ArrayBufferConstructor has been created
         object.intrinsic_getter(cx, &cx.names.byte_length(), Self::get_byte_length, realm);
@@ -28,7 +28,7 @@ impl ArrayBufferPrototype {
             Property::data(cx.names.array_buffer().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 25.1.5.1 get ArrayBuffer.prototype.byteLength

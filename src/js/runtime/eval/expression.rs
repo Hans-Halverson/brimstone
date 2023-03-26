@@ -164,7 +164,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let key = PropertyKey::array_index(cx, index);
                 let desc = Property::data(Value::empty(), true, true, true);
 
-                array.object.set_property(&key, desc);
+                array.object_mut().set_property(&key, desc);
                 index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
@@ -172,7 +172,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
 
-                array.object.set_property(&key, desc);
+                array.object_mut().set_property(&key, desc);
                 index += 1;
             }
             ast::ArrayElement::Spread(spread) => {
@@ -181,7 +181,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                     let key = PropertyKey::array_index(cx, index);
                     let desc = Property::data(value, true, true, true);
 
-                    array.object.set_property(&key, desc);
+                    array.object_mut().set_property(&key, desc);
                     index += 1;
 
                     None
@@ -198,7 +198,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
 // 13.2.5.4 Object Initializer Evaluation
 fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> EvalResult<Value> {
     let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-    let mut object: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(proto)).into();
+    let mut object: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
 
     for property in &expr.properties {
         match property.value.as_ref() {

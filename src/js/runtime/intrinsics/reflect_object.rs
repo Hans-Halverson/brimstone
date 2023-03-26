@@ -27,7 +27,7 @@ pub struct ReflectObject;
 impl ReflectObject {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         object.intrinsic_func(cx, &cx.names.apply(), Self::apply, 3, realm);
         object.intrinsic_func(cx, &cx.names.construct(), Self::construct, 2, realm);
@@ -63,7 +63,7 @@ impl ReflectObject {
             Property::data(reflect_name_value, false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 28.1.1 Reflect.apply

@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{impl_gc_into, js::runtime::type_utilities::same_opt_object_value, maybe, must};
+use crate::{
+    extend_object, impl_gc_into, js::runtime::type_utilities::same_opt_object_value, maybe, must,
+};
 
 use super::{
     abstract_operations::{
@@ -12,8 +14,8 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    ordinary_object::{is_compatible_property_descriptor, ordinary_object_create, OrdinaryObject},
+    object_value::{extract_object_vtable, Object, ObjectValue},
+    ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
     property::{PrivateProperty, Property},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
@@ -22,13 +24,13 @@ use super::{
 };
 
 // 10.5 Proxy Object
-pub struct ProxyObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    proxy_handler: Option<Gc<ObjectValue>>,
-    proxy_target: Option<Gc<ObjectValue>>,
-    is_callable: bool,
-    is_constructor: bool,
+extend_object! {
+    pub struct ProxyObject {
+        proxy_handler: Option<Gc<ObjectValue>>,
+        proxy_target: Option<Gc<ObjectValue>>,
+        is_callable: bool,
+        is_constructor: bool,
+    }
 }
 
 impl GcDeref for ProxyObject {}
@@ -44,18 +46,20 @@ impl ProxyObject {
         proxy_handler: Gc<ObjectValue>,
         is_callable: bool,
         is_constructor: bool,
-    ) -> ProxyObject {
+    ) -> Gc<ProxyObject> {
         let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let object = ordinary_object_create(object_proto);
 
-        ProxyObject {
-            _vtable: ProxyObject::VTABLE,
-            object,
-            proxy_handler: Some(proxy_handler),
-            proxy_target: Some(proxy_target),
-            is_callable,
-            is_constructor,
-        }
+        let mut object = cx.heap.alloc_uninit::<ProxyObject>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), object_proto);
+
+        object.proxy_handler = Some(proxy_handler);
+        object.proxy_target = Some(proxy_target);
+        object.is_callable = is_callable;
+        object.is_constructor = is_constructor;
+
+        object
     }
 
     pub fn handler(&self) -> Option<Gc<ObjectValue>> {
@@ -722,7 +726,7 @@ impl Object for ProxyObject {
 
     // Private property methods defer to wrapped object
     fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty> {
-        self.object.private_element_find(private_id)
+        self.object_mut().private_element_find(private_id)
     }
 
     fn private_field_add(
@@ -731,7 +735,7 @@ impl Object for ProxyObject {
         private_id: PrivateNameId,
         value: Value,
     ) -> EvalResult<()> {
-        self.object.private_field_add(cx, private_id, value)
+        self.object_mut().private_field_add(cx, private_id, value)
     }
 
     fn private_method_or_accessor_add(
@@ -740,7 +744,7 @@ impl Object for ProxyObject {
         private_id: PrivateNameId,
         private_method: PrivateProperty,
     ) -> EvalResult<()> {
-        self.object
+        self.object_mut()
             .private_method_or_accessor_add(cx, private_id, private_method)
     }
 
@@ -787,5 +791,5 @@ pub fn proxy_create(
 
     let proxy = ProxyObject::new(cx, target_object, handler_object, is_callable, is_constructor);
 
-    cx.heap.alloc(proxy).into()
+    proxy.into()
 }

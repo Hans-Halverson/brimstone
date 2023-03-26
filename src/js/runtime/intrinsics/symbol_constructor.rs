@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
@@ -9,8 +9,8 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -25,12 +25,11 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 20.4 Symbol Objects
-#[repr(C)]
-pub struct SymbolObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // The symbol value wrapped by this object
-    symbol_data: Gc<SymbolValue>,
+extend_object! {
+    pub struct SymbolObject {
+        // The symbol value wrapped by this object
+        symbol_data: Gc<SymbolValue>,
+    }
 }
 
 impl GcDeref for SymbolObject {}
@@ -40,29 +39,21 @@ impl_gc_into!(SymbolObject, ObjectValue);
 impl SymbolObject {
     const VTABLE: *const () = extract_object_vtable::<SymbolObject>();
 
-    pub fn new(object: OrdinaryObject, symbol_data: Gc<SymbolValue>) -> SymbolObject {
-        SymbolObject { _vtable: Self::VTABLE, object, symbol_data }
-    }
-
     pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::SymbolPrototype);
-        let object = ordinary_object_create(proto);
 
-        cx.heap.alloc(SymbolObject::new(object, symbol_data))
+        let mut object = cx.heap.alloc_uninit::<SymbolObject>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), proto);
+
+        object.symbol_data = symbol_data;
+
+        object
     }
 
     pub fn symbol_data(&self) -> Gc<SymbolValue> {
         self.symbol_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 

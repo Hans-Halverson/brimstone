@@ -16,11 +16,11 @@ pub struct ConsoleObject;
 impl ConsoleObject {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         object.intrinsic_func(cx, &cx.names.log(), Self::log, 0, realm);
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     fn log(

@@ -31,6 +31,12 @@ impl Heap {
     }
 
     pub fn alloc<T>(&mut self, value: T) -> Gc<T> {
+        let uninit_value_ref = self.alloc_uninit::<T>();
+        unsafe { uninit_value_ref.as_ptr().write(value) };
+        uninit_value_ref
+    }
+
+    pub fn alloc_uninit<T>(&mut self) -> Gc<T> {
         unsafe {
             // First align start offset to alignment of type
             let start = self.current.add(self.current.align_offset(align_of::<T>()));
@@ -44,7 +50,6 @@ impl Heap {
             // Update end pointer and write into memory
             self.current = next_current;
             let start = start.cast_mut().cast::<T>();
-            start.write(value);
 
             Gc::from_ptr(start)
         }

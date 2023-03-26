@@ -24,7 +24,7 @@ impl BigIntPrototype {
     // 21.2.3 Properties of the BigInt Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once BigIntConstructor has been created
         object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
@@ -37,7 +37,7 @@ impl BigIntPrototype {
             Property::data(cx.names.bigint().as_string().into(), false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 21.2.3.3 BigInt.prototype.toString

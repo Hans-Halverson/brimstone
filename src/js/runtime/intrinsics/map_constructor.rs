@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
@@ -12,8 +12,8 @@ use crate::{
         gc::{Gc, GcDeref},
         get,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -28,11 +28,10 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 24.1 Map Objects
-#[repr(C)]
-pub struct MapObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    map_data: ValueMap<Value>,
+extend_object! {
+    pub struct MapObject {
+        map_data: ValueMap<Value>,
+    }
 }
 
 impl GcDeref for MapObject {}
@@ -42,23 +41,27 @@ impl_gc_into!(MapObject, ObjectValue);
 impl MapObject {
     const VTABLE: *const () = extract_object_vtable::<MapObject>();
 
-    pub fn new(cx: &mut Context, object: OrdinaryObject) -> Gc<MapObject> {
-        let map_object = MapObject { _vtable: Self::VTABLE, object, map_data: ValueMap::new() };
-        cx.heap.alloc(map_object)
+    pub fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+    ) -> EvalResult<Gc<MapObject>> {
+        let mut object = cx.heap.alloc_uninit::<MapObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::MapPrototype
+        ));
+
+        object.map_data = ValueMap::new();
+
+        object.into()
     }
 
     pub fn map_data(&mut self) -> &mut ValueMap<Value> {
         &mut self.map_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 
@@ -114,9 +117,8 @@ impl MapConstructor {
             return type_error_(cx, "Map constructor must be called with new");
         };
 
-        let object =
-            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::MapPrototype));
-        let map_object: Gc<ObjectValue> = MapObject::new(cx, object).into();
+        let map_object: Gc<ObjectValue> =
+            maybe!(MapObject::new_from_constructor(cx, new_target)).into();
 
         let iterable = get_argument(arguments, 0);
         if iterable.is_nullish() {

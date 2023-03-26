@@ -55,9 +55,7 @@ impl Realm {
         this_value: Option<Gc<ObjectValue>>,
     ) {
         let global_object = global_object.unwrap_or_else(|| {
-            let ordinary_object =
-                ordinary_object_create(self.get_intrinsic(Intrinsic::ObjectPrototype));
-            cx.heap.alloc(ordinary_object).into()
+            ordinary_object_create(cx, self.get_intrinsic(Intrinsic::ObjectPrototype)).into()
         });
 
         let this_value = this_value.unwrap_or(global_object);

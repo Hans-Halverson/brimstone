@@ -5,7 +5,6 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_value::ObjectValue,
-        ordinary_object::OrdinaryObject,
         realm::Realm,
         type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,
@@ -21,16 +20,28 @@ pub struct NumberPrototype;
 impl NumberPrototype {
     // 21.1.3 Properties of the Number Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-        let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+        let mut object = NumberObject::new_with_proto(cx, object_proto, 0.0);
 
         // Constructor property is added once NumberConstructor has been created
-        object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 1, realm);
-        object.intrinsic_func(cx, &cx.names.to_fixed(), Self::to_fixed, 1, realm);
-        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        object.object_mut().intrinsic_func(
+            cx,
+            &cx.names.to_locale_string(),
+            Self::to_locale_string,
+            0,
+            realm,
+        );
+        object
+            .object_mut()
+            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 1, realm);
+        object
+            .object_mut()
+            .intrinsic_func(cx, &cx.names.to_fixed(), Self::to_fixed, 1, realm);
+        object
+            .object_mut()
+            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
-        cx.heap.alloc(NumberObject::new(object, 0.0)).into()
+        object.into()
     }
 
     // 21.1.3.3 Number.prototype.toFixed

@@ -3,7 +3,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use std::str::FromStr;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
@@ -13,10 +13,8 @@ use crate::{
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{
-            ordinary_create_from_constructor, ordinary_object_create, OrdinaryObject,
-        },
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -31,12 +29,11 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 21.1 Number Objects
-#[repr(C)]
-pub struct NumberObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // The number value wrapped by this object
-    number_data: f64,
+extend_object! {
+    pub struct NumberObject {
+        // The number value wrapped by this object
+        number_data: f64,
+    }
 }
 
 impl GcDeref for NumberObject {}
@@ -46,29 +43,49 @@ impl_gc_into!(NumberObject, ObjectValue);
 impl NumberObject {
     const VTABLE: *const () = extract_object_vtable::<NumberObject>();
 
-    pub fn new(object: OrdinaryObject, number_data: f64) -> NumberObject {
-        NumberObject { _vtable: Self::VTABLE, object, number_data }
+    pub fn new_with_proto(
+        cx: &mut Context,
+        proto: Gc<ObjectValue>,
+        number_data: f64,
+    ) -> Gc<NumberObject> {
+        let mut object = cx.heap.alloc_uninit::<NumberObject>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), proto);
+
+        object.number_data = number_data;
+
+        object
     }
 
     pub fn new_from_value(cx: &mut Context, number_data: f64) -> Gc<NumberObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::NumberPrototype);
-        let object = ordinary_object_create(proto);
 
-        cx.heap.alloc(NumberObject::new(object, number_data))
+        Self::new_with_proto(cx, proto, number_data)
+    }
+
+    pub fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+        number_data: f64,
+    ) -> EvalResult<Gc<NumberObject>> {
+        let mut object = cx.heap.alloc_uninit::<NumberObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::NumberPrototype
+        ));
+
+        object.number_data = number_data;
+
+        object.into()
     }
 
     pub fn number_data(&self) -> f64 {
         self.number_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 
@@ -166,15 +183,7 @@ impl NumberConstructor {
         match new_target {
             None => number_value.into(),
             Some(new_target) => {
-                let object = maybe!(ordinary_create_from_constructor(
-                    cx,
-                    new_target,
-                    Intrinsic::NumberPrototype
-                ));
-
-                cx.heap
-                    .alloc(NumberObject::new(object, number_value))
-                    .into()
+                maybe!(NumberObject::new_from_constructor(cx, new_target, number_value)).into()
             }
         }
     }

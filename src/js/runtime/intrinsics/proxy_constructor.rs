@@ -96,7 +96,7 @@ impl ProxyConstructor {
         revoker.set_closure_environment(revoke_environment);
 
         let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let result: Gc<ObjectValue> = cx.heap.alloc(ordinary_object_create(object_proto)).into();
+        let result: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
 
         must!(create_data_property_or_throw(cx, result, &cx.names.proxy_(), proxy.into()));
         must!(create_data_property_or_throw(cx, result, &cx.names.revoke(), revoker.into()));

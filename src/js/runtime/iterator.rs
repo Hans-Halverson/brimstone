@@ -152,8 +152,7 @@ pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Complet
 // 7.4.10 CreateIterResultObject
 pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) -> Gc<ObjectValue> {
     let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-    let ordinary_object = ordinary_object_create(object_proto);
-    let object: Gc<ObjectValue> = cx.heap.alloc(ordinary_object).into();
+    let object = ordinary_object_create(cx, object_proto).into();
 
     must!(create_data_property_or_throw(cx, object, &cx.names.value(), value));
     must!(create_data_property_or_throw(cx, object, &cx.names.done(), is_done.into()));

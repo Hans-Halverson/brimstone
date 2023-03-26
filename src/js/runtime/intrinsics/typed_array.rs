@@ -2,7 +2,7 @@ use num_bigint::{BigInt, Sign};
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    create_typed_array_constructor, create_typed_array_prototype, impl_gc_into,
+    create_typed_array_constructor, create_typed_array_prototype, extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
@@ -12,10 +12,10 @@ use crate::{
         function::get_argument,
         gc::{Gc, GcDeref},
         iterator::iter_iterator_method_values,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
+        object_value::{extract_object_vtable, Object, ObjectValue},
         ordinary_object::{
-            get_prototype_from_constructor, ordinary_define_own_property, ordinary_delete,
-            ordinary_get, ordinary_get_own_property, ordinary_has_property, ordinary_object_create,
+            get_prototype_from_constructor, object_ordinary_init, ordinary_define_own_property,
+            ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys, ordinary_set, OrdinaryObject,
         },
         property::{PrivateProperty, Property},

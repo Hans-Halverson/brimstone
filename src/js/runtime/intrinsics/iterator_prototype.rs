@@ -11,12 +11,12 @@ pub struct IteratorPrototype;
 impl IteratorPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         object.intrinsic_func(cx, &iterator_key, Self::iterator, 0, realm);
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 27.1.2.1 %IteratorPrototype% [ @@iterator ]

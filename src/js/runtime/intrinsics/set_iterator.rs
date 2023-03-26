@@ -3,7 +3,7 @@ use std::ops::Deref;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn,
+    cast_from_value_fn, extend_object,
     js::runtime::{
         array_object::create_array_from_list,
         completion::EvalResult,
@@ -11,8 +11,8 @@ use crate::{
         error::type_error_,
         gc::{Gc, GcDeref},
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_object_create, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -26,14 +26,13 @@ use crate::{
 use super::{intrinsics::Intrinsic, set_constructor::SetObject};
 
 // 24.2.5 Set Iterator Objects
-#[repr(C)]
-pub struct SetIterator<'a> {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    // Set is not used directly, but it held so that it is not GC'd while iterator exists
-    set: Gc<SetObject>,
-    iter: ValueSetIter<'a>,
-    kind: SetIteratorKind,
+extend_object! {
+    pub struct SetIterator<'a> {
+        // Set is not used directly, but it held so that it is not GC'd while iterator exists
+        set: Gc<SetObject>,
+        iter: ValueSetIter<'a>,
+        kind: SetIteratorKind,
+    }
 }
 
 pub enum SetIteratorKind {
@@ -68,22 +67,17 @@ impl<'a> SetIterator<'a> {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::SetIteratorPrototype);
-        let object = ordinary_object_create(proto);
 
-        let iter = set.set_data().iter();
+        let mut object = cx.heap.alloc_uninit::<SetIterator>();
+        object._vtable = Self::VTABLE;
 
-        cx.heap
-            .alloc(SetIterator { _vtable: Self::VTABLE, object, set, iter, kind })
-    }
+        object_ordinary_init(object.object_mut(), proto);
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        object.set = set;
+        object.iter = set.set_data().iter();
+        object.kind = kind;
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        object
     }
 
     cast_from_value_fn!(SetIterator, "Set Iterator");
@@ -98,7 +92,7 @@ pub struct SetIteratorPrototype;
 impl SetIteratorPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
 
         object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
 
@@ -110,7 +104,7 @@ impl SetIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        cx.heap.alloc(object).into()
+        object.into()
     }
 
     // 24.2.5.2.1 %SetIteratorPrototype%.next

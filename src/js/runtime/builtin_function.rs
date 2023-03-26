@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{impl_gc_into, maybe};
+use crate::{extend_object, impl_gc_into, maybe};
 
 use super::{
     completion::EvalResult,
@@ -9,8 +9,8 @@ use super::{
     function::{set_function_length, set_function_name},
     gc::{Gc, GcDeref},
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-    ordinary_object::OrdinaryObject,
+    object_value::{extract_object_vtable, Object, ObjectValue},
+    ordinary_object::object_ordinary_init,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -21,16 +21,15 @@ use super::{
 };
 
 // 10.3 Built-in Function Object
-#[repr(C)]
-pub struct BuiltinFunction {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    realm: Gc<Realm>,
-    script_or_module: Option<ScriptOrModule>,
-    pub initial_name: Option<Gc<StringValue>>,
-    builtin_func: BuiltinFunctionPtr,
-    closure_environment: Option<Gc<ClosureEnvironment>>,
-    has_constructor: bool,
+extend_object! {
+    pub struct BuiltinFunction {
+        realm: Gc<Realm>,
+        script_or_module: Option<ScriptOrModule>,
+        pub initial_name: Option<Gc<StringValue>>,
+        builtin_func: BuiltinFunctionPtr,
+        closure_environment: Option<Gc<ClosureEnvironment>>,
+        has_constructor: bool,
+    }
 }
 
 // Function pointer to a builtin function
@@ -49,18 +48,8 @@ impl GcDeref for BuiltinFunction {}
 
 impl_gc_into!(BuiltinFunction, ObjectValue);
 
-const VTABLE: *const () = extract_object_vtable::<BuiltinFunction>();
-
 impl BuiltinFunction {
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
-    }
+    const VTABLE: *const () = extract_object_vtable::<BuiltinFunction>();
 
     // 10.3.3 CreateBuiltinFunction
     pub fn create(
@@ -90,16 +79,20 @@ impl BuiltinFunction {
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
-        cx.heap.alloc(BuiltinFunction {
-            _vtable: VTABLE,
-            object: OrdinaryObject::new(Some(prototype), true),
-            realm,
-            script_or_module: None,
-            initial_name: None,
-            builtin_func,
-            closure_environment: None,
-            has_constructor: false,
-        })
+        let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
+        object._vtable = Self::VTABLE;
+
+        object_ordinary_init(object.object_mut(), prototype);
+
+        object.realm = realm;
+        object.script_or_module = None;
+        object.initial_name = None;
+        object.builtin_func = builtin_func;
+        object.closure_environment = None;
+        object.has_constructor = false;
+        object.script_or_module = None;
+
+        object
     }
 
     pub fn set_is_constructor(&mut self) {
@@ -112,11 +105,11 @@ impl BuiltinFunction {
     }
 
     pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        self.object.set_property(key, value);
+        self.object_mut().set_property(key, value);
     }
 
     pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.object.intrinsic_frozen_property(key, value);
+        self.object_mut().intrinsic_frozen_property(key, value);
     }
 
     pub fn intrinsic_func(
@@ -127,7 +120,8 @@ impl BuiltinFunction {
         length: i32,
         realm: Gc<Realm>,
     ) {
-        self.object.intrinsic_func(cx, name, func, length, realm);
+        self.object_mut()
+            .intrinsic_func(cx, name, func, length, realm);
     }
 
     pub fn intrinsic_getter(
@@ -137,7 +131,7 @@ impl BuiltinFunction {
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {
-        self.object.intrinsic_getter(cx, name, func, realm)
+        self.object_mut().intrinsic_getter(cx, name, func, realm)
     }
 }
 

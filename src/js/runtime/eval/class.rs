@@ -176,9 +176,7 @@ pub fn class_definition_evaluation(
     };
 
     // Set up prototype and constructor
-    let proto = cx
-        .heap
-        .alloc(ordinary_object_create_optional_proto(proto_parent));
+    let proto = ordinary_object_create_optional_proto(cx, proto_parent);
 
     current_execution_context.lexical_env = to_trait_object(class_env);
     current_execution_context.private_env = Some(class_private_env);

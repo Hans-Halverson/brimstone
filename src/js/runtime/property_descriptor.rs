@@ -157,8 +157,7 @@ impl PropertyDescriptor {
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<OrdinaryObject> {
     let realm = cx.current_realm();
     let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-    let ordinary_object = ordinary_object_create(object_prototype);
-    let object = cx.heap.alloc(ordinary_object);
+    let object = ordinary_object_create(cx, object_prototype);
 
     if let Some(value) = desc.value {
         must!(create_data_property_or_throw(cx, object.into(), &cx.names.value(), value,));

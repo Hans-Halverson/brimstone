@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    impl_gc_into,
+    extend_object, impl_gc_into,
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
@@ -12,8 +12,8 @@ use crate::{
         gc::{Gc, GcDeref},
         get,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
-        ordinary_object::{ordinary_create_from_constructor, OrdinaryObject},
+        object_value::{extract_object_vtable, Object, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -28,11 +28,10 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 24.2 Set Objects
-#[repr(C)]
-pub struct SetObject {
-    _vtable: ObjectValueVtable,
-    object: OrdinaryObject,
-    set_data: ValueSet,
+extend_object! {
+    pub struct SetObject {
+        set_data: ValueSet,
+    }
 }
 
 impl GcDeref for SetObject {}
@@ -42,23 +41,27 @@ impl_gc_into!(SetObject, ObjectValue);
 impl SetObject {
     const VTABLE: *const () = extract_object_vtable::<SetObject>();
 
-    pub fn new(cx: &mut Context, object: OrdinaryObject) -> Gc<SetObject> {
-        let set_object = SetObject { _vtable: Self::VTABLE, object, set_data: ValueSet::new() };
-        cx.heap.alloc(set_object)
+    pub fn new_from_constructor(
+        cx: &mut Context,
+        constructor: Gc<ObjectValue>,
+    ) -> EvalResult<Gc<SetObject>> {
+        let mut object = cx.heap.alloc_uninit::<SetObject>();
+        object._vtable = Self::VTABLE;
+
+        maybe!(object_ordinary_init_from_constructor(
+            cx,
+            object.object_mut(),
+            constructor,
+            Intrinsic::SetPrototype
+        ));
+
+        object.set_data = ValueSet::new();
+
+        object.into()
     }
 
     pub fn set_data(&mut self) -> &mut ValueSet {
         &mut self.set_data
-    }
-
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
     }
 }
 
@@ -114,9 +117,8 @@ impl SetConstructor {
             return type_error_(cx, "Set constructor must be called with new");
         };
 
-        let object =
-            maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::SetPrototype));
-        let set_object: Gc<ObjectValue> = SetObject::new(cx, object).into();
+        let set_object: Gc<ObjectValue> =
+            maybe!(SetObject::new_from_constructor(cx, new_target)).into();
 
         let iterable = get_argument(arguments, 0);
         if iterable.is_nullish() {

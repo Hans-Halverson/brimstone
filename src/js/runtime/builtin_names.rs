@@ -302,8 +302,7 @@ macro_rules! builtin_symbols {
                     $(
                         $rust_name: {
                             let description = heap.alloc_string(String::from($description));
-                            heap.alloc(SymbolValue::new(Some(description)))
-                        },
+                            heap.alloc(SymbolValue::new(Some(description)))                        },
                     )*
                 }
             }

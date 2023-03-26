@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{impl_gc_into, js::runtime::type_utilities::is_array, maybe, must};
+use crate::{extend_object, impl_gc_into, js::runtime::type_utilities::is_array, maybe, must};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
@@ -9,10 +9,10 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue, ObjectValueVtable},
+    object_value::{extract_object_vtable, Object, ObjectValue},
     ordinary_object::{
-        ordinary_define_own_property, ordinary_delete, ordinary_get_own_property,
-        ordinary_object_create, ordinary_own_property_keys, OrdinaryObject,
+        object_ordinary_init, ordinary_define_own_property, ordinary_delete,
+        ordinary_get_own_property, ordinary_own_property_keys,
     },
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -22,12 +22,12 @@ use super::{
 };
 
 // 10.4.2 Array Exotic Objects
-pub struct ArrayObject {
-    _vtable: ObjectValueVtable,
-    pub object: OrdinaryObject,
-    // Length property is backed by length of object's ArrayProperties. There is no explicit
-    // property descriptor stored, so attributes here.
-    is_length_writable: bool,
+extend_object! {
+    pub struct ArrayObject {
+        // Length property is backed by length of object's ArrayProperties. There is no explicit
+        // property descriptor stored, so attributes here.
+        is_length_writable: bool,
+    }
 }
 
 impl GcDeref for ArrayObject {}
@@ -37,22 +37,14 @@ impl_gc_into!(ArrayObject, ObjectValue);
 impl ArrayObject {
     const VTABLE: *const () = extract_object_vtable::<ArrayObject>();
 
-    pub fn new(object: OrdinaryObject) -> ArrayObject {
-        ArrayObject {
-            _vtable: ArrayObject::VTABLE,
-            object,
-            is_length_writable: true,
-        }
-    }
+    pub fn new(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ArrayObject> {
+        let mut array = cx.heap.alloc_uninit::<ArrayObject>();
+        array._vtable = Self::VTABLE;
+        object_ordinary_init(array.object_mut(), proto);
 
-    #[inline]
-    fn object(&self) -> &OrdinaryObject {
-        &self.object
-    }
+        array.is_length_writable = true;
 
-    #[inline]
-    fn object_mut(&mut self) -> &mut OrdinaryObject {
-        &mut self.object
+        array
     }
 }
 
@@ -71,7 +63,7 @@ impl Object for ArrayObject {
     ) -> EvalResult<bool> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
-            if array_index >= self.object.array_properties_length() && !self.is_length_writable {
+            if array_index >= self.object().array_properties_length() && !self.is_length_writable {
                 return false.into();
             }
 
@@ -94,7 +86,7 @@ impl Object for ArrayObject {
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
-            let length_value = self.object.array_properties_length();
+            let length_value = self.object().array_properties_length();
             return Some(PropertyDescriptor::data(
                 Value::number(length_value.into()),
                 self.is_length_writable,
@@ -104,7 +96,7 @@ impl Object for ArrayObject {
             .into();
         }
 
-        ordinary_get_own_property(&self.object, key).into()
+        ordinary_get_own_property(self.object(), key).into()
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
@@ -118,7 +110,7 @@ impl Object for ArrayObject {
 
     // Not part of spec, but needed to add custom length property
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-        let mut property_keys = ordinary_own_property_keys(cx, &self.object);
+        let mut property_keys = ordinary_own_property_keys(cx, self.object());
 
         // Insert length property after all the array index properies
         // TODO: Correctly order all properties
@@ -141,15 +133,13 @@ pub fn array_create(
     let proto =
         proto.unwrap_or_else(|| cx.current_realm().get_intrinsic(Intrinsic::ArrayPrototype));
 
-    let object = ordinary_object_create(proto);
-
-    let mut array_object = ArrayObject::new(object);
+    let mut array_object = ArrayObject::new(cx, proto);
 
     let length_value = Value::number((length as u32).into());
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
     must!(array_object.define_own_property(cx, &cx.names.length(), length_desc));
 
-    cx.heap.alloc(array_object).into()
+    array_object.into()
 }
 
 // 10.4.2.3 ArraySpeciesCreate
@@ -207,7 +197,7 @@ fn array_set_length(
     array: &mut ArrayObject,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let mut new_len = array.object.array_properties_length();
+    let mut new_len = array.object().array_properties_length();
 
     if let Some(value) = desc.value {
         new_len = maybe!(to_uint32(cx, value));
@@ -229,13 +219,13 @@ fn array_set_length(
     if !array.is_length_writable {
         if let Some(true) = desc.is_writable {
             return false.into();
-        } else if new_len != array.object.array_properties_length() {
+        } else if new_len != array.object().array_properties_length() {
             return false.into();
         }
     }
 
     // TODO: Resize array_properties
-    let has_delete_succeeded = array.object.set_array_properties_length(new_len);
+    let has_delete_succeeded = array.object_mut().set_array_properties_length(new_len);
 
     if let Some(false) = desc.is_writable {
         array.is_length_writable = false;

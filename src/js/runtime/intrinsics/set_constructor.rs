@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
@@ -9,10 +9,10 @@ use crate::{
         environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         get,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -33,10 +33,6 @@ extend_object! {
         set_data: ValueSet,
     }
 }
-
-impl GcDeref for SetObject {}
-
-impl_gc_into!(SetObject, ObjectValue);
 
 impl SetObject {
     const VTABLE: *const () = extract_object_vtable::<SetObject>();

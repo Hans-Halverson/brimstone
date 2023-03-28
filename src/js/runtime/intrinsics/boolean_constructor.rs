@@ -1,14 +1,14 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        gc::Gc,
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -30,10 +30,6 @@ extend_object! {
         boolean_data: bool,
     }
 }
-
-impl GcDeref for BooleanObject {}
-
-impl_gc_into!(BooleanObject, ObjectValue);
 
 impl BooleanObject {
     const VTABLE: *const () = extract_object_vtable::<BooleanObject>();

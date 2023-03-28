@@ -3,14 +3,14 @@ use std::ops::Deref;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn, extend_object, impl_gc_into,
+    cast_from_value_fn, extend_object,
     js::runtime::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -33,10 +33,6 @@ extend_object! {
         code_points_iter: CodePointIterator,
     }
 }
-
-impl GcDeref for StringIterator {}
-
-impl_gc_into!(StringIterator, ObjectValue);
 
 impl StringIterator {
     const VTABLE: *const () = extract_object_vtable::<StringIterator>();

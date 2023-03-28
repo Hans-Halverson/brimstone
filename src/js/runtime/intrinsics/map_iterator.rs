@@ -9,9 +9,9 @@ use crate::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -39,26 +39,6 @@ pub enum MapIteratorKind {
     Key,
     Value,
     KeyAndValue,
-}
-
-impl<'a> GcDeref for MapIterator<'a> {}
-
-impl<'a> Into<Gc<ObjectValue>> for Gc<MapIterator<'a>> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self.as_ref() as *const _ as *mut ObjectValue)
-    }
-}
-
-impl<'a> Into<Gc<ObjectValue>> for &MapIterator<'a> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
-    }
-}
-
-impl<'a> Into<Gc<ObjectValue>> for &mut MapIterator<'a> {
-    fn into(self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const _ as *mut ObjectValue)
-    }
 }
 
 impl<'a> MapIterator<'a> {

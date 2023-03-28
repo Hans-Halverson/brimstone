@@ -1,15 +1,15 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, impl_gc_into, maybe};
+use crate::{extend_object, maybe};
 
 use super::{
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     execution_context::{ExecutionContext, ScriptOrModule},
     function::{set_function_length, set_function_name},
-    gc::{Gc, GcDeref},
+    gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -43,10 +43,6 @@ pub type BuiltinFunctionPtr = fn(
 // Generic storage for variables captured by function if it is a closure. Must be cast to specific
 // type for stored variables at each use.
 pub struct ClosureEnvironment {}
-
-impl GcDeref for BuiltinFunction {}
-
-impl_gc_into!(BuiltinFunction, ObjectValue);
 
 impl BuiltinFunction {
     const VTABLE: *const () = extract_object_vtable::<BuiltinFunction>();
@@ -100,8 +96,7 @@ impl BuiltinFunction {
     }
 
     pub fn set_closure_environment<T>(&mut self, closure_environment: Gc<T>) {
-        self.closure_environment =
-            Some(Gc::from_ptr(closure_environment.as_ptr().cast::<ClosureEnvironment>()));
+        self.closure_environment = Some(closure_environment.cast::<ClosureEnvironment>());
     }
 
     pub fn set_property(&mut self, key: &PropertyKey, value: Property) {

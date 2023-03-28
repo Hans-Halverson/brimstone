@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         abstract_operations::{
             create_non_enumerable_data_property_or_throw, define_property_or_throw, get,
@@ -12,9 +12,9 @@ use crate::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -33,10 +33,6 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct AggregateErrorObject {}
 }
-
-impl GcDeref for AggregateErrorObject {}
-
-impl_gc_into!(AggregateErrorObject, ObjectValue);
 
 impl AggregateErrorObject {
     const VTABLE: *const () = extract_object_vtable::<AggregateErrorObject>();

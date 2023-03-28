@@ -30,13 +30,6 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
     }
 
     implement_if_undefined!(
-        "get_prototype_of",
-        fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
-            self.object().get_prototype_of(cx)
-        }
-    );
-
-    implement_if_undefined!(
         "set_prototype_of",
         fn set_prototype_of(
             &mut self,
@@ -44,13 +37,6 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             proto: Option<Gc<ObjectValue>>,
         ) -> EvalResult<bool> {
             self.object_mut().set_prototype_of(cx, proto)
-        }
-    );
-
-    implement_if_undefined!(
-        "is_extensible",
-        fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
-            self.object().is_extensible(cx)
         }
     );
 

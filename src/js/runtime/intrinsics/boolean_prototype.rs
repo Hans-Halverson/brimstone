@@ -1,7 +1,12 @@
 use crate::{
     js::runtime::{
-        completion::EvalResult, error::type_error_, gc::Gc, object_value::ObjectValue,
-        realm::Realm, value::Value, Context,
+        completion::EvalResult,
+        error::type_error_,
+        gc::Gc,
+        object_value::{HasObject, ObjectValue},
+        realm::Realm,
+        value::Value,
+        Context,
     },
     maybe,
 };

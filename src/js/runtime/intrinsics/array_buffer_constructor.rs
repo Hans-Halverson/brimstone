@@ -1,15 +1,15 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        gc::Gc,
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -34,10 +34,6 @@ extend_object! {
         is_detached: bool,
     }
 }
-
-impl GcDeref for ArrayBufferObject {}
-
-impl_gc_into!(ArrayBufferObject, ObjectValue);
 
 impl ArrayBufferObject {
     const VTABLE: *const () = extract_object_vtable::<ArrayBufferObject>();

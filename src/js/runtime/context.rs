@@ -113,7 +113,7 @@ impl Context {
 
     pub fn get_closure_environment<T>(&self) -> Gc<T> {
         let closure_environment = self.closure_environments.last().unwrap().unwrap();
-        Gc::from_ptr(closure_environment.as_ptr().cast::<T>())
+        closure_environment.cast::<T>()
     }
 
     pub fn next_private_name_id(&mut self) -> PrivateNameId {

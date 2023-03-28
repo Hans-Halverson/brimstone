@@ -1,16 +1,16 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         abstract_operations::create_non_enumerable_data_property_or_throw,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         intrinsics::error_constructor::install_error_cause,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{
             object_ordinary_init, object_ordinary_init_from_constructor, OrdinaryObject,
         },
@@ -32,10 +32,6 @@ macro_rules! create_native_error {
         extend_object! {
             pub struct $native_error {}
         }
-
-        impl GcDeref for $native_error {}
-
-        impl_gc_into!($native_error, ObjectValue);
 
         impl $native_error {
             const VTABLE: *const () = extract_object_vtable::<$native_error>();

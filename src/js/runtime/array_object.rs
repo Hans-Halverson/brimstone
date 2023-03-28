@@ -1,15 +1,14 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, impl_gc_into, js::runtime::type_utilities::is_array, maybe, must};
+use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     environment::private_environment::PrivateNameId,
     error::{range_error_, type_error_},
-    gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
@@ -29,10 +28,6 @@ extend_object! {
         is_length_writable: bool,
     }
 }
-
-impl GcDeref for ArrayObject {}
-
-impl_gc_into!(ArrayObject, ObjectValue);
 
 impl ArrayObject {
     const VTABLE: *const () = extract_object_vtable::<ArrayObject>();

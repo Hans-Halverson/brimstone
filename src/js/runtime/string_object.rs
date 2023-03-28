@@ -1,12 +1,12 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
-        gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        gc::Gc,
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -35,10 +35,6 @@ extend_object! {
         string_data: Gc<StringValue>,
     }
 }
-
-impl GcDeref for StringObject {}
-
-impl_gc_into!(StringObject, ObjectValue);
 
 impl StringObject {
     const VTABLE: *const () = extract_object_vtable::<StringObject>();

@@ -3,16 +3,16 @@ use std::ops::Deref;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    cast_from_value_fn, extend_object, impl_gc_into,
+    cast_from_value_fn, extend_object,
     js::runtime::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -41,10 +41,6 @@ pub enum ArrayIteratorKind {
     Value,
     KeyAndValue,
 }
-
-impl GcDeref for ArrayIterator {}
-
-impl_gc_into!(ArrayIterator, ObjectValue);
 
 impl ArrayIterator {
     const VTABLE: *const () = extract_object_vtable::<ArrayIterator>();

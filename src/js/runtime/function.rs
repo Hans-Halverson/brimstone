@@ -1,7 +1,7 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::parser::ast::{self, AstPtr},
     maybe, maybe_, maybe__, must,
 };
@@ -22,9 +22,9 @@ use super::{
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, ScriptOrModule},
-    gc::{Gc, GcDeref},
+    gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
@@ -79,10 +79,6 @@ pub enum FuncKind {
     ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
     DefaultConstructor,
 }
-
-impl GcDeref for Function {}
-
-impl_gc_into!(Function, ObjectValue);
 
 impl Function {
     const VTABLE: *const () = extract_object_vtable::<Function>();
@@ -172,7 +168,9 @@ impl Object for Function {
         // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
         if let FuncKind::DefaultConstructor = self.func_node {
             let new_object = if self.constructor_kind == ConstructorKind::Derived {
-                let func = must!(self.get_prototype_of(cx));
+                let func = must!(<&Function as Into<Gc<Function>>>::into(self)
+                    .cast::<ObjectValue>()
+                    .get_prototype_of(cx));
                 match func {
                     Some(func) if func.is_constructor() => {
                         maybe!(construct(cx, func, arguments, Some(new_target)))
@@ -206,7 +204,9 @@ impl Object for Function {
                 }
             } else {
                 if let FuncKind::DefaultConstructor = self.func_node {
-                    let func = must!(self.get_prototype_of(cx));
+                    let func = must!(<&Function as Into<Gc<Function>>>::into(self)
+                        .cast::<ObjectValue>()
+                        .get_prototype_of(cx));
                     let object = match func {
                         Some(func) if func.is_constructor() => {
                             maybe!(construct(cx, func, arguments, Some(new_target)))

@@ -3,7 +3,7 @@ use std::cmp::max;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         abstract_operations::{
             call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
@@ -14,9 +14,9 @@ use crate::{
         environment::private_environment::PrivateNameId,
         error::type_error_,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
-        gc::{Gc, GcDeref},
+        gc::Gc,
         get,
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -34,10 +34,6 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct FunctionPrototype {}
 }
-
-impl GcDeref for FunctionPrototype {}
-
-impl_gc_into!(FunctionPrototype, ObjectValue);
 
 impl FunctionPrototype {
     const VTABLE: *const () = extract_object_vtable::<FunctionPrototype>();

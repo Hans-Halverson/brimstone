@@ -25,7 +25,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
-            object_value::{Object, ObjectValue},
+            object_value::{HasObject, Object, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
             property_descriptor::PropertyDescriptor,
@@ -544,7 +544,10 @@ fn eval_super_call_expression(
         unreachable!()
     };
 
-    let func = must!(this_env.function_object.get_prototype_of(cx));
+    let func = must!(this_env
+        .function_object
+        .cast::<ObjectValue>()
+        .get_prototype_of(cx));
     let arg_list = maybe!(eval_argument_list(cx, &expr.arguments));
 
     let func = match func {

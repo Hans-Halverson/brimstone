@@ -3,17 +3,17 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use std::str::FromStr;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
-        object_value::{extract_object_vtable, Object, ObjectValue},
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -35,10 +35,6 @@ extend_object! {
         number_data: f64,
     }
 }
-
-impl GcDeref for NumberObject {}
-
-impl_gc_into!(NumberObject, ObjectValue);
 
 impl NumberObject {
     const VTABLE: *const () = extract_object_vtable::<NumberObject>();

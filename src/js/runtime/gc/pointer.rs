@@ -21,6 +21,10 @@ impl<T: ?Sized> Gc<T> {
     pub fn ptr_eq(&self, other: &Self) -> bool {
         self.ptr == other.ptr
     }
+
+    pub fn cast<U>(&self) -> Gc<U> {
+        Gc::from_ptr(self.as_ptr() as *mut U)
+    }
 }
 
 impl<T> Gc<T> {
@@ -68,26 +72,26 @@ impl<T: GcDeref + ?Sized> DerefMut for Gc<T> {
 
 #[macro_export]
 macro_rules! impl_gc_into {
-    ($from:ident, $into:ident) => {
-        impl Into<Gc<$into>> for Gc<$from> {
+    ($from:ident $(<$($generics:tt),*>)?, $into:ty) => {
+        impl $(<$($generics),*>)? Into<Gc<$into>> for Gc<$from $(<$($generics),*>)?> {
             fn into(self) -> Gc<$into> {
                 Gc::from_ptr(self.as_ref() as *const _ as *mut $into)
             }
         }
 
-        impl<'a> Into<&'a $into> for &'a $from {
-            fn into(self) -> &'a $into {
+        impl<'t, $($($generics),*)?> Into<&'t $into> for &'t $from $(<$($generics),*>)? {
+            fn into(self) -> &'t $into {
                 unsafe { &*((self as *const _) as *const $into) }
             }
         }
 
-        impl Into<Gc<$into>> for &$from {
+        impl $(<$($generics),*>)? Into<Gc<$into>> for &$from $(<$($generics),*>)? {
             fn into(self) -> Gc<$into> {
                 Gc::from_ptr(self as *const _ as *mut $into)
             }
         }
 
-        impl Into<Gc<$into>> for &mut $from {
+        impl $(<$($generics),*>)? Into<Gc<$into>> for &mut $from $(<$($generics),*>)? {
             fn into(self) -> Gc<$into> {
                 Gc::from_ptr(self as *const _ as *mut $into)
             }

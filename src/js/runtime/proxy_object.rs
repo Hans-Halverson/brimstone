@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{
-    extend_object, impl_gc_into, js::runtime::type_utilities::same_opt_object_value, maybe, must,
-};
+use crate::{extend_object, js::runtime::type_utilities::same_opt_object_value, maybe, must};
 
 use super::{
     abstract_operations::{
@@ -11,10 +9,9 @@ use super::{
     array_object::create_array_from_list,
     environment::private_environment::PrivateNameId,
     error::type_error_,
-    gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
     property::{PrivateProperty, Property},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
@@ -32,10 +29,6 @@ extend_object! {
         is_constructor: bool,
     }
 }
-
-impl GcDeref for ProxyObject {}
-
-impl_gc_into!(ProxyObject, ObjectValue);
 
 impl ProxyObject {
     const VTABLE: *const () = extract_object_vtable::<ProxyObject>();
@@ -77,46 +70,6 @@ impl ProxyObject {
 }
 
 impl Object for ProxyObject {
-    // 10.5.1 [[GetPrototypeOf]]
-    fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
-        if self.proxy_handler.is_none() {
-            return type_error_(cx, "operation attempted on revoked proxy");
-        }
-
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
-
-        let trap = maybe!(get_method(cx, handler, &cx.names.get_prototype_of()));
-
-        if trap.is_none() {
-            return target.get_prototype_of(cx);
-        }
-
-        let handler_proto = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
-        let handler_proto = if handler_proto.is_object() {
-            Some(handler_proto.as_object())
-        } else if handler_proto.is_null() {
-            None
-        } else {
-            return type_error_(cx, "proxy getPrototypeOf handler must return object or null");
-        };
-
-        if maybe!(is_extensible_(cx, target)) {
-            return handler_proto.into();
-        }
-
-        let target_proto = maybe!(target.get_prototype_of(cx));
-
-        if !same_opt_object_value(handler_proto, target_proto) {
-            return type_error_(
-                cx,
-                "proxy getPrototypeOf handler didn't return the target object's prototype",
-            );
-        }
-
-        handler_proto.into()
-    }
-
     // 10.5.2 [[SetPrototypeOf]]
     fn set_prototype_of(
         &mut self,
@@ -159,33 +112,6 @@ impl Object for ProxyObject {
         }
 
         true.into()
-    }
-
-    // 10.5.3 [[IsExtensible]]
-    fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
-            return type_error_(cx, "operation attempted on revoked proxy");
-        }
-
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
-
-        let trap = maybe!(get_method(cx, handler, &cx.names.is_extensible()));
-
-        if trap.is_none() {
-            return is_extensible_(cx, target);
-        }
-
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
-        let trap_result = to_boolean(trap_result);
-
-        let target_result = maybe!(is_extensible_(cx, target));
-
-        if trap_result != target_result {
-            return type_error_(cx, "proxy must report same extensiblitity as target");
-        }
-
-        trap_result.into()
     }
 
     // 10.5.4 [[PreventExtensions]]
@@ -766,6 +692,75 @@ impl Object for ProxyObject {
         }
 
         self.proxy_target.unwrap().get_realm(cx)
+    }
+}
+
+impl Gc<ProxyObject> {
+    // 10.5.1 [[GetPrototypeOf]]
+    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+        if self.proxy_handler.is_none() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        let handler = self.proxy_handler.unwrap().into();
+        let target = self.proxy_target.unwrap();
+
+        let trap = maybe!(get_method(cx, handler, &cx.names.get_prototype_of()));
+
+        if trap.is_none() {
+            return target.get_prototype_of(cx);
+        }
+
+        let handler_proto = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let handler_proto = if handler_proto.is_object() {
+            Some(handler_proto.as_object())
+        } else if handler_proto.is_null() {
+            None
+        } else {
+            return type_error_(cx, "proxy getPrototypeOf handler must return object or null");
+        };
+
+        if maybe!(is_extensible_(cx, target)) {
+            return handler_proto.into();
+        }
+
+        let target_proto = maybe!(target.get_prototype_of(cx));
+
+        if !same_opt_object_value(handler_proto, target_proto) {
+            return type_error_(
+                cx,
+                "proxy getPrototypeOf handler didn't return the target object's prototype",
+            );
+        }
+
+        handler_proto.into()
+    }
+
+    // 10.5.3 [[IsExtensible]]
+    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+        if self.proxy_handler.is_none() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        let handler = self.proxy_handler.unwrap().into();
+        let target = self.proxy_target.unwrap();
+
+        let trap = maybe!(get_method(cx, handler, &cx.names.is_extensible()));
+
+        if trap.is_none() {
+            return is_extensible_(cx, target);
+        }
+
+        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let trap_result = to_boolean(trap_result);
+
+        let target_result = maybe!(is_extensible_(cx, target));
+
+        if trap_result != target_result {
+            return type_error_(cx, "proxy must report same extensiblitity as target");
+        }
+
+        trap_result.into()
     }
 }
 

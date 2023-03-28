@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::{
         parser::ast,
         runtime::{builtin_function::BuiltinFunction, eval::pattern::id_string_value},
@@ -20,7 +20,7 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
         ordinary_get_own_property, ordinary_object_create_optional_proto, ordinary_set,
@@ -38,10 +38,6 @@ use super::{
 extend_object! {
     pub struct UnmappedArgumentsObject {}
 }
-
-impl GcDeref for UnmappedArgumentsObject {}
-
-impl_gc_into!(UnmappedArgumentsObject, ObjectValue);
 
 impl UnmappedArgumentsObject {
     const VTABLE: *const () = extract_object_vtable::<UnmappedArgumentsObject>();
@@ -71,10 +67,6 @@ extend_object! {
         parameter_map: Gc<ObjectValue>,
     }
 }
-
-impl GcDeref for MappedArgumentsObject {}
-
-impl_gc_into!(MappedArgumentsObject, ObjectValue);
 
 impl MappedArgumentsObject {
     const VTABLE: *const () = extract_object_vtable::<MappedArgumentsObject>();

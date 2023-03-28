@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use paste::paste;
 
-use crate::{field_offset, impl_gc_into, maybe, must};
+use crate::{field_offset, maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -12,12 +12,13 @@ use super::{
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     error::type_error_,
-    gc::{Gc, GcDeref},
+    gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_value::{extract_object_vtable, Object, ObjectValue},
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    proxy_object::ProxyObject,
     realm::Realm,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
@@ -34,33 +35,42 @@ macro_rules! extend_object {
             // All objects start with object vtable
             _vtable: $crate::js::runtime::object_value::ObjectValueVtable,
 
-            // Object fields
+            // Inherited object fields
 
             // None represents the null value
             prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
+
             // String and symbol properties by their property key
             properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
+
             // Array index properties by their property key
             array_properties: $crate::js::runtime::ordinary_object::ArrayProperties,
+
             // Private properties with string keys
             private_properties: std::collections::HashMap<$crate::js::runtime::environment::private_environment::PrivateNameId, $crate::js::runtime::property::PrivateProperty>,
+
+            // Whether this object can be extended with new properties
             is_extensible: bool,
 
             // Child fields
             $($field_vis $field_name: $field_type,)*
         }
 
-        impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
+        impl $(<$($generics),*>)? $crate::js::runtime::object_value::HasObject for $name $(<$($generics),*>)? {
             #[inline]
-            pub fn object(&self) -> &$crate::js::runtime::ordinary_object::OrdinaryObject {
+            fn object(&self) -> &$crate::js::runtime::ordinary_object::OrdinaryObject {
                 unsafe { &*(self as *const _ as *const $crate::js::runtime::ordinary_object::OrdinaryObject) }
             }
 
             #[inline]
-            pub fn object_mut(&mut self) -> &mut $crate::js::runtime::ordinary_object::OrdinaryObject {
+            fn object_mut(&mut self) -> &mut $crate::js::runtime::ordinary_object::OrdinaryObject {
                 unsafe { &mut *(self as *mut _ as *mut $crate::js::runtime::ordinary_object::OrdinaryObject) }
             }
         }
+
+        impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
+
+        $crate::impl_gc_into!($name $(<$($generics),*>)?, $crate::js::runtime::object_value::ObjectValue);
     }
 }
 
@@ -122,10 +132,6 @@ impl OrdinaryObject {
     field_accessors!(private_properties, HashMap<PrivateNameId, PrivateProperty>, PRIVATE_PROPERTIES_OFFSET);
     field_accessors!(is_extensible_field, bool, IS_EXTENSIBLE_OFFSET);
 }
-
-impl GcDeref for OrdinaryObject {}
-
-impl_gc_into!(OrdinaryObject, ObjectValue);
 
 // Number of indices past the end of an array an access can occur before dense array is converted
 // to a sparse array.
@@ -364,13 +370,43 @@ impl ArrayProperties {
     }
 }
 
-impl Object for OrdinaryObject {
+impl Gc<ObjectValue> {
+    /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().get_prototype_of(cx)
+        } else {
+            self.object().ordinary_get_prototype_of()
+        }
+    }
+
+    /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().is_extensible(cx)
+        } else {
+            self.object().ordinary_is_extensible()
+        }
+    }
+}
+
+impl OrdinaryObject {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
-    fn get_prototype_of(&self, _: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
         self.prototype.into()
     }
 
+    // 10.1.3 [[IsExtensible]]
+    // 10.1.3.1 OrdinaryIsExtensible
+    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
+        self.is_extensible.into()
+    }
+}
+
+impl Object for OrdinaryObject {
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
     fn set_prototype_of(
@@ -407,12 +443,6 @@ impl Object for OrdinaryObject {
         self.prototype = new_prototype;
 
         return true.into();
-    }
-
-    // 10.1.3 [[IsExtensible]]
-    // 10.1.3.1 OrdinaryIsExtensible
-    fn is_extensible(&self, _: &mut Context) -> EvalResult<bool> {
-        self.is_extensible.into()
     }
 
     // 10.1.4 [[PreventExtensions]]
@@ -1004,7 +1034,7 @@ pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<Or
     let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
     object._vtable = OrdinaryObject::VTABLE;
 
-    object_ordinary_init(object.object_mut(), proto);
+    object_ordinary_init(object.as_mut(), proto);
 
     object
 }
@@ -1027,7 +1057,7 @@ pub fn ordinary_object_create_optional_proto(
     let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
     object._vtable = OrdinaryObject::VTABLE;
 
-    object_ordinary_init_optional_proto(object.object_mut(), proto);
+    object_ordinary_init_optional_proto(object.as_mut(), proto);
 
     object
 }
@@ -1056,7 +1086,7 @@ pub fn ordinary_create_from_constructor(
 
     maybe!(object_ordinary_init_from_constructor(
         cx,
-        object.object_mut(),
+        object.as_mut(),
         constructor,
         intrinsic_default_proto,
     ));

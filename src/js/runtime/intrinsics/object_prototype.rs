@@ -1,15 +1,17 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, impl_gc_into,
+    extend_object,
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
-        gc::{Gc, GcDeref},
-        object_value::{extract_object_vtable, set_immutable_prototype, Object, ObjectValue},
+        gc::Gc,
+        object_value::{
+            extract_object_vtable, set_immutable_prototype, HasObject, Object, ObjectValue,
+        },
         ordinary_object::object_ordinary_init_optional_proto,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -29,8 +31,6 @@ use crate::{
 extend_object! {
     pub struct ObjectPrototype {}
 }
-
-impl GcDeref for ObjectPrototype {}
 
 impl ObjectPrototype {
     const VTABLE: *const () = extract_object_vtable::<ObjectPrototype>();
@@ -411,5 +411,3 @@ impl Object for ObjectPrototype {
         set_immutable_prototype(cx, self.into(), proto)
     }
 }
-
-impl_gc_into!(ObjectPrototype, ObjectValue);

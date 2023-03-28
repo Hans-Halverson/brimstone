@@ -1,13 +1,13 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, impl_gc_into, maybe};
+use crate::{extend_object, maybe};
 
 use super::{
     abstract_operations::{call_object, construct},
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
-    gc::{Gc, GcDeref},
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    gc::Gc,
+    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init_optional_proto,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -25,10 +25,6 @@ extend_object! {
         bound_arguments: Vec<Value>,
     }
 }
-
-impl GcDeref for BoundFunctionObject {}
-
-impl_gc_into!(BoundFunctionObject, ObjectValue);
 
 impl BoundFunctionObject {
     const VTABLE: *const () = extract_object_vtable::<BoundFunctionObject>();

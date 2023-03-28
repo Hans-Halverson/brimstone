@@ -214,10 +214,6 @@ macro_rules! create_typed_array_constructor {
             }
         }
 
-        impl GcDeref for $typed_array {}
-
-        impl_gc_into!($typed_array, ObjectValue);
-
         impl $typed_array {
             const VTABLE: *const () = extract_object_vtable::<$typed_array>();
 

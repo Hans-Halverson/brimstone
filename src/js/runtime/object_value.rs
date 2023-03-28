@@ -6,6 +6,7 @@ use crate::maybe;
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
 use super::intrinsics::typed_array::TypedArray;
+use super::ordinary_object::OrdinaryObject;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
 use super::type_utilities::same_opt_object_value;
@@ -27,16 +28,18 @@ pub struct ObjectValue {
 
 pub type ObjectValueVtable = *const ();
 
-pub trait Object {
-    fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>>;
+pub trait HasObject {
+    // Getters to cast subtype to this type
+    fn object(&self) -> &OrdinaryObject;
+    fn object_mut(&mut self) -> &mut OrdinaryObject;
+}
 
+pub trait Object: HasObject {
     fn set_prototype_of(
         &mut self,
         cx: &mut Context,
         proto: Option<Gc<ObjectValue>>,
     ) -> EvalResult<bool>;
-
-    fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool>;
 
     fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool>;
 
@@ -213,13 +216,6 @@ pub fn set_immutable_prototype(
 ) -> EvalResult<bool> {
     let current_proto = maybe!(object.get_prototype_of(cx));
     same_opt_object_value(proto, current_proto).into()
-}
-
-// Allow downcasting from Gc<ObjectValue> to any Object type
-impl Gc<ObjectValue> {
-    pub fn cast<T: Object>(&self) -> Gc<T> {
-        Gc::from_ptr(self.as_ptr() as *mut T)
-    }
 }
 
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used

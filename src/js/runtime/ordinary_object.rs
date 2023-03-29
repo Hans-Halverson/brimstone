@@ -381,6 +381,22 @@ impl Gc<ObjectValue> {
         }
     }
 
+    /// The [[SetPrototypeOf]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        new_prototype: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>()
+                .set_prototype_of(cx, new_prototype)
+        } else {
+            self.object_mut()
+                .ordinary_set_prototype_of(cx, new_prototype)
+        }
+    }
+
     /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
@@ -388,6 +404,16 @@ impl Gc<ObjectValue> {
             self.cast::<ProxyObject>().is_extensible(cx)
         } else {
             self.object().ordinary_is_extensible()
+        }
+    }
+
+    /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().prevent_extensions(cx)
+        } else {
+            self.object_mut().ordinary_prevent_extensions()
         }
     }
 }
@@ -399,23 +425,21 @@ impl OrdinaryObject {
         self.prototype.into()
     }
 
-    // 10.1.3 [[IsExtensible]]
-    // 10.1.3.1 OrdinaryIsExtensible
-    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
-        self.is_extensible.into()
-    }
-}
-
-impl Object for OrdinaryObject {
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
-    fn set_prototype_of(
+    pub fn ordinary_set_prototype_of(
         &mut self,
         cx: &mut Context,
         new_prototype: Option<Gc<ObjectValue>>,
     ) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype, new_prototype) {
             return true.into();
+        }
+
+        // Inlined 10.4.7.2 SetImmutablePrototype, currently only applies to object prototypes.
+        // If the prototypes differ, then a set immutable prototype always fails.
+        if self.is_object_prototype() {
+            return false.into();
         }
 
         if !self.is_extensible {
@@ -445,13 +469,21 @@ impl Object for OrdinaryObject {
         return true.into();
     }
 
+    // 10.1.3 [[IsExtensible]]
+    // 10.1.3.1 OrdinaryIsExtensible
+    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
+        self.is_extensible.into()
+    }
+
     // 10.1.4 [[PreventExtensions]]
     // 10.1.4.1 OrdinaryPreventExtensions
-    fn prevent_extensions(&mut self, _: &mut Context) -> EvalResult<bool> {
+    fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
         self.is_extensible = false;
         true.into()
     }
+}
 
+impl Object for OrdinaryObject {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,

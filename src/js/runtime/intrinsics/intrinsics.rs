@@ -58,7 +58,7 @@ use crate::{
             typed_array_constructor::TypedArrayConstructor,
             typed_array_prototype::TypedArrayPrototype,
         },
-        object_value::{Object, ObjectValue},
+        object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         value::Value,
@@ -322,7 +322,7 @@ fn throw_type_error(
 
 // 10.2.4.1 %ThrowTypeError%
 fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
-    let mut throw_type_error_func =
+    let throw_type_error_func =
         BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
     let length_desc = PropertyDescriptor::data(0.into(), false, false, false);
@@ -343,7 +343,9 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
         name_desc,
     ));
 
-    throw_type_error_func.prevent_extensions(cx);
+    throw_type_error_func
+        .cast::<ObjectValue>()
+        .prevent_extensions(cx);
 
     throw_type_error_func
 }

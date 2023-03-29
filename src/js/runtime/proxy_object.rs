@@ -70,80 +70,6 @@ impl ProxyObject {
 }
 
 impl Object for ProxyObject {
-    // 10.5.2 [[SetPrototypeOf]]
-    fn set_prototype_of(
-        &mut self,
-        cx: &mut Context,
-        proto: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
-            return type_error_(cx, "operation attempted on revoked proxy");
-        }
-
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
-
-        let trap = maybe!(get_method(cx, handler, &cx.names.set_prototype_of()));
-
-        if trap.is_none() {
-            return target.set_prototype_of(cx, proto);
-        }
-
-        let proto_value = match proto {
-            None => Value::null(),
-            Some(object_value) => object_value.into(),
-        };
-
-        let trap_arguments = [target.into(), proto_value];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
-
-        if !to_boolean(trap_result) {
-            return false.into();
-        }
-
-        if maybe!(is_extensible_(cx, target)) {
-            return true.into();
-        }
-
-        let target_proto = maybe!(target.get_prototype_of(cx));
-
-        if !same_opt_object_value(proto, target_proto) {
-            return type_error_(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
-        }
-
-        true.into()
-    }
-
-    // 10.5.4 [[PreventExtensions]]
-    fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
-            return type_error_(cx, "operation attempted on revoked proxy");
-        }
-
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
-
-        let trap = maybe!(get_method(cx, handler, &cx.names.prevent_extensions()));
-
-        if trap.is_none() {
-            return target.prevent_extensions(cx);
-        }
-
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
-        let trap_result = to_boolean(trap_result);
-
-        if trap_result {
-            if maybe!(is_extensible_(cx, target)) {
-                return type_error_(
-                    cx,
-                    "proxy can't report an extensible object as non-extensible",
-                );
-            }
-        }
-
-        trap_result.into()
-    }
-
     // 10.5.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -736,6 +662,50 @@ impl Gc<ProxyObject> {
         handler_proto.into()
     }
 
+    // 10.5.2 [[SetPrototypeOf]]
+    pub fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        proto: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool> {
+        if self.proxy_handler.is_none() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        let handler = self.proxy_handler.unwrap().into();
+        let mut target = self.proxy_target.unwrap();
+
+        let trap = maybe!(get_method(cx, handler, &cx.names.set_prototype_of()));
+
+        if trap.is_none() {
+            return target.set_prototype_of(cx, proto);
+        }
+
+        let proto_value = match proto {
+            None => Value::null(),
+            Some(object_value) => object_value.into(),
+        };
+
+        let trap_arguments = [target.into(), proto_value];
+        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+
+        if !to_boolean(trap_result) {
+            return false.into();
+        }
+
+        if maybe!(is_extensible_(cx, target)) {
+            return true.into();
+        }
+
+        let target_proto = maybe!(target.get_prototype_of(cx));
+
+        if !same_opt_object_value(proto, target_proto) {
+            return type_error_(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
+        }
+
+        true.into()
+    }
+
     // 10.5.3 [[IsExtensible]]
     pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
         if self.proxy_handler.is_none() {
@@ -758,6 +728,36 @@ impl Gc<ProxyObject> {
 
         if trap_result != target_result {
             return type_error_(cx, "proxy must report same extensiblitity as target");
+        }
+
+        trap_result.into()
+    }
+
+    // 10.5.4 [[PreventExtensions]]
+    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+        if self.proxy_handler.is_none() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        let handler = self.proxy_handler.unwrap().into();
+        let mut target = self.proxy_target.unwrap();
+
+        let trap = maybe!(get_method(cx, handler, &cx.names.prevent_extensions()));
+
+        if trap.is_none() {
+            return target.prevent_extensions(cx);
+        }
+
+        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let trap_result = to_boolean(trap_result);
+
+        if trap_result {
+            if maybe!(is_extensible_(cx, target)) {
+                return type_error_(
+                    cx,
+                    "proxy can't report an extensible object as non-extensible",
+                );
+            }
         }
 
         trap_result.into()

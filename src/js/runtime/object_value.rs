@@ -1,15 +1,12 @@
 use std::mem::{transmute, transmute_copy};
 use std::ops::{Deref, DerefMut};
 
-use crate::maybe;
-
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
 use super::intrinsics::typed_array::TypedArray;
 use super::ordinary_object::OrdinaryObject;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
-use super::type_utilities::same_opt_object_value;
 use super::{
     completion::EvalResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
 };
@@ -35,14 +32,6 @@ pub trait HasObject {
 }
 
 pub trait Object: HasObject {
-    fn set_prototype_of(
-        &mut self,
-        cx: &mut Context,
-        proto: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<bool>;
-
-    fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool>;
-
     fn get_own_property(
         &self,
         cx: &mut Context,
@@ -198,6 +187,10 @@ pub trait Object: HasObject {
         false
     }
 
+    fn is_object_prototype(&self) -> bool {
+        false
+    }
+
     // Type refinement functions
     fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
         None
@@ -206,16 +199,6 @@ pub trait Object: HasObject {
     fn as_typed_array(&self) -> Gc<dyn TypedArray> {
         unreachable!("as_typed_array can only be called on typed arrays")
     }
-}
-
-// 10.4.7.2 SetImmutablePrototype
-pub fn set_immutable_prototype(
-    cx: &mut Context,
-    object: Gc<ObjectValue>,
-    proto: Option<Gc<ObjectValue>>,
-) -> EvalResult<bool> {
-    let current_proto = maybe!(object.get_prototype_of(cx));
-    same_opt_object_value(proto, current_proto).into()
 }
 
 // Same layout as in std::raw, which is not exposed in stable. This definition is only used

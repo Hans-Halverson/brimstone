@@ -30,24 +30,6 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
     }
 
     implement_if_undefined!(
-        "set_prototype_of",
-        fn set_prototype_of(
-            &mut self,
-            cx: &mut Context,
-            proto: Option<Gc<ObjectValue>>,
-        ) -> EvalResult<bool> {
-            self.object_mut().set_prototype_of(cx, proto)
-        }
-    );
-
-    implement_if_undefined!(
-        "prevent_extensions",
-        fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
-            self.object_mut().prevent_extensions(cx)
-        }
-    );
-
-    implement_if_undefined!(
         "get_own_property",
         fn get_own_property(
             &self,

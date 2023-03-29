@@ -9,9 +9,7 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::Gc,
-        object_value::{
-            extract_object_vtable, set_immutable_prototype, HasObject, Object, ObjectValue,
-        },
+        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_optional_proto,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -403,11 +401,7 @@ impl ObjectPrototype {
 
 #[wrap_ordinary_object]
 impl Object for ObjectPrototype {
-    fn set_prototype_of(
-        &mut self,
-        cx: &mut Context,
-        proto: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<bool> {
-        set_immutable_prototype(cx, self.into(), proto)
+    fn is_object_prototype(&self) -> bool {
+        false
     }
 }

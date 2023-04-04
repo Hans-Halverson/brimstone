@@ -1,20 +1,15 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::object_ordinary_init,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
         value::{BigIntValue, Value},
@@ -49,13 +44,6 @@ impl BigIntObject {
 
     pub fn bigint_data(&self) -> Gc<BigIntValue> {
         self.bigint_data
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for BigIntObject {
-    fn is_bigint_object(&self) -> bool {
-        true
     }
 }
 

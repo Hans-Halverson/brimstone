@@ -1,19 +1,15 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_index,
@@ -80,13 +76,6 @@ impl ArrayBufferObject {
     pub fn detach(&mut self) {
         self.data = Vec::new();
         self.is_detached = true;
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for ArrayBufferObject {
-    fn is_array_buffer(&self) -> bool {
-        true
     }
 }
 

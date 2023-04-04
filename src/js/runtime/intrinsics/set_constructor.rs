@@ -1,22 +1,18 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
         gc::Gc,
         get,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
@@ -57,13 +53,6 @@ impl SetObject {
 
     pub fn set_data(&mut self) -> &mut ValueSet {
         &mut self.set_data
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for SetObject {
-    fn is_set_object(&self) -> bool {
-        true
     }
 }
 

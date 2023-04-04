@@ -1,26 +1,12 @@
 use super::{
-    arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
+    arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
     gc::{GcDeref, Heap},
     intrinsics::{
-        array_buffer_constructor::ArrayBufferObject,
-        array_iterator::ArrayIterator,
-        bigint_constructor::BigIntObject,
-        boolean_constructor::BooleanObject,
-        data_view_constructor::DataViewObject,
-        error_constructor::ErrorObject,
         function_prototype::FunctionPrototype,
-        map_constructor::MapObject,
-        map_iterator::MapIterator,
-        number_constructor::NumberObject,
-        object_prototype::ObjectPrototype,
-        set_constructor::SetObject,
-        set_iterator::SetIterator,
-        string_iterator::StringIterator,
-        symbol_constructor::SymbolObject,
         typed_array::{
             BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
             Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
@@ -151,25 +137,31 @@ impl BaseDescriptors {
             };
         }
 
-        register_descriptor!(ObjectKind::OrdinaryObject, OrdinaryObject);
+        macro_rules! ordinary_descriptor {
+            ($object_kind:expr) => {
+                register_descriptor!($object_kind, OrdinaryObject);
+            };
+        }
+
+        ordinary_descriptor!(ObjectKind::OrdinaryObject);
         register_descriptor!(ObjectKind::Proxy, ProxyObject);
 
-        register_descriptor!(ObjectKind::BooleanObject, BooleanObject);
-        register_descriptor!(ObjectKind::NumberObject, NumberObject);
+        ordinary_descriptor!(ObjectKind::BooleanObject);
+        ordinary_descriptor!(ObjectKind::NumberObject);
         register_descriptor!(ObjectKind::StringObject, StringObject);
-        register_descriptor!(ObjectKind::SymbolObject, SymbolObject);
-        register_descriptor!(ObjectKind::BigIntObject, BigIntObject);
+        ordinary_descriptor!(ObjectKind::SymbolObject);
+        ordinary_descriptor!(ObjectKind::BigIntObject);
         register_descriptor!(ObjectKind::ArrayObject, ArrayObject);
-        register_descriptor!(ObjectKind::ErrorObject, ErrorObject);
-        register_descriptor!(ObjectKind::SetObject, SetObject);
-        register_descriptor!(ObjectKind::MapObject, MapObject);
+        ordinary_descriptor!(ObjectKind::ErrorObject);
+        ordinary_descriptor!(ObjectKind::SetObject);
+        ordinary_descriptor!(ObjectKind::MapObject);
 
         register_descriptor!(ObjectKind::Function, Function);
         register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction);
         register_descriptor!(ObjectKind::BoundFunctionObject, BoundFunctionObject);
 
         register_descriptor!(ObjectKind::MappedArgumentsObject, MappedArgumentsObject);
-        register_descriptor!(ObjectKind::UnmappedArgumentsObject, UnmappedArgumentsObject);
+        ordinary_descriptor!(ObjectKind::UnmappedArgumentsObject);
 
         register_descriptor!(ObjectKind::Int8Array, Int8Array);
         register_descriptor!(ObjectKind::UInt8Array, UInt8Array);
@@ -183,15 +175,15 @@ impl BaseDescriptors {
         register_descriptor!(ObjectKind::Float32Array, Float32Array);
         register_descriptor!(ObjectKind::Float64Array, Float64Array);
 
-        register_descriptor!(ObjectKind::ArrayBufferObject, ArrayBufferObject);
-        register_descriptor!(ObjectKind::DataViewObject, DataViewObject);
+        ordinary_descriptor!(ObjectKind::ArrayBufferObject);
+        ordinary_descriptor!(ObjectKind::DataViewObject);
 
-        register_descriptor!(ObjectKind::ArrayIterator, ArrayIterator);
-        register_descriptor!(ObjectKind::StringIterator, StringIterator);
-        register_descriptor!(ObjectKind::SetIterator, SetIterator);
-        register_descriptor!(ObjectKind::MapIterator, MapIterator);
+        ordinary_descriptor!(ObjectKind::ArrayIterator);
+        ordinary_descriptor!(ObjectKind::StringIterator);
+        ordinary_descriptor!(ObjectKind::SetIterator);
+        ordinary_descriptor!(ObjectKind::MapIterator);
 
-        register_descriptor!(ObjectKind::ObjectPrototype, ObjectPrototype);
+        ordinary_descriptor!(ObjectKind::ObjectPrototype);
         register_descriptor!(ObjectKind::FunctionPrototype, FunctionPrototype);
 
         BaseDescriptors { descriptors }

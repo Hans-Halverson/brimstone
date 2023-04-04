@@ -195,13 +195,13 @@ impl Intrinsics {
 
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
         // form depenency cycles, so first create uninitialized and then initialize later.
-        let mut object_prototype = ObjectPrototype::new_uninit(cx);
+        let object_prototype = ObjectPrototype::new_uninit(cx);
         let mut function_prototype = FunctionPrototype::new_uninit(cx);
 
         register_existing_intrinsic!(ObjectPrototype, object_prototype.into());
         register_existing_intrinsic!(FunctionPrototype, function_prototype.into());
 
-        object_prototype.initialize(cx, realm);
+        ObjectPrototype::initialize(cx, object_prototype, realm);
         function_prototype.initialize(cx, realm);
 
         // Normal intrinsic creation

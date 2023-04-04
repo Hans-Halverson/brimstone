@@ -14,7 +14,7 @@ use super::{
     error::type_error_,
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{Object, ObjectValue},
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -72,6 +72,16 @@ macro_rules! extend_object {
         impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
 
         $crate::impl_gc_into!($name $(<$($generics),*>)?, $crate::js::runtime::object_value::ObjectValue);
+
+        impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
+            pub fn descriptor(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
+                self.descriptor
+            }
+
+            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
+                self.descriptor = descriptor
+            }
+        }
     }
 }
 
@@ -437,7 +447,8 @@ impl OrdinaryObject {
 
         // Inlined 10.4.7.2 SetImmutablePrototype, currently only applies to object prototypes.
         // If the prototypes differ, then a set immutable prototype always fails.
-        if self.is_object_prototype() {
+        let object_value: Gc<ObjectValue> = self.into();
+        if object_value.is_object_prototype() {
             return false.into();
         }
 
@@ -1062,10 +1073,20 @@ pub fn object_ordinary_init(object: &mut OrdinaryObject, proto: Gc<ObjectValue>)
 }
 
 pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<OrdinaryObject> {
-    let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+    ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
+}
 
-    object_ordinary_init(object.as_mut(), proto);
+#[inline]
+pub fn ordinary_object_create_with_descriptor(
+    cx: &mut Context,
+    descriptor: Gc<ObjectDescriptor>,
+    proto: Option<Gc<ObjectValue>>,
+) -> Gc<OrdinaryObject> {
+    let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+    object.descriptor = descriptor;
+
+    object_ordinary_init_optional_proto(object.as_mut(), proto);
 
     object
 }

@@ -1,20 +1,15 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property::Property,
         realm::Realm,
         type_utilities::to_index,
         value::Value,
@@ -74,13 +69,6 @@ impl DataViewObject {
 
     pub fn byte_offset(&self) -> usize {
         self.byte_offset
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for DataViewObject {
-    fn is_data_view(&self) -> bool {
-        true
     }
 }
 

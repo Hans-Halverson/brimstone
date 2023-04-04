@@ -1,20 +1,14 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::object_ordinary_init,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_string,
         value::{SymbolValue, Value},
@@ -49,13 +43,6 @@ impl SymbolObject {
 
     pub fn symbol_data(&self) -> Gc<SymbolValue> {
         self.symbol_data
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for SymbolObject {
-    fn is_symbol_object(&self) -> bool {
-        true
     }
 }
 

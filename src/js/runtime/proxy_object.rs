@@ -599,10 +599,6 @@ impl Object for ProxyObject {
             .private_method_or_accessor_add(cx, private_id, private_method)
     }
 
-    fn is_proxy(&self) -> bool {
-        true
-    }
-
     fn is_callable(&self) -> bool {
         self.is_callable
     }

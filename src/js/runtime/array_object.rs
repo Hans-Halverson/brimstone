@@ -45,10 +45,6 @@ impl ArrayObject {
 
 #[wrap_ordinary_object]
 impl Object for ArrayObject {
-    fn is_array(&self) -> bool {
-        true
-    }
-
     // 10.4.2.1 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,

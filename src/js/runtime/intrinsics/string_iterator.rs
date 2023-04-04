@@ -1,18 +1,14 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         string_value::{CodePointIterator, StringValue},
@@ -52,9 +48,6 @@ impl StringIterator {
 
     cast_from_value_fn!(StringIterator, "String Iterator");
 }
-
-#[wrap_ordinary_object]
-impl Object for StringIterator {}
 
 // 22.1.5.1 The %StringIteratorPrototype% Object
 pub struct StringIteratorPrototype;

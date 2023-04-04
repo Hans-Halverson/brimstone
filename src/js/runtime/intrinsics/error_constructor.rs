@@ -1,20 +1,14 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
-        ordinary_object::object_ordinary_init_from_constructor,
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        object_value::ObjectValue,
+        ordinary_object::{object_ordinary_init_from_constructor, OrdinaryObject},
+        property::Property,
         realm::Realm,
         type_utilities::to_string,
         value::Value,
@@ -25,33 +19,24 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-extend_object! {
-    pub struct ErrorObject {}
-}
+pub struct ErrorObject;
 
 impl ErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ErrorObject>> {
-        let mut object = cx.heap.alloc_uninit::<ErrorObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
+    ) -> EvalResult<Gc<OrdinaryObject>> {
+        let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+        object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.object_mut(),
+            object.as_mut(),
             constructor,
             Intrinsic::ErrorPrototype
         ));
 
         object.into()
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for ErrorObject {
-    fn is_error(&self) -> bool {
-        true
     }
 }
 

@@ -412,10 +412,6 @@ macro_rules! create_typed_array_constructor {
                 keys.into()
             }
 
-            fn is_typed_array(&self) -> bool {
-                true
-            }
-
             fn as_typed_array(&self) -> Gc<dyn TypedArray> {
                 Gc::from_ptr(self as *const dyn TypedArray as *mut dyn TypedArray)
             }

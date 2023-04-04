@@ -1,23 +1,17 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::create_non_enumerable_data_property_or_throw,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
         intrinsics::error_constructor::install_error_cause,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::{
             object_ordinary_init, object_ordinary_init_from_constructor, OrdinaryObject,
         },
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property::Property,
         realm::Realm,
         type_utilities::to_string,
         value::Value,
@@ -30,21 +24,19 @@ use super::intrinsics::Intrinsic;
 
 macro_rules! create_native_error {
     ($native_error:ident, $rust_name:ident, $prototype:ident, $constructor:ident) => {
-        extend_object! {
-            pub struct $native_error {}
-        }
+        pub struct $native_error;
 
         impl $native_error {
-            pub fn new_with_message(cx: &mut Context, message: String) -> Gc<$native_error> {
+            #[allow(dead_code)]
+            pub fn new_with_message(cx: &mut Context, message: String) -> Gc<OrdinaryObject> {
                 let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
 
-                let mut object = cx.heap.alloc_uninit::<$native_error>();
-                object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
+                let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+                object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
-                object_ordinary_init(object.object_mut(), prototype);
+                object_ordinary_init(object.as_mut(), prototype);
 
                 object
-                    .object_mut()
                     .intrinsic_data_prop(&cx.names.message(), cx.heap.alloc_string(message).into());
 
                 object
@@ -53,25 +45,18 @@ macro_rules! create_native_error {
             pub fn new_from_constructor(
                 cx: &mut Context,
                 constructor: Gc<ObjectValue>,
-            ) -> EvalResult<Gc<$native_error>> {
-                let mut object = cx.heap.alloc_uninit::<$native_error>();
-                object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
+            ) -> EvalResult<Gc<OrdinaryObject>> {
+                let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+                object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
                 maybe!(object_ordinary_init_from_constructor(
                     cx,
-                    object.object_mut(),
+                    object.as_mut(),
                     constructor,
                     Intrinsic::$prototype
                 ));
 
                 object.into()
-            }
-        }
-
-        #[wrap_ordinary_object]
-        impl Object for $native_error {
-            fn is_error(&self) -> bool {
-                true
             }
         }
 

@@ -1,19 +1,14 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property::Property,
         realm::Realm,
         type_utilities::to_boolean,
         value::Value,
@@ -78,13 +73,6 @@ impl BooleanObject {
 
     pub fn boolean_data(&self) -> bool {
         self.boolean_data
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for BooleanObject {
-    fn is_bool_object(&self) -> bool {
-        true
     }
 }
 

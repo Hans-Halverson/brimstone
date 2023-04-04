@@ -1,20 +1,16 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         value::Value,
@@ -87,9 +83,6 @@ impl ArrayIterator {
 
     cast_from_value_fn!(ArrayIterator, "Array Iterator");
 }
-
-#[wrap_ordinary_object]
-impl Object for ArrayIterator {}
 
 // 23.1.5.2 The %ArrayIteratorPrototype% Object
 pub struct ArrayIteratorPrototype;

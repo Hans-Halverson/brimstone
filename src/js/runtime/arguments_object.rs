@@ -24,7 +24,8 @@ use super::{
     object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
-        ordinary_get_own_property, ordinary_object_create_optional_proto, ordinary_set,
+        ordinary_get_own_property, ordinary_object_create_optional_proto,
+        ordinary_object_create_with_descriptor, ordinary_set, OrdinaryObject,
     },
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -34,28 +35,16 @@ use super::{
     Context, EvalResult, Gc, Value,
 };
 
-// An unmapped arguments that is identical to an ordinary object, but has the is_arguments_object
-// method overridden. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
-extend_object! {
-    pub struct UnmappedArgumentsObject {}
-}
+// An unmapped arguments that is identical to an ordinary object, but has an arguments object
+// descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
+pub struct UnmappedArgumentsObject;
 
 impl UnmappedArgumentsObject {
-    pub fn new(cx: &mut Context) -> Gc<UnmappedArgumentsObject> {
+    pub fn new(cx: &mut Context) -> Gc<OrdinaryObject> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut object = cx.heap.alloc_uninit::<UnmappedArgumentsObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
 
-        object_ordinary_init(object.object_mut(), proto);
-
-        object
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for UnmappedArgumentsObject {
-    fn is_arguments_object(&self) -> bool {
-        true
+        ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
     }
 }
 
@@ -183,10 +172,6 @@ impl Object for MappedArgumentsObject {
         }
 
         result.into()
-    }
-
-    fn is_arguments_object(&self) -> bool {
-        true
     }
 }
 

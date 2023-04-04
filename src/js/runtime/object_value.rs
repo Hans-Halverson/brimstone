@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
 use super::intrinsics::typed_array::TypedArray;
-use super::object_descriptor::ObjectDescriptor;
+use super::object_descriptor::{ObjectDescriptor, ObjectKind};
 use super::ordinary_object::OrdinaryObject;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
@@ -28,6 +28,90 @@ impl Gc<ObjectValue> {
     #[inline]
     pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
         unsafe { self.as_ptr().read().descriptor }
+    }
+
+    fn descriptor_kind(&self) -> ObjectKind {
+        self.descriptor().kind()
+    }
+
+    pub fn is_array(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::ArrayObject
+    }
+
+    pub fn is_error(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::ErrorObject
+    }
+
+    pub fn is_bool_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::BooleanObject
+    }
+
+    pub fn is_number_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::NumberObject
+    }
+
+    pub fn is_string_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::StringObject
+    }
+
+    pub fn is_symbol_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::SymbolObject
+    }
+
+    pub fn is_bigint_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::BigIntObject
+    }
+
+    pub fn is_date_object(&self) -> bool {
+        false
+    }
+
+    pub fn is_regexp_object(&self) -> bool {
+        false
+    }
+
+    pub fn is_map_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::MapObject
+    }
+
+    pub fn is_set_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::SetObject
+    }
+
+    pub fn is_array_buffer(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::ArrayBufferObject
+    }
+
+    pub fn is_shared_array_buffer(&self) -> bool {
+        false
+    }
+
+    pub fn is_typed_array(&self) -> bool {
+        let kind = self.descriptor_kind() as u8;
+        (kind >= ObjectKind::Int8Array as u8) && (kind <= ObjectKind::Float64Array as u8)
+    }
+
+    pub fn is_data_view(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::DataViewObject
+    }
+
+    pub fn is_arguments_object(&self) -> bool {
+        match self.descriptor_kind() {
+            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_proxy(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::Proxy
+    }
+
+    pub fn is_bound_function(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::BoundFunctionObject
+    }
+
+    pub fn is_object_prototype(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::ObjectPrototype
     }
 }
 
@@ -121,82 +205,6 @@ pub trait Object: HasObject {
 
     fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
         cx.current_realm().into()
-    }
-
-    fn is_array(&self) -> bool {
-        false
-    }
-
-    fn is_error(&self) -> bool {
-        false
-    }
-
-    fn is_bool_object(&self) -> bool {
-        false
-    }
-
-    fn is_number_object(&self) -> bool {
-        false
-    }
-
-    fn is_string_object(&self) -> bool {
-        false
-    }
-
-    fn is_symbol_object(&self) -> bool {
-        false
-    }
-
-    fn is_bigint_object(&self) -> bool {
-        false
-    }
-
-    fn is_date_object(&self) -> bool {
-        false
-    }
-
-    fn is_regexp_object(&self) -> bool {
-        false
-    }
-
-    fn is_map_object(&self) -> bool {
-        false
-    }
-
-    fn is_set_object(&self) -> bool {
-        false
-    }
-
-    fn is_array_buffer(&self) -> bool {
-        false
-    }
-
-    fn is_shared_array_buffer(&self) -> bool {
-        false
-    }
-
-    fn is_typed_array(&self) -> bool {
-        false
-    }
-
-    fn is_data_view(&self) -> bool {
-        false
-    }
-
-    fn is_arguments_object(&self) -> bool {
-        false
-    }
-
-    fn is_proxy(&self) -> bool {
-        false
-    }
-
-    fn is_bound_function(&self) -> bool {
-        false
-    }
-
-    fn is_object_prototype(&self) -> bool {
-        false
     }
 
     // Type refinement functions

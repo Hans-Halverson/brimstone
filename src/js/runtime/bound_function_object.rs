@@ -95,10 +95,6 @@ impl Object for BoundFunctionObject {
         self.bound_target_function.is_constructor()
     }
 
-    fn is_bound_function(&self) -> bool {
-        true
-    }
-
     fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
         self.bound_target_function.get_realm(cx)
     }

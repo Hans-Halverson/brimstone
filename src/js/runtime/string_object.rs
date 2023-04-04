@@ -124,10 +124,6 @@ impl StringObject {
 
 #[wrap_ordinary_object]
 impl Object for StringObject {
-    fn is_string_object(&self) -> bool {
-        true
-    }
-
     // 10.4.3.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,

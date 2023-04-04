@@ -1,18 +1,13 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
-        ordinary_object::object_ordinary_init_optional_proto,
-        property::{PrivateProperty, Property},
+        object_value::ObjectValue,
+        ordinary_object::{object_ordinary_init_optional_proto, OrdinaryObject},
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
@@ -27,58 +22,36 @@ use crate::{
     maybe,
 };
 
-extend_object! {
-    pub struct ObjectPrototype {}
-}
+pub struct ObjectPrototype;
 
 impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: &mut Context) -> Gc<ObjectPrototype> {
-        let mut object = cx.heap.alloc_uninit::<ObjectPrototype>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
+    pub fn new_uninit(cx: &mut Context) -> Gc<OrdinaryObject> {
+        let mut object = OrdinaryObject::new(cx, None, false);
+        object.set_descriptor(cx.base_descriptors.get(ObjectKind::ObjectPrototype));
 
         object
     }
 
     // 20.1.3 Properties of the Object Prototype Object
-    pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
-        object_ordinary_init_optional_proto(self.object_mut(), None);
+    pub fn initialize(cx: &mut Context, mut object: Gc<OrdinaryObject>, realm: Gc<Realm>) {
+        object_ordinary_init_optional_proto(object.as_mut(), None);
 
         // Constructor property is added once ObjectConstructor has been created
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.has_own_property(),
-            Self::has_own_property,
-            1,
-            realm,
-        );
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.is_prototype_of(),
-            Self::is_prototype_of,
-            1,
-            realm,
-        );
-        self.object_mut().intrinsic_func(
+        object.intrinsic_func(cx, &cx.names.has_own_property(), Self::has_own_property, 1, realm);
+        object.intrinsic_func(cx, &cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm);
+        object.intrinsic_func(
             cx,
             &cx.names.property_is_enumerable(),
             Self::property_is_enumerable,
             1,
             realm,
         );
-        self.object_mut()
-            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.to_locale_string(),
-            Self::to_locale_string,
-            0,
-            realm,
-        );
-        self.object_mut()
-            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
 
-        self.object_mut().intrinsic_getter_and_setter(
+        object.intrinsic_getter_and_setter(
             cx,
             &cx.names.__proto__(),
             Self::get_proto,
@@ -86,34 +59,10 @@ impl ObjectPrototype {
             realm,
         );
 
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.__define_getter__(),
-            Self::define_getter,
-            2,
-            realm,
-        );
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.__define_setter__(),
-            Self::define_setter,
-            2,
-            realm,
-        );
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.__lookup_getter__(),
-            Self::lookup_getter,
-            1,
-            realm,
-        );
-        self.object_mut().intrinsic_func(
-            cx,
-            &cx.names.__lookup_setter__(),
-            Self::lookup_setter,
-            1,
-            realm,
-        );
+        object.intrinsic_func(cx, &cx.names.__define_getter__(), Self::define_getter, 2, realm);
+        object.intrinsic_func(cx, &cx.names.__define_setter__(), Self::define_setter, 2, realm);
+        object.intrinsic_func(cx, &cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm);
+        object.intrinsic_func(cx, &cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm);
     }
 
     // 20.1.3.2 Object.prototype.hasOwnProperty
@@ -395,12 +344,5 @@ impl ObjectPrototype {
                 },
             }
         }
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for ObjectPrototype {
-    fn is_object_prototype(&self) -> bool {
-        false
     }
 }

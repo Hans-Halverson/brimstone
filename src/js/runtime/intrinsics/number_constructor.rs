@@ -1,5 +1,3 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use std::str::FromStr;
 
 use crate::{
@@ -7,18 +5,15 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
         value::Value,
@@ -81,13 +76,6 @@ impl NumberObject {
 
     pub fn number_data(&self) -> f64 {
         self.number_data
-    }
-}
-
-#[wrap_ordinary_object]
-impl Object for NumberObject {
-    fn is_number_object(&self) -> bool {
-        true
     }
 }
 

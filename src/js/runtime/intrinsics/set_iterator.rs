@@ -1,19 +1,15 @@
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         array_object::create_array_from_list,
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
-        property::{PrivateProperty, Property},
-        property_descriptor::PropertyDescriptor,
+        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         value::{Value, ValueSetIter},
@@ -59,9 +55,6 @@ impl<'a> SetIterator<'a> {
 
     cast_from_value_fn!(SetIterator, "Set Iterator");
 }
-
-#[wrap_ordinary_object]
-impl<'a> Object for SetIterator<'a> {}
 
 // 24.2.5.2 The %SetIteratorPrototype% Object
 pub struct SetIteratorPrototype;

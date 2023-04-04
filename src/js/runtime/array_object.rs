@@ -4,7 +4,6 @@ use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
-    environment::private_environment::PrivateNameId,
     error::{range_error_, type_error_},
     get,
     intrinsics::intrinsics::Intrinsic,
@@ -14,7 +13,6 @@ use super::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
     },
-    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::{is_constructor, same_object_value, to_number, to_uint32},

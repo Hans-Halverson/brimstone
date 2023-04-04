@@ -25,7 +25,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
-            object_value::{HasObject, Object, ObjectValue},
+            object_value::{HasObject, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
             property_descriptor::PropertyDescriptor,
@@ -1467,6 +1467,7 @@ fn eval_private_in_expression(
 
     right_value
         .as_object()
+        .object_mut()
         .private_element_find(private_id)
         .is_some()
         .into()

@@ -4,7 +4,6 @@ use crate::{extend_object, maybe};
 
 use super::{
     completion::EvalResult,
-    environment::private_environment::PrivateNameId,
     execution_context::{ExecutionContext, ScriptOrModule},
     function::{set_function_length, set_function_name},
     gc::Gc,
@@ -12,7 +11,7 @@ use super::{
     object_descriptor::ObjectKind,
     object_value::{HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init,
-    property::{PrivateProperty, Property},
+    property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,

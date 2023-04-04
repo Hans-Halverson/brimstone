@@ -2,11 +2,9 @@ use std::mem::{transmute, transmute_copy};
 use std::ops::{Deref, DerefMut};
 
 use super::builtin_function::BuiltinFunction;
-use super::environment::private_environment::PrivateNameId;
 use super::intrinsics::typed_array::TypedArray;
 use super::object_descriptor::{ObjectDescriptor, ObjectKind};
 use super::ordinary_object::OrdinaryObject;
-use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
 use super::{
     completion::EvalResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
@@ -170,29 +168,6 @@ pub trait Object: HasObject {
     ) -> EvalResult<Gc<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
     }
-
-    // Private property methods
-    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty>;
-
-    fn private_field_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        value: Value,
-    ) -> EvalResult<()>;
-
-    fn private_method_or_accessor_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        private_method: PrivateProperty,
-    ) -> EvalResult<()>;
-
-    // Property accessors and mutators
-    fn get_property(&self, key: &PropertyKey) -> Option<&Property>;
-    fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property>;
-    fn set_property(&mut self, key: &PropertyKey, value: Property);
-    fn remove_property(&mut self, key: &PropertyKey);
 
     // Type utilities
     fn is_callable(&self) -> bool {

@@ -384,7 +384,11 @@ pub fn class_definition_evaluation(
     // Define static private methods as private properties of the constructor function
     for (private_id, static_private_method) in static_private_methods {
         let mut func_object: Gc<ObjectValue> = func.into();
-        must!(func_object.private_method_or_accessor_add(cx, private_id, static_private_method));
+        must!(func_object.object_mut().private_method_or_accessor_add(
+            cx,
+            private_id,
+            static_private_method
+        ));
     }
 
     // Initialize static fields

@@ -364,6 +364,144 @@ impl OrdinaryObject {
     pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
         self.set_property(key, Property::data(value, false, false, false));
     }
+
+    // 7.3.27 PrivateElementFind
+    pub fn private_element_find(
+        &mut self,
+        private_id: PrivateNameId,
+    ) -> Option<&mut PrivateProperty> {
+        self.private_properties.get_mut(&private_id)
+    }
+
+    // 7.3.28 PrivateFieldAdd
+    pub fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        value: Value,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                let property = PrivateProperty::field(value);
+                self.private_properties.insert(private_id, property);
+                ().into()
+            }
+        }
+    }
+
+    // 7.3.29 PrivateMethodOrAccessorAdd
+    pub fn private_method_or_accessor_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        private_method: PrivateProperty,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                self.private_properties.insert(private_id, private_method);
+                ().into()
+            }
+        }
+    }
+
+    // Property accessors and mutators
+    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
+                            self.fall_back_to_sparse_properties();
+                        } else {
+                            self.expand_dense_properties(array_index + 1);
+                        }
+
+                        self.set_property(key, value);
+                    } else {
+                        array[array_index as usize] = value;
+                    }
+                }
+                ArrayProperties::Sparse { sparse_map, length } => {
+                    sparse_map.insert(array_index, value);
+                    if array_index >= *length {
+                        *length = array_index + 1;
+                    }
+                }
+            }
+
+            return;
+        }
+
+        self.properties.insert(key.clone(), value);
+    }
+
+    fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get(&array_index),
+            };
+        }
+
+        self.properties.get(key)
+    }
+
+    fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    if array_index as usize >= array.len() {
+                        return None;
+                    }
+
+                    let value = &mut array[array_index as usize];
+                    if value.value().is_empty() {
+                        return None;
+                    }
+
+                    Some(value)
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get_mut(&array_index),
+            };
+        }
+
+        self.properties.get_mut(key)
+    }
+
+    fn remove_property(&mut self, key: &PropertyKey) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            match &mut self.array_properties {
+                ArrayProperties::Dense(array) => {
+                    array[array_index as usize] = Property::data(Value::empty(), true, true, true);
+                }
+                ArrayProperties::Sparse { sparse_map, .. } => {
+                    sparse_map.remove(&array_index);
+                }
+            }
+
+            return;
+        }
+
+        // TODO: Removal is currently O(n) to maintain order, improve if possible
+        self.properties.shift_remove(key);
+    }
 }
 
 // Properties keyed by array index. Keep dense and backed by a true array if possible, otherwise
@@ -543,141 +681,6 @@ impl Object for OrdinaryObject {
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
         ordinary_own_property_keys(cx, self).into()
     }
-
-    // 7.3.27 PrivateElementFind
-    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty> {
-        self.private_properties.get_mut(&private_id)
-    }
-
-    // 7.3.28 PrivateFieldAdd
-    fn private_field_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        value: Value,
-    ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                let property = PrivateProperty::field(value);
-                self.private_properties.insert(private_id, property);
-                ().into()
-            }
-        }
-    }
-
-    // 7.3.29 PrivateMethodOrAccessorAdd
-    fn private_method_or_accessor_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        private_method: PrivateProperty,
-    ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                self.private_properties.insert(private_id, private_method);
-                ().into()
-            }
-        }
-    }
-
-    // Property accessors and mutators
-    fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
-                            self.fall_back_to_sparse_properties();
-                        } else {
-                            self.expand_dense_properties(array_index + 1);
-                        }
-
-                        self.set_property(key, value);
-                    } else {
-                        array[array_index as usize] = value;
-                    }
-                }
-                ArrayProperties::Sparse { sparse_map, length } => {
-                    sparse_map.insert(array_index, value);
-                    if array_index >= *length {
-                        *length = array_index + 1;
-                    }
-                }
-            }
-
-            return;
-        }
-
-        self.properties.insert(key.clone(), value);
-    }
-
-    fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return match &self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        return None;
-                    }
-
-                    let value = &array[array_index as usize];
-                    if value.value().is_empty() {
-                        return None;
-                    }
-
-                    Some(value)
-                }
-                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get(&array_index),
-            };
-        }
-
-        self.properties.get(key)
-    }
-
-    fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    if array_index as usize >= array.len() {
-                        return None;
-                    }
-
-                    let value = &mut array[array_index as usize];
-                    if value.value().is_empty() {
-                        return None;
-                    }
-
-                    Some(value)
-                }
-                ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get_mut(&array_index),
-            };
-        }
-
-        self.properties.get_mut(key)
-    }
-
-    fn remove_property(&mut self, key: &PropertyKey) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            match &mut self.array_properties {
-                ArrayProperties::Dense(array) => {
-                    array[array_index as usize] = Property::data(Value::empty(), true, true, true);
-                }
-                ArrayProperties::Sparse { sparse_map, .. } => {
-                    sparse_map.remove(&array_index);
-                }
-            }
-
-            return;
-        }
-
-        // TODO: Removal is currently O(n) to maintain order, improve if possible
-        self.properties.shift_remove(key);
-    }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
@@ -775,7 +778,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.set_property(key, property);
+        object.object_mut().set_property(key, property);
 
         return true;
     }
@@ -808,7 +811,7 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let property = object.get_property_mut(key).unwrap();
+                let property = object.object_mut().get_property_mut(key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
@@ -851,7 +854,7 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let property = object.get_property_mut(key).unwrap();
+            let property = object.object_mut().get_property_mut(key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -995,7 +998,7 @@ pub fn ordinary_delete(
         None => true.into(),
         Some(desc) => {
             if desc.is_configurable() {
-                object.remove_property(key);
+                object.object_mut().remove_property(key);
                 true.into()
             } else {
                 false.into()

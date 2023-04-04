@@ -4,12 +4,11 @@ use crate::{
     extend_object,
     js::runtime::{
         completion::EvalResult,
-        environment::private_environment::PrivateNameId,
         gc::Gc,
         object_descriptor::ObjectKind,
         object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
-        property::{PrivateProperty, Property},
+        property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
@@ -77,7 +76,7 @@ impl StringObject {
         object.string_data = string_data;
 
         // String objects have an immutable length property
-        object.set_property(
+        object.object_mut().set_property(
             &cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );

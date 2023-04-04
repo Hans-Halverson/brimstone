@@ -8,7 +8,7 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::array_iterator::{ArrayIterator, ArrayIteratorKind},
-        object_value::{Object, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::OrdinaryObject,
         property::Property,
         string_value::StringValue,

@@ -5,12 +5,10 @@ use crate::{extend_object, maybe};
 use super::{
     abstract_operations::{call_object, construct},
     completion::EvalResult,
-    environment::private_environment::PrivateNameId,
     gc::Gc,
     object_descriptor::ObjectKind,
     object_value::{HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init_optional_proto,
-    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::same_object_value,

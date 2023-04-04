@@ -478,7 +478,7 @@ pub fn private_get(
     mut object: Gc<ObjectValue>,
     private_id: PrivateNameId,
 ) -> EvalResult<Value> {
-    let entry = match object.private_element_find(private_id) {
+    let entry = match object.object_mut().private_element_find(private_id) {
         None => return type_error_(cx, "can't access private field or method"),
         Some(entry) => entry,
     };
@@ -501,7 +501,7 @@ pub fn private_set(
     private_id: PrivateNameId,
     value: Value,
 ) -> EvalResult<()> {
-    let entry = match object.private_element_find(private_id) {
+    let entry = match object.object_mut().private_element_find(private_id) {
         None => return type_error_(cx, "cannot set private field or method"),
         Some(entry) => entry,
     };
@@ -541,7 +541,9 @@ pub fn define_field(
             maybe!(create_data_property_or_throw(cx, receiver, &property_key, init_value));
         }
         ClassFieldDefinitionName::Private(private_id) => {
-            maybe!(receiver.private_field_add(cx, private_id, init_value))
+            maybe!(receiver
+                .object_mut()
+                .private_field_add(cx, private_id, init_value))
         }
     }
 
@@ -555,7 +557,11 @@ pub fn initialize_instance_elements(
     constructor: Gc<Function>,
 ) -> EvalResult<()> {
     for (private_id, private_method) in &constructor.private_methods {
-        maybe!(object.private_method_or_accessor_add(cx, *private_id, private_method.clone()));
+        maybe!(object.object_mut().private_method_or_accessor_add(
+            cx,
+            *private_id,
+            private_method.clone()
+        ));
     }
 
     for field_def in &constructor.fields {

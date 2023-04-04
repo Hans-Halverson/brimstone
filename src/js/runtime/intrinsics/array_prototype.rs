@@ -11,7 +11,7 @@ use crate::{
         gc::Gc,
         get,
         numeric_constants::MAX_SAFE_INTEGER_U64,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::ordinary_object_create_optional_proto,
         property::Property,
         property_key::PropertyKey,

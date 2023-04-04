@@ -7,14 +7,12 @@ use super::{
         call_object, construct, get_method, is_extensible as is_extensible_, length_of_array_like,
     },
     array_object::create_array_from_list,
-    environment::private_environment::PrivateNameId,
     error::type_error_,
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
-    property::{PrivateProperty, Property},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
     type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
@@ -556,47 +554,6 @@ impl Object for ProxyObject {
         }
 
         new_object.as_object().into()
-    }
-
-    // Property accessors and mutators cannot be called on proxy objects
-    fn get_property(&self, _: &PropertyKey) -> Option<&Property> {
-        unreachable!("property accessor and mutators not called on proxy objects")
-    }
-
-    fn get_property_mut(&mut self, _: &PropertyKey) -> Option<&mut Property> {
-        unreachable!("property accessor and mutators not called on proxy objects")
-    }
-
-    fn set_property(&mut self, _: &PropertyKey, _: Property) {
-        unreachable!("property accessor and mutators not called on proxy objects")
-    }
-
-    fn remove_property(&mut self, _: &PropertyKey) {
-        unreachable!("property accessor and mutators not called on proxy objects")
-    }
-
-    // Private property methods defer to wrapped object
-    fn private_element_find(&mut self, private_id: PrivateNameId) -> Option<&mut PrivateProperty> {
-        self.object_mut().private_element_find(private_id)
-    }
-
-    fn private_field_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        value: Value,
-    ) -> EvalResult<()> {
-        self.object_mut().private_field_add(cx, private_id, value)
-    }
-
-    fn private_method_or_accessor_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        private_method: PrivateProperty,
-    ) -> EvalResult<()> {
-        self.object_mut()
-            .private_method_or_accessor_add(cx, private_id, private_method)
     }
 
     fn is_callable(&self) -> bool {

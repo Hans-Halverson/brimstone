@@ -15,7 +15,7 @@ use super::{
     abstract_operations::{
         create_data_property_or_throw, define_property_or_throw, has_own_property, set,
     },
-    environment::{environment::Environment, private_environment::PrivateNameId},
+    environment::environment::Environment,
     function::{get_argument, Function},
     gc::GcDeref,
     get,
@@ -27,7 +27,6 @@ use super::{
         ordinary_get_own_property, ordinary_object_create_optional_proto,
         ordinary_object_create_with_descriptor, ordinary_set, OrdinaryObject,
     },
-    property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     string_value::StringValue,

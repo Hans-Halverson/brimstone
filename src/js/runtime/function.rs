@@ -29,7 +29,7 @@ use super::{
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
-    property::{PrivateProperty, Property},
+    property::PrivateProperty,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,

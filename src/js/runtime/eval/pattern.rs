@@ -21,7 +21,7 @@ use crate::{
             iterator::{
                 get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
             },
-            object_value::{Object, ObjectValue},
+            object_value::{HasObject, ObjectValue},
             ordinary_object::ordinary_object_create,
             property::Property,
             property_key::PropertyKey,
@@ -403,7 +403,9 @@ fn iterator_binding_initialization(
                         }
                         EvalResult::Ok(next_value) => {
                             let property = Property::data(next_value, true, true, true);
-                            array.set_property(&PropertyKey::array_index(cx, index), property);
+                            array
+                                .object_mut()
+                                .set_property(&PropertyKey::array_index(cx, index), property);
                             index += 1;
                         }
                     }

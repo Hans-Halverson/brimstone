@@ -3,7 +3,7 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{Object, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::OrdinaryObject,
         property::Property,
         realm::Realm,

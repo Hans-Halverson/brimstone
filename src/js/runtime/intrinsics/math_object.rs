@@ -6,7 +6,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         numeric_operations::number_exponentiate,
-        object_value::{Object, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::OrdinaryObject,
         property::Property,
         property_key::PropertyKey,

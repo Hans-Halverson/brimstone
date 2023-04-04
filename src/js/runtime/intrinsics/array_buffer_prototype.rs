@@ -1,11 +1,6 @@
 use crate::js::runtime::{
-    error::type_error_,
-    gc::Gc,
-    object_value::{Object, ObjectValue},
-    ordinary_object::OrdinaryObject,
-    property::Property,
-    realm::Realm,
-    Context, EvalResult, PropertyKey, Value,
+    error::type_error_, gc::Gc, object_value::ObjectValue, ordinary_object::OrdinaryObject,
+    property::Property, realm::Realm, Context, EvalResult, PropertyKey, Value,
 };
 
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};

@@ -6,7 +6,7 @@ use crate::{
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::Property,
         property_key::PropertyKey,

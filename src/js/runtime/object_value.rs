@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use super::builtin_function::BuiltinFunction;
 use super::environment::private_environment::PrivateNameId;
 use super::intrinsics::typed_array::TypedArray;
+use super::object_descriptor::ObjectDescriptor;
 use super::ordinary_object::OrdinaryObject;
 use super::property::{PrivateProperty, Property};
 use super::property_key::PropertyKey;
@@ -20,7 +21,14 @@ use super::{Context, Realm};
 /// beginning of the struct.
 #[repr(C)]
 pub struct ObjectValue {
-    vtable: ObjectValueVtable,
+    descriptor: Gc<ObjectDescriptor>,
+}
+
+impl Gc<ObjectValue> {
+    #[inline]
+    pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
+        unsafe { self.as_ptr().read().descriptor }
+    }
 }
 
 pub type ObjectValueVtable = *const ();
@@ -215,9 +223,9 @@ impl Deref for Gc<ObjectValue> {
     fn deref(&self) -> &Self::Target {
         unsafe {
             let data = self.as_ptr() as *const ObjectValue;
-            let object_value = data.read();
+            let vtable = data.read().descriptor.vtable();
 
-            let trait_object = ObjectTraitObject { data, vtable: object_value.vtable };
+            let trait_object = ObjectTraitObject { data, vtable };
 
             transmute_copy::<ObjectTraitObject, &dyn Object>(&trait_object)
         }
@@ -228,9 +236,9 @@ impl DerefMut for Gc<ObjectValue> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
             let data = self.as_ptr() as *const ObjectValue;
-            let object_value = data.read();
+            let vtable = data.read().descriptor.vtable();
 
-            let trait_object = ObjectTraitObject { data, vtable: object_value.vtable };
+            let trait_object = ObjectTraitObject { data, vtable };
 
             transmute_copy::<ObjectTraitObject, &mut dyn Object>(&trait_object)
         }

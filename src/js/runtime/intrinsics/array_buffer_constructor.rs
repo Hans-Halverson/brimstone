@@ -9,7 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -36,8 +37,6 @@ extend_object! {
 }
 
 impl ArrayBufferObject {
-    const VTABLE: *const () = extract_object_vtable::<ArrayBufferObject>();
-
     // 25.1.2.1 AllocateArrayBuffer
     pub fn new(
         cx: &mut Context,
@@ -45,7 +44,7 @@ impl ArrayBufferObject {
         byte_length: usize,
     ) -> EvalResult<Gc<ArrayBufferObject>> {
         let mut object = cx.heap.alloc_uninit::<ArrayBufferObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::ArrayBufferObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

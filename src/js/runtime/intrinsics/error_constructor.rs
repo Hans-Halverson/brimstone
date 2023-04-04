@@ -9,7 +9,8 @@ use crate::{
         environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -29,14 +30,12 @@ extend_object! {
 }
 
 impl ErrorObject {
-    const VTABLE: *const () = extract_object_vtable::<ErrorObject>();
-
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ErrorObject>> {
         let mut object = cx.heap.alloc_uninit::<ErrorObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

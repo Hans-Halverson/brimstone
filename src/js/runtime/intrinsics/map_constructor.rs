@@ -12,7 +12,8 @@ use crate::{
         gc::Gc,
         get,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -35,14 +36,12 @@ extend_object! {
 }
 
 impl MapObject {
-    const VTABLE: *const () = extract_object_vtable::<MapObject>();
-
     pub fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<MapObject>> {
         let mut object = cx.heap.alloc_uninit::<MapObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::MapObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

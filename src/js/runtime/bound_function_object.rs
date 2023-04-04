@@ -7,7 +7,8 @@ use super::{
     completion::EvalResult,
     environment::private_environment::PrivateNameId,
     gc::Gc,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init_optional_proto,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -27,8 +28,6 @@ extend_object! {
 }
 
 impl BoundFunctionObject {
-    const VTABLE: *const () = extract_object_vtable::<BoundFunctionObject>();
-
     // 10.4.1.3 BoundFunctionCreate
     pub fn new(
         cx: &mut Context,
@@ -39,7 +38,7 @@ impl BoundFunctionObject {
         let proto = maybe!(target_function.get_prototype_of(cx));
 
         let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
 
         object_ordinary_init_optional_proto(object.object_mut(), proto);
 

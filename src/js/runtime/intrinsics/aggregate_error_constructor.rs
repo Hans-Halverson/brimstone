@@ -14,7 +14,8 @@ use crate::{
         function::get_argument,
         gc::Gc,
         iterator::iter_iterator_values,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -35,14 +36,12 @@ extend_object! {
 }
 
 impl AggregateErrorObject {
-    const VTABLE: *const () = extract_object_vtable::<AggregateErrorObject>();
-
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<AggregateErrorObject>> {
         let mut object = cx.heap.alloc_uninit::<AggregateErrorObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

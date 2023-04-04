@@ -16,7 +16,8 @@ use crate::{
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         gc::Gc,
         get,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -36,12 +37,10 @@ extend_object! {
 }
 
 impl FunctionPrototype {
-    const VTABLE: *const () = extract_object_vtable::<FunctionPrototype>();
-
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<FunctionPrototype> {
         let mut object = cx.heap.alloc_uninit::<FunctionPrototype>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
 
         object
     }

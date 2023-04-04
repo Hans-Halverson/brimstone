@@ -11,7 +11,8 @@ use super::{
     error::type_error_,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
     property::{PrivateProperty, Property},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
@@ -31,8 +32,6 @@ extend_object! {
 }
 
 impl ProxyObject {
-    const VTABLE: *const () = extract_object_vtable::<ProxyObject>();
-
     pub fn new(
         cx: &mut Context,
         proxy_target: Gc<ObjectValue>,
@@ -43,7 +42,7 @@ impl ProxyObject {
         let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ProxyObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::Proxy);
 
         object_ordinary_init(object.object_mut(), object_proto);
 

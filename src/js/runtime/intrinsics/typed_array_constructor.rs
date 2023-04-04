@@ -215,8 +215,6 @@ macro_rules! create_typed_array_constructor {
         }
 
         impl $typed_array {
-            const VTABLE: *const () = extract_object_vtable::<$typed_array>();
-
             fn new_with_proto(
                 cx: &mut Context,
                 proto: Gc<ObjectValue>,
@@ -226,7 +224,7 @@ macro_rules! create_typed_array_constructor {
                 array_length: usize,
             ) -> Gc<ObjectValue> {
                 let mut object = cx.heap.alloc_uninit::<$typed_array>();
-                object._vtable = Self::VTABLE;
+                object.descriptor = cx.base_descriptors.get(ObjectKind::$typed_array);
 
                 object_ordinary_init(object.object_mut(), proto);
 

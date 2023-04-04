@@ -9,7 +9,8 @@ use super::{
     function::{set_function_length, set_function_name},
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::object_ordinary_init,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -45,8 +46,6 @@ pub type BuiltinFunctionPtr = fn(
 pub struct ClosureEnvironment {}
 
 impl BuiltinFunction {
-    const VTABLE: *const () = extract_object_vtable::<BuiltinFunction>();
-
     // 10.3.3 CreateBuiltinFunction
     pub fn create(
         cx: &mut Context,
@@ -76,7 +75,7 @@ impl BuiltinFunction {
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
         let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::BuiltinFunction);
 
         object_ordinary_init(object.object_mut(), prototype);
 

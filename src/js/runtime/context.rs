@@ -12,6 +12,7 @@ use super::{
     },
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
+    object_descriptor::BaseDescriptors,
     realm::Realm,
     string_value::StringValue,
     value::SymbolValue,
@@ -26,6 +27,7 @@ pub struct Context {
     pub global_symbol_registry: HashMap<Gc<StringValue>, Gc<SymbolValue>>,
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
+    pub base_descriptors: BaseDescriptors,
 
     // Canonical string values for strings that appear in the AST
     pub interned_strings: HashMap<String, Gc<StringValue>>,
@@ -50,6 +52,7 @@ impl Context {
         let mut heap = Heap::new();
         let names = BuiltinNames::new(&mut heap);
         let well_known_symbols = BuiltinSymbols::new(&mut heap);
+        let base_descriptors = BaseDescriptors::new(&mut heap);
         let uninit_environment = to_trait_object(heap.alloc(DeclarativeEnvironment::new(None)));
 
         Context {
@@ -58,6 +61,7 @@ impl Context {
             global_symbol_registry: HashMap::new(),
             names,
             well_known_symbols,
+            base_descriptors,
             interned_strings: HashMap::new(),
             closure_environments: vec![],
             next_private_name_id: NonZeroU64::new(1).unwrap(),

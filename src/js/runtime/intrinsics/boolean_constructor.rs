@@ -8,7 +8,8 @@ use crate::{
         environment::private_environment::PrivateNameId,
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -32,15 +33,13 @@ extend_object! {
 }
 
 impl BooleanObject {
-    const VTABLE: *const () = extract_object_vtable::<BooleanObject>();
-
     pub fn new_with_proto(
         cx: &mut Context,
         proto: Gc<ObjectValue>,
         boolean_data: bool,
     ) -> Gc<BooleanObject> {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
 
         object_ordinary_init(object.object_mut(), proto);
 
@@ -63,7 +62,7 @@ impl BooleanObject {
         boolean_data: bool,
     ) -> EvalResult<Gc<BooleanObject>> {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

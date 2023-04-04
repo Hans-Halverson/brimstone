@@ -13,7 +13,8 @@ use crate::{
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -37,15 +38,13 @@ extend_object! {
 }
 
 impl NumberObject {
-    const VTABLE: *const () = extract_object_vtable::<NumberObject>();
-
     pub fn new_with_proto(
         cx: &mut Context,
         proto: Gc<ObjectValue>,
         number_data: f64,
     ) -> Gc<NumberObject> {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
 
         object_ordinary_init(object.object_mut(), proto);
 
@@ -66,7 +65,7 @@ impl NumberObject {
         number_data: f64,
     ) -> EvalResult<Gc<NumberObject>> {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

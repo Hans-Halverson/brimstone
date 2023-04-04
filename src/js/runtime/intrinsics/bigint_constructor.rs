@@ -9,7 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -33,13 +34,11 @@ extend_object! {
 }
 
 impl BigIntObject {
-    const VTABLE: *const () = extract_object_vtable::<BigIntObject>();
-
     pub fn new_from_value(cx: &mut Context, bigint_data: Gc<BigIntValue>) -> Gc<BigIntObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::BigIntPrototype);
 
         let mut object = cx.heap.alloc_uninit::<BigIntObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::BigIntObject);
 
         object_ordinary_init(object.object_mut(), proto);
 

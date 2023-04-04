@@ -17,6 +17,7 @@ pub mod intrinsics;
 mod iterator;
 mod numeric_constants;
 mod numeric_operations;
+mod object_descriptor;
 pub mod object_value;
 pub mod ordinary_object;
 mod property;

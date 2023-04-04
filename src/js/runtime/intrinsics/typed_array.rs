@@ -12,7 +12,8 @@ use crate::{
         function::get_argument,
         gc::{Gc, GcDeref},
         iterator::iter_iterator_method_values,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{
             get_prototype_from_constructor, object_ordinary_init, ordinary_define_own_property,
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -12,7 +10,8 @@ use crate::{
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -43,8 +42,6 @@ pub enum ArrayIteratorKind {
 }
 
 impl ArrayIterator {
-    const VTABLE: *const () = extract_object_vtable::<ArrayIterator>();
-
     pub fn new(
         cx: &mut Context,
         array: Gc<ObjectValue>,
@@ -55,7 +52,7 @@ impl ArrayIterator {
             .get_intrinsic(Intrinsic::ArrayIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::ArrayIterator);
 
         object_ordinary_init(object.object_mut(), proto);
 

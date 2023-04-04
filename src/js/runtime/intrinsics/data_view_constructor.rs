@@ -9,7 +9,8 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -34,8 +35,6 @@ extend_object! {
 }
 
 impl DataViewObject {
-    const VTABLE: *const () = extract_object_vtable::<DataViewObject>();
-
     pub fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
@@ -44,7 +43,7 @@ impl DataViewObject {
         byte_offset: usize,
     ) -> EvalResult<Gc<DataViewObject>> {
         let mut object = cx.heap.alloc_uninit::<DataViewObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::DataViewObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

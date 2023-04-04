@@ -8,7 +8,8 @@ use super::{
     error::{range_error_, type_error_},
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
@@ -30,11 +31,10 @@ extend_object! {
 }
 
 impl ArrayObject {
-    const VTABLE: *const () = extract_object_vtable::<ArrayObject>();
-
     pub fn new(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ArrayObject> {
         let mut array = cx.heap.alloc_uninit::<ArrayObject>();
-        array._vtable = Self::VTABLE;
+        array.descriptor = cx.base_descriptors.get(ObjectKind::ArrayObject);
+
         object_ordinary_init(array.object_mut(), proto);
 
         array.is_length_writable = true;

@@ -9,7 +9,8 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -33,13 +34,11 @@ extend_object! {
 }
 
 impl SymbolObject {
-    const VTABLE: *const () = extract_object_vtable::<SymbolObject>();
-
     pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::SymbolPrototype);
 
         let mut object = cx.heap.alloc_uninit::<SymbolObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::SymbolObject);
 
         object_ordinary_init(object.object_mut(), proto);
 

@@ -6,7 +6,8 @@ use crate::{
         completion::EvalResult,
         environment::private_environment::PrivateNameId,
         gc::Gc,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -37,15 +38,13 @@ extend_object! {
 }
 
 impl StringObject {
-    const VTABLE: *const () = extract_object_vtable::<StringObject>();
-
     pub fn new(
         cx: &mut Context,
         proto: Gc<ObjectValue>,
         string_data: Gc<StringValue>,
     ) -> Gc<StringObject> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
 
         object_ordinary_init(object.object_mut(), proto);
 
@@ -66,7 +65,7 @@ impl StringObject {
         string_data: Gc<StringValue>,
     ) -> EvalResult<Gc<StringObject>> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
 
         maybe!(object_ordinary_init_from_constructor(
             cx,

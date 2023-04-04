@@ -24,7 +24,8 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
@@ -81,8 +82,6 @@ pub enum FuncKind {
 }
 
 impl Function {
-    const VTABLE: *const () = extract_object_vtable::<Function>();
-
     fn new(
         cx: &mut Context,
         prototype: Gc<ObjectValue>,
@@ -101,7 +100,7 @@ impl Function {
         };
 
         let mut object = cx.heap.alloc_uninit::<Function>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::Function);
 
         object_ordinary_init(object.object_mut(), prototype);
 

@@ -20,7 +20,8 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{HasObject, Object, ObjectValue},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
         ordinary_get_own_property, ordinary_object_create_optional_proto, ordinary_set,
@@ -40,12 +41,10 @@ extend_object! {
 }
 
 impl UnmappedArgumentsObject {
-    const VTABLE: *const () = extract_object_vtable::<UnmappedArgumentsObject>();
-
     pub fn new(cx: &mut Context) -> Gc<UnmappedArgumentsObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
         let mut object = cx.heap.alloc_uninit::<UnmappedArgumentsObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
 
         object_ordinary_init(object.object_mut(), proto);
 
@@ -69,12 +68,10 @@ extend_object! {
 }
 
 impl MappedArgumentsObject {
-    const VTABLE: *const () = extract_object_vtable::<MappedArgumentsObject>();
-
     pub fn new(cx: &mut Context, parameter_map: Gc<ObjectValue>) -> Gc<MappedArgumentsObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
         let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::MappedArgumentsObject);
 
         object_ordinary_init(object.object_mut(), proto);
 

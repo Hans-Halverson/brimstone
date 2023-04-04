@@ -7,13 +7,9 @@ macro_rules! cast_from_value_fn {
                 return type_error_(cx, concat!("expected object of type ", $name));
             }
 
-            // Extract vtable from trait object and compare to known vtable for this type
+            // Check if object descriptor's kind matches the kind we are casting to
             let object_value = value.as_object();
-            let trait_object = unsafe {
-                std::mem::transmute::<&dyn Object, (*const (), *const ())>(object_value.deref())
-            };
-
-            if trait_object.1 != $type::VTABLE {
+            if object_value.descriptor().kind() != ObjectKind::$type {
                 return type_error_(cx, concat!("expected object of type ", $name));
             }
 

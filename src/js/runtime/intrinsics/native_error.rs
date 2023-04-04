@@ -10,7 +10,8 @@ use crate::{
         function::get_argument,
         gc::Gc,
         intrinsics::error_constructor::install_error_cause,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{
             object_ordinary_init, object_ordinary_init_from_constructor, OrdinaryObject,
         },
@@ -34,13 +35,11 @@ macro_rules! create_native_error {
         }
 
         impl $native_error {
-            const VTABLE: *const () = extract_object_vtable::<$native_error>();
-
             pub fn new_with_message(cx: &mut Context, message: String) -> Gc<$native_error> {
                 let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
 
                 let mut object = cx.heap.alloc_uninit::<$native_error>();
-                object._vtable = Self::VTABLE;
+                object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
 
                 object_ordinary_init(object.object_mut(), prototype);
 
@@ -56,7 +55,7 @@ macro_rules! create_native_error {
                 constructor: Gc<ObjectValue>,
             ) -> EvalResult<Gc<$native_error>> {
                 let mut object = cx.heap.alloc_uninit::<$native_error>();
-                object._vtable = Self::VTABLE;
+                object.descriptor = cx.base_descriptors.get(ObjectKind::ErrorObject);
 
                 maybe!(object_ordinary_init_from_constructor(
                     cx,

@@ -14,7 +14,8 @@ use super::{
     error::type_error_,
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
-    object_value::{extract_object_vtable, Object, ObjectValue},
+    object_descriptor::ObjectKind,
+    object_value::{Object, ObjectValue},
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -33,7 +34,7 @@ macro_rules! extend_object {
         #[repr(C)]
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
-            _vtable: $crate::js::runtime::object_value::ObjectValueVtable,
+            descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
 
             // Inherited object fields
 
@@ -138,15 +139,13 @@ impl OrdinaryObject {
 pub const SPARSE_ARRAY_THRESHOLD: usize = 100;
 
 impl OrdinaryObject {
-    const VTABLE: *const () = extract_object_vtable::<OrdinaryObject>();
-
     pub fn new(
         cx: &mut Context,
         prototype: Option<Gc<ObjectValue>>,
         is_extensible: bool,
     ) -> Gc<OrdinaryObject> {
         let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
 
         object.prototype = prototype;
         object.properties = IndexMap::new();
@@ -1064,7 +1063,7 @@ pub fn object_ordinary_init(object: &mut OrdinaryObject, proto: Gc<ObjectValue>)
 
 pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<OrdinaryObject> {
     let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object._vtable = OrdinaryObject::VTABLE;
+    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
 
     object_ordinary_init(object.as_mut(), proto);
 
@@ -1087,7 +1086,7 @@ pub fn ordinary_object_create_optional_proto(
     proto: Option<Gc<ObjectValue>>,
 ) -> Gc<OrdinaryObject> {
     let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object._vtable = OrdinaryObject::VTABLE;
+    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
 
     object_ordinary_init_optional_proto(object.as_mut(), proto);
 
@@ -1114,7 +1113,7 @@ pub fn ordinary_create_from_constructor(
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Gc<OrdinaryObject>> {
     let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object._vtable = OrdinaryObject::VTABLE;
+    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
 
     maybe!(object_ordinary_init_from_constructor(
         cx,

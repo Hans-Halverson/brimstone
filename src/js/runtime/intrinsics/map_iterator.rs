@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -11,7 +9,8 @@ use crate::{
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -42,15 +41,13 @@ pub enum MapIteratorKind {
 }
 
 impl<'a> MapIterator<'a> {
-    const VTABLE: *const () = extract_object_vtable::<MapIterator>();
-
     pub fn new(cx: &mut Context, mut map: Gc<MapObject>, kind: MapIteratorKind) -> Gc<MapIterator> {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::MapIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<MapIterator>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::MapIterator);
 
         object_ordinary_init(object.object_mut(), proto);
 

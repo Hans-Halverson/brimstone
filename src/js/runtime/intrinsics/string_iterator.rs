@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -10,7 +8,8 @@ use crate::{
         error::type_error_,
         gc::Gc,
         iterator::create_iter_result_object,
-        object_value::{extract_object_vtable, HasObject, Object, ObjectValue},
+        object_descriptor::ObjectKind,
+        object_value::{HasObject, Object, ObjectValue},
         ordinary_object::{object_ordinary_init, OrdinaryObject},
         property::{PrivateProperty, Property},
         property_descriptor::PropertyDescriptor,
@@ -35,15 +34,13 @@ extend_object! {
 }
 
 impl StringIterator {
-    const VTABLE: *const () = extract_object_vtable::<StringIterator>();
-
     pub fn new(cx: &mut Context, string: Gc<StringValue>) -> Gc<StringIterator> {
         let proto = cx
             .current_realm()
             .get_intrinsic(Intrinsic::StringIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<StringIterator>();
-        object._vtable = Self::VTABLE;
+        object.descriptor = cx.base_descriptors.get(ObjectKind::StringIterator);
 
         object_ordinary_init(object.object_mut(), proto);
 

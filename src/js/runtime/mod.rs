@@ -1,6 +1,7 @@
 pub mod abstract_operations;
 mod arguments_object;
 mod array_object;
+mod array_properties;
 mod bound_function_object;
 mod builtin_function;
 mod builtin_names;

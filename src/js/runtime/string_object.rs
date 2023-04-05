@@ -146,7 +146,7 @@ impl VirtualObject for StringObject {
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);
         if string_desc.is_some() {
-            let is_extensible = *self.object().is_extensible_field();
+            let is_extensible = *self.object().is_extensible();
             is_compatible_property_descriptor(cx, is_extensible, desc, string_desc).into()
         } else {
             ordinary_define_own_property(cx, self.into(), key, desc)

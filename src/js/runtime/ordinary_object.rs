@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use paste::paste;
 
-use crate::{field_offset, maybe, must};
+use crate::{maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -90,58 +90,28 @@ extend_object! {
     pub struct OrdinaryObject {}
 }
 
-// Object fields
-const PROTOTYPE_OFFSET: usize = field_offset!(OrdinaryObject, prototype);
-const PROPERTIES_OFFSET: usize = field_offset!(OrdinaryObject, properties);
-const ARRAY_PROPERTIES_OFFSET: usize = field_offset!(OrdinaryObject, array_properties);
-const PRIVATE_PROPERTIES_OFFSET: usize = field_offset!(OrdinaryObject, private_properties);
-const IS_EXTENSIBLE_OFFSET: usize = field_offset!(OrdinaryObject, is_extensible);
-
-#[inline]
-fn get_field_at_offset<O, T>(object: &O, offset: usize) -> &T {
-    unsafe { &*(object as *const _ as *const u8).add(offset).cast::<T>() }
-}
-
-#[inline]
-fn get_field_at_offset_mut<O, T>(object: &mut O, offset: usize) -> &mut T {
-    unsafe { &mut *(object as *mut _ as *mut u8).add(offset).cast::<T>() }
-}
-
-#[inline]
-fn set_field_at_offset<O, T>(object: &mut O, value: T, offset: usize) {
-    unsafe {
-        let field_ptr = (object as *mut _ as *mut u8).add(offset).cast::<T>();
-        field_ptr.write(value)
-    }
-}
-
 macro_rules! field_accessors {
-    ($field_name:ident, $field_type:ty, $offset:ident) => {
+    ($field_name:ident, $field_type:ty) => {
         paste! {
             #[inline]
             pub fn $field_name(&self) -> &$field_type {
-                get_field_at_offset(self, $offset)
+                &self.$field_name
             }
 
             #[inline]
             pub fn [< $field_name _mut >] (&mut self) -> &mut $field_type {
-                get_field_at_offset_mut(self, $offset)
-            }
-
-            #[inline]
-            pub fn [< set_ $field_name >] (&mut self, value: $field_type) {
-                set_field_at_offset(self, value, $offset)
+                &mut self.$field_name
             }
         }
     };
 }
 
 impl OrdinaryObject {
-    field_accessors!(prototype, Option<Gc<ObjectValue>>, PROTOTYPE_OFFSET);
-    field_accessors!(properties, IndexMap<PropertyKey, Property>, PROPERTIES_OFFSET);
-    field_accessors!(array_properties, ArrayProperties, ARRAY_PROPERTIES_OFFSET);
-    field_accessors!(private_properties, HashMap<PrivateNameId, PrivateProperty>, PRIVATE_PROPERTIES_OFFSET);
-    field_accessors!(is_extensible_field, bool, IS_EXTENSIBLE_OFFSET);
+    field_accessors!(prototype, Option<Gc<ObjectValue>>);
+    field_accessors!(properties, IndexMap<PropertyKey, Property>);
+    field_accessors!(array_properties, ArrayProperties);
+    field_accessors!(private_properties, HashMap<PrivateNameId, PrivateProperty>);
+    field_accessors!(is_extensible, bool);
 }
 
 // Number of indices past the end of an array an access can occur before dense array is converted
@@ -1100,11 +1070,11 @@ pub fn object_ordinary_init_optional_proto(
     object: &mut OrdinaryObject,
     proto: Option<Gc<ObjectValue>>,
 ) {
-    object.set_prototype(proto);
-    object.set_properties(IndexMap::new());
-    object.set_array_properties(ArrayProperties::new());
-    object.set_private_properties(HashMap::new());
-    object.set_is_extensible_field(true);
+    object.prototype = proto;
+    object.properties = IndexMap::new();
+    object.array_properties = ArrayProperties::new();
+    object.private_properties = HashMap::new();
+    object.is_extensible = true;
 }
 
 pub fn ordinary_object_create_optional_proto(

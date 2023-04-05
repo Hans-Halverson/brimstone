@@ -7,7 +7,7 @@ use super::{
     completion::EvalResult,
     gc::Gc,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, Object, ObjectValue},
+    object_value::{HasObject, ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init_optional_proto,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -49,7 +49,7 @@ impl BoundFunctionObject {
 }
 
 #[wrap_ordinary_object]
-impl Object for BoundFunctionObject {
+impl VirtualObject for BoundFunctionObject {
     // 10.4.1.1 [[Call]]
     fn call(&self, cx: &mut Context, _: Value, arguments: &[Value]) -> EvalResult<Value> {
         if self.bound_arguments.is_empty() {

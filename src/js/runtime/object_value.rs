@@ -1,5 +1,4 @@
 use std::mem::{transmute, transmute_copy};
-use std::ops::{Deref, DerefMut};
 
 use super::builtin_function::BuiltinFunction;
 use super::intrinsics::typed_array::TypedArray;
@@ -23,6 +22,24 @@ pub struct ObjectValue {
 }
 
 impl Gc<ObjectValue> {
+    /// Cast as a virtual object, allowing virtual methods to be called.
+    fn virtual_object(&self) -> &mut dyn VirtualObject {
+        unsafe {
+            let data = self.as_ptr() as *const ObjectValue;
+            let vtable = data.read().descriptor.vtable();
+
+            let trait_object = ObjectTraitObject { data, vtable };
+
+            transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object)
+        }
+    }
+
+    /// A cast to Gc<OrdinaryObject>, to be removed once object types are unified.
+    #[inline]
+    pub fn cast_to_remove(&self) -> Gc<OrdinaryObject> {
+        self.cast()
+    }
+
     #[inline]
     pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
         unsafe { self.as_ptr().read().descriptor }
@@ -111,9 +128,112 @@ impl Gc<ObjectValue> {
     pub fn is_object_prototype(&self) -> bool {
         self.descriptor_kind() == ObjectKind::ObjectPrototype
     }
+
+    // Type refinement functions
+    pub fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
+        if self.descriptor_kind() == ObjectKind::BuiltinFunction {
+            Some(self.cast())
+        } else {
+            None
+        }
+    }
 }
 
-pub type ObjectValueVtable = *const ();
+// Wrap all virtual methods for easy access
+impl Gc<ObjectValue> {
+    #[inline]
+    pub fn get_own_property(
+        &self,
+        cx: &mut Context,
+        key: &PropertyKey,
+    ) -> EvalResult<Option<PropertyDescriptor>> {
+        self.virtual_object().get_own_property(cx, key)
+    }
+
+    #[inline]
+    pub fn define_own_property(
+        &mut self,
+        cx: &mut Context,
+        key: &PropertyKey,
+        desc: PropertyDescriptor,
+    ) -> EvalResult<bool> {
+        self.virtual_object().define_own_property(cx, key, desc)
+    }
+
+    #[inline]
+    pub fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+        self.virtual_object().has_property(cx, key)
+    }
+
+    #[inline]
+    pub fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
+        self.virtual_object().get(cx, key, receiver)
+    }
+
+    #[inline]
+    pub fn set(
+        &mut self,
+        cx: &mut Context,
+        key: &PropertyKey,
+        value: Value,
+        receiver: Value,
+    ) -> EvalResult<bool> {
+        self.virtual_object().set(cx, key, value, receiver)
+    }
+
+    #[inline]
+    pub fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+        self.virtual_object().delete(cx, key)
+    }
+
+    #[inline]
+    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+        self.virtual_object().own_property_keys(cx)
+    }
+
+    #[inline]
+    pub fn call(
+        &self,
+        cx: &mut Context,
+        this_argument: Value,
+        arguments: &[Value],
+    ) -> EvalResult<Value> {
+        self.virtual_object().call(cx, this_argument, arguments)
+    }
+
+    #[inline]
+    pub fn construct(
+        &self,
+        cx: &mut Context,
+        arguments: &[Value],
+        new_target: Gc<ObjectValue>,
+    ) -> EvalResult<Gc<ObjectValue>> {
+        self.virtual_object().construct(cx, arguments, new_target)
+    }
+
+    // Type utilities
+    #[inline]
+    pub fn is_callable(&self) -> bool {
+        self.virtual_object().is_callable()
+    }
+
+    #[inline]
+    pub fn is_constructor(&self) -> bool {
+        self.virtual_object().is_constructor()
+    }
+
+    #[inline]
+    pub fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+        self.virtual_object().get_realm(cx)
+    }
+
+    #[inline]
+    pub fn as_typed_array(&self) -> Gc<dyn TypedArray> {
+        self.virtual_object().as_typed_array()
+    }
+}
+
+pub type VirtualObjectVtable = *const ();
 
 pub trait HasObject {
     // Getters to cast subtype to this type
@@ -121,7 +241,8 @@ pub trait HasObject {
     fn object_mut(&mut self) -> &mut OrdinaryObject;
 }
 
-pub trait Object: HasObject {
+/// Virtual methods for an object. Creates vtable which is stored in object descriptor.
+pub trait VirtualObject: HasObject {
     fn get_own_property(
         &self,
         cx: &mut Context,
@@ -182,11 +303,6 @@ pub trait Object: HasObject {
         cx.current_realm().into()
     }
 
-    // Type refinement functions
-    fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
-        None
-    }
-
     fn as_typed_array(&self) -> Gc<dyn TypedArray> {
         unreachable!("as_typed_array can only be called on typed arrays")
     }
@@ -200,42 +316,14 @@ struct ObjectTraitObject {
     vtable: *const (),
 }
 
-impl Deref for Gc<ObjectValue> {
-    type Target = dyn Object;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe {
-            let data = self.as_ptr() as *const ObjectValue;
-            let vtable = data.read().descriptor.vtable();
-
-            let trait_object = ObjectTraitObject { data, vtable };
-
-            transmute_copy::<ObjectTraitObject, &dyn Object>(&trait_object)
-        }
-    }
-}
-
-impl DerefMut for Gc<ObjectValue> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe {
-            let data = self.as_ptr() as *const ObjectValue;
-            let vtable = data.read().descriptor.vtable();
-
-            let trait_object = ObjectTraitObject { data, vtable };
-
-            transmute_copy::<ObjectTraitObject, &mut dyn Object>(&trait_object)
-        }
-    }
-}
-
 /// Compile time shenanigans to extract the trait object vtable for a particular type that
 /// implements Object so that we can construct our own trait objects manually.
-pub const fn extract_object_vtable<T: Object>() -> *const () {
+pub const fn extract_object_vtable<T: VirtualObject>() -> *const () {
     unsafe {
         let example_ptr: *const T = std::ptr::null();
-        let example_trait_object: *const dyn Object = example_ptr;
+        let example_trait_object: *const dyn VirtualObject = example_ptr;
         let object_trait_object =
-            transmute::<*const dyn Object, ObjectTraitObject>(example_trait_object);
+            transmute::<*const dyn VirtualObject, ObjectTraitObject>(example_trait_object);
 
         object_trait_object.vtable
     }

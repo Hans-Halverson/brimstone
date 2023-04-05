@@ -1467,7 +1467,7 @@ fn eval_private_in_expression(
 
     right_value
         .as_object()
-        .object_mut()
+        .cast_to_remove()
         .private_element_find(private_id)
         .is_some()
         .into()

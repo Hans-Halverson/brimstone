@@ -6,7 +6,7 @@ use crate::{
         completion::EvalResult,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -122,7 +122,7 @@ impl StringObject {
 }
 
 #[wrap_ordinary_object]
-impl Object for StringObject {
+impl VirtualObject for StringObject {
     // 10.4.3.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,

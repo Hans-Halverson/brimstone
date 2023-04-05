@@ -16,7 +16,7 @@ use crate::{
         gc::Gc,
         get,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, Object, ObjectValue},
+        object_value::{HasObject, ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init,
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -182,7 +182,7 @@ impl FunctionPrototype {
 }
 
 #[wrap_ordinary_object]
-impl Object for FunctionPrototype {
+impl VirtualObject for FunctionPrototype {
     fn call(
         &self,
         _: &mut Context,

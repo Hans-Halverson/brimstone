@@ -12,7 +12,7 @@ use super::{
             Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
         },
     },
-    object_value::{extract_object_vtable, Object, ObjectValueVtable},
+    object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
     ordinary_object::OrdinaryObject,
     proxy_object::ProxyObject,
     string_object::StringObject,
@@ -26,8 +26,8 @@ pub struct ObjectDescriptor {
     descriptor: Gc<ObjectDescriptor>,
     // Object's type
     kind: ObjectKind,
-    // Rust Object vtable, used for dynamic dispatch to some object methods
-    vtable: ObjectValueVtable,
+    // Rust VirtualObject vtable, used for dynamic dispatch to some object methods
+    vtable: VirtualObjectVtable,
 }
 
 impl GcDeref for ObjectDescriptor {}
@@ -95,7 +95,7 @@ impl ObjectKind {
 }
 
 impl ObjectDescriptor {
-    pub fn new<T: Object>(
+    pub fn new<T: VirtualObject>(
         heap: &mut Heap,
         descriptor: Gc<ObjectDescriptor>,
         kind: ObjectKind,
@@ -108,7 +108,7 @@ impl ObjectDescriptor {
         self.kind
     }
 
-    pub const fn vtable(&self) -> ObjectValueVtable {
+    pub const fn vtable(&self) -> VirtualObjectVtable {
         self.vtable
     }
 }

@@ -9,7 +9,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, Object, ObjectValue},
+    object_value::{HasObject, ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init,
     property::Property,
     property_descriptor::PropertyDescriptor,
@@ -129,7 +129,7 @@ impl BuiltinFunction {
 }
 
 #[wrap_ordinary_object]
-impl Object for BuiltinFunction {
+impl VirtualObject for BuiltinFunction {
     // 10.3.1 [[Call]]
     fn call(
         &self,
@@ -186,10 +186,6 @@ impl Object for BuiltinFunction {
         cx.pop_closure_environment();
 
         maybe!(result).as_object().into()
-    }
-
-    fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
-        Some(self.into())
     }
 
     fn is_callable(&self) -> bool {

@@ -25,7 +25,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, Object, ObjectValue},
+    object_value::{HasObject, ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
@@ -123,7 +123,7 @@ impl Function {
 }
 
 #[wrap_ordinary_object]
-impl Object for Function {
+impl VirtualObject for Function {
     // 10.2.1 [[Call]]
     fn call(
         &self,

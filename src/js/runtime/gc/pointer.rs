@@ -9,10 +9,12 @@ pub struct Gc<T: ?Sized> {
 }
 
 impl<T: ?Sized> Gc<T> {
+    #[inline]
     pub const fn as_ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }
 
+    #[inline]
     pub const fn from_ptr(ptr: *mut T) -> Gc<T> {
         unsafe { Gc { ptr: NonNull::new_unchecked(ptr) } }
     }
@@ -22,6 +24,7 @@ impl<T: ?Sized> Gc<T> {
         self.ptr == other.ptr
     }
 
+    #[inline]
     pub fn cast<U>(&self) -> Gc<U> {
         Gc::from_ptr(self.as_ptr() as *mut U)
     }

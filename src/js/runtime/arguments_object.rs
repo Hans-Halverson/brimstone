@@ -21,7 +21,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, Object, ObjectValue},
+    object_value::{HasObject, ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
         ordinary_get_own_property, ordinary_object_create_optional_proto,
@@ -70,7 +70,7 @@ impl MappedArgumentsObject {
 }
 
 #[wrap_ordinary_object]
-impl Object for MappedArgumentsObject {
+impl VirtualObject for MappedArgumentsObject {
     // 10.4.4.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,

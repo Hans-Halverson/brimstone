@@ -252,7 +252,7 @@ macro_rules! create_typed_array_constructor {
         }
 
         #[wrap_ordinary_object]
-        impl Object for $typed_array {
+        impl VirtualObject for $typed_array {
             // 10.4.5.1 [[GetOwnProperty]]
             fn get_own_property(
                 &self,

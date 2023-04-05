@@ -8,7 +8,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, Object, ObjectValue},
+    object_value::{HasObject, ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
@@ -42,7 +42,7 @@ impl ArrayObject {
 }
 
 #[wrap_ordinary_object]
-impl Object for ArrayObject {
+impl VirtualObject for ArrayObject {
     // 10.4.2.1 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,

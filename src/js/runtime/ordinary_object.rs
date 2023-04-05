@@ -15,7 +15,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
-    object_value::{Object, ObjectValue},
+    object_value::{ObjectValue, VirtualObject},
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -524,7 +524,7 @@ impl Gc<ObjectValue> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().get_prototype_of(cx)
         } else {
-            self.object().ordinary_get_prototype_of()
+            self.cast_to_remove().ordinary_get_prototype_of()
         }
     }
 
@@ -539,7 +539,7 @@ impl Gc<ObjectValue> {
             self.cast::<ProxyObject>()
                 .set_prototype_of(cx, new_prototype)
         } else {
-            self.object_mut()
+            self.cast_to_remove()
                 .ordinary_set_prototype_of(cx, new_prototype)
         }
     }
@@ -550,7 +550,7 @@ impl Gc<ObjectValue> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().is_extensible(cx)
         } else {
-            self.object().ordinary_is_extensible()
+            self.cast_to_remove().ordinary_is_extensible()
         }
     }
 
@@ -560,7 +560,7 @@ impl Gc<ObjectValue> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().prevent_extensions(cx)
         } else {
-            self.object_mut().ordinary_prevent_extensions()
+            self.cast_to_remove().ordinary_prevent_extensions()
         }
     }
 }
@@ -631,7 +631,7 @@ impl OrdinaryObject {
     }
 }
 
-impl Object for OrdinaryObject {
+impl VirtualObject for OrdinaryObject {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -759,7 +759,7 @@ pub fn validate_and_apply_property_descriptor(
         if object.is_none() {
             return true;
         }
-        let mut object = object.unwrap();
+        let object = object.unwrap();
 
         // Create new property with fields in descriptor, using default if field is not set
         let is_enumerable = desc.is_enumerable.unwrap_or(false);
@@ -778,7 +778,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.object_mut().set_property(key, property);
+        object.cast_to_remove().set_property(key, property);
 
         return true;
     }
@@ -811,7 +811,8 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let property = object.object_mut().get_property_mut(key).unwrap();
+                let mut object = object.cast_to_remove();
+                let property = object.get_property_mut(key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
@@ -854,7 +855,8 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let property = object.object_mut().get_property_mut(key).unwrap();
+            let mut object = object.cast_to_remove();
+            let property = object.get_property_mut(key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -990,7 +992,7 @@ pub fn ordinary_set(
 // 10.1.10.1 OrdinaryDelete
 pub fn ordinary_delete(
     cx: &mut Context,
-    mut object: Gc<ObjectValue>,
+    object: Gc<ObjectValue>,
     key: &PropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
@@ -998,7 +1000,7 @@ pub fn ordinary_delete(
         None => true.into(),
         Some(desc) => {
             if desc.is_configurable() {
-                object.object_mut().remove_property(key);
+                object.cast_to_remove().remove_property(key);
                 true.into()
             } else {
                 false.into()

@@ -2,357 +2,51 @@ use indexmap::IndexMap;
 
 use std::collections::HashMap;
 
-use paste::paste;
-
 use crate::{maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     array_properties::ArrayProperties,
-    builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     completion::EvalResult,
-    environment::private_environment::PrivateNameId,
-    error::type_error_,
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
-    object_value::{ObjectValue, VirtualObject},
-    property::{PrivateProperty, Property},
+    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
-    proxy_object::ProxyObject,
-    realm::Realm,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
     Context,
 };
 
-#[macro_export]
-macro_rules! extend_object {
-    ($vis:vis struct $name:ident $(<$($generics:tt),*>)? {
-        $($field_vis:vis $field_name:ident: $field_type:ty,)*
-    }) => {
-        #[repr(C)]
-        $vis struct $name $(<$($generics),*>)? {
-            // All objects start with object vtable
-            descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
-
-            // Inherited object fields
-
-            // None represents the null value
-            prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
-
-            // String and symbol properties by their property key
-            properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
-
-            // Array index properties by their property key
-            array_properties: $crate::js::runtime::array_properties::ArrayProperties,
-
-            // Private properties with string keys
-            private_properties: std::collections::HashMap<$crate::js::runtime::environment::private_environment::PrivateNameId, $crate::js::runtime::property::PrivateProperty>,
-
-            // Whether this object can be extended with new properties
-            is_extensible: bool,
-
-            // Child fields
-            $($field_vis $field_name: $field_type,)*
-        }
-
-        impl $(<$($generics),*>)? $crate::js::runtime::object_value::HasObject for $name $(<$($generics),*>)? {
-            #[inline]
-            fn object(&self) -> &$crate::js::runtime::ordinary_object::OrdinaryObject {
-                unsafe { &*(self as *const _ as *const $crate::js::runtime::ordinary_object::OrdinaryObject) }
-            }
-
-            #[inline]
-            fn object_mut(&mut self) -> &mut $crate::js::runtime::ordinary_object::OrdinaryObject {
-                unsafe { &mut *(self as *mut _ as *mut $crate::js::runtime::ordinary_object::OrdinaryObject) }
-            }
-        }
-
-        impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
-
-        $crate::impl_gc_into!($name $(<$($generics),*>)?, $crate::js::runtime::object_value::ObjectValue);
-
-        impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
-            pub fn descriptor(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
-                self.descriptor
-            }
-
-            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
-                self.descriptor = descriptor
-            }
-        }
-    }
-}
-
-// An ordinary object
-extend_object! {
-    pub struct OrdinaryObject {}
-}
-
-macro_rules! field_accessors {
-    ($field_name:ident, $field_type:ty) => {
-        paste! {
-            #[inline]
-            pub fn $field_name(&self) -> &$field_type {
-                &self.$field_name
-            }
-
-            #[inline]
-            pub fn [< $field_name _mut >] (&mut self) -> &mut $field_type {
-                &mut self.$field_name
-            }
-        }
-    };
-}
-
-impl OrdinaryObject {
-    field_accessors!(prototype, Option<Gc<ObjectValue>>);
-    field_accessors!(properties, IndexMap<PropertyKey, Property>);
-    field_accessors!(array_properties, ArrayProperties);
-    field_accessors!(private_properties, HashMap<PrivateNameId, PrivateProperty>);
-    field_accessors!(is_extensible, bool);
-}
-
-impl OrdinaryObject {
-    pub fn new(
-        cx: &mut Context,
-        prototype: Option<Gc<ObjectValue>>,
-        is_extensible: bool,
-    ) -> Gc<OrdinaryObject> {
-        let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
-
-        object.prototype = prototype;
-        object.properties = IndexMap::new();
-        object.array_properties = ArrayProperties::new();
-        object.private_properties = HashMap::new();
-        object.is_extensible = is_extensible;
-
-        object
+impl ObjectValue {
+    // Cast from ref to a Gc pointer. To be removed during handles refactor.
+    fn into_gc_to_remove(&self) -> Gc<ObjectValue> {
+        Gc::from_ptr(self as *const ObjectValue as *mut ObjectValue)
     }
 
-    // Array properties methods
-    pub fn array_properties_length(&self) -> u32 {
-        self.array_properties.len()
+    // 10.1.1 [[GetPrototypeOf]]
+    // 10.1.1.1 OrdinaryGetPrototypeOf
+    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
+        self.prototype().into()
     }
 
-    pub fn set_array_properties_length(&mut self, new_length: u32) -> bool {
-        self.array_properties.set_len(new_length)
+    // 10.1.3 [[IsExtensible]]
+    // 10.1.3.1 OrdinaryIsExtensible
+    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
+        self.is_extensible_field().into()
     }
 
-    // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, true, false, true))
-    }
-
-    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
-        self.set_property(
-            &cx.names.length(),
-            Property::data(Value::smi(length), false, false, true),
-        )
-    }
-
-    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
-        self.set_property(
-            &cx.names.name(),
-            Property::data(
-                Value::string(cx.heap.alloc_string(name.to_owned())),
-                false,
-                false,
-                true,
-            ),
-        )
-    }
-
-    pub fn intrinsic_getter(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        func: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
-    ) {
-        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: None });
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
-    }
-
-    pub fn intrinsic_getter_and_setter(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        getter: BuiltinFunctionPtr,
-        setter: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
-    ) {
-        let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
-        let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: Some(setter.into()) });
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
-    }
-
-    pub fn intrinsic_func(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        func: BuiltinFunctionPtr,
-        length: i32,
-        realm: Gc<Realm>,
-    ) {
-        self.intrinsic_data_prop(
-            name,
-            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
-        );
-    }
-
-    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, false, false, false));
-    }
-
-    // 7.3.27 PrivateElementFind
-    pub fn private_element_find(
-        &mut self,
-        private_id: PrivateNameId,
-    ) -> Option<&mut PrivateProperty> {
-        self.private_properties.get_mut(&private_id)
-    }
-
-    // 7.3.28 PrivateFieldAdd
-    pub fn private_field_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        value: Value,
-    ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                let property = PrivateProperty::field(value);
-                self.private_properties.insert(private_id, property);
-                ().into()
-            }
-        }
-    }
-
-    // 7.3.29 PrivateMethodOrAccessorAdd
-    pub fn private_method_or_accessor_add(
-        &mut self,
-        cx: &mut Context,
-        private_id: PrivateNameId,
-        private_method: PrivateProperty,
-    ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                self.private_properties.insert(private_id, private_method);
-                ().into()
-            }
-        }
-    }
-
-    // Property accessors and mutators
-    fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return self.array_properties.get_property(array_index);
-        }
-
-        self.properties.get(key)
-    }
-
-    fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            return self.array_properties.get_property_mut(array_index);
-        }
-
-        self.properties.get_mut(key)
-    }
-
-    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            self.array_properties.set_property(array_index, value);
-
-            return;
-        }
-
-        self.properties.insert(key.clone(), value);
-    }
-
-    fn remove_property(&mut self, key: &PropertyKey) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            self.array_properties.remove_property(array_index);
-
-            return;
-        }
-
-        // TODO: Removal is currently O(n) to maintain order, improve if possible
-        self.properties.shift_remove(key);
+    // 10.1.4 [[PreventExtensions]]
+    // 10.1.4.1 OrdinaryPreventExtensions
+    pub fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
+        self.set_is_extensible_field(false);
+        true.into()
     }
 }
 
 impl Gc<ObjectValue> {
-    /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
-    /// implementations as necessary.
-    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().get_prototype_of(cx)
-        } else {
-            self.cast_to_remove().ordinary_get_prototype_of()
-        }
-    }
-
-    /// The [[SetPrototypeOf]] internal method for all objects. Dispatches to type-specific
-    /// implementations as necessary.
-    pub fn set_prototype_of(
-        &mut self,
-        cx: &mut Context,
-        new_prototype: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>()
-                .set_prototype_of(cx, new_prototype)
-        } else {
-            self.cast_to_remove()
-                .ordinary_set_prototype_of(cx, new_prototype)
-        }
-    }
-
-    /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
-    /// implementations as necessary.
-    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().is_extensible(cx)
-        } else {
-            self.cast_to_remove().ordinary_is_extensible()
-        }
-    }
-
-    /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
-    /// implementations as necessary.
-    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().prevent_extensions(cx)
-        } else {
-            self.cast_to_remove().ordinary_prevent_extensions()
-        }
-    }
-}
-
-impl OrdinaryObject {
-    // 10.1.1 [[GetPrototypeOf]]
-    // 10.1.1.1 OrdinaryGetPrototypeOf
-    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
-        self.prototype.into()
-    }
-
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
     pub fn ordinary_set_prototype_of(
@@ -360,18 +54,17 @@ impl OrdinaryObject {
         cx: &mut Context,
         new_prototype: Option<Gc<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if same_opt_object_value(self.prototype, new_prototype) {
+        if same_opt_object_value(self.prototype(), new_prototype) {
             return true.into();
         }
 
         // Inlined 10.4.7.2 SetImmutablePrototype, currently only applies to object prototypes.
         // If the prototypes differ, then a set immutable prototype always fails.
-        let object_value: Gc<ObjectValue> = self.into();
-        if object_value.is_object_prototype() {
+        if self.is_object_prototype() {
             return false.into();
         }
 
-        if !self.is_extensible {
+        if !self.is_extensible_field() {
             return false.into();
         }
 
@@ -380,7 +73,7 @@ impl OrdinaryObject {
             match current_prototype {
                 None => break,
                 Some(current_proto) => {
-                    if same_object_value(current_proto, self.into()) {
+                    if same_object_value(current_proto, *self) {
                         return false.into();
                     }
 
@@ -393,26 +86,13 @@ impl OrdinaryObject {
             }
         }
 
-        self.prototype = new_prototype;
+        self.set_prototype(new_prototype);
 
         return true.into();
     }
-
-    // 10.1.3 [[IsExtensible]]
-    // 10.1.3.1 OrdinaryIsExtensible
-    pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
-        self.is_extensible.into()
-    }
-
-    // 10.1.4 [[PreventExtensions]]
-    // 10.1.4.1 OrdinaryPreventExtensions
-    fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
-        self.is_extensible = false;
-        true.into()
-    }
 }
 
-impl VirtualObject for OrdinaryObject {
+impl VirtualObject for ObjectValue {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -429,17 +109,17 @@ impl VirtualObject for OrdinaryObject {
         key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        ordinary_define_own_property(cx, self.into(), key, desc)
+        ordinary_define_own_property(cx, self.into_gc_to_remove(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
     fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_has_property(cx, self.into(), key)
+        ordinary_has_property(cx, self.into_gc_to_remove(), key)
     }
 
     // 10.1.8 [[Get]]
     fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-        ordinary_get(cx, self.into(), key, receiver)
+        ordinary_get(cx, self.into_gc_to_remove(), key, receiver)
     }
 
     // 10.1.9 [[Set]]
@@ -450,12 +130,12 @@ impl VirtualObject for OrdinaryObject {
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
-        ordinary_set(cx, self.into(), key, value, receiver)
+        ordinary_set(cx, self.into_gc_to_remove(), key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_delete(cx, self.into(), key)
+        ordinary_delete(cx, self.into_gc_to_remove(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
@@ -466,7 +146,7 @@ impl VirtualObject for OrdinaryObject {
 
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
-    object: &OrdinaryObject,
+    object: &ObjectValue,
     key: &PropertyKey,
 ) -> Option<PropertyDescriptor> {
     match object.get_property(key) {
@@ -540,7 +220,7 @@ pub fn validate_and_apply_property_descriptor(
         if object.is_none() {
             return true;
         }
-        let object = object.unwrap();
+        let mut object = object.unwrap();
 
         // Create new property with fields in descriptor, using default if field is not set
         let is_enumerable = desc.is_enumerable.unwrap_or(false);
@@ -559,7 +239,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.cast_to_remove().set_property(key, property);
+        object.set_property(key, property);
 
         return true;
     }
@@ -592,7 +272,6 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let mut object = object.cast_to_remove();
                 let property = object.get_property_mut(key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
@@ -636,7 +315,6 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let mut object = object.cast_to_remove();
             let property = object.get_property_mut(key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
@@ -773,7 +451,7 @@ pub fn ordinary_set(
 // 10.1.10.1 OrdinaryDelete
 pub fn ordinary_delete(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     key: &PropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
@@ -781,7 +459,7 @@ pub fn ordinary_delete(
         None => true.into(),
         Some(desc) => {
             if desc.is_configurable() {
-                object.cast_to_remove().remove_property(key);
+                object.remove_property(key);
                 true.into()
             } else {
                 false.into()
@@ -791,7 +469,7 @@ pub fn ordinary_delete(
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> Vec<Value> {
+pub fn ordinary_own_property_keys(cx: &mut Context, object: &ObjectValue) -> Vec<Value> {
     let mut keys: Vec<Value> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
@@ -803,12 +481,12 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &OrdinaryObject) -> 
 #[inline]
 pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     cx: &mut Context,
-    object: &OrdinaryObject,
+    object: &ObjectValue,
     keys: &mut Vec<Value>,
     filter: F,
 ) {
     // Return array index properties in numerical order
-    match &object.array_properties {
+    match object.array_properties() {
         ArrayProperties::Dense(array) => {
             for (index, value) in array.iter().enumerate() {
                 if filter(index) {
@@ -837,16 +515,16 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 #[inline]
 pub fn ordinary_own_string_symbol_property_keys(
     cx: &mut Context,
-    object: &OrdinaryObject,
+    object: &ObjectValue,
     keys: &mut Vec<Value>,
 ) {
-    for property_key in object.properties.keys() {
+    for property_key in object.properties().keys() {
         if property_key.as_symbol().is_none() {
             keys.push(property_key.non_symbol_to_string(cx).into());
         }
     }
 
-    for property_key in object.properties.keys() {
+    for property_key in object.properties().keys() {
         if let Some(sym) = property_key.as_symbol() {
             keys.push(sym.into());
         }
@@ -854,11 +532,11 @@ pub fn ordinary_own_string_symbol_property_keys(
 }
 
 // 10.1.12 OrdinaryObjectCreate but on an uninitialized object as part of construction
-pub fn object_ordinary_init(object: &mut OrdinaryObject, proto: Gc<ObjectValue>) {
+pub fn object_ordinary_init(object: &mut ObjectValue, proto: Gc<ObjectValue>) {
     object_ordinary_init_optional_proto(object, Some(proto))
 }
 
-pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<OrdinaryObject> {
+pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ObjectValue> {
     let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
     ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
 }
@@ -868,9 +546,9 @@ pub fn ordinary_object_create_with_descriptor(
     cx: &mut Context,
     descriptor: Gc<ObjectDescriptor>,
     proto: Option<Gc<ObjectValue>>,
-) -> Gc<OrdinaryObject> {
-    let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object.descriptor = descriptor;
+) -> Gc<ObjectValue> {
+    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
+    object.set_descriptor(descriptor);
 
     object_ordinary_init_optional_proto(object.as_mut(), proto);
 
@@ -878,22 +556,22 @@ pub fn ordinary_object_create_with_descriptor(
 }
 
 pub fn object_ordinary_init_optional_proto(
-    object: &mut OrdinaryObject,
+    object: &mut ObjectValue,
     proto: Option<Gc<ObjectValue>>,
 ) {
-    object.prototype = proto;
-    object.properties = IndexMap::new();
-    object.array_properties = ArrayProperties::new();
-    object.private_properties = HashMap::new();
-    object.is_extensible = true;
+    object.set_prototype(proto);
+    object.set_properties(IndexMap::new());
+    object.set_array_properties(ArrayProperties::new());
+    object.set_private_properties(HashMap::new());
+    object.set_is_extensible_field(true);
 }
 
 pub fn ordinary_object_create_optional_proto(
     cx: &mut Context,
     proto: Option<Gc<ObjectValue>>,
-) -> Gc<OrdinaryObject> {
-    let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+) -> Gc<ObjectValue> {
+    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
+    object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
 
     object_ordinary_init_optional_proto(object.as_mut(), proto);
 
@@ -903,7 +581,7 @@ pub fn ordinary_object_create_optional_proto(
 // 10.1.13 OrdinaryCreateFromConstructor
 pub fn object_ordinary_init_from_constructor(
     cx: &mut Context,
-    object: &mut OrdinaryObject,
+    object: &mut ObjectValue,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<()> {
@@ -918,13 +596,13 @@ pub fn ordinary_create_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
-) -> EvalResult<Gc<OrdinaryObject>> {
-    let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
-    object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+) -> EvalResult<Gc<ObjectValue>> {
+    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
+    object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
 
     maybe!(object_ordinary_init_from_constructor(
         cx,
-        object.as_mut(),
+        object.object_mut(),
         constructor,
         intrinsic_default_proto,
     ));

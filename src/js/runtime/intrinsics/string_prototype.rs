@@ -6,7 +6,7 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         realm::Realm,
         string_object::StringObject,
         string_value::StringValue,

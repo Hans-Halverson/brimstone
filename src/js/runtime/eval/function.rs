@@ -31,7 +31,7 @@ use crate::{
             },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
-            object_value::{HasObject, ObjectValue},
+            object_value::{ExtendsObject, ObjectValue},
             ordinary_object::get_prototype_from_constructor,
             property::{PrivateProperty, Property},
             property_descriptor::PropertyDescriptor,

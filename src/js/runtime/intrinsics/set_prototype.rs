@@ -2,9 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, gc::Gc,
-        object_value::ObjectValue, ordinary_object::OrdinaryObject, property::Property,
-        property_key::PropertyKey, realm::Realm, type_utilities::is_callable, value::Value,
-        Context,
+        object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
+        type_utilities::is_callable, value::Value, Context,
     },
     maybe,
 };
@@ -21,7 +20,7 @@ impl SetPrototype {
     // 24.2.3 Properties of the Set Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Create values function as it is referenced by multiple properties
         let values_function = BuiltinFunction::create(
@@ -57,7 +56,7 @@ impl SetPrototype {
             Property::data(cx.names.set().as_string().into(), false, false, true),
         );
 
-        object.into()
+        object
     }
 
     // 24.2.3.1 Set.prototype.add

@@ -4,7 +4,6 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
-    ordinary_object::OrdinaryObject,
     realm::Realm,
     type_utilities::number_to_string,
     value::{Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, STRING_TAG, SYMBOL_TAG, UNDEFINED_TAG},
@@ -16,7 +15,7 @@ pub struct ConsoleObject;
 impl ConsoleObject {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         object.intrinsic_func(cx, &cx.names.log(), Self::log, 0, realm);
 

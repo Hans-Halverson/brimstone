@@ -11,8 +11,8 @@ use crate::{
         gc::Gc,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue},
-        ordinary_object::{object_ordinary_init_from_constructor, OrdinaryObject},
+        object_value::{ExtendsObject, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
@@ -32,8 +32,8 @@ impl AggregateErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<OrdinaryObject>> {
-        let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+    ) -> EvalResult<Gc<ObjectValue>> {
+        let mut object = cx.heap.alloc_uninit::<ObjectValue>();
         object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
         maybe!(object_ordinary_init_from_constructor(

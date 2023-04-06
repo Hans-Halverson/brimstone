@@ -7,7 +7,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         realm::Realm,

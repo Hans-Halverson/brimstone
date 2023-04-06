@@ -9,7 +9,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, ObjectValue, VirtualObject},
+    object_value::{ExtendsObject, ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init,
     property::Property,
     property_descriptor::PropertyDescriptor,

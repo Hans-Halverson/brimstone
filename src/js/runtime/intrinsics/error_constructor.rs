@@ -6,8 +6,8 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::{object_ordinary_init_from_constructor, OrdinaryObject},
+        object_value::{ExtendsObject, ObjectValue},
+        ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_string,
@@ -25,13 +25,13 @@ impl ErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<OrdinaryObject>> {
-        let mut object = cx.heap.alloc_uninit::<OrdinaryObject>();
+    ) -> EvalResult<Gc<ObjectValue>> {
+        let mut object = cx.heap.alloc_uninit::<ObjectValue>();
         object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.as_mut(),
+            object.object_mut(),
             constructor,
             Intrinsic::ErrorPrototype
         ));

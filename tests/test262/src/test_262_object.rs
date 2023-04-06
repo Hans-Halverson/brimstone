@@ -14,7 +14,6 @@ use brimstone::{
                 global_object::set_default_global_bindings, intrinsics::Intrinsic,
             },
             object_value::ObjectValue,
-            ordinary_object::OrdinaryObject,
             Context, EvalResult, Gc, PropertyDescriptor, PropertyKey, Realm, Value,
         },
     },
@@ -26,7 +25,7 @@ pub struct Test262Object;
 impl Test262Object {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         let create_realm_key =
             PropertyKey::string(cx.heap.alloc_string(String::from("createRealm")));
@@ -42,7 +41,7 @@ impl Test262Object {
             PropertyKey::string(cx.heap.alloc_string(String::from("detachArrayBuffer")));
         object.intrinsic_func(cx, &detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
 
-        object.into()
+        object
     }
 
     pub fn install(cx: &mut Context, realm: Gc<Realm>, test_262_object: Gc<ObjectValue>) {

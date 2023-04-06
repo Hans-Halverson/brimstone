@@ -9,7 +9,6 @@ use crate::{
         get,
         intrinsics::array_iterator::{ArrayIterator, ArrayIteratorKind},
         object_value::ObjectValue,
-        ordinary_object::OrdinaryObject,
         property::Property,
         string_value::StringValue,
         to_string,
@@ -33,7 +32,7 @@ impl TypedArrayPrototype {
     // 23.2.3 Properties of the %TypedArray% Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once TypedArrayConstructor has been created
 
@@ -1151,7 +1150,7 @@ macro_rules! create_typed_array_prototype {
         impl $prototype {
             // 23.2.7 Properties of the TypedArray Prototype Objects
             pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
-                let mut object = OrdinaryObject::new(
+                let mut object = ObjectValue::new(
                     cx,
                     Some(realm.get_intrinsic(Intrinsic::TypedArrayPrototype)),
                     true,

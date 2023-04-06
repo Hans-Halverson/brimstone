@@ -78,7 +78,7 @@ macro_rules! impl_gc_into {
     ($from:ident $(<$($generics:tt),*>)?, $into:ty) => {
         impl $(<$($generics),*>)? Into<Gc<$into>> for Gc<$from $(<$($generics),*>)?> {
             fn into(self) -> Gc<$into> {
-                Gc::from_ptr(self.as_ref() as *const _ as *mut $into)
+                self.cast()
             }
         }
 

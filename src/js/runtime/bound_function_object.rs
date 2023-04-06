@@ -7,7 +7,7 @@ use super::{
     completion::EvalResult,
     gc::Gc,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, ObjectValue, VirtualObject},
+    object_value::{ExtendsObject, ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init_optional_proto,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,

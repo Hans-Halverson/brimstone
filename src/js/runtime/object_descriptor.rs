@@ -1,3 +1,5 @@
+use crate::js::runtime::object_value::ObjectValue;
+
 use super::{
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
@@ -13,7 +15,6 @@ use super::{
         },
     },
     object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
-    ordinary_object::OrdinaryObject,
     proxy_object::ProxyObject,
     string_object::StringObject,
     Gc,
@@ -125,9 +126,9 @@ impl BaseDescriptors {
         unsafe { descriptors.set_len(ObjectKind::count()) };
 
         // First set up the singleton descriptor descriptor, using an arbitrary vtable
-        // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
+        // (e.g. ObjectValue). Can only set self pointer after object initially created.
         let mut descriptor =
-            ObjectDescriptor::new::<OrdinaryObject>(heap, Gc::uninit(), ObjectKind::Descriptor);
+            ObjectDescriptor::new::<ObjectValue>(heap, Gc::uninit(), ObjectKind::Descriptor);
         descriptor.descriptor = descriptor;
 
         macro_rules! register_descriptor {
@@ -139,7 +140,7 @@ impl BaseDescriptors {
 
         macro_rules! ordinary_descriptor {
             ($object_kind:expr) => {
-                register_descriptor!($object_kind, OrdinaryObject);
+                register_descriptor!($object_kind, ObjectValue);
             };
         }
 

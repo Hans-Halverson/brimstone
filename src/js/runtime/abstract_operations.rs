@@ -475,11 +475,10 @@ pub fn copy_data_properties(
 // 7.3.30 PrivateGet
 pub fn private_get(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     private_id: PrivateNameId,
 ) -> EvalResult<Value> {
-    let mut ord_object = object.cast_to_remove();
-    let entry = match ord_object.private_element_find(private_id) {
+    let entry = match object.private_element_find(private_id) {
         None => return type_error_(cx, "can't access private field or method"),
         Some(entry) => entry,
     };
@@ -498,12 +497,11 @@ pub fn private_get(
 // 7.3.31 PrivateSet
 pub fn private_set(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     private_id: PrivateNameId,
     value: Value,
 ) -> EvalResult<()> {
-    let mut ord_object = object.cast_to_remove();
-    let entry = match ord_object.private_element_find(private_id) {
+    let entry = match object.private_element_find(private_id) {
         None => return type_error_(cx, "cannot set private field or method"),
         Some(entry) => entry,
     };
@@ -530,7 +528,7 @@ pub fn private_set(
 // 7.3.32 DefineField
 pub fn define_field(
     cx: &mut Context,
-    receiver: Gc<ObjectValue>,
+    mut receiver: Gc<ObjectValue>,
     field_def: &ClassFieldDefinition,
 ) -> EvalResult<()> {
     let init_value = match field_def.initializer {
@@ -543,7 +541,6 @@ pub fn define_field(
             maybe!(create_data_property_or_throw(cx, receiver, &property_key, init_value));
         }
         ClassFieldDefinitionName::Private(private_id) => {
-            let mut receiver = receiver.cast_to_remove();
             maybe!(receiver.private_field_add(cx, private_id, init_value))
         }
     }
@@ -554,11 +551,10 @@ pub fn define_field(
 // 7.3.33 InitializeInstanceElements
 pub fn initialize_instance_elements(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     constructor: Gc<Function>,
 ) -> EvalResult<()> {
     for (private_id, private_method) in &constructor.private_methods {
-        let mut object = object.cast_to_remove();
         maybe!(object.private_method_or_accessor_add(cx, *private_id, private_method.clone()));
     }
 

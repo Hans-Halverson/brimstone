@@ -21,11 +21,11 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, ObjectValue, VirtualObject},
+    object_value::{ExtendsObject, ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
         ordinary_get_own_property, ordinary_object_create_optional_proto,
-        ordinary_object_create_with_descriptor, ordinary_set, OrdinaryObject,
+        ordinary_object_create_with_descriptor, ordinary_set,
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -39,7 +39,7 @@ use super::{
 pub struct UnmappedArgumentsObject;
 
 impl UnmappedArgumentsObject {
-    pub fn new(cx: &mut Context) -> Gc<OrdinaryObject> {
+    pub fn new(cx: &mut Context) -> Gc<ObjectValue> {
         let descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
 

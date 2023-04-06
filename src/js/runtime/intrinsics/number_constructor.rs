@@ -11,7 +11,7 @@ use crate::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::Property,
         realm::Realm,

@@ -8,8 +8,8 @@ use crate::{
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue},
-        ordinary_object::{object_ordinary_init, OrdinaryObject},
+        object_value::{ExtendsObject, ObjectValue},
+        ordinary_object::object_ordinary_init,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -90,7 +90,7 @@ pub struct ArrayIteratorPrototype;
 impl ArrayIteratorPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = OrdinaryObject::new(cx, Some(proto), true);
+        let mut object = ObjectValue::new(cx, Some(proto), true);
 
         object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
 
@@ -102,7 +102,7 @@ impl ArrayIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        object.into()
+        object
     }
 
     // 23.1.5.2.1 %ArrayIteratorPrototype%.next

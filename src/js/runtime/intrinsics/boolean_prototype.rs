@@ -3,7 +3,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         gc::Gc,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         realm::Realm,
         value::Value,
         Context,

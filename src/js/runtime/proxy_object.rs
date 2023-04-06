@@ -11,7 +11,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{HasObject, ObjectValue, VirtualObject},
+    object_value::{ExtendsObject, ObjectValue, VirtualObject},
     ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,

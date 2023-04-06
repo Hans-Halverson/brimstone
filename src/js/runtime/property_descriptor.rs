@@ -7,7 +7,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
-    ordinary_object::{ordinary_object_create, OrdinaryObject},
+    ordinary_object::ordinary_object_create,
     type_utilities::{is_callable, to_boolean},
     value::Value,
     Context,
@@ -154,7 +154,7 @@ impl PropertyDescriptor {
 }
 
 // 6.2.5.4 FromPropertyDescriptor
-pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<OrdinaryObject> {
+pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<ObjectValue> {
     let realm = cx.current_realm();
     let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
     let object = ordinary_object_create(cx, object_prototype);

@@ -7,7 +7,6 @@ use crate::{
         gc::Gc,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
-        ordinary_object::OrdinaryObject,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -26,7 +25,7 @@ pub struct MathObject;
 impl MathObject {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // 21.3.1 Value Properties of the Math Object
         object.intrinsic_frozen_property(&cx.names.e(), Value::number(std::f64::consts::E));
@@ -88,7 +87,7 @@ impl MathObject {
         object.intrinsic_func(cx, &cx.names.tanh(), Self::tanh, 1, realm);
         object.intrinsic_func(cx, &cx.names.trunc(), Self::trunc, 1, realm);
 
-        object.into()
+        object
     }
 
     // 21.3.2.1 Math.abs

@@ -12,11 +12,11 @@ use crate::{
         gc::{Gc, GcDeref},
         iterator::iter_iterator_method_values,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue, VirtualObject},
+        object_value::{ExtendsObject, ObjectValue, VirtualObject},
         ordinary_object::{
             get_prototype_from_constructor, object_ordinary_init, ordinary_define_own_property,
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
-            ordinary_own_string_symbol_property_keys, ordinary_set, OrdinaryObject,
+            ordinary_own_string_symbol_property_keys, ordinary_set,
         },
         property::Property,
         property_descriptor::PropertyDescriptor,

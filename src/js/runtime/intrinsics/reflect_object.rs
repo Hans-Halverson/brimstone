@@ -7,7 +7,6 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_value::ObjectValue,
-        ordinary_object::OrdinaryObject,
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         property_key::PropertyKey,
@@ -27,7 +26,7 @@ pub struct ReflectObject;
 impl ReflectObject {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let mut object =
-            OrdinaryObject::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         object.intrinsic_func(cx, &cx.names.apply(), Self::apply, 3, realm);
         object.intrinsic_func(cx, &cx.names.construct(), Self::construct, 2, realm);
@@ -63,7 +62,7 @@ impl ReflectObject {
             Property::data(reflect_name_value, false, false, true),
         );
 
-        object.into()
+        object
     }
 
     // 28.1.1 Reflect.apply

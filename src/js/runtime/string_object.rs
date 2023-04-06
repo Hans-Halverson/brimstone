@@ -6,7 +6,7 @@ use crate::{
         completion::EvalResult,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue, VirtualObject},
+        object_value::{ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -20,6 +20,7 @@ use crate::{
 
 use super::{
     intrinsics::intrinsics::Intrinsic,
+    object_value::ExtendsObject,
     ordinary_object::{
         is_compatible_property_descriptor, object_ordinary_init, ordinary_define_own_property,
         ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
@@ -146,7 +147,7 @@ impl VirtualObject for StringObject {
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);
         if string_desc.is_some() {
-            let is_extensible = *self.object().is_extensible();
+            let is_extensible = self.object().is_extensible_field();
             is_compatible_property_descriptor(cx, is_extensible, desc, string_desc).into()
         } else {
             ordinary_define_own_property(cx, self.into(), key, desc)
@@ -163,11 +164,11 @@ impl VirtualObject for StringObject {
             keys.push(Value::string(index_string));
         }
 
-        ordinary_filtered_own_indexed_property_keys(cx, &self.object(), &mut keys, &|index| {
+        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, &|index| {
             index >= length
         });
 
-        ordinary_own_string_symbol_property_keys(cx, &self.object(), &mut keys);
+        ordinary_own_string_symbol_property_keys(cx, self.object(), &mut keys);
 
         keys.into()
     }

@@ -10,7 +10,7 @@ use crate::{
         get,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         property_key::PropertyKey,

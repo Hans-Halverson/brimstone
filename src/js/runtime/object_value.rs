@@ -1,48 +1,396 @@
-use std::mem::{transmute, transmute_copy};
+use indexmap::IndexMap;
+use paste::paste;
 
-use super::builtin_function::BuiltinFunction;
-use super::intrinsics::typed_array::TypedArray;
-use super::object_descriptor::{ObjectDescriptor, ObjectKind};
-use super::ordinary_object::OrdinaryObject;
-use super::property_key::PropertyKey;
-use super::{
-    completion::EvalResult, gc::Gc, property_descriptor::PropertyDescriptor, value::Value,
+use std::{
+    collections::HashMap,
+    mem::{transmute, transmute_copy},
 };
-use super::{Context, Realm};
 
-/// Generic object type encompassing ordinary objects and all forms of exotic objects.
-///
-/// Every object struct must have a #[repr(C)] layout with a vtable at the beginning. This allows us
-/// to use the ObjectValue as a "thin" trait object which consists of just a pointer to the data,
-/// but can be implicitly derefed to a regular "fat" trait object by loading the vtable at the
-/// beginning of the struct.
-#[repr(C)]
-pub struct ObjectValue {
-    descriptor: Gc<ObjectDescriptor>,
+use super::{
+    array_properties::ArrayProperties,
+    builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+    completion::EvalResult,
+    environment::private_environment::PrivateNameId,
+    error::type_error_,
+    gc::Gc,
+    intrinsics::typed_array::TypedArray,
+    object_descriptor::{ObjectDescriptor, ObjectKind},
+    property::{PrivateProperty, Property},
+    property_descriptor::PropertyDescriptor,
+    property_key::PropertyKey,
+    proxy_object::ProxyObject,
+    value::{AccessorValue, Value},
+    Context, Realm,
+};
+
+// Macro that wraps a struct that optionally contains fields. Makes that struct inherit from object
+// with the given additional fields.
+//
+// Safe to apply to root ObjectValue, since it avoids self-referencing conversions.
+#[macro_export]
+macro_rules! extend_object_without_conversions {
+    ($vis:vis struct $name:ident $(<$($generics:tt),*>)? {
+        $($field_vis:vis $field_name:ident: $field_type:ty,)*
+    }) => {
+        #[repr(C)]
+        $vis struct $name $(<$($generics),*>)? {
+            // All objects start with object vtable
+            descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
+
+            // Inherited object fields
+
+            // None represents the null value
+            prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
+
+            // String and symbol properties by their property key
+            properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
+
+            // Array index properties by their property key
+            array_properties: $crate::js::runtime::array_properties::ArrayProperties,
+
+            // Private properties with string keys
+            private_properties: std::collections::HashMap<$crate::js::runtime::environment::private_environment::PrivateNameId, $crate::js::runtime::property::PrivateProperty>,
+
+            // Whether this object can be extended with new properties
+            is_extensible_field: bool,
+
+            // Child fields
+            $($field_vis $field_name: $field_type,)*
+        }
+
+        impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
+
+        impl $(<$($generics),*>)? $crate::js::runtime::object_value::ExtendsObject for $name $(<$($generics),*>)? {}
+
+        impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
+            #[inline]
+            pub fn descriptor(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
+                self.descriptor
+            }
+
+            #[inline]
+            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
+                self.descriptor = descriptor
+            }
+        }
+    }
+}
+
+// Extend from object for all subclasses. Use this instead of extend_object_without_conversions for
+// all objects except the root object.
+#[macro_export]
+macro_rules! extend_object {
+    ($vis:vis struct $name:ident $(<$($generics:tt),*>)? {
+        $($field_vis:vis $field_name:ident: $field_type:ty,)*
+    }) => {
+        $crate::extend_object_without_conversions! {
+            $vis struct $name $(<$($generics),*>)? {
+                $($field_vis $field_name: $field_type,)*
+            }
+        }
+
+        $crate::impl_gc_into!($name $(<$($generics),*>)?, $crate::js::runtime::object_value::ObjectValue);
+    }
+}
+
+pub trait ExtendsObject {
+    // Getters to cast subtype to this type
+    fn object(&self) -> &ObjectValue {
+        unsafe { &*(self as *const _ as *const ObjectValue) }
+    }
+
+    fn object_mut(&mut self) -> &mut ObjectValue {
+        unsafe { &mut *(self as *mut _ as *mut ObjectValue) }
+    }
+}
+
+// Generic object type encompassing ordinary objects and all forms of exotic objects.
+extend_object_without_conversions! {
+    pub struct ObjectValue {}
+}
+
+impl ObjectValue {
+    pub fn new(
+        cx: &mut Context,
+        prototype: Option<Gc<ObjectValue>>,
+        is_extensible: bool,
+    ) -> Gc<ObjectValue> {
+        let mut object = cx.heap.alloc_uninit::<ObjectValue>();
+        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+
+        object.prototype = prototype;
+        object.properties = IndexMap::new();
+        object.array_properties = ArrayProperties::new();
+        object.private_properties = HashMap::new();
+        object.is_extensible_field = is_extensible;
+
+        object
+    }
+
+    // Array properties methods
+    pub fn array_properties_length(&self) -> u32 {
+        self.array_properties.len()
+    }
+
+    pub fn set_array_properties_length(&mut self, new_length: u32) -> bool {
+        self.array_properties.set_len(new_length)
+    }
+
+    // Intrinsic creation utilities
+    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, true, false, true))
+    }
+
+    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
+        self.set_property(
+            &cx.names.length(),
+            Property::data(Value::smi(length), false, false, true),
+        )
+    }
+
+    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
+        self.set_property(
+            &cx.names.name(),
+            Property::data(
+                Value::string(cx.heap.alloc_string(name.to_owned())),
+                false,
+                false,
+                true,
+            ),
+        )
+    }
+
+    pub fn intrinsic_getter(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        func: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter.into()), set: None });
+        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+    }
+
+    pub fn intrinsic_getter_and_setter(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        getter: BuiltinFunctionPtr,
+        setter: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
+        let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter.into()), set: Some(setter.into()) });
+        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+    }
+
+    pub fn intrinsic_func(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        func: BuiltinFunctionPtr,
+        length: i32,
+        realm: Gc<Realm>,
+    ) {
+        self.intrinsic_data_prop(
+            name,
+            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
+        );
+    }
+
+    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, false, false, false));
+    }
+
+    // 7.3.27 PrivateElementFind
+    pub fn private_element_find(
+        &mut self,
+        private_id: PrivateNameId,
+    ) -> Option<&mut PrivateProperty> {
+        self.private_properties.get_mut(&private_id)
+    }
+
+    // 7.3.28 PrivateFieldAdd
+    pub fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        value: Value,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                let property = PrivateProperty::field(value);
+                self.private_properties.insert(private_id, property);
+                ().into()
+            }
+        }
+    }
+
+    // 7.3.29 PrivateMethodOrAccessorAdd
+    pub fn private_method_or_accessor_add(
+        &mut self,
+        cx: &mut Context,
+        private_id: PrivateNameId,
+        private_method: PrivateProperty,
+    ) -> EvalResult<()> {
+        match self.private_element_find(private_id) {
+            Some(_) => type_error_(cx, "private property already defined"),
+            None => {
+                self.private_properties.insert(private_id, private_method);
+                ().into()
+            }
+        }
+    }
+
+    // Property accessors and mutators
+    pub fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return self.array_properties.get_property(array_index);
+        }
+
+        self.properties.get(key)
+    }
+
+    pub fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            return self.array_properties.get_property_mut(array_index);
+        }
+
+        self.properties.get_mut(key)
+    }
+
+    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            self.array_properties.set_property(array_index, value);
+
+            return;
+        }
+
+        self.properties.insert(key.clone(), value);
+    }
+
+    pub fn remove_property(&mut self, key: &PropertyKey) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            self.array_properties.remove_property(array_index);
+
+            return;
+        }
+
+        // TODO: Removal is currently O(n) to maintain order, improve if possible
+        self.properties.shift_remove(key);
+    }
+}
+
+macro_rules! field_accessors {
+    ($field_name:ident, $field_type:ty) => {
+        paste! {
+            #[inline]
+            pub fn $field_name(&self) -> &$field_type {
+                &self.$field_name
+            }
+
+            #[inline]
+            pub fn [< $field_name _mut >] (&mut self) -> &mut $field_type {
+                &mut self.$field_name
+            }
+        }
+    };
+}
+
+// Object field accessors
+impl ObjectValue {
+    #[inline]
+    pub fn prototype(&self) -> Option<Gc<ObjectValue>> {
+        self.prototype
+    }
+
+    #[inline]
+    pub fn set_prototype(&mut self, prototype: Option<Gc<ObjectValue>>) {
+        self.prototype = prototype
+    }
+
+    #[inline]
+    pub fn properties(&self) -> &IndexMap<PropertyKey, Property> {
+        &self.properties
+    }
+
+    #[inline]
+    pub fn properties_mut(&mut self) -> &mut IndexMap<PropertyKey, Property> {
+        &mut self.properties
+    }
+
+    #[inline]
+    pub fn set_properties(&mut self, properties: IndexMap<PropertyKey, Property>) {
+        self.properties = properties;
+    }
+
+    #[inline]
+    pub fn array_properties(&self) -> &ArrayProperties {
+        &self.array_properties
+    }
+
+    #[inline]
+    pub fn array_properties_mut(&mut self) -> &mut ArrayProperties {
+        &mut self.array_properties
+    }
+
+    #[inline]
+    pub fn set_array_properties(&mut self, array_properties: ArrayProperties) {
+        self.array_properties = array_properties;
+    }
+
+    #[inline]
+    pub fn private_properties(&self) -> &HashMap<PrivateNameId, PrivateProperty> {
+        &self.private_properties
+    }
+
+    #[inline]
+    pub fn private_properties_mut(&mut self) -> &mut HashMap<PrivateNameId, PrivateProperty> {
+        &mut self.private_properties
+    }
+
+    #[inline]
+    pub fn set_private_properties(
+        &mut self,
+        private_properties: HashMap<PrivateNameId, PrivateProperty>,
+    ) {
+        self.private_properties = private_properties;
+    }
+
+    #[inline]
+    pub fn is_extensible_field(&self) -> bool {
+        self.is_extensible_field
+    }
+
+    #[inline]
+    pub fn set_is_extensible_field(&mut self, is_extensible_field: bool) {
+        self.is_extensible_field = is_extensible_field;
+    }
 }
 
 impl Gc<ObjectValue> {
-    /// Cast as a virtual object, allowing virtual methods to be called.
+    /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
+    /// trait object using the vtable stored in the object descriptor.
     fn virtual_object(&self) -> &mut dyn VirtualObject {
         unsafe {
             let data = self.as_ptr() as *const ObjectValue;
-            let vtable = data.read().descriptor.vtable();
+            let vtable = self.descriptor().vtable();
 
             let trait_object = ObjectTraitObject { data, vtable };
 
             transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object)
         }
-    }
-
-    /// A cast to Gc<OrdinaryObject>, to be removed once object types are unified.
-    #[inline]
-    pub fn cast_to_remove(&self) -> Gc<OrdinaryObject> {
-        self.cast()
-    }
-
-    #[inline]
-    pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
-        unsafe { self.as_ptr().read().descriptor }
     }
 
     fn descriptor_kind(&self) -> ObjectKind {
@@ -135,6 +483,54 @@ impl Gc<ObjectValue> {
             Some(self.cast())
         } else {
             None
+        }
+    }
+}
+
+// Non-virtual object internal methods from spec
+impl Gc<ObjectValue> {
+    /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().get_prototype_of(cx)
+        } else {
+            self.ordinary_get_prototype_of()
+        }
+    }
+
+    /// The [[SetPrototypeOf]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn set_prototype_of(
+        &mut self,
+        cx: &mut Context,
+        new_prototype: Option<Gc<ObjectValue>>,
+    ) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>()
+                .set_prototype_of(cx, new_prototype)
+        } else {
+            self.ordinary_set_prototype_of(cx, new_prototype)
+        }
+    }
+
+    /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().is_extensible(cx)
+        } else {
+            self.ordinary_is_extensible()
+        }
+    }
+
+    /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
+    /// implementations as necessary.
+    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+        if self.is_proxy() {
+            self.cast::<ProxyObject>().prevent_extensions(cx)
+        } else {
+            self.ordinary_prevent_extensions()
         }
     }
 }
@@ -235,14 +631,8 @@ impl Gc<ObjectValue> {
 
 pub type VirtualObjectVtable = *const ();
 
-pub trait HasObject {
-    // Getters to cast subtype to this type
-    fn object(&self) -> &OrdinaryObject;
-    fn object_mut(&mut self) -> &mut OrdinaryObject;
-}
-
 /// Virtual methods for an object. Creates vtable which is stored in object descriptor.
-pub trait VirtualObject: HasObject {
+pub trait VirtualObject {
     fn get_own_property(
         &self,
         cx: &mut Context,

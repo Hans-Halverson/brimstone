@@ -4,7 +4,7 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{HasObject, ObjectValue},
+        object_value::{ExtendsObject, ObjectValue},
         realm::Realm,
         type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,

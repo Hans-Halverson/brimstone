@@ -49,7 +49,7 @@ impl BoundFunctionObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for BoundFunctionObject {
+impl VirtualObject for Gc<BoundFunctionObject> {
     // 10.4.1.1 [[Call]]
     fn call(&self, cx: &mut Context, _: Value, arguments: &[Value]) -> EvalResult<Value> {
         if self.bound_arguments.is_empty() {
@@ -69,7 +69,7 @@ impl VirtualObject for BoundFunctionObject {
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let new_target = if same_object_value(self.into(), new_target) {
+        let new_target = if same_object_value(self.object_(), new_target) {
             self.bound_target_function
         } else {
             new_target

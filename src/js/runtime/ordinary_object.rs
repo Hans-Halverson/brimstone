@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 
 use std::collections::HashMap;
 
-use crate::{maybe, must};
+use crate::{extend_object, maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -20,12 +20,21 @@ use super::{
     Context,
 };
 
-impl ObjectValue {
-    // Cast from ref to a Gc pointer. To be removed during handles refactor.
-    fn into_gc_to_remove(&self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self as *const ObjectValue as *mut ObjectValue)
-    }
+// An ordinary object is used to create the vtable for a generic object. Must be a separate type
+// from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic dispatch.
+//
+// Should never be created. Only used to reference its vtable.
+extend_object! {
+    pub struct OrdinaryObject {}
+}
 
+impl Into<ObjectValue> for OrdinaryObject {
+    fn into(self) -> ObjectValue {
+        unsafe { std::mem::transmute::<OrdinaryObject, ObjectValue>(self) }
+    }
+}
+
+impl ObjectValue {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
     pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
@@ -92,14 +101,14 @@ impl Gc<ObjectValue> {
     }
 }
 
-impl VirtualObject for ObjectValue {
+impl VirtualObject for Gc<OrdinaryObject> {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
         _: &mut Context,
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        ordinary_get_own_property(self, key).into()
+        ordinary_get_own_property(self.as_ref().into(), key).into()
     }
 
     // 10.1.6 [[DefineOwnProperty]]
@@ -109,17 +118,17 @@ impl VirtualObject for ObjectValue {
         key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        ordinary_define_own_property(cx, self.into_gc_to_remove(), key, desc)
+        ordinary_define_own_property(cx, (*self).into(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
     fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_has_property(cx, self.into_gc_to_remove(), key)
+        ordinary_has_property(cx, (*self).into(), key)
     }
 
     // 10.1.8 [[Get]]
     fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-        ordinary_get(cx, self.into_gc_to_remove(), key, receiver)
+        ordinary_get(cx, (*self).into(), key, receiver)
     }
 
     // 10.1.9 [[Set]]
@@ -130,17 +139,17 @@ impl VirtualObject for ObjectValue {
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
-        ordinary_set(cx, self.into_gc_to_remove(), key, value, receiver)
+        ordinary_set(cx, (*self).into(), key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_delete(cx, self.into_gc_to_remove(), key)
+        ordinary_delete(cx, (*self).into(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-        ordinary_own_property_keys(cx, self).into()
+        ordinary_own_property_keys(cx, self.as_ref().into()).into()
     }
 }
 

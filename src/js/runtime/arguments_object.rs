@@ -70,7 +70,7 @@ impl MappedArgumentsObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for MappedArgumentsObject {
+impl VirtualObject for Gc<MappedArgumentsObject> {
     // 10.4.4.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -108,7 +108,7 @@ impl VirtualObject for MappedArgumentsObject {
             }
         }
 
-        if !must!(ordinary_define_own_property(cx, self.into(), key, new_arg_desc)) {
+        if !must!(ordinary_define_own_property(cx, self.object_(), key, new_arg_desc)) {
             return false.into();
         }
 
@@ -134,7 +134,7 @@ impl VirtualObject for MappedArgumentsObject {
         if must!(has_own_property(cx, self.parameter_map, key)) {
             get(cx, self.parameter_map, key)
         } else {
-            ordinary_get(cx, self.into(), key, receiver)
+            ordinary_get(cx, self.object_(), key, receiver)
         }
     }
 
@@ -147,7 +147,7 @@ impl VirtualObject for MappedArgumentsObject {
         receiver: Value,
     ) -> EvalResult<bool> {
         let is_mapped =
-            if receiver.is_object() && same_object_value(self.into(), receiver.as_object()) {
+            if receiver.is_object() && same_object_value(self.object_(), receiver.as_object()) {
                 must!(has_own_property(cx, self.parameter_map, key))
             } else {
                 false
@@ -157,14 +157,14 @@ impl VirtualObject for MappedArgumentsObject {
             must!(set(cx, self.parameter_map, key, value, false));
         }
 
-        ordinary_set(cx, self.into(), key, value, receiver)
+        ordinary_set(cx, self.object_(), key, value, receiver)
     }
 
     // 10.4.4.5 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
         let is_mapped = must!(has_own_property(cx, self.parameter_map, key));
 
-        let result = maybe!(ordinary_delete(cx, self.into(), key));
+        let result = maybe!(ordinary_delete(cx, self.object_(), key));
 
         if result && is_mapped {
             must!(self.parameter_map.delete(cx, key));

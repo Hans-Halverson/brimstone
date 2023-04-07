@@ -36,7 +36,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             cx: &mut Context,
             key: &PropertyKey,
         ) -> EvalResult<Option<PropertyDescriptor>> {
-            self.object().get_own_property(cx, key)
+            self.object__().get_own_property(cx, key)
         }
     );
 
@@ -48,26 +48,21 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             key: &PropertyKey,
             desc: PropertyDescriptor,
         ) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_define_own_property(
-                cx,
-                self.into(),
-                key,
-                desc,
-            )
+            self.object__().define_own_property(cx, key, desc)
         }
     );
 
     implement_if_undefined!(
         "has_property",
         fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_has_property(cx, self.into(), key)
+            self.object__().has_property(cx, key)
         }
     );
 
     implement_if_undefined!(
         "get",
         fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-            crate::js::runtime::ordinary_object::ordinary_get(cx, self.into(), key, receiver)
+            self.object__().get(cx, key, receiver)
         }
     );
 
@@ -80,21 +75,21 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             value: Value,
             receiver: Value,
         ) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_set(cx, self.into(), key, value, receiver)
+            self.object__().set(cx, key, value, receiver)
         }
     );
 
     implement_if_undefined!(
         "delete",
         fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-            crate::js::runtime::ordinary_object::ordinary_delete(cx, self.into(), key)
+            self.object__().delete(cx, key)
         }
     );
 
     implement_if_undefined!(
         "own_property_keys",
         fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-            self.object().own_property_keys(cx)
+            self.object__().own_property_keys(cx)
         }
     );
 

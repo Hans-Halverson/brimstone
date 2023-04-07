@@ -129,7 +129,7 @@ impl BuiltinFunction {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for BuiltinFunction {
+impl VirtualObject for Gc<BuiltinFunction> {
     // 10.3.1 [[Call]]
     fn call(
         &self,
@@ -139,7 +139,7 @@ impl VirtualObject for BuiltinFunction {
     ) -> EvalResult<Value> {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.into()),
+            function: Some(self.object_()),
             realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
@@ -168,7 +168,7 @@ impl VirtualObject for BuiltinFunction {
     ) -> EvalResult<Gc<ObjectValue>> {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.into()),
+            function: Some(self.object_()),
             realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,

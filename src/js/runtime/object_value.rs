@@ -1,5 +1,4 @@
 use indexmap::IndexMap;
-use paste::paste;
 
 use std::{
     collections::HashMap,
@@ -14,7 +13,7 @@ use super::{
     error::type_error_,
     gc::Gc,
     intrinsics::typed_array::TypedArray,
-    object_descriptor::{ObjectDescriptor, ObjectKind},
+    object_descriptor::ObjectKind,
     property::{PrivateProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -73,6 +72,18 @@ macro_rules! extend_object_without_conversions {
                 self.descriptor = descriptor
             }
         }
+
+        impl $(<$($generics),*>)? $crate::js::runtime::Gc<$name $(<$($generics),*>)?> {
+            #[inline]
+            pub fn object_(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue> {
+                self.cast()
+            }
+
+            #[inline]
+            pub fn object__(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::ordinary_object::OrdinaryObject> {
+                self.cast()
+            }
+        }
     }
 }
 
@@ -95,10 +106,12 @@ macro_rules! extend_object {
 
 pub trait ExtendsObject {
     // Getters to cast subtype to this type
+    #[inline]
     fn object(&self) -> &ObjectValue {
         unsafe { &*(self as *const _ as *const ObjectValue) }
     }
 
+    #[inline]
     fn object_mut(&mut self) -> &mut ObjectValue {
         unsafe { &mut *(self as *mut _ as *mut ObjectValue) }
     }
@@ -292,22 +305,6 @@ impl ObjectValue {
     }
 }
 
-macro_rules! field_accessors {
-    ($field_name:ident, $field_type:ty) => {
-        paste! {
-            #[inline]
-            pub fn $field_name(&self) -> &$field_type {
-                &self.$field_name
-            }
-
-            #[inline]
-            pub fn [< $field_name _mut >] (&mut self) -> &mut $field_type {
-                &mut self.$field_name
-            }
-        }
-    };
-}
-
 // Object field accessors
 impl ObjectValue {
     #[inline]
@@ -382,9 +379,10 @@ impl ObjectValue {
 impl Gc<ObjectValue> {
     /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
     /// trait object using the vtable stored in the object descriptor.
+    #[inline]
     fn virtual_object(&self) -> &mut dyn VirtualObject {
         unsafe {
-            let data = self.as_ptr() as *const ObjectValue;
+            let data = self as *const Gc<ObjectValue>;
             let vtable = self.descriptor().vtable();
 
             let trait_object = ObjectTraitObject { data, vtable };
@@ -702,7 +700,7 @@ pub trait VirtualObject {
 // to properly type our custom trait object creation.
 #[repr(C)]
 struct ObjectTraitObject {
-    data: *const ObjectValue,
+    data: *const Gc<ObjectValue>,
     vtable: *const (),
 }
 

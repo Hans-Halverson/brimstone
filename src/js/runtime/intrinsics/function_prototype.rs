@@ -182,7 +182,7 @@ impl FunctionPrototype {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for FunctionPrototype {
+impl VirtualObject for Gc<FunctionPrototype> {
     fn call(
         &self,
         _: &mut Context,

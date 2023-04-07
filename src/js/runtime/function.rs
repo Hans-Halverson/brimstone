@@ -123,7 +123,7 @@ impl Function {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Function {
+impl VirtualObject for Gc<Function> {
     // 10.2.1 [[Call]]
     fn call(
         &self,
@@ -181,7 +181,7 @@ impl VirtualObject for Function {
                     .into()
             };
 
-            maybe!(initialize_instance_elements(cx, new_object, self.into()));
+            maybe!(initialize_instance_elements(cx, new_object, *self));
 
             return new_object.into();
         }
@@ -196,7 +196,7 @@ impl VirtualObject for Function {
                 .into();
 
                 if let FuncKind::DefaultConstructor = self.func_node {
-                    maybe!(initialize_instance_elements(cx, object, self.into()));
+                    maybe!(initialize_instance_elements(cx, object, *self));
                     None
                 } else {
                     Some(object)
@@ -213,7 +213,7 @@ impl VirtualObject for Function {
                         _ => return type_error_(cx, "super class must be a constructor"),
                     };
 
-                    maybe!(initialize_instance_elements(cx, object, self.into()));
+                    maybe!(initialize_instance_elements(cx, object, *self));
                 }
 
                 None
@@ -223,8 +223,7 @@ impl VirtualObject for Function {
         match this_argument {
             Some(this_argument) => {
                 self.ordinary_call_bind_this(cx, callee_context, this_argument.into());
-                let initialize_result =
-                    initialize_instance_elements(cx, this_argument, self.into());
+                let initialize_result = initialize_instance_elements(cx, this_argument, *self);
 
                 if let EvalResult::Throw(thrown_value) = initialize_result {
                     cx.pop_execution_context();

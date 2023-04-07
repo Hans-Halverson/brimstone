@@ -123,7 +123,7 @@ impl StringObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for StringObject {
+impl VirtualObject for Gc<StringObject> {
     // 10.4.3.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -150,7 +150,7 @@ impl VirtualObject for StringObject {
             let is_extensible = self.object().is_extensible_field();
             is_compatible_property_descriptor(cx, is_extensible, desc, string_desc).into()
         } else {
-            ordinary_define_own_property(cx, self.into(), key, desc)
+            ordinary_define_own_property(cx, self.object_(), key, desc)
         }
     }
 

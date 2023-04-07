@@ -42,7 +42,7 @@ impl ArrayObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for ArrayObject {
+impl VirtualObject for Gc<ArrayObject> {
     // 10.4.2.1 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
@@ -56,7 +56,7 @@ impl VirtualObject for ArrayObject {
                 return false.into();
             }
 
-            if !must!(ordinary_define_own_property(cx, self.into(), key, desc)) {
+            if !must!(ordinary_define_own_property(cx, self.object_(), key, desc)) {
                 return false.into();
             }
 
@@ -64,7 +64,7 @@ impl VirtualObject for ArrayObject {
         } else if key.is_string() && key.as_string() == cx.names.length().as_string() {
             array_set_length(cx, self, desc)
         } else {
-            ordinary_define_own_property(cx, self.into(), key, desc)
+            ordinary_define_own_property(cx, self.object_(), key, desc)
         }
     }
 
@@ -94,7 +94,7 @@ impl VirtualObject for ArrayObject {
             return false.into();
         }
 
-        ordinary_delete(cx, self.into(), key)
+        ordinary_delete(cx, self.object_(), key)
     }
 
     // Not part of spec, but needed to add custom length property

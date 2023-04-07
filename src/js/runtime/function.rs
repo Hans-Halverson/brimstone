@@ -10,7 +10,7 @@ use super::{
     abstract_operations::{construct, define_property_or_throw, initialize_instance_elements},
     completion::{Completion, CompletionKind, EvalResult},
     environment::{
-        environment::{to_trait_object, Environment},
+        environment::DynEnvironment,
         function_environment::FunctionEnvironment,
         private_environment::{PrivateEnvironment, PrivateNameId},
     },
@@ -66,7 +66,7 @@ extend_object! {
         realm: Gc<Realm>,
         script_or_module: Option<ScriptOrModule>,
         pub func_node: FuncKind,
-        pub environment: Gc<dyn Environment>,
+        pub environment: DynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
         pub fields: Vec<ClassFieldDefinition>,
         pub private_methods: Vec<(PrivateNameId, PrivateProperty)>,
@@ -88,7 +88,7 @@ impl Function {
         func_node: FuncKind,
         is_lexical_this: bool,
         is_strict: bool,
-        environment: Gc<dyn Environment>,
+        environment: DynEnvironment,
         private_environment: Option<Gc<PrivateEnvironment>>,
     ) -> Gc<Function> {
         let this_mode = if is_lexical_this {
@@ -167,9 +167,7 @@ impl VirtualObject for Gc<Function> {
         // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
         if let FuncKind::DefaultConstructor = self.func_node {
             let new_object = if self.constructor_kind == ConstructorKind::Derived {
-                let func = must!(<&Function as Into<Gc<Function>>>::into(self)
-                    .cast::<ObjectValue>()
-                    .get_prototype_of(cx));
+                let func = must!(self.object().get_prototype_of(cx));
                 match func {
                     Some(func) if func.is_constructor() => {
                         maybe!(construct(cx, func, arguments, Some(new_target)))
@@ -203,9 +201,7 @@ impl VirtualObject for Gc<Function> {
                 }
             } else {
                 if let FuncKind::DefaultConstructor = self.func_node {
-                    let func = must!(<&Function as Into<Gc<Function>>>::into(self)
-                        .cast::<ObjectValue>()
-                        .get_prototype_of(cx));
+                    let func = must!(self.object().get_prototype_of(cx));
                     let object = match func {
                         Some(func) if func.is_constructor() => {
                             maybe!(construct(cx, func, arguments, Some(new_target)))
@@ -288,7 +284,7 @@ impl Gc<Function> {
         cx: &mut Context,
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<ExecutionContext> {
-        let func_env = to_trait_object(FunctionEnvironment::new(cx, *self, new_target));
+        let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn();
         let callee_context = cx.heap.alloc(ExecutionContext {
             function: Some(self.object()),
             realm: self.realm,
@@ -303,9 +299,7 @@ impl Gc<Function> {
 
         callee_context
     }
-}
 
-impl Function {
     // 10.2.1.2 OrdinaryCallBindThis
     fn ordinary_call_bind_this(
         &self,
@@ -328,7 +322,7 @@ impl Function {
             }
         };
 
-        let local_func_env = callee_context
+        let mut local_func_env = callee_context
             .lexical_env
             .as_function_environment()
             .unwrap();
@@ -347,7 +341,7 @@ impl Function {
 
                 // 15.2.3 EvaluateFunctionBody
                 // 15.3.3 EvaluateConciseBody
-                maybe_!(function_declaration_instantiation(cx, self, arguments));
+                maybe_!(function_declaration_instantiation(cx, *self, arguments));
                 match func_node.body.as_ref() {
                     ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
                     ast::FunctionBody::Expression(expr) => {
@@ -376,7 +370,7 @@ pub fn ordinary_function_create(
     function_prototype: Gc<ObjectValue>,
     func_node: &ast::Function,
     is_lexical_this: bool,
-    environment: Gc<dyn Environment>,
+    environment: DynEnvironment,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     let is_strict = func_node.is_strict_mode;
@@ -407,7 +401,7 @@ pub fn ordinary_function_create_special_kind(
     is_lexical_this: bool,
     is_strict: bool,
     argument_count: i32,
-    environment: Gc<dyn Environment>,
+    environment: DynEnvironment,
     private_environment: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     let func = Function::new(
@@ -547,7 +541,7 @@ pub fn set_function_length_maybe_infinity(
 pub fn instantiate_function_object(
     cx: &mut Context,
     func_node: &ast::Function,
-    env: Gc<dyn Environment>,
+    env: DynEnvironment,
     private_env: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     if func_node.is_async || func_node.is_generator {
@@ -578,11 +572,5 @@ pub fn get_argument(arguments: &[Value], i: usize) -> Value {
         arguments[i]
     } else {
         Value::undefined()
-    }
-}
-
-impl Into<Gc<Function>> for &Function {
-    fn into(self) -> Gc<Function> {
-        Gc::from_ptr(self as *const _ as *mut Function)
     }
 }

@@ -13,8 +13,9 @@ use crate::{
         },
         runtime::{
             environment::{
-                declarative_environment::DeclarativeEnvironment, environment::to_trait_object,
-                environment::Environment, private_environment::PrivateEnvironment,
+                declarative_environment::DeclarativeEnvironment,
+                environment::{DynEnvironment, Environment},
+                private_environment::PrivateEnvironment,
             },
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
@@ -112,14 +113,14 @@ pub fn perform_eval(
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(Some(running_context.lexical_env));
         (
-            to_trait_object(cx.heap.alloc(lex_env)),
+            cx.heap.alloc(lex_env).into_dyn(),
             running_context.variable_env,
             running_context.private_env,
         )
     } else {
-        let global_env = to_trait_object(eval_realm.global_env);
+        let global_env = eval_realm.global_env.into_dyn();
         let lex_env = DeclarativeEnvironment::new(Some(global_env));
-        (to_trait_object(cx.heap.alloc(lex_env)), global_env, None)
+        (cx.heap.alloc(lex_env).into_dyn(), global_env, None)
     };
 
     let var_env = if is_strict_eval { lex_env } else { var_env };
@@ -169,8 +170,8 @@ pub fn perform_eval(
 fn eval_declaration_instantiation(
     cx: &mut Context,
     ast: &ast::Program,
-    mut var_env: Gc<dyn Environment>,
-    mut lex_env: Gc<dyn Environment>,
+    mut var_env: DynEnvironment,
+    mut lex_env: DynEnvironment,
     private_env: Option<Gc<PrivateEnvironment>>,
     is_strict_eval: bool,
 ) -> EvalResult<()> {
@@ -287,7 +288,7 @@ fn eval_declaration_instantiation(
         let name_value = id_string_value(cx, func.id.as_deref().unwrap());
         let function_object = instantiate_function_object(cx, func, lex_env, private_env);
 
-        if let Some(var_env) = var_env.as_global_environment() {
+        if let Some(mut var_env) = var_env.as_global_environment() {
             maybe!(var_env.create_global_function_binding(
                 cx,
                 name_value,
@@ -305,7 +306,7 @@ fn eval_declaration_instantiation(
     }
 
     for name in declared_var_names {
-        if let Some(var_env) = var_env.as_global_environment() {
+        if let Some(mut var_env) = var_env.as_global_environment() {
             maybe!(var_env.create_global_var_binding(cx, name, true));
         } else {
             if !must!(var_env.has_binding(cx, name)) {

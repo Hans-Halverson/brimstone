@@ -5,10 +5,7 @@ use crate::{
         parser::ast::{self, LexDecl, VarDecl, WithDecls},
         runtime::{
             completion::{Completion, EvalResult},
-            environment::{
-                environment::{to_trait_object, Environment},
-                global_environment::GlobalEnvironment,
-            },
+            environment::{environment::Environment, global_environment::GlobalEnvironment},
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
@@ -41,7 +38,7 @@ pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>
     let script = cx.heap.alloc(Script::new(program.clone(), realm));
 
     let global_env = realm.global_env;
-    let global_env_object = to_trait_object(global_env);
+    let global_env_object = global_env.into_dyn();
 
     let script_ctx = cx.heap.alloc(ExecutionContext {
         function: None,
@@ -178,7 +175,7 @@ fn global_declaration_instantiation(
 
     for func in functions_to_initialize.iter().rev() {
         let name_value = id_string_value(cx, func.id.as_deref().unwrap());
-        let function_object = instantiate_function_object(cx, func, to_trait_object(env), None);
+        let function_object = instantiate_function_object(cx, func, env.into_dyn(), None);
         maybe__!(env.create_global_function_binding(cx, name_value, function_object.into(), false));
     }
 

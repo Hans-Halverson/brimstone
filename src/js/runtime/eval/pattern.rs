@@ -7,7 +7,7 @@ use crate::{
             abstract_operations::{copy_data_properties, get_v},
             array_object::array_create,
             completion::EvalResult,
-            environment::environment::Environment,
+            environment::environment::DynEnvironment,
             eval::{
                 expression::{
                     eval_expression, eval_member_expression_to_reference, eval_property_name,
@@ -43,7 +43,7 @@ pub fn binding_initialization(
     cx: &mut Context,
     patt: &ast::Pattern,
     value: Value,
-    env: Option<Gc<dyn Environment>>,
+    env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     match patt {
         ast::Pattern::Id(id) => {
@@ -84,7 +84,7 @@ fn object_binding_initialization(
     cx: &mut Context,
     object: &ast::ObjectPattern,
     object_value: Value,
-    env: Option<Gc<dyn Environment>>,
+    env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     maybe!(require_object_coercible(cx, object_value));
 
@@ -201,7 +201,7 @@ fn iterator_binding_initialization(
     cx: &mut Context,
     array_pattern: &ast::ArrayPattern,
     iterator: &mut Iterator,
-    env: Option<Gc<dyn Environment>>,
+    env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     for element in &array_pattern.elements {
         // Binding identifiers must be resolved before later steps
@@ -423,7 +423,7 @@ pub fn initialize_bound_name(
     cx: &mut Context,
     name: Gc<StringValue>,
     value: Value,
-    env: Option<Gc<dyn Environment>>,
+    env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     match env {
         Some(mut env) => {

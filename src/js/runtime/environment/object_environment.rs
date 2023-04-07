@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{define_property_or_throw, get, has_property, set},
         completion::EvalResult,
         error::err_not_defined_,
-        gc::Gc,
+        gc::{Gc, GcDeref},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -15,29 +15,33 @@ use crate::{
     maybe,
 };
 
-use super::environment::Environment;
+use super::environment::{DynEnvironment, Environment};
 
 // 9.1.1.2 Object Environment Record
 pub struct ObjectEnvironment {
     pub binding_object: Gc<ObjectValue>,
     pub is_with_environment: bool,
-    pub outer: Option<Gc<dyn Environment>>,
+    pub outer: Option<DynEnvironment>,
 }
+
+impl GcDeref for ObjectEnvironment {}
 
 impl ObjectEnvironment {
     // 9.1.2.3 NewObjectEnvironment
     pub fn new(
+        cx: &mut Context,
         binding_object: Gc<ObjectValue>,
         is_with_environment: bool,
-        outer: Option<Gc<dyn Environment>>,
-    ) -> ObjectEnvironment {
-        ObjectEnvironment { binding_object, is_with_environment, outer }
+        outer: Option<DynEnvironment>,
+    ) -> Gc<ObjectEnvironment> {
+        cx.heap
+            .alloc(ObjectEnvironment { binding_object, is_with_environment, outer })
     }
 }
 
-impl Environment for ObjectEnvironment {
-    fn as_object_environment(&mut self) -> Option<&mut ObjectEnvironment> {
-        Some(self)
+impl Environment for Gc<ObjectEnvironment> {
+    fn as_object_environment(&mut self) -> Option<Gc<ObjectEnvironment>> {
+        Some(*self)
     }
 
     // 9.1.1.2.1 HasBinding
@@ -161,7 +165,7 @@ impl Environment for ObjectEnvironment {
         panic!("ObjectEnvironment::get_this_binding is never called in spec")
     }
 
-    fn outer(&self) -> Option<Gc<dyn Environment>> {
+    fn outer(&self) -> Option<DynEnvironment> {
         self.outer
     }
 }

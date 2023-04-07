@@ -1,4 +1,4 @@
-use super::environment::Environment;
+use super::environment::{DynEnvironment, Environment};
 
 use crate::js::runtime::{
     completion::EvalResult,
@@ -34,21 +34,22 @@ impl Binding {
 }
 
 // 9.1.1.1 Declarative Environment Record
+#[repr(C)]
 pub struct DeclarativeEnvironment {
     pub bindings: HashMap<Gc<StringValue>, Binding>,
-    outer: Option<Gc<dyn Environment>>,
+    outer: Option<DynEnvironment>,
 }
 
 impl GcDeref for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
-    pub fn new(outer: Option<Gc<dyn Environment>>) -> DeclarativeEnvironment {
+    pub fn new(outer: Option<DynEnvironment>) -> DeclarativeEnvironment {
         DeclarativeEnvironment { bindings: HashMap::new(), outer }
     }
 }
 
-impl Environment for DeclarativeEnvironment {
+impl Environment for Gc<DeclarativeEnvironment> {
     // 9.1.1.1.1 HasBinding
     fn has_binding(&self, _: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
         self.bindings.contains_key(&name).into()
@@ -170,7 +171,7 @@ impl Environment for DeclarativeEnvironment {
         panic!("DeclarativeEnvironment::get_this_binding is never called in spec")
     }
 
-    fn outer(&self) -> Option<Gc<dyn Environment>> {
+    fn outer(&self) -> Option<DynEnvironment> {
         self.outer
     }
 }

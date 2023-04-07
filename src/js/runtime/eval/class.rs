@@ -7,7 +7,7 @@ use crate::{
             abstract_operations::{call_object, create_method_property, define_field},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
-                environment::{to_trait_object, Environment},
+                environment::Environment,
                 private_environment::{PrivateEnvironment, PrivateNameId},
             },
             error::type_error_,
@@ -143,7 +143,7 @@ pub fn class_definition_evaluation(
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
     {
-        current_execution_context.lexical_env = to_trait_object(class_env);
+        current_execution_context.lexical_env = class_env.into_dyn();
 
         let super_class_result = eval_expression(cx, super_class);
 
@@ -178,7 +178,7 @@ pub fn class_definition_evaluation(
     // Set up prototype and constructor
     let proto = ordinary_object_create_optional_proto(cx, proto_parent);
 
-    current_execution_context.lexical_env = to_trait_object(class_env);
+    current_execution_context.lexical_env = class_env.into_dyn();
     current_execution_context.private_env = Some(class_private_env);
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {

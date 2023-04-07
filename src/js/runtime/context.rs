@@ -6,8 +6,7 @@ use super::{
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
     environment::{
-        declarative_environment::DeclarativeEnvironment,
-        environment::{to_trait_object, Environment},
+        declarative_environment::DeclarativeEnvironment, environment::DynEnvironment,
         private_environment::PrivateNameId,
     },
     execution_context::{ExecutionContext, ScriptOrModule},
@@ -38,7 +37,7 @@ pub struct Context {
     pub next_private_name_id: NonZeroU64,
 
     // An empty environment to be used as an uninitialized value
-    pub uninit_environment: Gc<dyn Environment>,
+    pub uninit_environment: DynEnvironment,
 
     // All ASTs produced by eval and function constructors in this context. Saved here so that they
     // are not freed while the context is still running, as they may be needed e.g. due to functions
@@ -53,7 +52,7 @@ impl Context {
         let names = BuiltinNames::new(&mut heap);
         let well_known_symbols = BuiltinSymbols::new(&mut heap);
         let base_descriptors = BaseDescriptors::new(&mut heap);
-        let uninit_environment = to_trait_object(heap.alloc(DeclarativeEnvironment::new(None)));
+        let uninit_environment = heap.alloc(DeclarativeEnvironment::new(None)).into_dyn();
 
         Context {
             execution_context_stack: vec![],

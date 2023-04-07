@@ -1,25 +1,42 @@
 use crate::js::runtime::{
-    completion::EvalResult, gc::Gc, object_value::ObjectValue, string_value::StringValue,
-    value::Value, Context,
+    completion::EvalResult,
+    gc::{Gc, GcDeref},
+    object_value::ObjectValue,
+    string_value::StringValue,
+    value::Value,
+    Context,
 };
 
-use super::{declarative_environment::DeclarativeEnvironment, environment::Environment};
+use super::{
+    declarative_environment::DeclarativeEnvironment,
+    environment::{DynEnvironment, Environment},
+};
 
+#[repr(C)]
 pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
 }
 
+impl GcDeref for ModuleEnvironment {}
+
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
-    fn new(cx: &mut Context, outer: Gc<dyn Environment>) -> Gc<ModuleEnvironment> {
+    fn new(cx: &mut Context, outer: DynEnvironment) -> Gc<ModuleEnvironment> {
         // Inner decl env contains the outer environment pointer
         cx.heap
             .alloc(ModuleEnvironment { env: DeclarativeEnvironment::new(Some(outer)) })
     }
 }
 
-impl Environment for ModuleEnvironment {
+impl Gc<ModuleEnvironment> {
+    #[inline]
+    fn env(&self) -> Gc<DeclarativeEnvironment> {
+        self.cast()
+    }
+}
+
+impl Environment for Gc<ModuleEnvironment> {
     // 9.1.1.5.1 GetBindingValue
     fn get_binding_value(
         &self,
@@ -48,7 +65,7 @@ impl Environment for ModuleEnvironment {
     // All other methods inherited from DeclarativeEnvironment
 
     fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        self.env.has_binding(cx, name)
+        self.env().has_binding(cx, name)
     }
 
     fn create_mutable_binding(
@@ -57,7 +74,7 @@ impl Environment for ModuleEnvironment {
         name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
-        self.env.create_mutable_binding(cx, name, can_delete)
+        self.env().create_mutable_binding(cx, name, can_delete)
     }
 
     fn create_immutable_binding(
@@ -66,7 +83,7 @@ impl Environment for ModuleEnvironment {
         name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
-        self.env.create_immutable_binding(cx, name, is_strict)
+        self.env().create_immutable_binding(cx, name, is_strict)
     }
 
     fn initialize_binding(
@@ -75,7 +92,7 @@ impl Environment for ModuleEnvironment {
         name: Gc<StringValue>,
         value: Value,
     ) -> EvalResult<()> {
-        self.env.initialize_binding(cx, name, value)
+        self.env().initialize_binding(cx, name, value)
     }
 
     fn set_mutable_binding(
@@ -85,19 +102,19 @@ impl Environment for ModuleEnvironment {
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        self.env.set_mutable_binding(cx, name, value, is_strict)
+        self.env().set_mutable_binding(cx, name, value, is_strict)
     }
 
     fn has_super_binding(&self) -> bool {
-        self.env.has_super_binding()
+        self.env().has_super_binding()
     }
 
     fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
-        self.env.with_base_object()
+        self.env().with_base_object()
     }
 
-    fn outer(&self) -> Option<Gc<dyn Environment>> {
-        self.env.outer()
+    fn outer(&self) -> Option<DynEnvironment> {
+        self.env().outer()
     }
 }
 

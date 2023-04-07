@@ -3,7 +3,7 @@ use crate::maybe;
 use super::{
     abstract_operations::{private_get, private_set, set},
     completion::EvalResult,
-    environment::{environment::Environment, private_environment::PrivateNameId},
+    environment::{environment::DynEnvironment, private_environment::PrivateNameId},
     error::{reference_error_, type_error_},
     execution_context::get_global_object,
     gc::Gc,
@@ -31,7 +31,7 @@ pub enum ReferenceBase {
         private_id: Option<PrivateNameId>,
     },
     Env {
-        env: Gc<dyn Environment>,
+        env: DynEnvironment,
         name: Gc<StringValue>,
     },
 }
@@ -77,7 +77,7 @@ impl Reference {
         }
     }
 
-    pub fn new_env(env: Gc<dyn Environment>, name: Gc<StringValue>, is_strict: bool) -> Reference {
+    pub fn new_env(env: DynEnvironment, name: Gc<StringValue>, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Env { env, name },
             is_strict,

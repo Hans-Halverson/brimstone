@@ -15,7 +15,7 @@ use super::{
     abstract_operations::{
         create_data_property_or_throw, define_property_or_throw, has_own_property, set,
     },
-    environment::environment::Environment,
+    environment::environment::DynEnvironment,
     function::{get_argument, Function},
     gc::GcDeref,
     get,
@@ -212,7 +212,7 @@ pub fn create_mapped_arguments_object(
     func: Gc<Function>,
     param_nodes: &[ast::FunctionParam],
     arguments: &[Value],
-    env: Gc<dyn Environment>,
+    env: DynEnvironment,
 ) -> Value {
     let parameter_map = ordinary_object_create_optional_proto(cx, None);
     let mut object = MappedArgumentsObject::new(cx, parameter_map.into());
@@ -282,7 +282,7 @@ pub fn create_mapped_arguments_object(
 
 struct ArgAccessorEnvironment {
     name: Gc<StringValue>,
-    env: Gc<dyn Environment>,
+    env: DynEnvironment,
 }
 
 impl GcDeref for ArgAccessorEnvironment {}

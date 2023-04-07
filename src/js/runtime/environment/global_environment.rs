@@ -15,21 +15,30 @@ use crate::js::runtime::{
 use crate::{maybe, must};
 
 use super::{
-    declarative_environment::DeclarativeEnvironment, environment::Environment,
+    declarative_environment::DeclarativeEnvironment,
+    environment::{DynEnvironment, Environment},
     object_environment::ObjectEnvironment,
 };
 
 // 9.1.1.4 Global Environment Record
+#[repr(C)]
 pub struct GlobalEnvironment {
-    // The global object. [[ObjectRecord]] in spec.
-    pub object_env: ObjectEnvironment,
-
     // Declarative environment. [[DeclarativeRecord]] in spec.
-    pub decl_env: DeclarativeEnvironment,
+    decl_env: DeclarativeEnvironment,
+
+    // The global object. [[ObjectRecord]] in spec.
+    pub object_env: Gc<ObjectEnvironment>,
 
     pub global_this_value: Gc<ObjectValue>,
 
     pub var_names: HashSet<Gc<StringValue>>,
+}
+
+impl Gc<GlobalEnvironment> {
+    #[inline]
+    fn decl_env(&self) -> Gc<DeclarativeEnvironment> {
+        self.cast()
+    }
 }
 
 impl GcDeref for GlobalEnvironment {}
@@ -41,27 +50,27 @@ impl GlobalEnvironment {
         global_object: Gc<ObjectValue>,
         global_this_value: Gc<ObjectValue>,
     ) -> Gc<GlobalEnvironment> {
-        let object_env = ObjectEnvironment::new(global_object, false, None);
         // Declarative environment contains outer environment
         let decl_env = DeclarativeEnvironment::new(None);
+        let object_env = ObjectEnvironment::new(cx, global_object, false, None);
 
         cx.heap.alloc(GlobalEnvironment {
+            decl_env,
             object_env,
             global_this_value,
-            decl_env,
             var_names: HashSet::new(),
         })
     }
 }
 
-impl Environment for GlobalEnvironment {
-    fn as_global_environment(&mut self) -> Option<&mut GlobalEnvironment> {
-        Some(self)
+impl Environment for Gc<GlobalEnvironment> {
+    fn as_global_environment(&mut self) -> Option<Gc<GlobalEnvironment>> {
+        Some(*self)
     }
 
     // 9.1.1.4.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        if must!(self.decl_env.has_binding(cx, name)) {
+        if must!(self.decl_env().has_binding(cx, name)) {
             return true.into();
         }
 
@@ -75,11 +84,11 @@ impl Environment for GlobalEnvironment {
         name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
-        if must!(self.decl_env.has_binding(cx, name)) {
+        if must!(self.decl_env().has_binding(cx, name)) {
             return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
-        self.decl_env.create_mutable_binding(cx, name, can_delete)
+        self.decl_env().create_mutable_binding(cx, name, can_delete)
     }
 
     // 9.1.1.4.3 CreateImutableBinding
@@ -89,11 +98,12 @@ impl Environment for GlobalEnvironment {
         name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
-        if must!(self.decl_env.has_binding(cx, name)) {
+        if must!(self.decl_env().has_binding(cx, name)) {
             return type_error_(cx, &format!("Redeclaration of {}", name));
         }
 
-        self.decl_env.create_immutable_binding(cx, name, is_strict)
+        self.decl_env()
+            .create_immutable_binding(cx, name, is_strict)
     }
 
     // 9.1.1.4.4 InitializeBinding
@@ -103,8 +113,8 @@ impl Environment for GlobalEnvironment {
         name: Gc<StringValue>,
         value: Value,
     ) -> EvalResult<()> {
-        if must!(self.decl_env.has_binding(cx, name)) {
-            return self.decl_env.initialize_binding(cx, name, value);
+        if must!(self.decl_env().has_binding(cx, name)) {
+            return self.decl_env().initialize_binding(cx, name, value);
         }
 
         self.object_env.initialize_binding(cx, name, value)
@@ -118,9 +128,9 @@ impl Environment for GlobalEnvironment {
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        if must!(self.decl_env.has_binding(cx, name)) {
+        if must!(self.decl_env().has_binding(cx, name)) {
             return self
-                .decl_env
+                .decl_env()
                 .set_mutable_binding(cx, name, value, is_strict);
         }
 
@@ -135,8 +145,8 @@ impl Environment for GlobalEnvironment {
         name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
-        if must!(self.decl_env.has_binding(cx, name)) {
-            return self.decl_env.get_binding_value(cx, name, is_strict);
+        if must!(self.decl_env().has_binding(cx, name)) {
+            return self.decl_env().get_binding_value(cx, name, is_strict);
         }
 
         self.object_env.get_binding_value(cx, name, is_strict)
@@ -144,8 +154,8 @@ impl Environment for GlobalEnvironment {
 
     // 9.1.1.4.7 DeleteBinding
     fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        if must!(self.decl_env.has_binding(cx, name)) {
-            return self.decl_env.delete_binding(cx, name);
+        if must!(self.decl_env().has_binding(cx, name)) {
+            return self.decl_env().delete_binding(cx, name);
         }
 
         if maybe!(has_own_property(cx, self.object_env.binding_object, &PropertyKey::string(name)))
@@ -181,12 +191,12 @@ impl Environment for GlobalEnvironment {
         self.global_this_value.into()
     }
 
-    fn outer(&self) -> Option<Gc<dyn Environment>> {
-        self.decl_env.outer()
+    fn outer(&self) -> Option<DynEnvironment> {
+        self.decl_env().outer()
     }
 }
 
-impl GlobalEnvironment {
+impl Gc<GlobalEnvironment> {
     // 9.1.1.4.12 HasVarDeclaration
     pub fn has_var_declaration(&self, name: Gc<StringValue>) -> bool {
         self.var_names.contains(&name)
@@ -198,7 +208,7 @@ impl GlobalEnvironment {
         cx: &mut Context,
         name: Gc<StringValue>,
     ) -> EvalResult<bool> {
-        self.decl_env.has_binding(cx, name)
+        self.decl_env().has_binding(cx, name)
     }
 
     // 9.1.1.4.14 HasRestrictedGlobalProperty

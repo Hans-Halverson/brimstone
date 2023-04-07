@@ -140,78 +140,6 @@ impl ObjectValue {
         self.array_properties.set_len(new_length)
     }
 
-    // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, true, false, true))
-    }
-
-    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
-        self.set_property(
-            &cx.names.length(),
-            Property::data(Value::smi(length), false, false, true),
-        )
-    }
-
-    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
-        self.set_property(
-            &cx.names.name(),
-            Property::data(
-                Value::string(cx.heap.alloc_string(name.to_owned())),
-                false,
-                false,
-                true,
-            ),
-        )
-    }
-
-    pub fn intrinsic_getter(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        func: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
-    ) {
-        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: None });
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
-    }
-
-    pub fn intrinsic_getter_and_setter(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        getter: BuiltinFunctionPtr,
-        setter: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
-    ) {
-        let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
-        let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: Some(setter.into()) });
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
-    }
-
-    pub fn intrinsic_func(
-        &mut self,
-        cx: &mut Context,
-        name: &PropertyKey,
-        func: BuiltinFunctionPtr,
-        length: i32,
-        realm: Gc<Realm>,
-    ) {
-        self.intrinsic_data_prop(
-            name,
-            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
-        );
-    }
-
-    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, false, false, false));
-    }
-
     // 7.3.27 PrivateElementFind
     pub fn private_element_find(
         &mut self,
@@ -473,6 +401,78 @@ impl Gc<ObjectValue> {
         } else {
             None
         }
+    }
+
+    // Intrinsic creation utilities
+    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, true, false, true))
+    }
+
+    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
+        self.set_property(
+            &cx.names.length(),
+            Property::data(Value::smi(length), false, false, true),
+        )
+    }
+
+    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
+        self.set_property(
+            &cx.names.name(),
+            Property::data(
+                Value::string(cx.heap.alloc_string(name.to_owned())),
+                false,
+                false,
+                true,
+            ),
+        )
+    }
+
+    pub fn intrinsic_getter(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        func: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter.into()), set: None });
+        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+    }
+
+    pub fn intrinsic_getter_and_setter(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        getter: BuiltinFunctionPtr,
+        setter: BuiltinFunctionPtr,
+        realm: Gc<Realm>,
+    ) {
+        let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
+        let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
+        let accessor_value = cx
+            .heap
+            .alloc(AccessorValue { get: Some(getter.into()), set: Some(setter.into()) });
+        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+    }
+
+    pub fn intrinsic_func(
+        &mut self,
+        cx: &mut Context,
+        name: &PropertyKey,
+        func: BuiltinFunctionPtr,
+        length: i32,
+        realm: Gc<Realm>,
+    ) {
+        self.intrinsic_data_prop(
+            name,
+            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
+        );
+    }
+
+    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
+        self.set_property(key, Property::data(value, false, false, false));
     }
 }
 

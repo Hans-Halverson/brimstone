@@ -47,6 +47,12 @@ impl Realm {
         realm
     }
 
+    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+        self.intrinsics.get(intrinsic)
+    }
+}
+
+impl Gc<Realm> {
     // 9.3.3 SetRealmGlobalObject
     pub fn set_global_object(
         &mut self,
@@ -62,10 +68,6 @@ impl Realm {
 
         self.global_object = global_object;
         self.global_env = GlobalEnvironment::new(cx, global_object, this_value);
-    }
-
-    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
-        self.intrinsics.get(intrinsic)
     }
 }
 

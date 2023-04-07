@@ -538,7 +538,7 @@ fn eval_super_call_expression(
 
     // 13.3.7.2 GetSuperConstructor inlined
     let mut this_env = get_this_environment(cx);
-    let this_env = if let Some(func_env) = this_env.as_function_environment() {
+    let mut this_env = if let Some(func_env) = this_env.as_function_environment() {
         func_env
     } else {
         unreachable!()

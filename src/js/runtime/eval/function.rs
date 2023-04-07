@@ -19,7 +19,7 @@ use crate::{
             completion::{Completion, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
-                environment::{to_trait_object, Environment},
+                environment::{DynEnvironment, Environment},
                 private_environment::PrivateEnvironment,
             },
             error::syntax_error_,
@@ -53,7 +53,7 @@ use super::{
 // 10.2.11 FunctionDeclarationInstantiation
 pub fn function_declaration_instantiation(
     cx: &mut Context,
-    func: &Function,
+    func: Gc<Function>,
     arguments: &[Value],
 ) -> Completion {
     let func_node = if let FuncKind::Function(func_node) = &func.func_node {
@@ -87,7 +87,7 @@ pub fn function_declaration_instantiation(
         callee_context.lexical_env
     } else {
         let new_env = DeclarativeEnvironment::new(Some(callee_context.lexical_env));
-        callee_context.lexical_env = to_trait_object(cx.heap.alloc(new_env));
+        callee_context.lexical_env = cx.heap.alloc(new_env).into_dyn();
         callee_context.lexical_env
     };
 
@@ -98,6 +98,8 @@ pub fn function_declaration_instantiation(
             parameter_names.insert(&id.name);
 
             let name_value = id_string_value(cx, id);
+
+            // println!("right before the virtual callsite env is {:?} with value at ptr {:?} and {:?} and {:?}", unsafe { std::mem::transmute::< DynEnvironment, EnvironmentTraitObject>(env) }, env.cast::<ObjectValue>().as_ptr(), &env as * const _ as * const (), unsafe {(&env as *const _ as *const *const ()).read() }  );
 
             let already_declared = must!(env.has_binding(cx, name_value));
             if !already_declared {
@@ -116,7 +118,7 @@ pub fn function_declaration_instantiation(
         let arguments_object = if is_strict || !func_node.has_simple_parameter_list {
             create_unmapped_arguments_object(cx, &arguments)
         } else {
-            create_mapped_arguments_object(cx, func.into(), &func_node.params, &arguments, env)
+            create_mapped_arguments_object(cx, func, &func_node.params, &arguments, env)
         };
 
         let arguments_name_value = cx.get_interned_string("arguments");
@@ -225,8 +227,10 @@ pub fn function_declaration_instantiation(
     } else {
         // A separate Environment Record is needed to ensure that closures created by expressions in
         // the formal parameter list do not have visibility of declarations in the function body.
-        callee_context.variable_env =
-            to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(env))));
+        callee_context.variable_env = cx
+            .heap
+            .alloc(DeclarativeEnvironment::new(Some(env)))
+            .into_dyn();
         let mut var_env = callee_context.variable_env;
 
         let mut instantiated_var_names = HashSet::new();
@@ -262,7 +266,9 @@ pub fn function_declaration_instantiation(
         // Non-strict functions use a separate Environment Record for top-level lexical declarations
         // so that a direct eval can determine whether any var scoped declarations introduced by the
         // eval code conflict with pre-existing top-level lexically scoped declarations.
-        to_trait_object(cx.heap.alloc(DeclarativeEnvironment::new(Some(var_env))))
+        cx.heap
+            .alloc(DeclarativeEnvironment::new(Some(var_env)))
+            .into_dyn()
     } else {
         var_env
     };
@@ -300,7 +306,7 @@ pub fn function_declaration_instantiation(
 pub fn instantiate_ordinary_function_object(
     cx: &mut Context,
     func_node: &ast::Function,
-    env: Gc<dyn Environment>,
+    env: DynEnvironment,
     private_env: Option<Gc<PrivateEnvironment>>,
 ) -> Gc<Function> {
     let name_key = match &func_node.id {
@@ -368,7 +374,7 @@ pub fn instantiate_ordinary_function_expression(
                 function_prototype,
                 func_node,
                 false,
-                to_trait_object(func_env),
+                func_env.into_dyn(),
                 current_context.private_env,
             );
 
@@ -604,7 +610,7 @@ pub fn create_dynamic_function(
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
     let env = cx.current_realm().global_env;
 
-    let func = ordinary_function_create(cx, proto, &func_node, false, to_trait_object(env), None);
+    let func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn(), None);
     set_function_name(cx, func.into(), &cx.names.anonymous(), None);
 
     if !is_async && !is_generator {

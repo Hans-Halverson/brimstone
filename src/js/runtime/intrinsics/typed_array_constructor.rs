@@ -417,7 +417,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             fn as_typed_array(&self) -> Gc<dyn TypedArray> {
-                Gc::from_ptr(self.as_ptr() as *const dyn TypedArray as *mut dyn TypedArray)
+                Gc::from_ptr(self.as_ptr() as *mut dyn TypedArray)
             }
         }
 

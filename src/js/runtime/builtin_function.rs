@@ -202,8 +202,10 @@ impl VirtualObject for Gc<BuiltinFunction> {
     }
 }
 
-impl Into<Gc<BuiltinFunction>> for &BuiltinFunction {
-    fn into(self) -> Gc<BuiltinFunction> {
-        Gc::from_ptr(self as *const _ as *mut BuiltinFunction)
+// TODO: For some reason this suppresses seemingly unrelated unused function warnings. Keeping for
+// now until this is figured out and the functions are cleaned up.
+impl Into<Gc<()>> for &() {
+    fn into(self) -> Gc<()> {
+        unimplemented!("")
     }
 }

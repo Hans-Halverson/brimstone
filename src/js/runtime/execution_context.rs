@@ -1,7 +1,7 @@
 use super::{
     completion::EvalResult,
     environment::{
-        environment::{get_identifier_reference, Environment},
+        environment::{get_identifier_reference, DynEnvironment},
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
@@ -19,8 +19,8 @@ pub struct ExecutionContext {
     pub function: Option<Gc<ObjectValue>>,
     pub realm: Gc<Realm>,
     pub script_or_module: Option<ScriptOrModule>,
-    pub lexical_env: Gc<dyn Environment>,
-    pub variable_env: Gc<dyn Environment>,
+    pub lexical_env: DynEnvironment,
+    pub variable_env: DynEnvironment,
     pub private_env: Option<Gc<PrivateEnvironment>>,
     pub is_strict_mode: bool,
 }
@@ -36,7 +36,7 @@ pub enum ScriptOrModule {
 pub fn resolve_binding(
     cx: &mut Context,
     name: Gc<StringValue>,
-    env: Option<Gc<dyn Environment>>,
+    env: Option<DynEnvironment>,
 ) -> EvalResult<Reference> {
     let env = match env {
         Some(env) => env,
@@ -49,7 +49,7 @@ pub fn resolve_binding(
 }
 
 // 9.4.3 GetThisEnvironment
-pub fn get_this_environment(cx: &mut Context) -> Gc<dyn Environment> {
+pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
     let mut current_env = cx.current_execution_context().lexical_env;
     loop {
         if current_env.has_this_binding() {

@@ -90,7 +90,9 @@ impl StringObject {
     pub fn string_data(&self) -> Gc<StringValue> {
         self.string_data
     }
+}
 
+impl Gc<StringObject> {
     // 10.4.3.5 StringGetOwnProperty
     fn string_get_own_property(
         &self,

@@ -9,7 +9,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init,
     property::Property,
     property_descriptor::PropertyDescriptor,
@@ -76,7 +76,7 @@ impl BuiltinFunction {
         let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BuiltinFunction);
 
-        object_ordinary_init(object.object_mut(), prototype);
+        object_ordinary_init(object.object(), prototype);
 
         object.realm = realm;
         object.script_or_module = None;
@@ -96,13 +96,15 @@ impl BuiltinFunction {
     pub fn set_closure_environment<T>(&mut self, closure_environment: Gc<T>) {
         self.closure_environment = Some(closure_environment.cast::<ClosureEnvironment>());
     }
+}
 
+impl Gc<BuiltinFunction> {
     pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        self.object_mut().set_property(key, value);
+        self.object().set_property(key, value);
     }
 
     pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.object_mut().intrinsic_frozen_property(key, value);
+        self.object().intrinsic_frozen_property(key, value);
     }
 
     pub fn intrinsic_func(
@@ -113,8 +115,7 @@ impl BuiltinFunction {
         length: i32,
         realm: Gc<Realm>,
     ) {
-        self.object_mut()
-            .intrinsic_func(cx, name, func, length, realm);
+        self.object().intrinsic_func(cx, name, func, length, realm);
     }
 
     pub fn intrinsic_getter(
@@ -124,7 +125,7 @@ impl BuiltinFunction {
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {
-        self.object_mut().intrinsic_getter(cx, name, func, realm)
+        self.object().intrinsic_getter(cx, name, func, realm)
     }
 }
 
@@ -139,7 +140,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
     ) -> EvalResult<Value> {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.object_()),
+            function: Some(self.object()),
             realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,
@@ -168,7 +169,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
     ) -> EvalResult<Gc<ObjectValue>> {
         let current_execution_context = cx.current_execution_context();
         let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.object_()),
+            function: Some(self.object()),
             realm: self.realm,
             script_or_module: None,
             lexical_env: cx.uninit_environment,

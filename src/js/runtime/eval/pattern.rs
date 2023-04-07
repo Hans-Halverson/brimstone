@@ -21,7 +21,7 @@ use crate::{
             iterator::{
                 get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
             },
-            object_value::{ExtendsObject, ObjectValue},
+            object_value::ObjectValue,
             ordinary_object::ordinary_object_create,
             property::Property,
             property_key::PropertyKey,
@@ -352,7 +352,7 @@ fn iterator_binding_initialization(
                 }
             }
             ast::ArrayPatternElement::Rest(_) => {
-                let mut array = must!(array_create(cx, 0, None));
+                let array = must!(array_create(cx, 0, None));
                 let mut index = 0;
 
                 loop {
@@ -404,7 +404,7 @@ fn iterator_binding_initialization(
                         EvalResult::Ok(next_value) => {
                             let property = Property::data(next_value, true, true, true);
                             array
-                                .object_mut()
+                                .object()
                                 .set_property(&PropertyKey::array_index(cx, index), property);
                             index += 1;
                         }

@@ -36,7 +36,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             cx: &mut Context,
             key: &PropertyKey,
         ) -> EvalResult<Option<PropertyDescriptor>> {
-            self.object__().get_own_property(cx, key)
+            self.ordinary_object().get_own_property(cx, key)
         }
     );
 
@@ -48,21 +48,21 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             key: &PropertyKey,
             desc: PropertyDescriptor,
         ) -> EvalResult<bool> {
-            self.object__().define_own_property(cx, key, desc)
+            self.ordinary_object().define_own_property(cx, key, desc)
         }
     );
 
     implement_if_undefined!(
         "has_property",
         fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-            self.object__().has_property(cx, key)
+            self.ordinary_object().has_property(cx, key)
         }
     );
 
     implement_if_undefined!(
         "get",
         fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-            self.object__().get(cx, key, receiver)
+            self.ordinary_object().get(cx, key, receiver)
         }
     );
 
@@ -75,21 +75,21 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             value: Value,
             receiver: Value,
         ) -> EvalResult<bool> {
-            self.object__().set(cx, key, value, receiver)
+            self.ordinary_object().set(cx, key, value, receiver)
         }
     );
 
     implement_if_undefined!(
         "delete",
         fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-            self.object__().delete(cx, key)
+            self.ordinary_object().delete(cx, key)
         }
     );
 
     implement_if_undefined!(
         "own_property_keys",
         fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-            self.object__().own_property_keys(cx)
+            self.ordinary_object().own_property_keys(cx)
         }
     );
 

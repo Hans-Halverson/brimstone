@@ -25,7 +25,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
@@ -102,7 +102,7 @@ impl Function {
         let mut object = cx.heap.alloc_uninit::<Function>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::Function);
 
-        object_ordinary_init(object.object_mut(), prototype);
+        object_ordinary_init(object.object(), prototype);
 
         object.is_strict = is_strict;
         object.is_class_constructor = false;
@@ -281,16 +281,16 @@ impl VirtualObject for Gc<Function> {
     }
 }
 
-impl Function {
+impl Gc<Function> {
     // 10.2.1.1 PrepareForOrdinaryCall
     fn prepare_for_ordinary_call(
         &self,
         cx: &mut Context,
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<ExecutionContext> {
-        let func_env = to_trait_object(FunctionEnvironment::new(cx, self.into(), new_target));
+        let func_env = to_trait_object(FunctionEnvironment::new(cx, *self, new_target));
         let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.into()),
+            function: Some(self.object()),
             realm: self.realm,
             script_or_module: self.script_or_module,
             lexical_env: func_env,
@@ -303,7 +303,9 @@ impl Function {
 
         callee_context
     }
+}
 
+impl Function {
     // 10.2.1.2 OrdinaryCallBindThis
     fn ordinary_call_bind_this(
         &self,

@@ -16,7 +16,7 @@ use crate::{
         gc::Gc,
         get,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue, VirtualObject},
+        object_value::{ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init,
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -43,28 +43,35 @@ impl FunctionPrototype {
 
         object
     }
+}
 
+impl Gc<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        object_ordinary_init(self.object_mut(), object_proto);
+        object_ordinary_init(self.object(), object_proto);
 
-        self.object_mut().intrinsic_name_prop(cx, "");
-        self.object_mut().instrinsic_length_prop(cx, 0);
+        self.object().intrinsic_name_prop(cx, "");
+        self.object().instrinsic_length_prop(cx, 0);
 
-        self.object_mut()
-            .intrinsic_func(cx, &cx.names.apply(), Self::apply, 2, realm);
-        self.object_mut()
-            .intrinsic_func(cx, &cx.names.bind(), Self::bind, 1, realm);
-        self.object_mut()
-            .intrinsic_func(cx, &cx.names.call(), Self::call_intrinsic, 1, realm);
+        self.object()
+            .intrinsic_func(cx, &cx.names.apply(), FunctionPrototype::apply, 2, realm);
+        self.object()
+            .intrinsic_func(cx, &cx.names.bind(), FunctionPrototype::bind, 1, realm);
+        self.object().intrinsic_func(
+            cx,
+            &cx.names.call(),
+            FunctionPrototype::call_intrinsic,
+            1,
+            realm,
+        );
 
         // [Function.hasInstance] property
         let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
         let has_instance_name = cx.heap.alloc_string(String::from("[Function.hasInstance]"));
         let has_instance_func = BuiltinFunction::create(
             cx,
-            Self::has_instance,
+            FunctionPrototype::has_instance,
             1,
             &PropertyKey::string_not_number(has_instance_name),
             Some(realm),
@@ -72,12 +79,14 @@ impl FunctionPrototype {
             None,
         )
         .into();
-        self.object_mut().set_property(
+        self.object().set_property(
             &has_instance_key,
             Property::data(has_instance_func, false, false, false),
         );
     }
+}
 
+impl FunctionPrototype {
     // 20.2.3.1 Function.prototype.apply
     fn apply(
         cx: &mut Context,

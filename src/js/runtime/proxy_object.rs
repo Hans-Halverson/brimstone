@@ -11,7 +11,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
@@ -42,7 +42,7 @@ impl ProxyObject {
         let mut object = cx.heap.alloc_uninit::<ProxyObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::Proxy);
 
-        object_ordinary_init(object.object_mut(), object_proto);
+        object_ordinary_init(object.object(), object_proto);
 
         object.proxy_handler = Some(proxy_handler);
         object.proxy_target = Some(proxy_target);

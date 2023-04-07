@@ -1,20 +1,11 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        abstract_operations::length_of_array_like,
-        array_object::create_array_from_list,
-        completion::EvalResult,
-        error::type_error_,
-        gc::Gc,
-        iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
-        ordinary_object::object_ordinary_init,
-        property::Property,
-        property_key::PropertyKey,
-        realm::Realm,
-        value::Value,
-        Context,
+        abstract_operations::length_of_array_like, array_object::create_array_from_list,
+        completion::EvalResult, error::type_error_, gc::Gc, iterator::create_iter_result_object,
+        object_descriptor::ObjectKind, object_value::ObjectValue,
+        ordinary_object::object_ordinary_init, property::Property, property_key::PropertyKey,
+        realm::Realm, value::Value, Context,
     },
     maybe,
 };
@@ -50,7 +41,7 @@ impl ArrayIterator {
         let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::ArrayIterator);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         // Only difference between array and typed array iterators is length getter, so calculate
         // on iterator start to avoid computing on every iteration.

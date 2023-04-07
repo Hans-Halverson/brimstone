@@ -31,7 +31,7 @@ use crate::{
             },
             gc::Gc,
             intrinsics::intrinsics::Intrinsic,
-            object_value::{ExtendsObject, ObjectValue},
+            object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
             property::{PrivateProperty, Property},
             property_descriptor::PropertyDescriptor,
@@ -156,14 +156,12 @@ pub fn function_declaration_instantiation(
                 pattern
             }
             ast::FunctionParam::Rest(rest) => {
-                let mut rest_array = must!(array_create(cx, 0, None));
+                let rest_array = must!(array_create(cx, 0, None));
 
                 for (array_index, arg_index) in (arg_index..arguments.len()).enumerate() {
                     let array_key = PropertyKey::array_index(cx, array_index as u32);
                     let array_property = Property::data(arguments[arg_index], true, true, true);
-                    rest_array
-                        .object_mut()
-                        .set_property(&array_key, array_property);
+                    rest_array.object().set_property(&array_key, array_property);
                 }
 
                 value = rest_array.into();

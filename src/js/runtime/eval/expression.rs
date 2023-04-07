@@ -25,7 +25,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
-            object_value::{ExtendsObject, ObjectValue},
+            object_value::ObjectValue,
             ordinary_object::ordinary_object_create,
             property::Property,
             property_descriptor::PropertyDescriptor,
@@ -155,7 +155,7 @@ fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult
 // 13.2.4.2 Array Initializer Evaluation
 // 13.2.4.1 ArrayAccumulation
 fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalResult<Value> {
-    let mut array = must!(array_create(cx, 0, None));
+    let array = must!(array_create(cx, 0, None));
 
     let mut index = 0;
     for element in expr.elements.iter() {
@@ -164,7 +164,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let key = PropertyKey::array_index(cx, index);
                 let desc = Property::data(Value::empty(), true, true, true);
 
-                array.object_mut().set_property(&key, desc);
+                array.object().set_property(&key, desc);
                 index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
@@ -172,7 +172,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
 
-                array.object_mut().set_property(&key, desc);
+                array.object().set_property(&key, desc);
                 index += 1;
             }
             ast::ArrayElement::Spread(spread) => {
@@ -181,7 +181,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                     let key = PropertyKey::array_index(cx, index);
                     let desc = Property::data(value, true, true, true);
 
-                    array.object_mut().set_property(&key, desc);
+                    array.object().set_property(&key, desc);
                     index += 1;
 
                     None

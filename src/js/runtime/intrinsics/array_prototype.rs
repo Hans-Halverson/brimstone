@@ -11,7 +11,7 @@ use crate::{
         gc::Gc,
         get,
         numeric_constants::MAX_SAFE_INTEGER_U64,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::ordinary_object_create_optional_proto,
         property::Property,
         property_key::PropertyKey,
@@ -38,7 +38,7 @@ impl ArrayPrototype {
     // 23.1.3 Properties of the Array Prototype Object
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut array = ArrayObject::new(cx, object_proto);
+        let array = ArrayObject::new(cx, object_proto);
 
         // Create values function as it is referenced by multiple properties
         let values_function = BuiltinFunction::create(
@@ -54,95 +54,87 @@ impl ArrayPrototype {
 
         // Constructor property is added once ArrayConstructor has been created
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.at(), Self::at, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.concat(), Self::concat, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.copy_within(), Self::copy_within, 2, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.every(), Self::every, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.fill(), Self::fill, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.filter(), Self::filter, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.find(), Self::find, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.find_index(), Self::find_index, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.flat(), Self::flat, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.flat_map(), Self::flat_map, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
-        array.object_mut().intrinsic_func(
-            cx,
-            &cx.names.last_index_of(),
-            Self::last_index_of,
-            1,
-            realm,
-        );
         array
-            .object_mut()
+            .object()
+            .intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
+        array
+            .object()
             .intrinsic_func(cx, &cx.names.map_(), Self::map, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.pop(), Self::pop, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.reduce(), Self::reduce, 1, realm);
-        array.object_mut().intrinsic_func(
-            cx,
-            &cx.names.reduce_right(),
-            Self::reduce_right,
-            1,
-            realm,
-        );
         array
-            .object_mut()
+            .object()
+            .intrinsic_func(cx, &cx.names.reduce_right(), Self::reduce_right, 1, realm);
+        array
+            .object()
             .intrinsic_func(cx, &cx.names.reverse(), Self::reverse, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.shift(), Self::shift, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.splice(), Self::splice, 2, realm);
-        array.object_mut().intrinsic_func(
+        array.object().intrinsic_func(
             cx,
             &cx.names.to_locale_string(),
             Self::to_locale_string,
@@ -150,27 +142,25 @@ impl ArrayPrototype {
             realm,
         );
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
         array
-            .object_mut()
+            .object()
             .intrinsic_data_prop(&cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         array
-            .object_mut()
+            .object()
             .set_property(&iterator_key, Property::data(values_function, true, false, true));
 
         // 23.1.3.35 Array.prototype [ @@unscopables ]
         let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
-        array
-            .object_mut()
-            .set_property(&unscopables_key, unscopables);
+        array.object().set_property(&unscopables_key, unscopables);
 
         array.into()
     }

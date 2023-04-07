@@ -8,7 +8,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
@@ -33,7 +33,7 @@ impl ArrayObject {
         let mut array = cx.heap.alloc_uninit::<ArrayObject>();
         array.descriptor = cx.base_descriptors.get(ObjectKind::ArrayObject);
 
-        object_ordinary_init(array.object_mut(), proto);
+        object_ordinary_init(array.object(), proto);
 
         array.is_length_writable = true;
 
@@ -56,15 +56,15 @@ impl VirtualObject for Gc<ArrayObject> {
                 return false.into();
             }
 
-            if !must!(ordinary_define_own_property(cx, self.object_(), key, desc)) {
+            if !must!(ordinary_define_own_property(cx, self.object(), key, desc)) {
                 return false.into();
             }
 
             true.into()
         } else if key.is_string() && key.as_string() == cx.names.length().as_string() {
-            array_set_length(cx, self, desc)
+            array_set_length(cx, *self, desc)
         } else {
-            ordinary_define_own_property(cx, self.object_(), key, desc)
+            ordinary_define_own_property(cx, self.object(), key, desc)
         }
     }
 
@@ -94,7 +94,7 @@ impl VirtualObject for Gc<ArrayObject> {
             return false.into();
         }
 
-        ordinary_delete(cx, self.object_(), key)
+        ordinary_delete(cx, self.object(), key)
     }
 
     // Not part of spec, but needed to add custom length property
@@ -183,7 +183,7 @@ pub fn array_species_create(
 // Modified from spec to use custom length property.
 fn array_set_length(
     cx: &mut Context,
-    array: &mut ArrayObject,
+    mut array: Gc<ArrayObject>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let mut new_len = array.object().array_properties_length();
@@ -214,7 +214,7 @@ fn array_set_length(
     }
 
     // TODO: Resize array_properties
-    let has_delete_succeeded = array.object_mut().set_array_properties_length(new_len);
+    let has_delete_succeeded = array.object().set_array_properties_length(new_len);
 
     if let Some(false) = desc.is_writable {
         array.is_length_writable = false;

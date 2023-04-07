@@ -21,7 +21,7 @@ use super::{
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
         ordinary_get_own_property, ordinary_object_create_optional_proto,
@@ -61,7 +61,7 @@ impl MappedArgumentsObject {
         let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::MappedArgumentsObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.parameter_map = parameter_map;
 
@@ -108,7 +108,7 @@ impl VirtualObject for Gc<MappedArgumentsObject> {
             }
         }
 
-        if !must!(ordinary_define_own_property(cx, self.object_(), key, new_arg_desc)) {
+        if !must!(ordinary_define_own_property(cx, self.object(), key, new_arg_desc)) {
             return false.into();
         }
 
@@ -134,7 +134,7 @@ impl VirtualObject for Gc<MappedArgumentsObject> {
         if must!(has_own_property(cx, self.parameter_map, key)) {
             get(cx, self.parameter_map, key)
         } else {
-            ordinary_get(cx, self.object_(), key, receiver)
+            ordinary_get(cx, self.object(), key, receiver)
         }
     }
 
@@ -147,7 +147,7 @@ impl VirtualObject for Gc<MappedArgumentsObject> {
         receiver: Value,
     ) -> EvalResult<bool> {
         let is_mapped =
-            if receiver.is_object() && same_object_value(self.object_(), receiver.as_object()) {
+            if receiver.is_object() && same_object_value(self.object(), receiver.as_object()) {
                 must!(has_own_property(cx, self.parameter_map, key))
             } else {
                 false
@@ -157,14 +157,14 @@ impl VirtualObject for Gc<MappedArgumentsObject> {
             must!(set(cx, self.parameter_map, key, value, false));
         }
 
-        ordinary_set(cx, self.object_(), key, value, receiver)
+        ordinary_set(cx, self.object(), key, value, receiver)
     }
 
     // 10.4.4.5 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
         let is_mapped = must!(has_own_property(cx, self.parameter_map, key));
 
-        let result = maybe!(ordinary_delete(cx, self.object_(), key));
+        let result = maybe!(ordinary_delete(cx, self.object(), key));
 
         if result && is_mapped {
             must!(self.parameter_map.delete(cx, key));

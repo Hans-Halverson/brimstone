@@ -6,7 +6,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::Property,
         realm::Realm,
@@ -36,7 +36,7 @@ impl BooleanObject {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.boolean_data = boolean_data;
 
@@ -61,7 +61,7 @@ impl BooleanObject {
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.object_mut(),
+            object.object(),
             constructor,
             Intrinsic::BooleanPrototype
         ));

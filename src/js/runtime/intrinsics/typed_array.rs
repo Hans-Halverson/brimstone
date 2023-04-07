@@ -12,7 +12,7 @@ use crate::{
         gc::{Gc, GcDeref},
         iterator::iter_iterator_method_values,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue, VirtualObject},
+        object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
             get_prototype_from_constructor, object_ordinary_init, ordinary_define_own_property,
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
@@ -68,8 +68,13 @@ pub trait TypedArray {
         array_buffer: Gc<ArrayBufferObject>,
         byte_index: usize,
     ) -> Value;
+}
 
-    fn into_object_value(&self) -> Gc<ObjectValue>;
+impl Gc<dyn TypedArray> {
+    #[inline]
+    pub fn into_object_value(&self) -> Gc<ObjectValue> {
+        self.cast()
+    }
 }
 
 impl GcDeref for dyn TypedArray {}

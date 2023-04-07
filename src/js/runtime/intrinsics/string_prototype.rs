@@ -6,7 +6,7 @@ use crate::{
         error::{range_error_, type_error_},
         function::get_argument,
         gc::Gc,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
         string_value::StringValue,
@@ -29,23 +29,19 @@ impl StringPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let mut object = StringObject::new(cx, object_proto, empty_string);
+        let object = StringObject::new(cx, object_proto, empty_string);
 
         // Constructor property is added once StringConstructor has been created
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.at(), Self::at, 1, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.char_at(), Self::char_at, 1, realm);
-        object.object_mut().intrinsic_func(
-            cx,
-            &cx.names.char_code_at(),
-            Self::char_code_at,
-            1,
-            realm,
-        );
-        object.object_mut().intrinsic_func(
+        object
+            .object()
+            .intrinsic_func(cx, &cx.names.char_code_at(), Self::char_code_at, 1, realm);
+        object.object().intrinsic_func(
             cx,
             &cx.names.code_point_at(),
             Self::code_point_at,
@@ -53,18 +49,18 @@ impl StringPrototype {
             realm,
         );
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.concat(), Self::concat, 1, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.ends_with(), Self::ends_with, 1, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
-        object.object_mut().intrinsic_func(
+        object.object().intrinsic_func(
             cx,
             &cx.names.last_index_of(),
             Self::last_index_of,
@@ -72,49 +68,45 @@ impl StringPrototype {
             realm,
         );
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.repeat(), Self::repeat, 1, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.split(), Self::split, 2, realm);
-        object.object_mut().intrinsic_func(
-            cx,
-            &cx.names.starts_with(),
-            Self::starts_with,
-            1,
-            realm,
-        );
         object
-            .object_mut()
+            .object()
+            .intrinsic_func(cx, &cx.names.starts_with(), Self::starts_with, 1, realm);
+        object
+            .object()
             .intrinsic_func(cx, &cx.names.substring(), Self::substring, 2, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
-        object.object_mut().intrinsic_func(
+        object.object().intrinsic_func(
             cx,
             &cx.names.to_locale_lower_case(),
             Self::to_locale_lower_case,
             0,
             realm,
         );
-        object.object_mut().intrinsic_func(
+        object.object().intrinsic_func(
             cx,
             &cx.names.to_locale_upper_case(),
             Self::to_locale_upper_case,
             0,
             realm,
         );
-        object.object_mut().intrinsic_func(
+        object.object().intrinsic_func(
             cx,
             &cx.names.to_lower_case(),
             Self::to_lower_case,
             0,
             realm,
         );
-        object.object_mut().intrinsic_func(
+        object.object().intrinsic_func(
             cx,
             &cx.names.to_upper_case(),
             Self::to_upper_case,
@@ -122,22 +114,22 @@ impl StringPrototype {
             realm,
         );
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.trim(), Self::trim, 0, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.trim_end(), Self::trim_end, 0, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.trim_start(), Self::trim_start, 0, realm);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
 
         // 22.1.3.34 String.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         object
-            .object_mut()
+            .object()
             .intrinsic_func(cx, &iterator_key, Self::iterator, 0, realm);
 
         object.into()

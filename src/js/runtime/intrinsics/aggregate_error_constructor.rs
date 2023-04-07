@@ -11,7 +11,7 @@ use crate::{
         gc::Gc,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::object_ordinary_init_from_constructor,
         property::Property,
         property_descriptor::PropertyDescriptor,
@@ -38,7 +38,7 @@ impl AggregateErrorObject {
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.object_mut(),
+            object.object(),
             constructor,
             Intrinsic::AggregateErrorPrototype
         ));

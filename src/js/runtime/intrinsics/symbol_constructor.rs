@@ -7,7 +7,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         realm::Realm,
         type_utilities::to_string,
@@ -34,7 +34,7 @@ impl SymbolObject {
         let mut object = cx.heap.alloc_uninit::<SymbolObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::SymbolObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.symbol_data = symbol_data;
 

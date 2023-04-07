@@ -6,7 +6,7 @@ use crate::{
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property::Property,
         property_key::PropertyKey,
@@ -38,7 +38,7 @@ impl StringIterator {
         let mut object = cx.heap.alloc_uninit::<StringIterator>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::StringIterator);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.string = string;
         object.code_points_iter = string.iter_code_points();

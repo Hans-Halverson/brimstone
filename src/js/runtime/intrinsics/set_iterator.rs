@@ -7,7 +7,7 @@ use crate::{
         gc::Gc,
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property::Property,
         property_key::PropertyKey,
@@ -44,7 +44,7 @@ impl<'a> SetIterator<'a> {
         let mut object = cx.heap.alloc_uninit::<SetIterator>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::SetIterator);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.set = set;
         object.iter = set.set_data().iter();

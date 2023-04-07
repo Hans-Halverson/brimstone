@@ -36,18 +36,6 @@ impl<T> Gc<T> {
     }
 }
 
-impl<T: ?Sized> AsRef<T> for Gc<T> {
-    fn as_ref(&self) -> &T {
-        unsafe { self.ptr.as_ref() }
-    }
-}
-
-impl<T: ?Sized> AsMut<T> for Gc<T> {
-    fn as_mut(&mut self) -> &mut T {
-        unsafe { self.ptr.as_mut() }
-    }
-}
-
 impl<T: ?Sized> Clone for Gc<T> {
     fn clone(&self) -> Self {
         Gc { ptr: self.ptr }
@@ -63,41 +51,12 @@ impl<T: GcDeref + ?Sized> Deref for Gc<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.as_ref()
+        unsafe { self.ptr.as_ref() }
     }
 }
 
 impl<T: GcDeref + ?Sized> DerefMut for Gc<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_mut()
+        unsafe { self.ptr.as_mut() }
     }
-}
-
-#[macro_export]
-macro_rules! impl_gc_into {
-    ($from:ident $(<$($generics:tt),*>)?, $into:ty) => {
-        impl $(<$($generics),*>)? Into<Gc<$into>> for Gc<$from $(<$($generics),*>)?> {
-            fn into(self) -> Gc<$into> {
-                self.cast()
-            }
-        }
-
-        impl<'t, $($($generics),*)?> Into<&'t $into> for &'t $from $(<$($generics),*>)? {
-            fn into(self) -> &'t $into {
-                unsafe { &*((self as *const _) as *const $into) }
-            }
-        }
-
-        impl $(<$($generics),*>)? Into<Gc<$into>> for &$from $(<$($generics),*>)? {
-            fn into(self) -> Gc<$into> {
-                Gc::from_ptr(self as *const _ as *mut $into)
-            }
-        }
-
-        impl $(<$($generics),*>)? Into<Gc<$into>> for &mut $from $(<$($generics),*>)? {
-            fn into(self) -> Gc<$into> {
-                Gc::from_ptr(self as *const _ as *mut $into)
-            }
-        }
-    };
 }

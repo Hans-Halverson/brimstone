@@ -59,8 +59,6 @@ macro_rules! extend_object_without_conversions {
 
         impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
 
-        impl $(<$($generics),*>)? $crate::js::runtime::object_value::ExtendsObject for $name $(<$($generics),*>)? {}
-
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[inline]
             pub fn descriptor(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
@@ -75,12 +73,14 @@ macro_rules! extend_object_without_conversions {
 
         impl $(<$($generics),*>)? $crate::js::runtime::Gc<$name $(<$($generics),*>)?> {
             #[inline]
-            pub fn object_(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue> {
+            pub fn object(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue> {
                 self.cast()
             }
 
+            /// Cast to an ordinary object so that ordinary object's methods can be called. Only
+            /// used when we know we want the default ordinary methods to be called.
             #[inline]
-            pub fn object__(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::ordinary_object::OrdinaryObject> {
+            pub fn ordinary_object(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::ordinary_object::OrdinaryObject> {
                 self.cast()
             }
         }
@@ -100,20 +100,11 @@ macro_rules! extend_object {
             }
         }
 
-        $crate::impl_gc_into!($name $(<$($generics),*>)?, $crate::js::runtime::object_value::ObjectValue);
-    }
-}
-
-pub trait ExtendsObject {
-    // Getters to cast subtype to this type
-    #[inline]
-    fn object(&self) -> &ObjectValue {
-        unsafe { &*(self as *const _ as *const ObjectValue) }
-    }
-
-    #[inline]
-    fn object_mut(&mut self) -> &mut ObjectValue {
-        unsafe { &mut *(self as *mut _ as *mut ObjectValue) }
+        impl $(<$($generics),*>)? Into<Gc<$crate::js::runtime::object_value::ObjectValue>> for Gc<$name $(<$($generics),*>)?> {
+            fn into(self) -> Gc<$crate::js::runtime::object_value::ObjectValue> {
+                self.cast()
+            }
+        }
     }
 }
 

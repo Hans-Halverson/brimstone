@@ -5,28 +5,24 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         gc::Gc,
+        intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::object_ordinary_init_from_constructor,
+        ordinary_object::{
+            is_compatible_property_descriptor, object_ordinary_init,
+            object_ordinary_init_from_constructor, ordinary_define_own_property,
+            ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
+            ordinary_own_string_symbol_property_keys,
+        },
         property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
+        type_utilities::canonical_numeric_index_string,
         value::Value,
         Context,
     },
     maybe,
-};
-
-use super::{
-    intrinsics::intrinsics::Intrinsic,
-    object_value::ExtendsObject,
-    ordinary_object::{
-        is_compatible_property_descriptor, object_ordinary_init, ordinary_define_own_property,
-        ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
-        ordinary_own_string_symbol_property_keys,
-    },
-    type_utilities::canonical_numeric_index_string,
 };
 
 // 10.4.3 String Exotic Objects
@@ -46,12 +42,12 @@ impl StringObject {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.string_data = string_data;
 
         // String objects have an immutable length property
-        object.object_mut().set_property(
+        object.object().set_property(
             &cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );
@@ -69,7 +65,7 @@ impl StringObject {
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.object_mut(),
+            object.object(),
             constructor,
             Intrinsic::StringPrototype
         ));
@@ -77,7 +73,7 @@ impl StringObject {
         object.string_data = string_data;
 
         // String objects have an immutable length property
-        object.object_mut().set_property(
+        object.object().set_property(
             &cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );
@@ -130,7 +126,7 @@ impl VirtualObject for Gc<StringObject> {
         cx: &mut Context,
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        let desc = ordinary_get_own_property(&self.object(), key);
+        let desc = ordinary_get_own_property(self.object(), key);
         if desc.is_none() {
             self.string_get_own_property(cx, key).into()
         } else {
@@ -150,7 +146,7 @@ impl VirtualObject for Gc<StringObject> {
             let is_extensible = self.object().is_extensible_field();
             is_compatible_property_descriptor(cx, is_extensible, desc, string_desc).into()
         } else {
-            ordinary_define_own_property(cx, self.object_(), key, desc)
+            ordinary_define_own_property(cx, self.object(), key, desc)
         }
     }
 

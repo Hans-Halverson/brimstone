@@ -7,7 +7,7 @@ use super::{
     completion::EvalResult,
     gc::Gc,
     object_descriptor::ObjectKind,
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     ordinary_object::object_ordinary_init_optional_proto,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -38,7 +38,7 @@ impl BoundFunctionObject {
         let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
 
-        object_ordinary_init_optional_proto(object.object_mut(), proto);
+        object_ordinary_init_optional_proto(object.object(), proto);
 
         object.bound_target_function = target_function;
         object.bound_this = bound_this;
@@ -69,7 +69,7 @@ impl VirtualObject for Gc<BoundFunctionObject> {
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let new_target = if same_object_value(self.object_(), new_target) {
+        let new_target = if same_object_value(self.object(), new_target) {
             self.bound_target_function
         } else {
             new_target

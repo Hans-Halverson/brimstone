@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::DerefMut};
 
 use crate::{extend_object, maybe, must};
 
@@ -11,7 +11,7 @@ use super::{
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
-    object_value::{ExtendsObject, ObjectValue, VirtualObject},
+    object_value::{ObjectValue, VirtualObject},
     property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -108,7 +108,7 @@ impl VirtualObject for Gc<OrdinaryObject> {
         _: &mut Context,
         key: &PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        ordinary_get_own_property(self.as_ref().into(), key).into()
+        ordinary_get_own_property(self.object(), key).into()
     }
 
     // 10.1.6 [[DefineOwnProperty]]
@@ -118,17 +118,17 @@ impl VirtualObject for Gc<OrdinaryObject> {
         key: &PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        ordinary_define_own_property(cx, (*self).into(), key, desc)
+        ordinary_define_own_property(cx, self.object(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
     fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_has_property(cx, (*self).into(), key)
+        ordinary_has_property(cx, self.object(), key)
     }
 
     // 10.1.8 [[Get]]
     fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
-        ordinary_get(cx, (*self).into(), key, receiver)
+        ordinary_get(cx, self.object(), key, receiver)
     }
 
     // 10.1.9 [[Set]]
@@ -139,23 +139,23 @@ impl VirtualObject for Gc<OrdinaryObject> {
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
-        ordinary_set(cx, (*self).into(), key, value, receiver)
+        ordinary_set(cx, self.object(), key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
-        ordinary_delete(cx, (*self).into(), key)
+        ordinary_delete(cx, self.object(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-        ordinary_own_property_keys(cx, self.as_ref().into()).into()
+        ordinary_own_property_keys(cx, self.object()).into()
     }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
-    object: &ObjectValue,
+    object: Gc<ObjectValue>,
     key: &PropertyKey,
 ) -> Option<PropertyDescriptor> {
     match object.get_property(key) {
@@ -164,8 +164,8 @@ pub fn ordinary_get_own_property(
             if property.value().is_accessor() {
                 let accessor_value = property.value().as_accessor();
                 Some(PropertyDescriptor::accessor(
-                    accessor_value.as_ref().get,
-                    accessor_value.as_ref().set,
+                    accessor_value.get,
+                    accessor_value.set,
                     property.is_enumerable(),
                     property.is_configurable(),
                 ))
@@ -346,11 +346,11 @@ pub fn validate_and_apply_property_descriptor(
                 let mut accessor_value = property.value().as_accessor();
 
                 if let Some(get) = desc.get {
-                    accessor_value.as_mut().get = Some(get);
+                    accessor_value.get = Some(get);
                 }
 
                 if let Some(set) = desc.set {
-                    accessor_value.as_mut().set = Some(set);
+                    accessor_value.set = Some(set);
                 }
             }
         }
@@ -478,7 +478,7 @@ pub fn ordinary_delete(
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(cx: &mut Context, object: &ObjectValue) -> Vec<Value> {
+pub fn ordinary_own_property_keys(cx: &mut Context, object: Gc<ObjectValue>) -> Vec<Value> {
     let mut keys: Vec<Value> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
@@ -490,7 +490,7 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: &ObjectValue) -> Vec
 #[inline]
 pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     cx: &mut Context,
-    object: &ObjectValue,
+    object: Gc<ObjectValue>,
     keys: &mut Vec<Value>,
     filter: F,
 ) {
@@ -524,7 +524,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 #[inline]
 pub fn ordinary_own_string_symbol_property_keys(
     cx: &mut Context,
-    object: &ObjectValue,
+    object: Gc<ObjectValue>,
     keys: &mut Vec<Value>,
 ) {
     for property_key in object.properties().keys() {
@@ -541,7 +541,7 @@ pub fn ordinary_own_string_symbol_property_keys(
 }
 
 // 10.1.12 OrdinaryObjectCreate but on an uninitialized object as part of construction
-pub fn object_ordinary_init(object: &mut ObjectValue, proto: Gc<ObjectValue>) {
+pub fn object_ordinary_init(object: Gc<ObjectValue>, proto: Gc<ObjectValue>) {
     object_ordinary_init_optional_proto(object, Some(proto))
 }
 
@@ -559,15 +559,19 @@ pub fn ordinary_object_create_with_descriptor(
     let mut object = cx.heap.alloc_uninit::<ObjectValue>();
     object.set_descriptor(descriptor);
 
-    object_ordinary_init_optional_proto(object.as_mut(), proto);
+    object_ordinary_init_optional_proto(object, proto);
 
     object
 }
 
 pub fn object_ordinary_init_optional_proto(
-    object: &mut ObjectValue,
+    mut object: Gc<ObjectValue>,
     proto: Option<Gc<ObjectValue>>,
 ) {
+    // Object initialization does not currentlly allocate so a GC cannot occur. This means it is
+    // safe to use a raw reference.
+    let object = object.deref_mut();
+
     object.set_prototype(proto);
     object.set_properties(IndexMap::new());
     object.set_array_properties(ArrayProperties::new());
@@ -582,7 +586,7 @@ pub fn ordinary_object_create_optional_proto(
     let mut object = cx.heap.alloc_uninit::<ObjectValue>();
     object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
 
-    object_ordinary_init_optional_proto(object.as_mut(), proto);
+    object_ordinary_init_optional_proto(object, proto);
 
     object
 }
@@ -590,7 +594,7 @@ pub fn ordinary_object_create_optional_proto(
 // 10.1.13 OrdinaryCreateFromConstructor
 pub fn object_ordinary_init_from_constructor(
     cx: &mut Context,
-    object: &mut ObjectValue,
+    object: Gc<ObjectValue>,
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<()> {
@@ -611,7 +615,7 @@ pub fn ordinary_create_from_constructor(
 
     maybe!(object_ordinary_init_from_constructor(
         cx,
-        object.object_mut(),
+        object,
         constructor,
         intrinsic_default_proto,
     ));

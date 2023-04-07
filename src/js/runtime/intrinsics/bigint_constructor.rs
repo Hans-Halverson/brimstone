@@ -7,7 +7,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property::Property,
         realm::Realm,
@@ -35,7 +35,7 @@ impl BigIntObject {
         let mut object = cx.heap.alloc_uninit::<BigIntObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BigIntObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.bigint_data = bigint_data;
 

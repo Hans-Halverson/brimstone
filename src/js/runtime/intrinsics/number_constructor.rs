@@ -11,7 +11,7 @@ use crate::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
         object_descriptor::ObjectKind,
-        object_value::{ExtendsObject, ObjectValue},
+        object_value::ObjectValue,
         ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
         property::Property,
         realm::Realm,
@@ -41,7 +41,7 @@ impl NumberObject {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
 
-        object_ordinary_init(object.object_mut(), proto);
+        object_ordinary_init(object.object(), proto);
 
         object.number_data = number_data;
 
@@ -64,7 +64,7 @@ impl NumberObject {
 
         maybe!(object_ordinary_init_from_constructor(
             cx,
-            object.object_mut(),
+            object.object(),
             constructor,
             Intrinsic::NumberPrototype
         ));

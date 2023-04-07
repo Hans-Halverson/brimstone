@@ -226,7 +226,7 @@ macro_rules! create_typed_array_constructor {
                 let mut object = cx.heap.alloc_uninit::<$typed_array>();
                 object.descriptor = cx.base_descriptors.get(ObjectKind::$typed_array);
 
-                object_ordinary_init(object.object_mut(), proto);
+                object_ordinary_init(object.object(), proto);
 
                 object.viewed_array_buffer = viewed_array_buffer;
                 object.byte_length = byte_length;
@@ -281,7 +281,7 @@ macro_rules! create_typed_array_constructor {
             // 10.4.5.2 [[HasProperty]]
             fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_has_property(cx, self.object_(), key),
+                    None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
                         let is_valid_index = !self.viewed_array_buffer.is_detached()
                             && (index as usize) < self.array_length;
@@ -299,7 +299,7 @@ macro_rules! create_typed_array_constructor {
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_define_own_property(cx, self.object_(), key, desc),
+                    None => ordinary_define_own_property(cx, self.object(), key, desc),
                     Some(index) => {
                         let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
@@ -346,7 +346,7 @@ macro_rules! create_typed_array_constructor {
                 receiver: Value,
             ) -> EvalResult<Value> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_get(cx, self.object_(), key, receiver),
+                    None => ordinary_get(cx, self.object(), key, receiver),
                     Some(index) => {
                         let array_buffer = self.viewed_array_buffer;
                         if array_buffer.is_detached() || (index as usize) >= self.array_length {
@@ -369,7 +369,7 @@ macro_rules! create_typed_array_constructor {
                 receiver: Value,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_set(cx, self.object_(), key, value, receiver),
+                    None => ordinary_set(cx, self.object(), key, value, receiver),
                     Some(index) => {
                         let element_value = maybe!($to_element(cx, value));
 
@@ -390,7 +390,7 @@ macro_rules! create_typed_array_constructor {
             // 10.4.5.6 [[Delete]]
             fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_delete(cx, self.object_(), key),
+                    None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
                         let is_invalid_index = self.viewed_array_buffer.is_detached()
                             || (index as usize) >= self.array_length;
@@ -467,11 +467,6 @@ macro_rules! create_typed_array_constructor {
                 };
 
                 $from_element(cx, element)
-            }
-
-            #[inline]
-            fn into_object_value(&self) -> Gc<ObjectValue> {
-                self.into()
             }
         }
 

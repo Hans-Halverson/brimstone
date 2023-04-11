@@ -102,6 +102,9 @@ pub enum ObjectKind {
     ObjectEnvironment,
     PrivateEnvironment,
 
+    ArgAccessorClosureEnvironment,
+    RevokeProxyClosureEnvironment,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -225,6 +228,9 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
         other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironment);
+
+        other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
+        other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);
 
         BaseDescriptors { descriptors }
     }

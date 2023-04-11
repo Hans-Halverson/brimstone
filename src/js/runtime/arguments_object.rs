@@ -20,7 +20,7 @@ use super::{
     gc::GcDeref,
     get,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
@@ -246,9 +246,7 @@ pub fn create_mapped_arguments_object(
             continue;
         }
 
-        let arg_accessor_environment = cx
-            .heap
-            .alloc(ArgAccessorEnvironment { name: *parameter_name, env });
+        let arg_accessor_environment = ArgAccessorEnvironment::new(cx, *parameter_name, env);
 
         let mut getter =
             BuiltinFunction::create(cx, arg_getter, 0, &cx.names.empty_string(), None, None, None);
@@ -280,12 +278,29 @@ pub fn create_mapped_arguments_object(
     object.into()
 }
 
+#[repr(C)]
 struct ArgAccessorEnvironment {
+    descriptor: Gc<ObjectDescriptor>,
     name: Gc<StringValue>,
     env: DynEnvironment,
 }
 
 impl GcDeref for ArgAccessorEnvironment {}
+
+impl ArgAccessorEnvironment {
+    fn new(
+        cx: &mut Context,
+        name: Gc<StringValue>,
+        env: DynEnvironment,
+    ) -> Gc<ArgAccessorEnvironment> {
+        let descriptor = cx
+            .base_descriptors
+            .get(ObjectKind::ArgAccessorClosureEnvironment);
+
+        cx.heap
+            .alloc(ArgAccessorEnvironment { descriptor, name, env })
+    }
+}
 
 // 10.4.4.7.1 MakeArgGetter
 fn arg_getter(

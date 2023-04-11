@@ -6,6 +6,7 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::{Gc, GcDeref},
+        object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         proxy_object::{proxy_create, ProxyObject},
@@ -87,9 +88,7 @@ impl ProxyConstructor {
             Value::undefined().into()
         };
 
-        let revoke_environment = cx
-            .heap
-            .alloc(RevokeEnvironment { revocable_proxy: Some(proxy) });
+        let revoke_environment = RevokeEnvironment::new(cx, Some(proxy));
 
         let mut revoker =
             BuiltinFunction::create(cx, revoke, 0, &cx.names.empty_string(), None, None, None);
@@ -105,8 +104,20 @@ impl ProxyConstructor {
     }
 }
 
+#[repr(C)]
 struct RevokeEnvironment {
+    descriptor: Gc<ObjectDescriptor>,
     revocable_proxy: Option<Gc<ProxyObject>>,
 }
 
 impl GcDeref for RevokeEnvironment {}
+
+impl RevokeEnvironment {
+    fn new(cx: &mut Context, revocable_proxy: Option<Gc<ProxyObject>>) -> Gc<RevokeEnvironment> {
+        let descriptor = cx
+            .base_descriptors
+            .get(ObjectKind::RevokeProxyClosureEnvironment);
+        cx.heap
+            .alloc(RevokeEnvironment { descriptor, revocable_proxy })
+    }
+}

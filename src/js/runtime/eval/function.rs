@@ -86,8 +86,8 @@ pub fn function_declaration_instantiation(
     let mut env = if is_strict || !func_node.has_parameter_expressions {
         callee_context.lexical_env
     } else {
-        let new_env = DeclarativeEnvironment::new(Some(callee_context.lexical_env));
-        callee_context.lexical_env = cx.heap.alloc(new_env).into_dyn();
+        let new_env = DeclarativeEnvironment::new(cx, Some(callee_context.lexical_env));
+        callee_context.lexical_env = new_env.into_dyn();
         callee_context.lexical_env
     };
 
@@ -227,10 +227,7 @@ pub fn function_declaration_instantiation(
     } else {
         // A separate Environment Record is needed to ensure that closures created by expressions in
         // the formal parameter list do not have visibility of declarations in the function body.
-        callee_context.variable_env = cx
-            .heap
-            .alloc(DeclarativeEnvironment::new(Some(env)))
-            .into_dyn();
+        callee_context.variable_env = DeclarativeEnvironment::new(cx, Some(env)).into_dyn();
         let mut var_env = callee_context.variable_env;
 
         let mut instantiated_var_names = HashSet::new();
@@ -266,9 +263,7 @@ pub fn function_declaration_instantiation(
         // Non-strict functions use a separate Environment Record for top-level lexical declarations
         // so that a direct eval can determine whether any var scoped declarations introduced by the
         // eval code conflict with pre-existing top-level lexically scoped declarations.
-        cx.heap
-            .alloc(DeclarativeEnvironment::new(Some(var_env)))
-            .into_dyn()
+        DeclarativeEnvironment::new(cx, Some(var_env)).into_dyn()
     } else {
         var_env
     };
@@ -362,9 +357,7 @@ pub fn instantiate_ordinary_function_expression(
             closure
         }
         Some(id) => {
-            let mut func_env = cx
-                .heap
-                .alloc(DeclarativeEnvironment::new(Some(current_context.lexical_env)));
+            let mut func_env = DeclarativeEnvironment::new(cx, Some(current_context.lexical_env));
 
             let name_value = id_string_value(cx, id);
             must!(func_env.create_immutable_binding(cx, name_value, false));

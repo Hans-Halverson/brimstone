@@ -111,29 +111,26 @@ pub fn perform_eval(
     let is_strict_eval = is_strict_caller || ast.has_use_strict_directive;
 
     let (lex_env, var_env, private_env) = if is_direct {
-        let lex_env = DeclarativeEnvironment::new(Some(running_context.lexical_env));
-        (
-            cx.heap.alloc(lex_env).into_dyn(),
-            running_context.variable_env,
-            running_context.private_env,
-        )
+        let lex_env = DeclarativeEnvironment::new(cx, Some(running_context.lexical_env));
+        (lex_env.into_dyn(), running_context.variable_env, running_context.private_env)
     } else {
         let global_env = eval_realm.global_env.into_dyn();
-        let lex_env = DeclarativeEnvironment::new(Some(global_env));
-        (cx.heap.alloc(lex_env).into_dyn(), global_env, None)
+        let lex_env = DeclarativeEnvironment::new(cx, Some(global_env));
+        (lex_env.into_dyn(), global_env, None)
     };
 
     let var_env = if is_strict_eval { lex_env } else { var_env };
 
-    let eval_context = cx.heap.alloc(ExecutionContext {
-        function: None,
-        realm: eval_realm,
-        script_or_module: running_context.script_or_module,
-        lexical_env: lex_env,
-        variable_env: var_env,
+    let eval_context = ExecutionContext::new(
+        cx,
+        /* function */ None,
+        eval_realm,
+        running_context.script_or_module,
+        lex_env,
+        var_env,
         private_env,
-        is_strict_mode: is_strict_eval,
-    });
+        is_strict_eval,
+    );
 
     cx.push_execution_context(eval_context);
 

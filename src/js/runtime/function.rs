@@ -285,15 +285,16 @@ impl Gc<Function> {
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<ExecutionContext> {
         let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn();
-        let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.object()),
-            realm: self.realm,
-            script_or_module: self.script_or_module,
-            lexical_env: func_env,
-            variable_env: func_env,
-            private_env: self.private_environment,
-            is_strict_mode: self.is_strict,
-        });
+        let callee_context = ExecutionContext::new(
+            cx,
+            /* function */ Some(self.object()),
+            self.realm,
+            self.script_or_module,
+            /* lexical_env */ func_env,
+            /* variable_env */ func_env,
+            self.private_environment,
+            self.is_strict,
+        );
 
         cx.push_execution_context(callee_context);
 

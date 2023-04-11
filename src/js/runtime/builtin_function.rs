@@ -139,15 +139,16 @@ impl VirtualObject for Gc<BuiltinFunction> {
         arguments: &[Value],
     ) -> EvalResult<Value> {
         let current_execution_context = cx.current_execution_context();
-        let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.object()),
-            realm: self.realm,
-            script_or_module: None,
-            lexical_env: cx.uninit_environment,
-            variable_env: cx.uninit_environment,
-            private_env: None,
-            is_strict_mode: current_execution_context.is_strict_mode,
-        });
+        let callee_context = ExecutionContext::new(
+            cx,
+            /* function */ Some(self.object()),
+            self.realm,
+            /* script_or_module */ None,
+            /* lexical_env */ cx.uninit_environment,
+            /* variable_env */ cx.uninit_environment,
+            /* private_env */ None,
+            current_execution_context.is_strict_mode,
+        );
 
         cx.push_closure_environment(self.closure_environment);
         cx.push_execution_context(callee_context);
@@ -168,15 +169,16 @@ impl VirtualObject for Gc<BuiltinFunction> {
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
         let current_execution_context = cx.current_execution_context();
-        let callee_context = cx.heap.alloc(ExecutionContext {
-            function: Some(self.object()),
-            realm: self.realm,
-            script_or_module: None,
-            lexical_env: cx.uninit_environment,
-            variable_env: cx.uninit_environment,
-            private_env: None,
-            is_strict_mode: current_execution_context.is_strict_mode,
-        });
+        let callee_context = ExecutionContext::new(
+            cx,
+            /* function */ Some(self.object()),
+            self.realm,
+            /* script_or_module */ None,
+            /* lexical_env */ cx.uninit_environment,
+            /* variable_env */ cx.uninit_environment,
+            /* private_env */ None,
+            current_execution_context.is_strict_mode,
+        );
 
         cx.push_closure_environment(self.closure_environment);
         cx.push_execution_context(callee_context);

@@ -1,6 +1,7 @@
 use crate::js::runtime::{
     completion::EvalResult,
     gc::{Gc, GcDeref},
+    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
     value::Value,
@@ -23,9 +24,9 @@ impl GcDeref for ModuleEnvironment {}
 impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
     fn new(cx: &mut Context, outer: DynEnvironment) -> Gc<ModuleEnvironment> {
-        // Inner decl env contains the outer environment pointer
-        cx.heap
-            .alloc(ModuleEnvironment { env: DeclarativeEnvironment::new(Some(outer)) })
+        let env =
+            DeclarativeEnvironment::new_as_env_base(cx, ObjectKind::ModuleEnvironment, Some(outer));
+        cx.heap.alloc(ModuleEnvironment { env })
     }
 }
 

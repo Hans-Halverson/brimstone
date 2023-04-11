@@ -4,6 +4,7 @@ use crate::{
         error::reference_error_,
         function::{Function, ThisMode},
         gc::{Gc, GcDeref},
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         string_value::StringValue,
         value::Value,
@@ -51,7 +52,11 @@ impl FunctionEnvironment {
         };
 
         // Inner decl env contains the outer environment pointer
-        let decl_env = DeclarativeEnvironment::new(Some(function_object.environment));
+        let decl_env = DeclarativeEnvironment::new_as_env_base(
+            cx,
+            ObjectKind::FunctionEnvironment,
+            Some(function_object.environment),
+        );
 
         cx.heap.alloc(FunctionEnvironment {
             env: decl_env,

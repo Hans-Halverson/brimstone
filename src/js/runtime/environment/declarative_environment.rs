@@ -4,6 +4,7 @@ use crate::js::runtime::{
     completion::EvalResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
     gc::{Gc, GcDeref},
+    object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
     value::Value,
@@ -36,6 +37,7 @@ impl Binding {
 // 9.1.1.1 Declarative Environment Record
 #[repr(C)]
 pub struct DeclarativeEnvironment {
+    descriptor: Gc<ObjectDescriptor>,
     pub bindings: HashMap<Gc<StringValue>, Binding>,
     outer: Option<DynEnvironment>,
 }
@@ -44,8 +46,32 @@ impl GcDeref for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
-    pub fn new(outer: Option<DynEnvironment>) -> DeclarativeEnvironment {
-        DeclarativeEnvironment { bindings: HashMap::new(), outer }
+    pub fn new(cx: &mut Context, outer: Option<DynEnvironment>) -> Gc<DeclarativeEnvironment> {
+        cx.heap.alloc(DeclarativeEnvironment {
+            descriptor: cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment),
+            bindings: HashMap::new(),
+            outer,
+        })
+    }
+
+    pub fn new_as_env_base(
+        cx: &mut Context,
+        kind: ObjectKind,
+        outer: Option<DynEnvironment>,
+    ) -> DeclarativeEnvironment {
+        DeclarativeEnvironment {
+            descriptor: cx.base_descriptors.get(kind),
+            bindings: HashMap::new(),
+            outer,
+        }
+    }
+
+    pub fn uninit(base_descriptors: &BaseDescriptors) -> DeclarativeEnvironment {
+        DeclarativeEnvironment {
+            descriptor: base_descriptors.get(ObjectKind::DeclarativeEnvironment),
+            bindings: HashMap::new(),
+            outer: None,
+        }
     }
 }
 

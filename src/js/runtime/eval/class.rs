@@ -115,7 +115,7 @@ pub fn class_definition_evaluation(
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm;
     let env = current_execution_context.lexical_env;
-    let mut class_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(env)));
+    let mut class_env = DeclarativeEnvironment::new(cx, Some(env));
 
     if let Some(class_binding) = class_binding {
         must!(class_env.create_immutable_binding(cx, class_binding, true));

@@ -4,6 +4,7 @@ use crate::{
         completion::EvalResult,
         error::err_not_defined_,
         gc::{Gc, GcDeref},
+        object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -18,10 +19,12 @@ use crate::{
 use super::environment::{DynEnvironment, Environment};
 
 // 9.1.1.2 Object Environment Record
+#[repr(C)]
 pub struct ObjectEnvironment {
+    descriptor: Gc<ObjectDescriptor>,
     pub binding_object: Gc<ObjectValue>,
-    pub is_with_environment: bool,
     pub outer: Option<DynEnvironment>,
+    pub is_with_environment: bool,
 }
 
 impl GcDeref for ObjectEnvironment {}
@@ -34,8 +37,9 @@ impl ObjectEnvironment {
         is_with_environment: bool,
         outer: Option<DynEnvironment>,
     ) -> Gc<ObjectEnvironment> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::ObjectEnvironment);
         cx.heap
-            .alloc(ObjectEnvironment { binding_object, is_with_environment, outer })
+            .alloc(ObjectEnvironment { descriptor, binding_object, is_with_environment, outer })
     }
 }
 

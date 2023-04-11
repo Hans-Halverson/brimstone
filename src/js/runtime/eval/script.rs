@@ -10,6 +10,7 @@ use crate::{
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
             gc::Gc,
+            object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
             value::Value,
@@ -22,33 +23,37 @@ use crate::{
 use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 // 16.1.4 Script Record
+#[repr(C)]
 pub struct Script {
+    descriptor: Gc<ObjectDescriptor>,
     realm: Gc<Realm>,
     script_node: Rc<ast::Program>,
 }
 
 impl Script {
-    pub fn new(script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Script {
-        Script { script_node, realm }
+    pub fn new(cx: &mut Context, script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Gc<Script> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::Script);
+        cx.heap.alloc(Script { descriptor, script_node, realm })
     }
 }
 
 /// 16.1.6 ScriptEvaluation
 pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
-    let script = cx.heap.alloc(Script::new(program.clone(), realm));
+    let script = Script::new(cx, program.clone(), realm);
 
     let global_env = realm.global_env;
     let global_env_object = global_env.into_dyn();
 
-    let script_ctx = cx.heap.alloc(ExecutionContext {
-        function: None,
+    let script_ctx = ExecutionContext::new(
+        cx,
+        /* function */ None,
         realm,
-        script_or_module: Some(ScriptOrModule::Script(script)),
-        lexical_env: global_env_object,
-        variable_env: global_env_object,
-        private_env: None,
-        is_strict_mode: program.has_use_strict_directive,
-    });
+        Some(ScriptOrModule::Script(script)),
+        /* lexical_env */ global_env_object,
+        /* variable_env */ global_env_object,
+        /* private_env */ None,
+        program.has_use_strict_directive,
+    );
 
     cx.push_execution_context(script_ctx);
 

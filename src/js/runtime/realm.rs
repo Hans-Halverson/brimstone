@@ -12,18 +12,21 @@ use super::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
     },
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     Context,
 };
 
 // 9.3 Realm Record
+#[repr(C)]
 pub struct Realm {
+    descriptor: Gc<ObjectDescriptor>,
     pub global_env: Gc<GlobalEnvironment>,
     pub global_object: Gc<ObjectValue>,
-    pub intrinsics: Intrinsics,
-    pub template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
     pub rand: StdRng,
+    pub template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
+    pub intrinsics: Intrinsics,
 }
 
 impl GcDeref for Realm {}
@@ -35,6 +38,7 @@ impl Realm {
         // during intrinsic creation.
         let realm = cx.heap.alloc(Realm {
             // Initialized in set_global_object
+            descriptor: cx.base_descriptors.get(ObjectKind::Realm),
             global_env: Gc::uninit(),
             global_object: Gc::uninit(),
             intrinsics: Intrinsics::new_uninit(),
@@ -74,15 +78,16 @@ impl Gc<Realm> {
 // 9.6 InitializeHostDefinedRealm
 pub fn initialize_host_defined_realm(cx: &mut Context) -> Gc<Realm> {
     let mut realm = Realm::new(cx);
-    let exec_ctx = cx.heap.alloc(ExecutionContext {
-        script_or_module: None,
+    let exec_ctx = ExecutionContext::new(
+        cx,
+        /* function */ None,
         realm,
-        function: None,
-        lexical_env: cx.uninit_environment,
-        variable_env: cx.uninit_environment,
-        private_env: None,
-        is_strict_mode: false,
-    });
+        /* script_or_module */ None,
+        /* lexical_env */ cx.uninit_environment,
+        /* variable_env */ cx.uninit_environment,
+        /* private_env */ None,
+        /* is_strict_mode */ false,
+    );
 
     cx.push_execution_context(exec_ctx);
 

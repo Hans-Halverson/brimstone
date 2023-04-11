@@ -6,6 +6,7 @@ use super::{
     },
     eval::script::Script,
     gc::{Gc, GcDeref},
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     realm::Realm,
     reference::Reference,
@@ -15,7 +16,9 @@ use super::{
 };
 
 // 9.4 Execution Context
+#[repr(C)]
 pub struct ExecutionContext {
+    descriptor: Gc<ObjectDescriptor>,
     pub function: Option<Gc<ObjectValue>>,
     pub realm: Gc<Realm>,
     pub script_or_module: Option<ScriptOrModule>,
@@ -30,6 +33,31 @@ impl GcDeref for ExecutionContext {}
 #[derive(Clone, Copy)]
 pub enum ScriptOrModule {
     Script(Gc<Script>),
+}
+
+impl ExecutionContext {
+    pub fn new(
+        cx: &mut Context,
+        function: Option<Gc<ObjectValue>>,
+        realm: Gc<Realm>,
+        script_or_module: Option<ScriptOrModule>,
+        lexical_env: DynEnvironment,
+        variable_env: DynEnvironment,
+        private_env: Option<Gc<PrivateEnvironment>>,
+        is_strict_mode: bool,
+    ) -> Gc<ExecutionContext> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::ExecutionContext);
+        cx.heap.alloc(ExecutionContext {
+            descriptor,
+            function,
+            realm,
+            script_or_module,
+            lexical_env,
+            variable_env,
+            private_env,
+            is_strict_mode,
+        })
+    }
 }
 
 // 9.4.2 ResolveBinding

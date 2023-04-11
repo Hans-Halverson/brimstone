@@ -130,7 +130,7 @@ fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
 
     let mut current_context = cx.current_execution_context();
     let old_env = current_context.lexical_env;
-    let block_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+    let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
     block_declaration_instantiation(cx, block.lex_decls(), block_env);
 
@@ -418,7 +418,7 @@ fn eval_for_statement(
         )) => {
             let mut current_execution_context = cx.current_execution_context();
             let old_env = current_execution_context.lexical_env;
-            let mut loop_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+            let mut loop_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
             let is_const = *kind == ast::VarKind::Const;
             must!(lex_decl.iter_bound_names(&mut |id| {
@@ -508,9 +508,7 @@ fn create_per_iteration_environment(
 ) -> EvalResult<()> {
     let mut current_execution_context = cx.current_execution_context();
     let last_iteration_env = current_execution_context.lexical_env;
-    let mut this_iteration_env = cx
-        .heap
-        .alloc(DeclarativeEnvironment::new(last_iteration_env.outer()));
+    let mut this_iteration_env = DeclarativeEnvironment::new(cx, last_iteration_env.outer());
 
     maybe!(per_iteration_decl.iter_bound_names(&mut |id| {
         let name_value = id_string_value(cx, id);
@@ -545,7 +543,7 @@ fn for_each_head_evaluation_shared(
         ) => {
             let mut current_execution_context = cx.current_execution_context();
             let old_env = current_execution_context.lexical_env;
-            let mut new_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+            let mut new_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
             must!(var_decl.iter_bound_names(&mut |id| {
                 let name_value = id_string_value(cx, id);
@@ -611,7 +609,7 @@ fn for_each_body_evaluation_shared(
                 ..
             },
         ) => {
-            let mut iteration_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+            let mut iteration_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
             // 14.7.5.4 ForDeclarationBindingInstantiation
             must!(var_decl.iter_bound_names(&mut |id| {
@@ -927,7 +925,7 @@ fn eval_switch_statement(
 
     let mut current_execution_context = cx.current_execution_context();
     let old_env = current_execution_context.lexical_env;
-    let block_env = cx.heap.alloc(DeclarativeEnvironment::new(Some(old_env)));
+    let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
     block_declaration_instantiation(cx, &stmt.lex_decls, block_env);
 
@@ -1030,10 +1028,7 @@ fn eval_catch_clause(
         Some(ref param) => {
             let mut current_context = cx.current_execution_context();
             let old_env = cx.current_execution_context().lexical_env;
-            let mut catch_env = cx
-                .heap
-                .alloc(DeclarativeEnvironment::new(Some(old_env)))
-                .into_dyn();
+            let mut catch_env = DeclarativeEnvironment::new(cx, Some(old_env)).into_dyn();
 
             must!(param.iter_bound_names(&mut |id| {
                 let name_value = id_string_value(cx, id);

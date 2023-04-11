@@ -85,6 +85,16 @@ pub enum ObjectKind {
     ObjectPrototype,
     FunctionPrototype,
 
+    // Other heap objects
+    ExecutionContext,
+    Realm,
+    Script,
+    DeclarativeEnvironment,
+    FunctionEnvironment,
+    GlobalEnvironment,
+    ModuleEnvironment,
+    ObjectEnvironment,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -144,6 +154,12 @@ impl BaseDescriptors {
             };
         }
 
+        macro_rules! other_heap_object_descriptor {
+            ($object_kind:expr) => {
+                register_descriptor!($object_kind, OrdinaryObject);
+            };
+        }
+
         ordinary_descriptor!(ObjectKind::OrdinaryObject);
         register_descriptor!(ObjectKind::Proxy, ProxyObject);
 
@@ -186,6 +202,15 @@ impl BaseDescriptors {
 
         ordinary_descriptor!(ObjectKind::ObjectPrototype);
         register_descriptor!(ObjectKind::FunctionPrototype, FunctionPrototype);
+
+        other_heap_object_descriptor!(ObjectKind::ExecutionContext);
+        other_heap_object_descriptor!(ObjectKind::Realm);
+        other_heap_object_descriptor!(ObjectKind::Script);
+        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
+        other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);
+        other_heap_object_descriptor!(ObjectKind::GlobalEnvironment);
+        other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
+        other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
 
         BaseDescriptors { descriptors }
     }

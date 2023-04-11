@@ -5,6 +5,7 @@ use crate::js::runtime::{
     completion::EvalResult,
     error::type_error_,
     gc::{Gc, GcDeref},
+    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -51,7 +52,8 @@ impl GlobalEnvironment {
         global_this_value: Gc<ObjectValue>,
     ) -> Gc<GlobalEnvironment> {
         // Declarative environment contains outer environment
-        let decl_env = DeclarativeEnvironment::new(None);
+        let decl_env =
+            DeclarativeEnvironment::new_as_env_base(cx, ObjectKind::GlobalEnvironment, None);
         let object_env = ObjectEnvironment::new(cx, global_object, false, None);
 
         cx.heap.alloc(GlobalEnvironment {

@@ -65,7 +65,7 @@ impl NumberPrototype {
         let num_fraction_digits = num_fraction_digits as u8;
 
         if !number.is_finite() {
-            return cx.heap.alloc_string(number_to_string(number)).into();
+            return cx.alloc_string(number_to_string(number)).into();
         }
 
         let is_negative = number < 0.0;
@@ -89,7 +89,7 @@ impl NumberPrototype {
             m = format!("-{}", m);
         }
 
-        cx.heap.alloc_string(m).into()
+        cx.alloc_string(m).into()
     }
 
     // 21.1.3.4 Number.prototype.toLocaleString
@@ -142,7 +142,7 @@ impl NumberPrototype {
                 number_value.as_double().to_string()
             };
 
-            cx.heap.alloc_string(str).into()
+            cx.alloc_string(str).into()
         } else {
             unimplemented!("Number.prototype.toString with radix != 10")
         }

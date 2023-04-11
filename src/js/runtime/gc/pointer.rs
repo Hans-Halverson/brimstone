@@ -31,7 +31,7 @@ impl<T: ?Sized> Gc<T> {
 }
 
 impl<T> Gc<T> {
-    pub fn uninit() -> Gc<T> {
+    pub const fn uninit() -> Gc<T> {
         Gc { ptr: NonNull::dangling() }
     }
 }

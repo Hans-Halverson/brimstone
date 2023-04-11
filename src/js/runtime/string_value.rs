@@ -11,9 +11,15 @@ use crate::js::common::unicode::{
     try_encode_surrogate_pair, CodePoint, CodeUnit,
 };
 
-use super::{gc::GcDeref, Context, Gc};
+use super::{
+    gc::GcDeref,
+    object_descriptor::{ObjectDescriptor, ObjectKind},
+    Context, Gc,
+};
 
+#[repr(C)]
 pub struct StringValue {
+    descriptor: Gc<ObjectDescriptor>,
     value: Cell<StringKind>,
 }
 
@@ -56,11 +62,13 @@ struct ConcatString {
 }
 
 impl StringValue {
-    fn new(value: StringKind) -> StringValue {
-        StringValue { value: Cell::new(value) }
+    fn new(cx: &mut Context, value: StringKind) -> Gc<StringValue> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::String);
+        cx.heap
+            .alloc(StringValue { descriptor, value: Cell::new(value) })
     }
 
-    pub fn from_utf8(str: String) -> StringValue {
+    pub fn from_utf8(cx: &mut Context, str: String) -> Gc<StringValue> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -108,7 +116,7 @@ impl StringValue {
             }
 
             let two_byte_string = TwoByteString::from_vec(buf);
-            StringValue::new(StringKind::TwoByte(two_byte_string))
+            StringValue::new(cx, StringKind::TwoByte(two_byte_string))
         } else if !has_non_ascii_one_byte_chars {
             // If this string is pure ASCII then we can directly copy the UTF-8 string.
             let str_copy = str.clone();
@@ -117,7 +125,7 @@ impl StringValue {
             // Memory is managed by heap, and destructor is called when string is garbage collected.
             std::mem::forget(str_copy);
 
-            StringValue::new(StringKind::OneByte(one_byte_string))
+            StringValue::new(cx, StringKind::OneByte(one_byte_string))
         } else {
             // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
             let mut buf: Vec<u8> = Vec::with_capacity(length);
@@ -131,7 +139,7 @@ impl StringValue {
             }
 
             let one_byte_string = OneByteString::from_vec(buf);
-            StringValue::new(StringKind::OneByte(one_byte_string))
+            StringValue::new(cx, StringKind::OneByte(one_byte_string))
         }
     }
 
@@ -145,23 +153,21 @@ impl StringValue {
 
     #[inline]
     fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Gc<StringValue> {
-        let string = if is_latin1_code_point(code_point) {
+        if is_latin1_code_point(code_point) {
             let one_byte_string = OneByteString::from_vec(vec![code_point as u8]);
-            StringValue::new(StringKind::OneByte(one_byte_string))
+            StringValue::new(cx, StringKind::OneByte(one_byte_string))
         } else {
             match try_encode_surrogate_pair(code_point) {
                 None => {
                     let two_byte_string = TwoByteString::from_vec(vec![code_point as CodeUnit]);
-                    StringValue::new(StringKind::TwoByte(two_byte_string))
+                    StringValue::new(cx, StringKind::TwoByte(two_byte_string))
                 }
                 Some((high, low)) => {
                     let two_byte_string = TwoByteString::from_vec(vec![high, low]);
-                    StringValue::new(StringKind::TwoByte(two_byte_string))
+                    StringValue::new(cx, StringKind::TwoByte(two_byte_string))
                 }
             }
-        };
-
-        cx.heap.alloc_string_value(string)
+        }
     }
 
     pub fn concat(
@@ -179,7 +185,7 @@ impl StringValue {
 
         let concat_string = StringKind::Concat(ConcatString { left, right, len: new_len, width });
 
-        cx.heap.alloc_string_value(StringValue::new(concat_string))
+        StringValue::new(cx, concat_string)
     }
 
     pub fn concat_all(cx: &mut Context, strings: &[Gc<StringValue>]) -> Gc<StringValue> {
@@ -282,13 +288,11 @@ impl Gc<StringValue> {
             }
             StringKind::OneByte(str) => {
                 let one_byte_string = OneByteString::from_slice(&str.as_slice()[start..end]);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::OneByte(one_byte_string)))
+                StringValue::new(cx, StringKind::OneByte(one_byte_string))
             }
             StringKind::TwoByte(str) => {
                 let two_byte_string = TwoByteString::from_slice(&str.as_slice()[start..end]);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::TwoByte(two_byte_string)))
+                StringValue::new(cx, StringKind::TwoByte(two_byte_string))
             }
         }
     }
@@ -490,8 +494,7 @@ impl Gc<StringValue> {
                 };
 
                 let string = OneByteString::from_slice(slice);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+                StringValue::new(cx, StringKind::OneByte(string))
             }
             StringWidth::TwoByte => {
                 let slice = unsafe {
@@ -500,8 +503,7 @@ impl Gc<StringValue> {
                 };
 
                 let string = TwoByteString::from_slice(slice);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+                StringValue::new(cx, StringKind::TwoByte(string))
             }
         }
     }
@@ -515,14 +517,12 @@ impl Gc<StringValue> {
             StringKind::OneByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
                 let string = OneByteString::from_vec(repeated_buf);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+                StringValue::new(cx, StringKind::OneByte(string))
             }
             StringKind::TwoByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
                 let string = TwoByteString::from_vec(repeated_buf);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+                StringValue::new(cx, StringKind::TwoByte(string))
             }
         }
     }
@@ -563,8 +563,7 @@ impl Gc<StringValue> {
                 }
 
                 let string = OneByteString::from_vec(lowercased);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::OneByte(string)))
+                StringValue::new(cx, StringKind::OneByte(string))
             }
             StringKind::TwoByte(string) => {
                 // Two byte slow path. Must convert each code point to lowercase one by one, each of
@@ -594,8 +593,7 @@ impl Gc<StringValue> {
                 }
 
                 let string = TwoByteString::from_vec(lowercased);
-                cx.heap
-                    .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+                StringValue::new(cx, StringKind::TwoByte(string))
             }
         }
     }
@@ -621,9 +619,7 @@ impl Gc<StringValue> {
                     }
 
                     let string = OneByteString::from_vec(uppercased);
-                    return cx
-                        .heap
-                        .alloc_string_value(StringValue::new(StringKind::OneByte(string)));
+                    return StringValue::new(cx, StringKind::OneByte(string));
                 }
 
                 CodePointIterator::from_one_byte(string)
@@ -657,8 +653,7 @@ impl Gc<StringValue> {
         }
 
         let string = TwoByteString::from_vec(uppercased);
-        cx.heap
-            .alloc_string_value(StringValue::new(StringKind::TwoByte(string)))
+        StringValue::new(cx, StringKind::TwoByte(string))
     }
 
     pub fn iter_code_units(&self) -> CodeUnitIterator {

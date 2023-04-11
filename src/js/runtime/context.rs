@@ -49,14 +49,14 @@ pub struct Context {
 impl Context {
     pub fn new() -> Context {
         let mut heap = Heap::new();
-        let names = BuiltinNames::new(&mut heap);
-        let well_known_symbols = BuiltinSymbols::new(&mut heap);
+        let names = BuiltinNames::uninit();
+        let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
         let uninit_environment = heap
             .alloc(DeclarativeEnvironment::uninit(&base_descriptors))
             .into_dyn();
 
-        Context {
+        let mut cx = Context {
             execution_context_stack: vec![],
             heap,
             global_symbol_registry: HashMap::new(),
@@ -69,7 +69,12 @@ impl Context {
             uninit_environment,
             eval_asts: vec![],
             function_constructor_asts: vec![],
-        }
+        };
+
+        cx.init_builtin_names();
+        cx.init_builtin_symbols();
+
+        cx
     }
 
     pub fn push_execution_context(&mut self, exec_ctx: Gc<ExecutionContext>) {
@@ -100,7 +105,7 @@ impl Context {
         match self.interned_strings.get(str) {
             Some(string_value) => *string_value,
             None => {
-                let string_value = self.heap.alloc_string(String::from(str));
+                let string_value = self.alloc_string(String::from(str));
                 self.interned_strings
                     .insert(String::from(str), string_value.clone());
                 string_value
@@ -125,5 +130,9 @@ impl Context {
         let next_id = self.next_private_name_id;
         self.next_private_name_id = next_id.checked_add(1).unwrap();
         next_id
+    }
+
+    pub fn alloc_string(&mut self, str: String) -> Gc<StringValue> {
+        StringValue::from_utf8(self, str)
     }
 }

@@ -54,7 +54,7 @@ pub fn to_primitive(
                 ToPrimitivePreferredType::Number => "number",
                 ToPrimitivePreferredType::String => "string",
             };
-            let hint_value: Value = cx.heap.alloc_string(hint_str.to_owned()).into();
+            let hint_value: Value = cx.alloc_string(hint_str.to_owned()).into();
 
             let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
@@ -487,26 +487,22 @@ pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> 
     if value.is_string() {
         return value.as_string().into();
     } else if value.is_double() {
-        return cx
-            .heap
-            .alloc_string(number_to_string(value.as_double()))
-            .into();
+        return cx.alloc_string(number_to_string(value.as_double())).into();
     }
 
     match value.get_tag() {
-        NULL_TAG => cx.heap.alloc_string("null".to_owned()).into(),
-        UNDEFINED_TAG => cx.heap.alloc_string("undefined".to_owned()).into(),
+        NULL_TAG => cx.alloc_string("null".to_owned()).into(),
+        UNDEFINED_TAG => cx.alloc_string("undefined".to_owned()).into(),
         BOOL_TAG => {
             let str = if value.as_bool() { "true" } else { "false" };
-            cx.heap.alloc_string(str.to_owned()).into()
+            cx.alloc_string(str.to_owned()).into()
         }
-        SMI_TAG => cx.heap.alloc_string(value.as_smi().to_string()).into(),
+        SMI_TAG => cx.alloc_string(value.as_smi().to_string()).into(),
         OBJECT_TAG => {
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
             to_string(cx, primitive_value)
         }
         BIGINT_TAG => cx
-            .heap
             .alloc_string(value.as_bigint().bigint().to_string())
             .into(),
         SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to string"),

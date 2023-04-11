@@ -68,7 +68,7 @@ impl Gc<FunctionPrototype> {
 
         // [Function.hasInstance] property
         let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
-        let has_instance_name = cx.heap.alloc_string(String::from("[Function.hasInstance]"));
+        let has_instance_name = cx.alloc_string(String::from("[Function.hasInstance]"));
         let has_instance_func = BuiltinFunction::create(
             cx,
             FunctionPrototype::has_instance,

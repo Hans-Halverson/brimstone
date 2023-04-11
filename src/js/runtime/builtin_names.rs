@@ -1,4 +1,4 @@
-use super::{gc::Heap, property_key::PropertyKey, value::SymbolValue, Gc};
+use super::{context::Context, property_key::PropertyKey, value::SymbolValue, Gc};
 
 // All built-in string property keys referenced in the spec
 macro_rules! builtin_names {
@@ -10,13 +10,10 @@ macro_rules! builtin_names {
         }
 
         impl BuiltinNames {
-            pub fn new(heap: &mut Heap) -> BuiltinNames {
+            pub fn uninit() -> BuiltinNames {
                 BuiltinNames {
                     $(
-                        $rust_name: {
-                            let string_value = heap.alloc_string(String::from($js_name));
-                            PropertyKey::string_not_number(string_value)
-                        },
+                        $rust_name: PropertyKey::uninit(),
                     )*
                 }
             }
@@ -27,6 +24,17 @@ macro_rules! builtin_names {
                     self.$rust_name.clone()
                 }
             )*
+        }
+
+        impl Context {
+            pub fn init_builtin_names(&mut self) {
+                $(
+                    self.names.$rust_name = {
+                        let string_value = self.alloc_string(String::from($js_name));
+                        PropertyKey::string_not_number(string_value)
+                    };
+                )*
+            }
         }
     };
 }
@@ -297,14 +305,23 @@ macro_rules! builtin_symbols {
         }
 
         impl BuiltinSymbols {
-            pub fn new(heap: &mut Heap) -> BuiltinSymbols {
+            pub fn uninit() -> BuiltinSymbols {
                 BuiltinSymbols {
                     $(
-                        $rust_name: {
-                            let description = heap.alloc_string(String::from($description));
-                            heap.alloc(SymbolValue::new(Some(description)))                        },
+                        $rust_name: Gc::uninit(),
                     )*
                 }
+            }
+        }
+
+        impl Context {
+            pub fn init_builtin_symbols(&mut self) {
+                $(
+                    self.well_known_symbols.$rust_name = {
+                        let description = self.alloc_string(String::from($description));
+                        self.heap.alloc(SymbolValue::new(Some(description)))
+                    };
+                )*
             }
         }
     };

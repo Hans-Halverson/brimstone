@@ -142,9 +142,9 @@ impl ObjectPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         if this_value.is_undefined() {
-            return cx.heap.alloc_string("[object Undefined]".to_owned()).into();
+            return cx.alloc_string("[object Undefined]".to_owned()).into();
         } else if this_value.is_null() {
-            return cx.heap.alloc_string("[object Null]".to_owned()).into();
+            return cx.alloc_string("[object Null]".to_owned()).into();
         }
 
         let object = maybe!(to_object(cx, this_value));
@@ -155,8 +155,8 @@ impl ObjectPrototype {
         let tag = maybe!(get(cx, object, &to_string_tag_key));
 
         let tag_string = if tag.is_string() {
-            let string_prefix = cx.heap.alloc_string(String::from("[object "));
-            let string_suffix = cx.heap.alloc_string(String::from("]"));
+            let string_prefix = cx.alloc_string(String::from("[object "));
+            let string_suffix = cx.alloc_string(String::from("]"));
 
             return StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])
                 .into();
@@ -182,9 +182,7 @@ impl ObjectPrototype {
             "Object"
         };
 
-        cx.heap
-            .alloc_string(format!("[object {}]", tag_string))
-            .into()
+        cx.alloc_string(format!("[object {}]", tag_string)).into()
     }
 
     // 20.1.3.7 Object.prototype.valueOf

@@ -34,8 +34,7 @@ macro_rules! create_native_error {
 
                 object_ordinary_init(object.object(), prototype);
 
-                object
-                    .intrinsic_data_prop(&cx.names.message(), cx.heap.alloc_string(message).into());
+                object.intrinsic_data_prop(&cx.names.message(), cx.alloc_string(message).into());
 
                 object
             }

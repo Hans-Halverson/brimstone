@@ -500,7 +500,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
             for (index, value) in array.iter().enumerate() {
                 if filter(index) {
                     if !value.value().is_empty() {
-                        let index_string = cx.heap.alloc_string(index.to_string());
+                        let index_string = cx.alloc_string(index.to_string());
                         keys.push(Value::string(index_string));
                     }
                 }
@@ -513,7 +513,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 
             for index in indexes_array {
                 if filter(index as usize) {
-                    let index_string = cx.heap.alloc_string(index.to_string());
+                    let index_string = cx.alloc_string(index.to_string());
                     keys.push(Value::string(index_string));
                 }
             }

@@ -31,6 +31,10 @@ struct StringData {
 }
 
 impl PropertyKey {
+    pub const fn uninit() -> PropertyKey {
+        PropertyKey::string(Gc::uninit())
+    }
+
     #[inline]
     pub const fn string(value: Gc<StringValue>) -> PropertyKey {
         PropertyKey {
@@ -55,7 +59,7 @@ impl PropertyKey {
     #[inline]
     pub fn array_index(cx: &mut Context, value: u32) -> PropertyKey {
         if value == u32::MAX {
-            return PropertyKey::string_not_number(cx.heap.alloc_string(value.to_string()));
+            return PropertyKey::string_not_number(cx.alloc_string(value.to_string()));
         }
 
         PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
@@ -69,7 +73,7 @@ impl PropertyKey {
 
     pub fn from_u64(cx: &mut Context, value: u64) -> PropertyKey {
         if value > u32::MAX as u64 {
-            return PropertyKey::string_not_number(cx.heap.alloc_string(value.to_string()));
+            return PropertyKey::string_not_number(cx.alloc_string(value.to_string()));
         }
 
         PropertyKey {
@@ -144,7 +148,7 @@ impl PropertyKey {
     pub fn non_symbol_to_string(&self, cx: &mut Context) -> Gc<StringValue> {
         return match &*self.data.borrow() {
             KeyData::String(StringData { value, .. }) => *value,
-            KeyData::ArrayIndex { value } => cx.heap.alloc_string(value.to_string()),
+            KeyData::ArrayIndex { value } => cx.alloc_string(value.to_string()),
             KeyData::Symbol { .. } => unreachable!("expected non-symbol property key"),
         };
     }

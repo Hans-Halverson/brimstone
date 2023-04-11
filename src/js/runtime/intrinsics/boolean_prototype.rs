@@ -41,7 +41,7 @@ impl BooleanPrototype {
             "false"
         };
 
-        cx.heap.alloc_string(String::from(string_value)).into()
+        cx.alloc_string(String::from(string_value)).into()
     }
 
     // 20.3.3.3 Boolean.prototype.valueOf

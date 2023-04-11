@@ -68,7 +68,7 @@ impl SetIteratorPrototype {
 
         // 24.2.5.2.2 %SetIteratorPrototype% [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
-        let to_string_tag_value = cx.heap.alloc_string(String::from("Set Iterator")).into();
+        let to_string_tag_value = cx.alloc_string(String::from("Set Iterator")).into();
         object.set_property(
             &to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),

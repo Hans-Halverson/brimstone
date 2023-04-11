@@ -488,8 +488,8 @@ pub fn set_function_name(
     let name_string = match name.as_symbol() {
         Some(sym) => {
             if let Some(description) = sym.description() {
-                let left_paren = cx.heap.alloc_string(String::from("["));
-                let right_paren = cx.heap.alloc_string(String::from("]"));
+                let left_paren = cx.alloc_string(String::from("["));
+                let right_paren = cx.alloc_string(String::from("]"));
 
                 StringValue::concat_all(cx, &[left_paren, description, right_paren])
             } else {
@@ -501,7 +501,7 @@ pub fn set_function_name(
 
     // Add prefix to name
     let name_string = if let Some(prefix) = prefix {
-        let prefix_string = cx.heap.alloc_string(format!("{} ", prefix));
+        let prefix_string = cx.alloc_string(format!("{} ", prefix));
         StringValue::concat(cx, prefix_string, name_string)
     } else {
         name_string

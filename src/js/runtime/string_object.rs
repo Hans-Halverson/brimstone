@@ -158,7 +158,7 @@ impl VirtualObject for Gc<StringObject> {
 
         let length = self.string_data.len();
         for i in 0..length {
-            let index_string = cx.heap.alloc_string(i.to_string());
+            let index_string = cx.alloc_string(i.to_string());
             keys.push(Value::string(index_string));
         }
 

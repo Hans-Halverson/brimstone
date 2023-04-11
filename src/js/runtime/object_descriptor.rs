@@ -86,9 +86,12 @@ pub enum ObjectKind {
     FunctionPrototype,
 
     // Other heap objects
+    String,
+
     ExecutionContext,
     Realm,
     Script,
+
     DeclarativeEnvironment,
     FunctionEnvironment,
     GlobalEnvironment,
@@ -203,9 +206,12 @@ impl BaseDescriptors {
         ordinary_descriptor!(ObjectKind::ObjectPrototype);
         register_descriptor!(ObjectKind::FunctionPrototype, FunctionPrototype);
 
+        other_heap_object_descriptor!(ObjectKind::String);
+
         other_heap_object_descriptor!(ObjectKind::ExecutionContext);
         other_heap_object_descriptor!(ObjectKind::Realm);
         other_heap_object_descriptor!(ObjectKind::Script);
+
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
         other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironment);

@@ -32,7 +32,7 @@ impl SymbolPrototype {
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
-        let to_primitive_name = cx.heap.alloc_string(String::from("[Symbol.toPrimitive]"));
+        let to_primitive_name = cx.alloc_string(String::from("[Symbol.toPrimitive]"));
         let to_primitive_func = BuiltinFunction::create(
             cx,
             Self::to_primitive,
@@ -120,10 +120,10 @@ fn this_symbol_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
 // 20.4.3.3.1 SymbolDescriptiveString
 pub fn symbol_descriptive_string(cx: &mut Context, symbol: Gc<SymbolValue>) -> Gc<StringValue> {
     match symbol.description() {
-        None => cx.heap.alloc_string(String::from("Symbol()")),
+        None => cx.alloc_string(String::from("Symbol()")),
         Some(description) => {
-            let symbol_prefix = cx.heap.alloc_string(String::from("Symbol("));
-            let symbol_suffix = cx.heap.alloc_string(String::from(")"));
+            let symbol_prefix = cx.alloc_string(String::from("Symbol("));
+            let symbol_suffix = cx.alloc_string(String::from(")"));
 
             StringValue::concat_all(cx, &[symbol_prefix, description, symbol_suffix])
         }

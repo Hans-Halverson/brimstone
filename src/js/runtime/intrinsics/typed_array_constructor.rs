@@ -406,7 +406,7 @@ macro_rules! create_typed_array_constructor {
 
                 if !self.viewed_array_buffer.is_detached() {
                     for i in 0..self.array_length {
-                        let index_string = cx.heap.alloc_string(i.to_string());
+                        let index_string = cx.alloc_string(i.to_string());
                         keys.push(Value::string(index_string));
                     }
                 }

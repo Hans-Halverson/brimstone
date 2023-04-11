@@ -418,12 +418,7 @@ impl Gc<ObjectValue> {
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
         self.set_property(
             &cx.names.name(),
-            Property::data(
-                Value::string(cx.heap.alloc_string(name.to_owned())),
-                false,
-                false,
-                true,
-            ),
+            Property::data(Value::string(cx.alloc_string(name.to_owned())), false, false, true),
         )
     }
 

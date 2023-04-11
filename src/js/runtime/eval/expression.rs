@@ -297,13 +297,11 @@ pub fn eval_property_name<'a>(
                     }
                 }
 
-                let string_value = cx
-                    .heap
-                    .alloc_string(number_to_string(key_value.as_double()));
+                let string_value = cx.alloc_string(number_to_string(key_value.as_double()));
                 PropertyKey::string(string_value)
             }
             ast::Expression::BigInt(lit) => {
-                let string_value = cx.heap.alloc_string(lit.value.to_string());
+                let string_value = cx.alloc_string(lit.value.to_string());
                 PropertyKey::string(string_value)
             }
             _ => unreachable!(),
@@ -851,7 +849,7 @@ fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
     let value = match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
         Some(reference) => {
             if reference.is_unresolvable_reference() {
-                return cx.heap.alloc_string(String::from("undefined")).into();
+                return cx.alloc_string(String::from("undefined")).into();
             }
 
             maybe!(reference.get_value(cx))
@@ -876,7 +874,7 @@ fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
         _ => "number",
     };
 
-    cx.heap.alloc_string(String::from(type_string)).into()
+    cx.alloc_string(String::from(type_string)).into()
 }
 
 // 13.5.4.1 Unary Plus Evaluation

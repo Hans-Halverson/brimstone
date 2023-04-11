@@ -134,7 +134,7 @@ impl SymbolConstructor {
             Some(maybe!(to_string(cx, description_arg)))
         };
 
-        cx.heap.alloc(SymbolValue::new(description_value)).into()
+        SymbolValue::new(cx, description_value).into()
     }
 
     // 20.4.2.2 Symbol.for
@@ -149,7 +149,7 @@ impl SymbolConstructor {
             return symbol_value.clone().into();
         }
 
-        let new_symbol = cx.heap.alloc(SymbolValue::new(Some(string_key)));
+        let new_symbol = SymbolValue::new(cx, Some(string_key));
         cx.global_symbol_registry
             .insert(string_key, new_symbol.clone());
 

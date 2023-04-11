@@ -319,7 +319,7 @@ macro_rules! builtin_symbols {
                 $(
                     self.well_known_symbols.$rust_name = {
                         let description = self.alloc_string(String::from($description));
-                        self.heap.alloc(SymbolValue::new(Some(description)))
+                        SymbolValue::new(self, Some(description))
                     };
                 )*
             }

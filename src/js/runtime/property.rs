@@ -86,9 +86,7 @@ impl PrivateProperty {
     }
 
     pub fn getter(cx: &mut Context, getter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter), set: None });
+        let accessor_value = AccessorValue::new(cx, Some(getter), None);
         PrivateProperty {
             kind: PrivatePropertyKind::Accessor,
             value: accessor_value.into(),
@@ -96,9 +94,7 @@ impl PrivateProperty {
     }
 
     pub fn setter(cx: &mut Context, setter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: None, set: Some(setter) });
+        let accessor_value = AccessorValue::new(cx, None, Some(setter));
         PrivateProperty {
             kind: PrivatePropertyKind::Accessor,
             value: accessor_value.into(),

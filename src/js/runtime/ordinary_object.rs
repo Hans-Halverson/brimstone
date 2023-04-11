@@ -236,9 +236,7 @@ pub fn validate_and_apply_property_descriptor(
         let is_configurable = desc.is_configurable.unwrap_or(false);
 
         let property = if desc.is_accessor_descriptor() {
-            let accessor_value = cx
-                .heap
-                .alloc(AccessorValue { get: desc.get, set: desc.set });
+            let accessor_value = AccessorValue::new(cx, desc.get, desc.set);
 
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
         } else {
@@ -286,7 +284,7 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
                 } else {
-                    let accessor_value = cx.heap.alloc(AccessorValue { get: None, set: None });
+                    let accessor_value = AccessorValue::new(cx, None, None);
                     property.set_value(accessor_value.into());
                 }
             }

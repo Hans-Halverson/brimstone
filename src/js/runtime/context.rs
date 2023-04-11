@@ -52,9 +52,8 @@ impl Context {
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
-        let uninit_environment = heap
-            .alloc(DeclarativeEnvironment::uninit(&base_descriptors))
-            .into_dyn();
+        let uninit_environment =
+            DeclarativeEnvironment::uninit(&mut heap, &base_descriptors).into_dyn();
 
         let mut cx = Context {
             execution_context_stack: vec![],

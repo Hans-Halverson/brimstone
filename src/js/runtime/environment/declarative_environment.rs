@@ -3,7 +3,7 @@ use super::environment::{DynEnvironment, Environment};
 use crate::js::runtime::{
     completion::EvalResult,
     error::{err_not_defined_, err_uninitialized_, type_error_},
-    gc::{Gc, GcDeref},
+    gc::{Gc, GcDeref, Heap},
     object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -66,12 +66,15 @@ impl DeclarativeEnvironment {
         }
     }
 
-    pub fn uninit(base_descriptors: &BaseDescriptors) -> DeclarativeEnvironment {
-        DeclarativeEnvironment {
+    pub fn uninit(
+        heap: &mut Heap,
+        base_descriptors: &BaseDescriptors,
+    ) -> Gc<DeclarativeEnvironment> {
+        heap.alloc(DeclarativeEnvironment {
             descriptor: base_descriptors.get(ObjectKind::DeclarativeEnvironment),
             bindings: HashMap::new(),
             outer: None,
-        }
+        })
     }
 }
 

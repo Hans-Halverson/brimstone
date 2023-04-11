@@ -96,12 +96,10 @@ impl BigIntConstructor {
             }
 
             if primitive.is_smi() {
-                cx.heap.alloc_bigint(primitive.as_smi().into()).into()
+                BigIntValue::new(cx, primitive.as_smi().into()).into()
             } else {
                 // TODO: This conversion is lossy
-                cx.heap
-                    .alloc_bigint((primitive.as_double() as u64).into())
-                    .into()
+                BigIntValue::new(cx, (primitive.as_double() as u64).into()).into()
             }
         } else {
             maybe!(to_bigint(cx, value)).into()

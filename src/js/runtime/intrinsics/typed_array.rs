@@ -27,7 +27,7 @@ use crate::{
             canonical_numeric_index_string, to_big_int64, to_big_uint64, to_index, to_int16,
             to_int32, to_int8, to_number, to_uint16, to_uint32, to_uint8, to_uint8_clamp,
         },
-        value::Value,
+        value::{BigIntValue, Value},
         Context,
     },
     maybe,
@@ -280,7 +280,7 @@ pub fn to_big_int64_element(cx: &mut Context, value: Value) -> EvalResult<i64> {
 #[inline]
 pub fn from_big_int64_element(cx: &mut Context, element: i64) -> Value {
     let bigint = BigInt::from(element);
-    cx.heap.alloc_bigint(bigint).into()
+    BigIntValue::new(cx, bigint).into()
 }
 
 create_typed_array!(
@@ -311,7 +311,7 @@ pub fn to_big_uint64_element(cx: &mut Context, value: Value) -> EvalResult<u64> 
 #[inline]
 pub fn from_big_uint64_element(cx: &mut Context, element: u64) -> Value {
     let bigint = BigInt::from(element);
-    cx.heap.alloc_bigint(bigint).into()
+    BigIntValue::new(cx, bigint).into()
 }
 
 create_typed_array!(

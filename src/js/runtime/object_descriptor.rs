@@ -87,6 +87,9 @@ pub enum ObjectKind {
 
     // Other heap objects
     String,
+    Symbol,
+    BigInt,
+    Accessor,
 
     ExecutionContext,
     Realm,
@@ -97,6 +100,7 @@ pub enum ObjectKind {
     GlobalEnvironment,
     ModuleEnvironment,
     ObjectEnvironment,
+    PrivateEnvironment,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -207,6 +211,9 @@ impl BaseDescriptors {
         register_descriptor!(ObjectKind::FunctionPrototype, FunctionPrototype);
 
         other_heap_object_descriptor!(ObjectKind::String);
+        other_heap_object_descriptor!(ObjectKind::Symbol);
+        other_heap_object_descriptor!(ObjectKind::BigInt);
+        other_heap_object_descriptor!(ObjectKind::Accessor);
 
         other_heap_object_descriptor!(ObjectKind::ExecutionContext);
         other_heap_object_descriptor!(ObjectKind::Realm);
@@ -217,6 +224,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironment);
         other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
         other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
+        other_heap_object_descriptor!(ObjectKind::PrivateEnvironment);
 
         BaseDescriptors { descriptors }
     }

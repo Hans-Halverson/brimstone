@@ -2,6 +2,7 @@ use std::{collections::HashMap, num::NonZeroU64};
 
 use crate::js::runtime::{
     gc::{Gc, GcDeref},
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     Context,
 };
 
@@ -11,7 +12,9 @@ use crate::js::runtime::{
 pub type PrivateNameId = NonZeroU64;
 
 // 9.2 Private Environment Record
+#[repr(C)]
 pub struct PrivateEnvironment {
+    descriptor: Gc<ObjectDescriptor>,
     pub names: HashMap<String, PrivateNameId>,
     pub outer: Option<Gc<PrivateEnvironment>>,
 }
@@ -21,8 +24,9 @@ impl GcDeref for PrivateEnvironment {}
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
     pub fn new(cx: &mut Context, outer: Option<Gc<PrivateEnvironment>>) -> Gc<PrivateEnvironment> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::PrivateEnvironment);
         cx.heap
-            .alloc(PrivateEnvironment { names: HashMap::new(), outer })
+            .alloc(PrivateEnvironment { descriptor, names: HashMap::new(), outer })
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier

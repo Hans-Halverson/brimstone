@@ -430,9 +430,7 @@ impl Gc<ObjectValue> {
         realm: Gc<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: None });
+        let accessor_value = AccessorValue::new(cx, Some(getter.into()), None);
         self.set_property(name, Property::accessor(accessor_value.into(), false, true));
     }
 
@@ -446,9 +444,7 @@ impl Gc<ObjectValue> {
     ) {
         let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
-        let accessor_value = cx
-            .heap
-            .alloc(AccessorValue { get: Some(getter.into()), set: Some(setter.into()) });
+        let accessor_value = AccessorValue::new(cx, Some(getter.into()), Some(setter.into()));
         self.set_property(name, Property::accessor(accessor_value.into(), false, true));
     }
 

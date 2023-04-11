@@ -1,9 +1,5 @@
 use std::mem::{align_of, size_of};
 
-use num_bigint::BigInt;
-
-use crate::js::runtime::value::BigIntValue;
-
 use super::pointer::Gc;
 
 // Simple bump allocator for now
@@ -53,9 +49,5 @@ impl Heap {
 
             Gc::from_ptr(start)
         }
-    }
-
-    pub fn alloc_bigint(&mut self, bigint: BigInt) -> Gc<BigIntValue> {
-        self.alloc(BigIntValue::new(bigint))
     }
 }

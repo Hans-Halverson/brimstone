@@ -39,8 +39,8 @@ use crate::{
                 ToPrimitivePreferredType,
             },
             value::{
-                Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG, SYMBOL_TAG,
-                UNDEFINED_TAG,
+                BigIntValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG,
+                SYMBOL_TAG, UNDEFINED_TAG,
             },
             Context, Gc,
         },
@@ -149,7 +149,7 @@ fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult
 }
 
 fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult<Value> {
-    Value::bigint(cx.heap.alloc_bigint(lit.value.clone())).into()
+    Value::bigint(BigIntValue::new(cx, lit.value.clone())).into()
 }
 
 // 13.2.4.2 Array Initializer Evaluation
@@ -782,7 +782,7 @@ fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> Eva
         UpdateOperator::Increment => {
             if old_value.is_bigint() {
                 let inc_value = old_value.as_bigint().bigint() + 1;
-                Value::bigint(cx.heap.alloc_bigint(inc_value))
+                Value::bigint(BigIntValue::new(cx, inc_value))
             } else {
                 Value::number(old_value.as_number() + 1.0)
             }
@@ -790,7 +790,7 @@ fn eval_update_expression(cx: &mut Context, expr: &ast::UpdateExpression) -> Eva
         UpdateOperator::Decrement => {
             if old_value.is_bigint() {
                 let dec_value = old_value.as_bigint().bigint() - 1;
-                Value::bigint(cx.heap.alloc_bigint(dec_value))
+                Value::bigint(BigIntValue::new(cx, dec_value))
             } else {
                 Value::number(old_value.as_number() - 1.0)
             }
@@ -890,7 +890,7 @@ fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 
     if value.is_bigint() {
         let neg_bignum = -value.as_bigint().bigint();
-        Value::bigint(cx.heap.alloc_bigint(neg_bignum)).into()
+        Value::bigint(BigIntValue::new(cx, neg_bignum)).into()
     } else {
         Value::number(-value.as_number()).into()
     }
@@ -903,7 +903,7 @@ fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 
     if value.is_bigint() {
         let not_bignum = !value.as_bigint().bigint();
-        Value::bigint(cx.heap.alloc_bigint(not_bignum)).into()
+        Value::bigint(BigIntValue::new(cx, not_bignum)).into()
     } else {
         let value = must!(to_int32(cx, value));
         Value::smi(!value).into()
@@ -1055,7 +1055,7 @@ fn eval_add(cx: &mut Context, left_value: Value, right_value: Value) -> EvalResu
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         return Value::number(left_num.as_number() + right_num.as_number()).into();
     }
@@ -1072,7 +1072,7 @@ fn eval_subtract(cx: &mut Context, left_value: Value, right_value: Value) -> Eva
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         return Value::number(left_num.as_number() - right_num.as_number()).into();
     }
@@ -1089,7 +1089,7 @@ fn eval_multiply(cx: &mut Context, left_value: Value, right_value: Value) -> Eva
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         return Value::number(left_num.as_number() * right_num.as_number()).into();
     }
@@ -1111,7 +1111,7 @@ fn eval_divide(cx: &mut Context, left_value: Value, right_value: Value) -> EvalR
         }
 
         let result = left_num.as_bigint().bigint() / bigint_right;
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         return Value::number(left_num.as_number() / right_num.as_number()).into();
     }
@@ -1134,11 +1134,11 @@ fn eval_remainder(cx: &mut Context, left_value: Value, right_value: Value) -> Ev
 
         let bigint_left = left_num.as_bigint().bigint();
         if bigint_left.eq(&BigInt::default()) {
-            return Value::bigint(cx.heap.alloc_bigint(BigInt::default())).into();
+            return Value::bigint(BigIntValue::new(cx, BigInt::default())).into();
         }
 
         let result = bigint_left % bigint_right;
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         return Value::number(left_num.as_number() % right_num.as_number()).into();
     }
@@ -1164,12 +1164,12 @@ fn eval_exponentiation(
         if exponent_bignum.lt(&BigInt::default()) {
             return range_error_(cx, "BigInt negative exponent");
         } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
-            return Value::bigint(cx.heap.alloc_bigint(1.into())).into();
+            return Value::bigint(BigIntValue::new(cx, 1.into())).into();
         }
 
         if let Ok(exponent_u32) = exponent_bignum.try_into() {
             let result = base_bignum.pow(exponent_u32);
-            return Value::bigint(cx.heap.alloc_bigint(result)).into();
+            return Value::bigint(BigIntValue::new(cx, result)).into();
         } else {
             // This guarantees a bigint that is too large
             return range_error_(cx, "BigInt is too large");
@@ -1241,7 +1241,7 @@ fn eval_bitwise_and(cx: &mut Context, left_value: Value, right_value: Value) -> 
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -1261,7 +1261,7 @@ fn eval_bitwise_or(cx: &mut Context, left_value: Value, right_value: Value) -> E
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -1281,7 +1281,7 @@ fn eval_bitwise_xor(cx: &mut Context, left_value: Value, right_value: Value) -> 
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -1306,7 +1306,7 @@ fn eval_shift_left(cx: &mut Context, left_value: Value, right_value: Value) -> E
             right_num.as_bigint().bigint()
         ));
 
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -1338,7 +1338,7 @@ fn eval_shift_right_arithmetic(
             &-right_num.as_bigint().bigint()
         ));
 
-        return Value::bigint(cx.heap.alloc_bigint(result)).into();
+        return Value::bigint(BigIntValue::new(cx, result)).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));

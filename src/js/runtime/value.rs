@@ -4,7 +4,9 @@ use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
 
 use super::{
+    context::Context,
     gc::{Gc, GcDeref},
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
     type_utilities::same_value_zero,
@@ -459,46 +461,69 @@ impl From<Gc<AccessorValue>> for Value {
     }
 }
 
-pub struct SymbolValue(Option<Gc<StringValue>>);
+#[repr(C)]
+pub struct SymbolValue {
+    descriptor: Gc<ObjectDescriptor>,
+    description: Option<Gc<StringValue>>,
+}
 
 impl SymbolValue {
-    pub fn new(description: Option<Gc<StringValue>>) -> SymbolValue {
-        SymbolValue(description)
+    pub fn new(cx: &mut Context, description: Option<Gc<StringValue>>) -> Gc<SymbolValue> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::Symbol);
+        cx.heap.alloc(SymbolValue { descriptor, description })
     }
 }
 
 impl Gc<SymbolValue> {
     pub fn description(&self) -> Option<Gc<StringValue>> {
         // Intentionally break lifetime, as SymbolValues are managed by the Gc heap
-        self.0
+        self.description
     }
 }
 
 impl GcDeref for SymbolValue {}
 
-pub struct BigIntValue(BigInt);
+pub struct BigIntValue {
+    descriptor: Gc<ObjectDescriptor>,
+    value: BigInt,
+}
 
 impl BigIntValue {
-    pub fn new(value: BigInt) -> BigIntValue {
-        BigIntValue(value)
+    pub fn new(cx: &mut Context, value: BigInt) -> Gc<BigIntValue> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::BigInt);
+        cx.heap.alloc(BigIntValue { descriptor, value })
     }
 }
 
 impl Gc<BigIntValue> {
     pub fn bigint<'a, 'b>(&'a self) -> &'b BigInt {
         // Intentionally break lifetime, as BigIntValues are managed by the Gc heap
-        unsafe { std::mem::transmute(&self.0) }
+        // unsafe { std::mem::transmute(&self.0) }
+        unsafe { std::mem::transmute(&self.value) }
     }
 }
 
 impl GcDeref for BigIntValue {}
 
+#[repr(C)]
 pub struct AccessorValue {
+    descriptor: Gc<ObjectDescriptor>,
     pub get: Option<Gc<ObjectValue>>,
     pub set: Option<Gc<ObjectValue>>,
 }
 
 impl GcDeref for AccessorValue {}
+
+impl AccessorValue {
+    pub fn new(
+        cx: &mut Context,
+        get: Option<Gc<ObjectValue>>,
+        set: Option<Gc<ObjectValue>>,
+    ) -> Gc<AccessorValue> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::Accessor);
+        cx.heap.alloc(AccessorValue { descriptor, get, set })
+    }
+}
 
 /// A wrapper around values that are used as keys in ValueMap and ValueSet.
 /// Uses the SameValueZero algorithm to check equality, and hash function conforms to SameValueZero.

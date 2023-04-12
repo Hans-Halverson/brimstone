@@ -14,16 +14,14 @@ use super::{
         number_constructor::NumberObject, symbol_constructor::SymbolObject,
     },
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
+    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
     string_object::StringObject,
     string_parsing::{parse_string_to_bigint, parse_string_to_number},
     string_value::StringValue,
-    value::{
-        BigIntValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, SMI_TAG, STRING_TAG,
-        SYMBOL_TAG, UNDEFINED_TAG,
-    },
+    value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, POINTER_TAG, SMI_TAG, UNDEFINED_TAG},
     Context,
 };
 
@@ -106,20 +104,27 @@ fn ordinary_to_primitive(
 
 // 7.1.2 ToBoolean
 pub fn to_boolean(value: Value) -> bool {
-    if value.is_double() {
-        return value.as_double() != 0.0 && !value.is_nan();
+    // Fast path
+    let tag = value.get_tag();
+    if tag == BOOL_TAG {
+        return value.as_bool();
     }
 
-    match value.get_tag() {
-        BOOL_TAG => value.as_bool(),
-        NULL_TAG => false,
-        UNDEFINED_TAG => false,
-        SMI_TAG => value.as_smi() != 0,
-        OBJECT_TAG => true,
-        STRING_TAG => !value.as_string().is_empty(),
-        SYMBOL_TAG => true,
-        BIGINT_TAG => value.as_bigint().bigint().ne(&BigInt::default()),
-        _ => unreachable!(),
+    if value.is_pointer() {
+        match value.as_pointer().descriptor().kind() {
+            ObjectKind::String => !value.as_string().is_empty(),
+            ObjectKind::BigInt => value.as_bigint().bigint().ne(&BigInt::default()),
+            // Objects and symbols
+            _ => true,
+        }
+    } else {
+        match tag {
+            NULL_TAG => false,
+            UNDEFINED_TAG => false,
+            SMI_TAG => value.as_smi() != 0,
+            // Otherwise must be a double
+            _ => value.as_double() != 0.0 && !value.is_nan(),
+        }
     }
 }
 
@@ -135,28 +140,36 @@ pub fn to_numeric(cx: &mut Context, value: Value) -> EvalResult<Value> {
 
 // 7.1.4 ToNumber
 pub fn to_number(cx: &mut Context, value: Value) -> EvalResult<Value> {
+    // Fast path
     if value.is_number() {
         return value.into();
     }
 
-    match value.get_tag() {
-        NULL_TAG => Value::smi(0).into(),
-        UNDEFINED_TAG => Value::nan().into(),
-        BOOL_TAG => {
-            if value.as_bool() {
-                Value::smi(1).into()
-            } else {
-                Value::smi(0).into()
-            }
-        }
-        STRING_TAG => string_to_number(value.as_string()).into(),
-        OBJECT_TAG => {
+    if value.is_pointer() {
+        if value.as_pointer().descriptor().is_object() {
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
             to_number(cx, primitive_value)
+        } else {
+            match value.as_pointer().descriptor().kind() {
+                ObjectKind::String => string_to_number(value.as_string()).into(),
+                ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to number"),
+                ObjectKind::BigInt => type_error_(cx, "BigInt cannot be converted to number"),
+                _ => unreachable!(),
+            }
         }
-        SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to number"),
-        BIGINT_TAG => type_error_(cx, "BigInt cannot be converted to number"),
-        _ => unreachable!(),
+    } else {
+        match value.get_tag() {
+            NULL_TAG => Value::smi(0).into(),
+            UNDEFINED_TAG => Value::nan().into(),
+            BOOL_TAG => {
+                if value.as_bool() {
+                    Value::smi(1).into()
+                } else {
+                    Value::smi(0).into()
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -430,29 +443,27 @@ pub fn to_uint8_clamp(cx: &mut Context, value: Value) -> EvalResult<u8> {
 pub fn to_bigint(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> {
     let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
 
-    if primitive.is_bigint() {
-        return primitive.as_bigint().into();
-    } else if primitive.is_number() {
-        return type_error_(cx, "value cannot be converted to BigInt");
+    if primitive.is_pointer() {
+        match primitive.as_pointer().descriptor().kind() {
+            ObjectKind::BigInt => return primitive.as_bigint().into(),
+            ObjectKind::String => {
+                return if let Some(bigint) = string_to_bigint(primitive.as_string()) {
+                    BigIntValue::new(cx, bigint).into()
+                } else {
+                    syntax_error_(cx, "string does not represent a BigInt")
+                }
+            }
+            _ => {}
+        }
+    } else if primitive.is_bool() {
+        return if value.as_bool() {
+            BigIntValue::new(cx, 1.into()).into()
+        } else {
+            BigIntValue::new(cx, 0.into()).into()
+        };
     }
 
-    match primitive.get_tag() {
-        BOOL_TAG => {
-            if value.as_bool() {
-                BigIntValue::new(cx, 1.into()).into()
-            } else {
-                BigIntValue::new(cx, 0.into()).into()
-            }
-        }
-        STRING_TAG => {
-            if let Some(bigint) = string_to_bigint(primitive.as_string()) {
-                BigIntValue::new(cx, bigint).into()
-            } else {
-                syntax_error_(cx, "string does not represent a BigInt")
-            }
-        }
-        _ => type_error_(cx, "value cannot be converted to BigInt"),
-    }
+    type_error_(cx, "value cannot be converted to BigInt")
 }
 
 // 7.1.15 ToBigInt64
@@ -484,64 +495,81 @@ pub fn to_big_uint64(cx: &mut Context, value: Value) -> EvalResult<BigInt> {
 
 // 7.1.17 ToString
 pub fn to_string(cx: &mut Context, value: Value) -> EvalResult<Gc<StringValue>> {
+    // Fast path
     if value.is_string() {
         return value.as_string().into();
-    } else if value.is_double() {
-        return cx.alloc_string(number_to_string(value.as_double())).into();
     }
 
-    match value.get_tag() {
-        NULL_TAG => cx.alloc_string("null".to_owned()).into(),
-        UNDEFINED_TAG => cx.alloc_string("undefined".to_owned()).into(),
-        BOOL_TAG => {
-            let str = if value.as_bool() { "true" } else { "false" };
-            cx.alloc_string(str.to_owned()).into()
-        }
-        SMI_TAG => cx.alloc_string(value.as_smi().to_string()).into(),
-        OBJECT_TAG => {
+    if value.is_pointer() {
+        if value.as_pointer().descriptor().is_object() {
             let primitive_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
             to_string(cx, primitive_value)
+        } else {
+            match value.as_pointer().descriptor().kind() {
+                ObjectKind::BigInt => cx
+                    .alloc_string(value.as_bigint().bigint().to_string())
+                    .into(),
+                ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to string"),
+                _ => unreachable!(),
+            }
         }
-        BIGINT_TAG => cx
-            .alloc_string(value.as_bigint().bigint().to_string())
-            .into(),
-        SYMBOL_TAG => type_error_(cx, "symbol cannot be converted to string"),
-        _ => unreachable!(),
+    } else {
+        match value.get_tag() {
+            NULL_TAG => cx.alloc_string("null".to_owned()).into(),
+            UNDEFINED_TAG => cx.alloc_string("undefined".to_owned()).into(),
+            BOOL_TAG => {
+                let str = if value.as_bool() { "true" } else { "false" };
+                cx.alloc_string(str.to_owned()).into()
+            }
+            SMI_TAG => cx.alloc_string(value.as_smi().to_string()).into(),
+            // Otherwise must be double
+            _ => cx.alloc_string(number_to_string(value.as_double())).into(),
+        }
     }
 }
 
 // 7.1.18 ToObject
 pub fn to_object(cx: &mut Context, value: Value) -> EvalResult<Gc<ObjectValue>> {
-    if value.is_object() {
-        return value.as_object().into();
-    } else if value.is_number() {
-        let object: Gc<ObjectValue> = NumberObject::new_from_value(cx, value.as_number()).into();
-        return object.into();
-    }
-
-    match value.get_tag() {
-        NULL_TAG => type_error_(cx, "null has no properties"),
-        UNDEFINED_TAG => type_error_(cx, "undefined has no properties"),
-        BOOL_TAG => {
-            let object: Gc<ObjectValue> = BooleanObject::new_from_value(cx, value.as_bool()).into();
-            object.into()
+    if value.is_pointer() {
+        // Fast path
+        if value.as_pointer().descriptor().is_object() {
+            value.as_object().into()
+        } else {
+            match value.as_pointer().descriptor().kind() {
+                ObjectKind::String => {
+                    let object: Gc<ObjectValue> =
+                        StringObject::new_from_value(cx, value.as_string()).into();
+                    object.into()
+                }
+                ObjectKind::Symbol => {
+                    let object: Gc<ObjectValue> =
+                        SymbolObject::new_from_value(cx, value.as_symbol()).into();
+                    object.into()
+                }
+                ObjectKind::BigInt => {
+                    let object: Gc<ObjectValue> =
+                        BigIntObject::new_from_value(cx, value.as_bigint()).into();
+                    object.into()
+                }
+                _ => unreachable!(),
+            }
         }
-        STRING_TAG => {
-            let object: Gc<ObjectValue> =
-                StringObject::new_from_value(cx, value.as_string()).into();
-            object.into()
+    } else {
+        match value.get_tag() {
+            NULL_TAG => type_error_(cx, "null has no properties"),
+            UNDEFINED_TAG => type_error_(cx, "undefined has no properties"),
+            BOOL_TAG => {
+                let object: Gc<ObjectValue> =
+                    BooleanObject::new_from_value(cx, value.as_bool()).into();
+                object.into()
+            }
+            // Otherwise is a number, either double or smi
+            _ => {
+                let object: Gc<ObjectValue> =
+                    NumberObject::new_from_value(cx, value.as_number()).into();
+                object.into()
+            }
         }
-        SYMBOL_TAG => {
-            let object: Gc<ObjectValue> =
-                SymbolObject::new_from_value(cx, value.as_symbol()).into();
-            object.into()
-        }
-        BIGINT_TAG => {
-            let object: Gc<ObjectValue> =
-                BigIntObject::new_from_value(cx, value.as_bigint()).into();
-            object.into()
-        }
-        _ => unreachable!(),
     }
 }
 
@@ -731,19 +759,25 @@ pub fn same_value_zero(v1: Value, v2: Value) -> bool {
 // 7.2.13 SameValueNonNumeric, also includes BigInt handling
 #[inline]
 fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
-    let tag1 = v1.get_tag();
-    if tag1 != v2.get_tag() {
-        return false;
+    // Fast path, if values have same bits they are always equal
+    if v1.as_raw_bits() == v2.as_raw_bits() {
+        return true;
     }
 
-    match tag1 {
-        STRING_TAG => v1.as_string() == v2.as_string(),
-        BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
-        // Null, Undefined, and Bool all have a single canonical bit representation for each value,
-        // so the bits can be compared directly. For Objects and Symbols there is a single
-        // representation for a unique pointer, so can directly compare bits as well.
-        _ => v1.as_raw_bits() == v2.as_raw_bits(),
+    // Only strings and BigInts may have the same value but different bit patterns, since
+    // non-pointer values are all unique, and objects and symbols are identified by their address.
+    if v1.is_pointer() && v2.is_pointer() {
+        let kind1 = v1.as_pointer().descriptor().kind();
+        if kind1 == v2.as_pointer().descriptor().kind() {
+            match kind1 {
+                ObjectKind::String => return v1.as_string() == v2.as_string(),
+                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
+                _ => {}
+            }
+        }
     }
+
+    false.into()
 }
 
 // 7.1.14 StringToBigInt
@@ -774,30 +808,33 @@ pub fn to_property_key(cx: &mut Context, value: Value) -> EvalResult<PropertyKey
 // 7.2.14 IsLessThan
 // ToPrimitive calls are inlined at call sites instead of passing LeftFirst argument
 pub fn is_less_than(cx: &mut Context, x: Value, y: Value) -> EvalResult<Value> {
-    let x_tag = x.get_tag();
-    let y_tag = y.get_tag();
-    if x_tag == STRING_TAG {
-        if y_tag == STRING_TAG {
-            return (x.as_string() < y.as_string()).into();
-        } else if y_tag == BIGINT_TAG {
-            let x_bigint = string_to_bigint(x.as_string());
+    if x.is_pointer() && y.is_pointer() {
+        let x_kind = x.as_pointer().descriptor().kind();
+        let y_kind = y.as_pointer().descriptor().kind();
 
-            return if let Some(x_bigint) = x_bigint {
-                x_bigint.lt(y.as_bigint().bigint()).into()
+        if x_kind == ObjectKind::String {
+            if y_kind == ObjectKind::String {
+                return (x.as_string() < y.as_string()).into();
+            } else if y_kind == ObjectKind::BigInt {
+                let x_bigint = string_to_bigint(x.as_string());
+
+                return if let Some(x_bigint) = x_bigint {
+                    x_bigint.lt(y.as_bigint().bigint()).into()
+                } else {
+                    Value::undefined().into()
+                };
+            }
+        }
+
+        if x_kind == ObjectKind::BigInt && y_kind == ObjectKind::String {
+            let y_bigint = string_to_bigint(y.as_string());
+
+            return if let Some(y_bigint) = y_bigint {
+                x.as_bigint().bigint().lt(&y_bigint).into()
             } else {
                 Value::undefined().into()
             };
         }
-    }
-
-    if x_tag == BIGINT_TAG && y_tag == STRING_TAG {
-        let y_bigint = string_to_bigint(y.as_string());
-
-        return if let Some(y_bigint) = y_bigint {
-            x.as_bigint().bigint().lt(&y_bigint).into()
-        } else {
-            Value::undefined().into()
-        };
     }
 
     let num_x = maybe!(to_numeric(cx, x));
@@ -896,116 +933,172 @@ pub fn is_loosely_equal(cx: &mut Context, v1: Value, v2: Value) -> EvalResult<bo
             return (v1.as_number() == v2.as_number()).into();
         }
 
-        return match v2.get_tag() {
-            STRING_TAG => {
-                let number_v2 = string_to_number(v2.as_string());
-                (v1.as_number() == number_v2.as_number()).into()
+        return if v2.is_pointer() {
+            match v2.as_pointer().descriptor().kind() {
+                ObjectKind::String => {
+                    let number_v2 = string_to_number(v2.as_string());
+                    (v1.as_number() == number_v2.as_number()).into()
+                }
+                ObjectKind::BigInt => {
+                    if v1.is_nan() || v1.is_infinity() {
+                        return false.into();
+                    }
+
+                    let v1_f64 = v1.as_number();
+
+                    // Number must be an integer to be equal to a BigInt
+                    if v1_f64.trunc() != v1_f64 {
+                        return false.into();
+                    }
+
+                    // Now that we know number is an integer, it can losslessly be converted to a BigInt
+                    let v1_bigint = v1_f64.to_bigint().unwrap();
+                    let v2_bigint = v2.as_bigint().bigint();
+
+                    (v1_bigint == *v2_bigint).into()
+                }
+                ObjectKind::Symbol => false.into(),
+                // Otherwise must be an object
+                _ => {
+                    let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
+                    is_loosely_equal(cx, v1, primitive_v2)
+                }
             }
-            BOOL_TAG => {
+        } else {
+            if v2.is_bool() {
                 let v2_number = maybe!(to_number(cx, v2));
                 is_loosely_equal(cx, v1, v2_number)
+            } else {
+                false.into()
             }
-            OBJECT_TAG => {
-                let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
-                is_loosely_equal(cx, v1, primitive_v2)
-            }
-            BIGINT_TAG => {
-                if v1.is_nan() || v1.is_infinity() {
-                    return false.into();
-                }
-
-                let v1_f64 = v1.as_number();
-
-                // Number must be an integer to be equal to a BigInt
-                if v1_f64.trunc() != v1_f64 {
-                    return false.into();
-                }
-
-                // Now that we know number is an integer, it can losslessly be converted to a BigInt
-                let v1_bigint = v1_f64.to_bigint().unwrap();
-                let v2_bigint = v2.as_bigint().bigint();
-
-                (v1_bigint == *v2_bigint).into()
-            }
-            _ => false.into(),
         };
+    }
+
+    // Fast path - values with the same bit patterns are equal
+    if v1.as_raw_bits() == v2.as_raw_bits() {
+        return true.into();
     }
 
     let tag1 = v1.get_tag();
     let tag2 = v2.get_tag();
+
+    // Handle comparisons of the same type
     if tag1 == tag2 {
-        return match tag1 {
-            STRING_TAG => (v1.as_string() == v2.as_string()).into(),
-            BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into(),
-            // Null, Undefined, and Bool all have a single canonical bit representation for each value,
-            // so the bits can be compared directly. For Objects and Symbols there is a single
-            // representation for a unique pointer, so can directly compare bits as well.
-            _ => (v1.as_raw_bits() == v2.as_raw_bits()).into(),
+        if tag1 == POINTER_TAG {
+            let kind1 = v1.as_pointer().descriptor().kind();
+            let kind2 = v2.as_pointer().descriptor().kind();
+            if kind1 == kind2 {
+                return match kind1 {
+                    // Only strings and BigInts may have the same value but different bit patterns
+                    ObjectKind::String => (v1.as_string() == v2.as_string()).into(),
+                    ObjectKind::BigInt => {
+                        v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into()
+                    }
+                    _ => false.into(),
+                };
+            // Two objects with different bit patterns are always unequal
+            } else if v1.as_pointer().descriptor().is_object()
+                && v2.as_pointer().descriptor().is_object()
+            {
+                return false.into();
+            }
+        } else {
+            return false.into();
+        }
+    }
+
+    // Handle comparisons that implicitly convert between types
+
+    // Nullish values are loosely equal
+    if (tag1 == NULL_TAG && tag2 == UNDEFINED_TAG) || (tag1 == UNDEFINED_TAG && tag2 == NULL_TAG) {
+        return true.into();
+    }
+
+    // Convert bools to numbers and try again
+    if tag1 == BOOL_TAG {
+        let v1_number = maybe!(to_number(cx, v1));
+        return is_loosely_equal(cx, v1_number, v2);
+    } else if tag2 == BOOL_TAG {
+        let v2_number = maybe!(to_number(cx, v2));
+        return is_loosely_equal(cx, v1, v2_number);
+    }
+
+    // Implicit conversions involving numbers
+    if tag2 == SMI_TAG || v2.is_double() {
+        return if tag1 == POINTER_TAG {
+            let kind = v1.as_pointer().descriptor().kind();
+            match kind {
+                ObjectKind::String => {
+                    let v1_number = string_to_number(v1.as_string());
+                    (v1_number.as_number() == v2.as_number()).into()
+                }
+                ObjectKind::BigInt => {
+                    if v2.is_nan() || v2.is_infinity() {
+                        return false.into();
+                    }
+
+                    let v2_f64 = v2.as_number();
+
+                    // Number must be an integer to be equal to a BigInt
+                    if v2_f64.trunc() != v2_f64 {
+                        return false.into();
+                    }
+
+                    // Now that we know number is an integer, it can losslessly be converted to a BigInt
+                    let v2_bigint = v2_f64.to_bigint().unwrap();
+                    let v1_bigint = v1.as_bigint().bigint();
+
+                    (*v1_bigint == v2_bigint).into()
+                }
+                ObjectKind::Symbol => false.into(),
+                // Otherwise must be an object
+                _ => {
+                    let v1_primitive = maybe!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
+                    is_loosely_equal(cx, v1_primitive, v2)
+                }
+            }
+        } else {
+            false.into()
         };
     }
 
-    match (tag1, tag2) {
-        (NULL_TAG, UNDEFINED_TAG) | (UNDEFINED_TAG, NULL_TAG) => true.into(),
-        (STRING_TAG, _) if v2.is_number() => {
-            let v1_number = string_to_number(v1.as_string());
-            (v1_number.as_number() == v2.as_number()).into()
-        }
-        (STRING_TAG, BIGINT_TAG) => {
-            let v1_bigint = string_to_bigint(v1.as_string());
-            if let Some(v1_bigint) = v1_bigint {
-                v1_bigint.eq(v2.as_bigint().bigint()).into()
-            } else {
-                false.into()
-            }
-        }
-        (BOOL_TAG, _) => {
-            let v1_number = maybe!(to_number(cx, v1));
-            is_loosely_equal(cx, v1_number, v2)
-        }
-        (_, BOOL_TAG) => {
-            let v2_number = maybe!(to_number(cx, v2));
-            is_loosely_equal(cx, v1, v2_number)
-        }
-        (BIGINT_TAG, _) if v2.is_number() => {
-            if v2.is_nan() || v2.is_infinity() {
-                return false.into();
-            }
+    if tag1 == POINTER_TAG && tag2 == POINTER_TAG {
+        let kind1 = v1.as_pointer().descriptor().kind();
+        let kind2 = v2.as_pointer().descriptor().kind();
 
-            let v2_f64 = v2.as_number();
-
-            // Number must be an integer to be equal to a BigInt
-            if v2_f64.trunc() != v2_f64 {
-                return false.into();
+        // Strings are implicitly converted to BigInts
+        match (kind1, kind2) {
+            (ObjectKind::String, ObjectKind::BigInt) => {
+                let v1_bigint = string_to_bigint(v1.as_string());
+                return if let Some(v1_bigint) = v1_bigint {
+                    v1_bigint.eq(v2.as_bigint().bigint()).into()
+                } else {
+                    false.into()
+                };
             }
-
-            // Now that we know number is an integer, it can losslessly be converted to a BigInt
-            let v2_bigint = v2_f64.to_bigint().unwrap();
-            let v1_bigint = v1.as_bigint().bigint();
-
-            (*v1_bigint == v2_bigint).into()
-        }
-        (BIGINT_TAG, STRING_TAG) => {
-            let v2_bigint = string_to_bigint(v2.as_string());
-            if let Some(v2_bigint) = v2_bigint {
-                v1.as_bigint().bigint().eq(&v2_bigint).into()
-            } else {
-                false.into()
+            (ObjectKind::BigInt, ObjectKind::String) => {
+                let v2_bigint = string_to_bigint(v2.as_string());
+                return if let Some(v2_bigint) = v2_bigint {
+                    v1.as_bigint().bigint().eq(&v2_bigint).into()
+                } else {
+                    false.into()
+                };
             }
+            _ => {}
         }
-        (OBJECT_TAG, _) if v2.is_number() => {
+
+        // At this point, if one value is an object the other value is guaranteed to be a non-object
+        // pointer value (aka string, symbol, or BigInt).
+        if v1.as_pointer().descriptor().is_object() {
             let v1_primitive = maybe!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
-            is_loosely_equal(cx, v1_primitive, v2)
-        }
-        (OBJECT_TAG, STRING_TAG | BIGINT_TAG | SYMBOL_TAG) => {
-            let v1_primitive = maybe!(to_primitive(cx, v1, ToPrimitivePreferredType::None));
-            is_loosely_equal(cx, v1_primitive, v2)
-        }
-        (STRING_TAG | BIGINT_TAG | SYMBOL_TAG, OBJECT_TAG) => {
+            return is_loosely_equal(cx, v1_primitive, v2);
+        } else if v2.as_pointer().descriptor().is_object() {
             let primitive_v2 = maybe!(to_primitive(cx, v2, ToPrimitivePreferredType::None));
-            is_loosely_equal(cx, v1, primitive_v2)
+            return is_loosely_equal(cx, v1, primitive_v2);
         }
-        _ => false.into(),
     }
+
+    false.into()
 }
 
 // 7.2.16 IsStrictlyEqual
@@ -1018,19 +1111,7 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
         }
     }
 
-    let tag1 = v1.get_tag();
-    if tag1 != v2.get_tag() {
-        return false;
-    }
-
-    match tag1 {
-        STRING_TAG => v1.as_string() == v2.as_string(),
-        BIGINT_TAG => v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
-        // Null, Undefined, and Bool all have a single canonical bit representation for each value,
-        // so the bits can be compared directly. For Objects and Symbols there is a single
-        // representation for a unique pointer, so can directly compare bits as well.
-        _ => v1.as_raw_bits() == v2.as_raw_bits(),
-    }
+    same_value_non_numeric(v1, v2)
 }
 
 // Specialization of SameValue for objects, checks object identity

@@ -6,76 +6,104 @@ use num_bigint::BigInt;
 use super::{
     context::Context,
     gc::{Gc, GcDeref},
-    object_descriptor::{ObjectDescriptor, ObjectKind},
+    object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
     type_utilities::same_value_zero,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
-/// packing implementation in SerenityOS's LibWeb.
+/// packing implementation in JavaScriptCorre and SerenityOS's LibWeb.
 ///
 /// Floating point numbers have the following format:
 ///
-/// Components: s exponent mantissa
-/// Bits:       1 11       52
+/// Components: sign exponent mantissa
+/// Bits:       1    11       52
 ///
 /// NaNs have an exponent of all 1s. In addition the highest bit of the mantissa determines
 /// whether the NaN is quiet (1) or signaling (0). To avoid ambiguity with signaling NaNs, the
 /// only canonical NaN allowed for JS numbers is the quiet NaN.
 ///
-/// This leaves the low 51 bits of the mantissa and the sign bit for tagging.
+/// This leaves the low 51 bits of the mantissa and the sign bit for packing in additional data.
 ///
-/// The sign bit is used to determine whether this is a primitive value (0) or a pointer value (1).
+/// We choose to favor pointers over doubles, meaning pointer values are encoded directly and can
+/// be used without needing a decoding step. A consequence of this is that type information for the
+/// pointer value must be stored within the heap allocated object.
 ///
-/// Primitives use the top three bits with the following tags:
+/// For pointers to be directly encoded their top 16 bits must be zero, meaning we must encode all
+/// valid non-pointer values into a form where they never have their top 16 bits all be zero.
 ///
-///   Undefined:  0b001
-///   Null:       0b011
-///   Empty:      0b010
-///   Bool:       0b100, and the lowest bit of the mantissa stores the bool value
-///   Smi:        0b110, and the low 32 bits of the mantissa stores the i32 value
+/// Imagine a scheme, referred to here as the "non-negated scheme", which our true scheme will be
+/// built off of. In the non-negated scheme all non-pointer, non-double values are encoded by
+/// placing a non-zero 3-bit tag in bits 48-50 of the mantissa, and placing an up to 48-bit payload
+/// in bits 0-47 of the mantissa. Note that the sign bit is ignored, but could be used as an
+/// additional tag bit if needed.
 ///
-/// Pointers use the top three bits with the following tags, leaving 48 bits to store the pointer:
+/// In this scheme all non-pointer values have the following representation:
 ///
-///   Object:   0b001
-///   String:   0b010
-///   Symbol:   0b011
-///   BigInt:   0b100
-///   Accessor: 0b101
+///                     sign     exponent         mantissa
+///                     (1 bit)  (11 bits)        (52 bits total. Top bit reserved for qNaN,
+///                                                next 3 bits are tag, last 48 bits are payload)
+///
+/// +Inf:               0        11111111111      0 000 00...0
+/// -Inf:               1        11111111111      0 000 00...0
+/// Canonical NaN       0        11111111111      1 000 00...0
+/// Other double        any      (any but 1..1)   any any any
+/// Other values        any      11111111111      1 (tag - any but 000) (payload - any)
+///
+/// Observe that all non-pointer values have at least one 0 in their top 13 bits (and their top 16
+/// bits for that matter). This means that if we bitwise negate any valid non-pointer value, the
+/// result will never have its top 16 bits all be set to 0, distinguishing it from a pointer.
+///
+/// This brings us to our true encoding scheme:
+/// - Pointers are represented directly, with all top 16 bits set to 0
+/// - Doubles are represented by their bitwise negation
+/// - All non-pointer, non-value doubles are represented by the bitwise negation of the
+///   "non-negated scheme" described above.
+///     - Undefined, Null, and Empty values each have a unique tag but no payload
+///     - Bool values store their encoded bool value in the lowest bit of the payload
+///     - Smi values store their encoded 32-bit int value in the low 32 bits of the payload
+///
+/// Technically bool and smi values store the bitwise negation of their payload, in order for the
+/// payload to be extracted directly without needing to apply a bitwise negation.
+///
+/// Notes:
+/// - All tags are statically known, so we can shift and compare tags to known constants for each type
+/// - Decoding a pointer is a no-op, it is already encoded directly.
+/// - Decoding a bool or smi involves directly copying the low bits (no bitwise negation needed)
+/// - Decoding a double is simply bitwise negating the entire value. Same with encoding.
+/// - Undefined and Null tags differ by a single bit, so can mask and compare to check nullish
+///   values instead of needing two comparisons.
 
 const TAG_SHIFT: u64 = 48;
-const NAN_MASK: u64 = (NAN_TAG as u64) << TAG_SHIFT;
 
 // Only the top 16 bits need to be checked as a tag, allowing for a right shift and check
 const NAN_TAG: u16 = 0x7FF8;
-const POINTER_TAG: u16 = 0x8000;
 
-pub const UNDEFINED_TAG: u16 = 0b001 | NAN_TAG;
-pub const NULL_TAG: u16 = 0b011 | NAN_TAG;
+pub const POINTER_TAG: u16 = 0;
+pub const UNDEFINED_TAG: u16 = !(0b001 | NAN_TAG);
+pub const NULL_TAG: u16 = !(0b011 | NAN_TAG);
 // Empty value in a completion record. Can use instead of Option<Value> to fit into single word.
-const EMPTY_TAG: u16 = 0b010 | NAN_TAG;
-pub const BOOL_TAG: u16 = 0b100 | NAN_TAG;
-pub const SMI_TAG: u16 = 0b110 | NAN_TAG;
+const EMPTY_TAG: u16 = !(0b010 | NAN_TAG);
+pub const BOOL_TAG: u16 = !(0b100 | NAN_TAG);
+pub const SMI_TAG: u16 = !(0b110 | NAN_TAG);
 
-pub const OBJECT_TAG: u16 = 0b001 | POINTER_TAG | NAN_TAG;
-pub const STRING_TAG: u16 = 0b010 | POINTER_TAG | NAN_TAG;
-pub const SYMBOL_TAG: u16 = 0b011 | POINTER_TAG | NAN_TAG;
-pub const BIGINT_TAG: u16 = 0b100 | POINTER_TAG | NAN_TAG;
-const ACCESSOR_TAG: u16 = 0b101 | POINTER_TAG | NAN_TAG;
-
-// Mask that converts a null tag to an undefined tag, so that a nullish check can be performed with:
-// TAG & NULLISH_MASK == UNDEFINED_TAG
+// Mask that converts an undefined tag to a null tag, so that a nullish check can be performed with:
+// TAG & NULLISH_MASK == NULL_TAG
 const NULLISH_TAG_MASK: u16 = 0xFFFD;
 
 // Bit patterns for known constants
-const NEGATIVE_INFINITY: u64 = 0xFFF0 << TAG_SHIFT;
+const CANONICAL_NAN: u64 = !((NAN_TAG as u64) << TAG_SHIFT);
+const DOUBLE_POSITIVE_ZERO: u64 = Value::double(0.0).as_raw_bits();
+const DOUBLE_NEGATIVE_ZERO: u64 = Value::double(-0.0).as_raw_bits();
+const POSITIVE_INFINITY: u64 = Value::double(f64::INFINITY).as_raw_bits();
+
 const TRUE: u64 = Value::bool(true).as_raw_bits();
 const FALSE: u64 = Value::bool(false).as_raw_bits();
 
 const SMI_MAX: f64 = i32::MAX as f64;
 const SMI_MIN: f64 = i32::MIN as f64;
-const SMI_ZERO_BITS: u64 = Value::smi(0).as_raw_bits();
+const SMI_ZERO: u64 = Value::smi(0).as_raw_bits();
 
 #[derive(Clone, Copy)]
 pub struct Value {
@@ -97,9 +125,17 @@ impl Value {
     }
 
     #[inline]
+    pub const fn is_pointer(&self) -> bool {
+        self.has_tag(POINTER_TAG)
+    }
+
+    #[inline]
     pub const fn is_double(&self) -> bool {
-        // Make sure to check if this is the canonical NaN value
-        (self.raw_bits & NAN_MASK != NAN_MASK) || self.is_nan()
+        // In the non-negated representation the only double pattern with the 12 canonical NaN bits
+        // set is the canonical NaN itself. All other non-pointer values also have the 12 canonical
+        // NaN bits set, so value is a double if either any of these 12 bits is unset in the
+        // non-negated representation, or the value is the canonical NaN.
+        (!self.raw_bits & !CANONICAL_NAN != !CANONICAL_NAN) || self.is_nan()
     }
 
     #[inline]
@@ -109,24 +145,25 @@ impl Value {
 
     #[inline]
     pub const fn is_nan(&self) -> bool {
-        self.raw_bits == NAN_MASK
+        self.raw_bits == CANONICAL_NAN
     }
 
     /// Whether number is positive or negative infinity
     #[inline]
     pub const fn is_infinity(&self) -> bool {
-        // Set sign bit to check positive and negative infinity at the same time
-        self.raw_bits | (1 << 63) == NEGATIVE_INFINITY
+        // Set sign bit to check positive and negative infinity at the same time. Note that setting
+        // sign bit will convert negative to positive infinity because doubles are bitwise negated.
+        self.raw_bits | (1 << 63) == POSITIVE_INFINITY
     }
 
     #[inline]
     pub fn is_positive_zero(&self) -> bool {
-        self.raw_bits == f64::to_bits(0.0) || (self.is_smi() && self.raw_bits == SMI_ZERO_BITS)
+        self.raw_bits == DOUBLE_POSITIVE_ZERO || (self.is_smi() && self.raw_bits == SMI_ZERO)
     }
 
     #[inline]
     pub fn is_negative_zero(&self) -> bool {
-        self.raw_bits == f64::to_bits(-0.0)
+        self.raw_bits == DOUBLE_NEGATIVE_ZERO
     }
 
     #[inline]
@@ -151,7 +188,9 @@ impl Value {
 
     #[inline]
     pub const fn is_nullish(&self) -> bool {
-        (self.get_tag() & NULLISH_TAG_MASK) == UNDEFINED_TAG
+        // Apply mask that converts undefined tag into null tag, since they are one bit apart,
+        // so only a single comparison is needed.
+        (self.get_tag() & NULLISH_TAG_MASK) == NULL_TAG
     }
 
     #[inline]
@@ -170,28 +209,53 @@ impl Value {
     }
 
     #[inline]
-    pub const fn is_object(&self) -> bool {
-        self.has_tag(OBJECT_TAG)
+    pub fn is_object(&self) -> bool {
+        if !self.is_pointer() {
+            return false;
+        }
+
+        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
+        o.descriptor().is_object()
     }
 
     #[inline]
-    pub const fn is_string(&self) -> bool {
-        self.has_tag(STRING_TAG)
+    pub fn is_string(&self) -> bool {
+        if !self.is_pointer() {
+            return false;
+        }
+
+        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
+        o.descriptor().kind() == ObjectKind::String
     }
 
     #[inline]
-    pub const fn is_symbol(&self) -> bool {
-        self.has_tag(SYMBOL_TAG)
+    pub fn is_symbol(&self) -> bool {
+        if !self.is_pointer() {
+            return false;
+        }
+
+        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
+        o.descriptor().kind() == ObjectKind::Symbol
     }
 
     #[inline]
-    pub const fn is_bigint(&self) -> bool {
-        self.has_tag(BIGINT_TAG)
+    pub fn is_bigint(&self) -> bool {
+        if !self.is_pointer() {
+            return false;
+        }
+
+        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
+        o.descriptor().kind() == ObjectKind::BigInt
     }
 
     #[inline]
-    pub const fn is_accessor(&self) -> bool {
-        self.has_tag(ACCESSOR_TAG)
+    pub fn is_accessor(&self) -> bool {
+        if !self.is_pointer() {
+            return false;
+        }
+
+        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
+        o.descriptor().kind() == ObjectKind::Accessor
     }
 
     // Type casts
@@ -212,7 +276,7 @@ impl Value {
 
     #[inline]
     pub fn as_double(&self) -> f64 {
-        f64::from_bits(self.raw_bits)
+        f64::from_bits(!self.raw_bits)
     }
 
     #[inline]
@@ -225,11 +289,15 @@ impl Value {
         unsafe { std::mem::transmute::<u32, i32>(self.raw_bits as u32) }
     }
 
-    // In x86_64 pointers must be in "canonical form", meaning the top 16 bits must be the same a
-    // the highest pointer bit (bit 47).
+    // Pointers are represented directly.
     #[inline]
     const fn restore_pointer_bits<T>(&self) -> *mut T {
-        ((self.raw_bits << 16) >> 16) as *mut T
+        self.raw_bits as *mut T
+    }
+
+    #[inline]
+    pub const fn as_pointer(&self) -> Gc<HeapItem> {
+        Gc::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
@@ -272,7 +340,7 @@ impl Value {
             return Value::nan();
         }
 
-        Value { raw_bits: f64::to_bits(value) }
+        Value::double(value)
     }
 
     #[inline]
@@ -304,43 +372,41 @@ impl Value {
     }
 
     #[inline]
+    pub const fn double(value: f64) -> Value {
+        // f64::to_bits is not yet stable as a const fn. We only pass simple values in a const
+        // context so perform a raw transmute until f64::to_bits is const stabilized.
+        let double_bits = unsafe { std::mem::transmute::<f64, u64>(value) };
+        Value { raw_bits: !double_bits }
+    }
+
+    #[inline]
     pub fn object(value: Gc<ObjectValue>) -> Value {
-        Value {
-            raw_bits: ((OBJECT_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
-        }
+        Value { raw_bits: (value.as_ptr() as u64) }
     }
 
     #[inline]
     pub fn string(value: Gc<StringValue>) -> Value {
-        Value {
-            raw_bits: ((STRING_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
-        }
+        Value { raw_bits: (value.as_ptr() as u64) }
     }
 
     #[inline]
     pub fn symbol(value: Gc<SymbolValue>) -> Value {
-        Value {
-            raw_bits: ((SYMBOL_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
-        }
+        Value { raw_bits: (value.as_ptr() as u64) }
     }
 
     #[inline]
     pub fn bigint(value: Gc<BigIntValue>) -> Value {
-        Value {
-            raw_bits: ((BIGINT_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
-        }
+        Value { raw_bits: (value.as_ptr() as u64) }
     }
 
     #[inline]
     pub fn accessor(value: Gc<AccessorValue>) -> Value {
-        Value {
-            raw_bits: ((ACCESSOR_TAG as u64) << TAG_SHIFT) | (value.as_ptr() as u64),
-        }
+        Value { raw_bits: (value.as_ptr() as u64) }
     }
 
     #[inline]
     pub const fn nan() -> Value {
-        Value { raw_bits: NAN_MASK }
+        Value { raw_bits: CANONICAL_NAN }
     }
 }
 
@@ -377,7 +443,7 @@ impl From<i16> for Value {
 impl From<u32> for Value {
     fn from(value: u32) -> Self {
         if value > i32::MAX as u32 {
-            return Value { raw_bits: f64::to_bits(value as f64) };
+            return Value::double(value as f64);
         }
 
         Value::smi(value as i32)
@@ -394,7 +460,7 @@ impl From<u64> for Value {
     fn from(value: u64) -> Self {
         if value > i32::MAX as u64 {
             // TODO: This conversion is lossy
-            return Value { raw_bits: f64::to_bits(value as f64) };
+            return Value::double(value as f64);
         }
 
         Value::smi(value as i32)
@@ -405,7 +471,7 @@ impl From<i64> for Value {
     fn from(value: i64) -> Self {
         if value > i32::MAX as i64 || value < i32::MIN as i64 {
             // TODO: This conversion is lossy
-            return Value { raw_bits: f64::to_bits(value as f64) };
+            return Value::double(value as f64);
         }
 
         Value::smi(value as i32)
@@ -561,15 +627,16 @@ impl hash::Hash for ValueCollectionKey {
             };
         }
 
-        let tag = self.0.get_tag();
-        if tag == STRING_TAG {
-            self.0.as_string().hash(state);
-        } else if tag == BIGINT_TAG {
-            self.0.as_bigint().bigint().hash(state);
-        } else {
-            // TODO: Hash for objects and symbols must be stable across GCs
-            self.0.as_raw_bits().hash(state);
+        if self.0.is_pointer() {
+            match self.0.as_pointer().descriptor().kind() {
+                ObjectKind::String => return self.0.as_string().hash(state),
+                ObjectKind::BigInt => return self.0.as_bigint().bigint().hash(state),
+                _ => {}
+            }
         }
+
+        // TODO: Hash for objects and symbols must be stable across GCs
+        self.0.as_raw_bits().hash(state);
     }
 }
 

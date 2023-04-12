@@ -198,7 +198,7 @@ macro_rules! must {
         let result = $a;
         match result {
             EvalResult::Ok(value) => value,
-            _ => panic!("Unexepcted abnormal completion"),
+            _ => panic!("Unexpected abnormal completion"),
         }
     }};
 }

@@ -16,7 +16,7 @@ use crate::{
             is_array, is_callable, require_object_coercible, same_object_value, to_object,
             to_property_key,
         },
-        value::{Value, NULL_TAG, OBJECT_TAG},
+        value::Value,
         Context,
     },
     maybe,
@@ -219,10 +219,12 @@ impl ObjectPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
 
         let proto = get_argument(arguments, 0);
-        let proto = match proto.get_tag() {
-            OBJECT_TAG => Some(proto.as_object()),
-            NULL_TAG => None,
-            _ => return Value::undefined().into(),
+        let proto = if proto.is_object() {
+            Some(proto.as_object())
+        } else if proto.is_null() {
+            None
+        } else {
+            return Value::undefined().into();
         };
 
         if !object.is_object() {

@@ -24,7 +24,6 @@ use crate::{
             property::PrivatePropertyKind,
             property_key::PropertyKey,
             string_value::StringValue,
-            value::{NULL_TAG, OBJECT_TAG},
             Completion, Context, EvalResult, Gc, Value,
         },
     },
@@ -163,10 +162,12 @@ pub fn class_definition_evaluation(
             let super_class = super_class.as_object();
             let proto_parent = maybe!(get(cx, super_class, &cx.names.prototype()));
 
-            match proto_parent.get_tag() {
-                OBJECT_TAG => (Some(proto_parent.as_object()), super_class),
-                NULL_TAG => (None, super_class),
-                _ => return type_error_(cx, "super class prototype must be an object or null"),
+            if proto_parent.is_object() {
+                (Some(proto_parent.as_object()), super_class)
+            } else if proto_parent.is_null() {
+                (None, super_class)
+            } else {
+                return type_error_(cx, "super class prototype must be an object or null");
             }
         }
     } else {

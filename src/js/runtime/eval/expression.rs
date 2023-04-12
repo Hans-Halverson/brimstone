@@ -25,6 +25,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
+            object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create,
             property::Property,
@@ -38,10 +39,7 @@ use crate::{
                 to_object, to_primitive, to_property_key, to_string, to_uint32,
                 ToPrimitivePreferredType,
             },
-            value::{
-                BigIntValue, Value, BIGINT_TAG, BOOL_TAG, NULL_TAG, OBJECT_TAG, STRING_TAG,
-                SYMBOL_TAG, UNDEFINED_TAG,
-            },
+            value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
             Context, Gc,
         },
     },
@@ -248,14 +246,10 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                 let is_proto_setter = property_key == cx.names.__proto__ && !property.is_computed;
                 if is_proto_setter {
                     let prop_value = maybe!(eval_expression(cx, value));
-                    match prop_value.get_tag() {
-                        OBJECT_TAG => {
-                            must!(object.set_prototype_of(cx, Some(prop_value.as_object())));
-                        }
-                        NULL_TAG => {
-                            must!(object.set_prototype_of(cx, None));
-                        }
-                        _ => {}
+                    if prop_value.is_object() {
+                        must!(object.set_prototype_of(cx, Some(prop_value.as_object())));
+                    } else if prop_value.is_null() {
+                        must!(object.set_prototype_of(cx, None));
                     }
                 } else {
                     let prop_value = maybe!(eval_named_anonymous_function_or_expression(
@@ -857,21 +851,29 @@ fn eval_typeof_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
         None => maybe!(eval_expression(cx, expr.argument.as_ref())),
     };
 
-    let type_string = match value.get_tag() {
-        NULL_TAG => "object",
-        UNDEFINED_TAG => "undefined",
-        BOOL_TAG => "boolean",
-        STRING_TAG => "string",
-        OBJECT_TAG => {
-            if value.as_object().is_callable() {
-                "function"
-            } else {
-                "object"
+    let type_string = if value.is_pointer() {
+        let kind = value.as_pointer().descriptor().kind();
+        match kind {
+            ObjectKind::String => "string",
+            ObjectKind::Symbol => "symbol",
+            ObjectKind::BigInt => "bigint",
+            // All other pointer values must be an object
+            _ => {
+                if value.as_object().is_callable() {
+                    "function"
+                } else {
+                    "object"
+                }
             }
         }
-        SYMBOL_TAG => "symbol",
-        BIGINT_TAG => "bigint",
-        _ => "number",
+    } else {
+        match value.get_tag() {
+            NULL_TAG => "object",
+            UNDEFINED_TAG => "undefined",
+            BOOL_TAG => "boolean",
+            // Otherwise must be a number - either a double or smi
+            _ => "number",
+        }
     };
 
     cx.alloc_string(String::from(type_string)).into()

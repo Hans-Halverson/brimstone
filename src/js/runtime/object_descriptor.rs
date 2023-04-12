@@ -89,7 +89,7 @@ pub enum ObjectKind {
     ObjectPrototype,
     FunctionPrototype,
 
-    // Other heap objects
+    // Other heap items
     String,
     Symbol,
     BigInt,
@@ -280,5 +280,20 @@ impl BaseDescriptors {
 
     pub fn get(&self, kind: ObjectKind) -> Gc<ObjectDescriptor> {
         self.descriptors[kind as usize]
+    }
+}
+
+/// An arbitrary heap item. Only common field between heap items is their descriptor, which can be
+/// used to determine the true type of the heap item.
+#[repr(C)]
+pub struct HeapItem {
+    descriptor: Gc<ObjectDescriptor>,
+}
+
+impl GcDeref for HeapItem {}
+
+impl HeapItem {
+    pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
+        self.descriptor
     }
 }

@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use crate::js::runtime::ordinary_object::OrdinaryObject;
 
 use super::{
@@ -25,10 +27,12 @@ use super::{
 pub struct ObjectDescriptor {
     // Always the singleton descriptor descriptor
     descriptor: Gc<ObjectDescriptor>,
-    // Object's type
-    kind: ObjectKind,
     // Rust VirtualObject vtable, used for dynamic dispatch to some object methods
     vtable: VirtualObjectVtable,
+    // Object's type
+    kind: ObjectKind,
+    // Bitflags for object
+    flags: DescFlags,
 }
 
 impl GcDeref for ObjectDescriptor {}
@@ -115,13 +119,27 @@ impl ObjectKind {
     }
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct DescFlags: u8 {
+        /// Whether this heap item is an object value
+        const IS_OBJECT = 1 << 0;
+    }
+}
+
 impl ObjectDescriptor {
     pub fn new<T: VirtualObject>(
         heap: &mut Heap,
         descriptor: Gc<ObjectDescriptor>,
         kind: ObjectKind,
+        flags: DescFlags,
     ) -> Gc<ObjectDescriptor> {
-        let desc = ObjectDescriptor { descriptor, kind, vtable: extract_object_vtable::<T>() };
+        let desc = ObjectDescriptor {
+            descriptor,
+            vtable: extract_object_vtable::<T>(),
+            kind,
+            flags,
+        };
         heap.alloc(desc)
     }
 
@@ -131,6 +149,10 @@ impl ObjectDescriptor {
 
     pub const fn vtable(&self) -> VirtualObjectVtable {
         self.vtable
+    }
+
+    pub fn is_object(&self) -> bool {
+        self.flags.contains(DescFlags::IS_OBJECT)
     }
 }
 
@@ -147,71 +169,92 @@ impl BaseDescriptors {
 
         // First set up the singleton descriptor descriptor, using an arbitrary vtable
         // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
-        let mut descriptor =
-            ObjectDescriptor::new::<Gc<OrdinaryObject>>(heap, Gc::uninit(), ObjectKind::Descriptor);
+        let mut descriptor = ObjectDescriptor::new::<Gc<OrdinaryObject>>(
+            heap,
+            Gc::uninit(),
+            ObjectKind::Descriptor,
+            DescFlags::empty(),
+        );
         descriptor.descriptor = descriptor;
 
         macro_rules! register_descriptor {
-            ($object_kind:expr, $object_ty:ty) => {
-                let desc = ObjectDescriptor::new::<Gc<$object_ty>>(heap, descriptor, $object_kind);
+            ($object_kind:expr, $object_ty:ty, $flags:expr) => {
+                let desc =
+                    ObjectDescriptor::new::<Gc<$object_ty>>(heap, descriptor, $object_kind, $flags);
                 descriptors[$object_kind as usize] = desc;
             };
         }
 
-        macro_rules! ordinary_descriptor {
+        macro_rules! ordinary_object_descriptor {
             ($object_kind:expr) => {
-                register_descriptor!($object_kind, OrdinaryObject);
+                register_descriptor!($object_kind, OrdinaryObject, DescFlags::IS_OBJECT);
             };
         }
 
         macro_rules! other_heap_object_descriptor {
             ($object_kind:expr) => {
-                register_descriptor!($object_kind, OrdinaryObject);
+                register_descriptor!($object_kind, OrdinaryObject, DescFlags::empty());
             };
         }
 
-        ordinary_descriptor!(ObjectKind::OrdinaryObject);
-        register_descriptor!(ObjectKind::Proxy, ProxyObject);
+        ordinary_object_descriptor!(ObjectKind::OrdinaryObject);
+        register_descriptor!(ObjectKind::Proxy, ProxyObject, DescFlags::IS_OBJECT);
 
-        ordinary_descriptor!(ObjectKind::BooleanObject);
-        ordinary_descriptor!(ObjectKind::NumberObject);
-        register_descriptor!(ObjectKind::StringObject, StringObject);
-        ordinary_descriptor!(ObjectKind::SymbolObject);
-        ordinary_descriptor!(ObjectKind::BigIntObject);
-        register_descriptor!(ObjectKind::ArrayObject, ArrayObject);
-        ordinary_descriptor!(ObjectKind::ErrorObject);
-        ordinary_descriptor!(ObjectKind::SetObject);
-        ordinary_descriptor!(ObjectKind::MapObject);
+        ordinary_object_descriptor!(ObjectKind::BooleanObject);
+        ordinary_object_descriptor!(ObjectKind::NumberObject);
+        register_descriptor!(ObjectKind::StringObject, StringObject, DescFlags::IS_OBJECT);
+        ordinary_object_descriptor!(ObjectKind::SymbolObject);
+        ordinary_object_descriptor!(ObjectKind::BigIntObject);
+        register_descriptor!(ObjectKind::ArrayObject, ArrayObject, DescFlags::IS_OBJECT);
+        ordinary_object_descriptor!(ObjectKind::ErrorObject);
+        ordinary_object_descriptor!(ObjectKind::SetObject);
+        ordinary_object_descriptor!(ObjectKind::MapObject);
 
-        register_descriptor!(ObjectKind::Function, Function);
-        register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction);
-        register_descriptor!(ObjectKind::BoundFunctionObject, BoundFunctionObject);
+        register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);
+        register_descriptor!(
+            ObjectKind::BoundFunctionObject,
+            BoundFunctionObject,
+            DescFlags::IS_OBJECT
+        );
 
-        register_descriptor!(ObjectKind::MappedArgumentsObject, MappedArgumentsObject);
-        ordinary_descriptor!(ObjectKind::UnmappedArgumentsObject);
+        register_descriptor!(
+            ObjectKind::MappedArgumentsObject,
+            MappedArgumentsObject,
+            DescFlags::IS_OBJECT
+        );
+        ordinary_object_descriptor!(ObjectKind::UnmappedArgumentsObject);
 
-        register_descriptor!(ObjectKind::Int8Array, Int8Array);
-        register_descriptor!(ObjectKind::UInt8Array, UInt8Array);
-        register_descriptor!(ObjectKind::UInt8ClampedArray, UInt8ClampedArray);
-        register_descriptor!(ObjectKind::Int16Array, Int16Array);
-        register_descriptor!(ObjectKind::UInt16Array, UInt16Array);
-        register_descriptor!(ObjectKind::Int32Array, Int32Array);
-        register_descriptor!(ObjectKind::UInt32Array, UInt32Array);
-        register_descriptor!(ObjectKind::BigInt64Array, BigInt64Array);
-        register_descriptor!(ObjectKind::BigUInt64Array, BigUInt64Array);
-        register_descriptor!(ObjectKind::Float32Array, Float32Array);
-        register_descriptor!(ObjectKind::Float64Array, Float64Array);
+        register_descriptor!(ObjectKind::Int8Array, Int8Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::UInt8Array, UInt8Array, DescFlags::IS_OBJECT);
+        register_descriptor!(
+            ObjectKind::UInt8ClampedArray,
+            UInt8ClampedArray,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(ObjectKind::Int16Array, Int16Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::UInt16Array, UInt16Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::Int32Array, Int32Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::UInt32Array, UInt32Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::BigInt64Array, BigInt64Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::BigUInt64Array, BigUInt64Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::Float32Array, Float32Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::Float64Array, Float64Array, DescFlags::IS_OBJECT);
 
-        ordinary_descriptor!(ObjectKind::ArrayBufferObject);
-        ordinary_descriptor!(ObjectKind::DataViewObject);
+        ordinary_object_descriptor!(ObjectKind::ArrayBufferObject);
+        ordinary_object_descriptor!(ObjectKind::DataViewObject);
 
-        ordinary_descriptor!(ObjectKind::ArrayIterator);
-        ordinary_descriptor!(ObjectKind::StringIterator);
-        ordinary_descriptor!(ObjectKind::SetIterator);
-        ordinary_descriptor!(ObjectKind::MapIterator);
+        ordinary_object_descriptor!(ObjectKind::ArrayIterator);
+        ordinary_object_descriptor!(ObjectKind::StringIterator);
+        ordinary_object_descriptor!(ObjectKind::SetIterator);
+        ordinary_object_descriptor!(ObjectKind::MapIterator);
 
-        ordinary_descriptor!(ObjectKind::ObjectPrototype);
-        register_descriptor!(ObjectKind::FunctionPrototype, FunctionPrototype);
+        ordinary_object_descriptor!(ObjectKind::ObjectPrototype);
+        register_descriptor!(
+            ObjectKind::FunctionPrototype,
+            FunctionPrototype,
+            DescFlags::IS_OBJECT
+        );
 
         other_heap_object_descriptor!(ObjectKind::String);
         other_heap_object_descriptor!(ObjectKind::Symbol);

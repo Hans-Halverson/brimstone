@@ -1,8 +1,10 @@
 use indexmap::IndexMap;
+use rand::Rng;
 
 use std::{
     collections::HashMap,
     mem::{transmute, transmute_copy},
+    num::NonZeroU32,
 };
 
 use super::{
@@ -52,6 +54,9 @@ macro_rules! extend_object_without_conversions {
 
             // Whether this object can be extended with new properties
             is_extensible_field: bool,
+
+            // Stable hash code for this object, since object can be moved by GC. Lazily initialized.
+            hash_code: Option<std::num::NonZeroU32>,
 
             // Child fields
             $($field_vis $field_name: $field_type,)*
@@ -127,6 +132,7 @@ impl ObjectValue {
         object.array_properties = ArrayProperties::new();
         object.private_properties = HashMap::new();
         object.is_extensible_field = is_extensible;
+        object.set_uninit_hash_code();
 
         object
     }
@@ -292,6 +298,23 @@ impl ObjectValue {
     #[inline]
     pub fn set_is_extensible_field(&mut self, is_extensible_field: bool) {
         self.is_extensible_field = is_extensible_field;
+    }
+
+    #[inline]
+    pub fn set_uninit_hash_code(&mut self) {
+        self.hash_code = None;
+    }
+
+    #[inline]
+    pub fn hash_code(&mut self) -> NonZeroU32 {
+        match self.hash_code {
+            Some(hash_code) => hash_code,
+            None => {
+                let hash_code = rand::thread_rng().gen::<NonZeroU32>();
+                self.hash_code = Some(hash_code);
+                hash_code
+            }
+        }
     }
 }
 

@@ -575,6 +575,7 @@ pub fn object_ordinary_init_optional_proto(
     object.set_array_properties(ArrayProperties::new());
     object.set_private_properties(HashMap::new());
     object.set_is_extensible_field(true);
+    object.set_uninit_hash_code();
 }
 
 pub fn ordinary_object_create_optional_proto(

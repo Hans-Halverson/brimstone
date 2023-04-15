@@ -2,6 +2,7 @@ use std::hash;
 
 use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
+use rand::Rng;
 
 use super::{
     context::Context,
@@ -526,24 +527,33 @@ impl From<Gc<AccessorValue>> for Value {
 pub struct SymbolValue {
     descriptor: Gc<ObjectDescriptor>,
     description: Option<Gc<StringValue>>,
+    // Stable hash code for this symbol, since symbol can be moved by GC
+    hash_code: u32,
 }
 
 impl SymbolValue {
     pub fn new(cx: &mut Context, description: Option<Gc<StringValue>>) -> Gc<SymbolValue> {
         let descriptor = cx.base_descriptors.get(ObjectKind::Symbol);
-        cx.heap.alloc(SymbolValue { descriptor, description })
+        let hash_code = rand::thread_rng().gen::<u32>();
+        cx.heap
+            .alloc(SymbolValue { descriptor, description, hash_code })
     }
-}
 
-impl Gc<SymbolValue> {
     pub fn description(&self) -> Option<Gc<StringValue>> {
         // Intentionally break lifetime, as SymbolValues are managed by the Gc heap
         self.description
     }
 }
 
+impl hash::Hash for SymbolValue {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.hash_code.hash(state)
+    }
+}
+
 impl GcDeref for SymbolValue {}
 
+#[repr(C)]
 pub struct BigIntValue {
     descriptor: Gc<ObjectDescriptor>,
     value: BigInt,
@@ -623,14 +633,18 @@ impl hash::Hash for ValueCollectionKey {
         }
 
         if self.0.is_pointer() {
-            match self.0.as_pointer().descriptor().kind() {
-                ObjectKind::String => return self.0.as_string().hash(state),
-                ObjectKind::BigInt => return self.0.as_bigint().bigint().hash(state),
-                _ => {}
-            }
+            return match self.0.as_pointer().descriptor().kind() {
+                ObjectKind::String => self.0.as_string().hash(state),
+                ObjectKind::BigInt => self.0.as_bigint().bigint().hash(state),
+                // Otherwise is an object or symbol. Hash code must represent object/symbol
+                // identity, but objects/symbols can be moved by the GC. So use the stable hash code
+                // stored in the object/symbol.
+                ObjectKind::Symbol => self.0.as_symbol().hash(state),
+                _ => self.0.as_object().hash_code().hash(state),
+            };
         }
 
-        // TODO: Hash for objects and symbols must be stable across GCs
+        // Non-pointer values can be hashed direclty off their bit representation
         self.0.as_raw_bits().hash(state);
     }
 }

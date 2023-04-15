@@ -480,12 +480,12 @@ impl MathObject {
 
     // 21.3.2.27 Math.random
     fn random(
-        cx: &mut Context,
+        _: &mut Context,
         _: Value,
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        let n = cx.current_realm().rand.gen::<f64>();
+        let n = rand::thread_rng().gen::<f64>();
         Value::number(n).into()
     }
 

@@ -227,7 +227,7 @@ impl hash::Hash for PropertyKey {
                 value.hash(state);
             }
             KeyData::Symbol { value } => {
-                value.description().hash(state);
+                value.hash(state);
             }
         }
     }

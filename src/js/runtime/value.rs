@@ -41,9 +41,9 @@ use super::{
 ///
 /// In this scheme all non-pointer values have the following representation:
 ///
-///                     sign     exponent         mantissa
-///                     (1 bit)  (11 bits)        (52 bits total. Top bit reserved for qNaN,
-///                                                next 3 bits are tag, last 48 bits are payload)
+////                    sign     exponent         mantissa
+////                    (1 bit)  (11 bits)        (52 bits total. Top bit reserved for qNaN,
+////                                               next 3 bits are tag, last 48 bits are payload)
 ///
 /// +Inf:               0        11111111111      0 000 00...0
 /// -Inf:               1        11111111111      0 000 00...0
@@ -214,8 +214,7 @@ impl Value {
             return false;
         }
 
-        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
-        o.descriptor().is_object()
+        self.as_pointer().descriptor().is_object()
     }
 
     #[inline]
@@ -224,8 +223,7 @@ impl Value {
             return false;
         }
 
-        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
-        o.descriptor().kind() == ObjectKind::String
+        self.as_pointer().descriptor().kind() == ObjectKind::String
     }
 
     #[inline]
@@ -234,8 +232,7 @@ impl Value {
             return false;
         }
 
-        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
-        o.descriptor().kind() == ObjectKind::Symbol
+        self.as_pointer().descriptor().kind() == ObjectKind::Symbol
     }
 
     #[inline]
@@ -244,8 +241,7 @@ impl Value {
             return false;
         }
 
-        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
-        o.descriptor().kind() == ObjectKind::BigInt
+        self.as_pointer().descriptor().kind() == ObjectKind::BigInt
     }
 
     #[inline]
@@ -254,8 +250,7 @@ impl Value {
             return false;
         }
 
-        let o: Gc<ObjectValue> = Gc::from_ptr(self.restore_pointer_bits());
-        o.descriptor().kind() == ObjectKind::Accessor
+        self.as_pointer().descriptor().kind() == ObjectKind::Accessor
     }
 
     // Type casts

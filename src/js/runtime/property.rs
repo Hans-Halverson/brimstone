@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use super::{
     object_value::ObjectValue,
     value::{AccessorValue, Value},
@@ -9,32 +11,56 @@ use super::{
 #[derive(Clone)]
 pub struct Property {
     value: Value,
-    is_writable: bool,
-    is_enumerable: bool,
-    is_configurable: bool,
+    flags: PropertyFlags,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct PropertyFlags: u8 {
+        const IS_WRITABLE = 1 << 0;
+        const IS_ENUMERABLE = 1 << 1;
+        const IS_CONFIGURABLE = 1 << 2;
+    }
 }
 
 impl Property {
-    pub const fn data(
+    #[inline]
+    pub fn data(
         value: Value,
         is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
     ) -> Property {
-        Property { value, is_writable, is_enumerable, is_configurable }
+        let mut flags = PropertyFlags::empty();
+
+        if is_writable {
+            flags |= PropertyFlags::IS_WRITABLE;
+        }
+
+        if is_enumerable {
+            flags |= PropertyFlags::IS_ENUMERABLE;
+        }
+
+        if is_configurable {
+            flags |= PropertyFlags::IS_CONFIGURABLE;
+        }
+
+        Property { value, flags }
     }
 
-    pub const fn accessor(
-        accessor_value: Value,
-        is_enumerable: bool,
-        is_configurable: bool,
-    ) -> Property {
-        Property {
-            value: accessor_value,
-            is_enumerable,
-            is_configurable,
-            is_writable: false,
+    #[inline]
+    pub fn accessor(accessor_value: Value, is_enumerable: bool, is_configurable: bool) -> Property {
+        let mut flags = PropertyFlags::empty();
+
+        if is_enumerable {
+            flags |= PropertyFlags::IS_ENUMERABLE;
         }
+
+        if is_configurable {
+            flags |= PropertyFlags::IS_CONFIGURABLE;
+        }
+
+        Property { value: accessor_value, flags }
     }
 
     pub fn value(&self) -> Value {
@@ -42,15 +68,15 @@ impl Property {
     }
 
     pub fn is_enumerable(&self) -> bool {
-        self.is_enumerable
+        self.flags.contains(PropertyFlags::IS_ENUMERABLE)
     }
 
     pub fn is_configurable(&self) -> bool {
-        self.is_configurable
+        self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
     }
 
     pub fn is_writable(&self) -> bool {
-        self.is_writable
+        self.flags.contains(PropertyFlags::IS_WRITABLE)
     }
 
     pub fn set_value(&mut self, value: Value) {
@@ -58,15 +84,27 @@ impl Property {
     }
 
     pub fn set_is_enumerable(&mut self, is_enumerable: bool) {
-        self.is_enumerable = is_enumerable
+        if is_enumerable {
+            self.flags.insert(PropertyFlags::IS_ENUMERABLE)
+        } else {
+            self.flags.remove(PropertyFlags::IS_ENUMERABLE)
+        }
     }
 
     pub fn set_is_configurable(&mut self, is_configurable: bool) {
-        self.is_configurable = is_configurable
+        if is_configurable {
+            self.flags.insert(PropertyFlags::IS_CONFIGURABLE)
+        } else {
+            self.flags.remove(PropertyFlags::IS_CONFIGURABLE)
+        }
     }
 
     pub fn set_is_writable(&mut self, is_writable: bool) {
-        self.is_writable = is_writable
+        if is_writable {
+            self.flags.insert(PropertyFlags::IS_WRITABLE)
+        } else {
+            self.flags.remove(PropertyFlags::IS_WRITABLE)
+        }
     }
 }
 

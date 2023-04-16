@@ -1,8 +1,11 @@
 use std::{
     cell::Cell,
     cmp::Ordering,
+    collections::hash_map::DefaultHasher,
+    convert::TryFrom,
     fmt::{self, Write},
-    hash,
+    hash::{self, Hash, Hasher},
+    num::NonZeroU32,
 };
 
 use crate::js::common::unicode::{
@@ -21,6 +24,8 @@ use super::{
 pub struct StringValue {
     descriptor: Gc<ObjectDescriptor>,
     value: Cell<StringKind>,
+    // Cached hash code for this string's value, computed lazily
+    hash_code: Option<NonZeroU32>,
 }
 
 enum StringKind {
@@ -65,7 +70,7 @@ impl StringValue {
     fn new(cx: &mut Context, value: StringKind) -> Gc<StringValue> {
         let descriptor = cx.base_descriptors.get(ObjectKind::String);
         cx.heap
-            .alloc(StringValue { descriptor, value: Cell::new(value) })
+            .alloc(StringValue { descriptor, value: Cell::new(value), hash_code: None })
     }
 
     pub fn from_utf8(cx: &mut Context, str: String) -> Gc<StringValue> {
@@ -230,6 +235,29 @@ impl Gc<StringValue> {
     #[inline]
     fn value(&self) -> &StringKind {
         unsafe { &*self.value.as_ptr() }
+    }
+
+    pub fn hash_code(&mut self) -> NonZeroU32 {
+        match self.hash_code {
+            Some(hash_code) => hash_code,
+            // Lazily compute and cache hash code
+            None => {
+                let mut hasher = DefaultHasher::new();
+
+                for code_unit in self.iter_code_units() {
+                    code_unit.hash(&mut hasher);
+                }
+
+                // Truncate hash code, making sure it is nonzero
+                let hash_code = hasher.finish() as u32;
+                let hash_code =
+                    NonZeroU32::try_from(hash_code).unwrap_or(NonZeroU32::new(1).unwrap());
+
+                self.hash_code = Some(hash_code);
+
+                hash_code
+            }
+        }
     }
 
     /// Return the 16-bit code unit at the given index. This may be a surrogate pair that must be
@@ -980,11 +1008,7 @@ impl PartialOrd for Gc<StringValue> {
 
 impl hash::Hash for Gc<StringValue> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        let iter = self.iter_code_units();
-
-        for code_unit in iter {
-            code_unit.hash(state)
-        }
+        self.clone().hash_code().hash(state)
     }
 }
 

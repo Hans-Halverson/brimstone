@@ -346,9 +346,9 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let base = maybe!(to_object(cx, base_value));
         let private_env = cx.current_execution_context().private_env.unwrap();
         let private_name = expr.property.to_id().name.as_str();
-        let private_id = private_env.resolve_private_identifier(private_name);
+        let private_name = private_env.resolve_private_identifier(private_name);
 
-        private_get(cx, base, private_id)
+        private_get(cx, base, private_name)
     } else {
         let property_key = id_property_key(cx, expr.property.to_id());
         let base = maybe!(to_object(cx, base_value));
@@ -1459,7 +1459,7 @@ fn eval_private_in_expression(
         return type_error_(cx, "right side of 'in' must be an object");
     }
 
-    let private_id = cx
+    let private_name = cx
         .current_execution_context()
         .private_env
         .unwrap()
@@ -1467,7 +1467,7 @@ fn eval_private_in_expression(
 
     right_value
         .as_object()
-        .private_element_find(private_id)
+        .private_element_find(private_name)
         .is_some()
         .into()
 }

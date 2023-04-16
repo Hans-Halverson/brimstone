@@ -6,13 +6,12 @@ use super::{
     array_object::create_array_from_list,
     bound_function_object::BoundFunctionObject,
     completion::EvalResult,
-    environment::private_environment::PrivateNameId,
+    environment::private_environment::PrivateName,
     error::type_error_,
     eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
     gc::Gc,
     object_value::ObjectValue,
-    property::PrivatePropertyKind,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
@@ -476,18 +475,18 @@ pub fn copy_data_properties(
 pub fn private_get(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    private_id: PrivateNameId,
+    private_name: PrivateName,
 ) -> EvalResult<Value> {
-    let entry = match object.private_element_find(private_id) {
+    let property = match object.private_element_find(private_name) {
         None => return type_error_(cx, "can't access private field or method"),
-        Some(entry) => entry,
+        Some(property) => property,
     };
 
-    if entry.kind() != PrivatePropertyKind::Accessor {
-        return entry.value().into();
+    if !property.is_private_accessor() {
+        return property.value().into();
     }
 
-    let accessor = entry.value().as_accessor();
+    let accessor = property.value().as_accessor();
     match accessor.get {
         None => return type_error_(cx, "cannot access private field or method"),
         Some(getter) => call_object(cx, getter, object.into(), &[]),
@@ -498,28 +497,27 @@ pub fn private_get(
 pub fn private_set(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    private_id: PrivateNameId,
+    private_name: PrivateName,
     value: Value,
 ) -> EvalResult<()> {
-    let entry = match object.private_element_find(private_id) {
+    let property = match object.private_element_find(private_name) {
         None => return type_error_(cx, "cannot set private field or method"),
         Some(entry) => entry,
     };
 
-    match entry.kind() {
-        PrivatePropertyKind::Field => {
-            entry.set_value(value);
-            ().into()
-        }
-        PrivatePropertyKind::Method => type_error_(cx, "cannot assign to private method"),
-        PrivatePropertyKind::Accessor => {
-            let accessor = entry.value().as_accessor();
-            match accessor.set {
-                None => type_error_(cx, "cannot set getter-only private property"),
-                Some(setter) => {
-                    maybe!(call_object(cx, setter, object.into(), &[value]));
-                    ().into()
-                }
+    if property.is_private_field() {
+        property.set_value(value);
+        ().into()
+    } else if property.is_private_method() {
+        type_error_(cx, "cannot assign to private method")
+    } else {
+        // Property is an private accessor
+        let accessor = property.value().as_accessor();
+        match accessor.set {
+            None => type_error_(cx, "cannot set getter-only private property"),
+            Some(setter) => {
+                maybe!(call_object(cx, setter, object.into(), &[value]));
+                ().into()
             }
         }
     }
@@ -540,8 +538,8 @@ pub fn define_field(
         ClassFieldDefinitionName::Normal(ref property_key) => {
             maybe!(create_data_property_or_throw(cx, receiver, &property_key, init_value));
         }
-        ClassFieldDefinitionName::Private(private_id) => {
-            maybe!(receiver.private_field_add(cx, private_id, init_value))
+        ClassFieldDefinitionName::Private(private_name) => {
+            maybe!(receiver.private_field_add(cx, private_name, init_value))
         }
     }
 
@@ -554,8 +552,8 @@ pub fn initialize_instance_elements(
     mut object: Gc<ObjectValue>,
     constructor: Gc<Function>,
 ) -> EvalResult<()> {
-    for (private_id, private_method) in &constructor.private_methods {
-        maybe!(object.private_method_or_accessor_add(cx, *private_id, private_method.clone()));
+    for (private_name, private_method) in &constructor.private_methods {
+        maybe!(object.private_method_or_accessor_add(cx, *private_name, private_method.clone()));
     }
 
     for field_def in &constructor.fields {

@@ -12,7 +12,7 @@ use super::{
     environment::{
         environment::DynEnvironment,
         function_environment::FunctionEnvironment,
-        private_environment::{PrivateEnvironment, PrivateNameId},
+        private_environment::{PrivateEnvironment, PrivateName},
     },
     error::type_error_,
     eval::{
@@ -29,7 +29,7 @@ use super::{
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
-    property::PrivateProperty,
+    property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
@@ -69,7 +69,7 @@ extend_object! {
         pub environment: DynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
         pub fields: Vec<ClassFieldDefinition>,
-        pub private_methods: Vec<(PrivateNameId, PrivateProperty)>,
+        pub private_methods: Vec<(PrivateName, Property)>,
     }
 }
 

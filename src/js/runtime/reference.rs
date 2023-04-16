@@ -3,7 +3,7 @@ use crate::maybe;
 use super::{
     abstract_operations::{private_get, private_set, set},
     completion::EvalResult,
-    environment::{environment::DynEnvironment, private_environment::PrivateNameId},
+    environment::{environment::DynEnvironment, private_environment::PrivateName},
     error::{reference_error_, type_error_},
     execution_context::get_global_object,
     gc::Gc,
@@ -28,7 +28,7 @@ pub enum ReferenceBase {
     Property {
         object: Value,
         property: PropertyKey,
-        private_id: Option<PrivateNameId>,
+        private_name: Option<PrivateName>,
     },
     Env {
         env: DynEnvironment,
@@ -42,7 +42,7 @@ impl Reference {
         base: ReferenceBase::Property {
             object: Value::undefined(),
             property: PropertyKey::from_u8(0),
-            private_id: None,
+            private_name: None,
         },
         is_strict: false,
         this_value: None,
@@ -58,7 +58,7 @@ impl Reference {
 
     pub fn new_property(object: Value, property: PropertyKey, is_strict: bool) -> Reference {
         Reference {
-            base: ReferenceBase::Property { object, property, private_id: None },
+            base: ReferenceBase::Property { object, property, private_name: None },
             is_strict,
             this_value: None,
         }
@@ -71,7 +71,7 @@ impl Reference {
         this_value: Value,
     ) -> Reference {
         Reference {
-            base: ReferenceBase::Property { object, property, private_id: None },
+            base: ReferenceBase::Property { object, property, private_name: None },
             is_strict,
             this_value: Some(this_value),
         }
@@ -122,10 +122,10 @@ impl Reference {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name))
             }
-            ReferenceBase::Property { object, ref property, private_id } => {
+            ReferenceBase::Property { object, ref property, private_name } => {
                 let base = maybe!(to_object(cx, object));
-                match private_id {
-                    Some(private_id) => return private_get(cx, base, private_id),
+                match private_name {
+                    Some(private_name) => return private_get(cx, base, private_name),
                     None => base.get(cx, &property, self.get_this_value()),
                 }
             }
@@ -146,10 +146,10 @@ impl Reference {
 
                 return ().into();
             }
-            ReferenceBase::Property { object, ref property, private_id } => {
+            ReferenceBase::Property { object, ref property, private_name } => {
                 let mut base = maybe!(to_object(cx, object));
-                if let Some(private_id) = private_id {
-                    return private_set(cx, base, private_id, value);
+                if let Some(private_name) = private_name {
+                    return private_set(cx, base, private_name, value);
                 }
 
                 let succeeded = maybe!(base.set(cx, property, value, self.get_this_value()));
@@ -196,18 +196,18 @@ impl Reference {
     pub fn make_private_reference(
         cx: &mut Context,
         base_value: Value,
-        private_name: &str,
+        private_name_string: &str,
     ) -> Reference {
         let private_env = cx.current_execution_context().private_env.unwrap();
-        let private_id = private_env.resolve_private_identifier(private_name);
+        let private_name = private_env.resolve_private_identifier(private_name_string);
 
-        let property_key = PropertyKey::string(cx.get_interned_string(private_name));
+        let property_key = PropertyKey::string(cx.get_interned_string(private_name_string));
 
         Reference {
             base: ReferenceBase::Property {
                 object: base_value,
                 property: property_key,
-                private_id: Some(private_id),
+                private_name: Some(private_name),
             },
             is_strict: true,
             this_value: None,

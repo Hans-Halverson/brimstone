@@ -8,7 +8,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::Environment,
-                private_environment::{PrivateEnvironment, PrivateNameId},
+                private_environment::{PrivateEnvironment, PrivateName},
             },
             error::type_error_,
             eval::pattern::initialize_bound_name,
@@ -21,7 +21,6 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create_optional_proto,
-            property::PrivatePropertyKind,
             property_key::PropertyKey,
             string_value::StringValue,
             Completion, Context, EvalResult, Gc, Value,
@@ -44,7 +43,7 @@ pub struct ClassFieldDefinition {
 
 pub enum ClassFieldDefinitionName {
     Normal(PropertyKey),
-    Private(PrivateNameId),
+    Private(PrivateName),
 }
 
 // 15.7.10 ClassFieldDefinitionEvaluation
@@ -236,9 +235,9 @@ pub fn class_definition_evaluation(
                 let result = (|| {
                     let (property_key, field_def_name) = if prop.is_private {
                         let id = prop.key.to_id();
-                        let private_id = class_private_env.names.get(&id.name).unwrap();
+                        let private_name = class_private_env.names.get(&id.name).unwrap();
                         let property_key = private_id_property_key(cx, id);
-                        let field_def_name = ClassFieldDefinitionName::Private(*private_id);
+                        let field_def_name = ClassFieldDefinitionName::Private(*private_name);
                         (property_key, field_def_name)
                     } else {
                         let property_key =
@@ -300,7 +299,7 @@ pub fn class_definition_evaluation(
                 if method.is_private {
                     // Resolve private name to id
                     let id = method.key.to_id();
-                    let private_id = *class_private_env.names.get(&id.name).unwrap();
+                    let private_name = *class_private_env.names.get(&id.name).unwrap();
                     let property_key = private_id_property_key(cx, id);
 
                     let private_property = private_method_definition_evaluation(
@@ -318,12 +317,12 @@ pub fn class_definition_evaluation(
                     };
 
                     // Add property to appropriate container, combining accessors if necessary
-                    if private_property.kind() == PrivatePropertyKind::Method {
-                        container.insert(private_id, private_property);
+                    if private_property.is_private_method() {
+                        container.insert(private_name, private_property);
                     } else {
-                        match container.get_mut(&private_id) {
+                        match container.get_mut(&private_name) {
                             None => {
-                                container.insert(private_id, private_property);
+                                container.insert(private_name, private_property);
                             }
                             Some(existing_property) => {
                                 existing_property.add_accessor(private_property);
@@ -378,14 +377,14 @@ pub fn class_definition_evaluation(
     // Store templates for private methods on constructor function
     func.private_methods
         .reserve_exact(instance_private_methods.len());
-    for private_id_and_method in instance_private_methods {
-        func.private_methods.push(private_id_and_method);
+    for private_name_and_method in instance_private_methods {
+        func.private_methods.push(private_name_and_method);
     }
 
     // Define static private methods as private properties of the constructor function
-    for (private_id, static_private_method) in static_private_methods {
+    for (private_name, static_private_method) in static_private_methods {
         let mut func_object: Gc<ObjectValue> = func.into();
-        must!(func_object.private_method_or_accessor_add(cx, private_id, static_private_method));
+        must!(func_object.private_method_or_accessor_add(cx, private_name, static_private_method));
     }
 
     // Initialize static fields

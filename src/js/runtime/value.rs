@@ -551,6 +551,20 @@ impl hash::Hash for SymbolValue {
     }
 }
 
+impl hash::Hash for Gc<SymbolValue> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.hash_code.hash(state)
+    }
+}
+
+impl PartialEq for Gc<SymbolValue> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr_eq(other)
+    }
+}
+
+impl Eq for Gc<SymbolValue> {}
+
 impl GcDeref for SymbolValue {}
 
 #[repr(C)]

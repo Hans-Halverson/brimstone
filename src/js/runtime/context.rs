@@ -1,14 +1,11 @@
-use std::{collections::HashMap, num::NonZeroU64};
+use std::collections::HashMap;
 
 use crate::js::parser::ast;
 
 use super::{
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
-    environment::{
-        declarative_environment::DeclarativeEnvironment, environment::DynEnvironment,
-        private_environment::PrivateNameId,
-    },
+    environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
     object_descriptor::BaseDescriptors,
@@ -33,8 +30,6 @@ pub struct Context {
 
     // Stack of closure environments for all builtin functions currently being evaluated
     pub closure_environments: Vec<Option<Gc<ClosureEnvironment>>>,
-
-    pub next_private_name_id: NonZeroU64,
 
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: DynEnvironment,
@@ -64,7 +59,6 @@ impl Context {
             base_descriptors,
             interned_strings: HashMap::new(),
             closure_environments: vec![],
-            next_private_name_id: NonZeroU64::new(1).unwrap(),
             uninit_environment,
             eval_asts: vec![],
             function_constructor_asts: vec![],
@@ -123,12 +117,6 @@ impl Context {
     pub fn get_closure_environment<T>(&self) -> Gc<T> {
         let closure_environment = self.closure_environments.last().unwrap().unwrap();
         closure_environment.cast::<T>()
-    }
-
-    pub fn next_private_name_id(&mut self) -> PrivateNameId {
-        let next_id = self.next_private_name_id;
-        self.next_private_name_id = next_id.checked_add(1).unwrap();
-        next_id
     }
 
     pub fn alloc_string(&mut self, str: String) -> Gc<StringValue> {

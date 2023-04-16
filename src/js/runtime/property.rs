@@ -8,6 +8,8 @@ use super::{
 
 // A property value. If a data property then the value is the value itself. If an accessor property
 // then the value is an accessor property, which is a pointer to the get and set function pair.
+//
+// 6.2.9 PrivateElements are represented as properties, with bitflags noting the private property kind.
 #[derive(Clone)]
 pub struct Property {
     value: Value,
@@ -20,6 +22,9 @@ bitflags! {
         const IS_WRITABLE = 1 << 0;
         const IS_ENUMERABLE = 1 << 1;
         const IS_CONFIGURABLE = 1 << 2;
+        const IS_PRIVATE_FIELD = 1 << 3;
+        const IS_PRIVATE_METHOD = 1 << 4;
+        const IS_PRIVATE_ACCESSOR = 1 << 5;
     }
 }
 
@@ -63,6 +68,33 @@ impl Property {
         Property { value: accessor_value, flags }
     }
 
+    pub fn private_field(value: Value) -> Property {
+        Property { value, flags: PropertyFlags::IS_PRIVATE_FIELD }
+    }
+
+    pub fn private_method(method: Gc<ObjectValue>) -> Property {
+        Property {
+            value: method.into(),
+            flags: PropertyFlags::IS_PRIVATE_METHOD,
+        }
+    }
+
+    pub fn private_getter(cx: &mut Context, getter: Gc<ObjectValue>) -> Property {
+        let accessor_value = AccessorValue::new(cx, Some(getter), None);
+        Property {
+            value: accessor_value.into(),
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+        }
+    }
+
+    pub fn private_setter(cx: &mut Context, setter: Gc<ObjectValue>) -> Property {
+        let accessor_value = AccessorValue::new(cx, None, Some(setter));
+        Property {
+            value: accessor_value.into(),
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+        }
+    }
+
     pub fn value(&self) -> Value {
         self.value
     }
@@ -77,6 +109,18 @@ impl Property {
 
     pub fn is_writable(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_WRITABLE)
+    }
+
+    pub fn is_private_field(&self) -> bool {
+        self.flags.contains(PropertyFlags::IS_PRIVATE_FIELD)
+    }
+
+    pub fn is_private_method(&self) -> bool {
+        self.flags.contains(PropertyFlags::IS_PRIVATE_METHOD)
+    }
+
+    pub fn is_private_accessor(&self) -> bool {
+        self.flags.contains(PropertyFlags::IS_PRIVATE_ACCESSOR)
     }
 
     pub fn set_value(&mut self, value: Value) {
@@ -106,54 +150,10 @@ impl Property {
             self.flags.remove(PropertyFlags::IS_WRITABLE)
         }
     }
-}
-
-// 6.2.9 PrivateElement Record
-pub struct PrivateProperty {
-    kind: PrivatePropertyKind,
-    value: Value,
-}
-
-impl PrivateProperty {
-    pub fn field(value: Value) -> PrivateProperty {
-        PrivateProperty { kind: PrivatePropertyKind::Field, value }
-    }
-
-    pub fn method(method: Gc<ObjectValue>) -> PrivateProperty {
-        PrivateProperty { kind: PrivatePropertyKind::Method, value: method.into() }
-    }
-
-    pub fn getter(cx: &mut Context, getter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = AccessorValue::new(cx, Some(getter), None);
-        PrivateProperty {
-            kind: PrivatePropertyKind::Accessor,
-            value: accessor_value.into(),
-        }
-    }
-
-    pub fn setter(cx: &mut Context, setter: Gc<ObjectValue>) -> PrivateProperty {
-        let accessor_value = AccessorValue::new(cx, None, Some(setter));
-        PrivateProperty {
-            kind: PrivatePropertyKind::Accessor,
-            value: accessor_value.into(),
-        }
-    }
-
-    pub fn kind(&self) -> PrivatePropertyKind {
-        self.kind
-    }
-
-    pub fn value(&self) -> Value {
-        self.value
-    }
-
-    pub fn set_value(&mut self, value: Value) {
-        self.value = value
-    }
 
     // Combine a getter and setter accessor. Either this is a getter and the input is a setter,
     // or vice versa. No other inputs are allowed.
-    pub fn add_accessor(&mut self, other: PrivateProperty) {
+    pub fn add_accessor(&mut self, other: Property) {
         let mut this_accessor = self.value.as_accessor();
         let other_accessor = other.value.as_accessor();
 
@@ -163,17 +163,4 @@ impl PrivateProperty {
             this_accessor.set = other_accessor.set;
         }
     }
-}
-
-impl Clone for PrivateProperty {
-    fn clone(&self) -> PrivateProperty {
-        PrivateProperty { kind: self.kind, value: self.value }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum PrivatePropertyKind {
-    Field,
-    Method,
-    Accessor,
 }

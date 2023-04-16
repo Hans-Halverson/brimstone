@@ -2,7 +2,6 @@ use indexmap::IndexMap;
 use rand::Rng;
 
 use std::{
-    collections::HashMap,
     mem::{transmute, transmute_copy},
     num::NonZeroU32,
 };
@@ -11,12 +10,12 @@ use super::{
     array_properties::ArrayProperties,
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     completion::EvalResult,
-    environment::private_environment::PrivateNameId,
+    environment::private_environment::PrivateName,
     error::type_error_,
     gc::Gc,
     intrinsics::typed_array::TypedArray,
     object_descriptor::ObjectKind,
-    property::{PrivateProperty, Property},
+    property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
@@ -43,14 +42,11 @@ macro_rules! extend_object_without_conversions {
             // None represents the null value
             prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
 
-            // String and symbol properties by their property key
+            // String and symbol properties by their property key. Includes private properties.
             properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
 
             // Array index properties by their property key
             array_properties: $crate::js::runtime::array_properties::ArrayProperties,
-
-            // Private properties with string keys
-            private_properties: std::collections::HashMap<$crate::js::runtime::environment::private_environment::PrivateNameId, $crate::js::runtime::property::PrivateProperty>,
 
             // Whether this object can be extended with new properties
             is_extensible_field: bool,
@@ -130,7 +126,6 @@ impl ObjectValue {
         object.prototype = prototype;
         object.properties = IndexMap::new();
         object.array_properties = ArrayProperties::new();
-        object.private_properties = HashMap::new();
         object.is_extensible_field = is_extensible;
         object.set_uninit_hash_code();
 
@@ -147,25 +142,23 @@ impl ObjectValue {
     }
 
     // 7.3.27 PrivateElementFind
-    pub fn private_element_find(
-        &mut self,
-        private_id: PrivateNameId,
-    ) -> Option<&mut PrivateProperty> {
-        self.private_properties.get_mut(&private_id)
+    pub fn private_element_find(&mut self, private_name: PrivateName) -> Option<&mut Property> {
+        self.properties.get_mut(&PropertyKey::symbol(private_name))
     }
 
     // 7.3.28 PrivateFieldAdd
     pub fn private_field_add(
         &mut self,
         cx: &mut Context,
-        private_id: PrivateNameId,
+        private_name: PrivateName,
         value: Value,
     ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
+        match self.private_element_find(private_name) {
             Some(_) => type_error_(cx, "private property already defined"),
             None => {
-                let property = PrivateProperty::field(value);
-                self.private_properties.insert(private_id, property);
+                let property = Property::private_field(value);
+                self.properties
+                    .insert(PropertyKey::symbol(private_name), property);
                 ().into()
             }
         }
@@ -175,13 +168,14 @@ impl ObjectValue {
     pub fn private_method_or_accessor_add(
         &mut self,
         cx: &mut Context,
-        private_id: PrivateNameId,
-        private_method: PrivateProperty,
+        private_name: PrivateName,
+        private_method: Property,
     ) -> EvalResult<()> {
-        match self.private_element_find(private_id) {
+        match self.private_element_find(private_name) {
             Some(_) => type_error_(cx, "private property already defined"),
             None => {
-                self.private_properties.insert(private_id, private_method);
+                self.properties
+                    .insert(PropertyKey::symbol(private_name), private_method);
                 ().into()
             }
         }
@@ -270,24 +264,6 @@ impl ObjectValue {
     #[inline]
     pub fn set_array_properties(&mut self, array_properties: ArrayProperties) {
         self.array_properties = array_properties;
-    }
-
-    #[inline]
-    pub fn private_properties(&self) -> &HashMap<PrivateNameId, PrivateProperty> {
-        &self.private_properties
-    }
-
-    #[inline]
-    pub fn private_properties_mut(&mut self) -> &mut HashMap<PrivateNameId, PrivateProperty> {
-        &mut self.private_properties
-    }
-
-    #[inline]
-    pub fn set_private_properties(
-        &mut self,
-        private_properties: HashMap<PrivateNameId, PrivateProperty>,
-    ) {
-        self.private_properties = private_properties;
     }
 
     #[inline]

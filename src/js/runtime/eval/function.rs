@@ -33,7 +33,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
-            property::{PrivateProperty, Property},
+            property::Property,
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             to_string,
@@ -493,7 +493,7 @@ pub fn private_method_definition_evaluation(
     func_node: &ast::Function,
     property_name: &PropertyKey,
     method_kind: ast::ClassMethodKind,
-) -> PrivateProperty {
+) -> Property {
     if func_node.is_async || func_node.is_generator {
         unimplemented!("async and generator functions")
     }
@@ -503,7 +503,7 @@ pub fn private_method_definition_evaluation(
         let closure = define_method(cx, object, func_node, None);
         set_function_name(cx, closure.into(), property_name, None);
 
-        return PrivateProperty::method(closure.into());
+        return Property::private_method(closure.into());
     }
 
     // Otherwise is a getter or setter
@@ -521,11 +521,11 @@ pub fn private_method_definition_evaluation(
     match method_kind {
         ast::ClassMethodKind::Get => {
             set_function_name(cx, closure.into(), property_name, Some("get"));
-            PrivateProperty::getter(cx, closure.into())
+            Property::private_getter(cx, closure.into())
         }
         ast::ClassMethodKind::Set => {
             set_function_name(cx, closure.into(), property_name, Some("set"));
-            PrivateProperty::setter(cx, closure.into())
+            Property::private_setter(cx, closure.into())
         }
         _ => unreachable!(),
     }

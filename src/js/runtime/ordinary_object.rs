@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 
-use std::{collections::HashMap, ops::DerefMut};
+use std::ops::DerefMut;
 
 use crate::{extend_object, maybe, must};
 
@@ -573,7 +573,6 @@ pub fn object_ordinary_init_optional_proto(
     object.set_prototype(proto);
     object.set_properties(IndexMap::new());
     object.set_array_properties(ArrayProperties::new());
-    object.set_private_properties(HashMap::new());
     object.set_is_extensible_field(true);
     object.set_uninit_hash_code();
 }

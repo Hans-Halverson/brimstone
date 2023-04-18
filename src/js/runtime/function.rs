@@ -333,6 +333,7 @@ impl Gc<Function> {
     // 10.2.1.4 OrdinaryCallEvaluateBody
     // 10.2.1.3 EvaluateBody
     fn ordinary_call_evaluate_body(&self, cx: &mut Context, arguments: &[Value]) -> Completion {
+        let other_self = *self;
         match &self.func_node {
             FuncKind::Function(func_node) => {
                 let func_node = func_node.as_ref();
@@ -342,7 +343,7 @@ impl Gc<Function> {
 
                 // 15.2.3 EvaluateFunctionBody
                 // 15.3.3 EvaluateConciseBody
-                maybe_!(function_declaration_instantiation(cx, *self, arguments));
+                maybe_!(function_declaration_instantiation(cx, other_self, arguments));
                 match func_node.body.as_ref() {
                     ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
                     ast::FunctionBody::Expression(expr) => {

@@ -444,10 +444,10 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                         return Value::undefined().into();
                     }
 
-                    let eval_arg = &arg_values[0];
+                    let eval_arg = arg_values[0];
                     let is_strict_caller = cx.current_execution_context().is_strict_mode;
 
-                    return perform_eval(cx, eval_arg.clone(), is_strict_caller, true);
+                    return perform_eval(cx, eval_arg, is_strict_caller, true);
                 }
             }
 
@@ -817,16 +817,16 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
                 return reference_error_(cx, "cannot delete super");
             }
 
-            let base_object = maybe!(to_object(cx, *object));
-            let delete_status = maybe!(base_object.clone().delete(cx, property));
+            let mut base_object = maybe!(to_object(cx, *object));
+            let delete_status = maybe!(base_object.delete(cx, property));
             if !delete_status && reference.is_strict() {
                 return type_error_(cx, "cannot delete property");
             }
 
             delete_status.into()
         }
-        ReferenceBase::Env { env, name } => {
-            let delete_status = maybe!(env.clone().delete_binding(cx, *name));
+        ReferenceBase::Env { mut env, name } => {
+            let delete_status = maybe!((*env).delete_binding(cx, *name));
             delete_status.into()
         }
     }

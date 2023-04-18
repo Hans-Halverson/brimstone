@@ -101,7 +101,7 @@ impl Environment for Gc<FunctionEnvironment> {
             return reference_error_(cx, "this is not initialized");
         }
 
-        return self.this_value.clone().into();
+        return self.this_value.into();
     }
 
     // All other methods inherited from DeclarativeEnvironment

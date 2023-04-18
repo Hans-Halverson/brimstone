@@ -44,9 +44,9 @@ impl ArrayProperties {
 
         let mut sparse_map = HashMap::new();
 
-        for (index, value) in array.iter().enumerate() {
-            if !value.value().is_empty() {
-                sparse_map.insert(index as u32, (*value).clone());
+        for (index, property) in array.iter().enumerate() {
+            if !property.value().is_empty() {
+                sparse_map.insert(index as u32, (*property).clone());
             }
         }
 
@@ -131,9 +131,9 @@ impl ArrayProperties {
 
                 // Create a new map with non-truncated values
                 let mut new_sparse_map = HashMap::new();
-                for (index, value) in sparse_map.iter() {
+                for (index, property) in sparse_map.iter() {
                     if *index < new_length {
-                        new_sparse_map.insert(*index, value.clone());
+                        new_sparse_map.insert(*index, property.clone());
                     }
                 }
 

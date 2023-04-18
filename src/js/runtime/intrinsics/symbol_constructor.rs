@@ -146,12 +146,11 @@ impl SymbolConstructor {
     ) -> EvalResult<Value> {
         let string_key = maybe!(to_string(cx, get_argument(arguments, 0)));
         if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key) {
-            return symbol_value.clone().into();
+            return (*symbol_value).into();
         }
 
         let new_symbol = SymbolValue::new(cx, Some(string_key));
-        cx.global_symbol_registry
-            .insert(string_key, new_symbol.clone());
+        cx.global_symbol_registry.insert(string_key, new_symbol);
 
         new_symbol.into()
     }

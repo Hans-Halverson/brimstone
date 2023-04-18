@@ -42,12 +42,12 @@ pub fn get_v(cx: &mut Context, value: Value, key: &PropertyKey) -> EvalResult<Va
 // 7.3.4 Set
 pub fn set(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     key: &PropertyKey,
     value: Value,
     should_throw: bool,
 ) -> EvalResult<()> {
-    let success = maybe!(object.clone().set(cx, key, value, object.into()));
+    let success = maybe!(object.set(cx, key, value, object.into()));
     if !success && should_throw {
         return type_error_(cx, &format!("Cannot set property {}", key));
     }

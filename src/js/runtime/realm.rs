@@ -33,7 +33,7 @@ impl Realm {
     pub fn new(cx: &mut Context) -> Gc<Realm> {
         // Realm record must be created before setting up intrinsics, as realm must be referenced
         // during intrinsic creation.
-        let realm = cx.heap.alloc(Realm {
+        let mut realm = cx.heap.alloc(Realm {
             // Initialized in set_global_object
             descriptor: cx.base_descriptors.get(ObjectKind::Realm),
             global_env: Gc::uninit(),
@@ -42,7 +42,8 @@ impl Realm {
             template_map: HashMap::new(),
         });
 
-        realm.clone().intrinsics.initialize(cx, realm);
+        let this_realm = realm.clone();
+        realm.intrinsics.initialize(cx, this_realm);
 
         realm
     }

@@ -100,7 +100,7 @@ impl Context {
             None => {
                 let string_value = self.alloc_string(String::from(str));
                 self.interned_strings
-                    .insert(String::from(str), string_value.clone());
+                    .insert(String::from(str), string_value);
                 string_value
             }
         }

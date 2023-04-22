@@ -279,7 +279,7 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let property = object.get_property_mut(key).unwrap();
+                let mut property = object.get_property(key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(Value::undefined());
                     property.set_is_writable(false);
@@ -287,6 +287,9 @@ pub fn validate_and_apply_property_descriptor(
                     let accessor_value = AccessorValue::new(cx, None, None);
                     property.set_value(accessor_value.into());
                 }
+
+                // Set modified property on object
+                object.set_property(key, property)
             }
         }
     } else if current_desc.is_data_descriptor() && desc.is_data_descriptor() {
@@ -322,7 +325,7 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let property = object.get_property_mut(key).unwrap();
+            let mut property = object.get_property(key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -351,6 +354,9 @@ pub fn validate_and_apply_property_descriptor(
                     accessor_value.set = Some(set);
                 }
             }
+
+            // Set modified property on object
+            object.set_property(key, property);
         }
         None => {}
     }
@@ -497,7 +503,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
         ArrayProperties::Dense(array) => {
             for (index, value) in array.iter().enumerate() {
                 if filter(index) {
-                    if !value.value().is_empty() {
+                    if !value.is_empty() {
                         let index_string = cx.alloc_string(index.to_string());
                         keys.push(Value::string(index_string));
                     }

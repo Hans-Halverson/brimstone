@@ -182,33 +182,24 @@ impl ObjectValue {
     }
 
     // Property accessors and mutators
-    pub fn get_property(&self, key: &PropertyKey) -> Option<&Property> {
+    pub fn get_property(&self, key: &PropertyKey) -> Option<Property> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             return self.array_properties.get_property(array_index);
         }
 
-        self.properties.get(key)
+        self.properties.get(key).cloned()
     }
 
-    pub fn get_property_mut(&mut self, key: &PropertyKey) -> Option<&mut Property> {
+    pub fn set_property(&mut self, key: &PropertyKey, property: Property) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
-            return self.array_properties.get_property_mut(array_index);
-        }
-
-        self.properties.get_mut(key)
-    }
-
-    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            self.array_properties.set_property(array_index, value);
+            self.array_properties.set_property(array_index, property);
 
             return;
         }
 
-        self.properties.insert(key.clone(), value);
+        self.properties.insert(key.clone(), property);
     }
 
     pub fn remove_property(&mut self, key: &PropertyKey) {
@@ -254,11 +245,6 @@ impl ObjectValue {
     #[inline]
     pub fn array_properties(&self) -> &ArrayProperties {
         &self.array_properties
-    }
-
-    #[inline]
-    pub fn array_properties_mut(&mut self) -> &mut ArrayProperties {
-        &mut self.array_properties
     }
 
     #[inline]

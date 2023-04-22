@@ -28,6 +28,10 @@ bitflags! {
     }
 }
 
+pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
+    .union(PropertyFlags::IS_ENUMERABLE)
+    .union(PropertyFlags::IS_CONFIGURABLE);
+
 impl Property {
     #[inline]
     pub fn data(
@@ -121,6 +125,10 @@ impl Property {
 
     pub fn is_private_accessor(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_PRIVATE_ACCESSOR)
+    }
+
+    pub fn is_allowed_as_dense_array_property(&self) -> bool {
+        self.flags.contains(DENSE_ARRAY_PROPERTY_FLAGS)
     }
 
     pub fn set_value(&mut self, value: Value) {

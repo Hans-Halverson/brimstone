@@ -5,7 +5,8 @@ use super::{property::Property, Value};
 // Properties keyed by array index. Keep dense and backed by a true array if possible, otherwise
 // switch to sparse array represented by map.
 pub enum ArrayProperties {
-    Dense(Vec<Property>),
+    // Dense properties are all writable, enumerable, and configurable.
+    Dense(Vec<Value>),
     Sparse { sparse_map: HashMap<u32, Property>, length: u32 },
 }
 
@@ -28,7 +29,7 @@ impl ArrayProperties {
     #[inline]
     fn expand_dense_properties(&mut self, new_length: u32) {
         if let ArrayProperties::Dense(array) = self {
-            let default_value = Property::data(Value::empty(), true, true, true);
+            let default_value = Value::empty();
             array.resize(new_length as usize, default_value);
         } else {
             unreachable!("expected dense properties");
@@ -44,9 +45,9 @@ impl ArrayProperties {
 
         let mut sparse_map = HashMap::new();
 
-        for (index, property) in array.iter().enumerate() {
-            if !property.value().is_empty() {
-                sparse_map.insert(index as u32, (*property).clone());
+        for (index, value) in array.iter().enumerate() {
+            if !value.is_empty() {
+                sparse_map.insert(index as u32, Property::data(*value, true, true, true));
             }
         }
 
@@ -80,27 +81,10 @@ impl ArrayProperties {
                     return true;
                 }
 
-                // In dense truncating case we must first find the last non-configurable property
-                let mut last_non_configurable_index = None;
-                for (index, value) in array.iter().enumerate().rev() {
-                    if (index as u32) < new_length {
-                        break;
-                    }
-
-                    if !value.is_configurable() {
-                        last_non_configurable_index = Some(index);
-                        break;
-                    }
-                }
-
-                // And only truncate to one past the last non-configurable property, keeping it
-                if let Some(last_index) = last_non_configurable_index {
-                    array.truncate(last_index + 1);
-                    false
-                } else {
-                    array.truncate(new_length as usize);
-                    true
-                }
+                // In dense case all properties are configurable so can always truncate directly to
+                // new length.
+                array.truncate(new_length as usize);
+                true
             }
             ArrayProperties::Sparse { sparse_map, length } => {
                 // Sparse expand case is easy, we simply set the new length
@@ -145,7 +129,7 @@ impl ArrayProperties {
         }
     }
 
-    pub fn get_property(&self, array_index: u32) -> Option<&Property> {
+    pub fn get_property(&self, array_index: u32) -> Option<Property> {
         match self {
             ArrayProperties::Dense(array) => {
                 if array_index as usize >= array.len() {
@@ -153,51 +137,38 @@ impl ArrayProperties {
                 }
 
                 let value = &array[array_index as usize];
-                if value.value().is_empty() {
+                if value.is_empty() {
                     return None;
                 }
 
-                Some(value)
+                Some(Property::data(*value, true, true, true))
             }
-            ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get(&array_index),
+            ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get(&array_index).cloned(),
         }
     }
 
-    pub fn get_property_mut(&mut self, array_index: u32) -> Option<&mut Property> {
+    pub fn set_property(&mut self, array_index: u32, property: Property) {
         match self {
             ArrayProperties::Dense(array) => {
-                if array_index as usize >= array.len() {
-                    return None;
-                }
-
-                let value = &mut array[array_index as usize];
-                if value.value().is_empty() {
-                    return None;
-                }
-
-                Some(value)
-            }
-            ArrayProperties::Sparse { sparse_map, .. } => sparse_map.get_mut(&array_index),
-        }
-    }
-
-    pub fn set_property(&mut self, array_index: u32, value: Property) {
-        match self {
-            ArrayProperties::Dense(array) => {
-                if array_index as usize >= array.len() {
+                // Property must have the correct attributes to be added as dense property.
+                // Otherwise transition to sparse properties and add new property.
+                if !property.is_allowed_as_dense_array_property() {
+                    self.fall_back_to_sparse_properties();
+                    self.set_property(array_index, property)
+                } else if array_index as usize >= array.len() {
                     if array_index as usize >= array.len() + SPARSE_ARRAY_THRESHOLD {
                         self.fall_back_to_sparse_properties();
                     } else {
                         self.expand_dense_properties(array_index + 1);
                     }
 
-                    self.set_property(array_index, value);
+                    self.set_property(array_index, property);
                 } else {
-                    array[array_index as usize] = value;
+                    array[array_index as usize] = property.value();
                 }
             }
             ArrayProperties::Sparse { sparse_map, length } => {
-                sparse_map.insert(array_index, value);
+                sparse_map.insert(array_index, property);
                 if array_index >= *length {
                     *length = array_index + 1;
                 }
@@ -208,7 +179,7 @@ impl ArrayProperties {
     pub fn remove_property(&mut self, array_index: u32) {
         match self {
             ArrayProperties::Dense(array) => {
-                array[array_index as usize] = Property::data(Value::empty(), true, true, true);
+                array[array_index as usize] = Value::empty();
             }
             ArrayProperties::Sparse { sparse_map, .. } => {
                 sparse_map.remove(&array_index);

@@ -43,12 +43,16 @@ impl SymbolPrototype {
             None,
         )
         .into();
-        object
-            .set_property(&to_primitive_key, Property::data(to_primitive_func, false, false, true));
+        object.set_property(
+            cx,
+            &to_primitive_key,
+            Property::data(to_primitive_func, false, false, true),
+        );
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(cx.names.symbol().as_string().into(), false, false, true),
         );

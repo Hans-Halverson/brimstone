@@ -42,12 +42,13 @@ impl StringObject {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.string_data = string_data;
 
         // String objects have an immutable length property
         object.object().set_property(
+            cx,
             &cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );
@@ -74,6 +75,7 @@ impl StringObject {
 
         // String objects have an immutable length property
         object.object().set_property(
+            cx,
             &cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );

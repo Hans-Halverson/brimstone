@@ -402,10 +402,9 @@ fn iterator_binding_initialization(
                             return EvalResult::Throw(thrown_value);
                         }
                         EvalResult::Ok(next_value) => {
+                            let property_key = PropertyKey::array_index(cx, index);
                             let property = Property::data(next_value, true, true, true);
-                            array
-                                .object()
-                                .set_property(&PropertyKey::array_index(cx, index), property);
+                            array.object().set_property(cx, &property_key, property);
                             index += 1;
                         }
                     }

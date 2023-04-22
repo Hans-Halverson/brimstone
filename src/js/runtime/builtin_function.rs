@@ -76,7 +76,7 @@ impl BuiltinFunction {
         let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BuiltinFunction);
 
-        object_ordinary_init(object.object(), prototype);
+        object_ordinary_init(cx, object.object(), prototype);
 
         object.realm = realm;
         object.script_or_module = None;
@@ -99,12 +99,12 @@ impl BuiltinFunction {
 }
 
 impl Gc<BuiltinFunction> {
-    pub fn set_property(&mut self, key: &PropertyKey, value: Property) {
-        self.object().set_property(key, value);
+    pub fn set_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Property) {
+        self.object().set_property(cx, key, value);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.object().intrinsic_frozen_property(key, value);
+    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+        self.object().intrinsic_frozen_property(cx, key, value);
     }
 
     pub fn intrinsic_func(

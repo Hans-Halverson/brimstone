@@ -37,7 +37,7 @@ impl MapPrototype {
         // Constructor property is added once MapConstructor has been created
         object.intrinsic_func(cx, &cx.names.clear(), Self::clear, 0, realm);
         object.intrinsic_func(cx, &cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_data_prop(&cx.names.entries(), entries_function);
+        object.intrinsic_data_prop(cx, &cx.names.entries(), entries_function);
         object.intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, &cx.names.get(), Self::get, 1, realm);
         object.intrinsic_func(cx, &cx.names.has(), Self::has, 1, realm);
@@ -48,11 +48,12 @@ impl MapPrototype {
 
         // 24.1.3.12 Map.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        object.set_property(&iterator_key, Property::data(entries_function, true, false, true));
+        object.set_property(cx, &iterator_key, Property::data(entries_function, true, false, true));
 
         // 24.1.3.13 Map.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(cx.names.map().as_string().into(), false, false, true),
         );

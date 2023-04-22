@@ -246,7 +246,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.set_property(key, property);
+        object.set_property(cx, key, property);
 
         return true;
     }
@@ -289,7 +289,7 @@ pub fn validate_and_apply_property_descriptor(
                 }
 
                 // Set modified property on object
-                object.set_property(key, property)
+                object.set_property(cx, key, property)
             }
         }
     } else if current_desc.is_data_descriptor() && desc.is_data_descriptor() {
@@ -356,7 +356,7 @@ pub fn validate_and_apply_property_descriptor(
             }
 
             // Set modified property on object
-            object.set_property(key, property);
+            object.set_property(cx, key, property);
         }
         None => {}
     }
@@ -499,27 +499,23 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     filter: F,
 ) {
     // Return array index properties in numerical order
-    match object.array_properties() {
-        ArrayProperties::Dense(array) => {
-            for (index, value) in array.iter().enumerate() {
-                if filter(index) {
-                    if !value.is_empty() {
-                        let index_string = cx.alloc_string(index.to_string());
-                        keys.push(Value::string(index_string));
-                    }
-                }
-            }
-        }
-        ArrayProperties::Sparse { sparse_map, .. } => {
-            // Sparse map is unordered, so first extract and order keys
-            let mut indexes_array = sparse_map.keys().map(|key| *key).collect::<Vec<_>>();
-            indexes_array.sort();
-
-            for index in indexes_array {
-                if filter(index as usize) {
+    let array_properties = object.array_properties();
+    if let Some(dense_properties) = array_properties.as_dense_opt() {
+        for (index, value) in dense_properties.iter().enumerate() {
+            if filter(index) {
+                if !value.is_empty() {
                     let index_string = cx.alloc_string(index.to_string());
                     keys.push(Value::string(index_string));
                 }
+            }
+        }
+    } else {
+        let sparse_properties = array_properties.as_sparse();
+
+        for index in sparse_properties.ordered_keys() {
+            if filter(index as usize) {
+                let index_string = cx.alloc_string(index.to_string());
+                keys.push(Value::string(index_string));
             }
         }
     }
@@ -545,8 +541,8 @@ pub fn ordinary_own_string_symbol_property_keys(
 }
 
 // 10.1.12 OrdinaryObjectCreate but on an uninitialized object as part of construction
-pub fn object_ordinary_init(object: Gc<ObjectValue>, proto: Gc<ObjectValue>) {
-    object_ordinary_init_optional_proto(object, Some(proto))
+pub fn object_ordinary_init(cx: &mut Context, object: Gc<ObjectValue>, proto: Gc<ObjectValue>) {
+    object_ordinary_init_optional_proto(cx, object, Some(proto))
 }
 
 pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ObjectValue> {
@@ -563,12 +559,13 @@ pub fn ordinary_object_create_with_descriptor(
     let mut object = cx.heap.alloc_uninit::<ObjectValue>();
     object.set_descriptor(descriptor);
 
-    object_ordinary_init_optional_proto(object, proto);
+    object_ordinary_init_optional_proto(cx, object, proto);
 
     object
 }
 
 pub fn object_ordinary_init_optional_proto(
+    cx: &mut Context,
     mut object: Gc<ObjectValue>,
     proto: Option<Gc<ObjectValue>>,
 ) {
@@ -578,7 +575,7 @@ pub fn object_ordinary_init_optional_proto(
 
     object.set_prototype(proto);
     object.set_properties(IndexMap::new());
-    object.set_array_properties(ArrayProperties::new());
+    object.set_array_properties(ArrayProperties::initial(cx));
     object.set_is_extensible_field(true);
     object.set_uninit_hash_code();
 }
@@ -590,7 +587,7 @@ pub fn ordinary_object_create_optional_proto(
     let mut object = cx.heap.alloc_uninit::<ObjectValue>();
     object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
 
-    object_ordinary_init_optional_proto(object, proto);
+    object_ordinary_init_optional_proto(cx, object, proto);
 
     object
 }
@@ -604,7 +601,7 @@ pub fn object_ordinary_init_from_constructor(
 ) -> EvalResult<()> {
     let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
 
-    object_ordinary_init(object, proto);
+    object_ordinary_init(cx, object, proto);
 
     ().into()
 }

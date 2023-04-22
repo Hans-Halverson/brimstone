@@ -35,7 +35,7 @@ impl ObjectPrototype {
 
     // 20.1.3 Properties of the Object Prototype Object
     pub fn initialize(cx: &mut Context, mut object: Gc<ObjectValue>, realm: Gc<Realm>) {
-        object_ordinary_init_optional_proto(object.object(), None);
+        object_ordinary_init_optional_proto(cx, object.object(), None);
 
         // Constructor property is added once ObjectConstructor has been created
         object.intrinsic_func(cx, &cx.names.has_own_property(), Self::has_own_property, 1, realm);

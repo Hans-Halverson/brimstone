@@ -38,7 +38,7 @@ impl BoundFunctionObject {
         let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
 
-        object_ordinary_init_optional_proto(object.object(), proto);
+        object_ordinary_init_optional_proto(cx, object.object(), proto);
 
         object.bound_target_function = target_function;
         object.bound_this = bound_this;

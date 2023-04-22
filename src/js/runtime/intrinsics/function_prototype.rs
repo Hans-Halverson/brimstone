@@ -49,7 +49,7 @@ impl Gc<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        object_ordinary_init(self.object(), object_proto);
+        object_ordinary_init(cx, self.object(), object_proto);
 
         self.object().intrinsic_name_prop(cx, "");
         self.object().instrinsic_length_prop(cx, 0);
@@ -80,6 +80,7 @@ impl Gc<FunctionPrototype> {
         )
         .into();
         self.object().set_property(
+            cx,
             &has_instance_key,
             Property::data(has_instance_func, false, false, false),
         );

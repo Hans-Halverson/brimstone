@@ -45,7 +45,7 @@ impl<'a> MapIterator<'a> {
         let mut object = cx.heap.alloc_uninit::<MapIterator>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::MapIterator);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.map = map;
         object.iter = map.map_data().iter();
@@ -71,6 +71,7 @@ impl MapIteratorPrototype {
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let to_string_tag_value = cx.alloc_string(String::from("Map Iterator")).into();
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
         );

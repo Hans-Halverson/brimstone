@@ -33,7 +33,7 @@ impl ArrayObject {
         let mut array = cx.heap.alloc_uninit::<ArrayObject>();
         array.descriptor = cx.base_descriptors.get(ObjectKind::ArrayObject);
 
-        object_ordinary_init(array.object(), proto);
+        object_ordinary_init(cx, array.object(), proto);
 
         array.is_length_writable = true;
 
@@ -213,8 +213,7 @@ fn array_set_length(
         }
     }
 
-    // TODO: Resize array_properties
-    let has_delete_succeeded = array.object().set_array_properties_length(new_len);
+    let has_delete_succeeded = array.object().set_array_properties_length(cx, new_len);
 
     if let Some(false) = desc.is_writable {
         array.is_length_writable = false;

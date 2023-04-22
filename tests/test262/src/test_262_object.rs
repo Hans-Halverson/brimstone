@@ -27,15 +27,14 @@ impl Test262Object {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        let create_realm_key =
-            PropertyKey::string(cx.alloc_string(String::from("createRealm")));
+        let create_realm_key = PropertyKey::string(cx.alloc_string(String::from("createRealm")));
         object.intrinsic_func(cx, &create_realm_key, Self::create_realm, 0, realm);
 
         let eval_script_key = PropertyKey::string(cx.alloc_string(String::from("evalScript")));
         object.intrinsic_func(cx, &eval_script_key, Self::eval_script, 1, realm);
 
         let global_key = PropertyKey::string(cx.alloc_string(String::from("global")));
-        object.intrinsic_data_prop(&global_key, realm.global_object.into());
+        object.intrinsic_data_prop(cx, &global_key, realm.global_object.into());
 
         let detach_array_buffer_key =
             PropertyKey::string(cx.alloc_string(String::from("detachArrayBuffer")));

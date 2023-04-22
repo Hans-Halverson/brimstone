@@ -61,6 +61,7 @@ impl DataViewPrototype {
         // 25.3.4.25 DataView.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(cx.names.data_view().as_string().into(), false, false, true),
         );

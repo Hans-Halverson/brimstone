@@ -46,6 +46,7 @@ impl ObjectConstructor {
 
         func.set_is_constructor();
         func.set_property(
+            cx,
             &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),

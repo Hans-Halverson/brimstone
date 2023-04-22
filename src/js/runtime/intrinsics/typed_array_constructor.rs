@@ -37,6 +37,7 @@ impl TypedArrayConstructor {
 
         func.set_is_constructor();
         func.set_property(
+            cx,
             &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
@@ -226,7 +227,7 @@ macro_rules! create_typed_array_constructor {
                 let mut object = cx.heap.alloc_uninit::<$typed_array>();
                 object.descriptor = cx.base_descriptors.get(ObjectKind::$typed_array);
 
-                object_ordinary_init(object.object(), proto);
+                object_ordinary_init(cx, object.object(), proto);
 
                 object.viewed_array_buffer = viewed_array_buffer;
                 object.byte_length = byte_length;
@@ -488,6 +489,7 @@ macro_rules! create_typed_array_constructor {
 
                 func.set_is_constructor();
                 func.set_property(
+                    cx,
                     &cx.names.prototype(),
                     Property::data(
                         realm.get_intrinsic(Intrinsic::$prototype).into(),
@@ -498,6 +500,7 @@ macro_rules! create_typed_array_constructor {
                 );
 
                 func.set_property(
+                    cx,
                     &cx.names.bytes_per_element(),
                     Property::data(Value::smi(element_size!() as i32), false, false, false),
                 );

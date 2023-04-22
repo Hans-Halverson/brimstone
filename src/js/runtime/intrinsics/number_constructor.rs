@@ -41,7 +41,7 @@ impl NumberObject {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.number_data = number_data;
 
@@ -96,6 +96,7 @@ impl NumberConstructor {
 
         func.set_is_constructor();
         func.set_property(
+            cx,
             &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
@@ -106,31 +107,38 @@ impl NumberConstructor {
         );
 
         func.set_property(
+            cx,
             &cx.names.epsilon(),
             Property::data(Value::number(f64::EPSILON), false, false, false),
         );
         func.set_property(
+            cx,
             &cx.names.max_safe_integer(),
             Property::data(Value::number(MAX_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
+            cx,
             &cx.names.max_value(),
             Property::data(Value::number(f64::MAX), false, false, false),
         );
         func.set_property(
+            cx,
             &cx.names.min_safe_integer(),
             Property::data(Value::number(MIN_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
+            cx,
             &cx.names.min_value(),
             Property::data(Value::number(MIN_POSITIVE_SUBNORMAL_F64), false, false, false),
         );
-        func.set_property(&cx.names.nan(), Property::data(Value::nan(), false, false, false));
+        func.set_property(cx, &cx.names.nan(), Property::data(Value::nan(), false, false, false));
         func.set_property(
+            cx,
             &cx.names.negative_infinity(),
             Property::data(Value::number(f64::NEG_INFINITY), false, false, false),
         );
         func.set_property(
+            cx,
             &cx.names.positive_infinity(),
             Property::data(Value::number(f64::INFINITY), false, false, false),
         );

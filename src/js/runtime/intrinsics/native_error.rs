@@ -32,9 +32,10 @@ macro_rules! create_native_error {
                 let mut object = cx.heap.alloc_uninit::<ObjectValue>();
                 object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
 
-                object_ordinary_init(object.object(), prototype);
+                object_ordinary_init(cx, object.object(), prototype);
 
-                object.intrinsic_data_prop(&cx.names.message(), cx.alloc_string(message).into());
+                let message_value = cx.alloc_string(message).into();
+                object.intrinsic_data_prop(cx, &cx.names.message(), message_value);
 
                 object
             }
@@ -75,6 +76,7 @@ macro_rules! create_native_error {
 
                 func.set_is_constructor();
                 func.set_property(
+                    cx,
                     &cx.names.prototype(),
                     Property::data(
                         realm.get_intrinsic(Intrinsic::$prototype).into(),
@@ -131,6 +133,7 @@ macro_rules! create_native_error {
                 // Constructor property is added once NativeErrorConstructor has been created
                 object.intrinsic_name_prop(cx, stringify!($native_error));
                 object.intrinsic_data_prop(
+                    cx,
                     &cx.names.message(),
                     cx.names.empty_string().as_string().into(),
                 );

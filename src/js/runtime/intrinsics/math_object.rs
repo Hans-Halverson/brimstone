@@ -28,28 +28,47 @@ impl MathObject {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // 21.3.1 Value Properties of the Math Object
-        object.intrinsic_frozen_property(&cx.names.e(), Value::number(std::f64::consts::E));
-        object.intrinsic_frozen_property(&cx.names.ln10(), Value::number(std::f64::consts::LN_10));
-        object.intrinsic_frozen_property(&cx.names.ln2(), Value::number(std::f64::consts::LN_2));
+        object.intrinsic_frozen_property(cx, &cx.names.e(), Value::number(std::f64::consts::E));
         object.intrinsic_frozen_property(
+            cx,
+            &cx.names.ln10(),
+            Value::number(std::f64::consts::LN_10),
+        );
+        object.intrinsic_frozen_property(
+            cx,
+            &cx.names.ln2(),
+            Value::number(std::f64::consts::LN_2),
+        );
+        object.intrinsic_frozen_property(
+            cx,
             &cx.names.log10e(),
             Value::number(std::f64::consts::LOG10_E),
         );
-        object
-            .intrinsic_frozen_property(&cx.names.log2e(), Value::number(std::f64::consts::LOG2_E));
-        object.intrinsic_frozen_property(&cx.names.pi(), Value::number(std::f64::consts::PI));
         object.intrinsic_frozen_property(
+            cx,
+            &cx.names.log2e(),
+            Value::number(std::f64::consts::LOG2_E),
+        );
+        object.intrinsic_frozen_property(cx, &cx.names.pi(), Value::number(std::f64::consts::PI));
+        object.intrinsic_frozen_property(
+            cx,
             &cx.names.sqrt1_2(),
             Value::number(std::f64::consts::FRAC_1_SQRT_2),
         );
-        object
-            .intrinsic_frozen_property(&cx.names.sqrt2(), Value::number(std::f64::consts::SQRT_2));
+        object.intrinsic_frozen_property(
+            cx,
+            &cx.names.sqrt2(),
+            Value::number(std::f64::consts::SQRT_2),
+        );
 
         // 21.3.1.9 Math [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let math_name_value = cx.names.math().as_string().into();
-        object
-            .set_property(&to_string_tag_key, Property::data(math_name_value, false, false, true));
+        object.set_property(
+            cx,
+            &to_string_tag_key,
+            Property::data(math_name_value, false, false, true),
+        );
 
         object.intrinsic_func(cx, &cx.names.abs(), Self::abs, 1, realm);
         object.intrinsic_func(cx, &cx.names.acos(), Self::acos, 1, realm);

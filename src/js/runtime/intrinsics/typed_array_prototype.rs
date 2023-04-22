@@ -76,16 +76,17 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
+            cx,
             &cx.names.to_string(),
             realm
                 .get_intrinsic(Intrinsic::ArrayPrototypeToString)
                 .into(),
         );
-        object.intrinsic_data_prop(&cx.names.values(), values_function);
+        object.intrinsic_data_prop(cx, &cx.names.values(), values_function);
 
         // 23.2.3.32 %TypedArray%.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        object.set_property(&iterator_key, Property::data(values_function, true, false, true));
+        object.set_property(cx, &iterator_key, Property::data(values_function, true, false, true));
 
         // 23.2.3.33 get %TypedArray%.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
@@ -1158,6 +1159,7 @@ macro_rules! create_typed_array_prototype {
 
                 // Constructor property is added once TypedArrayConstructor has been created
                 object.set_property(
+                    cx,
                     &cx.names.bytes_per_element(),
                     Property::data(
                         Value::smi(std::mem::size_of::<$element_type>() as i32),

@@ -32,6 +32,7 @@ impl BigIntPrototype {
         // 21.2.3.5 BigInt.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(cx.names.bigint().as_string().into(), false, false, true),
         );

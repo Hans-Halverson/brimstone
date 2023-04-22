@@ -61,7 +61,7 @@ impl MappedArgumentsObject {
         let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::MappedArgumentsObject);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.parameter_map = parameter_map;
 

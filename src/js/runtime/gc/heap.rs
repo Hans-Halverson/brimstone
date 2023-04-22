@@ -33,19 +33,26 @@ impl Heap {
     }
 
     pub fn alloc_uninit<T>(&mut self) -> Gc<T> {
+        self.alloc_uninit_with_size::<T>(size_of::<T>(), align_of::<T>())
+    }
+
+    /// Allocate an object of a given type with the specified size in bytes. When called directly,
+    /// is used to allocate dynamically sized objects.
+    #[inline]
+    pub fn alloc_uninit_with_size<T>(&mut self, size: usize, align: usize) -> Gc<T> {
         unsafe {
             // First align start offset to alignment of type
-            let start = self.current.add(self.current.align_offset(align_of::<T>()));
+            let start = self.current.add(self.current.align_offset(align));
 
             // Calculate where the current will be after this allocation, checking if there is room
-            let next_current = start.add(size_of::<T>());
+            let next_current = start.add(size);
             if (next_current as usize) > (self.end as usize) {
                 panic!("Ran out of memory")
             }
 
             // Update end pointer and write into memory
             self.current = next_current;
-            let start = start.cast_mut().cast::<T>();
+            let start = start.cast_mut().cast();
 
             Gc::from_ptr(start)
         }

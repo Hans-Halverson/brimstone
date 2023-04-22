@@ -149,18 +149,22 @@ impl ArrayPrototype {
             .intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
         array
             .object()
-            .intrinsic_data_prop(&cx.names.values(), values_function);
+            .intrinsic_data_prop(cx, &cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        array
-            .object()
-            .set_property(&iterator_key, Property::data(values_function, true, false, true));
+        array.object().set_property(
+            cx,
+            &iterator_key,
+            Property::data(values_function, true, false, true),
+        );
 
         // 23.1.3.35 Array.prototype [ @@unscopables ]
         let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
-        array.object().set_property(&unscopables_key, unscopables);
+        array
+            .object()
+            .set_property(cx, &unscopables_key, unscopables);
 
         array.into()
     }

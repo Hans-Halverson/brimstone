@@ -12,8 +12,16 @@ impl AggregateErrorPrototype {
 
         // Constructor property is added once AggregateErrorConstructor has been created
         object.intrinsic_name_prop(cx, "AggregateError");
-        object.intrinsic_data_prop(&cx.names.message(), cx.names.empty_string().as_string().into());
-        object.intrinsic_data_prop(&cx.names.name(), cx.names.aggregate_error().as_string().into());
+        object.intrinsic_data_prop(
+            cx,
+            &cx.names.message(),
+            cx.names.empty_string().as_string().into(),
+        );
+        object.intrinsic_data_prop(
+            cx,
+            &cx.names.name(),
+            cx.names.aggregate_error().as_string().into(),
+        );
 
         object
     }

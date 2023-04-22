@@ -106,6 +106,9 @@ pub enum ObjectKind {
     ObjectEnvironment,
     PrivateEnvironment,
 
+    DenseArrayProperties,
+    SparseArrayProperties,
+
     ArgAccessorClosureEnvironment,
     RevokeProxyClosureEnvironment,
 
@@ -271,6 +274,9 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
         other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironment);
+
+        other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
+        other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);
 
         other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
         other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);

@@ -36,7 +36,7 @@ impl BooleanObject {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.boolean_data = boolean_data;
 
@@ -93,6 +93,7 @@ impl BooleanConstructor {
 
         func.set_is_constructor();
         func.set_property(
+            cx,
             &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),

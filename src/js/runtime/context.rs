@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::js::parser::ast;
 
 use super::{
+    array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
     environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
@@ -30,6 +31,9 @@ pub struct Context {
 
     // Stack of closure environments for all builtin functions currently being evaluated
     pub closure_environments: Vec<Option<Gc<ClosureEnvironment>>>,
+
+    // An empty, dense array properties object to use as the initial value for array properties
+    pub default_array_properties: Gc<ArrayProperties>,
 
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: DynEnvironment,
@@ -59,6 +63,7 @@ impl Context {
             base_descriptors,
             interned_strings: HashMap::new(),
             closure_environments: vec![],
+            default_array_properties: Gc::uninit(),
             uninit_environment,
             eval_asts: vec![],
             function_constructor_asts: vec![],
@@ -66,6 +71,7 @@ impl Context {
 
         cx.init_builtin_names();
         cx.init_builtin_symbols();
+        cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
 
         cx
     }

@@ -46,7 +46,7 @@ macro_rules! extend_object_without_conversions {
             properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
 
             // Array index properties by their property key
-            array_properties: $crate::js::runtime::array_properties::ArrayProperties,
+            array_properties: $crate::js::runtime::Gc<$crate::js::runtime::array_properties::ArrayProperties>,
 
             // Whether this object can be extended with new properties
             is_extensible_field: bool,
@@ -121,11 +121,12 @@ impl ObjectValue {
         is_extensible: bool,
     ) -> Gc<ObjectValue> {
         let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+        let array_properties = ArrayProperties::initial(cx);
 
+        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
         object.prototype = prototype;
         object.properties = IndexMap::new();
-        object.array_properties = ArrayProperties::new();
+        object.array_properties = array_properties;
         object.is_extensible_field = is_extensible;
         object.set_uninit_hash_code();
 
@@ -135,10 +136,6 @@ impl ObjectValue {
     // Array properties methods
     pub fn array_properties_length(&self) -> u32 {
         self.array_properties.len()
-    }
-
-    pub fn set_array_properties_length(&mut self, new_length: u32) -> bool {
-        self.array_properties.set_len(new_length)
     }
 
     // 7.3.27 PrivateElementFind
@@ -190,29 +187,6 @@ impl ObjectValue {
 
         self.properties.get(key).cloned()
     }
-
-    pub fn set_property(&mut self, key: &PropertyKey, property: Property) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            self.array_properties.set_property(array_index, property);
-
-            return;
-        }
-
-        self.properties.insert(key.clone(), property);
-    }
-
-    pub fn remove_property(&mut self, key: &PropertyKey) {
-        if key.is_array_index() {
-            let array_index = key.as_array_index();
-            self.array_properties.remove_property(array_index);
-
-            return;
-        }
-
-        // TODO: Removal is currently O(n) to maintain order, improve if possible
-        self.properties.shift_remove(key);
-    }
 }
 
 // Object field accessors
@@ -243,12 +217,12 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn array_properties(&self) -> &ArrayProperties {
-        &self.array_properties
+    pub fn array_properties(&self) -> Gc<ArrayProperties> {
+        self.array_properties
     }
 
     #[inline]
-    pub fn set_array_properties(&mut self, array_properties: ArrayProperties) {
+    pub fn set_array_properties(&mut self, array_properties: Gc<ArrayProperties>) {
         self.array_properties = array_properties;
     }
 
@@ -388,23 +362,50 @@ impl Gc<ObjectValue> {
         }
     }
 
+    // Property accessors and mutators
+    pub fn set_property(&mut self, cx: &mut Context, key: &PropertyKey, property: Property) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            ArrayProperties::set_property(cx, *self, array_index, property);
+
+            return;
+        }
+
+        self.properties.insert(key.clone(), property);
+    }
+
+    pub fn remove_property(&mut self, key: &PropertyKey) {
+        if key.is_array_index() {
+            let array_index = key.as_array_index();
+            self.array_properties.remove_property(array_index);
+
+            return;
+        }
+
+        // TODO: Removal is currently O(n) to maintain order, improve if possible
+        self.properties.shift_remove(key);
+    }
+
+    pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {
+        ArrayProperties::set_len(cx, *self, new_length)
+    }
+
     // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, true, false, true))
+    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+        self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
     pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
         self.set_property(
+            cx,
             &cx.names.length(),
             Property::data(Value::smi(length), false, false, true),
         )
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
-        self.set_property(
-            &cx.names.name(),
-            Property::data(Value::string(cx.alloc_string(name.to_owned())), false, false, true),
-        )
+        let name_value = Value::string(cx.alloc_string(name.to_owned()));
+        self.set_property(cx, &cx.names.name(), Property::data(name_value, false, false, true))
     }
 
     pub fn intrinsic_getter(
@@ -416,7 +417,7 @@ impl Gc<ObjectValue> {
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
         let accessor_value = AccessorValue::new(cx, Some(getter.into()), None);
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 
     pub fn intrinsic_getter_and_setter(
@@ -430,7 +431,7 @@ impl Gc<ObjectValue> {
         let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
         let accessor_value = AccessorValue::new(cx, Some(getter.into()), Some(setter.into()));
-        self.set_property(name, Property::accessor(accessor_value.into(), false, true));
+        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 
     pub fn intrinsic_func(
@@ -441,14 +442,12 @@ impl Gc<ObjectValue> {
         length: i32,
         realm: Gc<Realm>,
     ) {
-        self.intrinsic_data_prop(
-            name,
-            BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into(),
-        );
+        let func = BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into();
+        self.intrinsic_data_prop(cx, name, func);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, key: &PropertyKey, value: Value) {
-        self.set_property(key, Property::data(value, false, false, false));
+    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+        self.set_property(cx, key, Property::data(value, false, false, false));
     }
 }
 

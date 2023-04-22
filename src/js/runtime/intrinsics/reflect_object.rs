@@ -58,6 +58,7 @@ impl ReflectObject {
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let reflect_name_value = cx.names.reflect().as_string().into();
         object.set_property(
+            cx,
             &to_string_tag_key,
             Property::data(reflect_name_value, false, false, true),
         );

@@ -35,7 +35,7 @@ impl BigIntObject {
         let mut object = cx.heap.alloc_uninit::<BigIntObject>();
         object.descriptor = cx.base_descriptors.get(ObjectKind::BigIntObject);
 
-        object_ordinary_init(object.object(), proto);
+        object_ordinary_init(cx, object.object(), proto);
 
         object.bigint_data = bigint_data;
 
@@ -64,6 +64,7 @@ impl BigIntConstructor {
 
         func.set_is_constructor();
         func.set_property(
+            cx,
             &cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),

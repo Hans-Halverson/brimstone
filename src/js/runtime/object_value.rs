@@ -139,8 +139,24 @@ impl ObjectValue {
     }
 
     // 7.3.27 PrivateElementFind
-    pub fn private_element_find(&mut self, private_name: PrivateName) -> Option<&mut Property> {
-        self.properties.get_mut(&PropertyKey::symbol(private_name))
+    pub fn private_element_find(&mut self, private_name: PrivateName) -> Option<Property> {
+        let property_key = PropertyKey::symbol(private_name);
+        self.properties.get_mut(&property_key).cloned()
+    }
+
+    pub fn has_private_element(&self, private_name: PrivateName) -> bool {
+        let property_key = PropertyKey::symbol(private_name);
+        self.properties.contains_key(&property_key)
+    }
+
+    pub fn private_element_set(
+        &mut self,
+        private_name: PrivateName,
+        value: Value,
+    ) -> Option<Property> {
+        let property_key = PropertyKey::symbol(private_name);
+        let property = Property::private_field(value);
+        self.properties.insert(property_key, property)
     }
 
     // 7.3.28 PrivateFieldAdd
@@ -150,14 +166,13 @@ impl ObjectValue {
         private_name: PrivateName,
         value: Value,
     ) -> EvalResult<()> {
-        match self.private_element_find(private_name) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                let property = Property::private_field(value);
-                self.properties
-                    .insert(PropertyKey::symbol(private_name), property);
-                ().into()
-            }
+        if self.has_private_element(private_name) {
+            type_error_(cx, "private property already defined")
+        } else {
+            let property = Property::private_field(value);
+            self.properties
+                .insert(PropertyKey::symbol(private_name), property);
+            ().into()
         }
     }
 
@@ -168,13 +183,12 @@ impl ObjectValue {
         private_name: PrivateName,
         private_method: Property,
     ) -> EvalResult<()> {
-        match self.private_element_find(private_name) {
-            Some(_) => type_error_(cx, "private property already defined"),
-            None => {
-                self.properties
-                    .insert(PropertyKey::symbol(private_name), private_method);
-                ().into()
-            }
+        if self.has_private_element(private_name) {
+            type_error_(cx, "private property already defined")
+        } else {
+            self.properties
+                .insert(PropertyKey::symbol(private_name), private_method);
+            ().into()
         }
     }
 
@@ -204,11 +218,6 @@ impl ObjectValue {
     #[inline]
     pub fn properties(&self) -> &IndexMap<PropertyKey, Property> {
         &self.properties
-    }
-
-    #[inline]
-    pub fn properties_mut(&mut self) -> &mut IndexMap<PropertyKey, Property> {
-        &mut self.properties
     }
 
     #[inline]

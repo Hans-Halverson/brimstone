@@ -1467,8 +1467,7 @@ fn eval_private_in_expression(
 
     right_value
         .as_object()
-        .private_element_find(private_name)
-        .is_some()
+        .has_private_element(private_name)
         .into()
 }
 

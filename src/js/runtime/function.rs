@@ -100,9 +100,7 @@ impl Function {
         };
 
         let mut object = cx.heap.alloc_uninit::<Function>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::Function);
-
-        object_ordinary_init(cx, object.object(), prototype);
+        object_ordinary_init(cx, object.object(), ObjectKind::Function, prototype);
 
         object.is_strict = is_strict;
         object.is_class_constructor = false;

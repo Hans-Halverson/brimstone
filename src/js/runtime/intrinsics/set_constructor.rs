@@ -37,12 +37,11 @@ impl SetObject {
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<SetObject>> {
         let mut object = cx.heap.alloc_uninit::<SetObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::SetObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::SetObject,
             Intrinsic::SetPrototype
         ));
 

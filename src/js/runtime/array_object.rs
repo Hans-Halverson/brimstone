@@ -31,9 +31,7 @@ extend_object! {
 impl ArrayObject {
     pub fn new(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ArrayObject> {
         let mut array = cx.heap.alloc_uninit::<ArrayObject>();
-        array.descriptor = cx.base_descriptors.get(ObjectKind::ArrayObject);
-
-        object_ordinary_init(cx, array.object(), proto);
+        object_ordinary_init(cx, array.object(), ObjectKind::ArrayObject, proto);
 
         array.is_length_writable = true;
 

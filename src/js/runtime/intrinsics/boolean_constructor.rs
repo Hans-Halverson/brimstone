@@ -34,9 +34,7 @@ impl BooleanObject {
         boolean_data: bool,
     ) -> Gc<BooleanObject> {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::BooleanObject, proto);
 
         object.boolean_data = boolean_data;
 
@@ -57,12 +55,11 @@ impl BooleanObject {
         boolean_data: bool,
     ) -> EvalResult<Gc<BooleanObject>> {
         let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::BooleanObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::BooleanObject,
             Intrinsic::BooleanPrototype
         ));
 

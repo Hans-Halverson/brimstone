@@ -33,12 +33,11 @@ impl BoundFunctionObject {
         bound_this: Value,
         bound_arguments: Vec<Value>,
     ) -> EvalResult<Gc<BoundFunctionObject>> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
         let proto = maybe!(target_function.get_prototype_of(cx));
 
         let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
-
-        object_ordinary_init_optional_proto(cx, object.object(), proto);
+        object_ordinary_init_optional_proto(cx, object.object(), descriptor, proto);
 
         object.bound_target_function = target_function;
         object.bound_this = bound_this;

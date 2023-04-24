@@ -74,9 +74,7 @@ impl BuiltinFunction {
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
         let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::BuiltinFunction);
-
-        object_ordinary_init(cx, object.object(), prototype);
+        object_ordinary_init(cx, object.object(), ObjectKind::BuiltinFunction, prototype);
 
         object.realm = realm;
         object.script_or_module = None;

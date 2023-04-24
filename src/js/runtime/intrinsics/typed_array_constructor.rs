@@ -225,9 +225,7 @@ macro_rules! create_typed_array_constructor {
                 array_length: usize,
             ) -> Gc<ObjectValue> {
                 let mut object = cx.heap.alloc_uninit::<$typed_array>();
-                object.descriptor = cx.base_descriptors.get(ObjectKind::$typed_array);
-
-                object_ordinary_init(cx, object.object(), proto);
+                object_ordinary_init(cx, object.object(), ObjectKind::$typed_array, proto);
 
                 object.viewed_array_buffer = viewed_array_buffer;
                 object.byte_length = byte_length;
@@ -412,7 +410,7 @@ macro_rules! create_typed_array_constructor {
                     }
                 }
 
-                ordinary_own_string_symbol_property_keys(cx, self.object(), &mut keys);
+                ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
 
                 keys.into()
             }

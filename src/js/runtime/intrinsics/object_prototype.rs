@@ -27,15 +27,16 @@ pub struct ObjectPrototype;
 impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<ObjectValue> {
-        let mut object = ObjectValue::new(cx, None, false);
-        object.set_descriptor(cx.base_descriptors.get(ObjectKind::ObjectPrototype));
-
-        object
+        // Initialized with correct values in initialize method, but set to default value
+        // at first to be GC safe until initialize method is called.
+        ObjectValue::new(cx, None, false)
     }
 
     // 20.1.3 Properties of the Object Prototype Object
     pub fn initialize(cx: &mut Context, mut object: Gc<ObjectValue>, realm: Gc<Realm>) {
-        object_ordinary_init_optional_proto(cx, object.object(), None);
+        let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
+
+        object_ordinary_init_optional_proto(cx, object.object(), descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
         object.intrinsic_func(cx, &cx.names.has_own_property(), Self::has_own_property, 1, realm);

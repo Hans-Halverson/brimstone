@@ -42,9 +42,7 @@ impl<'a> SetIterator<'a> {
             .get_intrinsic(Intrinsic::SetIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<SetIterator>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::SetIterator);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::SetIterator, proto);
 
         object.set = set;
         object.iter = set.set_data().iter();

@@ -58,10 +58,9 @@ extend_object! {
 impl MappedArgumentsObject {
     pub fn new(cx: &mut Context, parameter_map: Gc<ObjectValue>) -> Gc<MappedArgumentsObject> {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::MappedArgumentsObject);
 
-        object_ordinary_init(cx, object.object(), proto);
+        let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
+        object_ordinary_init(cx, object.object(), ObjectKind::MappedArgumentsObject, proto);
 
         object.parameter_map = parameter_map;
 

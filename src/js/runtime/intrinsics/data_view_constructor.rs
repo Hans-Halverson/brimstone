@@ -38,23 +38,22 @@ impl DataViewObject {
         byte_offset: usize,
     ) -> EvalResult<Gc<DataViewObject>> {
         let mut object = cx.heap.alloc_uninit::<DataViewObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::DataViewObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::DataViewObject,
             Intrinsic::DataViewPrototype
         ));
+
+        object.viewed_array_buffer = viewed_array_buffer;
+        object.byte_length = byte_length;
+        object.byte_offset = byte_offset;
 
         // Be sure to check for array buffer detachment since constructor may have run user code
         if viewed_array_buffer.is_detached() {
             return type_error_(cx, "array buffer is detached");
         }
-
-        object.viewed_array_buffer = viewed_array_buffer;
-        object.byte_length = byte_length;
-        object.byte_offset = byte_offset;
 
         object.into()
     }

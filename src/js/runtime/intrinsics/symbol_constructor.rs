@@ -32,9 +32,7 @@ impl SymbolObject {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::SymbolPrototype);
 
         let mut object = cx.heap.alloc_uninit::<SymbolObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::SymbolObject);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::SymbolObject, proto);
 
         object.symbol_data = symbol_data;
 

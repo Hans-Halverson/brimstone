@@ -43,9 +43,7 @@ impl<'a> MapIterator<'a> {
             .get_intrinsic(Intrinsic::MapIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<MapIterator>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::MapIterator);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::MapIterator, proto);
 
         object.map = map;
         object.iter = map.map_data().iter();

@@ -40,14 +40,18 @@ impl ArrayBufferObject {
         byte_length: usize,
     ) -> EvalResult<Gc<ArrayBufferObject>> {
         let mut object = cx.heap.alloc_uninit::<ArrayBufferObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::ArrayBufferObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::ArrayBufferObject,
             Intrinsic::ArrayBufferPrototype
         ));
+
+        object.is_detached = false;
+
+        // Temporarily fill default values so object is fully initialized before GC may be triggered
+        object.data = vec![];
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
             return range_error_(
@@ -56,10 +60,7 @@ impl ArrayBufferObject {
             );
         }
 
-        let data = vec![0; byte_length];
-
-        object.data = data;
-        object.is_detached = false;
+        object.data = vec![0; byte_length];
 
         object.into()
     }

@@ -30,9 +30,7 @@ macro_rules! create_native_error {
                 let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
 
                 let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-                object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
-
-                object_ordinary_init(cx, object.object(), prototype);
+                object_ordinary_init(cx, object.object(), ObjectKind::ErrorObject, prototype);
 
                 let message_value = cx.alloc_string(message).into();
                 object.intrinsic_data_prop(cx, &cx.names.message(), message_value);
@@ -44,13 +42,12 @@ macro_rules! create_native_error {
                 cx: &mut Context,
                 constructor: Gc<ObjectValue>,
             ) -> EvalResult<Gc<ObjectValue>> {
-                let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-                object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
-
+                let object = cx.heap.alloc_uninit::<ObjectValue>();
                 maybe!(object_ordinary_init_from_constructor(
                     cx,
                     object.object(),
                     constructor,
+                    ObjectKind::ErrorObject,
                     Intrinsic::$prototype
                 ));
 

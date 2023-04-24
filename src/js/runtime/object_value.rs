@@ -43,7 +43,7 @@ macro_rules! extend_object_without_conversions {
             prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
+            named_properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
 
             // Array index properties by their property key
             array_properties: $crate::js::runtime::Gc<$crate::js::runtime::array_properties::ArrayProperties>,
@@ -125,7 +125,7 @@ impl ObjectValue {
 
         object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
         object.prototype = prototype;
-        object.properties = IndexMap::new();
+        object.named_properties = IndexMap::new();
         object.array_properties = array_properties;
         object.is_extensible_field = is_extensible;
         object.set_uninit_hash_code();
@@ -141,12 +141,15 @@ impl ObjectValue {
     // 7.3.27 PrivateElementFind
     pub fn private_element_find(&mut self, private_name: PrivateName) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
-        self.properties.get_mut(&property_key).cloned()
+        // Safe since get_mut does not allocate on managed heap, and property reference is
+        // immediately cloned.
+        self.named_properties.get_mut(&property_key).cloned()
     }
 
     pub fn has_private_element(&self, private_name: PrivateName) -> bool {
         let property_key = PropertyKey::symbol(private_name);
-        self.properties.contains_key(&property_key)
+        // Safe since contains_key does not allocate on managed heap
+        self.named_properties.contains_key(&property_key)
     }
 
     pub fn private_element_set(
@@ -156,7 +159,8 @@ impl ObjectValue {
     ) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
         let property = Property::private_field(value);
-        self.properties.insert(property_key, property)
+        // Safe since insert does not allocate on managed heap
+        self.named_properties.insert(property_key, property)
     }
 
     // 7.3.28 PrivateFieldAdd
@@ -170,7 +174,8 @@ impl ObjectValue {
             type_error_(cx, "private property already defined")
         } else {
             let property = Property::private_field(value);
-            self.properties
+            // Safe since insert does not allocate on managed heap
+            self.named_properties
                 .insert(PropertyKey::symbol(private_name), property);
             ().into()
         }
@@ -186,7 +191,8 @@ impl ObjectValue {
         if self.has_private_element(private_name) {
             type_error_(cx, "private property already defined")
         } else {
-            self.properties
+            // Safe since insert does not allocate on managed heap
+            self.named_properties
                 .insert(PropertyKey::symbol(private_name), private_method);
             ().into()
         }
@@ -199,7 +205,17 @@ impl ObjectValue {
             return self.array_properties.get_property(array_index);
         }
 
-        self.properties.get(key).cloned()
+        // Safe since get does not allocate on managed heap
+        self.named_properties.get(key).cloned()
+    }
+
+    /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
+    /// that a GC cannot occur while the iterator is in use.
+    #[inline]
+    pub fn iter_named_property_keys_gc_unsafe<F: FnMut(&PropertyKey)>(&self, mut f: F) {
+        for property_key in self.named_properties.keys() {
+            f(property_key);
+        }
     }
 }
 
@@ -216,13 +232,8 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn properties(&self) -> &IndexMap<PropertyKey, Property> {
-        &self.properties
-    }
-
-    #[inline]
-    pub fn set_properties(&mut self, properties: IndexMap<PropertyKey, Property>) {
-        self.properties = properties;
+    pub fn set_named_properties(&mut self, properties: IndexMap<PropertyKey, Property>) {
+        self.named_properties = properties;
     }
 
     #[inline]
@@ -380,7 +391,8 @@ impl Gc<ObjectValue> {
             return;
         }
 
-        self.properties.insert(key.clone(), property);
+        // Safe since insert does allocate on managed heap
+        self.named_properties.insert(key.clone(), property);
     }
 
     pub fn remove_property(&mut self, key: &PropertyKey) {
@@ -392,7 +404,8 @@ impl Gc<ObjectValue> {
         }
 
         // TODO: Removal is currently O(n) to maintain order, improve if possible
-        self.properties.shift_remove(key);
+        // Safe since shift_remove does allocate on managed heap
+        self.named_properties.shift_remove(key);
     }
 
     pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {

@@ -33,9 +33,7 @@ impl BigIntObject {
         let proto = cx.current_realm().get_intrinsic(Intrinsic::BigIntPrototype);
 
         let mut object = cx.heap.alloc_uninit::<BigIntObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::BigIntObject);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::BigIntObject, proto);
 
         object.bigint_data = bigint_data;
 

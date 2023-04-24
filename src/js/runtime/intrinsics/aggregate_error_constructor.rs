@@ -33,13 +33,12 @@ impl AggregateErrorObject {
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-        object.set_descriptor(cx.base_descriptors.get(ObjectKind::ErrorObject));
-
+        let object = cx.heap.alloc_uninit::<ObjectValue>();
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::ErrorObject,
             Intrinsic::AggregateErrorPrototype
         ));
 

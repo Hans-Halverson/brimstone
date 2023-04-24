@@ -37,12 +37,11 @@ impl MapObject {
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<MapObject>> {
         let mut object = cx.heap.alloc_uninit::<MapObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::MapObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::MapObject,
             Intrinsic::MapPrototype
         ));
 

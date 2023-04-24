@@ -17,7 +17,7 @@ use crate::{
         get,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::object_ordinary_init,
+        ordinary_object::{object_ordinary_init, object_ordinary_init_optional_proto},
         property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -38,8 +38,12 @@ extend_object! {
 impl FunctionPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: &mut Context) -> Gc<FunctionPrototype> {
-        let mut object = cx.heap.alloc_uninit::<FunctionPrototype>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
+        let object = cx.heap.alloc_uninit::<FunctionPrototype>();
+
+        // Initialized with correct values in initialize method, but set to default value
+        // at first to be GC safe until initialize method is called.
+        let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
+        object_ordinary_init_optional_proto(cx, object.object(), descriptor, None);
 
         object
     }
@@ -49,7 +53,7 @@ impl Gc<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        object_ordinary_init(cx, self.object(), object_proto);
+        object_ordinary_init(cx, self.object(), ObjectKind::FunctionPrototype, object_proto);
 
         self.object().intrinsic_name_prop(cx, "");
         self.object().instrinsic_length_prop(cx, 0);

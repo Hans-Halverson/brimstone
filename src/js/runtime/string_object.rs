@@ -40,9 +40,7 @@ impl StringObject {
         string_data: Gc<StringValue>,
     ) -> Gc<StringObject> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::StringObject, proto);
 
         object.string_data = string_data;
 
@@ -62,12 +60,11 @@ impl StringObject {
         string_data: Gc<StringValue>,
     ) -> EvalResult<Gc<StringObject>> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::StringObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::StringObject,
             Intrinsic::StringPrototype
         ));
 
@@ -168,7 +165,7 @@ impl VirtualObject for Gc<StringObject> {
             index >= length
         });
 
-        ordinary_own_string_symbol_property_keys(cx, self.object(), &mut keys);
+        ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
 
         keys.into()
     }

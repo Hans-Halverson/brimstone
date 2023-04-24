@@ -36,9 +36,7 @@ impl StringIterator {
             .get_intrinsic(Intrinsic::StringIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<StringIterator>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::StringIterator);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::StringIterator, proto);
 
         object.string = string;
         object.code_points_iter = string.iter_code_points();

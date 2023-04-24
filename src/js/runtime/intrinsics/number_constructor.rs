@@ -39,9 +39,7 @@ impl NumberObject {
         number_data: f64,
     ) -> Gc<NumberObject> {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::NumberObject, proto);
 
         object.number_data = number_data;
 
@@ -60,12 +58,11 @@ impl NumberObject {
         number_data: f64,
     ) -> EvalResult<Gc<NumberObject>> {
         let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::NumberObject);
-
         maybe!(object_ordinary_init_from_constructor(
             cx,
             object.object(),
             constructor,
+            ObjectKind::NumberObject,
             Intrinsic::NumberPrototype
         ));
 

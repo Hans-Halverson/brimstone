@@ -39,9 +39,7 @@ impl ArrayIterator {
             .get_intrinsic(Intrinsic::ArrayIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::ArrayIterator);
-
-        object_ordinary_init(cx, object.object(), proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::ArrayIterator, proto);
 
         // Only difference between array and typed array iterators is length getter, so calculate
         // on iterator start to avoid computing on every iteration.

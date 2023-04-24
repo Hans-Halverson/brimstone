@@ -486,7 +486,7 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: Gc<ObjectValue>) -> 
     let mut keys: Vec<Value> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
-    ordinary_own_string_symbol_property_keys(cx, object, &mut keys);
+    ordinary_own_string_symbol_property_keys(object, &mut keys);
 
     keys
 }
@@ -522,27 +522,31 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 }
 
 #[inline]
-pub fn ordinary_own_string_symbol_property_keys(
-    cx: &mut Context,
-    object: Gc<ObjectValue>,
-    keys: &mut Vec<Value>,
-) {
-    for property_key in object.properties().keys() {
-        if property_key.as_symbol().is_none() {
-            keys.push(property_key.non_symbol_to_string(cx).into());
+pub fn ordinary_own_string_symbol_property_keys(object: Gc<ObjectValue>, keys: &mut Vec<Value>) {
+    // Safe since we do not allocate on managed heap during iteration
+    object.iter_named_property_keys_gc_unsafe(|property_key| {
+        if let Some(string_key) = property_key.as_string_opt() {
+            keys.push(string_key.into());
         }
-    }
+    });
 
-    for property_key in object.properties().keys() {
-        if let Some(sym) = property_key.as_symbol() {
-            keys.push(sym.into());
+    // Safe since we do not allocate on managed heap during iteration
+    object.iter_named_property_keys_gc_unsafe(|property_key| {
+        if let Some(symbol_key) = property_key.as_symbol() {
+            keys.push(symbol_key.into());
         }
-    }
+    });
 }
 
 // 10.1.12 OrdinaryObjectCreate but on an uninitialized object as part of construction
-pub fn object_ordinary_init(cx: &mut Context, object: Gc<ObjectValue>, proto: Gc<ObjectValue>) {
-    object_ordinary_init_optional_proto(cx, object, Some(proto))
+pub fn object_ordinary_init(
+    cx: &mut Context,
+    object: Gc<ObjectValue>,
+    descriptor_kind: ObjectKind,
+    proto: Gc<ObjectValue>,
+) {
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    object_ordinary_init_optional_proto(cx, object, descriptor, Some(proto))
 }
 
 pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ObjectValue> {
@@ -556,10 +560,8 @@ pub fn ordinary_object_create_with_descriptor(
     descriptor: Gc<ObjectDescriptor>,
     proto: Option<Gc<ObjectValue>>,
 ) -> Gc<ObjectValue> {
-    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-    object.set_descriptor(descriptor);
-
-    object_ordinary_init_optional_proto(cx, object, proto);
+    let object = cx.heap.alloc_uninit::<ObjectValue>();
+    object_ordinary_init_optional_proto(cx, object, descriptor, proto);
 
     object
 }
@@ -567,14 +569,16 @@ pub fn ordinary_object_create_with_descriptor(
 pub fn object_ordinary_init_optional_proto(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
+    descriptor: Gc<ObjectDescriptor>,
     proto: Option<Gc<ObjectValue>>,
 ) {
     // Object initialization does not currentlly allocate so a GC cannot occur. This means it is
     // safe to use a raw reference.
     let object = object.deref_mut();
 
+    object.set_descriptor(descriptor);
     object.set_prototype(proto);
-    object.set_properties(IndexMap::new());
+    object.set_named_properties(IndexMap::new());
     object.set_array_properties(ArrayProperties::initial(cx));
     object.set_is_extensible_field(true);
     object.set_uninit_hash_code();
@@ -584,10 +588,10 @@ pub fn ordinary_object_create_optional_proto(
     cx: &mut Context,
     proto: Option<Gc<ObjectValue>>,
 ) -> Gc<ObjectValue> {
-    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-    object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
+    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
 
-    object_ordinary_init_optional_proto(cx, object, proto);
+    let object = cx.heap.alloc_uninit::<ObjectValue>();
+    object_ordinary_init_optional_proto(cx, object, descriptor, proto);
 
     object
 }
@@ -595,13 +599,18 @@ pub fn ordinary_object_create_optional_proto(
 // 10.1.13 OrdinaryCreateFromConstructor
 pub fn object_ordinary_init_from_constructor(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    mut object: Gc<ObjectValue>,
     constructor: Gc<ObjectValue>,
+    descriptor_kind: ObjectKind,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<()> {
-    let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
 
-    object_ordinary_init(cx, object, proto);
+    // Make sure to initialize object before get_prototype_from_constructor, which can allocate
+    object_ordinary_init_optional_proto(cx, object, descriptor, None);
+
+    let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
+    object.set_prototype(Some(proto));
 
     ().into()
 }
@@ -611,13 +620,12 @@ pub fn ordinary_create_from_constructor(
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Gc<ObjectValue>> {
-    let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-    object.set_descriptor(cx.base_descriptors.get(ObjectKind::OrdinaryObject));
-
+    let object = cx.heap.alloc_uninit::<ObjectValue>();
     maybe!(object_ordinary_init_from_constructor(
         cx,
         object,
         constructor,
+        ObjectKind::OrdinaryObject,
         intrinsic_default_proto,
     ));
 
@@ -625,6 +633,7 @@ pub fn ordinary_create_from_constructor(
 }
 
 // 10.1.14 GetPrototypeFromConstructor
+// May allocate.
 pub fn get_prototype_from_constructor(
     cx: &mut Context,
     constructor: Gc<ObjectValue>,

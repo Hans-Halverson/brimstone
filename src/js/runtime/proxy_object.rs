@@ -40,9 +40,7 @@ impl ProxyObject {
         let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ProxyObject>();
-        object.descriptor = cx.base_descriptors.get(ObjectKind::Proxy);
-
-        object_ordinary_init(cx, object.object(), object_proto);
+        object_ordinary_init(cx, object.object(), ObjectKind::Proxy, object_proto);
 
         object.proxy_handler = Some(proxy_handler);
         object.proxy_target = Some(proxy_target);

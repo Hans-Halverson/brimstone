@@ -29,12 +29,12 @@ pub fn is_extensible(cx: &mut Context, object: Gc<ObjectValue>) -> EvalResult<bo
 }
 
 // 7.3.2 Get
-pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: &PropertyKey) -> EvalResult<Value> {
+pub fn get(cx: &mut Context, object: Gc<ObjectValue>, key: PropertyKey) -> EvalResult<Value> {
     object.get(cx, key, object.into())
 }
 
 // 7.3.3 GetV
-pub fn get_v(cx: &mut Context, value: Value, key: &PropertyKey) -> EvalResult<Value> {
+pub fn get_v(cx: &mut Context, value: Value, key: PropertyKey) -> EvalResult<Value> {
     let object = maybe!(to_object(cx, value));
     object.get(cx, key, value)
 }
@@ -43,7 +43,7 @@ pub fn get_v(cx: &mut Context, value: Value, key: &PropertyKey) -> EvalResult<Va
 pub fn set(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
     should_throw: bool,
 ) -> EvalResult<()> {
@@ -59,7 +59,7 @@ pub fn set(
 pub fn create_method_property(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -70,7 +70,7 @@ pub fn create_method_property(
 pub fn create_data_property(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
 ) -> EvalResult<bool> {
     let new_desc = PropertyDescriptor::data(value, true, true, true);
@@ -81,7 +81,7 @@ pub fn create_data_property(
 pub fn create_data_property_or_throw(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
 ) -> EvalResult<()> {
     let success = maybe!(create_data_property(cx, object, key, value));
@@ -96,7 +96,7 @@ pub fn create_data_property_or_throw(
 pub fn create_non_enumerable_data_property_or_throw(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -107,7 +107,7 @@ pub fn create_non_enumerable_data_property_or_throw(
 pub fn define_property_or_throw(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     prop_desc: PropertyDescriptor,
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
@@ -122,7 +122,7 @@ pub fn define_property_or_throw(
 pub fn delete_property_or_throw(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<()> {
     if !maybe!(object.delete(cx, key)) {
         return type_error_(cx, &format!("cannot delete property {}", key));
@@ -135,7 +135,7 @@ pub fn delete_property_or_throw(
 pub fn get_method(
     cx: &mut Context,
     value: Value,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<Option<Gc<ObjectValue>>> {
     let func = maybe!(get_v(cx, value, key));
     if func.is_nullish() {
@@ -153,7 +153,7 @@ pub fn get_method(
 pub fn has_property(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<bool> {
     object.has_property(cx, key)
 }
@@ -162,7 +162,7 @@ pub fn has_property(
 pub fn has_own_property(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     desc.is_some().into()
@@ -229,13 +229,13 @@ pub fn set_integrity_level(
             for key in keys {
                 let key = must!(PropertyKey::from_value(cx, key));
                 let desc = PropertyDescriptor::attributes(None, None, Some(false));
-                maybe!(define_property_or_throw(cx, object, &key, desc));
+                maybe!(define_property_or_throw(cx, object, key, desc));
             }
         }
         IntegrityLevel::Frozen => {
             for key in keys {
                 let key = must!(PropertyKey::from_value(cx, key));
-                let current_desc = maybe!(object.get_own_property(cx, &key));
+                let current_desc = maybe!(object.get_own_property(cx, key));
                 if let Some(current_desc) = current_desc {
                     let desc = if current_desc.is_accessor_descriptor() {
                         PropertyDescriptor::attributes(None, None, Some(false))
@@ -243,7 +243,7 @@ pub fn set_integrity_level(
                         PropertyDescriptor::attributes(Some(false), None, Some(false))
                     };
 
-                    maybe!(define_property_or_throw(cx, object, &key, desc));
+                    maybe!(define_property_or_throw(cx, object, key, desc));
                 }
             }
         }
@@ -266,7 +266,7 @@ pub fn test_integrity_level(
 
     for key in keys {
         let key = must!(PropertyKey::from_value(cx, key));
-        let current_desc = maybe!(object.get_own_property(cx, &key));
+        let current_desc = maybe!(object.get_own_property(cx, key));
         if let Some(current_desc) = current_desc {
             if let Some(true) = current_desc.is_configurable {
                 return false.into();
@@ -285,7 +285,7 @@ pub fn test_integrity_level(
 
 // 7.3.19 LengthOfArrayLike
 pub fn length_of_array_like(cx: &mut Context, object: Gc<ObjectValue>) -> EvalResult<u64> {
-    let length_value = maybe!(get(cx, object, &cx.names.length()));
+    let length_value = maybe!(get(cx, object, cx.names.length()));
     to_length(cx, length_value).into()
 }
 
@@ -302,7 +302,7 @@ pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResul
 
     for i in 0..length {
         let key = PropertyKey::array_index(cx, i as u32);
-        let next = maybe!(get(cx, object, &key));
+        let next = maybe!(get(cx, object, key));
         vec.push(next);
     }
 
@@ -313,7 +313,7 @@ pub fn create_list_from_array_like(cx: &mut Context, object: Value) -> EvalResul
 pub fn invoke(
     cx: &mut Context,
     value: Value,
-    key: &PropertyKey,
+    key: PropertyKey,
     arguments: &[Value],
 ) -> EvalResult<Value> {
     let func = maybe!(get_v(cx, value, key));
@@ -337,7 +337,7 @@ pub fn ordinary_has_instance(cx: &mut Context, func: Value, object: Value) -> Ev
         return false.into();
     }
 
-    let target_prototype = maybe!(get(cx, func, &cx.names.prototype()));
+    let target_prototype = maybe!(get(cx, func, cx.names.prototype()));
     if !target_prototype.is_object() {
         return type_error_(cx, "prototype must be object");
     }
@@ -365,7 +365,7 @@ pub fn species_constructor(
     object: Gc<ObjectValue>,
     default_constructor: Gc<ObjectValue>,
 ) -> EvalResult<Gc<ObjectValue>> {
-    let constructor = maybe!(get(cx, object, &cx.names.constructor()));
+    let constructor = maybe!(get(cx, object, cx.names.constructor()));
 
     if constructor.is_undefined() {
         return default_constructor.into();
@@ -376,7 +376,7 @@ pub fn species_constructor(
     }
 
     let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-    let species = maybe!(get(cx, constructor.as_object(), &species_key));
+    let species = maybe!(get(cx, constructor.as_object(), species_key));
 
     if species.is_nullish() {
         return default_constructor.into();
@@ -411,18 +411,18 @@ pub fn enumerable_own_property_names(
         }
 
         let key = must!(PropertyKey::from_value(cx, key_value));
-        let desc = maybe!(object.get_own_property(cx, &key));
+        let desc = maybe!(object.get_own_property(cx, key));
 
         if let Some(desc) = desc {
             if let Some(true) = desc.is_enumerable {
                 match kind {
                     KeyOrValue::Key => properties.push(key_value),
                     KeyOrValue::Value => {
-                        let value = maybe!(get(cx, object, &key));
+                        let value = maybe!(get(cx, object, key));
                         properties.push(value);
                     }
                     KeyOrValue::KeyAndValue => {
-                        let value = maybe!(get(cx, object, &key));
+                        let value = maybe!(get(cx, object, key));
                         let entry = create_array_from_list(cx, &[key_value, value]);
                         properties.push(entry.into());
                     }
@@ -457,11 +457,11 @@ pub fn copy_data_properties(
         let next_key = must!(PropertyKey::from_value(cx, next_key));
 
         if !excluded_items.contains(&next_key) {
-            let desc = maybe!(from.get_own_property(cx, &next_key));
+            let desc = maybe!(from.get_own_property(cx, next_key));
             match desc {
                 Some(desc) if desc.is_enumerable() => {
-                    let prop_value = maybe!(get(cx, from, &next_key));
-                    must!(create_data_property_or_throw(cx, target, &next_key, prop_value));
+                    let prop_value = maybe!(get(cx, from, next_key));
+                    must!(create_data_property_or_throw(cx, target, next_key, prop_value));
                 }
                 _ => {}
             }
@@ -535,8 +535,8 @@ pub fn define_field(
     };
 
     match field_def.name {
-        ClassFieldDefinitionName::Normal(ref property_key) => {
-            maybe!(create_data_property_or_throw(cx, receiver, &property_key, init_value));
+        ClassFieldDefinitionName::Normal(property_key) => {
+            maybe!(create_data_property_or_throw(cx, receiver, property_key, init_value));
         }
         ClassFieldDefinitionName::Private(private_name) => {
             maybe!(receiver.private_field_add(cx, private_name, init_value))

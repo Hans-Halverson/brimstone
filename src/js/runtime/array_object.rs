@@ -45,7 +45,7 @@ impl VirtualObject for Gc<ArrayObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if key.is_array_index() {
@@ -70,7 +70,7 @@ impl VirtualObject for Gc<ArrayObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             let length_value = self.object().array_properties_length();
@@ -87,7 +87,7 @@ impl VirtualObject for Gc<ArrayObject> {
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
-    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             return false.into();
         }
@@ -124,7 +124,7 @@ pub fn array_create(
 
     let length_value = Value::number((length as u32).into());
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
-    must!(array_object.define_own_property(cx, &cx.names.length(), length_desc));
+    must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
 
     array_object.into()
 }
@@ -140,7 +140,7 @@ pub fn array_species_create(
         return array_object.into();
     }
 
-    let mut constructor = maybe!(get(cx, original_array, &cx.names.constructor()));
+    let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
     if is_constructor(constructor) {
         let this_realm = cx.current_realm();
         let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
@@ -157,7 +157,7 @@ pub fn array_species_create(
 
     if constructor.is_object() {
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        constructor = maybe!(get(cx, constructor.as_object(), &species_key));
+        constructor = maybe!(get(cx, constructor.as_object(), species_key));
 
         if constructor.is_null() {
             constructor = Value::undefined();
@@ -227,7 +227,7 @@ pub fn create_array_from_list(cx: &mut Context, elements: &[Value]) -> Gc<ArrayO
     for (index, element) in elements.iter().enumerate() {
         // TODO: Handle keys out of u32 range
         let key = PropertyKey::array_index(cx, index as u32);
-        must!(create_data_property_or_throw(cx, array.into(), &key, *element));
+        must!(create_data_property_or_throw(cx, array.into(), key, *element));
     }
 
     array

@@ -85,7 +85,7 @@ impl NumberConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.number(),
+            cx.names.number(),
             Some(realm),
             None,
             None,
@@ -94,7 +94,7 @@ impl NumberConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
                 false,
@@ -105,45 +105,45 @@ impl NumberConstructor {
 
         func.set_property(
             cx,
-            &cx.names.epsilon(),
+            cx.names.epsilon(),
             Property::data(Value::number(f64::EPSILON), false, false, false),
         );
         func.set_property(
             cx,
-            &cx.names.max_safe_integer(),
+            cx.names.max_safe_integer(),
             Property::data(Value::number(MAX_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
             cx,
-            &cx.names.max_value(),
+            cx.names.max_value(),
             Property::data(Value::number(f64::MAX), false, false, false),
         );
         func.set_property(
             cx,
-            &cx.names.min_safe_integer(),
+            cx.names.min_safe_integer(),
             Property::data(Value::number(MIN_SAFE_INTEGER_F64), false, false, false),
         );
         func.set_property(
             cx,
-            &cx.names.min_value(),
+            cx.names.min_value(),
             Property::data(Value::number(MIN_POSITIVE_SUBNORMAL_F64), false, false, false),
         );
-        func.set_property(cx, &cx.names.nan(), Property::data(Value::nan(), false, false, false));
+        func.set_property(cx, cx.names.nan(), Property::data(Value::nan(), false, false, false));
         func.set_property(
             cx,
-            &cx.names.negative_infinity(),
+            cx.names.negative_infinity(),
             Property::data(Value::number(f64::NEG_INFINITY), false, false, false),
         );
         func.set_property(
             cx,
-            &cx.names.positive_infinity(),
+            cx.names.positive_infinity(),
             Property::data(Value::number(f64::INFINITY), false, false, false),
         );
 
-        func.intrinsic_func(cx, &cx.names.is_finite(), Self::is_finite, 1, realm);
-        func.intrinsic_func(cx, &cx.names.is_integer(), Self::is_integer, 1, realm);
-        func.intrinsic_func(cx, &cx.names.is_nan(), Self::is_nan, 1, realm);
-        func.intrinsic_func(cx, &cx.names.is_safe_integer(), Self::is_safe_integer, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_finite(), Self::is_finite, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_integer(), Self::is_integer, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_nan(), Self::is_nan, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_safe_integer(), Self::is_safe_integer, 1, realm);
 
         func
     }

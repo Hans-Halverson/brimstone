@@ -199,22 +199,22 @@ impl ObjectValue {
     }
 
     // Property accessors and mutators
-    pub fn get_property(&self, key: &PropertyKey) -> Option<Property> {
+    pub fn get_property(&self, key: PropertyKey) -> Option<Property> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             return self.array_properties.get_property(array_index);
         }
 
         // Safe since get does not allocate on managed heap
-        self.named_properties.get(key).cloned()
+        self.named_properties.get(&key).cloned()
     }
 
     /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
     /// that a GC cannot occur while the iterator is in use.
     #[inline]
-    pub fn iter_named_property_keys_gc_unsafe<F: FnMut(&PropertyKey)>(&self, mut f: F) {
+    pub fn iter_named_property_keys_gc_unsafe<F: FnMut(PropertyKey)>(&self, mut f: F) {
         for property_key in self.named_properties.keys() {
-            f(property_key);
+            f(*property_key);
         }
     }
 }
@@ -383,7 +383,7 @@ impl Gc<ObjectValue> {
     }
 
     // Property accessors and mutators
-    pub fn set_property(&mut self, cx: &mut Context, key: &PropertyKey, property: Property) {
+    pub fn set_property(&mut self, cx: &mut Context, key: PropertyKey, property: Property) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             ArrayProperties::set_property(cx, *self, array_index, property);
@@ -395,7 +395,7 @@ impl Gc<ObjectValue> {
         self.named_properties.insert(key.clone(), property);
     }
 
-    pub fn remove_property(&mut self, key: &PropertyKey) {
+    pub fn remove_property(&mut self, key: PropertyKey) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             self.array_properties.remove_property(array_index);
@@ -405,7 +405,7 @@ impl Gc<ObjectValue> {
 
         // TODO: Removal is currently O(n) to maintain order, improve if possible
         // Safe since shift_remove does allocate on managed heap
-        self.named_properties.shift_remove(key);
+        self.named_properties.shift_remove(&key);
     }
 
     pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {
@@ -413,27 +413,27 @@ impl Gc<ObjectValue> {
     }
 
     // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
     pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
         self.set_property(
             cx,
-            &cx.names.length(),
+            cx.names.length(),
             Property::data(Value::smi(length), false, false, true),
         )
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
         let name_value = Value::string(cx.alloc_string(name.to_owned()));
-        self.set_property(cx, &cx.names.name(), Property::data(name_value, false, false, true))
+        self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: &PropertyKey,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {
@@ -445,7 +445,7 @@ impl Gc<ObjectValue> {
     pub fn intrinsic_getter_and_setter(
         &mut self,
         cx: &mut Context,
-        name: &PropertyKey,
+        name: PropertyKey,
         getter: BuiltinFunctionPtr,
         setter: BuiltinFunctionPtr,
         realm: Gc<Realm>,
@@ -459,7 +459,7 @@ impl Gc<ObjectValue> {
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: &PropertyKey,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Gc<Realm>,
@@ -468,7 +468,7 @@ impl Gc<ObjectValue> {
         self.intrinsic_data_prop(cx, name, func);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
         self.set_property(cx, key, Property::data(value, false, false, false));
     }
 }
@@ -527,7 +527,7 @@ impl Gc<ObjectValue> {
     pub fn get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         self.virtual_object().get_own_property(cx, key)
     }
@@ -536,19 +536,19 @@ impl Gc<ObjectValue> {
     pub fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         self.virtual_object().define_own_property(cx, key, desc)
     }
 
     #[inline]
-    pub fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    pub fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         self.virtual_object().has_property(cx, key)
     }
 
     #[inline]
-    pub fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
+    pub fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
         self.virtual_object().get(cx, key, receiver)
     }
 
@@ -556,7 +556,7 @@ impl Gc<ObjectValue> {
     pub fn set(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
@@ -564,7 +564,7 @@ impl Gc<ObjectValue> {
     }
 
     #[inline]
-    pub fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    pub fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         self.virtual_object().delete(cx, key)
     }
 
@@ -622,29 +622,29 @@ pub trait VirtualObject {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool>;
+    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
 
-    fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value>;
+    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value>;
 
     fn set(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool>;
+    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>>;
 

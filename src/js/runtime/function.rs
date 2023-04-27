@@ -353,7 +353,7 @@ impl Gc<Function> {
             // Initializer evaluation in EvaluateBody
             FuncKind::ClassProperty(prop, name) => {
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name));
+                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, *name));
 
                 Completion::return_(value)
             }
@@ -439,14 +439,14 @@ pub fn make_constructor(
             let prototype = ordinary_object_create(cx, object_prototype).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
-            must!(define_property_or_throw(cx, prototype, &cx.names.constructor(), desc));
+            must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
 
             prototype
         }
     };
 
     let desc = PropertyDescriptor::data(prototype.into(), writable_prototype, false, false);
-    must!(define_property_or_throw(cx, func.into(), &cx.names.prototype(), desc));
+    must!(define_property_or_throw(cx, func.into(), cx.names.prototype(), desc));
 }
 
 // 10.2.6 MakeClassConstructor
@@ -463,7 +463,7 @@ pub fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
 pub fn define_method_property(
     cx: &mut Context,
     home_object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     closure: Gc<Function>,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -480,7 +480,7 @@ pub fn define_method_property(
 pub fn set_function_name(
     cx: &mut Context,
     func: Gc<ObjectValue>,
-    name: &PropertyKey,
+    name: PropertyKey,
     prefix: Option<&str>,
 ) {
     // Convert name to string value, property formatting symbol name
@@ -512,13 +512,13 @@ pub fn set_function_name(
     }
 
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, &cx.names.name(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.name(), desc))
 }
 
 // 10.2.10 SetFunctionLength
 pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32) {
     let desc = PropertyDescriptor::data(Value::smi(length), false, false, true);
-    must!(define_property_or_throw(cx, func, &cx.names.length(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.length(), desc))
 }
 
 // Identical to SetFunctionLength, but a None value represents a length of positive infinity
@@ -534,7 +534,7 @@ pub fn set_function_length_maybe_infinity(
     };
 
     let desc = PropertyDescriptor::data(length, false, false, true);
-    must!(define_property_or_throw(cx, func, &cx.names.length(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.length(), desc))
 }
 
 // 8.5.1 InstantiateFunctionObject

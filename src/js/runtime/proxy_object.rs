@@ -69,7 +69,7 @@ impl VirtualObject for Gc<ProxyObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if self.proxy_handler.is_none() {
             return type_error_(cx, "operation attempted on revoked proxy");
@@ -78,7 +78,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.get_own_property_descriptor()));
+        let trap = maybe!(get_method(cx, handler, cx.names.get_own_property_descriptor()));
 
         if trap.is_none() {
             return target.get_own_property(cx, key);
@@ -146,7 +146,7 @@ impl VirtualObject for Gc<ProxyObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if self.proxy_handler.is_none() {
@@ -156,7 +156,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.define_property()));
+        let trap = maybe!(get_method(cx, handler, cx.names.define_property()));
 
         if trap.is_none() {
             return target.define_own_property(cx, key, desc);
@@ -229,7 +229,7 @@ impl VirtualObject for Gc<ProxyObject> {
     }
 
     // 10.5.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         if self.proxy_handler.is_none() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -237,7 +237,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.has()));
+        let trap = maybe!(get_method(cx, handler, cx.names.has()));
 
         if trap.is_none() {
             return target.has_property(cx, key);
@@ -270,7 +270,7 @@ impl VirtualObject for Gc<ProxyObject> {
     }
 
     // 10.5.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
+    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
         if self.proxy_handler.is_none() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -278,7 +278,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.get()));
+        let trap = maybe!(get_method(cx, handler, cx.names.get()));
 
         if trap.is_none() {
             return target.get(cx, key, receiver);
@@ -311,7 +311,7 @@ impl VirtualObject for Gc<ProxyObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
@@ -322,7 +322,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.set_()));
+        let trap = maybe!(get_method(cx, handler, cx.names.set_()));
 
         if trap.is_none() {
             return target.set(cx, key, value, receiver);
@@ -354,7 +354,7 @@ impl VirtualObject for Gc<ProxyObject> {
     }
 
     // 10.5.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         if self.proxy_handler.is_none() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -362,7 +362,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.delete_property()));
+        let trap = maybe!(get_method(cx, handler, cx.names.delete_property()));
 
         if trap.is_none() {
             return target.delete(cx, key);
@@ -406,7 +406,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.own_keys()));
+        let trap = maybe!(get_method(cx, handler, cx.names.own_keys()));
 
         if trap.is_none() {
             return target.own_property_keys(cx);
@@ -427,7 +427,7 @@ impl VirtualObject for Gc<ProxyObject> {
 
         for i in 0..length {
             let key = PropertyKey::array_index(cx, i as u32);
-            let next = maybe!(get(cx, trap_result_object, &key));
+            let next = maybe!(get(cx, trap_result_object, key));
             trap_result_keys.push(next);
 
             if !next.is_string() && !next.is_symbol() {
@@ -455,7 +455,7 @@ impl VirtualObject for Gc<ProxyObject> {
 
         for key in target_keys {
             let property_key = must!(PropertyKey::from_value(cx, key));
-            let desc = maybe!(target.get_own_property(cx, &property_key));
+            let desc = maybe!(target.get_own_property(cx, property_key));
 
             if let Some(PropertyDescriptor { is_configurable: Some(false), .. }) = desc {
                 target_non_configurable_keys.push(property_key);
@@ -512,7 +512,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.apply()));
+        let trap = maybe!(get_method(cx, handler, cx.names.apply()));
 
         if trap.is_none() {
             return call_object(cx, target, this_argument, arguments);
@@ -537,7 +537,7 @@ impl VirtualObject for Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.construct()));
+        let trap = maybe!(get_method(cx, handler, cx.names.construct()));
 
         if trap.is_none() {
             return construct(cx, target, arguments, Some(new_target));
@@ -581,7 +581,7 @@ impl Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.get_prototype_of()));
+        let trap = maybe!(get_method(cx, handler, cx.names.get_prototype_of()));
 
         if trap.is_none() {
             return target.get_prototype_of(cx);
@@ -625,7 +625,7 @@ impl Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.set_prototype_of()));
+        let trap = maybe!(get_method(cx, handler, cx.names.set_prototype_of()));
 
         if trap.is_none() {
             return target.set_prototype_of(cx, proto);
@@ -665,7 +665,7 @@ impl Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.is_extensible()));
+        let trap = maybe!(get_method(cx, handler, cx.names.is_extensible()));
 
         if trap.is_none() {
             return is_extensible_(cx, target);
@@ -692,7 +692,7 @@ impl Gc<ProxyObject> {
         let handler = self.proxy_handler.unwrap().into();
         let mut target = self.proxy_target.unwrap();
 
-        let trap = maybe!(get_method(cx, handler, &cx.names.prevent_extensions()));
+        let trap = maybe!(get_method(cx, handler, cx.names.prevent_extensions()));
 
         if trap.is_none() {
             return target.prevent_extensions(cx);

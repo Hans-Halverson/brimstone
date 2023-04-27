@@ -50,7 +50,7 @@ pub enum ClassFieldDefinitionName {
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
-    property_key: &PropertyKey,
+    property_key: PropertyKey,
     home_object: Gc<ObjectValue>,
 ) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
@@ -108,7 +108,7 @@ pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
     class_binding: Option<Gc<StringValue>>,
-    class_name: &PropertyKey,
+    class_name: PropertyKey,
 ) -> EvalResult<Gc<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm;
@@ -159,7 +159,7 @@ pub fn class_definition_evaluation(
             return type_error_(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();
-            let proto_parent = maybe!(get(cx, super_class, &cx.names.prototype()));
+            let proto_parent = maybe!(get(cx, super_class, cx.names.prototype()));
 
             if proto_parent.is_object() {
                 (Some(proto_parent.as_object()), super_class)
@@ -215,7 +215,7 @@ pub fn class_definition_evaluation(
         func.constructor_kind = ConstructorKind::Derived;
     }
 
-    create_method_property(cx, proto.into(), &cx.names.constructor(), func.into());
+    create_method_property(cx, proto.into(), cx.names.constructor(), func.into());
 
     let mut instance_fields = vec![];
     let mut static_elements = vec![];
@@ -252,7 +252,7 @@ pub fn class_definition_evaluation(
                         Some(maybe!(class_field_definition_evaluation(
                             cx,
                             prop,
-                            &property_key,
+                            property_key,
                             home_object
                         )))
                     };
@@ -306,7 +306,7 @@ pub fn class_definition_evaluation(
                         cx,
                         home_object,
                         &method.value,
-                        &property_key,
+                        property_key,
                         method.kind,
                     );
 
@@ -347,7 +347,7 @@ pub fn class_definition_evaluation(
                         cx,
                         home_object,
                         &method.value,
-                        &property_key,
+                        property_key,
                         &property_kind,
                         false,
                     )
@@ -422,14 +422,14 @@ fn binding_class_declaration_evaluation(
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value);
-        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), &name_key));
+        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
 
         let lexical_env = cx.current_execution_context().lexical_env;
         maybe!(initialize_bound_name(cx, name_value, value.into(), Some(lexical_env)));
 
         value.into()
     } else {
-        class_definition_evaluation(cx, class, None, &cx.names.default())
+        class_definition_evaluation(cx, class, None, cx.names.default())
     }
 }
 
@@ -443,10 +443,10 @@ pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value);
-        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), &name_key));
+        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
         value.into()
     } else {
-        let value = maybe!(class_definition_evaluation(cx, class, None, &cx.names.empty_string()));
+        let value = maybe!(class_definition_evaluation(cx, class, None, cx.names.empty_string()));
         value.into()
     }
 }

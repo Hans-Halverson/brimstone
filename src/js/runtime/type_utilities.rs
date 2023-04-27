@@ -44,7 +44,7 @@ pub fn to_primitive(
     }
 
     let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
-    let exotic_prim = maybe!(get_method(cx, value, &to_primitive_key));
+    let exotic_prim = maybe!(get_method(cx, value, to_primitive_key));
     match exotic_prim {
         Some(exotic_prim) => {
             let hint_str = match preferred_type {
@@ -92,11 +92,11 @@ fn ordinary_to_primitive(
     }
 
     if preferred_type == ToPrimitivePreferredType::String {
-        call_method!(&cx.names.to_string());
-        call_method!(&cx.names.value_of());
+        call_method!(cx.names.to_string());
+        call_method!(cx.names.value_of());
     } else {
-        call_method!(&cx.names.value_of());
-        call_method!(&cx.names.to_string());
+        call_method!(cx.names.value_of());
+        call_method!(cx.names.to_string());
     }
 
     type_error_(cx, "object cannot be converted to primitive")
@@ -589,7 +589,7 @@ pub fn to_length(cx: &mut Context, value: Value) -> EvalResult<u64> {
 }
 
 // 7.1.21 CanonicalNumericIndexString
-pub fn canonical_numeric_index_string(key: &PropertyKey) -> Option<u32> {
+pub fn canonical_numeric_index_string(key: PropertyKey) -> Option<u32> {
     // TODO: Support full safe integer range instead of just array index range
     if key.is_array_index() {
         Some(key.as_array_index())
@@ -704,7 +704,7 @@ pub fn is_regexp(cx: &mut Context, value: Value) -> EvalResult<bool> {
 
     let object = value.as_object();
     let match_key = PropertyKey::symbol(cx.well_known_symbols.match_);
-    let matcher = maybe!(get(cx, object, &match_key));
+    let matcher = maybe!(get(cx, object, match_key));
 
     if !matcher.is_undefined() {
         return to_boolean(matcher).into();

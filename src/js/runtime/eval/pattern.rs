@@ -143,7 +143,7 @@ fn object_binding_initialization(
                     maybe!(eval_super_member_expression_to_reference(cx, &expr))
                 }
                 binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
-                    let mut property_value = maybe!(get_v(cx, object_value, &name_key));
+                    let mut property_value = maybe!(get_v(cx, object_value, name_key));
 
                     if let Some(init) = initializer {
                         if property_value.is_undefined() {
@@ -158,7 +158,7 @@ fn object_binding_initialization(
                 }
             };
 
-            let mut property_value = maybe!(get_v(cx, object_value, &name_key));
+            let mut property_value = maybe!(get_v(cx, object_value, name_key));
 
             if let Some(init) = initializer {
                 if property_value.is_undefined() {
@@ -169,7 +169,7 @@ fn object_binding_initialization(
                         property_value = maybe!(eval_named_anonymous_function_or_expression_if(
                             cx,
                             init,
-                            &value_key,
+                            value_key,
                             || {
                                 // Only perform named evaluation if id was not parenthesized
                                 binding_value_id.loc.start == property.value.to_assign().loc.start
@@ -319,7 +319,7 @@ fn iterator_binding_initialization(
                                 value = maybe!(eval_named_anonymous_function_or_expression_if(
                                     cx,
                                     initializer,
-                                    &name_key,
+                                    name_key,
                                     || {
                                         // Only perform named evaluation if pattern is unparenthesized id
                                         let assign_pattern = pattern.to_assign();
@@ -406,7 +406,7 @@ fn iterator_binding_initialization(
                         EvalResult::Ok(next_value) => {
                             let property_key = PropertyKey::array_index(cx, index);
                             let property = Property::data(next_value, true, true, true);
-                            array.object().set_property(cx, &property_key, property);
+                            array.object().set_property(cx, property_key, property);
                             index += 1;
                         }
                     }

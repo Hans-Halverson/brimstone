@@ -26,14 +26,14 @@ impl BigIntPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once BigIntConstructor has been created
-        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // 21.2.3.5 BigInt.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(cx.names.bigint().as_string().into(), false, false, true),
         );
 

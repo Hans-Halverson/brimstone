@@ -19,10 +19,10 @@ impl BooleanPrototype {
         // Constructor property is added once BooleanConstructor has been created
         object
             .object()
-            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         object
             .object()
-            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+            .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         object.into()
     }

@@ -123,11 +123,11 @@ impl Reference {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name))
             }
-            ReferenceBase::Property { object, ref property, private_name } => {
+            ReferenceBase::Property { object, property, private_name } => {
                 let base = maybe!(to_object(cx, object));
                 match private_name {
                     Some(private_name) => return private_get(cx, base, private_name),
-                    None => base.get(cx, &property, self.get_this_value()),
+                    None => base.get(cx, property, self.get_this_value()),
                 }
             }
             ReferenceBase::Env { env, name } => env.get_binding_value(cx, name, self.is_strict),
@@ -144,11 +144,11 @@ impl Reference {
 
                 let global_obj = get_global_object(cx);
                 let property_key = PropertyKey::string(cx, name);
-                maybe!(set(cx, global_obj, &property_key, value, false));
+                maybe!(set(cx, global_obj, property_key, value, false));
 
                 return ().into();
             }
-            ReferenceBase::Property { object, ref property, private_name } => {
+            ReferenceBase::Property { object, property, private_name } => {
                 let mut base = maybe!(to_object(cx, object));
                 if let Some(private_name) = private_name {
                     return private_set(cx, base, private_name, value);

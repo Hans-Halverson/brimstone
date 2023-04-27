@@ -28,38 +28,38 @@ impl ReflectObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        object.intrinsic_func(cx, &cx.names.apply(), Self::apply, 3, realm);
-        object.intrinsic_func(cx, &cx.names.construct(), Self::construct, 2, realm);
-        object.intrinsic_func(cx, &cx.names.define_property(), Self::define_property, 3, realm);
-        object.intrinsic_func(cx, &cx.names.delete_property(), Self::delete_property, 2, realm);
-        object.intrinsic_func(cx, &cx.names.get(), Self::get, 2, realm);
+        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 3, realm);
+        object.intrinsic_func(cx, cx.names.construct(), Self::construct, 2, realm);
+        object.intrinsic_func(cx, cx.names.define_property(), Self::define_property, 3, realm);
+        object.intrinsic_func(cx, cx.names.delete_property(), Self::delete_property, 2, realm);
+        object.intrinsic_func(cx, cx.names.get(), Self::get, 2, realm);
         object.intrinsic_func(
             cx,
-            &cx.names.get_own_property_descriptor(),
+            cx.names.get_own_property_descriptor(),
             Self::get_own_property_descriptor,
             2,
             realm,
         );
-        object.intrinsic_func(cx, &cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
-        object.intrinsic_func(cx, &cx.names.has(), Self::has, 2, realm);
-        object.intrinsic_func(cx, &cx.names.is_extensible(), Self::is_extensible, 1, realm);
-        object.intrinsic_func(cx, &cx.names.own_keys(), Self::own_keys, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 2, realm);
+        object.intrinsic_func(cx, cx.names.is_extensible(), Self::is_extensible, 1, realm);
+        object.intrinsic_func(cx, cx.names.own_keys(), Self::own_keys, 1, realm);
         object.intrinsic_func(
             cx,
-            &cx.names.prevent_extensions(),
+            cx.names.prevent_extensions(),
             Self::prevent_extensions,
             1,
             realm,
         );
-        object.intrinsic_func(cx, &cx.names.set_(), Self::set, 3, realm);
-        object.intrinsic_func(cx, &cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_(), Self::set, 3, realm);
+        object.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
 
         // 28.1.14 Reflect [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let reflect_name_value = cx.names.reflect().as_string().into();
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(reflect_name_value, false, false, true),
         );
 
@@ -130,7 +130,7 @@ impl ReflectObject {
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = maybe!(to_property_descriptor(cx, get_argument(arguments, 2)));
 
-        maybe!(target.define_own_property(cx, &key, desc)).into()
+        maybe!(target.define_own_property(cx, key, desc)).into()
     }
 
     // 28.1.4 Reflect.deleteProperty
@@ -148,7 +148,7 @@ impl ReflectObject {
         let mut target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(target.delete(cx, &key)).into()
+        maybe!(target.delete(cx, key)).into()
     }
 
     // 28.1.5 Reflect.get
@@ -171,7 +171,7 @@ impl ReflectObject {
             target
         };
 
-        maybe!(target.as_object().get(cx, &key, receiver)).into()
+        maybe!(target.as_object().get(cx, key, receiver)).into()
     }
 
     // 28.1.6 Reflect.getOwnPropertyDescriptor
@@ -189,7 +189,7 @@ impl ReflectObject {
         let target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        let desc = maybe!(target.get_own_property(cx, &key));
+        let desc = maybe!(target.get_own_property(cx, key));
 
         desc.map(|desc| from_property_descriptor(cx, desc).into())
             .unwrap_or(Value::undefined())
@@ -231,7 +231,7 @@ impl ReflectObject {
         let target = target.as_object();
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(target.has_property(cx, &key)).into()
+        maybe!(target.has_property(cx, key)).into()
     }
 
     // 28.1.9 Reflect.isExtensible
@@ -302,7 +302,7 @@ impl ReflectObject {
             target
         };
 
-        maybe!(target.as_object().set(cx, &key, value, receiver)).into()
+        maybe!(target.as_object().set(cx, key, value, receiver)).into()
     }
 
     // 28.1.13 Reflect.setPrototypeOf

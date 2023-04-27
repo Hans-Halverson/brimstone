@@ -14,13 +14,13 @@ impl ArrayBufferPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once ArrayBufferConstructor has been created
-        object.intrinsic_getter(cx, &cx.names.byte_length(), Self::get_byte_length, realm);
+        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
 
         // 25.1.5.4 ArrayBuffer.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(cx.names.array_buffer().as_string().into(), false, false, true),
         );
 

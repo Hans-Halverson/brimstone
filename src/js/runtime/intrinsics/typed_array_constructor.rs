@@ -29,7 +29,7 @@ impl TypedArrayConstructor {
             cx,
             Self::construct,
             0,
-            &cx.names.typed_array(),
+            cx.names.typed_array(),
             Some(realm),
             None,
             None,
@@ -38,7 +38,7 @@ impl TypedArrayConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
                 false,
@@ -47,12 +47,12 @@ impl TypedArrayConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, &cx.names.from(), Self::from, 1, realm);
-        func.intrinsic_func(cx, &cx.names.of(), Self::of, 0, realm);
+        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
+        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
         // 23.2.2.4 get %TypedArray% [ @@species ]
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func.into()
     }
@@ -95,7 +95,7 @@ impl TypedArrayConstructor {
         let this_argument = get_argument(arguments, 2);
 
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        let iterator = maybe!(get_method(cx, source, &iterator_key));
+        let iterator = maybe!(get_method(cx, source, iterator_key));
 
         // If source is iterable then add all values from iterator
         if let Some(iterator) = iterator {
@@ -126,7 +126,7 @@ impl TypedArrayConstructor {
                     value
                 };
 
-                maybe!(set(cx, target_object, &key, value, true));
+                maybe!(set(cx, target_object, key, value, true));
             }
 
             return target_object.into();
@@ -146,7 +146,7 @@ impl TypedArrayConstructor {
         for i in 0..length {
             let key = PropertyKey::from_u64(cx, i as u64);
 
-            let value = maybe!(get(cx, array_like, &key));
+            let value = maybe!(get(cx, array_like, key));
 
             let value = if let Some(map_function) = map_function {
                 maybe!(call_object(cx, map_function, this_argument, &[value, Value::from(i)]))
@@ -154,7 +154,7 @@ impl TypedArrayConstructor {
                 value
             };
 
-            maybe!(set(cx, target_object, &key, value, true));
+            maybe!(set(cx, target_object, key, value, true));
         }
 
         target_object.into()
@@ -180,7 +180,7 @@ impl TypedArrayConstructor {
 
         for (i, value) in arguments.iter().enumerate() {
             let key = PropertyKey::from_u64(cx, i as u64);
-            maybe!(set(cx, object, &key, *value, true));
+            maybe!(set(cx, object, key, *value, true));
         }
 
         object.into()
@@ -256,7 +256,7 @@ macro_rules! create_typed_array_constructor {
             fn get_own_property(
                 &self,
                 cx: &mut Context,
-                key: &PropertyKey,
+                key: PropertyKey,
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get_own_property(self.object(), key).into(),
@@ -278,7 +278,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.2 [[HasProperty]]
-            fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+            fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
@@ -294,7 +294,7 @@ macro_rules! create_typed_array_constructor {
             fn define_own_property(
                 &mut self,
                 cx: &mut Context,
-                key: &PropertyKey,
+                key: PropertyKey,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
@@ -341,7 +341,7 @@ macro_rules! create_typed_array_constructor {
             fn get(
                 &self,
                 cx: &mut Context,
-                key: &PropertyKey,
+                key: PropertyKey,
                 receiver: Value,
             ) -> EvalResult<Value> {
                 match canonical_numeric_index_string(key) {
@@ -363,7 +363,7 @@ macro_rules! create_typed_array_constructor {
             fn set(
                 &mut self,
                 cx: &mut Context,
-                key: &PropertyKey,
+                key: PropertyKey,
                 value: Value,
                 receiver: Value,
             ) -> EvalResult<bool> {
@@ -387,7 +387,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.6 [[Delete]]
-            fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+            fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
@@ -479,7 +479,7 @@ macro_rules! create_typed_array_constructor {
                     cx,
                     Self::construct,
                     3,
-                    &cx.names.$rust_name(),
+                    cx.names.$rust_name(),
                     Some(realm),
                     Some(prototype),
                     None,
@@ -488,7 +488,7 @@ macro_rules! create_typed_array_constructor {
                 func.set_is_constructor();
                 func.set_property(
                     cx,
-                    &cx.names.prototype(),
+                    cx.names.prototype(),
                     Property::data(
                         realm.get_intrinsic(Intrinsic::$prototype).into(),
                         false,
@@ -499,7 +499,7 @@ macro_rules! create_typed_array_constructor {
 
                 func.set_property(
                     cx,
-                    &cx.names.bytes_per_element(),
+                    cx.names.bytes_per_element(),
                     Property::data(Value::smi(element_size!() as i32), false, false, false),
                 );
 
@@ -556,7 +556,7 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-                let iterator = maybe!(get_method(cx, argument.into(), &iterator_key));
+                let iterator = maybe!(get_method(cx, argument.into(), iterator_key));
 
                 if let Some(iterator) = iterator {
                     Self::initialize_typed_array_from_list(cx, proto, argument.into(), iterator)
@@ -781,7 +781,7 @@ macro_rules! create_typed_array_constructor {
                 // Add each value from iterator into typed array
                 for (i, value) in values.into_iter().enumerate() {
                     let key = PropertyKey::from_u64(cx, i as u64);
-                    maybe!(set(cx, typed_array_object, &key, value, true));
+                    maybe!(set(cx, typed_array_object, key, value, true));
                 }
 
                 typed_array_object.into()
@@ -801,8 +801,8 @@ macro_rules! create_typed_array_constructor {
                 // Add each value from array into typed array
                 for i in 0..length {
                     let key = PropertyKey::from_u64(cx, i);
-                    let value = maybe!(get(cx, array_like, &key));
-                    maybe!(set(cx, typed_array_object, &key, value, true));
+                    let value = maybe!(get(cx, array_like, key));
+                    maybe!(set(cx, typed_array_object, key, value, true));
                 }
 
                 typed_array_object.into()

@@ -31,7 +31,7 @@ impl StringConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.string(),
+            cx.names.string(),
             Some(realm),
             None,
             None,
@@ -40,7 +40,7 @@ impl StringConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::StringPrototype).into(),
                 false,
@@ -49,8 +49,8 @@ impl StringConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, &cx.names.from_char_code(), Self::from_char_code, 1, realm);
-        func.intrinsic_func(cx, &cx.names.from_code_point(), Self::from_code_point, 1, realm);
+        func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm);
+        func.intrinsic_func(cx, cx.names.from_code_point(), Self::from_code_point, 1, realm);
 
         func
     }

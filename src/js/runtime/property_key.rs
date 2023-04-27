@@ -9,7 +9,7 @@ use super::{
     Value,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PropertyKey {
     // A property key must be either an interned string or a symbol for named properties,
     // or a smi if key is a valid array index. Note that smis technically have an i32 range but

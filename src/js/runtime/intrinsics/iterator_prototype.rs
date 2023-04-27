@@ -14,7 +14,7 @@ impl IteratorPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        object.intrinsic_func(cx, &iterator_key, Self::iterator, 0, realm);
+        object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
         object
     }

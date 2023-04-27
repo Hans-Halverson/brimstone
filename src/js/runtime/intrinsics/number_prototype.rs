@@ -26,20 +26,20 @@ impl NumberPrototype {
         // Constructor property is added once NumberConstructor has been created
         object.object().intrinsic_func(
             cx,
-            &cx.names.to_locale_string(),
+            cx.names.to_locale_string(),
             Self::to_locale_string,
             0,
             realm,
         );
         object
             .object()
-            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 1, realm);
+            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
         object
             .object()
-            .intrinsic_func(cx, &cx.names.to_fixed(), Self::to_fixed, 1, realm);
+            .intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm);
         object
             .object()
-            .intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+            .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         object.into()
     }

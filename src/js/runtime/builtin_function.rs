@@ -50,7 +50,7 @@ impl BuiltinFunction {
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         length: i32,
-        name: &PropertyKey,
+        name: PropertyKey,
         realm: Option<Gc<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
         prefix: Option<&str>,
@@ -97,18 +97,18 @@ impl BuiltinFunction {
 }
 
 impl Gc<BuiltinFunction> {
-    pub fn set_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Property) {
+    pub fn set_property(&mut self, cx: &mut Context, key: PropertyKey, value: Property) {
         self.object().set_property(cx, key, value);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: &PropertyKey, value: Value) {
+    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
         self.object().intrinsic_frozen_property(cx, key, value);
     }
 
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: &PropertyKey,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Gc<Realm>,
@@ -119,7 +119,7 @@ impl Gc<BuiltinFunction> {
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: &PropertyKey,
+        name: PropertyKey,
         func: BuiltinFunctionPtr,
         realm: Gc<Realm>,
     ) {

@@ -64,7 +64,7 @@ impl SetConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.set(),
+            cx.names.set(),
             Some(realm),
             None,
             None,
@@ -73,7 +73,7 @@ impl SetConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::SetPrototype).into(),
                 false,
@@ -83,7 +83,7 @@ impl SetConstructor {
         );
 
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func
     }
@@ -109,7 +109,7 @@ impl SetConstructor {
             return set_object.into();
         }
 
-        let adder = maybe!(get(cx, set_object, &cx.names.add()));
+        let adder = maybe!(get(cx, set_object, cx.names.add()));
         if !is_callable(adder) {
             return type_error_(cx, "set must contain an add method");
         }

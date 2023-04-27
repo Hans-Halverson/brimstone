@@ -163,7 +163,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let key = PropertyKey::array_index(cx, index);
                 let desc = Property::data(Value::empty(), true, true, true);
 
-                array.object().set_property(cx, &key, desc);
+                array.object().set_property(cx, key, desc);
                 index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
@@ -171,7 +171,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
 
-                array.object().set_property(cx, &key, desc);
+                array.object().set_property(cx, key, desc);
                 index += 1;
             }
             ast::ArrayElement::Spread(spread) => {
@@ -180,7 +180,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
                     let key = PropertyKey::array_index(cx, index);
                     let desc = Property::data(value, true, true, true);
 
-                    array.object().set_property(cx, &key, desc);
+                    array.object().set_property(cx, key, desc);
                     index += 1;
 
                     None
@@ -218,7 +218,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                 let id = property.key.as_ref().to_id();
                 let prop_value = maybe!(eval_identifier(cx, id));
                 let prop_key = id_property_key(cx, id);
-                must!(create_data_property_or_throw(cx, object, &prop_key, prop_value));
+                must!(create_data_property_or_throw(cx, object, prop_key, prop_value));
             }
             Some(_) if property.is_method => {
                 let property_key =
@@ -234,7 +234,7 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     cx,
                     object,
                     func,
-                    &property_key,
+                    property_key,
                     &property.kind,
                     /* is_enumerable */ true,
                 ))
@@ -256,10 +256,10 @@ fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> Eva
                     let prop_value = maybe!(eval_named_anonymous_function_or_expression(
                         cx,
                         value,
-                        &property_key
+                        property_key
                     ));
 
-                    must!(create_data_property_or_throw(cx, object, &property_key, prop_value));
+                    must!(create_data_property_or_throw(cx, object, property_key, prop_value));
                 }
             }
         }
@@ -342,7 +342,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = maybe!(to_property_key(cx, property_name_value));
 
         let base = maybe!(to_object(cx, base_value));
-        base.get(cx, &property_key, base_value)
+        base.get(cx, property_key, base_value)
     } else if expr.is_private {
         let base = maybe!(to_object(cx, base_value));
         let private_env = cx.current_execution_context().private_env.unwrap();
@@ -354,7 +354,7 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         let property_key = id_property_key(cx, expr.property.to_id());
         let base = maybe!(to_object(cx, base_value));
 
-        base.get(cx, &property_key, base_value)
+        base.get(cx, property_key, base_value)
     }
 }
 
@@ -730,17 +730,17 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
             Some(cooked) => InternedStrings::get_str(cx, cooked).into(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
-        must!(define_property_or_throw(cx, template_object, &index_key, cooked_desc));
+        must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
         let raw_value = InternedStrings::get_str(cx, &quasi.raw);
         let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
-        must!(define_property_or_throw(cx, raw_object, &index_key, raw_desc));
+        must!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }
 
     must!(set_integrity_level(cx, raw_object.into(), IntegrityLevel::Frozen));
 
     let raw_object_desc = PropertyDescriptor::data(raw_object.into(), false, false, false);
-    must!(define_property_or_throw(cx, template_object, &cx.names.raw(), raw_object_desc));
+    must!(define_property_or_throw(cx, template_object, cx.names.raw(), raw_object_desc));
 
     must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
@@ -819,7 +819,7 @@ fn eval_delete_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> Eval
             }
 
             let mut base_object = maybe!(to_object(cx, *object));
-            let delete_status = maybe!(base_object.delete(cx, property));
+            let delete_status = maybe!(base_object.delete(cx, *property));
             if !delete_status && reference.is_strict() {
                 return type_error_(cx, "cannot delete property");
             }
@@ -1421,7 +1421,7 @@ pub fn eval_instanceof_expression(
     }
 
     let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
-    let instance_of_handler = maybe!(get_method(cx, target, &has_instance_key));
+    let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
         return to_boolean(result).into();
@@ -1447,7 +1447,7 @@ fn eval_in_expression(
 
     let property_key = maybe!(to_property_key(cx, left_value));
 
-    let has_property = maybe!(has_property(cx, right_value.as_object(), &property_key));
+    let has_property = maybe!(has_property(cx, right_value.as_object(), property_key));
     has_property.into()
 }
 
@@ -1550,7 +1550,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &name_key,
+                name_key,
                 is_non_parenthesized_id_predicate
             ))
         }
@@ -1624,7 +1624,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &name_key,
+                name_key,
                 is_non_parenthesized_id_predicate,
             ))
         }
@@ -1638,7 +1638,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &name_key,
+                name_key,
                 is_non_parenthesized_id_predicate
             ))
         }
@@ -1652,7 +1652,7 @@ fn eval_assignment_expression(
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &name_key,
+                name_key,
                 is_non_parenthesized_id_predicate
             ))
         }

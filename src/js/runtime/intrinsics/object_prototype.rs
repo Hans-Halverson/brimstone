@@ -39,31 +39,31 @@ impl ObjectPrototype {
         object_ordinary_init_optional_proto(cx, object.object(), descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
-        object.intrinsic_func(cx, &cx.names.has_own_property(), Self::has_own_property, 1, realm);
-        object.intrinsic_func(cx, &cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm);
+        object.intrinsic_func(cx, cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm);
         object.intrinsic_func(
             cx,
-            &cx.names.property_is_enumerable(),
+            cx.names.property_is_enumerable(),
             Self::property_is_enumerable,
             1,
             realm,
         );
-        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
-        object.intrinsic_func(cx, &cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
 
         object.intrinsic_getter_and_setter(
             cx,
-            &cx.names.__proto__(),
+            cx.names.__proto__(),
             Self::get_proto,
             Self::set_proto,
             realm,
         );
 
-        object.intrinsic_func(cx, &cx.names.__define_getter__(), Self::define_getter, 2, realm);
-        object.intrinsic_func(cx, &cx.names.__define_setter__(), Self::define_setter, 2, realm);
-        object.intrinsic_func(cx, &cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm);
-        object.intrinsic_func(cx, &cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm);
+        object.intrinsic_func(cx, cx.names.__define_getter__(), Self::define_getter, 2, realm);
+        object.intrinsic_func(cx, cx.names.__define_setter__(), Self::define_setter, 2, realm);
+        object.intrinsic_func(cx, cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm);
+        object.intrinsic_func(cx, cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm);
     }
 
     // 20.1.3.2 Object.prototype.hasOwnProperty
@@ -76,7 +76,7 @@ impl ObjectPrototype {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        maybe!(has_own_property(cx, this_object, &property_key)).into()
+        maybe!(has_own_property(cx, this_object, property_key)).into()
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
@@ -119,7 +119,7 @@ impl ObjectPrototype {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
         let this_object = maybe!(to_object(cx, this_value));
 
-        match maybe!(this_object.get_own_property(cx, &property_key)) {
+        match maybe!(this_object.get_own_property(cx, property_key)) {
             None => false.into(),
             Some(desc) => desc.is_enumerable().into(),
         }
@@ -132,7 +132,7 @@ impl ObjectPrototype {
         _: &[Value],
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        invoke(cx, this_value, &cx.names.to_string(), &[])
+        invoke(cx, this_value, cx.names.to_string(), &[])
     }
 
     // 20.1.3.6 Object.prototype.toString
@@ -153,7 +153,7 @@ impl ObjectPrototype {
         let is_array = maybe!(is_array(cx, object.into()));
 
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
-        let tag = maybe!(get(cx, object, &to_string_tag_key));
+        let tag = maybe!(get(cx, object, to_string_tag_key));
 
         let tag_string = if tag.is_string() {
             let string_prefix = cx.alloc_string(String::from("[object "));
@@ -256,7 +256,7 @@ impl ObjectPrototype {
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = PropertyDescriptor::accessor(Some(getter.as_object()), None, true, true);
 
-        maybe!(define_property_or_throw(cx, object, &key, desc));
+        maybe!(define_property_or_throw(cx, object, key, desc));
 
         Value::undefined().into()
     }
@@ -278,7 +278,7 @@ impl ObjectPrototype {
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = PropertyDescriptor::accessor(None, Some(setter.as_object()), true, true);
 
-        maybe!(define_property_or_throw(cx, object, &key, desc));
+        maybe!(define_property_or_throw(cx, object, key, desc));
 
         Value::undefined().into()
     }
@@ -295,7 +295,7 @@ impl ObjectPrototype {
 
         let mut current_object = object;
         loop {
-            let desc = maybe!(current_object.get_own_property(cx, &key));
+            let desc = maybe!(current_object.get_own_property(cx, key));
             match desc {
                 Some(desc) => {
                     return if desc.is_accessor_descriptor() {
@@ -327,7 +327,7 @@ impl ObjectPrototype {
 
         let mut current_object = object;
         loop {
-            let desc = maybe!(current_object.get_own_property(cx, &key));
+            let desc = maybe!(current_object.get_own_property(cx, key));
             match desc {
                 Some(desc) => {
                     return if desc.is_accessor_descriptor() {

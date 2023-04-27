@@ -18,7 +18,7 @@ impl FunctionConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.function(),
+            cx.names.function(),
             Some(realm),
             None,
             None,
@@ -27,7 +27,7 @@ impl FunctionConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
                 false,

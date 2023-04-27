@@ -26,7 +26,7 @@ impl ArrayConstructor {
             cx,
             Self::construct,
             0,
-            &cx.names.array(),
+            cx.names.array(),
             Some(realm),
             None,
             None,
@@ -35,7 +35,7 @@ impl ArrayConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ArrayPrototype).into(),
                 false,
@@ -44,12 +44,12 @@ impl ArrayConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, &cx.names.is_array(), Self::is_array, 1, realm);
-        func.intrinsic_func(cx, &cx.names.of(), Self::of, 0, realm);
+        func.intrinsic_func(cx, cx.names.is_array(), Self::is_array, 1, realm);
+        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
         // 23.1.2.5 get Array [ @@species ]
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func
     }
@@ -82,11 +82,11 @@ impl ArrayConstructor {
                 int_len
             } else {
                 let first_key = PropertyKey::array_index(cx, 0);
-                must!(create_data_property_or_throw(cx, array.into(), &first_key, length));
+                must!(create_data_property_or_throw(cx, array.into(), first_key, length));
                 1
             };
 
-            must!(set(cx, array.into(), &cx.names.length(), Value::from(int_len), true));
+            must!(set(cx, array.into(), cx.names.length(), Value::from(int_len), true));
 
             return array.into();
         } else {
@@ -96,7 +96,7 @@ impl ArrayConstructor {
                 let key = PropertyKey::array_index(cx, index as u32);
                 let value = get_argument(arguments, index);
 
-                must!(create_data_property_or_throw(cx, array.into(), &key, value));
+                must!(create_data_property_or_throw(cx, array.into(), key, value));
             }
 
             return array.into();
@@ -133,10 +133,10 @@ impl ArrayConstructor {
             let key = PropertyKey::array_index(cx, index as u32);
             let value = get_argument(arguments, index);
 
-            maybe!(create_data_property_or_throw(cx, array.into(), &key, value));
+            maybe!(create_data_property_or_throw(cx, array.into(), key, value));
         }
 
-        maybe!(set(cx, array.into(), &cx.names.length(), length_value, true));
+        maybe!(set(cx, array.into(), cx.names.length(), length_value, true));
 
         array.into()
     }

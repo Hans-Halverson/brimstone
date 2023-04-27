@@ -38,7 +38,7 @@ impl ObjectConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.object(),
+            cx.names.object(),
             Some(realm),
             None,
             None,
@@ -47,7 +47,7 @@ impl ObjectConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
                 false,
@@ -56,51 +56,51 @@ impl ObjectConstructor {
             ),
         );
 
-        func.intrinsic_func(cx, &cx.names.assign(), Self::assign, 2, realm);
-        func.intrinsic_func(cx, &cx.names.create(), Self::create, 2, realm);
-        func.intrinsic_func(cx, &cx.names.define_properties(), Self::define_properties, 2, realm);
-        func.intrinsic_func(cx, &cx.names.define_property(), Self::define_property, 3, realm);
+        func.intrinsic_func(cx, cx.names.assign(), Self::assign, 2, realm);
+        func.intrinsic_func(cx, cx.names.create(), Self::create, 2, realm);
+        func.intrinsic_func(cx, cx.names.define_properties(), Self::define_properties, 2, realm);
+        func.intrinsic_func(cx, cx.names.define_property(), Self::define_property, 3, realm);
         func.intrinsic_func(
             cx,
-            &cx.names.get_own_property_descriptor(),
+            cx.names.get_own_property_descriptor(),
             Self::get_own_property_descriptor,
             2,
             realm,
         );
         func.intrinsic_func(
             cx,
-            &cx.names.get_own_property_descriptors(),
+            cx.names.get_own_property_descriptors(),
             Self::get_own_property_descriptors,
             1,
             realm,
         );
-        func.intrinsic_func(cx, &cx.names.entries(), Self::entries, 1, realm);
-        func.intrinsic_func(cx, &cx.names.freeze(), Self::freeze, 1, realm);
+        func.intrinsic_func(cx, cx.names.entries(), Self::entries, 1, realm);
+        func.intrinsic_func(cx, cx.names.freeze(), Self::freeze, 1, realm);
         func.intrinsic_func(
             cx,
-            &cx.names.get_own_property_names(),
+            cx.names.get_own_property_names(),
             Self::get_own_property_names,
             1,
             realm,
         );
         func.intrinsic_func(
             cx,
-            &cx.names.get_own_property_symbols(),
+            cx.names.get_own_property_symbols(),
             Self::get_own_property_symbols,
             1,
             realm,
         );
-        func.intrinsic_func(cx, &cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
-        func.intrinsic_func(cx, &cx.names.has_own(), Self::has_own, 2, realm);
-        func.intrinsic_func(cx, &cx.names.is(), Self::is, 2, realm);
-        func.intrinsic_func(cx, &cx.names.is_extensible(), Self::is_extensible, 1, realm);
-        func.intrinsic_func(cx, &cx.names.is_frozen(), Self::is_frozen, 1, realm);
-        func.intrinsic_func(cx, &cx.names.is_sealed(), Self::is_sealed, 1, realm);
-        func.intrinsic_func(cx, &cx.names.keys(), Self::keys, 1, realm);
-        func.intrinsic_func(cx, &cx.names.prevent_extensions(), Self::prevent_extensions, 1, realm);
-        func.intrinsic_func(cx, &cx.names.seal(), Self::seal, 1, realm);
-        func.intrinsic_func(cx, &cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
-        func.intrinsic_func(cx, &cx.names.values(), Self::values, 1, realm);
+        func.intrinsic_func(cx, cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
+        func.intrinsic_func(cx, cx.names.has_own(), Self::has_own, 2, realm);
+        func.intrinsic_func(cx, cx.names.is(), Self::is, 2, realm);
+        func.intrinsic_func(cx, cx.names.is_extensible(), Self::is_extensible, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_frozen(), Self::is_frozen, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_sealed(), Self::is_sealed, 1, realm);
+        func.intrinsic_func(cx, cx.names.keys(), Self::keys, 1, realm);
+        func.intrinsic_func(cx, cx.names.prevent_extensions(), Self::prevent_extensions, 1, realm);
+        func.intrinsic_func(cx, cx.names.seal(), Self::seal, 1, realm);
+        func.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
+        func.intrinsic_func(cx, cx.names.values(), Self::values, 1, realm);
 
         func
     }
@@ -159,11 +159,11 @@ impl ObjectConstructor {
 
                 for next_key in keys {
                     let property_key = must!(PropertyKey::from_value(cx, next_key));
-                    let desc = maybe!(from.get_own_property(cx, &property_key));
+                    let desc = maybe!(from.get_own_property(cx, property_key));
                     if let Some(desc) = desc {
                         if let Some(true) = desc.is_enumerable {
-                            let value = maybe!(get(cx, from, &property_key));
-                            maybe!(set(cx, to, &property_key, value, true));
+                            let value = maybe!(get(cx, from, property_key));
+                            maybe!(set(cx, to, property_key, value, true));
                         }
                     }
                 }
@@ -228,10 +228,10 @@ impl ObjectConstructor {
 
         for key in keys {
             let key = must!(PropertyKey::from_value(cx, key));
-            let prop_desc = maybe!(properties.get_own_property(cx, &key));
+            let prop_desc = maybe!(properties.get_own_property(cx, key));
             if let Some(prop_desc) = prop_desc {
                 if let Some(true) = prop_desc.is_enumerable {
-                    let desc_object = maybe!(get(cx, properties, &key));
+                    let desc_object = maybe!(get(cx, properties, key));
                     let desc = maybe!(to_property_descriptor(cx, desc_object));
 
                     descriptors.push((key, desc));
@@ -240,7 +240,7 @@ impl ObjectConstructor {
         }
 
         for (key, desc) in descriptors {
-            maybe!(define_property_or_throw(cx, object, &key, desc));
+            maybe!(define_property_or_throw(cx, object, key, desc));
         }
 
         object.into()
@@ -261,7 +261,7 @@ impl ObjectConstructor {
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
         let desc = maybe!(to_property_descriptor(cx, get_argument(arguments, 2)));
 
-        maybe!(define_property_or_throw(cx, object.as_object(), &property_key, desc,));
+        maybe!(define_property_or_throw(cx, object.as_object(), property_key, desc,));
 
         object.into()
     }
@@ -307,7 +307,7 @@ impl ObjectConstructor {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
         let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        match maybe!(object.get_own_property(cx, &property_key)) {
+        match maybe!(object.get_own_property(cx, property_key)) {
             None => Value::undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }
@@ -329,10 +329,10 @@ impl ObjectConstructor {
 
         for key in keys {
             let key = must!(PropertyKey::from_value(cx, key));
-            let desc = maybe!(object.get_own_property(cx, &key));
+            let desc = maybe!(object.get_own_property(cx, key));
             if let Some(desc) = desc {
                 let desc_object = from_property_descriptor(cx, desc);
-                must!(create_data_property_or_throw(cx, descriptors, &key, desc_object.into()));
+                must!(create_data_property_or_throw(cx, descriptors, key, desc_object.into()));
             }
         }
 
@@ -411,7 +411,7 @@ impl ObjectConstructor {
         let object = maybe!(to_object(cx, get_argument(arguments, 0)));
         let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
 
-        maybe!(has_own_property(cx, object, &key)).into()
+        maybe!(has_own_property(cx, object, key)).into()
     }
 
     // 20.1.2.14 Object.is

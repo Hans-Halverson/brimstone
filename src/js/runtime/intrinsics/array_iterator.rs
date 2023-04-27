@@ -81,14 +81,14 @@ impl ArrayIteratorPrototype {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
-        object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
         // 23.1.5.2.2 %ArrayIteratorPrototype% [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let to_string_tag_value = cx.alloc_string(String::from("Array Iterator")).into();
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
         );
 
@@ -122,13 +122,13 @@ impl ArrayIteratorPrototype {
             }
             ArrayIteratorKind::Value => {
                 let property_key = PropertyKey::from_u64(cx, current_index);
-                let value = maybe!(array.get(cx, &property_key, array.into()));
+                let value = maybe!(array.get(cx, property_key, array.into()));
                 create_iter_result_object(cx, value, false).into()
             }
             ArrayIteratorKind::KeyAndValue => {
                 let key = Value::from(current_index);
                 let property_key = PropertyKey::from_u64(cx, current_index);
-                let value = maybe!(array.get(cx, &property_key, array.into()));
+                let value = maybe!(array.get(cx, property_key, array.into()));
 
                 let result_pair = create_array_from_list(cx, &[key, value]);
                 create_iter_result_object(cx, result_pair.into(), false).into()

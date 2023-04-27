@@ -34,35 +34,35 @@ impl DataViewPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once DataViewConstructor has been created
-        object.intrinsic_getter(cx, &cx.names.buffer(), Self::get_buffer, realm);
-        object.intrinsic_getter(cx, &cx.names.byte_length(), Self::get_byte_length, realm);
-        object.intrinsic_getter(cx, &cx.names.byte_offset(), Self::get_byte_offset, realm);
-        object.intrinsic_func(cx, &cx.names.get_big_int64(), Self::get_big_int64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_float32(), Self::get_float32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_float64(), Self::get_float64, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_int8(), Self::get_int8, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_int16(), Self::get_int16, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_int32(), Self::get_int32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_uint8(), Self::get_uint8, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_uint16(), Self::get_uint16, 1, realm);
-        object.intrinsic_func(cx, &cx.names.get_uint32(), Self::get_uint32, 1, realm);
-        object.intrinsic_func(cx, &cx.names.set_big_int64(), Self::set_big_int64, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_float32(), Self::set_float32, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_float64(), Self::set_float64, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_int8(), Self::set_int8, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_int16(), Self::set_int16, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_int32(), Self::set_int32, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint8(), Self::set_uint8, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint16(), Self::set_uint16, 2, realm);
-        object.intrinsic_func(cx, &cx.names.set_uint32(), Self::set_uint32, 2, realm);
+        object.intrinsic_getter(cx, cx.names.buffer(), Self::get_buffer, realm);
+        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
+        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::get_byte_offset, realm);
+        object.intrinsic_func(cx, cx.names.get_big_int64(), Self::get_big_int64, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_float32(), Self::get_float32, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_float64(), Self::get_float64, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_int8(), Self::get_int8, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_int16(), Self::get_int16, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_int32(), Self::get_int32, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_uint8(), Self::get_uint8, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_uint16(), Self::get_uint16, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_uint32(), Self::get_uint32, 1, realm);
+        object.intrinsic_func(cx, cx.names.set_big_int64(), Self::set_big_int64, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_float32(), Self::set_float32, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_float64(), Self::set_float64, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_int8(), Self::set_int8, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_int16(), Self::set_int16, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_int32(), Self::set_int32, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_uint8(), Self::set_uint8, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_uint16(), Self::set_uint16, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm);
 
         // 25.3.4.25 DataView.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(cx.names.data_view().as_string().into(), false, false, true),
         );
 

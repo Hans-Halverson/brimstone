@@ -43,13 +43,13 @@ pub fn get_iterator(
     } else {
         if hint == IteratorHint::Async {
             let async_iterator_key = PropertyKey::symbol(cx.well_known_symbols.async_iterator);
-            let method = maybe!(get_method(cx, object, &async_iterator_key));
+            let method = maybe!(get_method(cx, object, async_iterator_key));
 
             if let Some(method) = method {
                 method
             } else {
                 let sync_iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-                let sync_method = maybe!(get_method(cx, object, &sync_iterator_key));
+                let sync_method = maybe!(get_method(cx, object, sync_iterator_key));
                 let sync_iterator_record =
                     maybe!(get_iterator(cx, object, IteratorHint::Sync, sync_method));
 
@@ -57,7 +57,7 @@ pub fn get_iterator(
             }
         } else {
             let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-            let method = maybe!(get_method(cx, object, &iterator_key));
+            let method = maybe!(get_method(cx, object, iterator_key));
 
             if let Some(method) = method {
                 method
@@ -75,7 +75,7 @@ pub fn get_iterator(
     }
     let iterator = iterator.as_object();
 
-    let next_method = maybe!(get(cx, iterator, &cx.names.next()));
+    let next_method = maybe!(get(cx, iterator, cx.names.next()));
 
     let iterator_record = Iterator { iterator, next_method, is_done: false };
 
@@ -103,13 +103,13 @@ pub fn iterator_next(
 
 // 7.4.4 IteratorComplete
 pub fn iterator_complete(cx: &mut Context, iter_result: Gc<ObjectValue>) -> EvalResult<bool> {
-    let is_done = maybe!(get(cx, iter_result, &cx.names.done()));
+    let is_done = maybe!(get(cx, iter_result, cx.names.done()));
     to_boolean(is_done).into()
 }
 
 // 7.4.5 IteratorValue
 pub fn iterator_value(cx: &mut Context, iter_result: Gc<ObjectValue>) -> EvalResult<Value> {
-    get(cx, iter_result, &cx.names.value())
+    get(cx, iter_result, cx.names.value())
 }
 
 // 7.4.6 IteratorStep
@@ -126,7 +126,7 @@ pub fn iterator_step(cx: &mut Context, iterator: &Iterator) -> EvalResult<Option
 
 // 7.4.7 IteratorClose
 pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Completion) -> Completion {
-    let inner_result = get_method(cx, iterator.iterator.into(), &cx.names.return_());
+    let inner_result = get_method(cx, iterator.iterator.into(), cx.names.return_());
     let inner_result = match inner_result {
         EvalResult::Ok(None) => return completion,
         EvalResult::Ok(Some(return_)) => call_object(cx, return_, iterator.iterator.into(), &[]),
@@ -154,8 +154,8 @@ pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) 
     let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
     let object = ordinary_object_create(cx, object_proto).into();
 
-    must!(create_data_property_or_throw(cx, object, &cx.names.value(), value));
-    must!(create_data_property_or_throw(cx, object, &cx.names.done(), is_done.into()));
+    must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
+    must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done.into()));
 
     object
 }

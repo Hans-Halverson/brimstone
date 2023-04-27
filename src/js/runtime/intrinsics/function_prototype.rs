@@ -59,12 +59,12 @@ impl Gc<FunctionPrototype> {
         self.object().instrinsic_length_prop(cx, 0);
 
         self.object()
-            .intrinsic_func(cx, &cx.names.apply(), FunctionPrototype::apply, 2, realm);
+            .intrinsic_func(cx, cx.names.apply(), FunctionPrototype::apply, 2, realm);
         self.object()
-            .intrinsic_func(cx, &cx.names.bind(), FunctionPrototype::bind, 1, realm);
+            .intrinsic_func(cx, cx.names.bind(), FunctionPrototype::bind, 1, realm);
         self.object().intrinsic_func(
             cx,
-            &cx.names.call(),
+            cx.names.call(),
             FunctionPrototype::call_intrinsic,
             1,
             realm,
@@ -78,7 +78,7 @@ impl Gc<FunctionPrototype> {
             cx,
             FunctionPrototype::has_instance,
             1,
-            &has_instance_name_key,
+            has_instance_name_key,
             Some(realm),
             None,
             None,
@@ -86,7 +86,7 @@ impl Gc<FunctionPrototype> {
         .into();
         self.object().set_property(
             cx,
-            &has_instance_key,
+            has_instance_key,
             Property::data(has_instance_func, false, false, false),
         );
     }
@@ -142,8 +142,8 @@ impl FunctionPrototype {
         let mut length = Some(0);
 
         // Set function length to an integer or infinity based on the inner function's length
-        if maybe!(has_own_property(cx, bound_func, &cx.names.length())) {
-            let target_length_value = maybe!(get(cx, target, &cx.names.length()));
+        if maybe!(has_own_property(cx, bound_func, cx.names.length())) {
+            let target_length_value = maybe!(get(cx, target, cx.names.length()));
             if target_length_value.is_number() {
                 let target_length = target_length_value.as_number();
                 if target_length == f64::INFINITY {
@@ -160,9 +160,9 @@ impl FunctionPrototype {
 
         set_function_length_maybe_infinity(cx, bound_func, length);
 
-        let target_name = maybe!(get(cx, target, &cx.names.name()));
+        let target_name = maybe!(get(cx, target, cx.names.name()));
         let name_key = maybe!(PropertyKey::from_value(cx, target_name));
-        set_function_name(cx, bound_func, &name_key, Some("bound"));
+        set_function_name(cx, bound_func, name_key, Some("bound"));
 
         bound_func.into()
     }

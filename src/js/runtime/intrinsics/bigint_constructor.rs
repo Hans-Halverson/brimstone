@@ -54,7 +54,7 @@ impl BigIntConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.bigint(),
+            cx.names.bigint(),
             Some(realm),
             None,
             None,
@@ -63,7 +63,7 @@ impl BigIntConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
                 false,

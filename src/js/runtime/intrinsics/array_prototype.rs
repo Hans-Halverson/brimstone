@@ -46,7 +46,7 @@ impl ArrayPrototype {
             cx,
             Self::values,
             0,
-            &cx.names.values(),
+            cx.names.values(),
             Some(realm),
             None,
             None,
@@ -56,107 +56,107 @@ impl ArrayPrototype {
         // Constructor property is added once ArrayConstructor has been created
         array
             .object()
-            .intrinsic_func(cx, &cx.names.at(), Self::at, 1, realm);
+            .intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.concat(), Self::concat, 1, realm);
+            .intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.copy_within(), Self::copy_within, 2, realm);
+            .intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
+            .intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.every(), Self::every, 1, realm);
+            .intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.fill(), Self::fill, 1, realm);
+            .intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.filter(), Self::filter, 1, realm);
+            .intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.find(), Self::find, 1, realm);
+            .intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.find_index(), Self::find_index, 1, realm);
+            .intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.flat(), Self::flat, 0, realm);
+            .intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.flat_map(), Self::flat_map, 1, realm);
+            .intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
+            .intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.includes(), Self::includes, 1, realm);
+            .intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.index_of(), Self::index_of, 1, realm);
+            .intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.join(), Self::join, 1, realm);
+            .intrinsic_func(cx, cx.names.join(), Self::join, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.keys(), Self::keys, 0, realm);
+            .intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.last_index_of(), Self::last_index_of, 1, realm);
+            .intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.map_(), Self::map, 1, realm);
+            .intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.pop(), Self::pop, 0, realm);
+            .intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.push(), Self::push, 0, realm);
+            .intrinsic_func(cx, cx.names.push(), Self::push, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.reduce(), Self::reduce, 1, realm);
+            .intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.reduce_right(), Self::reduce_right, 1, realm);
+            .intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.reverse(), Self::reverse, 0, realm);
+            .intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.shift(), Self::shift, 0, realm);
+            .intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.slice(), Self::slice, 2, realm);
+            .intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.some(), Self::some, 1, realm);
+            .intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.splice(), Self::splice, 2, realm);
+            .intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm);
         array.object().intrinsic_func(
             cx,
-            &cx.names.to_locale_string(),
+            cx.names.to_locale_string(),
             Self::to_locale_string,
             0,
             realm,
         );
         array
             .object()
-            .intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
+            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         array
             .object()
-            .intrinsic_func(cx, &cx.names.unshift(), Self::unshift, 1, realm);
+            .intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm);
         array
             .object()
-            .intrinsic_data_prop(cx, &cx.names.values(), values_function);
+            .intrinsic_data_prop(cx, cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
         array.object().set_property(
             cx,
-            &iterator_key,
+            iterator_key,
             Property::data(values_function, true, false, true),
         );
 
@@ -165,7 +165,7 @@ impl ArrayPrototype {
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
         array
             .object()
-            .set_property(cx, &unscopables_key, unscopables);
+            .set_property(cx, unscopables_key, unscopables);
 
         array.into()
     }
@@ -196,7 +196,7 @@ impl ArrayPrototype {
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64)
         };
 
-        get(cx, object, &key)
+        get(cx, object, key)
     }
 
     // 23.1.3.2 Array.prototype.concat
@@ -228,7 +228,7 @@ impl ArrayPrototype {
 
         let is_concat_spreadable_key =
             PropertyKey::symbol(cx.well_known_symbols.is_concat_spreadable);
-        let is_spreadable = maybe!(get(cx, object.as_object(), &is_concat_spreadable_key));
+        let is_spreadable = maybe!(get(cx, object.as_object(), is_concat_spreadable_key));
 
         if !is_spreadable.is_undefined() {
             return to_boolean(is_spreadable).into();
@@ -255,10 +255,10 @@ impl ArrayPrototype {
             for i in 0..length {
                 let element_index_key = PropertyKey::from_u64(cx, i);
 
-                if maybe!(has_property(cx, element, &element_index_key)) {
-                    let sub_element = maybe!(get(cx, element, &element_index_key));
+                if maybe!(has_property(cx, element, element_index_key)) {
+                    let sub_element = maybe!(get(cx, element, element_index_key));
                     let array_index_key = PropertyKey::from_u64(cx, *n);
-                    maybe!(create_data_property_or_throw(cx, array, &array_index_key, sub_element))
+                    maybe!(create_data_property_or_throw(cx, array, array_index_key, sub_element))
                 }
 
                 *n += 1;
@@ -269,7 +269,7 @@ impl ArrayPrototype {
             }
 
             let index_key = PropertyKey::from_u64(cx, *n);
-            maybe!(create_data_property_or_throw(cx, array, &index_key, element));
+            maybe!(create_data_property_or_throw(cx, array, index_key, element));
 
             *n += 1;
         }
@@ -343,11 +343,11 @@ impl ArrayPrototype {
                 let from_key = PropertyKey::from_u64(cx, from_index);
                 let to_key = PropertyKey::from_u64(cx, to_index);
 
-                if maybe!(has_property(cx, object, &from_key)) {
-                    let from_value = maybe!(get(cx, object, &from_key));
-                    maybe!(set(cx, object, &to_key, from_value, true));
+                if maybe!(has_property(cx, object, from_key)) {
+                    let from_value = maybe!(get(cx, object, from_key));
+                    maybe!(set(cx, object, to_key, from_value, true));
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                    maybe!(delete_property_or_throw(cx, object, to_key));
                 }
 
                 from_index -= 1;
@@ -359,11 +359,11 @@ impl ArrayPrototype {
                 let from_key = PropertyKey::from_u64(cx, from_index);
                 let to_key = PropertyKey::from_u64(cx, to_index);
 
-                if maybe!(has_property(cx, object, &from_key)) {
-                    let from_value = maybe!(get(cx, object, &from_key));
-                    maybe!(set(cx, object, &to_key, from_value, true));
+                if maybe!(has_property(cx, object, from_key)) {
+                    let from_value = maybe!(get(cx, object, from_key));
+                    maybe!(set(cx, object, to_key, from_value, true));
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                    maybe!(delete_property_or_throw(cx, object, to_key));
                 }
 
                 from_index += 1;
@@ -406,8 +406,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -464,7 +464,7 @@ impl ArrayPrototype {
 
         for i in start_index..end_index {
             let key = PropertyKey::from_u64(cx, i);
-            maybe!(set(cx, object, &key, value, true));
+            maybe!(set(cx, object, key, value, true));
         }
 
         object.into()
@@ -494,8 +494,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -504,7 +504,7 @@ impl ArrayPrototype {
 
                 if to_boolean(is_selected) {
                     let result_index_key = PropertyKey::from_u64(cx, result_index);
-                    maybe!(create_data_property_or_throw(cx, array, &result_index_key, value));
+                    maybe!(create_data_property_or_throw(cx, array, result_index_key, value));
 
                     result_index += 1;
                 }
@@ -534,8 +534,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -570,8 +570,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -635,8 +635,8 @@ impl ArrayPrototype {
 
         for i in 0..source_length {
             let source_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, source, &source_key)) {
-                let mut element = maybe!(get(cx, source, &source_key));
+            if maybe!(has_property(cx, source, source_key)) {
+                let mut element = maybe!(get(cx, source, source_key));
 
                 if let Some(mapper_function) = mapper_function {
                     let arguments = [element, Value::from(i), source.into()];
@@ -675,7 +675,7 @@ impl ArrayPrototype {
                     }
 
                     let target_key = PropertyKey::from_u64(cx, target_index);
-                    maybe!(create_data_property_or_throw(cx, target, &target_key, element));
+                    maybe!(create_data_property_or_throw(cx, target, target_key, element));
 
                     target_index += 1;
                 }
@@ -738,8 +738,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -782,7 +782,7 @@ impl ArrayPrototype {
 
         for i in start_index..length {
             let key = PropertyKey::from_u64(cx, i);
-            let element = maybe!(get(cx, object, &key));
+            let element = maybe!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
                 return true.into();
@@ -823,8 +823,8 @@ impl ArrayPrototype {
 
         for i in start_index..length {
             let key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &key)) {
-                let element = maybe!(get(cx, object, &key));
+            if maybe!(has_property(cx, object, key)) {
+                let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
                     return Value::from(i).into();
                 }
@@ -859,7 +859,7 @@ impl ArrayPrototype {
             }
 
             let key = PropertyKey::from_u64(cx, i);
-            let element = maybe!(get(cx, object, &key));
+            let element = maybe!(get(cx, object, key));
 
             if !element.is_nullish() {
                 let next = maybe!(to_string(cx, element));
@@ -920,8 +920,8 @@ impl ArrayPrototype {
 
         for i in (0..=start_index).rev() {
             let key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &key)) {
-                let element = maybe!(get(cx, object, &key));
+            if maybe!(has_property(cx, object, key)) {
+                let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
                     return Value::from(i).into();
                 }
@@ -953,14 +953,14 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
 
                 let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
-                maybe!(create_data_property_or_throw(cx, array, &index_key, mapped_value));
+                maybe!(create_data_property_or_throw(cx, array, index_key, mapped_value));
             }
         }
 
@@ -978,18 +978,18 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            maybe!(set(cx, object, &cx.names.length(), Value::smi(0), true));
+            maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
             return Value::undefined().into();
         }
 
         let new_length = length - 1;
         let index_key = PropertyKey::from_u64(cx, new_length);
 
-        let element = maybe!(get(cx, object, &index_key));
-        maybe!(delete_property_or_throw(cx, object, &index_key));
+        let element = maybe!(get(cx, object, index_key));
+        maybe!(delete_property_or_throw(cx, object, index_key));
 
         let new_length_value = Value::from(new_length);
-        maybe!(set(cx, object, &cx.names.length(), new_length_value, true));
+        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
         element.into()
     }
@@ -1011,11 +1011,11 @@ impl ArrayPrototype {
 
         for (i, argument) in arguments.iter().enumerate() {
             let key = PropertyKey::from_u64(cx, length + i as u64);
-            maybe!(set(cx, object, &key, *argument, true));
+            maybe!(set(cx, object, key, *argument, true));
         }
 
         let new_length_value = Value::from(new_length);
-        maybe!(set(cx, object, &cx.names.length(), new_length_value, true));
+        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
         new_length_value.into()
     }
@@ -1052,16 +1052,16 @@ impl ArrayPrototype {
                 let index_key = PropertyKey::from_u64(cx, initial_index);
                 initial_index += 1;
 
-                if maybe!(has_property(cx, object, &index_key)) {
-                    break maybe!(get(cx, object, &index_key));
+                if maybe!(has_property(cx, object, index_key)) {
+                    break maybe!(get(cx, object, index_key));
                 }
             }
         };
 
         for i in initial_index..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [accumulator, value, index_value, object.into()];
@@ -1106,16 +1106,16 @@ impl ArrayPrototype {
                 let index_key = PropertyKey::from_u64(cx, initial_index as u64);
                 initial_index -= 1;
 
-                if maybe!(has_property(cx, object, &index_key)) {
-                    break maybe!(get(cx, object, &index_key));
+                if maybe!(has_property(cx, object, index_key)) {
+                    break maybe!(get(cx, object, index_key));
                 }
             }
         };
 
         for i in (0..=initial_index).rev() {
             let index_key = PropertyKey::from_u64(cx, i as u64);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [accumulator, value, index_value, object.into()];
@@ -1147,28 +1147,28 @@ impl ArrayPrototype {
             let lower_key = PropertyKey::from_u64(cx, lower);
             let upper_key = PropertyKey::from_u64(cx, upper);
 
-            let lower_exists = maybe!(has_property(cx, object, &lower_key));
-            let upper_exists = maybe!(has_property(cx, object, &upper_key));
+            let lower_exists = maybe!(has_property(cx, object, lower_key));
+            let upper_exists = maybe!(has_property(cx, object, upper_key));
 
             match (lower_exists, upper_exists) {
                 (true, true) => {
-                    let lower_value = maybe!(get(cx, object, &lower_key));
-                    let upper_value = maybe!(get(cx, object, &upper_key));
+                    let lower_value = maybe!(get(cx, object, lower_key));
+                    let upper_value = maybe!(get(cx, object, upper_key));
 
-                    maybe!(set(cx, object, &lower_key, upper_value, true));
-                    maybe!(set(cx, object, &upper_key, lower_value, true));
+                    maybe!(set(cx, object, lower_key, upper_value, true));
+                    maybe!(set(cx, object, upper_key, lower_value, true));
                 }
                 (true, false) => {
-                    let lower_value = maybe!(get(cx, object, &lower_key));
+                    let lower_value = maybe!(get(cx, object, lower_key));
 
-                    maybe!(delete_property_or_throw(cx, object, &lower_key));
-                    maybe!(set(cx, object, &upper_key, lower_value, true));
+                    maybe!(delete_property_or_throw(cx, object, lower_key));
+                    maybe!(set(cx, object, upper_key, lower_value, true));
                 }
                 (false, true) => {
-                    let upper_value = maybe!(get(cx, object, &upper_key));
+                    let upper_value = maybe!(get(cx, object, upper_key));
 
-                    maybe!(set(cx, object, &lower_key, upper_value, true));
-                    maybe!(delete_property_or_throw(cx, object, &upper_key));
+                    maybe!(set(cx, object, lower_key, upper_value, true));
+                    maybe!(delete_property_or_throw(cx, object, upper_key));
                 }
                 (false, false) => {}
             }
@@ -1191,28 +1191,28 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            maybe!(set(cx, object, &cx.names.length(), Value::smi(0), true));
+            maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
             return Value::undefined().into();
         }
 
         let first_key = PropertyKey::array_index(cx, 0);
-        let first = maybe!(get(cx, object, &first_key));
+        let first = maybe!(get(cx, object, first_key));
 
         for i in 1..length {
             let from_key = PropertyKey::from_u64(cx, i);
             let to_key = PropertyKey::from_u64(cx, i - 1);
 
-            if maybe!(has_property(cx, object, &from_key)) {
-                let from_value = maybe!(get(cx, object, &from_key));
-                maybe!(set(cx, object, &to_key, from_value, true));
+            if maybe!(has_property(cx, object, from_key)) {
+                let from_value = maybe!(get(cx, object, from_key));
+                maybe!(set(cx, object, to_key, from_value, true));
             } else {
-                maybe!(delete_property_or_throw(cx, object, &to_key));
+                maybe!(delete_property_or_throw(cx, object, to_key));
             }
         }
 
         let last_key = PropertyKey::from_u64(cx, length - 1);
-        maybe!(delete_property_or_throw(cx, object, &last_key));
-        maybe!(set(cx, object, &cx.names.length(), Value::from(length - 1), true));
+        maybe!(delete_property_or_throw(cx, object, last_key));
+        maybe!(set(cx, object, cx.names.length(), Value::from(length - 1), true));
 
         first.into()
     }
@@ -1262,16 +1262,16 @@ impl ArrayPrototype {
 
         for i in start_index..end_index {
             let from_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &from_key)) {
-                let value = maybe!(get(cx, object, &from_key));
+            if maybe!(has_property(cx, object, from_key)) {
+                let value = maybe!(get(cx, object, from_key));
                 let to_key = PropertyKey::from_u64(cx, to_index);
-                maybe!(create_data_property_or_throw(cx, object, &to_key, value));
+                maybe!(create_data_property_or_throw(cx, object, to_key, value));
             }
 
             to_index += 1;
         }
 
-        maybe!(set(cx, array, &cx.names.length(), Value::from(to_index), true));
+        maybe!(set(cx, array, cx.names.length(), Value::from(to_index), true));
 
         array.into()
     }
@@ -1296,8 +1296,8 @@ impl ArrayPrototype {
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
-            if maybe!(has_property(cx, object, &index_key)) {
-                let value = maybe!(get(cx, object, &index_key));
+            if maybe!(has_property(cx, object, index_key)) {
+                let value = maybe!(get(cx, object, index_key));
 
                 let index_value = Value::from(i);
                 let arguments = [value, index_value, object.into()];
@@ -1354,14 +1354,14 @@ impl ArrayPrototype {
 
         for i in 0..actual_delete_count {
             let from_key = PropertyKey::from_u64(cx, start_index + i);
-            if maybe!(has_property(cx, object, &from_key)) {
-                let from_value = maybe!(get(cx, object, &from_key));
+            if maybe!(has_property(cx, object, from_key)) {
+                let from_value = maybe!(get(cx, object, from_key));
                 let to_key = PropertyKey::from_u64(cx, i);
-                maybe!(create_data_property_or_throw(cx, array, &to_key, from_value));
+                maybe!(create_data_property_or_throw(cx, array, to_key, from_value));
             }
         }
 
-        maybe!(set(cx, array, &cx.names.length(), Value::from(actual_delete_count), true));
+        maybe!(set(cx, array, cx.names.length(), Value::from(actual_delete_count), true));
 
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {
@@ -1369,28 +1369,28 @@ impl ArrayPrototype {
                 let from_key = PropertyKey::from_u64(cx, i + actual_delete_count);
                 let to_key = PropertyKey::from_u64(cx, i + insert_count);
 
-                if maybe!(has_property(cx, object, &from_key)) {
-                    let from_value = maybe!(get(cx, object, &from_key));
-                    maybe!(set(cx, object, &to_key, from_value, true));
+                if maybe!(has_property(cx, object, from_key)) {
+                    let from_value = maybe!(get(cx, object, from_key));
+                    maybe!(set(cx, object, to_key, from_value, true));
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                    maybe!(delete_property_or_throw(cx, object, to_key));
                 }
             }
 
             for i in (new_length..length).rev() {
                 let key = PropertyKey::from_u64(cx, i);
-                maybe!(delete_property_or_throw(cx, object, &key));
+                maybe!(delete_property_or_throw(cx, object, key));
             }
         } else {
             for i in (start_index..(length - actual_delete_count)).rev() {
                 let from_key = PropertyKey::from_u64(cx, i + actual_delete_count);
                 let to_key = PropertyKey::from_u64(cx, i + insert_count);
 
-                if maybe!(has_property(cx, object, &from_key)) {
-                    let from_value = maybe!(get(cx, object, &from_key));
-                    maybe!(set(cx, object, &to_key, from_value, true));
+                if maybe!(has_property(cx, object, from_key)) {
+                    let from_value = maybe!(get(cx, object, from_key));
+                    maybe!(set(cx, object, to_key, from_value, true));
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                    maybe!(delete_property_or_throw(cx, object, to_key));
                 }
             }
         }
@@ -1399,11 +1399,11 @@ impl ArrayPrototype {
         if arguments.len() > 2 {
             for (i, item) in (&arguments[2..]).iter().enumerate() {
                 let key = PropertyKey::from_u64(cx, start_index + i as u64);
-                maybe!(set(cx, object, &key, *item, true));
+                maybe!(set(cx, object, key, *item, true));
             }
         }
 
-        maybe!(set(cx, object, &cx.names.length(), Value::from(new_length), true));
+        maybe!(set(cx, object, cx.names.length(), Value::from(new_length), true));
 
         array.into()
     }
@@ -1427,11 +1427,11 @@ impl ArrayPrototype {
             }
 
             let key = PropertyKey::from_u64(cx, i);
-            let next_element = maybe!(get(cx, object, &key));
+            let next_element = maybe!(get(cx, object, key));
 
             if !next_element.is_nullish() {
                 let string_result =
-                    maybe!(invoke(cx, next_element, &cx.names.to_locale_string(), &[]));
+                    maybe!(invoke(cx, next_element, cx.names.to_locale_string(), &[]));
                 let string_result = maybe!(to_string(cx, string_result));
 
                 result = StringValue::concat(cx, result, string_result);
@@ -1449,7 +1449,7 @@ impl ArrayPrototype {
         _: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let array = maybe!(to_object(cx, this_value));
-        let func = maybe!(get(cx, array, &cx.names.join()));
+        let func = maybe!(get(cx, array, cx.names.join()));
 
         let func = if is_callable(func) {
             func.as_object()
@@ -1481,22 +1481,22 @@ impl ArrayPrototype {
                 let from_key = PropertyKey::from_u64(cx, i);
                 let to_key = PropertyKey::from_u64(cx, i + num_arguments);
 
-                if maybe!(has_property(cx, object, &from_key)) {
-                    let from_value = maybe!(get(cx, object, &from_key));
-                    maybe!(set(cx, object, &to_key, from_value, true));
+                if maybe!(has_property(cx, object, from_key)) {
+                    let from_value = maybe!(get(cx, object, from_key));
+                    maybe!(set(cx, object, to_key, from_value, true));
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, &to_key));
+                    maybe!(delete_property_or_throw(cx, object, to_key));
                 }
             }
 
             for (i, argument) in arguments.iter().enumerate() {
                 let key = PropertyKey::from_u64(cx, i as u64);
-                maybe!(set(cx, object, &key, *argument, true));
+                maybe!(set(cx, object, key, *argument, true));
             }
         }
 
         let new_length = Value::from(length + num_arguments);
-        maybe!(set(cx, object, &cx.names.length(), new_length, true));
+        maybe!(set(cx, object, cx.names.length(), new_length, true));
 
         new_length.into()
     }
@@ -1516,17 +1516,17 @@ impl ArrayPrototype {
     fn create_unscopables(cx: &mut Context) -> Gc<ObjectValue> {
         let list = ordinary_object_create_optional_proto(cx, None).into();
 
-        must!(create_data_property_or_throw(cx, list, &cx.names.at(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.copy_within(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.entries(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.fill(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.find(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.find_index(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.flat(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.flat_map(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.includes(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.keys(), true.into()));
-        must!(create_data_property_or_throw(cx, list, &cx.names.values(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.at(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.entries(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.fill(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.find(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.find_index(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.flat(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.includes(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.keys(), true.into()));
+        must!(create_data_property_or_throw(cx, list, cx.names.values(), true.into()));
 
         list
     }

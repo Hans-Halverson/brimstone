@@ -26,9 +26,9 @@ impl SymbolPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once SymbolConstructor has been created
-        object.intrinsic_getter(cx, &cx.names.description(), Self::get_description, realm);
-        object.intrinsic_func(cx, &cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, &cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_getter(cx, cx.names.description(), Self::get_description, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
@@ -38,7 +38,7 @@ impl SymbolPrototype {
             cx,
             Self::to_primitive,
             1,
-            &to_primitive_name_key,
+            to_primitive_name_key,
             Some(realm),
             None,
             None,
@@ -46,7 +46,7 @@ impl SymbolPrototype {
         .into();
         object.set_property(
             cx,
-            &to_primitive_key,
+            to_primitive_key,
             Property::data(to_primitive_func, false, false, true),
         );
 
@@ -54,7 +54,7 @@ impl SymbolPrototype {
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(cx.names.symbol().as_string().into(), false, false, true),
         );
 

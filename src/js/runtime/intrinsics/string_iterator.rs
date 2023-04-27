@@ -55,14 +55,14 @@ impl StringIteratorPrototype {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
-        object.intrinsic_func(cx, &cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
         // 22.1.5.1.2 %StringIteratorPrototype% [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         let to_string_tag_value = cx.alloc_string(String::from("String Iterator")).into();
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
         );
 

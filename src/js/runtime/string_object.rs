@@ -47,7 +47,7 @@ impl StringObject {
         // String objects have an immutable length property
         object.object().set_property(
             cx,
-            &cx.names.length(),
+            cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );
 
@@ -73,7 +73,7 @@ impl StringObject {
         // String objects have an immutable length property
         object.object().set_property(
             cx,
-            &cx.names.length(),
+            cx.names.length(),
             Property::data((string_data.len() as f64).into(), false, false, false),
         );
 
@@ -96,7 +96,7 @@ impl Gc<StringObject> {
     fn string_get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> Option<PropertyDescriptor> {
         if key.is_symbol() {
             return None;
@@ -125,7 +125,7 @@ impl VirtualObject for Gc<StringObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let desc = ordinary_get_own_property(self.object(), key);
         if desc.is_none() {
@@ -139,7 +139,7 @@ impl VirtualObject for Gc<StringObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);

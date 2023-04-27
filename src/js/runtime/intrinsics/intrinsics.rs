@@ -233,17 +233,17 @@ impl Intrinsics {
 
         // Properties of basic intrinsics
         let object_prototype = self.get(Intrinsic::ObjectPrototype);
-        let object_prototype_to_string = must!(get(cx, object_prototype, &cx.names.to_string()));
+        let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
         register_existing_intrinsic!(
             ObjectPrototypeToString,
             object_prototype_to_string.as_object()
         );
 
         let array_prototype = self.get(Intrinsic::ArrayPrototype);
-        let array_prototype_values = must!(get(cx, array_prototype, &cx.names.values()));
+        let array_prototype_values = must!(get(cx, array_prototype, cx.names.values()));
         register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
-        let array_prototype_to_string = must!(get(cx, array_prototype, &cx.names.to_string()));
+        let array_prototype_to_string = must!(get(cx, array_prototype, cx.names.to_string()));
         register_existing_intrinsic!(ArrayPrototypeToString, array_prototype_to_string.as_object());
 
         // Native errors
@@ -307,7 +307,7 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);
-        must!(prototype_object.define_own_property(cx, &cx.names.constructor(), constructor_desc));
+        must!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
     }
 }
 
@@ -329,7 +329,7 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
-        &cx.names.length(),
+        cx.names.length(),
         length_desc,
     ));
 
@@ -339,7 +339,7 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),
-        &cx.names.name(),
+        cx.names.name(),
         name_desc,
     ));
 
@@ -356,9 +356,9 @@ fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, r
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, &cx.names.caller(), caller_desc));
+    must!(define_property_or_throw(cx, func, cx.names.caller(), caller_desc));
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, &cx.names.arguments(), arguments_desc,));
+    must!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc,));
 }

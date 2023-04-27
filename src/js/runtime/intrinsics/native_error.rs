@@ -33,7 +33,7 @@ macro_rules! create_native_error {
                 object_ordinary_init(cx, object.object(), ObjectKind::ErrorObject, prototype);
 
                 let message_value = cx.alloc_string(message).into();
-                object.intrinsic_data_prop(cx, &cx.names.message(), message_value);
+                object.intrinsic_data_prop(cx, cx.names.message(), message_value);
 
                 object
             }
@@ -65,7 +65,7 @@ macro_rules! create_native_error {
                     cx,
                     Self::construct,
                     1,
-                    &cx.names.$rust_name(),
+                    cx.names.$rust_name(),
                     Some(realm),
                     Some(error_constructor),
                     None,
@@ -74,7 +74,7 @@ macro_rules! create_native_error {
                 func.set_is_constructor();
                 func.set_property(
                     cx,
-                    &cx.names.prototype(),
+                    cx.names.prototype(),
                     Property::data(
                         realm.get_intrinsic(Intrinsic::$prototype).into(),
                         false,
@@ -108,7 +108,7 @@ macro_rules! create_native_error {
                     create_non_enumerable_data_property_or_throw(
                         cx,
                         object,
-                        &cx.names.message(),
+                        cx.names.message(),
                         message_string.into(),
                     );
                 }
@@ -131,7 +131,7 @@ macro_rules! create_native_error {
                 object.intrinsic_name_prop(cx, stringify!($native_error));
                 object.intrinsic_data_prop(
                     cx,
-                    &cx.names.message(),
+                    cx.names.message(),
                     cx.names.empty_string().as_string().into(),
                 );
 

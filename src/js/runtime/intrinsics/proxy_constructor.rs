@@ -28,7 +28,7 @@ impl ProxyConstructor {
             cx,
             Self::construct,
             2,
-            &cx.names.proxy(),
+            cx.names.proxy(),
             Some(realm),
             None,
             None,
@@ -36,7 +36,7 @@ impl ProxyConstructor {
 
         func.set_is_constructor();
 
-        func.intrinsic_func(cx, &cx.names.revocable(), Self::revocable, 2, realm);
+        func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm);
 
         func
     }
@@ -91,14 +91,14 @@ impl ProxyConstructor {
         let revoke_environment = RevokeEnvironment::new(cx, Some(proxy));
 
         let mut revoker =
-            BuiltinFunction::create(cx, revoke, 0, &cx.names.empty_string(), None, None, None);
+            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), None, None, None);
         revoker.set_closure_environment(revoke_environment);
 
         let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
         let result: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
 
-        must!(create_data_property_or_throw(cx, result, &cx.names.proxy_(), proxy.into()));
-        must!(create_data_property_or_throw(cx, result, &cx.names.revoke(), revoker.into()));
+        must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));
+        must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));
 
         result.into()
     }

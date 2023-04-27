@@ -80,7 +80,7 @@ impl DataViewConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.data_view(),
+            cx.names.data_view(),
             Some(realm),
             None,
             None,
@@ -89,7 +89,7 @@ impl DataViewConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::DataViewPrototype).into(),
                 false,

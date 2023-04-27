@@ -27,7 +27,7 @@ impl SetPrototype {
             cx,
             Self::values,
             0,
-            &cx.names.values(),
+            cx.names.values(),
             Some(realm),
             None,
             None,
@@ -35,25 +35,25 @@ impl SetPrototype {
         .into();
 
         // Constructor property is added once SetConstructor has been created
-        object.intrinsic_func(cx, &cx.names.add(), Self::add, 1, realm);
-        object.intrinsic_func(cx, &cx.names.clear(), Self::clear, 0, realm);
-        object.intrinsic_func(cx, &cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_func(cx, &cx.names.entries(), Self::entries, 0, realm);
-        object.intrinsic_func(cx, &cx.names.for_each(), Self::for_each, 1, realm);
-        object.intrinsic_func(cx, &cx.names.has(), Self::has, 1, realm);
-        object.intrinsic_data_prop(cx, &cx.names.keys(), values_function);
-        object.intrinsic_getter(cx, &cx.names.size(), Self::size, realm);
-        object.intrinsic_data_prop(cx, &cx.names.values(), values_function);
+        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm);
+        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm);
+        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
+        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
+        object.intrinsic_data_prop(cx, cx.names.keys(), values_function);
+        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm);
+        object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
         // 24.2.3.11 Set.prototype [ @@iterator ]
         let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-        object.set_property(cx, &iterator_key, Property::data(values_function, true, false, true));
+        object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
         // 24.2.3.12 Set.prototype [ @@toStringTag ]
         let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
         object.set_property(
             cx,
-            &to_string_tag_key,
+            to_string_tag_key,
             Property::data(cx.names.set().as_string().into(), false, false, true),
         );
 

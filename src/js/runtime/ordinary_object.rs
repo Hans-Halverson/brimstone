@@ -106,7 +106,7 @@ impl VirtualObject for Gc<OrdinaryObject> {
     fn get_own_property(
         &self,
         _: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self.object(), key).into()
     }
@@ -115,19 +115,19 @@ impl VirtualObject for Gc<OrdinaryObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self.object(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         ordinary_has_property(cx, self.object(), key)
     }
 
     // 10.1.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: &PropertyKey, receiver: Value) -> EvalResult<Value> {
+    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
         ordinary_get(cx, self.object(), key, receiver)
     }
 
@@ -135,7 +135,7 @@ impl VirtualObject for Gc<OrdinaryObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: &PropertyKey,
+        key: PropertyKey,
         value: Value,
         receiver: Value,
     ) -> EvalResult<bool> {
@@ -143,7 +143,7 @@ impl VirtualObject for Gc<OrdinaryObject> {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: &PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
         ordinary_delete(cx, self.object(), key)
     }
 
@@ -156,7 +156,7 @@ impl VirtualObject for Gc<OrdinaryObject> {
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> Option<PropertyDescriptor> {
     match object.get_property(key) {
         None => None,
@@ -185,7 +185,7 @@ pub fn ordinary_get_own_property(
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(cx, key));
@@ -205,7 +205,7 @@ pub fn is_compatible_property_descriptor(
     validate_and_apply_property_descriptor(
         cx,
         None,
-        &cx.names.empty_string(),
+        cx.names.empty_string(),
         is_extensible,
         desc,
         current_desc,
@@ -216,7 +216,7 @@ pub fn is_compatible_property_descriptor(
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<Gc<ObjectValue>>,
-    key: &PropertyKey,
+    key: PropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -368,7 +368,7 @@ pub fn validate_and_apply_property_descriptor(
 pub fn ordinary_has_property(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(cx, key));
     if own_property.is_some() {
@@ -386,7 +386,7 @@ pub fn ordinary_has_property(
 pub fn ordinary_get(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     receiver: Value,
 ) -> EvalResult<Value> {
     let desc = maybe!(object.get_own_property(cx, key));
@@ -411,7 +411,7 @@ pub fn ordinary_get(
 pub fn ordinary_set(
     cx: &mut Context,
     object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
     value: Value,
     receiver: Value,
 ) -> EvalResult<bool> {
@@ -465,7 +465,7 @@ pub fn ordinary_set(
 pub fn ordinary_delete(
     cx: &mut Context,
     mut object: Gc<ObjectValue>,
-    key: &PropertyKey,
+    key: PropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {
@@ -639,7 +639,7 @@ pub fn get_prototype_from_constructor(
     constructor: Gc<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Gc<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor.into(), &cx.names.prototype()));
+    let proto = maybe!(get(cx, constructor.into(), cx.names.prototype()));
     if proto.is_object() {
         proto.as_object().into()
     } else {

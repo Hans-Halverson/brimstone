@@ -89,7 +89,7 @@ impl ArrayBufferConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.array_buffer(),
+            cx.names.array_buffer(),
             Some(realm),
             None,
             None,
@@ -98,7 +98,7 @@ impl ArrayBufferConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::ArrayBufferPrototype).into(),
                 false,
@@ -108,7 +108,7 @@ impl ArrayBufferConstructor {
         );
 
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func
     }

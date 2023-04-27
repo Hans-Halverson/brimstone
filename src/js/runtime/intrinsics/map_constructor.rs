@@ -64,7 +64,7 @@ impl MapConstructor {
             cx,
             Self::construct,
             1,
-            &cx.names.map(),
+            cx.names.map(),
             Some(realm),
             None,
             None,
@@ -73,7 +73,7 @@ impl MapConstructor {
         func.set_is_constructor();
         func.set_property(
             cx,
-            &cx.names.prototype(),
+            cx.names.prototype(),
             Property::data(
                 realm.get_intrinsic(Intrinsic::MapPrototype).into(),
                 false,
@@ -83,7 +83,7 @@ impl MapConstructor {
         );
 
         let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
-        func.intrinsic_getter(cx, &species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func
     }
@@ -109,7 +109,7 @@ impl MapConstructor {
             return map_object.into();
         }
 
-        let adder = maybe!(get(cx, map_object, &cx.names.set_()));
+        let adder = maybe!(get(cx, map_object, cx.names.set_()));
         if !is_callable(adder) {
             return type_error_(cx, "map must contain a set method");
         }
@@ -144,7 +144,7 @@ fn add_entries_from_iterable(
 
         // Extract key from entry, returning throw completion on error
         let key_index = PropertyKey::array_index(cx, 0);
-        let key_result = get(cx, entry, &key_index);
+        let key_result = get(cx, entry, key_index);
         let key = match key_result {
             EvalResult::Ok(key) => key,
             EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
@@ -152,7 +152,7 @@ fn add_entries_from_iterable(
 
         // Extract value from entry, returning throw completion on error
         let value_index = PropertyKey::array_index(cx, 1);
-        let value_result = get(cx, entry, &value_index);
+        let value_result = get(cx, entry, value_index);
         let value = match value_result {
             EvalResult::Ok(value) => value,
             EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),

@@ -484,7 +484,7 @@ pub fn set_function_name(
     prefix: Option<&str>,
 ) {
     // Convert name to string value, property formatting symbol name
-    let name_string = match name.as_symbol() {
+    let name_string = match name.as_symbol_opt() {
         Some(sym) => {
             if let Some(description) = sym.description() {
                 let left_paren = cx.alloc_string(String::from("["));
@@ -495,7 +495,7 @@ pub fn set_function_name(
                 cx.names.empty_string().as_string()
             }
         }
-        None => name.non_symbol_to_string(cx),
+        None => name.to_value(cx).as_string(),
     };
 
     // Add prefix to name

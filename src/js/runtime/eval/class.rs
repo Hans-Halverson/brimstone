@@ -421,12 +421,8 @@ fn binding_class_declaration_evaluation(
 ) -> EvalResult<Gc<Function>> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
-        let value = maybe!(class_definition_evaluation(
-            cx,
-            class,
-            Some(name_value),
-            &PropertyKey::string(name_value)
-        ));
+        let name_key = PropertyKey::string(cx, name_value);
+        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), &name_key));
 
         let lexical_env = cx.current_execution_context().lexical_env;
         maybe!(initialize_bound_name(cx, name_value, value.into(), Some(lexical_env)));
@@ -446,12 +442,8 @@ pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completio
 pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<Value> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
-        let value = maybe!(class_definition_evaluation(
-            cx,
-            class,
-            Some(name_value),
-            &PropertyKey::string(name_value)
-        ));
+        let name_key = PropertyKey::string(cx, name_value);
+        let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), &name_key));
         value.into()
     } else {
         let value = maybe!(class_definition_evaluation(cx, class, None, &cx.names.empty_string()));

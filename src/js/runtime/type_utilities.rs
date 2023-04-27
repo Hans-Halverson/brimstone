@@ -796,13 +796,13 @@ pub fn to_property_key(cx: &mut Context, value: Value) -> EvalResult<PropertyKey
 
     let key = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::String));
     if key.is_string() {
-        return PropertyKey::string(key.as_string()).into();
+        return PropertyKey::string(cx, key.as_string()).into();
     } else if key.is_symbol() {
         return PropertyKey::symbol(key.as_symbol()).into();
     }
 
     let string_key = maybe!(to_string(cx, key));
-    PropertyKey::string(string_key).into()
+    PropertyKey::string(cx, string_key).into()
 }
 
 // 7.2.14 IsLessThan

@@ -1,84 +1,72 @@
-use std::{cell::RefCell, fmt, hash};
+use std::{fmt, hash};
 
 use crate::maybe;
 
 use super::{
-    numeric_constants::MAX_U32_AS_F64, string_parsing::parse_string_to_u32,
-    string_value::StringValue, to_string, type_utilities::is_integral_number, value::SymbolValue,
-    Context, EvalResult, Gc, Value,
+    interned_strings::InternedStrings, numeric_constants::MAX_U32_AS_F64,
+    object_descriptor::ObjectKind, string_parsing::parse_string_to_u32, string_value::StringValue,
+    to_string, type_utilities::is_integral_number, value::SymbolValue, Context, EvalResult, Gc,
+    Value,
 };
 
 #[derive(Clone)]
 pub struct PropertyKey {
-    data: RefCell<KeyData>,
-}
-
-#[derive(Clone)]
-enum KeyData {
-    String(StringData),
-    Symbol { value: Gc<SymbolValue> },
-    // Array index property key
-    ArrayIndex { value: u32 },
-}
-
-#[derive(Clone)]
-struct StringData {
-    value: Gc<StringValue>,
-    // Wether this string has been checked to see if it is a number yet. If this string could
-    // be a number this is initially true, then will either be switched to false if the string
-    // is not a number, or the data will be modified to be a number property key.
-    can_be_number: bool,
+    // A property key must be either an interned string or a symbol for named properties,
+    // or a smi if key is a valid array index. Note that smis technically have an i32 range but
+    // array indices have a u32 range, but we can cast between signed an unsigned values appropriately.
+    value: Value,
 }
 
 impl PropertyKey {
-    pub const fn uninit() -> PropertyKey {
-        PropertyKey::string(Gc::uninit())
+    pub fn uninit() -> PropertyKey {
+        PropertyKey { value: Value::symbol(Gc::uninit()) }
     }
 
     #[inline]
-    pub const fn string(value: Gc<StringValue>) -> PropertyKey {
-        PropertyKey {
-            data: RefCell::new(KeyData::String(StringData { value, can_be_number: true })),
+    pub fn string(cx: &mut Context, value: Gc<StringValue>) -> PropertyKey {
+        // String value may represent an array index
+        match parse_string_to_u32(value) {
+            None => PropertyKey::string_not_array_index(cx, value),
+            Some(u32::MAX) => PropertyKey::string_not_array_index(cx, value),
+            Some(array_index) => PropertyKey::array_index(cx, array_index),
         }
     }
 
-    /// Create a string property key that is known to not be a number property. Be sure to not pass
-    /// string property keys that may be a number to this function.
+    /// Create a string property key that is known to not be an array index. Be sure to not pass
+    /// string property keys that may be an array index to this function.
     #[inline]
-    pub const fn string_not_number(value: Gc<StringValue>) -> PropertyKey {
-        PropertyKey {
-            data: RefCell::new(KeyData::String(StringData { value, can_be_number: false })),
-        }
+    pub fn string_not_array_index(cx: &mut Context, value: Gc<StringValue>) -> PropertyKey {
+        // Enforce that all string property keys are interned
+        PropertyKey { value: InternedStrings::get(cx, value).into() }
     }
 
     #[inline]
-    pub const fn symbol(value: Gc<SymbolValue>) -> PropertyKey {
-        PropertyKey { data: RefCell::new(KeyData::Symbol { value }) }
+    pub fn symbol(value: Gc<SymbolValue>) -> PropertyKey {
+        PropertyKey { value: Value::symbol(value) }
     }
 
     #[inline]
     pub fn array_index(cx: &mut Context, value: u32) -> PropertyKey {
         if value == u32::MAX {
-            return PropertyKey::string_not_number(cx.alloc_string(value.to_string()));
+            let string_value = cx.alloc_string(value.to_string());
+            return PropertyKey::string_not_array_index(cx, string_value);
         }
 
-        PropertyKey { data: RefCell::new(KeyData::ArrayIndex { value }) }
+        // Intentionally store u32 value in i32 smi payload
+        PropertyKey { value: Value::smi(value as i32) }
     }
 
     pub const fn from_u8(value: u8) -> PropertyKey {
-        PropertyKey {
-            data: RefCell::new(KeyData::ArrayIndex { value: value as u32 }),
-        }
+        PropertyKey { value: Value::smi(value as i32) }
     }
 
     pub fn from_u64(cx: &mut Context, value: u64) -> PropertyKey {
-        if value > u32::MAX as u64 {
-            return PropertyKey::string_not_number(cx.alloc_string(value.to_string()));
+        if value >= u32::MAX as u64 {
+            let string_value = cx.alloc_string(value.to_string());
+            return PropertyKey::string_not_array_index(cx, string_value);
         }
 
-        PropertyKey {
-            data: RefCell::new(KeyData::ArrayIndex { value: value as u32 }),
-        }
+        PropertyKey { value: Value::smi(value as u32 as i32) }
     }
 
     pub fn from_value(cx: &mut Context, value: Value) -> EvalResult<PropertyKey> {
@@ -92,132 +80,76 @@ impl PropertyKey {
         if value.is_symbol() {
             PropertyKey::symbol(value.as_symbol()).into()
         } else {
-            PropertyKey::string(maybe!(to_string(cx, value))).into()
+            let string_value = maybe!(to_string(cx, value));
+            PropertyKey::string(cx, string_value).into()
         }
     }
 
     #[inline]
     pub fn is_array_index(&self) -> bool {
-        match &*self.data.borrow() {
-            KeyData::String(StringData { can_be_number: true, .. }) => {}
-            KeyData::String(StringData { can_be_number: false, .. }) | KeyData::Symbol { .. } => {
-                return false
-            }
-            KeyData::ArrayIndex { .. } => return true,
-        }
-
-        return self.check_is_number();
+        self.value.is_smi()
     }
 
     #[inline]
     pub fn as_array_index(&self) -> u32 {
-        match &*self.data.borrow() {
-            KeyData::ArrayIndex { value } => *value,
-            _ => unreachable!("expected array index"),
-        }
+        // A u32 value was stored in the i32 smi payload
+        self.value.as_smi() as u32
     }
 
     #[inline]
     pub fn is_string(&self) -> bool {
-        match &*self.data.borrow() {
-            KeyData::String(StringData { can_be_number: true, .. }) => {}
-            KeyData::String(StringData { can_be_number: false, .. }) => return true,
-            KeyData::Symbol { .. } | KeyData::ArrayIndex { .. } => return false,
-        }
-
-        return !self.check_is_number();
+        self.value.is_string()
     }
 
     #[inline]
     pub fn as_string(&self) -> Gc<StringValue> {
-        match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => *value,
-            _ => unreachable!("expected string key"),
-        }
+        self.value.as_string()
     }
 
     #[inline]
     pub fn as_string_opt(&self) -> Option<Gc<StringValue>> {
-        match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => Some(*value),
-            _ => None,
+        if self.value.is_string() {
+            Some(self.value.as_string())
+        } else {
+            None
         }
     }
 
     #[inline]
-    pub fn as_symbol(&self) -> Option<Gc<SymbolValue>> {
-        return match &*self.data.borrow() {
-            KeyData::Symbol { value } => Some(*value),
-            _ => None,
-        };
+    pub fn is_symbol(&self) -> bool {
+        self.value.is_symbol()
     }
 
     #[inline]
-    pub fn non_symbol_to_string(&self, cx: &mut Context) -> Gc<StringValue> {
-        return match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => *value,
-            KeyData::ArrayIndex { value } => cx.alloc_string(value.to_string()),
-            KeyData::Symbol { .. } => unreachable!("expected non-symbol property key"),
-        };
+    pub fn as_symbol(&self) -> Gc<SymbolValue> {
+        self.value.as_symbol()
     }
 
+    #[inline]
+    pub fn as_symbol_opt(&self) -> Option<Gc<SymbolValue>> {
+        if self.value.is_symbol() {
+            Some(self.value.as_symbol())
+        } else {
+            None
+        }
+    }
+
+    /// Convert this property key to a string or symbol value as defined in the spec. All array
+    /// index keys will be converted to strings.
     #[inline]
     pub fn to_value(&self, cx: &mut Context) -> Value {
-        if let Some(symbol_value) = self.as_symbol() {
-            symbol_value.into()
+        if self.value.is_smi() {
+            let array_index_string = self.as_array_index().to_string();
+            cx.alloc_string(array_index_string).into()
         } else {
-            self.non_symbol_to_string(cx).into()
+            self.value
         }
-    }
-
-    #[inline]
-    fn check_is_number(&self) -> bool {
-        let number_key = match &mut *self.data.borrow_mut() {
-            KeyData::String(string_key @ StringData { can_be_number: true, .. }) => {
-                let string = string_key.value;
-
-                // Try parsing as integer index, caching failure
-                match parse_string_to_u32(string) {
-                    None => {
-                        string_key.can_be_number = false;
-                        return false;
-                    }
-                    // 2 ^ 32 - 1 is outside the array index range
-                    Some(array_index) if array_index == u32::MAX => {
-                        string_key.can_be_number = false;
-                        return false;
-                    }
-                    Some(array_index) => array_index,
-                }
-            }
-            _ => return false,
-        };
-
-        self.data.replace(KeyData::ArrayIndex { value: number_key });
-        true
     }
 }
 
 impl PartialEq for PropertyKey {
     fn eq(&self, other: &Self) -> bool {
-        if std::ptr::eq(self, other) {
-            return true;
-        }
-
-        self.check_is_number();
-        other.check_is_number();
-
-        match (&*self.data.borrow(), &*other.data.borrow()) {
-            (
-                KeyData::String(StringData { value: str1, .. }),
-                KeyData::String(StringData { value: str2, .. }),
-            ) => str1 == str2,
-            (KeyData::ArrayIndex { value: num1 }, KeyData::ArrayIndex { value: num2 }) => {
-                *num1 == *num2
-            }
-            (KeyData::Symbol { value: sym1 }, KeyData::Symbol { value: sym2 }) => sym1.ptr_eq(sym2),
-            _ => false,
-        }
+        self.value.as_raw_bits() == other.value.as_raw_bits()
     }
 }
 
@@ -225,31 +157,27 @@ impl Eq for PropertyKey {}
 
 impl hash::Hash for PropertyKey {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.check_is_number();
-
-        match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => {
-                value.hash(state);
-            }
-            KeyData::ArrayIndex { value } => {
-                value.hash(state);
-            }
-            KeyData::Symbol { value } => {
-                value.hash(state);
-            }
+        if self.is_array_index() {
+            self.as_array_index().hash(state);
+        } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
+            self.as_string().hash(state)
+        } else {
+            self.as_symbol().hash(state)
         }
     }
 }
 
 impl fmt::Display for PropertyKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &*self.data.borrow() {
-            KeyData::String(StringData { value, .. }) => value.fmt(f),
-            KeyData::Symbol { value } => match value.description() {
+        if self.is_array_index() {
+            write!(f, "{}", self.as_array_index())
+        } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
+            self.as_string().fmt(f)
+        } else {
+            match self.as_symbol().description() {
                 None => write!(f, "Symbol()"),
                 Some(description) => write!(f, "Symbol({})", description),
-            },
-            KeyData::ArrayIndex { value, .. } => write!(f, "{}", value),
+            }
         }
     }
 }

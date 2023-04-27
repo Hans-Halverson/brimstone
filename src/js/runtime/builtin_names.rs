@@ -31,7 +31,7 @@ macro_rules! builtin_names {
                 $(
                     self.names.$rust_name = {
                         let string_value = self.alloc_string(String::from($js_name));
-                        PropertyKey::string_not_number(string_value)
+                        PropertyKey::string_not_array_index(self, string_value)
                     };
                 )*
             }

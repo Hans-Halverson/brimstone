@@ -315,10 +315,11 @@ fn iterator_binding_initialization(
                     ReferenceOrBindingPattern::Reference(mut reference, initializer) => {
                         if value.is_undefined() {
                             if let Some(initializer) = initializer {
+                                let name_key = reference.name_as_property_key(cx);
                                 value = maybe!(eval_named_anonymous_function_or_expression_if(
                                     cx,
                                     initializer,
-                                    &reference.name_as_property_key(),
+                                    &name_key,
                                     || {
                                         // Only perform named evaluation if pattern is unparenthesized id
                                         let assign_pattern = pattern.to_assign();
@@ -453,12 +454,14 @@ pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue
 
 #[inline]
 pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
-    PropertyKey::string(InternedStrings::get_str(cx, &id.name))
+    let string_value = InternedStrings::get_str(cx, &id.name);
+    PropertyKey::string(cx, string_value)
 }
 
 #[inline]
 pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
-    PropertyKey::string(cx.alloc_string(format!("#{}", id.name)))
+    let private_string_value = cx.alloc_string(format!("#{}", id.name));
+    PropertyKey::string(cx, private_string_value)
 }
 
 // Initializers are represented as an assignment pattern as the value, wrapping the binding pattern.

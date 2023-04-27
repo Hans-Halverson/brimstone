@@ -180,14 +180,13 @@ pub fn function_declaration_instantiation(
         match patt {
             ast::Pattern::Id(id) => {
                 let name_value = id_string_value(cx, id);
+                let name_key = PropertyKey::string(cx, name_value);
                 let mut reference = maybe__!(resolve_binding(cx, name_value, binding_init_env));
 
                 if let Some(init) = init {
                     if value.is_undefined() {
                         value = maybe__!(eval_named_anonymous_function_or_expression(
-                            cx,
-                            init,
-                            &PropertyKey::string(name_value)
+                            cx, init, &name_key
                         ));
                     }
                 }
@@ -363,6 +362,7 @@ pub fn instantiate_ordinary_function_expression(
             let mut func_env = DeclarativeEnvironment::new(cx, Some(current_context.lexical_env));
 
             let name_value = id_string_value(cx, id);
+            let name_key = PropertyKey::string(cx, name_value);
             must!(func_env.create_immutable_binding(cx, name_value, false));
 
             let closure = ordinary_function_create(
@@ -374,7 +374,7 @@ pub fn instantiate_ordinary_function_expression(
                 current_context.private_env,
             );
 
-            set_function_name(cx, closure.into(), &PropertyKey::string(name_value), None);
+            set_function_name(cx, closure.into(), &name_key, None);
             make_constructor(cx, closure, None, None);
 
             must!(func_env.initialize_binding(cx, name_value, closure.into()));

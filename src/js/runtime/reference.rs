@@ -90,10 +90,10 @@ impl Reference {
         &self.base
     }
 
-    pub fn name_as_property_key(&self) -> PropertyKey {
+    pub fn name_as_property_key(&self, cx: &mut Context) -> PropertyKey {
         match self.base {
             ReferenceBase::Unresolvable { name, .. } | ReferenceBase::Env { name, .. } => {
-                PropertyKey::string(name)
+                PropertyKey::string(cx, name)
             }
             ReferenceBase::Property { ref property, .. } => property.clone(),
         }
@@ -143,7 +143,8 @@ impl Reference {
                 }
 
                 let global_obj = get_global_object(cx);
-                maybe!(set(cx, global_obj, &PropertyKey::string(name), value, false));
+                let property_key = PropertyKey::string(cx, name);
+                maybe!(set(cx, global_obj, &property_key, value, false));
 
                 return ().into();
             }
@@ -197,12 +198,13 @@ impl Reference {
     pub fn make_private_reference(
         cx: &mut Context,
         base_value: Value,
-        private_name_string: &str,
+        private_name_str: &str,
     ) -> Reference {
         let private_env = cx.current_execution_context().private_env.unwrap();
-        let private_name = private_env.resolve_private_identifier(private_name_string);
+        let private_name = private_env.resolve_private_identifier(private_name_str);
 
-        let property_key = PropertyKey::string(InternedStrings::get_str(cx, private_name_string));
+        let private_name_string_value = InternedStrings::get_str(cx, private_name_str);
+        let property_key = PropertyKey::string(cx, private_name_string_value);
 
         Reference {
             base: ReferenceBase::Property {

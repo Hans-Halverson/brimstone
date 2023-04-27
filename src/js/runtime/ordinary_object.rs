@@ -532,7 +532,7 @@ pub fn ordinary_own_string_symbol_property_keys(object: Gc<ObjectValue>, keys: &
 
     // Safe since we do not allocate on managed heap during iteration
     object.iter_named_property_keys_gc_unsafe(|property_key| {
-        if let Some(symbol_key) = property_key.as_symbol() {
+        if let Some(symbol_key) = property_key.as_symbol_opt() {
             keys.push(symbol_key.into());
         }
     });

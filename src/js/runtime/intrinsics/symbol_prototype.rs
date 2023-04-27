@@ -33,11 +33,12 @@ impl SymbolPrototype {
         // [Symbol.toPrimitive] property
         let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
         let to_primitive_name = cx.alloc_string(String::from("[Symbol.toPrimitive]"));
+        let to_primitive_name_key = PropertyKey::string(cx, to_primitive_name);
         let to_primitive_func = BuiltinFunction::create(
             cx,
             Self::to_primitive,
             1,
-            &PropertyKey::string_not_number(to_primitive_name),
+            &to_primitive_name_key,
             Some(realm),
             None,
             None,

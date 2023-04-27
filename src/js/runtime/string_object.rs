@@ -98,7 +98,7 @@ impl Gc<StringObject> {
         cx: &mut Context,
         key: &PropertyKey,
     ) -> Option<PropertyDescriptor> {
-        if key.as_symbol().is_some() {
+        if key.is_symbol() {
             return None;
         }
 

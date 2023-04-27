@@ -281,7 +281,7 @@ pub fn eval_property_name<'a>(
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
                 let string_value = InternedStrings::get_str(cx, lit.value.as_str());
-                PropertyKey::string(string_value)
+                PropertyKey::string(cx, string_value)
             }
             ast::Expression::Number(lit) => {
                 let key_value = Value::number(lit.value);
@@ -293,11 +293,11 @@ pub fn eval_property_name<'a>(
                 }
 
                 let string_value = cx.alloc_string(number_to_string(key_value.as_double()));
-                PropertyKey::string(string_value)
+                PropertyKey::string(cx, string_value)
             }
             ast::Expression::BigInt(lit) => {
                 let string_value = cx.alloc_string(lit.value.to_string());
-                PropertyKey::string(string_value)
+                PropertyKey::string(cx, string_value)
             }
             _ => unreachable!(),
         }
@@ -1546,10 +1546,11 @@ fn eval_assignment_expression(
 
     let result_value = match expr.operator {
         ast::AssignmentOperator::Equals => {
+            let name_key = reference.name_as_property_key(cx);
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key(),
+                &name_key,
                 is_non_parenthesized_id_predicate
             ))
         }
@@ -1619,10 +1620,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
+            let name_key = reference.name_as_property_key(cx);
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key(),
+                &name_key,
                 is_non_parenthesized_id_predicate,
             ))
         }
@@ -1632,10 +1634,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
+            let name_key = reference.name_as_property_key(cx);
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key(),
+                &name_key,
                 is_non_parenthesized_id_predicate
             ))
         }
@@ -1645,10 +1648,11 @@ fn eval_assignment_expression(
                 return left_value.into();
             }
 
+            let name_key = reference.name_as_property_key(cx);
             maybe!(eval_named_anonymous_function_or_expression_if(
                 cx,
                 &expr.right,
-                &reference.name_as_property_key(),
+                &name_key,
                 is_non_parenthesized_id_predicate
             ))
         }

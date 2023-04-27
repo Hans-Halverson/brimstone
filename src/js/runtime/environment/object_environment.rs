@@ -50,7 +50,7 @@ impl Environment for Gc<ObjectEnvironment> {
 
     // 9.1.1.2.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        let name_key = PropertyKey::string(name);
+        let name_key = PropertyKey::string(cx, name);
         if !maybe!(has_property(cx, self.binding_object, &name_key)) {
             return false.into();
         } else if !self.is_with_environment {
@@ -81,7 +81,8 @@ impl Environment for Gc<ObjectEnvironment> {
         can_delete: bool,
     ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
-        define_property_or_throw(cx, self.binding_object, &PropertyKey::string(name), prop_desc)
+        let name_key = PropertyKey::string(cx, name);
+        define_property_or_throw(cx, self.binding_object, &name_key, prop_desc)
     }
 
     // 9.1.1.2.3 CreateImmutableBinding
@@ -112,7 +113,7 @@ impl Environment for Gc<ObjectEnvironment> {
         value: Value,
         is_strict: bool,
     ) -> EvalResult<()> {
-        let name_key = PropertyKey::string(name);
+        let name_key = PropertyKey::string(cx, name);
         let still_exists = maybe!(has_property(cx, self.binding_object, &name_key));
         if !still_exists && is_strict {
             return err_not_defined_(cx, name);
@@ -129,7 +130,7 @@ impl Environment for Gc<ObjectEnvironment> {
         name: Gc<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Value> {
-        let name_key = PropertyKey::string(name);
+        let name_key = PropertyKey::string(cx, name);
         if !maybe!(has_property(cx, self.binding_object, &name_key)) {
             return if !is_strict {
                 Value::undefined().into()
@@ -143,7 +144,8 @@ impl Environment for Gc<ObjectEnvironment> {
 
     // 9.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
-        self.binding_object.delete(cx, &PropertyKey::string(name))
+        let name_key = PropertyKey::string(cx, name);
+        self.binding_object.delete(cx, &name_key)
     }
 
     // 9.1.1.2.8 HasThisBinding

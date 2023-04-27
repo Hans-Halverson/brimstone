@@ -7,6 +7,7 @@ use crate::{
         error::type_error_,
         function::get_argument,
         get,
+        interned_strings::InternedStrings,
         intrinsics::array_iterator::{ArrayIterator, ArrayIteratorKind},
         object_value::ObjectValue,
         property::Property,
@@ -627,7 +628,7 @@ impl TypedArrayPrototype {
 
         let separator = get_argument(arguments, 0);
         let separator = if separator.is_undefined() {
-            cx.get_interned_string(",")
+            InternedStrings::get_str(cx, ",")
         } else {
             maybe!(to_string(cx, separator))
         };
@@ -1090,7 +1091,7 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length();
 
         let mut result = cx.names.empty_string().as_string();
-        let separator = cx.get_interned_string(", ");
+        let separator = InternedStrings::get_str(cx, ", ");
 
         for i in 0..length {
             if i > 0 {

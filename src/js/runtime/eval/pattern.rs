@@ -17,6 +17,7 @@ use crate::{
             },
             execution_context::resolve_binding,
             gc::Gc,
+            interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             iterator::{
                 get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
@@ -447,12 +448,12 @@ pub fn destructuring_assignment_evaluation(
 
 #[inline]
 pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue> {
-    cx.get_interned_string(&id.name)
+    InternedStrings::get_str(cx, &id.name)
 }
 
 #[inline]
 pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
-    PropertyKey::string(cx.get_interned_string(&id.name))
+    PropertyKey::string(InternedStrings::get_str(cx, &id.name))
 }
 
 #[inline]

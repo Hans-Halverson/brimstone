@@ -45,6 +45,8 @@ pub enum StringWidth {
 struct OneByteString {
     ptr: *const u8,
     len: usize,
+    // Whether this is the canonical interned string for its code unit sequence
+    is_interned: bool,
 }
 
 /// A string where every code unit is represented by a u16. Equivalent to UTF-16, except that
@@ -54,6 +56,8 @@ struct OneByteString {
 struct TwoByteString {
     ptr: *const u16,
     len: usize,
+    // Whether this is the canonical interned string for its code unit sequence
+    is_interned: bool,
 }
 
 /// A string which is the concatenation of a left and right string. Will be lazily flattened when
@@ -125,7 +129,8 @@ impl StringValue {
         } else if !has_non_ascii_one_byte_chars {
             // If this string is pure ASCII then we can directly copy the UTF-8 string.
             let str_copy = str.clone();
-            let one_byte_string = OneByteString { ptr: str_copy.as_ptr(), len: length };
+            let one_byte_string =
+                OneByteString { ptr: str_copy.as_ptr(), len: length, is_interned: false };
 
             // Memory is managed by heap, and destructor is called when string is garbage collected.
             std::mem::forget(str_copy);
@@ -257,6 +262,33 @@ impl Gc<StringValue> {
 
                 hash_code
             }
+        }
+    }
+
+    pub fn is_interned(&self) -> bool {
+        match self.value() {
+            StringKind::Concat(_) => false,
+            StringKind::OneByte(str) => str.is_interned,
+            StringKind::TwoByte(str) => str.is_interned,
+        }
+    }
+
+    pub fn intern(&mut self) {
+        match self.value() {
+            StringKind::Concat(_) => {
+                self.flatten();
+                self.intern()
+            }
+            StringKind::OneByte(str) => self.value.set(StringKind::OneByte(OneByteString {
+                ptr: str.ptr,
+                len: str.len,
+                is_interned: true,
+            })),
+            StringKind::TwoByte(str) => self.value.set(StringKind::TwoByte(TwoByteString {
+                ptr: str.ptr,
+                len: str.len,
+                is_interned: true,
+            })),
         }
     }
 
@@ -970,7 +1002,7 @@ impl fmt::Display for Gc<StringValue> {
 
 impl PartialEq for Gc<StringValue> {
     fn eq(&self, other: &Self) -> bool {
-        // Fast pass if lengths differ
+        // Fast path if lengths differ
         if self.len() != other.len() {
             return false;
         }
@@ -1014,7 +1046,7 @@ impl hash::Hash for Gc<StringValue> {
 
 impl OneByteString {
     fn from_vec(buf: Vec<u8>) -> Self {
-        let string = OneByteString { ptr: buf.as_ptr(), len: buf.len() };
+        let string = OneByteString { ptr: buf.as_ptr(), len: buf.len(), is_interned: false };
 
         // Memory is managed by heap, and destructor is called when string is garbage collected
         std::mem::forget(buf);
@@ -1050,7 +1082,7 @@ impl OneByteString {
 
 impl TwoByteString {
     fn from_vec(buf: Vec<u16>) -> Self {
-        let string = TwoByteString { ptr: buf.as_ptr(), len: buf.len() };
+        let string = TwoByteString { ptr: buf.as_ptr(), len: buf.len(), is_interned: false };
 
         // Memory is managed by heap, and destructor is called when string is garbage collected
         std::mem::forget(buf);

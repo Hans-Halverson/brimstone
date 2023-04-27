@@ -30,6 +30,7 @@ use crate::{
                 ordinary_function_create, set_function_name, FuncKind, Function,
             },
             gc::Gc,
+            interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
@@ -121,7 +122,7 @@ pub fn function_declaration_instantiation(
             create_mapped_arguments_object(cx, func, &func_node.params, &arguments, env)
         };
 
-        let arguments_name_value = cx.get_interned_string("arguments");
+        let arguments_name_value = InternedStrings::get_str(cx, "arguments");
 
         if is_strict {
             must!(env.create_immutable_binding(cx, arguments_name_value, false))

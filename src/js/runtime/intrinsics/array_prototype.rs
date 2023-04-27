@@ -10,6 +10,7 @@ use crate::{
         function::get_argument,
         gc::Gc,
         get,
+        interned_strings::InternedStrings,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_optional_proto,
@@ -845,7 +846,7 @@ impl ArrayPrototype {
 
         let separator = get_argument(arguments, 0);
         let separator = if separator.is_undefined() {
-            cx.get_interned_string(",")
+            InternedStrings::get_str(cx, ",")
         } else {
             maybe!(to_string(cx, separator))
         };
@@ -1418,7 +1419,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         let mut result = cx.names.empty_string().as_string();
-        let separator = cx.get_interned_string(", ");
+        let separator = InternedStrings::get_str(cx, ", ");
 
         for i in 0..length {
             if i > 0 {

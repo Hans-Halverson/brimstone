@@ -7,6 +7,7 @@ use super::{
     error::{reference_error_, type_error_},
     execution_context::get_global_object,
     gc::Gc,
+    interned_strings::InternedStrings,
     property_key::PropertyKey,
     string_value::StringValue,
     type_utilities::to_object,
@@ -201,7 +202,7 @@ impl Reference {
         let private_env = cx.current_execution_context().private_env.unwrap();
         let private_name = private_env.resolve_private_identifier(private_name_string);
 
-        let property_key = PropertyKey::string(cx.get_interned_string(private_name_string));
+        let property_key = PropertyKey::string(InternedStrings::get_str(cx, private_name_string));
 
         Reference {
             base: ReferenceBase::Property {

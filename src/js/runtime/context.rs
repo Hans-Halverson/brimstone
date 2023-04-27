@@ -9,6 +9,7 @@ use super::{
     environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
+    interned_strings::InternedStrings,
     object_descriptor::BaseDescriptors,
     realm::Realm,
     string_value::StringValue,
@@ -27,7 +28,7 @@ pub struct Context {
     pub base_descriptors: BaseDescriptors,
 
     // Canonical string values for strings that appear in the AST
-    pub interned_strings: HashMap<String, Gc<StringValue>>,
+    pub interned_strings: InternedStrings,
 
     // Stack of closure environments for all builtin functions currently being evaluated
     pub closure_environments: Vec<Option<Gc<ClosureEnvironment>>>,
@@ -61,7 +62,7 @@ impl Context {
             names,
             well_known_symbols,
             base_descriptors,
-            interned_strings: HashMap::new(),
+            interned_strings: InternedStrings::new(),
             closure_environments: vec![],
             default_array_properties: Gc::uninit(),
             uninit_environment,
@@ -98,18 +99,6 @@ impl Context {
             .iter()
             .rev()
             .find_map(|exec_ctx| exec_ctx.script_or_module)
-    }
-
-    pub fn get_interned_string(&mut self, str: &str) -> Gc<StringValue> {
-        match self.interned_strings.get(str) {
-            Some(string_value) => *string_value,
-            None => {
-                let string_value = self.alloc_string(String::from(str));
-                self.interned_strings
-                    .insert(String::from(str), string_value);
-                string_value
-            }
-        }
     }
 
     pub fn push_closure_environment(&mut self, env: Option<Gc<ClosureEnvironment>>) {

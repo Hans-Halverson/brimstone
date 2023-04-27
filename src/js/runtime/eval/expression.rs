@@ -22,6 +22,7 @@ use crate::{
             execution_context::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
+            interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
@@ -142,7 +143,7 @@ fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<Value> {
 }
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Value> {
-    let interned_value = cx.get_interned_string(&lit.value);
+    let interned_value = InternedStrings::get_str(cx, &lit.value);
     interned_value.into()
 }
 
@@ -279,7 +280,7 @@ pub fn eval_property_name<'a>(
         match key {
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
-                let string_value = cx.get_interned_string(lit.value.as_str());
+                let string_value = InternedStrings::get_str(cx, lit.value.as_str());
                 PropertyKey::string(string_value)
             }
             ast::Expression::Number(lit) => {
@@ -309,7 +310,7 @@ pub fn eval_property_name<'a>(
 fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalResult<Value> {
     let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
 
-    let first_quasi_part = cx.get_interned_string(&lit.quasis[0].cooked.as_deref().unwrap());
+    let first_quasi_part = InternedStrings::get_str(cx, &lit.quasis[0].cooked.as_deref().unwrap());
     string_parts.push(first_quasi_part);
 
     for i in 1..lit.quasis.len() {
@@ -318,7 +319,7 @@ fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalRe
 
         string_parts.push(expr_string);
 
-        let quasi_part = cx.get_interned_string(&lit.quasis[i].cooked.as_deref().unwrap());
+        let quasi_part = InternedStrings::get_str(cx, &lit.quasis[i].cooked.as_deref().unwrap());
         string_parts.push(quasi_part);
     }
 
@@ -726,12 +727,12 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
 
         let cooked_value = match &quasi.cooked {
             None => Value::undefined(),
-            Some(cooked) => cx.get_interned_string(cooked).into(),
+            Some(cooked) => InternedStrings::get_str(cx, cooked).into(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, &index_key, cooked_desc));
 
-        let raw_value = cx.get_interned_string(&quasi.raw);
+        let raw_value = InternedStrings::get_str(cx, &quasi.raw);
         let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
         must!(define_property_or_throw(cx, raw_object, &index_key, raw_desc));
     }

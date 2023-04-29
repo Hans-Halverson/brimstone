@@ -18,12 +18,12 @@ use super::{
     },
     error::type_error_,
     eval::{
-        class::ClassFieldDefinition,
+        class::{ClassFieldDefinition, HeapClassFieldDefinition},
         expression::eval_expression,
         function::{function_declaration_instantiation, instantiate_ordinary_function_object},
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
-    execution_context::{ExecutionContext, ScriptOrModule},
+    execution_context::{ExecutionContext, HeapScriptOrModule, ScriptOrModule},
     gc::Gc,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -66,18 +66,25 @@ extend_object! {
         // Object properties of this function
         pub home_object: Option<Gc<ObjectValue>>,
         realm: Gc<Realm>,
-        script_or_module: Option<ScriptOrModule>,
-        pub func_node: FuncKind,
+        script_or_module: Option<HeapScriptOrModule>,
+        pub func_node: HeapFuncKind,
         pub environment: DynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
-        pub fields: Vec<ClassFieldDefinition>,
+        fields: Vec<HeapClassFieldDefinition>,
         private_methods: Vec<(PrivateName, HeapProperty)>,
     }
 }
 
 // Function objects may have special kinds, such as executing a class property node instead of a
-// function node, or executing a builtin constructor.
+// function node, or executing a builtin constructor. Stored on stack.
 pub enum FuncKind {
+    Function(AstPtr<ast::Function>),
+    ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
+    DefaultConstructor,
+}
+
+/// A FuncKind that is stored on the heap.
+pub enum HeapFuncKind {
     Function(AstPtr<ast::Function>),
     ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
     DefaultConstructor,
@@ -111,14 +118,31 @@ impl Function {
         object.this_mode = this_mode;
         object.home_object = None;
         object.realm = cx.current_realm();
-        object.script_or_module = cx.get_active_script_or_module();
+        object.script_or_module = cx
+            .get_active_script_or_module()
+            .as_ref()
+            .map(ScriptOrModule::to_heap);
         object.environment = environment;
         object.private_environment = private_environment;
-        object.func_node = func_node;
+        object.func_node = func_node.to_heap();
         object.fields = vec![];
         object.private_methods = vec![];
 
         object
+    }
+
+    fn is_default_constructor(&self) -> bool {
+        match self.func_node {
+            HeapFuncKind::DefaultConstructor => true,
+            _ => false,
+        }
+    }
+
+    pub fn add_fields(&mut self, fields: Vec<ClassFieldDefinition>) {
+        self.fields.reserve_exact(fields.len());
+        for field in fields {
+            self.fields.push(field.to_heap());
+        }
     }
 
     pub fn add_private_methods(&mut self, private_methods: HashMap<PrivateName, Property>) {
@@ -173,7 +197,7 @@ impl VirtualObject for Gc<Function> {
     ) -> EvalResult<Gc<ObjectValue>> {
         // Default constructor is implemented as a special function. Steps follow the default
         // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
-        if let FuncKind::DefaultConstructor = self.func_node {
+        if self.is_default_constructor() {
             let new_object = if self.constructor_kind == ConstructorKind::Derived {
                 let func = must!(self.object().get_prototype_of(cx));
                 match func {
@@ -201,14 +225,14 @@ impl VirtualObject for Gc<Function> {
                 ))
                 .into();
 
-                if let FuncKind::DefaultConstructor = self.func_node {
+                if self.is_default_constructor() {
                     maybe!(initialize_instance_elements(cx, object, *self));
                     None
                 } else {
                     Some(object)
                 }
             } else {
-                if let FuncKind::DefaultConstructor = self.func_node {
+                if self.is_default_constructor() {
                     let func = must!(self.object().get_prototype_of(cx));
                     let object = match func {
                         Some(func) if func.is_constructor() => {
@@ -297,7 +321,9 @@ impl Gc<Function> {
             cx,
             /* function */ Some(self.object()),
             self.realm,
-            self.script_or_module,
+            self.script_or_module
+                .as_ref()
+                .map(ScriptOrModule::from_heap),
             /* lexical_env */ func_env,
             /* variable_env */ func_env,
             self.private_environment,
@@ -343,7 +369,7 @@ impl Gc<Function> {
     fn ordinary_call_evaluate_body(&self, cx: &mut Context, arguments: &[Value]) -> Completion {
         let other_self = *self;
         match &self.func_node {
-            FuncKind::Function(func_node) => {
+            HeapFuncKind::Function(func_node) => {
                 let func_node = func_node.as_ref();
                 if func_node.is_async || func_node.is_generator {
                     unimplemented!("async and generator functions")
@@ -361,16 +387,30 @@ impl Gc<Function> {
                 }
             }
             // Initializer evaluation in EvaluateBody
-            FuncKind::ClassProperty(prop, name) => {
+            HeapFuncKind::ClassProperty(prop, name) => {
                 let expr = prop.as_ref().value.as_ref().unwrap();
                 let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, *name));
 
                 Completion::return_(value)
             }
-            FuncKind::DefaultConstructor => {
+            HeapFuncKind::DefaultConstructor => {
                 unreachable!("default constructor body is never evaluated")
             }
         }
+    }
+
+    #[inline]
+    pub fn iter_fields<F: FnMut(ClassFieldDefinition) -> EvalResult<()>>(
+        &self,
+        mut f: F,
+    ) -> EvalResult<()> {
+        // GC safe iteration over class fields
+        for i in 0..self.fields.len() {
+            let field = &self.fields[i];
+            maybe!(f(ClassFieldDefinition::from_heap(field)));
+        }
+
+        ().into()
     }
 
     #[inline]
@@ -385,6 +425,18 @@ impl Gc<Function> {
         }
 
         ().into()
+    }
+}
+
+impl FuncKind {
+    fn to_heap(&self) -> HeapFuncKind {
+        match self {
+            FuncKind::Function(func_node) => HeapFuncKind::Function(func_node.clone()),
+            FuncKind::ClassProperty(class_property_node, property_key) => {
+                HeapFuncKind::ClassProperty(class_property_node.clone(), *property_key)
+            }
+            FuncKind::DefaultConstructor => HeapFuncKind::DefaultConstructor,
+        }
     }
 }
 

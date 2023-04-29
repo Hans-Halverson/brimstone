@@ -527,7 +527,7 @@ pub fn private_set(
 pub fn define_field(
     cx: &mut Context,
     mut receiver: Gc<ObjectValue>,
-    field_def: &ClassFieldDefinition,
+    field_def: ClassFieldDefinition,
 ) -> EvalResult<()> {
     let init_value = match field_def.initializer {
         None => Value::undefined(),
@@ -556,9 +556,7 @@ pub fn initialize_instance_elements(
         object.private_method_or_accessor_add(cx, private_name, private_method)
     }));
 
-    for field_def in &constructor.fields {
-        maybe!(define_field(cx, object, field_def));
-    }
+    maybe!(constructor.iter_fields(|field| { define_field(cx, object, field) }));
 
     ().into()
 }

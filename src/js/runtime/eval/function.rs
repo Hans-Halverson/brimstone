@@ -27,7 +27,7 @@ use crate::{
             execution_context::resolve_binding,
             function::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
-                ordinary_function_create, set_function_name, FuncKind, Function,
+                ordinary_function_create, set_function_name, Function, HeapFuncKind,
             },
             gc::Gc,
             interned_strings::InternedStrings,
@@ -57,7 +57,7 @@ pub fn function_declaration_instantiation(
     func: Gc<Function>,
     arguments: &[Value],
 ) -> Completion {
-    let func_node = if let FuncKind::Function(func_node) = &func.func_node {
+    let func_node = if let HeapFuncKind::Function(func_node) = &func.func_node {
         func_node.as_ref()
     } else {
         unreachable!()

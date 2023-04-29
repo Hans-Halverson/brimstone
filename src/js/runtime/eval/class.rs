@@ -35,15 +35,65 @@ use super::{
     pattern::{id_string_value, private_id_property_key},
 };
 
-// 6.2.10 ClassFieldDefinition Record
+// 6.2.10 ClassFieldDefinition Record. Stored on the stack.
 pub struct ClassFieldDefinition {
     pub name: ClassFieldDefinitionName,
     pub initializer: Option<Gc<Function>>,
 }
 
+// A ClassFieldDefinition that is stored on the heap.
+pub struct HeapClassFieldDefinition {
+    name: HeapClassFieldDefinitionName,
+    initializer: Option<Gc<Function>>,
+}
+
+// Stored on the stack.
 pub enum ClassFieldDefinitionName {
     Normal(PropertyKey),
     Private(PrivateName),
+}
+
+// Stored on the heap.
+pub enum HeapClassFieldDefinitionName {
+    Normal(PropertyKey),
+    Private(PrivateName),
+}
+
+impl ClassFieldDefinition {
+    pub fn to_heap(&self) -> HeapClassFieldDefinition {
+        HeapClassFieldDefinition { name: self.name.to_heap(), initializer: self.initializer }
+    }
+
+    pub fn from_heap(heap_field_def: &HeapClassFieldDefinition) -> ClassFieldDefinition {
+        ClassFieldDefinition {
+            name: ClassFieldDefinitionName::from_heap(&heap_field_def.name),
+            initializer: heap_field_def.initializer,
+        }
+    }
+}
+
+impl ClassFieldDefinitionName {
+    pub fn to_heap(&self) -> HeapClassFieldDefinitionName {
+        match self {
+            ClassFieldDefinitionName::Normal(property_key) => {
+                HeapClassFieldDefinitionName::Normal(*property_key)
+            }
+            ClassFieldDefinitionName::Private(private_name) => {
+                HeapClassFieldDefinitionName::Private(*private_name)
+            }
+        }
+    }
+
+    pub fn from_heap(heap_name_def: &HeapClassFieldDefinitionName) -> ClassFieldDefinitionName {
+        match heap_name_def {
+            HeapClassFieldDefinitionName::Normal(property_key) => {
+                ClassFieldDefinitionName::Normal(*property_key)
+            }
+            HeapClassFieldDefinitionName::Private(private_name) => {
+                ClassFieldDefinitionName::Private(*private_name)
+            }
+        }
+    }
 }
 
 // 15.7.10 ClassFieldDefinitionEvaluation
@@ -372,7 +422,7 @@ pub fn class_definition_evaluation(
         must!(class_env.initialize_binding(cx, class_binding, func.into()));
     }
 
-    func.fields = instance_fields;
+    func.add_fields(instance_fields);
 
     // Store templates for private methods on constructor function
     func.add_private_methods(instance_private_methods);
@@ -387,7 +437,7 @@ pub fn class_definition_evaluation(
     for static_element in static_elements {
         match static_element {
             StaticElement::Field(field_def) => {
-                let result = define_field(cx, func.into(), &field_def);
+                let result = define_field(cx, func.into(), field_def);
 
                 if let EvalResult::Throw(thrown_value) = result {
                     current_execution_context.private_env = outer_private_env;

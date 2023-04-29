@@ -21,7 +21,7 @@ pub struct ExecutionContext {
     descriptor: Gc<ObjectDescriptor>,
     pub function: Option<Gc<ObjectValue>>,
     pub realm: Gc<Realm>,
-    pub script_or_module: Option<ScriptOrModule>,
+    script_or_module: Option<HeapScriptOrModule>,
     pub lexical_env: DynEnvironment,
     pub variable_env: DynEnvironment,
     pub private_env: Option<Gc<PrivateEnvironment>>,
@@ -29,11 +29,6 @@ pub struct ExecutionContext {
 }
 
 impl GcDeref for ExecutionContext {}
-
-#[derive(Clone, Copy)]
-pub enum ScriptOrModule {
-    Script(Gc<Script>),
-}
 
 impl ExecutionContext {
     pub fn new(
@@ -51,12 +46,20 @@ impl ExecutionContext {
             descriptor,
             function,
             realm,
-            script_or_module,
+            script_or_module: script_or_module.as_ref().map(ScriptOrModule::to_heap),
             lexical_env,
             variable_env,
             private_env,
             is_strict_mode,
         })
+    }
+}
+
+impl Gc<ExecutionContext> {
+    pub fn script_or_module(&self) -> Option<ScriptOrModule> {
+        self.script_or_module
+            .as_ref()
+            .map(ScriptOrModule::from_heap)
     }
 }
 
@@ -105,4 +108,25 @@ pub fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
 // 9.4.6 GetGlobalObject
 pub fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
     cx.current_realm().global_object
+}
+
+/// ScriptOrModule that is stored on the stack.
+#[derive(Clone)]
+pub enum ScriptOrModule {
+    Script(Gc<Script>),
+}
+
+/// ScriptOrModule that is stored on the managed heap.
+pub struct HeapScriptOrModule {
+    inner: ScriptOrModule,
+}
+
+impl ScriptOrModule {
+    pub fn to_heap(&self) -> HeapScriptOrModule {
+        HeapScriptOrModule { inner: self.clone() }
+    }
+
+    pub fn from_heap(heap_script_or_module: &HeapScriptOrModule) -> ScriptOrModule {
+        heap_script_or_module.inner.clone()
+    }
 }

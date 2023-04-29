@@ -19,7 +19,7 @@ use crate::{
             },
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
-            function::{instantiate_function_object, ConstructorKind, FuncKind},
+            function::{instantiate_function_object, ConstructorKind, HeapFuncKind},
             string_value::StringValue,
             Completion, CompletionKind, Context, EvalResult, Gc, Value,
         },
@@ -57,7 +57,7 @@ pub fn perform_eval(
             let func = func_env.function_object;
             in_derived_constructor = func.constructor_kind == ConstructorKind::Derived;
 
-            if let FuncKind::ClassProperty(..) = func.func_node {
+            if let HeapFuncKind::ClassProperty(..) = func.func_node {
                 in_class_field_initializer = true;
             }
         }
@@ -125,7 +125,7 @@ pub fn perform_eval(
         cx,
         /* function */ None,
         eval_realm,
-        running_context.script_or_module,
+        running_context.script_or_module(),
         lex_env,
         var_env,
         private_env,

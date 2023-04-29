@@ -9,12 +9,20 @@ use super::{
     Value,
 };
 
+/// A property key must be either an interned string or a symbol for named properties,
+/// or a smi if key is a valid array index. Note that smis technically have an i32 range but
+/// array indices have a u32 range, but we can cast between signed an unsigned values appropriately.
+///
+/// Always stored on the stack.
 #[derive(Clone, Copy)]
 pub struct PropertyKey {
-    // A property key must be either an interned string or a symbol for named properties,
-    // or a smi if key is a valid array index. Note that smis technically have an i32 range but
-    // array indices have a u32 range, but we can cast between signed an unsigned values appropriately.
     value: Value,
+}
+
+/// A property key that is stored on the heap.
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct HeapPropertyKey {
+    inner: PropertyKey,
 }
 
 impl PropertyKey {
@@ -145,6 +153,14 @@ impl PropertyKey {
             self.value
         }
     }
+
+    pub fn to_heap(&self) -> HeapPropertyKey {
+        HeapPropertyKey { inner: *self }
+    }
+
+    pub fn from_heap(heap_property_key: &HeapPropertyKey) -> PropertyKey {
+        heap_property_key.inner
+    }
 }
 
 impl PartialEq for PropertyKey {
@@ -179,5 +195,17 @@ impl fmt::Display for PropertyKey {
                 Some(description) => write!(f, "Symbol({})", description),
             }
         }
+    }
+}
+
+impl HeapPropertyKey {
+    #[inline]
+    pub fn as_string_opt(&self) -> Option<Gc<StringValue>> {
+        self.inner.as_string_opt()
+    }
+
+    #[inline]
+    pub fn as_symbol_opt(&self) -> Option<Gc<SymbolValue>> {
+        self.inner.as_symbol_opt()
     }
 }

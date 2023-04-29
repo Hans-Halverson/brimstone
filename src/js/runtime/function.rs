@@ -14,7 +14,7 @@ use super::{
     environment::{
         environment::DynEnvironment,
         function_environment::FunctionEnvironment,
-        private_environment::{PrivateEnvironment, PrivateName},
+        private_environment::{HeapPrivateName, PrivateEnvironment, PrivateName},
     },
     error::type_error_,
     eval::{
@@ -33,7 +33,7 @@ use super::{
     },
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::{HeapPropertyKey, PropertyKey},
     realm::Realm,
     string_value::StringValue,
     type_utilities::to_object,
@@ -71,7 +71,7 @@ extend_object! {
         pub environment: DynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
         fields: Vec<HeapClassFieldDefinition>,
-        private_methods: Vec<(PrivateName, HeapProperty)>,
+        private_methods: Vec<(HeapPrivateName, HeapProperty)>,
     }
 }
 
@@ -86,7 +86,7 @@ pub enum FuncKind {
 /// A FuncKind that is stored on the heap.
 pub enum HeapFuncKind {
     Function(AstPtr<ast::Function>),
-    ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
+    ClassProperty(AstPtr<ast::ClassProperty>, HeapPropertyKey),
     DefaultConstructor,
 }
 
@@ -149,7 +149,7 @@ impl Function {
         self.private_methods.reserve_exact(private_methods.len());
         for (private_name, method_property) in private_methods {
             self.private_methods
-                .push((private_name, method_property.to_heap()));
+                .push((private_name.to_heap(), method_property.to_heap()));
         }
     }
 }
@@ -388,8 +388,9 @@ impl Gc<Function> {
             }
             // Initializer evaluation in EvaluateBody
             HeapFuncKind::ClassProperty(prop, name) => {
+                let name = PropertyKey::from_heap(name);
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, *name));
+                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name));
 
                 Completion::return_(value)
             }
@@ -420,8 +421,11 @@ impl Gc<Function> {
     ) -> EvalResult<()> {
         // GC safe iteration over private methods
         for i in 0..self.private_methods.len() {
-            let (private_name, heap_private_method) = &self.private_methods[i];
-            maybe!(f(*private_name, Property::from_heap(heap_private_method)));
+            let (heap_private_name, heap_private_method) = &self.private_methods[i];
+            maybe!(f(
+                PrivateName::from_heap(heap_private_name),
+                Property::from_heap(heap_private_method)
+            ));
         }
 
         ().into()
@@ -433,7 +437,7 @@ impl FuncKind {
         match self {
             FuncKind::Function(func_node) => HeapFuncKind::Function(func_node.clone()),
             FuncKind::ClassProperty(class_property_node, property_key) => {
-                HeapFuncKind::ClassProperty(class_property_node.clone(), *property_key)
+                HeapFuncKind::ClassProperty(class_property_node.clone(), property_key.to_heap())
             }
             FuncKind::DefaultConstructor => HeapFuncKind::DefaultConstructor,
         }

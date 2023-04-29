@@ -21,7 +21,7 @@ use crate::{
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create_optional_proto,
-            property_key::PropertyKey,
+            property_key::{HeapPropertyKey, PropertyKey},
             string_value::StringValue,
             Completion, Context, EvalResult, Gc, Value,
         },
@@ -55,7 +55,7 @@ pub enum ClassFieldDefinitionName {
 
 // Stored on the heap.
 pub enum HeapClassFieldDefinitionName {
-    Normal(PropertyKey),
+    Normal(HeapPropertyKey),
     Private(PrivateName),
 }
 
@@ -76,7 +76,7 @@ impl ClassFieldDefinitionName {
     pub fn to_heap(&self) -> HeapClassFieldDefinitionName {
         match self {
             ClassFieldDefinitionName::Normal(property_key) => {
-                HeapClassFieldDefinitionName::Normal(*property_key)
+                HeapClassFieldDefinitionName::Normal(property_key.to_heap())
             }
             ClassFieldDefinitionName::Private(private_name) => {
                 HeapClassFieldDefinitionName::Private(*private_name)
@@ -87,7 +87,7 @@ impl ClassFieldDefinitionName {
     pub fn from_heap(heap_name_def: &HeapClassFieldDefinitionName) -> ClassFieldDefinitionName {
         match heap_name_def {
             HeapClassFieldDefinitionName::Normal(property_key) => {
-                ClassFieldDefinitionName::Normal(*property_key)
+                ClassFieldDefinitionName::Normal(PropertyKey::from_heap(property_key))
             }
             HeapClassFieldDefinitionName::Private(private_name) => {
                 ClassFieldDefinitionName::Private(*private_name)
@@ -111,7 +111,7 @@ fn class_field_definition_evaluation(
         .realm
         .get_intrinsic(Intrinsic::FunctionPrototype);
 
-    let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key.clone());
+    let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key);
 
     let initializer = ordinary_function_create_special_kind(
         cx,
@@ -180,7 +180,7 @@ pub fn class_definition_evaluation(
                 if *is_private =>
             {
                 let id = key.to_id();
-                if !class_private_env.names.contains_key(&id.name) {
+                if !class_private_env.has_private_name(&id.name) {
                     class_private_env.add_private_name(cx, id.name.clone())
                 }
             }
@@ -285,9 +285,9 @@ pub fn class_definition_evaluation(
                 let result = (|| {
                     let (property_key, field_def_name) = if prop.is_private {
                         let id = prop.key.to_id();
-                        let private_name = class_private_env.names.get(&id.name).unwrap();
+                        let private_name = class_private_env.get_private_name(&id.name);
                         let property_key = private_id_property_key(cx, id);
-                        let field_def_name = ClassFieldDefinitionName::Private(*private_name);
+                        let field_def_name = ClassFieldDefinitionName::Private(private_name);
                         (property_key, field_def_name)
                     } else {
                         let property_key =
@@ -349,7 +349,7 @@ pub fn class_definition_evaluation(
                 if method.is_private {
                     // Resolve private name to id
                     let id = method.key.to_id();
-                    let private_name = *class_private_env.names.get(&id.name).unwrap();
+                    let private_name = class_private_env.get_private_name(&id.name);
                     let property_key = private_id_property_key(cx, id);
 
                     let private_property = private_method_definition_evaluation(

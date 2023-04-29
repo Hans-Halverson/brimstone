@@ -71,9 +71,9 @@ pub fn perform_eval(
         // Walk private contexts, gathering all defined private names
         let mut current_private_env = running_context.private_env;
         while let Some(private_env) = current_private_env {
-            for name in &private_env.names {
-                names.insert(name.0.clone(), PrivateNameUsage::used());
-            }
+            private_env.iter_names_gc_unsafe(|name| {
+                names.insert(name.clone(), PrivateNameUsage::used());
+            });
 
             current_private_env = private_env.outer;
         }

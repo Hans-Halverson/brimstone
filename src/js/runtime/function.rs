@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -29,7 +31,7 @@ use super::{
     ordinary_object::{
         object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
     },
-    property::Property,
+    property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
@@ -69,7 +71,7 @@ extend_object! {
         pub environment: DynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
         pub fields: Vec<ClassFieldDefinition>,
-        pub private_methods: Vec<(PrivateName, Property)>,
+        private_methods: Vec<(PrivateName, HeapProperty)>,
     }
 }
 
@@ -117,6 +119,14 @@ impl Function {
         object.private_methods = vec![];
 
         object
+    }
+
+    pub fn add_private_methods(&mut self, private_methods: HashMap<PrivateName, Property>) {
+        self.private_methods.reserve_exact(private_methods.len());
+        for (private_name, method_property) in private_methods {
+            self.private_methods
+                .push((private_name, method_property.to_heap()));
+        }
     }
 }
 
@@ -361,6 +371,20 @@ impl Gc<Function> {
                 unreachable!("default constructor body is never evaluated")
             }
         }
+    }
+
+    #[inline]
+    pub fn iter_private_methods<F: FnMut(PrivateName, Property) -> EvalResult<()>>(
+        &self,
+        mut f: F,
+    ) -> EvalResult<()> {
+        // GC safe iteration over private methods
+        for i in 0..self.private_methods.len() {
+            let (private_name, heap_private_method) = &self.private_methods[i];
+            maybe!(f(*private_name, Property::from_heap(heap_private_method)));
+        }
+
+        ().into()
     }
 }
 

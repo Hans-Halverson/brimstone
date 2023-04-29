@@ -552,9 +552,9 @@ pub fn initialize_instance_elements(
     mut object: Gc<ObjectValue>,
     constructor: Gc<Function>,
 ) -> EvalResult<()> {
-    for (private_name, private_method) in &constructor.private_methods {
-        maybe!(object.private_method_or_accessor_add(cx, *private_name, private_method.clone()));
-    }
+    maybe!(constructor.iter_private_methods(|private_name, private_method| {
+        object.private_method_or_accessor_add(cx, private_name, private_method)
+    }));
 
     for field_def in &constructor.fields {
         maybe!(define_field(cx, object, field_def));

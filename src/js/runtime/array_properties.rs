@@ -9,7 +9,7 @@ use super::{
     gc::GcDeref,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
-    property::Property,
+    property::{HeapProperty, Property},
     Context, Gc, Value,
 };
 
@@ -68,7 +68,10 @@ impl Gc<ArrayProperties> {
             Some(Property::data(value, true, true, true))
         } else {
             let sparse_properties = self.as_sparse();
-            sparse_properties.sparse_map.get(&array_index).cloned()
+            sparse_properties
+                .sparse_map
+                .get(&array_index)
+                .map(Property::from_heap)
         }
     }
 
@@ -156,16 +159,16 @@ impl ArrayProperties {
     fn transition_to_sparse_properties(cx: &mut Context, mut object: Gc<ObjectValue>) {
         let dense_properties = object.array_properties().as_dense();
 
-        let length = dense_properties.length;
-        let mut sparse_map = HashMap::new();
+        let mut sparse_properties = SparseArrayProperties::new(cx, dense_properties.length);
 
+        // Can reference internal pointer to map since loop does not allocate on managed heap
+        let sparse_map = &mut sparse_properties.sparse_map;
         for (index, value) in dense_properties.iter_gc_unsafe().enumerate() {
             if !value.is_empty() {
-                sparse_map.insert(index as u32, Property::data(value, true, true, true));
+                sparse_map.insert(index as u32, Property::data(value, true, true, true).to_heap());
             }
         }
 
-        let sparse_properties = SparseArrayProperties::new(cx, sparse_map, length);
         object.set_array_properties(sparse_properties.cast());
     }
 
@@ -209,14 +212,14 @@ impl ArrayProperties {
                 return true;
             }
 
-            // In sparse removal case we must first find the last non-configurable property
+            // In sparse removal case we must first find the last non-configurable property.
+            // Can use stored property directly since loop does not allocate.
             let mut last_non_configurable_index = None;
-            for (index, value) in sparse_map.iter() {
+            for (index, stored_property) in sparse_map.iter() {
                 if (*index as u32) < new_length {
                     continue;
                 }
-
-                if !value.is_configurable() {
+                if !stored_property.is_configurable() {
                     if *index <= last_non_configurable_index.unwrap_or(*index) {
                         last_non_configurable_index = Some(*index);
                     }
@@ -229,11 +232,12 @@ impl ArrayProperties {
                 new_length
             };
 
-            // Create a new map with non-truncated values
+            // Create a new map with non-truncated values. Can use stored property directly since
+            // loop does not allocate on managed heap.
             let mut new_sparse_map = HashMap::new();
-            for (index, property) in sparse_map.iter() {
+            for (index, stored_property) in sparse_map.iter() {
                 if *index < new_length {
-                    new_sparse_map.insert(*index, property.clone());
+                    new_sparse_map.insert(*index, stored_property.clone());
                 }
             }
 
@@ -272,7 +276,9 @@ impl ArrayProperties {
         } else {
             let mut sparse_properties = array_properties.as_sparse();
 
-            sparse_properties.sparse_map.insert(array_index, property);
+            sparse_properties
+                .sparse_map
+                .insert(array_index, property.to_heap());
             if array_index >= sparse_properties.length {
                 sparse_properties.length = array_index + 1;
             }
@@ -400,22 +406,18 @@ impl Iterator for DenseArrayPropertiesGcUnsafeIter {
 #[repr(C)]
 pub struct SparseArrayProperties {
     descriptor: Gc<ObjectDescriptor>,
-    sparse_map: HashMap<u32, Property>,
+    sparse_map: HashMap<u32, HeapProperty>,
     length: u32,
 }
 
 impl GcDeref for SparseArrayProperties {}
 
 impl SparseArrayProperties {
-    pub fn new(
-        cx: &mut Context,
-        sparse_map: HashMap<u32, Property>,
-        length: u32,
-    ) -> Gc<SparseArrayProperties> {
+    pub fn new(cx: &mut Context, length: u32) -> Gc<SparseArrayProperties> {
         let mut object = cx.heap.alloc_uninit::<SparseArrayProperties>();
 
         object.descriptor = cx.base_descriptors.get(ObjectKind::SparseArrayProperties);
-        object.sparse_map = sparse_map;
+        object.sparse_map = HashMap::new();
         object.length = length;
 
         object

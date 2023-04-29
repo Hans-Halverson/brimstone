@@ -9,11 +9,19 @@ use super::{
 // A property value. If a data property then the value is the value itself. If an accessor property
 // then the value is an accessor property, which is a pointer to the get and set function pair.
 //
+// Property structs contain handles and can only be stored on the stack.
+//
 // 6.2.9 PrivateElements are represented as properties, with bitflags noting the private property kind.
 #[derive(Clone)]
 pub struct Property {
     value: Value,
     flags: PropertyFlags,
+}
+
+/// A property that is stored on the heap. Contains direct references to heap objects.
+#[derive(Clone)]
+pub struct HeapProperty {
+    inner: Property,
 }
 
 bitflags! {
@@ -170,5 +178,19 @@ impl Property {
         } else {
             this_accessor.set = other_accessor.set;
         }
+    }
+
+    pub fn to_heap(&self) -> HeapProperty {
+        HeapProperty { inner: self.clone() }
+    }
+
+    pub fn from_heap(heap_property: &HeapProperty) -> Property {
+        heap_property.inner.clone()
+    }
+}
+
+impl HeapProperty {
+    pub fn is_configurable(&self) -> bool {
+        self.inner.is_configurable()
     }
 }

@@ -15,7 +15,7 @@ use super::{
     gc::Gc,
     intrinsics::typed_array::TypedArray,
     object_descriptor::ObjectKind,
-    property::Property,
+    property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
@@ -43,7 +43,7 @@ macro_rules! extend_object_without_conversions {
             prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            named_properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::Property>,
+            named_properties: indexmap::IndexMap<$crate::js::runtime::PropertyKey, $crate::js::runtime::property::HeapProperty>,
 
             // Array index properties by their property key
             array_properties: $crate::js::runtime::Gc<$crate::js::runtime::array_properties::ArrayProperties>,
@@ -143,7 +143,9 @@ impl ObjectValue {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
-        self.named_properties.get_mut(&property_key).cloned()
+        self.named_properties
+            .get(&property_key)
+            .map(Property::from_heap)
     }
 
     pub fn has_private_element(&self, private_name: PrivateName) -> bool {
@@ -152,15 +154,12 @@ impl ObjectValue {
         self.named_properties.contains_key(&property_key)
     }
 
-    pub fn private_element_set(
-        &mut self,
-        private_name: PrivateName,
-        value: Value,
-    ) -> Option<Property> {
+    pub fn private_element_set(&mut self, private_name: PrivateName, value: Value) {
         let property_key = PropertyKey::symbol(private_name);
         let property = Property::private_field(value);
         // Safe since insert does not allocate on managed heap
-        self.named_properties.insert(property_key, property)
+        self.named_properties
+            .insert(property_key, property.to_heap());
     }
 
     // 7.3.28 PrivateFieldAdd
@@ -176,7 +175,7 @@ impl ObjectValue {
             let property = Property::private_field(value);
             // Safe since insert does not allocate on managed heap
             self.named_properties
-                .insert(PropertyKey::symbol(private_name), property);
+                .insert(PropertyKey::symbol(private_name), property.to_heap());
             ().into()
         }
     }
@@ -193,7 +192,7 @@ impl ObjectValue {
         } else {
             // Safe since insert does not allocate on managed heap
             self.named_properties
-                .insert(PropertyKey::symbol(private_name), private_method);
+                .insert(PropertyKey::symbol(private_name), private_method.to_heap());
             ().into()
         }
     }
@@ -206,7 +205,7 @@ impl ObjectValue {
         }
 
         // Safe since get does not allocate on managed heap
-        self.named_properties.get(&key).cloned()
+        self.named_properties.get(&key).map(Property::from_heap)
     }
 
     /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
@@ -232,7 +231,7 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn set_named_properties(&mut self, properties: IndexMap<PropertyKey, Property>) {
+    pub fn set_named_properties(&mut self, properties: IndexMap<PropertyKey, HeapProperty>) {
         self.named_properties = properties;
     }
 
@@ -392,7 +391,8 @@ impl Gc<ObjectValue> {
         }
 
         // Safe since insert does allocate on managed heap
-        self.named_properties.insert(key.clone(), property);
+        self.named_properties
+            .insert(key.clone(), property.to_heap());
     }
 
     pub fn remove_property(&mut self, key: PropertyKey) {

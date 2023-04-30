@@ -1,4 +1,4 @@
-use std::hash;
+use std::{hash, num::NonZeroU64};
 
 use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
@@ -108,16 +108,26 @@ const SMI_ZERO: u64 = Value::smi(0).as_raw_bits();
 
 #[derive(Clone, Copy)]
 pub struct Value {
-    // Used as raw bitfield
-    raw_bits: u64,
+    // Used as raw bitfield. NonZero for option inline niche optimization.
+    raw_bits: NonZeroU64,
 }
 
 impl Value {
+    #[inline]
+    pub const fn from_raw_bits(raw_bits: u64) -> Value {
+        Value { raw_bits: unsafe { NonZeroU64::new_unchecked(raw_bits) } }
+    }
+
+    #[inline]
+    pub const fn as_raw_bits(&self) -> u64 {
+        self.raw_bits.get()
+    }
+
     // Type checks
 
     #[inline]
     pub const fn get_tag(&self) -> u16 {
-        (self.raw_bits >> TAG_SHIFT) as u16
+        (self.as_raw_bits() >> TAG_SHIFT) as u16
     }
 
     #[inline]
@@ -136,7 +146,7 @@ impl Value {
         // set is the canonical NaN itself. All other non-pointer values also have the 12 canonical
         // NaN bits set, so value is a double if either any of these 12 bits is unset in the
         // non-negated representation, or the value is the canonical NaN.
-        (!self.raw_bits & !CANONICAL_NAN != !CANONICAL_NAN) || self.is_nan()
+        (!self.as_raw_bits() & !CANONICAL_NAN != !CANONICAL_NAN) || self.is_nan()
     }
 
     #[inline]
@@ -146,7 +156,7 @@ impl Value {
 
     #[inline]
     pub const fn is_nan(&self) -> bool {
-        self.raw_bits == CANONICAL_NAN
+        self.as_raw_bits() == CANONICAL_NAN
     }
 
     /// Whether number is positive or negative infinity
@@ -154,27 +164,28 @@ impl Value {
     pub const fn is_infinity(&self) -> bool {
         // Set sign bit to check positive and negative infinity at the same time. Note that setting
         // sign bit will convert negative to positive infinity because doubles are bitwise negated.
-        self.raw_bits | (1 << 63) == POSITIVE_INFINITY
+        self.as_raw_bits() | (1 << 63) == POSITIVE_INFINITY
     }
 
     #[inline]
     pub fn is_positive_zero(&self) -> bool {
-        self.raw_bits == DOUBLE_POSITIVE_ZERO || (self.is_smi() && self.raw_bits == SMI_ZERO)
+        self.as_raw_bits() == DOUBLE_POSITIVE_ZERO
+            || (self.is_smi() && self.as_raw_bits() == SMI_ZERO)
     }
 
     #[inline]
     pub fn is_negative_zero(&self) -> bool {
-        self.raw_bits == DOUBLE_NEGATIVE_ZERO
+        self.as_raw_bits() == DOUBLE_NEGATIVE_ZERO
     }
 
     #[inline]
     pub fn is_true(&self) -> bool {
-        self.raw_bits == TRUE
+        self.as_raw_bits() == TRUE
     }
 
     #[inline]
     pub fn is_false(&self) -> bool {
-        self.raw_bits == FALSE
+        self.as_raw_bits() == FALSE
     }
 
     #[inline]
@@ -257,11 +268,6 @@ impl Value {
     // Type casts
 
     #[inline]
-    pub const fn as_raw_bits(&self) -> u64 {
-        self.raw_bits
-    }
-
-    #[inline]
     pub fn as_number(&self) -> f64 {
         if self.is_smi() {
             return f64::from(self.as_smi());
@@ -272,23 +278,23 @@ impl Value {
 
     #[inline]
     pub fn as_double(&self) -> f64 {
-        f64::from_bits(!self.raw_bits)
+        f64::from_bits(!self.as_raw_bits())
     }
 
     #[inline]
     pub const fn as_bool(&self) -> bool {
-        (self.raw_bits & 1) != 0
+        (self.as_raw_bits() & 1) != 0
     }
 
     #[inline]
     pub const fn as_smi(&self) -> i32 {
-        unsafe { std::mem::transmute::<u32, i32>(self.raw_bits as u32) }
+        unsafe { std::mem::transmute::<u32, i32>(self.as_raw_bits() as u32) }
     }
 
     // Pointers are represented directly.
     #[inline]
     const fn restore_pointer_bits<T>(&self) -> *mut T {
-        self.raw_bits as *mut T
+        self.as_raw_bits() as *mut T
     }
 
     #[inline]
@@ -341,30 +347,28 @@ impl Value {
 
     #[inline]
     pub const fn undefined() -> Value {
-        Value { raw_bits: (UNDEFINED_TAG as u64) << TAG_SHIFT }
+        Value::from_raw_bits((UNDEFINED_TAG as u64) << TAG_SHIFT)
     }
 
     #[inline]
     pub const fn null() -> Value {
-        Value { raw_bits: (NULL_TAG as u64) << TAG_SHIFT }
+        Value::from_raw_bits((NULL_TAG as u64) << TAG_SHIFT)
     }
 
     #[inline]
     pub const fn empty() -> Value {
-        Value { raw_bits: (EMPTY_TAG as u64) << TAG_SHIFT }
+        Value::from_raw_bits((EMPTY_TAG as u64) << TAG_SHIFT)
     }
 
     #[inline]
     pub const fn bool(value: bool) -> Value {
-        Value {
-            raw_bits: (((BOOL_TAG as u64) << TAG_SHIFT) | (value as u64)),
-        }
+        Value::from_raw_bits(((BOOL_TAG as u64) << TAG_SHIFT) | (value as u64))
     }
 
     #[inline]
     pub const fn smi(value: i32) -> Value {
         let smi_value_bits = unsafe { std::mem::transmute::<i32, u32>(value) as u64 };
-        Value { raw_bits: (((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits) }
+        Value::from_raw_bits(((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits)
     }
 
     #[inline]
@@ -372,37 +376,37 @@ impl Value {
         // f64::to_bits is not yet stable as a const fn. We only pass simple values in a const
         // context so perform a raw transmute until f64::to_bits is const stabilized.
         let double_bits = unsafe { std::mem::transmute::<f64, u64>(value) };
-        Value { raw_bits: !double_bits }
+        Value::from_raw_bits(!double_bits)
     }
 
     #[inline]
     pub fn object(value: Gc<ObjectValue>) -> Value {
-        Value { raw_bits: (value.as_ptr() as u64) }
+        Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
     pub fn string(value: Gc<StringValue>) -> Value {
-        Value { raw_bits: (value.as_ptr() as u64) }
+        Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
     pub fn symbol(value: Gc<SymbolValue>) -> Value {
-        Value { raw_bits: (value.as_ptr() as u64) }
+        Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
     pub fn bigint(value: Gc<BigIntValue>) -> Value {
-        Value { raw_bits: (value.as_ptr() as u64) }
+        Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
     pub fn accessor(value: Gc<AccessorValue>) -> Value {
-        Value { raw_bits: (value.as_ptr() as u64) }
+        Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
     pub const fn nan() -> Value {
-        Value { raw_bits: CANONICAL_NAN }
+        Value::from_raw_bits(CANONICAL_NAN)
     }
 }
 

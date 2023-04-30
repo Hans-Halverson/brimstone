@@ -72,6 +72,8 @@ impl Context {
             function_constructor_asts: vec![],
         };
 
+        cx.heap.info().set_context(&mut cx);
+
         cx.init_builtin_names();
         cx.init_builtin_symbols();
         cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();

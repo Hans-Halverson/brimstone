@@ -1,29 +1,49 @@
-use std::mem::{align_of, size_of};
+use std::{
+    alloc::Layout,
+    mem::{align_of, size_of},
+};
+
+use crate::js::runtime::Context;
 
 use super::pointer::Gc;
 
-// Simple bump allocator for now
 pub struct Heap {
-    memory: Vec<u8>,
-    // Pointer to where the next heap allocation will occur, grows as more allocations occur
+    /// Pointer to the start of the heap
+    start: *const u8,
+    /// Pointer to where the next heap allocation will occur, grows as more allocations occur
     current: *const u8,
-    // Pointer to the end of the heap
+    /// Pointer to the end of the heap
     end: *const u8,
+    layout: Layout,
 }
 
+/// Default size of the heap, in bytes
 const DEFAULT_HEAP_SIZE: usize = 256 * 1024 * 1024;
+
+/// The heap is always aligned to a 1GB boundary. Must be aligned to a power of two alignment
+/// greater than the heap size so that we can mask heap pointers to find start of heap.
+const HEAP_ALIGNMENT: usize = 1024 * 1024 * 1024;
 
 impl Heap {
     pub fn new() -> Heap {
         // Create uninitialized buffer of memory for heap
         unsafe {
-            let mut memory: Vec<u8> = Vec::with_capacity(DEFAULT_HEAP_SIZE);
-            memory.set_len(DEFAULT_HEAP_SIZE);
+            let layout = Layout::from_size_align(DEFAULT_HEAP_SIZE, HEAP_ALIGNMENT).unwrap();
+            let start = std::alloc::alloc(layout);
 
-            let start = memory.as_ptr();
+            // Leave room for heap info struct at start of heap
+            let current = start.add(size_of::<HeapInfo>());
+            let end = start.add(DEFAULT_HEAP_SIZE);
 
-            Heap { memory, current: start, end: start.add(DEFAULT_HEAP_SIZE) }
+            HeapInfo::init(HeapInfo::from_heap_ptr(start));
+
+            Heap { start, current, end, layout }
         }
+    }
+
+    #[inline]
+    pub fn info<'a, 'b>(&'a self) -> &'b mut HeapInfo {
+        unsafe { &mut *(self.start as *const _ as *mut HeapInfo) }
     }
 
     pub fn alloc<T>(&mut self, value: T) -> Gc<T> {
@@ -56,5 +76,42 @@ impl Heap {
 
             Gc::from_ptr(start)
         }
+    }
+}
+
+impl Drop for Heap {
+    fn drop(&mut self) {
+        unsafe { std::alloc::dealloc(self.start as *mut u8, self.layout) };
+    }
+}
+
+/// Heap data stored at the beginning of the heap
+pub struct HeapInfo {
+    /// Reference to the context that holds this heap.
+    context: *mut Context,
+}
+
+impl HeapInfo {
+    pub fn init(&mut self) {}
+
+    pub fn set_context(&mut self, cx: &mut Context) {
+        self.context = cx as *mut Context;
+    }
+
+    #[inline]
+    pub fn from_gc<'a, T>(heap_ptr: Gc<T>) -> &'a mut HeapInfo {
+        HeapInfo::from_heap_ptr(heap_ptr.as_ptr())
+    }
+
+    #[inline]
+    pub fn from_heap_ptr<'a, T>(heap_ptr: *const T) -> &'a mut HeapInfo {
+        const HEAP_BASE_MASK: usize = !(HEAP_ALIGNMENT - 1);
+        let heap_base = ((heap_ptr as usize) & HEAP_BASE_MASK) as *mut HeapInfo;
+
+        unsafe { &mut *heap_base }
+    }
+
+    pub fn cx(&self) -> &mut Context {
+        unsafe { &mut *self.context }
     }
 }

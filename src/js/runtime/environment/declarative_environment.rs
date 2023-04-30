@@ -1,4 +1,4 @@
-use super::environment::{DynEnvironment, Environment};
+use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 
 use crate::js::runtime::{
     completion::EvalResult,
@@ -39,7 +39,7 @@ impl Binding {
 pub struct DeclarativeEnvironment {
     descriptor: Gc<ObjectDescriptor>,
     pub bindings: HashMap<Gc<StringValue>, Binding>,
-    outer: Option<DynEnvironment>,
+    outer: Option<HeapDynEnvironment>,
 }
 
 impl GcDeref for DeclarativeEnvironment {}
@@ -50,7 +50,7 @@ impl DeclarativeEnvironment {
         cx.heap.alloc(DeclarativeEnvironment {
             descriptor: cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment),
             bindings: HashMap::new(),
-            outer,
+            outer: outer.as_ref().map(DynEnvironment::to_heap),
         })
     }
 
@@ -62,7 +62,7 @@ impl DeclarativeEnvironment {
         DeclarativeEnvironment {
             descriptor: cx.base_descriptors.get(kind),
             bindings: HashMap::new(),
-            outer,
+            outer: outer.as_ref().map(DynEnvironment::to_heap),
         }
     }
 
@@ -201,6 +201,6 @@ impl Environment for Gc<DeclarativeEnvironment> {
     }
 
     fn outer(&self) -> Option<DynEnvironment> {
-        self.outer
+        self.outer.as_ref().map(DynEnvironment::from_heap)
     }
 }

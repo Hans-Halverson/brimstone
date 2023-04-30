@@ -12,7 +12,7 @@ use super::{
     abstract_operations::{construct, define_property_or_throw, initialize_instance_elements},
     completion::{Completion, CompletionKind, EvalResult},
     environment::{
-        environment::DynEnvironment,
+        environment::{DynEnvironment, HeapDynEnvironment},
         function_environment::FunctionEnvironment,
         private_environment::{HeapPrivateName, PrivateEnvironment, PrivateName},
     },
@@ -68,7 +68,7 @@ extend_object! {
         realm: Gc<Realm>,
         script_or_module: Option<HeapScriptOrModule>,
         pub func_node: HeapFuncKind,
-        pub environment: DynEnvironment,
+        environment: HeapDynEnvironment,
         pub private_environment: Option<Gc<PrivateEnvironment>>,
         fields: Vec<HeapClassFieldDefinition>,
         private_methods: Vec<(HeapPrivateName, HeapProperty)>,
@@ -122,13 +122,18 @@ impl Function {
             .get_active_script_or_module()
             .as_ref()
             .map(ScriptOrModule::to_heap);
-        object.environment = environment;
+        object.environment = environment.to_heap();
         object.private_environment = private_environment;
         object.func_node = func_node.to_heap();
         object.fields = vec![];
         object.private_methods = vec![];
 
         object
+    }
+
+    #[inline]
+    pub fn environment(&self) -> DynEnvironment {
+        DynEnvironment::from_heap(&self.environment)
     }
 
     fn is_default_constructor(&self) -> bool {
@@ -261,7 +266,7 @@ impl VirtualObject for Gc<Function> {
             None => {}
         }
 
-        let constructor_env = callee_context.lexical_env;
+        let constructor_env = callee_context.lexical_env();
         let result = self.ordinary_call_evaluate_body(cx, &arguments);
 
         cx.pop_execution_context();
@@ -339,7 +344,7 @@ impl Gc<Function> {
     fn ordinary_call_bind_this(
         &self,
         cx: &mut Context,
-        mut callee_context: Gc<ExecutionContext>,
+        callee_context: Gc<ExecutionContext>,
         this_argument: Value,
     ) {
         let this_value = match self.this_mode {
@@ -358,7 +363,7 @@ impl Gc<Function> {
         };
 
         let mut local_func_env = callee_context
-            .lexical_env
+            .lexical_env()
             .as_function_environment()
             .unwrap();
         must!(local_func_env.bind_this_value(cx, this_value));

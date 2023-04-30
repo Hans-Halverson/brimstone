@@ -55,7 +55,7 @@ impl FunctionEnvironment {
         let decl_env = DeclarativeEnvironment::new_as_env_base(
             cx,
             ObjectKind::FunctionEnvironment,
-            Some(function_object.environment),
+            Some(function_object.environment()),
         );
 
         cx.heap.alloc(FunctionEnvironment {

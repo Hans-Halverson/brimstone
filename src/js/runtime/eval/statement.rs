@@ -129,14 +129,14 @@ fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
     }
 
     let mut current_context = cx.current_execution_context();
-    let old_env = current_context.lexical_env;
+    let old_env = current_context.lexical_env();
     let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
     block_declaration_instantiation(cx, block.lex_decls(), block_env);
 
-    current_context.lexical_env = block_env.into_dyn();
+    current_context.set_lexical_env(block_env.into_dyn());
     let block_value = eval_statement_list(cx, &block.body);
-    current_context.lexical_env = old_env;
+    current_context.set_lexical_env(old_env);
 
     block_value
 }
@@ -200,7 +200,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
             }
             patt => {
                 let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
-                let env = cx.current_execution_context().lexical_env;
+                let env = cx.current_execution_context().lexical_env();
                 maybe__!(binding_initialization(cx, patt, value, Some(env))).into()
             }
         }
@@ -419,7 +419,7 @@ fn eval_for_statement(
             },
         )) => {
             let mut current_execution_context = cx.current_execution_context();
-            let old_env = current_execution_context.lexical_env;
+            let old_env = current_execution_context.lexical_env();
             let mut loop_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
             let is_const = *kind == ast::VarKind::Const;
@@ -432,18 +432,18 @@ fn eval_for_statement(
                 }
             }));
 
-            current_execution_context.lexical_env = loop_env.into_dyn();
+            current_execution_context.set_lexical_env(loop_env.into_dyn());
 
             let for_decl_completion = eval_lexical_declaration(cx, lex_decl);
             if !for_decl_completion.is_normal() {
-                current_execution_context.lexical_env = old_env;
+                current_execution_context.set_lexical_env(old_env);
                 return for_decl_completion;
             }
 
             let per_iteration_decl = if is_const { None } else { Some(lex_decl) };
             let body_result = for_body_evaluation(cx, stmt, per_iteration_decl, stmt_label_id);
 
-            current_execution_context.lexical_env = old_env;
+            current_execution_context.set_lexical_env(old_env);
 
             body_result
         }
@@ -509,7 +509,7 @@ fn create_per_iteration_environment(
     per_iteration_decl: &ast::VariableDeclaration,
 ) -> EvalResult<()> {
     let mut current_execution_context = cx.current_execution_context();
-    let last_iteration_env = current_execution_context.lexical_env;
+    let last_iteration_env = current_execution_context.lexical_env();
     let mut this_iteration_env = DeclarativeEnvironment::new(cx, last_iteration_env.outer());
 
     maybe!(per_iteration_decl.iter_bound_names(&mut |id| {
@@ -521,7 +521,7 @@ fn create_per_iteration_environment(
         ().into()
     }));
 
-    current_execution_context.lexical_env = this_iteration_env.into_dyn();
+    current_execution_context.set_lexical_env(this_iteration_env.into_dyn());
 
     ().into()
 }
@@ -544,7 +544,7 @@ fn for_each_head_evaluation_shared(
             },
         ) => {
             let mut current_execution_context = cx.current_execution_context();
-            let old_env = current_execution_context.lexical_env;
+            let old_env = current_execution_context.lexical_env();
             let mut new_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
             must!(var_decl.iter_bound_names(&mut |id| {
@@ -552,11 +552,11 @@ fn for_each_head_evaluation_shared(
                 new_env.create_mutable_binding(cx, name_value, false)
             }));
 
-            current_execution_context.lexical_env = new_env.into_dyn();
+            current_execution_context.set_lexical_env(new_env.into_dyn());
 
             let result = eval_expression(cx, &stmt.right);
 
-            current_execution_context.lexical_env = old_env;
+            current_execution_context.set_lexical_env(old_env);
 
             result
         }
@@ -571,7 +571,7 @@ fn for_each_body_evaluation_shared(
     right_value: Value,
 ) -> EvalResult<()> {
     let mut current_execution_context = cx.current_execution_context();
-    let old_env = current_execution_context.lexical_env;
+    let old_env = current_execution_context.lexical_env();
 
     match stmt.left.as_ref() {
         ast::ForEachInit::Pattern(pattern) => {
@@ -624,7 +624,7 @@ fn for_each_body_evaluation_shared(
             }));
 
             let iteration_env = iteration_env.into_dyn();
-            current_execution_context.lexical_env = iteration_env;
+            current_execution_context.set_lexical_env(iteration_env);
 
             let status = match declarations[0].id.as_ref() {
                 ast::Pattern::Id(id) => {
@@ -636,7 +636,7 @@ fn for_each_body_evaluation_shared(
 
             // Be sure to restore old execution context on failure
             if let EvalResult::Throw(_) = status {
-                current_execution_context.lexical_env = old_env;
+                current_execution_context.set_lexical_env(old_env);
             }
 
             status
@@ -656,7 +656,7 @@ fn eval_for_in_statement(
         return Value::undefined().into();
     }
 
-    let old_env = cx.current_execution_context().lexical_env;
+    let old_env = cx.current_execution_context().lexical_env();
 
     let object_value = maybe__!(to_object(cx, right_value));
     let mut last_value = Value::undefined();
@@ -688,7 +688,7 @@ fn eval_for_in_statement(
                 // Part of ForIn/OfBodyEvaluation that is specific to enumeration
                 let completion = eval_statement(cx, &stmt.body);
 
-                cx.current_execution_context().lexical_env = old_env;
+                cx.current_execution_context().set_lexical_env(old_env);
 
                 if !loop_continues(&completion, stmt_label_id) {
                     let completion = completion.update_if_empty(last_value);
@@ -732,7 +732,7 @@ fn eval_for_of_statement(
 
     let right_value = maybe__!(for_each_head_evaluation_shared(cx, stmt));
 
-    let old_env = cx.current_execution_context().lexical_env;
+    let old_env = cx.current_execution_context().lexical_env();
 
     let mut last_value = Value::undefined();
     let mut last_completion = None;
@@ -746,7 +746,7 @@ fn eval_for_of_statement(
         // Part of ForIn/OfBodyEvaluation that is specific to enumeration
         let completion = eval_statement(cx, &stmt.body);
 
-        cx.current_execution_context().lexical_env = old_env;
+        cx.current_execution_context().set_lexical_env(old_env);
 
         if !loop_continues(&completion, stmt_label_id) {
             let completion = completion.update_if_empty(last_value);
@@ -813,13 +813,13 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
     let object = maybe__!(to_object(cx, value));
 
     let mut current_execution_context = cx.current_execution_context();
-    let old_env = current_execution_context.lexical_env;
+    let old_env = current_execution_context.lexical_env();
     let new_env = ObjectEnvironment::new(cx, object, true, Some(old_env));
-    current_execution_context.lexical_env = new_env.into_dyn();
+    current_execution_context.set_lexical_env(new_env.into_dyn());
 
     let completion = eval_statement(cx, &stmt.body);
 
-    current_execution_context.lexical_env = old_env;
+    current_execution_context.set_lexical_env(old_env);
 
     completion.update_if_empty(Value::undefined())
 }
@@ -926,16 +926,16 @@ fn eval_switch_statement(
     let discriminant_value = maybe__!(eval_expression(cx, &stmt.discriminant));
 
     let mut current_execution_context = cx.current_execution_context();
-    let old_env = current_execution_context.lexical_env;
+    let old_env = current_execution_context.lexical_env();
     let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
     block_declaration_instantiation(cx, &stmt.lex_decls, block_env);
 
-    current_execution_context.lexical_env = block_env.into_dyn();
+    current_execution_context.set_lexical_env(block_env.into_dyn());
 
     let completion = eval_case_block(cx, stmt, discriminant_value);
 
-    current_execution_context.lexical_env = old_env;
+    current_execution_context.set_lexical_env(old_env);
 
     // Inline labeled statement evaluation break handling
     if completion.kind() == CompletionKind::Break {
@@ -1029,7 +1029,7 @@ fn eval_catch_clause(
         None => eval_block(cx, &catch.body),
         Some(ref param) => {
             let mut current_context = cx.current_execution_context();
-            let old_env = cx.current_execution_context().lexical_env;
+            let old_env = cx.current_execution_context().lexical_env();
             let mut catch_env = DeclarativeEnvironment::new(cx, Some(old_env)).into_dyn();
 
             must!(param.iter_bound_names(&mut |id| {
@@ -1037,20 +1037,20 @@ fn eval_catch_clause(
                 catch_env.create_mutable_binding(cx, name_value, false)
             }));
 
-            current_context.lexical_env = catch_env;
+            current_context.set_lexical_env(catch_env);
 
             let binding_init_result =
                 binding_initialization(cx, param, thrown_value, Some(catch_env));
 
             // Make sure to remove new environment if binding initialization fails
             if let EvalResult::Throw(throw_value) = binding_init_result {
-                current_context.lexical_env = old_env;
+                current_context.set_lexical_env(old_env);
                 return Completion::throw(throw_value);
             }
 
             let result = eval_block(cx, &catch.body);
 
-            current_context.lexical_env = old_env;
+            current_context.set_lexical_env(old_env);
 
             result
         }

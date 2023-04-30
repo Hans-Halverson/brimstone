@@ -104,7 +104,7 @@ fn class_field_definition_evaluation(
     home_object: Gc<ObjectValue>,
 ) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env;
 
     let prototype = current_execution_context
@@ -135,7 +135,7 @@ fn class_static_block_definition_evaluation(
     home_object: Gc<ObjectValue>,
 ) -> Gc<Function> {
     let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env;
 
     let prototype = current_execution_context
@@ -162,7 +162,7 @@ pub fn class_definition_evaluation(
 ) -> EvalResult<Gc<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm;
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let mut class_env = DeclarativeEnvironment::new(cx, Some(env));
 
     if let Some(class_binding) = class_binding {
@@ -191,11 +191,11 @@ pub fn class_definition_evaluation(
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
     {
-        current_execution_context.lexical_env = class_env.into_dyn();
+        current_execution_context.set_lexical_env(class_env.into_dyn());
 
         let super_class_result = eval_expression(cx, super_class);
 
-        current_execution_context.lexical_env = env;
+        current_execution_context.set_lexical_env(env);
 
         let super_class = match super_class_result {
             EvalResult::Ok(super_class) => super_class,
@@ -228,7 +228,7 @@ pub fn class_definition_evaluation(
     // Set up prototype and constructor
     let proto = ordinary_object_create_optional_proto(cx, proto_parent);
 
-    current_execution_context.lexical_env = class_env.into_dyn();
+    current_execution_context.set_lexical_env(class_env.into_dyn());
     current_execution_context.private_env = Some(class_private_env);
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {
@@ -248,7 +248,7 @@ pub fn class_definition_evaluation(
             /* is_lexical_this */ false,
             /* is_strict */ true,
             /* argument_count */ 0,
-            current_execution_context.lexical_env,
+            current_execution_context.lexical_env(),
             current_execution_context.private_env,
         );
 
@@ -313,7 +313,7 @@ pub fn class_definition_evaluation(
                 let field_def = match result {
                     EvalResult::Ok(field_def) => field_def,
                     EvalResult::Throw(thrown_value) => {
-                        current_execution_context.lexical_env = env;
+                        current_execution_context.set_lexical_env(env);
                         current_execution_context.private_env = outer_private_env;
 
                         return EvalResult::Throw(thrown_value);
@@ -406,7 +406,7 @@ pub fn class_definition_evaluation(
                 match result {
                     EvalResult::Ok(_) => {}
                     EvalResult::Throw(thrown_value) => {
-                        current_execution_context.lexical_env = env;
+                        current_execution_context.set_lexical_env(env);
                         current_execution_context.private_env = outer_private_env;
 
                         return EvalResult::Throw(thrown_value);
@@ -416,7 +416,7 @@ pub fn class_definition_evaluation(
         }
     }
 
-    current_execution_context.lexical_env = env;
+    current_execution_context.set_lexical_env(env);
 
     if let Some(class_binding) = class_binding {
         must!(class_env.initialize_binding(cx, class_binding, func.into()));
@@ -470,7 +470,7 @@ fn binding_class_declaration_evaluation(
         let name_key = PropertyKey::string(cx, name_value);
         let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
 
-        let lexical_env = cx.current_execution_context().lexical_env;
+        let lexical_env = cx.current_execution_context().lexical_env();
         maybe!(initialize_bound_name(cx, name_value, value.into(), Some(lexical_env)));
 
         value.into()

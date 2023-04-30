@@ -1,7 +1,7 @@
 use super::{
     completion::EvalResult,
     environment::{
-        environment::{get_identifier_reference, DynEnvironment},
+        environment::{get_identifier_reference, DynEnvironment, HeapDynEnvironment},
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
@@ -22,8 +22,8 @@ pub struct ExecutionContext {
     pub function: Option<Gc<ObjectValue>>,
     pub realm: Gc<Realm>,
     script_or_module: Option<HeapScriptOrModule>,
-    pub lexical_env: DynEnvironment,
-    pub variable_env: DynEnvironment,
+    lexical_env: HeapDynEnvironment,
+    variable_env: HeapDynEnvironment,
     pub private_env: Option<Gc<PrivateEnvironment>>,
     pub is_strict_mode: bool,
 }
@@ -47,11 +47,31 @@ impl ExecutionContext {
             function,
             realm,
             script_or_module: script_or_module.as_ref().map(ScriptOrModule::to_heap),
-            lexical_env,
-            variable_env,
+            lexical_env: lexical_env.to_heap(),
+            variable_env: variable_env.to_heap(),
             private_env,
             is_strict_mode,
         })
+    }
+
+    #[inline]
+    pub fn lexical_env(&self) -> DynEnvironment {
+        DynEnvironment::from_heap(&self.lexical_env)
+    }
+
+    #[inline]
+    pub fn variable_env(&self) -> DynEnvironment {
+        DynEnvironment::from_heap(&self.variable_env)
+    }
+
+    #[inline]
+    pub fn set_lexical_env(&mut self, env: DynEnvironment) {
+        self.lexical_env = env.to_heap()
+    }
+
+    #[inline]
+    pub fn set_variable_env(&mut self, env: DynEnvironment) {
+        self.variable_env = env.to_heap()
     }
 }
 
@@ -71,7 +91,7 @@ pub fn resolve_binding(
 ) -> EvalResult<Reference> {
     let env = match env {
         Some(env) => env,
-        None => cx.current_execution_context().lexical_env,
+        None => cx.current_execution_context().lexical_env(),
     };
 
     let is_strict = cx.current_execution_context().is_strict_mode;
@@ -81,7 +101,7 @@ pub fn resolve_binding(
 
 // 9.4.3 GetThisEnvironment
 pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
-    let mut current_env = cx.current_execution_context().lexical_env;
+    let mut current_env = cx.current_execution_context().lexical_env();
     loop {
         if current_env.has_this_binding() {
             return current_env;

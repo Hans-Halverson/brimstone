@@ -85,11 +85,11 @@ pub fn function_declaration_instantiation(
     // A new environment is needed so that direct eval calls in parameter expressions are outside
     // the environment where parameters are declared.
     let mut env = if is_strict || !func_node.has_parameter_expressions {
-        callee_context.lexical_env
+        callee_context.lexical_env()
     } else {
-        let new_env = DeclarativeEnvironment::new(cx, Some(callee_context.lexical_env));
-        callee_context.lexical_env = new_env.into_dyn();
-        callee_context.lexical_env
+        let new_env = DeclarativeEnvironment::new(cx, Some(callee_context.lexical_env()));
+        callee_context.set_lexical_env(new_env.into_dyn());
+        callee_context.lexical_env()
     };
 
     let mut parameter_names: HashSet<&str> = HashSet::new();
@@ -229,8 +229,8 @@ pub fn function_declaration_instantiation(
     } else {
         // A separate Environment Record is needed to ensure that closures created by expressions in
         // the formal parameter list do not have visibility of declarations in the function body.
-        callee_context.variable_env = DeclarativeEnvironment::new(cx, Some(env)).into_dyn();
-        let mut var_env = callee_context.variable_env;
+        callee_context.set_variable_env(DeclarativeEnvironment::new(cx, Some(env)).into_dyn());
+        let mut var_env = callee_context.variable_env();
 
         let mut instantiated_var_names = HashSet::new();
 
@@ -270,7 +270,7 @@ pub fn function_declaration_instantiation(
         var_env
     };
 
-    callee_context.lexical_env = lex_env;
+    callee_context.set_lexical_env(lex_env);
 
     // Create bindings for lex decls in function body
     for lex_decl in func_node.lex_decls() {
@@ -345,7 +345,7 @@ pub fn instantiate_ordinary_function_expression(
                 function_prototype,
                 func_node,
                 false,
-                current_context.lexical_env,
+                current_context.lexical_env(),
                 current_context.private_env,
             );
 
@@ -359,7 +359,7 @@ pub fn instantiate_ordinary_function_expression(
             closure
         }
         Some(id) => {
-            let mut func_env = DeclarativeEnvironment::new(cx, Some(current_context.lexical_env));
+            let mut func_env = DeclarativeEnvironment::new(cx, Some(current_context.lexical_env()));
 
             let name_value = id_string_value(cx, id);
             let name_key = PropertyKey::string(cx, name_value);
@@ -400,7 +400,7 @@ pub fn instantiate_arrow_function_expression(
         function_prototype,
         func_node,
         true,
-        current_context.lexical_env,
+        current_context.lexical_env(),
         current_context.private_env,
     );
 
@@ -420,7 +420,7 @@ pub fn define_method(
     function_prototype: Option<Gc<ObjectValue>>,
 ) -> Gc<Function> {
     let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env;
 
     let prototype = match function_prototype {
@@ -458,7 +458,7 @@ pub fn method_definition_evaluation(
 
     // Otherwise is a getter or setter
     let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env;
 
     let prototype = current_execution_context
@@ -511,7 +511,7 @@ pub fn private_method_definition_evaluation(
 
     // Otherwise is a getter or setter
     let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env;
+    let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env;
 
     let prototype = current_execution_context

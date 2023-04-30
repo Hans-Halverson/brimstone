@@ -104,6 +104,10 @@ pub struct DynEnvironment {
     vtable: *const (),
 }
 
+pub struct HeapDynEnvironment {
+    inner: DynEnvironment,
+}
+
 impl<T> Gc<T>
 where
     Gc<T>: Environment,
@@ -122,6 +126,16 @@ where
 impl DynEnvironment {
     pub fn ptr_eq(&self, other: &Self) -> bool {
         self.data == other.data
+    }
+
+    #[inline]
+    pub fn to_heap(&self) -> HeapDynEnvironment {
+        HeapDynEnvironment { inner: *self }
+    }
+
+    #[inline]
+    pub fn from_heap(heap_dyn_environment: &HeapDynEnvironment) -> DynEnvironment {
+        heap_dyn_environment.inner
     }
 }
 

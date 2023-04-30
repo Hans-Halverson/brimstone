@@ -16,14 +16,14 @@ use crate::{
     maybe,
 };
 
-use super::environment::{DynEnvironment, Environment};
+use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 
 // 9.1.1.2 Object Environment Record
 #[repr(C)]
 pub struct ObjectEnvironment {
     descriptor: Gc<ObjectDescriptor>,
     pub binding_object: Gc<ObjectValue>,
-    pub outer: Option<DynEnvironment>,
+    pub outer: Option<HeapDynEnvironment>,
     pub is_with_environment: bool,
 }
 
@@ -38,8 +38,12 @@ impl ObjectEnvironment {
         outer: Option<DynEnvironment>,
     ) -> Gc<ObjectEnvironment> {
         let descriptor = cx.base_descriptors.get(ObjectKind::ObjectEnvironment);
-        cx.heap
-            .alloc(ObjectEnvironment { descriptor, binding_object, is_with_environment, outer })
+        cx.heap.alloc(ObjectEnvironment {
+            descriptor,
+            binding_object,
+            is_with_environment,
+            outer: outer.as_ref().map(DynEnvironment::to_heap),
+        })
     }
 }
 
@@ -172,6 +176,6 @@ impl Environment for Gc<ObjectEnvironment> {
     }
 
     fn outer(&self) -> Option<DynEnvironment> {
-        self.outer
+        self.outer.as_ref().map(DynEnvironment::from_heap)
     }
 }

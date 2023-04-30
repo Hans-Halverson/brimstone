@@ -170,7 +170,7 @@ impl DerefMut for DynEnvironment {
 /// implements Object so that we can construct our own trait objects manually.
 const fn extract_environment_vtable<T: Environment>() -> *const () {
     unsafe {
-        let example_ptr: *const T = std::ptr::null();
+        let example_ptr: *const T = NonNull::dangling().as_ptr();
         let example_trait_object: *const dyn Environment = example_ptr;
         let trait_object =
             std::mem::transmute::<*const dyn Environment, DynEnvironment>(example_trait_object);

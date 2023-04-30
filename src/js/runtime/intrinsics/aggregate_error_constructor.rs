@@ -86,7 +86,7 @@ impl AggregateErrorConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            cx.current_execution_context().function.unwrap()
+            cx.current_execution_context().function().unwrap()
         };
 
         let object: Gc<ObjectValue> =

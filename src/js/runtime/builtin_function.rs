@@ -25,7 +25,7 @@ extend_object! {
     pub struct BuiltinFunction {
         realm: Gc<Realm>,
         script_or_module: Option<ScriptOrModule>,
-        pub initial_name: Option<Gc<StringValue>>,
+        initial_name: Option<Gc<StringValue>>,
         builtin_func: BuiltinFunctionPtr,
         closure_environment: Option<Gc<ClosureEnvironment>>,
         has_constructor: bool,
@@ -94,6 +94,10 @@ impl BuiltinFunction {
     pub fn set_closure_environment<T>(&mut self, closure_environment: Gc<T>) {
         self.closure_environment = Some(closure_environment.cast::<ClosureEnvironment>());
     }
+
+    pub fn set_initial_name(&mut self, initial_name: Option<Gc<StringValue>>) {
+        self.initial_name = initial_name;
+    }
 }
 
 impl Gc<BuiltinFunction> {
@@ -145,7 +149,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,
             /* private_env */ None,
-            current_execution_context.is_strict_mode,
+            current_execution_context.is_strict_mode(),
         );
 
         cx.push_closure_environment(self.closure_environment);
@@ -175,7 +179,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,
             /* private_env */ None,
-            current_execution_context.is_strict_mode,
+            current_execution_context.is_strict_mode(),
         );
 
         cx.push_closure_environment(self.closure_environment);

@@ -200,7 +200,7 @@ impl Reference {
         base_value: Value,
         private_name_str: &str,
     ) -> Reference {
-        let private_env = cx.current_execution_context().private_env.unwrap();
+        let private_env = cx.current_execution_context().private_env().unwrap();
         let private_name = private_env.resolve_private_identifier(private_name_str);
 
         let private_name_string_value = InternedStrings::get_str(cx, private_name_str);

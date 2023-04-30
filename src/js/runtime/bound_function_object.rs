@@ -19,7 +19,7 @@ use super::{
 // 10.4.1 Bound Function Exotic Objects
 extend_object! {
     pub struct BoundFunctionObject {
-        pub bound_target_function: Gc<ObjectValue>,
+        bound_target_function: Gc<ObjectValue>,
         bound_this: Value,
         bound_arguments: Vec<Value>,
     }
@@ -44,6 +44,11 @@ impl BoundFunctionObject {
         object.bound_arguments = bound_arguments;
 
         object.into()
+    }
+
+    #[inline]
+    pub fn bound_target_function(&self) -> Gc<ObjectValue> {
+        self.bound_target_function
     }
 }
 

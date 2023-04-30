@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         error::reference_error_,
-        function::{Function, ThisMode},
+        function::Function,
         gc::{Gc, GcDeref},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -45,7 +45,7 @@ impl FunctionEnvironment {
         function_object: Gc<Function>,
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<FunctionEnvironment> {
-        let this_binding_status = if function_object.this_mode == ThisMode::Lexical {
+        let this_binding_status = if function_object.is_lexical_this_mode() {
             ThisBindingStatus::Lexical
         } else {
             ThisBindingStatus::Uninitialized
@@ -92,7 +92,7 @@ impl Environment for Gc<FunctionEnvironment> {
             return false;
         }
 
-        self.function_object.home_object.is_some()
+        self.function_object.has_home_object()
     }
 
     // 9.1.1.3.4 GetThisBinding
@@ -186,7 +186,7 @@ impl FunctionEnvironment {
     pub fn get_super_base(&self, cx: &mut Context) -> EvalResult<Value> {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
-        match &self.function_object.home_object {
+        match self.function_object.home_object() {
             None => Value::undefined().into(),
             Some(home) => {
                 let prototype = maybe!(home.get_prototype_of(cx));

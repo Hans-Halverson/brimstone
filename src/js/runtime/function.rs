@@ -42,13 +42,13 @@ use super::{
 };
 
 #[derive(PartialEq)]
-pub enum ThisMode {
+enum ThisMode {
     Lexical,
     Strict,
     Global,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum ConstructorKind {
     Base,
     Derived,
@@ -61,15 +61,15 @@ extend_object! {
         is_class_constructor: bool,
         // Whether this function has a [[Construct]] internal slot
         has_construct: bool,
-        pub constructor_kind: ConstructorKind,
-        pub this_mode: ThisMode,
+        constructor_kind: ConstructorKind,
+        this_mode: ThisMode,
         // Object properties of this function
-        pub home_object: Option<Gc<ObjectValue>>,
+        home_object: Option<Gc<ObjectValue>>,
         realm: Gc<Realm>,
         script_or_module: Option<HeapScriptOrModule>,
-        pub func_node: HeapFuncKind,
+        func_node: HeapFuncKind,
         environment: HeapDynEnvironment,
-        pub private_environment: Option<Gc<PrivateEnvironment>>,
+        private_environment: Option<Gc<PrivateEnvironment>>,
         fields: Vec<HeapClassFieldDefinition>,
         private_methods: Vec<(HeapPrivateName, HeapProperty)>,
     }
@@ -84,7 +84,7 @@ pub enum FuncKind {
 }
 
 /// A FuncKind that is stored on the heap.
-pub enum HeapFuncKind {
+enum HeapFuncKind {
     Function(AstPtr<ast::Function>),
     ClassProperty(AstPtr<ast::ClassProperty>, HeapPropertyKey),
     DefaultConstructor,
@@ -136,11 +136,47 @@ impl Function {
         DynEnvironment::from_heap(&self.environment)
     }
 
+    #[inline]
+    pub fn home_object(&self) -> Option<Gc<ObjectValue>> {
+        self.home_object
+    }
+
+    pub fn has_home_object(&self) -> bool {
+        self.home_object.is_some()
+    }
+
+    pub fn is_class_property(&self) -> bool {
+        match self.func_node {
+            HeapFuncKind::ClassProperty(..) => true,
+            _ => false,
+        }
+    }
+
     fn is_default_constructor(&self) -> bool {
         match self.func_node {
             HeapFuncKind::DefaultConstructor => true,
             _ => false,
         }
+    }
+
+    #[inline]
+    pub fn func_ast_node(&self) -> Option<AstPtr<ast::Function>> {
+        match &self.func_node {
+            HeapFuncKind::Function(func_ast_node) => Some(func_ast_node.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn is_lexical_this_mode(&self) -> bool {
+        self.this_mode == ThisMode::Lexical
+    }
+
+    pub fn constructor_kind(&self) -> ConstructorKind {
+        self.constructor_kind
+    }
+
+    pub fn set_constructor_kind(&mut self, kind: ConstructorKind) {
+        self.constructor_kind = kind
     }
 
     pub fn add_fields(&mut self, fields: Vec<ClassFieldDefinition>) {
@@ -593,7 +629,7 @@ pub fn set_function_name(
 
     if let Some(mut builtin_func) = func.as_builtin_function_opt() {
         // Choose to not add prefix, as this is optional in spec
-        builtin_func.initial_name = Some(name_string);
+        builtin_func.set_initial_name(Some(name_string));
     }
 
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);

@@ -330,7 +330,7 @@ pub fn ordinary_has_instance(cx: &mut Context, func: Value, object: Value) -> Ev
 
     if func.is_bound_function() {
         let bound_func = func.cast::<BoundFunctionObject>();
-        return eval_instanceof_expression(cx, object, bound_func.bound_target_function.into());
+        return eval_instanceof_expression(cx, object, bound_func.bound_target_function().into());
     }
 
     if !object.is_object() {

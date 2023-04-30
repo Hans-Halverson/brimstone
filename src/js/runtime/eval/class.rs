@@ -105,7 +105,7 @@ fn class_field_definition_evaluation(
 ) -> EvalResult<Gc<Function>> {
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env;
+    let private_env = current_execution_context.private_env();
 
     let prototype = current_execution_context
         .realm
@@ -136,7 +136,7 @@ fn class_static_block_definition_evaluation(
 ) -> Gc<Function> {
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env;
+    let private_env = current_execution_context.private_env();
 
     let prototype = current_execution_context
         .realm
@@ -169,7 +169,7 @@ pub fn class_definition_evaluation(
         must!(class_env.create_immutable_binding(cx, class_binding, true));
     }
 
-    let outer_private_env = current_execution_context.private_env;
+    let outer_private_env = current_execution_context.private_env();
     let mut class_private_env = PrivateEnvironment::new(cx, outer_private_env);
 
     // Add private fields to class's private environment
@@ -229,7 +229,7 @@ pub fn class_definition_evaluation(
     let proto = ordinary_object_create_optional_proto(cx, proto_parent);
 
     current_execution_context.set_lexical_env(class_env.into_dyn());
-    current_execution_context.private_env = Some(class_private_env);
+    current_execution_context.set_private_env(Some(class_private_env));
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {
         let constructor = constructor.as_ref();
@@ -249,7 +249,7 @@ pub fn class_definition_evaluation(
             /* is_strict */ true,
             /* argument_count */ 0,
             current_execution_context.lexical_env(),
-            current_execution_context.private_env,
+            current_execution_context.private_env(),
         );
 
         // Mark class constructor so that body is never evaluated
@@ -262,7 +262,7 @@ pub fn class_definition_evaluation(
     make_constructor(cx, func, Some(false), Some(proto.into()));
 
     if class.super_class.is_some() {
-        func.constructor_kind = ConstructorKind::Derived;
+        func.set_constructor_kind(ConstructorKind::Derived);
     }
 
     create_method_property(cx, proto.into(), cx.names.constructor(), func.into());
@@ -314,7 +314,7 @@ pub fn class_definition_evaluation(
                     EvalResult::Ok(field_def) => field_def,
                     EvalResult::Throw(thrown_value) => {
                         current_execution_context.set_lexical_env(env);
-                        current_execution_context.private_env = outer_private_env;
+                        current_execution_context.set_private_env(outer_private_env);
 
                         return EvalResult::Throw(thrown_value);
                     }
@@ -407,7 +407,7 @@ pub fn class_definition_evaluation(
                     EvalResult::Ok(_) => {}
                     EvalResult::Throw(thrown_value) => {
                         current_execution_context.set_lexical_env(env);
-                        current_execution_context.private_env = outer_private_env;
+                        current_execution_context.set_private_env(outer_private_env);
 
                         return EvalResult::Throw(thrown_value);
                     }
@@ -440,7 +440,7 @@ pub fn class_definition_evaluation(
                 let result = define_field(cx, func.into(), field_def);
 
                 if let EvalResult::Throw(thrown_value) = result {
-                    current_execution_context.private_env = outer_private_env;
+                    current_execution_context.set_private_env(outer_private_env);
                     return EvalResult::Throw(thrown_value);
                 }
             }
@@ -448,14 +448,14 @@ pub fn class_definition_evaluation(
                 let result = call_object(cx, body_function.into(), func.into(), &[]);
 
                 if let EvalResult::Throw(thrown_value) = result {
-                    current_execution_context.private_env = outer_private_env;
+                    current_execution_context.set_private_env(outer_private_env);
                     return EvalResult::Throw(thrown_value);
                 }
             }
         }
     }
 
-    current_execution_context.private_env = outer_private_env;
+    current_execution_context.set_private_env(outer_private_env);
 
     func.into()
 }

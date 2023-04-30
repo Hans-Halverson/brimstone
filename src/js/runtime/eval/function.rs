@@ -27,7 +27,7 @@ use crate::{
             execution_context::resolve_binding,
             function::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
-                ordinary_function_create, set_function_name, Function, HeapFuncKind,
+                ordinary_function_create, set_function_name, Function,
             },
             gc::Gc,
             interned_strings::InternedStrings,
@@ -57,11 +57,12 @@ pub fn function_declaration_instantiation(
     func: Gc<Function>,
     arguments: &[Value],
 ) -> Completion {
-    let func_node = if let HeapFuncKind::Function(func_node) = &func.func_node {
-        func_node.as_ref()
+    let func_node = if let Some(func_node) = func.func_ast_node() {
+        func_node
     } else {
         unreachable!()
     };
+    let func_node = func_node.as_ref();
 
     let mut function_names = HashSet::new();
     // Functions to initialize are in reverse order from spec
@@ -289,7 +290,7 @@ pub fn function_declaration_instantiation(
     }
 
     // Initialize toplevel function objects
-    let private_env = callee_context.private_env;
+    let private_env = callee_context.private_env();
     for func in functions_to_initialize {
         let func_name = id_string_value(cx, func.id.as_deref().unwrap());
         let func_object = instantiate_function_object(cx, func, lex_env, private_env);
@@ -346,7 +347,7 @@ pub fn instantiate_ordinary_function_expression(
                 func_node,
                 false,
                 current_context.lexical_env(),
-                current_context.private_env,
+                current_context.private_env(),
             );
 
             match name {
@@ -371,7 +372,7 @@ pub fn instantiate_ordinary_function_expression(
                 func_node,
                 false,
                 func_env.into_dyn(),
-                current_context.private_env,
+                current_context.private_env(),
             );
 
             set_function_name(cx, closure.into(), name_key, None);
@@ -401,7 +402,7 @@ pub fn instantiate_arrow_function_expression(
         func_node,
         true,
         current_context.lexical_env(),
-        current_context.private_env,
+        current_context.private_env(),
     );
 
     match name {
@@ -421,7 +422,7 @@ pub fn define_method(
 ) -> Gc<Function> {
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env;
+    let private_env = current_execution_context.private_env();
 
     let prototype = match function_prototype {
         Some(prototype) => prototype,
@@ -459,7 +460,7 @@ pub fn method_definition_evaluation(
     // Otherwise is a getter or setter
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env;
+    let private_env = current_execution_context.private_env();
 
     let prototype = current_execution_context
         .realm
@@ -512,7 +513,7 @@ pub fn private_method_definition_evaluation(
     // Otherwise is a getter or setter
     let current_execution_context = cx.current_execution_context();
     let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env;
+    let private_env = current_execution_context.private_env();
 
     let prototype = current_execution_context
         .realm

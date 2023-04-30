@@ -19,13 +19,13 @@ use super::{
 #[repr(C)]
 pub struct ExecutionContext {
     descriptor: Gc<ObjectDescriptor>,
-    pub function: Option<Gc<ObjectValue>>,
+    function: Option<Gc<ObjectValue>>,
     pub realm: Gc<Realm>,
     script_or_module: Option<HeapScriptOrModule>,
     lexical_env: HeapDynEnvironment,
     variable_env: HeapDynEnvironment,
-    pub private_env: Option<Gc<PrivateEnvironment>>,
-    pub is_strict_mode: bool,
+    private_env: Option<Gc<PrivateEnvironment>>,
+    is_strict_mode: bool,
 }
 
 impl GcDeref for ExecutionContext {}
@@ -55,6 +55,11 @@ impl ExecutionContext {
     }
 
     #[inline]
+    pub fn function(&self) -> Option<Gc<ObjectValue>> {
+        self.function
+    }
+
+    #[inline]
     pub fn lexical_env(&self) -> DynEnvironment {
         DynEnvironment::from_heap(&self.lexical_env)
     }
@@ -65,6 +70,16 @@ impl ExecutionContext {
     }
 
     #[inline]
+    pub fn private_env(&self) -> Option<Gc<PrivateEnvironment>> {
+        self.private_env
+    }
+
+    #[inline]
+    pub fn is_strict_mode(&self) -> bool {
+        self.is_strict_mode
+    }
+
+    #[inline]
     pub fn set_lexical_env(&mut self, env: DynEnvironment) {
         self.lexical_env = env.to_heap()
     }
@@ -72,6 +87,11 @@ impl ExecutionContext {
     #[inline]
     pub fn set_variable_env(&mut self, env: DynEnvironment) {
         self.variable_env = env.to_heap()
+    }
+
+    #[inline]
+    pub fn set_private_env(&mut self, private_env: Option<Gc<PrivateEnvironment>>) {
+        self.private_env = private_env;
     }
 }
 

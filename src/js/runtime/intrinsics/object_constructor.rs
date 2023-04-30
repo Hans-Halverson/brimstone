@@ -115,7 +115,7 @@ impl ObjectConstructor {
         if let Some(new_target) = new_target {
             if !cx
                 .current_execution_context()
-                .function
+                .function()
                 .unwrap()
                 .ptr_eq(&new_target)
             {

@@ -19,7 +19,7 @@ use crate::{
             },
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
-            function::{instantiate_function_object, ConstructorKind, HeapFuncKind},
+            function::{instantiate_function_object, ConstructorKind},
             string_value::StringValue,
             Completion, CompletionKind, Context, EvalResult, Gc, Value,
         },
@@ -55,9 +55,9 @@ pub fn perform_eval(
             in_method = func_env.has_super_binding();
 
             let func = func_env.function_object;
-            in_derived_constructor = func.constructor_kind == ConstructorKind::Derived;
+            in_derived_constructor = func.constructor_kind() == ConstructorKind::Derived;
 
-            if let HeapFuncKind::ClassProperty(..) = func.func_node {
+            if func.is_class_property() {
                 in_class_field_initializer = true;
             }
         }
@@ -69,7 +69,7 @@ pub fn perform_eval(
         let mut names = HashMap::new();
 
         // Walk private contexts, gathering all defined private names
-        let mut current_private_env = running_context.private_env;
+        let mut current_private_env = running_context.private_env();
         while let Some(private_env) = current_private_env {
             private_env.iter_names_gc_unsafe(|name| {
                 names.insert(name.clone(), PrivateNameUsage::used());
@@ -112,7 +112,11 @@ pub fn perform_eval(
 
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(cx, Some(running_context.lexical_env()));
-        (lex_env.into_dyn(), running_context.variable_env(), running_context.private_env)
+        (
+            lex_env.into_dyn(),
+            running_context.variable_env(),
+            running_context.private_env(),
+        )
     } else {
         let global_env = eval_realm.global_env.into_dyn();
         let lex_env = DeclarativeEnvironment::new(cx, Some(global_env));

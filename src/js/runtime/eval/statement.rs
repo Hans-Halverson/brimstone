@@ -163,7 +163,7 @@ fn block_declaration_instantiation(
                 env.create_mutable_binding(cx, func_name_value, false);
 
                 let env_object = env.into_dyn();
-                let private_env = cx.current_execution_context().private_env;
+                let private_env = cx.current_execution_context().private_env();
                 let func_object =
                     instantiate_function_object(cx, func_node, env_object, private_env);
 

@@ -38,7 +38,7 @@ impl Binding {
 #[repr(C)]
 pub struct DeclarativeEnvironment {
     descriptor: Gc<ObjectDescriptor>,
-    pub bindings: HashMap<Gc<StringValue>, Binding>,
+    bindings: HashMap<Gc<StringValue>, Binding>,
     outer: Option<HeapDynEnvironment>,
 }
 

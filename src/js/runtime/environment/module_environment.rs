@@ -23,7 +23,7 @@ impl GcDeref for ModuleEnvironment {}
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
-    fn new(cx: &mut Context, outer: DynEnvironment) -> Gc<ModuleEnvironment> {
+    fn _new(cx: &mut Context, outer: DynEnvironment) -> Gc<ModuleEnvironment> {
         let env =
             DeclarativeEnvironment::new_as_env_base(cx, ObjectKind::ModuleEnvironment, Some(outer));
         cx.heap.alloc(ModuleEnvironment { env })
@@ -41,9 +41,9 @@ impl Environment for Gc<ModuleEnvironment> {
     // 9.1.1.5.1 GetBindingValue
     fn get_binding_value(
         &self,
-        cx: &mut Context,
-        name: Gc<StringValue>,
-        is_strict: bool,
+        _cx: &mut Context,
+        _name: Gc<StringValue>,
+        _is_strict: bool,
     ) -> EvalResult<Value> {
         unimplemented!()
     }
@@ -121,7 +121,7 @@ impl Environment for Gc<ModuleEnvironment> {
 
 impl ModuleEnvironment {
     // 9.1.1.5.5 CreateImportBinding
-    fn create_import_binding(&self) -> EvalResult<Value> {
+    fn _create_import_binding(&self) -> EvalResult<Value> {
         unimplemented!()
     }
 }

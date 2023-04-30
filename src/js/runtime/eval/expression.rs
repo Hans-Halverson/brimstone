@@ -538,7 +538,7 @@ fn eval_super_call_expression(
     };
 
     let func = must!(this_env
-        .function_object
+        .function_object()
         .cast::<ObjectValue>()
         .get_prototype_of(cx));
     let arg_list = maybe!(eval_argument_list(cx, &expr.arguments));
@@ -550,7 +550,7 @@ fn eval_super_call_expression(
 
     let result = maybe!(construct(cx, func, &arg_list, new_target));
     maybe!(this_env.bind_this_value(cx, result.into()));
-    maybe!(initialize_instance_elements(cx, result, this_env.function_object));
+    maybe!(initialize_instance_elements(cx, result, this_env.function_object()));
 
     result.into()
 }

@@ -54,7 +54,7 @@ pub fn perform_eval(
             in_function = true;
             in_method = func_env.has_super_binding();
 
-            let func = func_env.function_object;
+            let func = func_env.function_object();
             in_derived_constructor = func.constructor_kind() == ConstructorKind::Derived;
 
             if func.is_class_property() {
@@ -75,7 +75,7 @@ pub fn perform_eval(
                 names.insert(name.clone(), PrivateNameUsage::used());
             });
 
-            current_private_env = private_env.outer;
+            current_private_env = private_env.outer();
         }
 
         Some(names)

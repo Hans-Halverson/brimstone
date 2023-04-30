@@ -22,9 +22,9 @@ use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 #[repr(C)]
 pub struct ObjectEnvironment {
     descriptor: Gc<ObjectDescriptor>,
-    pub binding_object: Gc<ObjectValue>,
-    pub outer: Option<HeapDynEnvironment>,
-    pub is_with_environment: bool,
+    binding_object: Gc<ObjectValue>,
+    outer: Option<HeapDynEnvironment>,
+    is_with_environment: bool,
 }
 
 impl GcDeref for ObjectEnvironment {}
@@ -44,6 +44,11 @@ impl ObjectEnvironment {
             is_with_environment,
             outer: outer.as_ref().map(DynEnvironment::to_heap),
         })
+    }
+
+    #[inline]
+    pub fn binding_object(&self) -> Gc<ObjectValue> {
+        self.binding_object
     }
 }
 

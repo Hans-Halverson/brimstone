@@ -158,7 +158,7 @@ pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Value> {
 pub fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
     let mut this_env = get_this_environment(cx);
     let func_env = this_env.as_function_environment().unwrap();
-    func_env.new_target
+    func_env.new_target()
 }
 
 /// ScriptOrModule that is stored on the stack.

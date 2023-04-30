@@ -28,11 +28,11 @@ pub struct GlobalEnvironment {
     decl_env: DeclarativeEnvironment,
 
     // The global object. [[ObjectRecord]] in spec.
-    pub object_env: Gc<ObjectEnvironment>,
+    object_env: Gc<ObjectEnvironment>,
 
-    pub global_this_value: Gc<ObjectValue>,
+    global_this_value: Gc<ObjectValue>,
 
-    pub var_names: HashSet<Gc<StringValue>>,
+    var_names: HashSet<Gc<StringValue>>,
 }
 
 impl Gc<GlobalEnvironment> {
@@ -62,6 +62,11 @@ impl GlobalEnvironment {
             global_this_value,
             var_names: HashSet::new(),
         })
+    }
+
+    #[inline]
+    pub fn global_this_value(&self) -> Gc<ObjectValue> {
+        self.global_this_value
     }
 }
 
@@ -162,7 +167,7 @@ impl Environment for Gc<GlobalEnvironment> {
 
         let name_key = PropertyKey::string(cx, name);
 
-        if maybe!(has_own_property(cx, self.object_env.binding_object, name_key)) {
+        if maybe!(has_own_property(cx, self.object_env.binding_object(), name_key)) {
             let status = maybe!(self.object_env.delete_binding(cx, name));
             if status {
                 self.var_names.remove(&name);
@@ -220,7 +225,7 @@ impl Gc<GlobalEnvironment> {
         cx: &mut Context,
         name: Gc<StringValue>,
     ) -> EvalResult<bool> {
-        let global_object = &self.object_env.binding_object;
+        let global_object = &self.object_env.binding_object();
 
         let name_key = PropertyKey::string(cx, name);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
@@ -237,7 +242,7 @@ impl Gc<GlobalEnvironment> {
         cx: &mut Context,
         name: Gc<StringValue>,
     ) -> EvalResult<bool> {
-        let global_object = self.object_env.binding_object;
+        let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name);
         if maybe!(has_own_property(cx, global_object, name_key)) {
             return true.into();
@@ -252,7 +257,7 @@ impl Gc<GlobalEnvironment> {
         cx: &mut Context,
         name: Gc<StringValue>,
     ) -> EvalResult<bool> {
-        let global_object = self.object_env.binding_object;
+        let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
 
@@ -279,7 +284,7 @@ impl Gc<GlobalEnvironment> {
         name: Gc<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
-        let global_object = self.object_env.binding_object;
+        let global_object = self.object_env.binding_object();
 
         let name_key = PropertyKey::string(cx, name);
         let has_property = maybe!(has_own_property(cx, global_object, name_key));
@@ -307,7 +312,7 @@ impl Gc<GlobalEnvironment> {
         value: Value,
         can_delete: bool,
     ) -> EvalResult<()> {
-        let global_object = self.object_env.binding_object;
+        let global_object = self.object_env.binding_object();
 
         let name_key = PropertyKey::string(cx, name);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));

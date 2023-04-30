@@ -23,8 +23,8 @@ use super::{
 pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
-    pub function_object: Gc<Function>,
-    pub new_target: Option<Gc<ObjectValue>>,
+    function_object: Gc<Function>,
+    new_target: Option<Gc<ObjectValue>>,
     this_binding_status: ThisBindingStatus,
 }
 
@@ -66,6 +66,14 @@ impl FunctionEnvironment {
             new_target,
             this_binding_status,
         })
+    }
+
+    pub fn function_object(&self) -> Gc<Function> {
+        self.function_object
+    }
+
+    pub fn new_target(&self) -> Option<Gc<ObjectValue>> {
+        self.new_target
     }
 }
 

@@ -59,7 +59,7 @@ impl Realm {
     }
 
     pub fn global_this_value(&self) -> Gc<ObjectValue> {
-        self.global_env.global_this_value
+        self.global_env.global_this_value()
     }
 
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {

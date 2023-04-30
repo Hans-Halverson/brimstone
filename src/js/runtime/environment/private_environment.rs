@@ -34,7 +34,7 @@ impl PrivateName {
 pub struct PrivateEnvironment {
     descriptor: Gc<ObjectDescriptor>,
     names: HashMap<String, HeapPrivateName>,
-    pub outer: Option<Gc<PrivateEnvironment>>,
+    outer: Option<Gc<PrivateEnvironment>>,
 }
 
 impl GcDeref for PrivateEnvironment {}
@@ -45,6 +45,10 @@ impl PrivateEnvironment {
         let descriptor = cx.base_descriptors.get(ObjectKind::PrivateEnvironment);
         cx.heap
             .alloc(PrivateEnvironment { descriptor, names: HashMap::new(), outer })
+    }
+
+    pub fn outer(&self) -> Option<Gc<PrivateEnvironment>> {
+        self.outer
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier

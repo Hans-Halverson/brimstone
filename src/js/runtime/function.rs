@@ -357,7 +357,7 @@ impl Gc<Function> {
         cx: &mut Context,
         new_target: Option<Gc<ObjectValue>>,
     ) -> Gc<ExecutionContext> {
-        let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn();
+        let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn_env();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),

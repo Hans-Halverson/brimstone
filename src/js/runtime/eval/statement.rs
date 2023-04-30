@@ -134,7 +134,7 @@ fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
 
     block_declaration_instantiation(cx, block.lex_decls(), block_env);
 
-    current_context.set_lexical_env(block_env.into_dyn());
+    current_context.set_lexical_env(block_env.into_dyn_env());
     let block_value = eval_statement_list(cx, &block.body);
     current_context.set_lexical_env(old_env);
 
@@ -162,7 +162,7 @@ fn block_declaration_instantiation(
 
                 env.create_mutable_binding(cx, func_name_value, false);
 
-                let env_object = env.into_dyn();
+                let env_object = env.into_dyn_env();
                 let private_env = cx.current_execution_context().private_env();
                 let func_object =
                     instantiate_function_object(cx, func_node, env_object, private_env);
@@ -432,7 +432,7 @@ fn eval_for_statement(
                 }
             }));
 
-            current_execution_context.set_lexical_env(loop_env.into_dyn());
+            current_execution_context.set_lexical_env(loop_env.into_dyn_env());
 
             let for_decl_completion = eval_lexical_declaration(cx, lex_decl);
             if !for_decl_completion.is_normal() {
@@ -521,7 +521,7 @@ fn create_per_iteration_environment(
         ().into()
     }));
 
-    current_execution_context.set_lexical_env(this_iteration_env.into_dyn());
+    current_execution_context.set_lexical_env(this_iteration_env.into_dyn_env());
 
     ().into()
 }
@@ -552,7 +552,7 @@ fn for_each_head_evaluation_shared(
                 new_env.create_mutable_binding(cx, name_value, false)
             }));
 
-            current_execution_context.set_lexical_env(new_env.into_dyn());
+            current_execution_context.set_lexical_env(new_env.into_dyn_env());
 
             let result = eval_expression(cx, &stmt.right);
 
@@ -623,7 +623,7 @@ fn for_each_body_evaluation_shared(
                 }
             }));
 
-            let iteration_env = iteration_env.into_dyn();
+            let iteration_env = iteration_env.into_dyn_env();
             current_execution_context.set_lexical_env(iteration_env);
 
             let status = match declarations[0].id.as_ref() {
@@ -815,7 +815,7 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
     let mut current_execution_context = cx.current_execution_context();
     let old_env = current_execution_context.lexical_env();
     let new_env = ObjectEnvironment::new(cx, object, true, Some(old_env));
-    current_execution_context.set_lexical_env(new_env.into_dyn());
+    current_execution_context.set_lexical_env(new_env.into_dyn_env());
 
     let completion = eval_statement(cx, &stmt.body);
 
@@ -931,7 +931,7 @@ fn eval_switch_statement(
 
     block_declaration_instantiation(cx, &stmt.lex_decls, block_env);
 
-    current_execution_context.set_lexical_env(block_env.into_dyn());
+    current_execution_context.set_lexical_env(block_env.into_dyn_env());
 
     let completion = eval_case_block(cx, stmt, discriminant_value);
 
@@ -1030,7 +1030,7 @@ fn eval_catch_clause(
         Some(ref param) => {
             let mut current_context = cx.current_execution_context();
             let old_env = cx.current_execution_context().lexical_env();
-            let mut catch_env = DeclarativeEnvironment::new(cx, Some(old_env)).into_dyn();
+            let mut catch_env = DeclarativeEnvironment::new(cx, Some(old_env)).into_dyn_env();
 
             must!(param.iter_bound_names(&mut |id| {
                 let name_value = id_string_value(cx, id);

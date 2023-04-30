@@ -55,7 +55,7 @@ impl Context {
         let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
         let uninit_environment =
-            DeclarativeEnvironment::uninit(&mut heap, &base_descriptors).into_dyn();
+            DeclarativeEnvironment::uninit(&mut heap, &base_descriptors).into_dyn_env();
 
         let mut cx = Context {
             execution_context_stack: vec![],

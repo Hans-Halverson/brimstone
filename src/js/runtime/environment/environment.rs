@@ -1,9 +1,5 @@
-use std::{
-    ops::{Deref, DerefMut},
-    ptr::NonNull,
-};
-
 use crate::{
+    heap_trait_object,
     js::runtime::{
         completion::EvalResult, gc::Gc, object_value::ObjectValue, reference::Reference,
         string_value::StringValue, value::Value, Context,
@@ -95,86 +91,4 @@ pub fn get_identifier_reference(
     }
 }
 
-/// An environment trait object, containing both a pointer to the environment object on the heap
-/// along with the environment object's vtable.
-///
-/// Differs from a true rust trait object in that the data pointer contains the receiver value
-/// directly instead of a pointer to the receiver.
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct DynEnvironment {
-    data: NonNull<()>,
-    vtable: *const (),
-}
-
-pub struct HeapDynEnvironment {
-    inner: DynEnvironment,
-}
-
-impl<T> Gc<T>
-where
-    Gc<T>: Environment,
-{
-    // Convert an environment GC reference to a trait object
-    #[inline]
-    pub fn into_dyn(&self) -> DynEnvironment
-    where
-        Self: Sized,
-    {
-        let vtable = extract_environment_vtable::<Self>();
-        DynEnvironment { data: self.as_non_null_ptr().cast(), vtable }
-    }
-}
-
-impl DynEnvironment {
-    pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-
-    #[inline]
-    pub fn to_heap(&self) -> HeapDynEnvironment {
-        HeapDynEnvironment { inner: *self }
-    }
-
-    #[inline]
-    pub fn from_heap(heap_dyn_environment: &HeapDynEnvironment) -> DynEnvironment {
-        heap_dyn_environment.inner
-    }
-}
-
-// Implicitly deref to a true rust trait object by constructing a true trait object with a pointer
-// to the receiver value, with the same vtable.
-impl Deref for DynEnvironment {
-    type Target = dyn Environment;
-
-    fn deref(&self) -> &Self::Target {
-        let data = &self.data as *const _ as *mut ();
-        let data = unsafe { NonNull::new_unchecked(data) };
-
-        let trait_object = DynEnvironment { data, vtable: self.vtable };
-        unsafe { std::mem::transmute::<DynEnvironment, &dyn Environment>(trait_object) }
-    }
-}
-
-impl DerefMut for DynEnvironment {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let data = &self.data as *const _ as *mut ();
-        let data = unsafe { NonNull::new_unchecked(data) };
-
-        let trait_object = DynEnvironment { data, vtable: self.vtable };
-        unsafe { std::mem::transmute::<DynEnvironment, &mut dyn Environment>(trait_object) }
-    }
-}
-
-/// Compile time shenanigans to extract the trait object vtable for a particular type that
-/// implements Object so that we can construct our own trait objects manually.
-const fn extract_environment_vtable<T: Environment>() -> *const () {
-    unsafe {
-        let example_ptr: *const T = NonNull::dangling().as_ptr();
-        let example_trait_object: *const dyn Environment = example_ptr;
-        let trait_object =
-            std::mem::transmute::<*const dyn Environment, DynEnvironment>(example_trait_object);
-
-        trait_object.vtable
-    }
-}
+heap_trait_object!(Environment, DynEnvironment, HeapDynEnvironment, into_dyn_env);

@@ -4,11 +4,11 @@ use std::{
 };
 
 /// A pointer to a value in the GC heap.
-pub struct Gc<T: ?Sized> {
+pub struct Gc<T> {
     ptr: NonNull<T>,
 }
 
-impl<T: ?Sized> Gc<T> {
+impl<T> Gc<T> {
     #[inline]
     pub const fn as_ptr(&self) -> *mut T {
         self.ptr.as_ptr()
@@ -33,26 +33,25 @@ impl<T: ?Sized> Gc<T> {
     pub fn cast<U>(&self) -> Gc<U> {
         Gc::from_ptr(self.as_ptr() as *mut U)
     }
-}
 
-impl<T> Gc<T> {
+    #[inline]
     pub const fn uninit() -> Gc<T> {
         Gc { ptr: NonNull::dangling() }
     }
 }
 
-impl<T: ?Sized> Clone for Gc<T> {
+impl<T> Clone for Gc<T> {
     fn clone(&self) -> Self {
         Gc { ptr: self.ptr }
     }
 }
 
-impl<T: ?Sized> Copy for Gc<T> {}
+impl<T> Copy for Gc<T> {}
 
 /// Marker trait to allow generic autoderef of a particular type.
 pub trait GcDeref {}
 
-impl<T: GcDeref + ?Sized> Deref for Gc<T> {
+impl<T: GcDeref> Deref for Gc<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -60,7 +59,7 @@ impl<T: GcDeref + ?Sized> Deref for Gc<T> {
     }
 }
 
-impl<T: GcDeref + ?Sized> DerefMut for Gc<T> {
+impl<T: GcDeref> DerefMut for Gc<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
     }

@@ -415,12 +415,12 @@ macro_rules! create_typed_array_constructor {
                 keys.into()
             }
 
-            fn as_typed_array(&self) -> Gc<dyn TypedArray> {
-                Gc::from_ptr(self.as_ptr() as *mut dyn TypedArray)
+            fn as_typed_array(&self) -> DynTypedArray {
+                self.into_dyn_typed_array()
             }
         }
 
-        impl TypedArray for $typed_array {
+        impl TypedArray for Gc<$typed_array> {
             fn array_length(&self) -> usize {
                 self.array_length
             }
@@ -597,7 +597,7 @@ macro_rules! create_typed_array_constructor {
             fn initialize_typed_array_from_typed_array(
                 cx: &mut Context,
                 proto: Gc<ObjectValue>,
-                source_typed_array: Gc<dyn TypedArray>,
+                source_typed_array: DynTypedArray,
             ) -> EvalResult<Value> {
                 let source_data = source_typed_array.viewed_array_buffer();
                 if source_data.is_detached() {

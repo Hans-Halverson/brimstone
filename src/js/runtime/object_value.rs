@@ -13,7 +13,7 @@ use super::{
     environment::private_environment::PrivateName,
     error::type_error_,
     gc::Gc,
-    intrinsics::typed_array::TypedArray,
+    intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -612,7 +612,7 @@ impl Gc<ObjectValue> {
     }
 
     #[inline]
-    pub fn as_typed_array(&self) -> Gc<dyn TypedArray> {
+    pub fn as_typed_array(&self) -> DynTypedArray {
         self.virtual_object().as_typed_array()
     }
 }
@@ -681,7 +681,7 @@ pub trait VirtualObject {
         cx.current_realm().into()
     }
 
-    fn as_typed_array(&self) -> Gc<dyn TypedArray> {
+    fn as_typed_array(&self) -> DynTypedArray {
         unreachable!("as_typed_array can only be called on typed arrays")
     }
 }

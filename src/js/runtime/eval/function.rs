@@ -89,7 +89,7 @@ pub fn function_declaration_instantiation(
         callee_context.lexical_env()
     } else {
         let new_env = DeclarativeEnvironment::new(cx, Some(callee_context.lexical_env()));
-        callee_context.set_lexical_env(new_env.into_dyn());
+        callee_context.set_lexical_env(new_env.into_dyn_env());
         callee_context.lexical_env()
     };
 
@@ -230,7 +230,7 @@ pub fn function_declaration_instantiation(
     } else {
         // A separate Environment Record is needed to ensure that closures created by expressions in
         // the formal parameter list do not have visibility of declarations in the function body.
-        callee_context.set_variable_env(DeclarativeEnvironment::new(cx, Some(env)).into_dyn());
+        callee_context.set_variable_env(DeclarativeEnvironment::new(cx, Some(env)).into_dyn_env());
         let mut var_env = callee_context.variable_env();
 
         let mut instantiated_var_names = HashSet::new();
@@ -266,7 +266,7 @@ pub fn function_declaration_instantiation(
         // Non-strict functions use a separate Environment Record for top-level lexical declarations
         // so that a direct eval can determine whether any var scoped declarations introduced by the
         // eval code conflict with pre-existing top-level lexically scoped declarations.
-        DeclarativeEnvironment::new(cx, Some(var_env)).into_dyn()
+        DeclarativeEnvironment::new(cx, Some(var_env)).into_dyn_env()
     } else {
         var_env
     };
@@ -367,7 +367,7 @@ pub fn instantiate_ordinary_function_expression(
                 function_prototype,
                 func_node,
                 false,
-                func_env.into_dyn(),
+                func_env.into_dyn_env(),
                 current_context.private_env(),
             );
 
@@ -595,7 +595,7 @@ pub fn create_dynamic_function(
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
     let env = cx.current_realm().global_env();
 
-    let func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn(), None);
+    let func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn_env(), None);
     set_function_name(cx, func.into(), cx.names.anonymous(), None);
 
     if !is_async && !is_generator {

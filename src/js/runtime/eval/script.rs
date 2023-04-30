@@ -42,7 +42,7 @@ pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>
     let script = Script::new(cx, program.clone(), realm);
 
     let global_env = realm.global_env();
-    let global_env_object = global_env.into_dyn();
+    let global_env_object = global_env.into_dyn_env();
 
     let script_ctx = ExecutionContext::new(
         cx,
@@ -180,7 +180,7 @@ fn global_declaration_instantiation(
 
     for func in functions_to_initialize.iter().rev() {
         let name_value = id_string_value(cx, func.id.as_deref().unwrap());
-        let function_object = instantiate_function_object(cx, func, env.into_dyn(), None);
+        let function_object = instantiate_function_object(cx, func, env.into_dyn_env(), None);
         maybe__!(env.create_global_function_binding(cx, name_value, function_object.into(), false));
     }
 

@@ -187,7 +187,7 @@ pub fn class_definition_evaluation(
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
     {
-        current_execution_context.set_lexical_env(class_env.into_dyn());
+        current_execution_context.set_lexical_env(class_env.into_dyn_env());
 
         let super_class_result = eval_expression(cx, super_class);
 
@@ -224,7 +224,7 @@ pub fn class_definition_evaluation(
     // Set up prototype and constructor
     let proto = ordinary_object_create_optional_proto(cx, proto_parent);
 
-    current_execution_context.set_lexical_env(class_env.into_dyn());
+    current_execution_context.set_lexical_env(class_env.into_dyn_env());
     current_execution_context.set_private_env(Some(class_private_env));
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {

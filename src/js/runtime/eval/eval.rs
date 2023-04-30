@@ -113,14 +113,14 @@ pub fn perform_eval(
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(cx, Some(running_context.lexical_env()));
         (
-            lex_env.into_dyn(),
+            lex_env.into_dyn_env(),
             running_context.variable_env(),
             running_context.private_env(),
         )
     } else {
-        let global_env = eval_realm.global_env().into_dyn();
+        let global_env = eval_realm.global_env().into_dyn_env();
         let lex_env = DeclarativeEnvironment::new(cx, Some(global_env));
-        (lex_env.into_dyn(), global_env, None)
+        (lex_env.into_dyn_env(), global_env, None)
     };
 
     let var_env = if is_strict_eval { lex_env } else { var_env };

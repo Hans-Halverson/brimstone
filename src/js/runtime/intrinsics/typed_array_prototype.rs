@@ -24,7 +24,7 @@ use crate::{
 
 use super::{
     intrinsics::Intrinsic,
-    typed_array::{ContentType, TypedArray, TypedArrayKind},
+    typed_array::{ContentType, DynTypedArray, TypedArrayKind},
 };
 
 pub struct TypedArrayPrototype;
@@ -1177,7 +1177,7 @@ macro_rules! create_typed_array_prototype {
 }
 
 #[inline]
-fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn TypedArray>> {
+fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<DynTypedArray> {
     if !value.is_object() {
         return type_error_(cx, "expected typed array");
     }
@@ -1193,7 +1193,7 @@ fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn Type
 // 23.2.4.1 TypedArraySpeciesCreate
 fn typed_array_species_create_object(
     cx: &mut Context,
-    exemplar: Gc<dyn TypedArray>,
+    exemplar: DynTypedArray,
     arguments: &[Value],
     length: Option<usize>,
 ) -> EvalResult<Gc<ObjectValue>> {
@@ -1202,10 +1202,10 @@ fn typed_array_species_create_object(
 }
 fn typed_array_species_create(
     cx: &mut Context,
-    exemplar: Gc<dyn TypedArray>,
+    exemplar: DynTypedArray,
     arguments: &[Value],
     length: Option<usize>,
-) -> EvalResult<Gc<dyn TypedArray>> {
+) -> EvalResult<DynTypedArray> {
     let intrinsic = match exemplar.kind() {
         TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
         TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
@@ -1249,7 +1249,7 @@ pub fn typed_array_create(
     constructor: Gc<ObjectValue>,
     arguments: &[Value],
     length: Option<usize>,
-) -> EvalResult<Gc<dyn TypedArray>> {
+) -> EvalResult<DynTypedArray> {
     let new_typed_array = maybe!(construct(cx, constructor, arguments, None));
 
     let new_typed_array = maybe!(validate_typed_array(cx, new_typed_array.into()));
@@ -1265,7 +1265,7 @@ pub fn typed_array_create(
 
 // 23.2.4.3 ValidateTypedArray
 #[inline]
-fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<Gc<dyn TypedArray>> {
+fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<DynTypedArray> {
     let typed_array = maybe!(require_typed_array(cx, value));
 
     if typed_array.viewed_array_buffer().is_detached() {

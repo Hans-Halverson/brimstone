@@ -2,14 +2,14 @@ use num_bigint::{BigInt, Sign};
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    create_typed_array_constructor, create_typed_array_prototype, extend_object,
+    create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
     js::runtime::{
         abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::Gc,
         iterator::iter_iterator_method_values,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
@@ -70,14 +70,13 @@ pub trait TypedArray {
     ) -> Value;
 }
 
-impl Gc<dyn TypedArray> {
-    #[inline]
+heap_trait_object!(TypedArray, DynTypedArray, HeapDynTypedArray, into_dyn_typed_array);
+
+impl DynTypedArray {
     pub fn into_object_value(&self) -> Gc<ObjectValue> {
-        self.cast()
+        self.data.cast()
     }
 }
-
-impl GcDeref for dyn TypedArray {}
 
 #[derive(PartialEq)]
 pub enum TypedArrayKind {

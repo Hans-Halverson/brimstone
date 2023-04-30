@@ -15,6 +15,11 @@ impl<T: ?Sized> Gc<T> {
     }
 
     #[inline]
+    pub const fn as_non_null_ptr(&self) -> NonNull<T> {
+        self.ptr
+    }
+
+    #[inline]
     pub const fn from_ptr(ptr: *mut T) -> Gc<T> {
         unsafe { Gc { ptr: NonNull::new_unchecked(ptr) } }
     }

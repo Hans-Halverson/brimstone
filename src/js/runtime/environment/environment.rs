@@ -1,4 +1,7 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 
 use crate::{
     js::runtime::{
@@ -100,7 +103,7 @@ pub fn get_identifier_reference(
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct DynEnvironment {
-    data: *const (),
+    data: NonNull<()>,
     vtable: *const (),
 }
 
@@ -119,7 +122,7 @@ where
         Self: Sized,
     {
         let vtable = extract_environment_vtable::<Self>();
-        DynEnvironment { data: self.as_ptr() as *const (), vtable }
+        DynEnvironment { data: self.as_non_null_ptr().cast(), vtable }
     }
 }
 
@@ -145,7 +148,9 @@ impl Deref for DynEnvironment {
     type Target = dyn Environment;
 
     fn deref(&self) -> &Self::Target {
-        let data = &self.data as *const _ as *const ();
+        let data = &self.data as *const _ as *mut ();
+        let data = unsafe { NonNull::new_unchecked(data) };
+
         let trait_object = DynEnvironment { data, vtable: self.vtable };
         unsafe { std::mem::transmute::<DynEnvironment, &dyn Environment>(trait_object) }
     }
@@ -153,7 +158,9 @@ impl Deref for DynEnvironment {
 
 impl DerefMut for DynEnvironment {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        let data = &self.data as *const _ as *const ();
+        let data = &self.data as *const _ as *mut ();
+        let data = unsafe { NonNull::new_unchecked(data) };
+
         let trait_object = DynEnvironment { data, vtable: self.vtable };
         unsafe { std::mem::transmute::<DynEnvironment, &mut dyn Environment>(trait_object) }
     }

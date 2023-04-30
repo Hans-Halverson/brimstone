@@ -388,8 +388,7 @@ impl Gc<Function> {
             ThisMode::Strict => this_argument,
             ThisMode::Global => {
                 let object_value = if this_argument.is_nullish() {
-                    let global_env = self.realm.global_env;
-                    global_env.global_this_value
+                    self.realm.global_this_value()
                 } else {
                     must!(to_object(cx, this_argument))
                 };
@@ -556,7 +555,7 @@ pub fn make_constructor(
     let prototype = match prototype {
         Some(prototype) => prototype,
         None => {
-            let object_prototype = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+            let object_prototype = cx.get_intrinsic(Intrinsic::ObjectPrototype);
             let prototype = ordinary_object_create(cx, object_prototype).into();
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);

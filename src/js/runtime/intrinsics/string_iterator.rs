@@ -31,9 +31,7 @@ extend_object! {
 
 impl StringIterator {
     pub fn new(cx: &mut Context, string: Gc<StringValue>) -> Gc<StringIterator> {
-        let proto = cx
-            .current_realm()
-            .get_intrinsic(Intrinsic::StringIteratorPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::StringIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<StringIterator>();
         object_ordinary_init(cx, object.object(), ObjectKind::StringIterator, proto);

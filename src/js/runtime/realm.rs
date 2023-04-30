@@ -20,10 +20,10 @@ use super::{
 #[repr(C)]
 pub struct Realm {
     descriptor: Gc<ObjectDescriptor>,
-    pub global_env: Gc<GlobalEnvironment>,
-    pub global_object: Gc<ObjectValue>,
-    pub template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
-    pub intrinsics: Intrinsics,
+    global_env: Gc<GlobalEnvironment>,
+    global_object: Gc<ObjectValue>,
+    template_map: HashMap<AstPtr<TemplateLiteral>, Gc<ObjectValue>>,
+    intrinsics: Intrinsics,
 }
 
 impl GcDeref for Realm {}
@@ -48,8 +48,39 @@ impl Realm {
         realm
     }
 
+    #[inline]
+    pub fn global_object(&self) -> Gc<ObjectValue> {
+        self.global_object
+    }
+
+    #[inline]
+    pub fn global_env(&self) -> Gc<GlobalEnvironment> {
+        self.global_env
+    }
+
+    pub fn global_this_value(&self) -> Gc<ObjectValue> {
+        self.global_env.global_this_value
+    }
+
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
         self.intrinsics.get(intrinsic)
+    }
+
+    pub fn get_template_object(
+        &self,
+        template_node: AstPtr<TemplateLiteral>,
+    ) -> Option<Gc<ObjectValue>> {
+        self.template_map
+            .get(&template_node)
+            .map(|template_object| *template_object)
+    }
+
+    pub fn add_template_object(
+        &mut self,
+        template_node: AstPtr<TemplateLiteral>,
+        template_object: Gc<ObjectValue>,
+    ) {
+        self.template_map.insert(template_node, template_object);
     }
 }
 

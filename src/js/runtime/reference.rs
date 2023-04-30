@@ -5,7 +5,6 @@ use super::{
     completion::EvalResult,
     environment::{environment::DynEnvironment, private_environment::PrivateName},
     error::{reference_error_, type_error_},
-    execution_context::get_global_object,
     gc::Gc,
     interned_strings::InternedStrings,
     property_key::PropertyKey,
@@ -142,7 +141,7 @@ impl Reference {
                     return reference_error_(cx, &format!("Could not resolve {}", name));
                 }
 
-                let global_obj = get_global_object(cx);
+                let global_obj = cx.get_global_object();
                 let property_key = PropertyKey::string(cx, name);
                 maybe!(set(cx, global_obj, property_key, value, false));
 

@@ -41,7 +41,7 @@ impl Script {
 pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
     let script = Script::new(cx, program.clone(), realm);
 
-    let global_env = realm.global_env;
+    let global_env = realm.global_env();
     let global_env_object = global_env.into_dyn();
 
     let script_ctx = ExecutionContext::new(

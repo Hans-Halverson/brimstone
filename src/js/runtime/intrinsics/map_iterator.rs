@@ -38,9 +38,7 @@ pub enum MapIteratorKind {
 
 impl<'a> MapIterator<'a> {
     pub fn new(cx: &mut Context, mut map: Gc<MapObject>, kind: MapIteratorKind) -> Gc<MapIterator> {
-        let proto = cx
-            .current_realm()
-            .get_intrinsic(Intrinsic::MapIteratorPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::MapIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<MapIterator>();
         object_ordinary_init(cx, object.object(), ObjectKind::MapIterator, proto);

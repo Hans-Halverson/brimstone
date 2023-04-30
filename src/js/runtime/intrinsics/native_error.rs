@@ -27,7 +27,7 @@ macro_rules! create_native_error {
         impl $native_error {
             #[allow(dead_code)]
             pub fn new_with_message(cx: &mut Context, message: String) -> Gc<ObjectValue> {
-                let prototype = cx.current_realm().get_intrinsic(Intrinsic::$prototype);
+                let prototype = cx.get_intrinsic(Intrinsic::$prototype);
 
                 let mut object = cx.heap.alloc_uninit::<ObjectValue>();
                 object_ordinary_init(cx, object.object(), ObjectKind::ErrorObject, prototype);

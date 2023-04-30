@@ -37,7 +37,7 @@ impl Test262Object {
 
         let global_string = cx.alloc_string(String::from("global"));
         let global_key = PropertyKey::string(cx, global_string);
-        object.intrinsic_data_prop(cx, global_key, realm.global_object.into());
+        object.intrinsic_data_prop(cx, global_key, realm.global_object().into());
 
         let detach_array_buffer_string = cx.alloc_string(String::from("detachArrayBuffer"));
         let detach_array_buffer_key = PropertyKey::string(cx, detach_array_buffer_string);
@@ -50,7 +50,7 @@ impl Test262Object {
         let test_262_string = cx.alloc_string(String::from("$262"));
         let test_262_key = PropertyKey::string(cx, test_262_string);
         let desc = PropertyDescriptor::data(test_262_object.into(), true, false, true);
-        must!(define_property_or_throw(cx, realm.global_object, test_262_key, desc));
+        must!(define_property_or_throw(cx, realm.global_object(), test_262_key, desc));
     }
 
     fn create_realm(

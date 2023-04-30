@@ -37,7 +37,7 @@ impl ProxyObject {
         is_callable: bool,
         is_constructor: bool,
     ) -> Gc<ProxyObject> {
-        let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ProxyObject>();
         object_ordinary_init(cx, object.object(), ObjectKind::Proxy, object_proto);

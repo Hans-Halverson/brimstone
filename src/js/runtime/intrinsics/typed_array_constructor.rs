@@ -586,9 +586,7 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Gc<ObjectValue>> {
                 let byte_length = element_size!() * length;
 
-                let array_buffer_constructor = cx
-                    .current_realm()
-                    .get_intrinsic(Intrinsic::ArrayBufferConstructor);
+                let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
                 let array_buffer =
                     maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, byte_length));
 
@@ -633,9 +631,7 @@ macro_rules! create_typed_array_constructor {
                 } else {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
-                    let buffer_constructor = cx
-                        .current_realm()
-                        .get_intrinsic(Intrinsic::ArrayBufferConstructor);
+                    let buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
                     let data = maybe!(ArrayBufferObject::new(cx, buffer_constructor, byte_length));
 
                     if source_data.is_detached() {

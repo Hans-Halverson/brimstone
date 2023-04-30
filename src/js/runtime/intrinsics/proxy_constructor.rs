@@ -94,7 +94,7 @@ impl ProxyConstructor {
             BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), None, None, None);
         revoker.set_closure_environment(revoke_environment);
 
-        let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
         let result: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
 
         must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));

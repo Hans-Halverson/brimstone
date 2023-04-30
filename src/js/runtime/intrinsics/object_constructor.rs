@@ -131,7 +131,7 @@ impl ObjectConstructor {
 
         let value = get_argument(arguments, 0);
         if value.is_nullish() {
-            let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+            let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
             let new_value: Value = ordinary_object_create(cx, object_proto).into();
             return new_value.into();
         }
@@ -324,7 +324,7 @@ impl ObjectConstructor {
 
         let keys = maybe!(object.own_property_keys(cx));
 
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
         let descriptors: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
 
         for key in keys {

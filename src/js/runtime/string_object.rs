@@ -81,7 +81,7 @@ impl StringObject {
     }
 
     pub fn new_from_value(cx: &mut Context, string_data: Gc<StringValue>) -> Gc<StringObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::StringPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::StringPrototype);
 
         StringObject::new(cx, proto, string_data)
     }

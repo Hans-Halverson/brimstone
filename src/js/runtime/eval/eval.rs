@@ -41,7 +41,7 @@ pub fn perform_eval(
     let code = code.as_string();
 
     let running_context = cx.current_execution_context();
-    let eval_realm = running_context.realm;
+    let eval_realm = running_context.realm();
 
     let mut in_function = false;
     let mut in_method = false;
@@ -118,7 +118,7 @@ pub fn perform_eval(
             running_context.private_env(),
         )
     } else {
-        let global_env = eval_realm.global_env.into_dyn();
+        let global_env = eval_realm.global_env().into_dyn();
         let lex_env = DeclarativeEnvironment::new(cx, Some(global_env));
         (lex_env.into_dyn(), global_env, None)
     };

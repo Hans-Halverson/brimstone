@@ -1454,8 +1454,7 @@ impl ArrayPrototype {
         let func = if is_callable(func) {
             func.as_object()
         } else {
-            cx.current_realm()
-                .get_intrinsic(Intrinsic::ObjectPrototypeToString)
+            cx.get_intrinsic(Intrinsic::ObjectPrototypeToString)
         };
 
         call_object(cx, func, array.into(), &[])

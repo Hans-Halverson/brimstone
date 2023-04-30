@@ -149,9 +149,7 @@ pub fn clone_array_buffer(
     source_byte_offset: usize,
     source_length: usize,
 ) -> EvalResult<Gc<ArrayBufferObject>> {
-    let array_buffer_constructor = cx
-        .current_realm()
-        .get_intrinsic(Intrinsic::ArrayBufferConstructor);
+    let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
     let mut target_buffer =
         maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, source_length));
 

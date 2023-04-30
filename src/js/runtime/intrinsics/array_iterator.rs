@@ -34,9 +34,7 @@ impl ArrayIterator {
         array: Gc<ObjectValue>,
         kind: ArrayIteratorKind,
     ) -> Gc<ArrayIterator> {
-        let proto = cx
-            .current_realm()
-            .get_intrinsic(Intrinsic::ArrayIteratorPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::ArrayIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
         object_ordinary_init(cx, object.object(), ObjectKind::ArrayIterator, proto);

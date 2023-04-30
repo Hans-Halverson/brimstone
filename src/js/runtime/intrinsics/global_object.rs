@@ -27,7 +27,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
         ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
             maybe!(define_property_or_throw(
                 cx,
-                realm.global_object,
+                realm.global_object(),
                 $name,
                 PropertyDescriptor::data($value, $is_writable, $is_enumerable, $is_configurable)
             ));
@@ -55,7 +55,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
             let value = realm.get_intrinsic(Intrinsic::$intrinsic);
             maybe!(define_property_or_throw(
                 cx,
-                realm.global_object,
+                realm.global_object(),
                 $name,
                 PropertyDescriptor::data(value.into(), true, false, true)
             ));
@@ -63,13 +63,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     }
 
     // 19.1 Value Properties of the Global Object
-    value_prop!(
-        cx.names.global_this(),
-        realm.global_env.global_this_value.into(),
-        true,
-        false,
-        true
-    );
+    value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
     value_prop!(cx.names.infinity(), Value::number(f64::INFINITY), false, false, false);
     value_prop!(cx.names.nan(), Value::nan(), false, false, false);
     value_prop!(cx.names.undefined(), Value::undefined(), false, false, false);

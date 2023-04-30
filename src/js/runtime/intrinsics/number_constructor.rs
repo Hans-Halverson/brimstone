@@ -47,7 +47,7 @@ impl NumberObject {
     }
 
     pub fn new_from_value(cx: &mut Context, number_data: f64) -> Gc<NumberObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::NumberPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::NumberPrototype);
 
         Self::new_with_proto(cx, proto, number_data)
     }

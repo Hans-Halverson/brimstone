@@ -10,7 +10,9 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Gc, Heap},
     interned_strings::InternedStrings,
+    intrinsics::intrinsics::Intrinsic,
     object_descriptor::BaseDescriptors,
+    object_value::ObjectValue,
     realm::Realm,
     string_value::StringValue,
     value::SymbolValue,
@@ -90,7 +92,19 @@ impl Context {
     }
 
     pub fn current_realm(&mut self) -> Gc<Realm> {
-        self.current_execution_context().realm
+        self.current_execution_context().realm()
+    }
+
+    /// Return an intrinsic for the current realm.
+    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+        let current_execution_context = *self.execution_context_stack.last().unwrap();
+        current_execution_context.get_intrinsic(intrinsic)
+    }
+
+    /// 9.4.6 GetGlobalObject. Return the global object for the current realm.
+    pub fn get_global_object(&self) -> Gc<ObjectValue> {
+        let current_execution_context = *self.execution_context_stack.last().unwrap();
+        current_execution_context.global_object()
     }
 
     // 9.4.1 GetActiveScriptOrModule

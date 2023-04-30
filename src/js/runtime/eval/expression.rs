@@ -196,7 +196,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
 
 // 13.2.5.4 Object Initializer Evaluation
 fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> EvalResult<Value> {
-    let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
     let mut object: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
 
     for property in &expr.properties {
@@ -430,7 +430,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
             let func_value = maybe!(reference.get_value(cx));
 
             // Check for direct call to eval
-            let eval_func = cx.current_realm().get_intrinsic(Intrinsic::Eval);
+            let eval_func = cx.get_intrinsic(Intrinsic::Eval);
             if func_value.is_object() && same_object_value(func_value.as_object(), eval_func) {
                 let is_non_property_eval_reference = match reference.base() {
                     ReferenceBase::Property { .. } => false,
@@ -713,9 +713,9 @@ fn eval_tagged_template_expression(
 // 13.2.8.3 GetTemplateObject
 fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<ObjectValue> {
     // Template object is cached in realm's template registery
-    let realm = cx.current_realm();
-    if let Some(template_object) = realm.template_map.get(&AstPtr::from_ref(lit)) {
-        return *template_object;
+    let mut realm = cx.current_realm();
+    if let Some(template_object) = realm.get_template_object(AstPtr::from_ref(lit)) {
+        return template_object;
     }
 
     let num_strings = lit.quasis.len();
@@ -744,9 +744,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Gc<Objec
 
     must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
-    cx.current_realm()
-        .template_map
-        .insert(AstPtr::from_ref(lit), template_object);
+    realm.add_template_object(AstPtr::from_ref(lit), template_object);
 
     template_object
 }

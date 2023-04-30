@@ -29,7 +29,7 @@ extend_object! {
 
 impl SymbolObject {
     pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::SymbolPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::SymbolPrototype);
 
         let mut object = cx.heap.alloc_uninit::<SymbolObject>();
         object_ordinary_init(cx, object.object(), ObjectKind::SymbolObject, proto);

@@ -41,7 +41,7 @@ pub struct UnmappedArgumentsObject;
 impl UnmappedArgumentsObject {
     pub fn new(cx: &mut Context) -> Gc<ObjectValue> {
         let descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
 
         ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
     }
@@ -57,7 +57,7 @@ extend_object! {
 
 impl MappedArgumentsObject {
     pub fn new(cx: &mut Context, parameter_map: Gc<ObjectValue>) -> Gc<MappedArgumentsObject> {
-        let proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
 
         let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
         object_ordinary_init(cx, object.object(), ObjectKind::MappedArgumentsObject, proto);
@@ -190,14 +190,12 @@ pub fn create_unmapped_arguments_object(cx: &mut Context, arguments: &[Value]) -
 
     // Set @@iterator to Array.prototype.values
     let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-    let iterator_value = cx
-        .current_realm()
-        .get_intrinsic(Intrinsic::ArrayPrototypeValues);
+    let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
     let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
     must!(define_property_or_throw(cx, object, iterator_key, iterator_desc));
 
     // Set callee to throw a type error when accessed
-    let throw_type_error = cx.current_realm().get_intrinsic(Intrinsic::ThrowTypeError);
+    let throw_type_error = cx.get_intrinsic(Intrinsic::ThrowTypeError);
     let callee_desc =
         PropertyDescriptor::accessor(Some(throw_type_error), Some(throw_type_error), false, false);
     must!(define_property_or_throw(cx, object, cx.names.callee(), callee_desc));
@@ -264,9 +262,7 @@ pub fn create_mapped_arguments_object(
 
     // Set @@iterator to Array.prototype.values
     let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
-    let iterator_value = cx
-        .current_realm()
-        .get_intrinsic(Intrinsic::ArrayPrototypeValues);
+    let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
     let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
     must!(define_property_or_throw(cx, object.into(), iterator_key, iterator_desc));
 

@@ -42,9 +42,7 @@ impl BooleanObject {
     }
 
     pub fn new_from_value(cx: &mut Context, boolean_data: bool) -> Gc<BooleanObject> {
-        let proto = cx
-            .current_realm()
-            .get_intrinsic(Intrinsic::BooleanPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::BooleanPrototype);
 
         Self::new_with_proto(cx, proto, boolean_data)
     }

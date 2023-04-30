@@ -117,8 +117,7 @@ pub fn array_create(
         return range_error_(cx, "array length out of range");
     }
 
-    let proto =
-        proto.unwrap_or_else(|| cx.current_realm().get_intrinsic(Intrinsic::ArrayPrototype));
+    let proto = proto.unwrap_or_else(|| cx.get_intrinsic(Intrinsic::ArrayPrototype));
 
     let mut array_object = ArrayObject::new(cx, proto);
 

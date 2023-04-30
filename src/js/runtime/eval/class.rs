@@ -107,9 +107,7 @@ fn class_field_definition_evaluation(
     let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env();
 
-    let prototype = current_execution_context
-        .realm
-        .get_intrinsic(Intrinsic::FunctionPrototype);
+    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
 
     let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key);
 
@@ -138,9 +136,7 @@ fn class_static_block_definition_evaluation(
     let env = current_execution_context.lexical_env();
     let private_env = current_execution_context.private_env();
 
-    let prototype = current_execution_context
-        .realm
-        .get_intrinsic(Intrinsic::FunctionPrototype);
+    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
     let body_function =
         ordinary_function_create(cx, prototype, &block.value, false, env, private_env);
     make_method(body_function, home_object);
@@ -161,7 +157,7 @@ pub fn class_definition_evaluation(
     class_name: PropertyKey,
 ) -> EvalResult<Gc<Function>> {
     let mut current_execution_context = cx.current_execution_context();
-    let realm = current_execution_context.realm;
+    let realm = current_execution_context.realm();
     let env = current_execution_context.lexical_env();
     let mut class_env = DeclarativeEnvironment::new(cx, Some(env));
 

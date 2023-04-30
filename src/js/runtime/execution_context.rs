@@ -6,6 +6,7 @@ use super::{
     },
     eval::script::Script,
     gc::{Gc, GcDeref},
+    intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     realm::Realm,
@@ -20,7 +21,7 @@ use super::{
 pub struct ExecutionContext {
     descriptor: Gc<ObjectDescriptor>,
     function: Option<Gc<ObjectValue>>,
-    pub realm: Gc<Realm>,
+    realm: Gc<Realm>,
     script_or_module: Option<HeapScriptOrModule>,
     lexical_env: HeapDynEnvironment,
     variable_env: HeapDynEnvironment,
@@ -60,6 +61,11 @@ impl ExecutionContext {
     }
 
     #[inline]
+    pub fn realm(&self) -> Gc<Realm> {
+        self.realm
+    }
+
+    #[inline]
     pub fn lexical_env(&self) -> DynEnvironment {
         DynEnvironment::from_heap(&self.lexical_env)
     }
@@ -92,6 +98,16 @@ impl ExecutionContext {
     #[inline]
     pub fn set_private_env(&mut self, private_env: Option<Gc<PrivateEnvironment>>) {
         self.private_env = private_env;
+    }
+
+    #[inline]
+    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+        self.realm.get_intrinsic(intrinsic)
+    }
+
+    #[inline]
+    pub fn global_object(&self) -> Gc<ObjectValue> {
+        self.realm.global_object()
     }
 }
 
@@ -143,11 +159,6 @@ pub fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
     let mut this_env = get_this_environment(cx);
     let func_env = this_env.as_function_environment().unwrap();
     func_env.new_target
-}
-
-// 9.4.6 GetGlobalObject
-pub fn get_global_object(cx: &mut Context) -> Gc<ObjectValue> {
-    cx.current_realm().global_object
 }
 
 /// ScriptOrModule that is stored on the stack.

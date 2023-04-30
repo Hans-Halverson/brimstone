@@ -37,9 +37,7 @@ pub enum SetIteratorKind {
 
 impl<'a> SetIterator<'a> {
     pub fn new(cx: &mut Context, mut set: Gc<SetObject>, kind: SetIteratorKind) -> Gc<SetIterator> {
-        let proto = cx
-            .current_realm()
-            .get_intrinsic(Intrinsic::SetIteratorPrototype);
+        let proto = cx.get_intrinsic(Intrinsic::SetIteratorPrototype);
 
         let mut object = cx.heap.alloc_uninit::<SetIterator>();
         object_ordinary_init(cx, object.object(), ObjectKind::SetIterator, proto);

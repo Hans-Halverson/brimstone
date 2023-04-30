@@ -155,8 +155,7 @@ impl PropertyDescriptor {
 
 // 6.2.5.4 FromPropertyDescriptor
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<ObjectValue> {
-    let realm = cx.current_realm();
-    let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+    let object_prototype = cx.get_intrinsic(Intrinsic::ObjectPrototype);
     let object = ordinary_object_create(cx, object_prototype);
 
     if let Some(value) = desc.value {

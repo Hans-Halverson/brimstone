@@ -1220,7 +1220,7 @@ fn typed_array_species_create(
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };
 
-    let default_constructor = cx.current_realm().get_intrinsic(intrinsic);
+    let default_constructor = cx.get_intrinsic(intrinsic);
     let constructor =
         maybe!(species_constructor(cx, exemplar.into_object_value(), default_constructor));
 

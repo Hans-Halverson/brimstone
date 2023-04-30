@@ -109,7 +109,7 @@ fn object_binding_initialization(
                 _ => unreachable!("invalid rest property pattern"),
             };
 
-            let object_proto = cx.current_realm().get_intrinsic(Intrinsic::ObjectPrototype);
+            let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
             let rest_object: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
 
             maybe!(copy_data_properties(cx, rest_object, object_value, &bound_names));

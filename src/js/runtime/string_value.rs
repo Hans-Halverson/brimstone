@@ -15,14 +15,14 @@ use crate::js::common::unicode::{
 };
 
 use super::{
-    gc::GcDeref,
+    gc::{GcDeref, Handle, HeapPtr},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     Context, Gc,
 };
 
 #[repr(C)]
 pub struct StringValue {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     value: Cell<StringKind>,
     // Cached hash code for this string's value, computed lazily
     hash_code: Option<NonZeroU32>,
@@ -64,20 +64,49 @@ struct TwoByteString {
 /// an indexing operation is performed. Tracks the total string length, and the widest width seen
 /// in the entire concat tree.
 struct ConcatString {
-    left: Gc<StringValue>,
-    right: Gc<StringValue>,
+    left: HeapPtr<StringValue>,
+    right: HeapPtr<StringValue>,
     len: usize,
     width: StringWidth,
 }
 
 impl StringValue {
-    fn new(cx: &mut Context, value: StringKind) -> Gc<StringValue> {
+    fn new_one_byte(cx: &mut Context, one_byte_string: OneByteString) -> Handle<StringValue> {
         let descriptor = cx.base_descriptors.get(ObjectKind::String);
-        cx.heap
-            .alloc(StringValue { descriptor, value: Cell::new(value), hash_code: None })
+        cx.heap.alloc(StringValue {
+            descriptor,
+            value: Cell::new(StringKind::OneByte(one_byte_string)),
+            hash_code: None,
+        })
     }
 
-    pub fn from_utf8(cx: &mut Context, str: String) -> Gc<StringValue> {
+    fn new_two_byte(cx: &mut Context, two_byte_string: TwoByteString) -> Handle<StringValue> {
+        let descriptor = cx.base_descriptors.get(ObjectKind::String);
+        cx.heap.alloc(StringValue {
+            descriptor,
+            value: Cell::new(StringKind::TwoByte(two_byte_string)),
+            hash_code: None,
+        })
+    }
+
+    fn new_concat(
+        cx: &mut Context,
+        left: Handle<StringValue>,
+        right: Handle<StringValue>,
+        len: usize,
+        width: StringWidth,
+    ) -> Handle<StringValue> {
+        let mut string = cx.heap.alloc_uninit::<StringValue>();
+
+        string.descriptor = cx.base_descriptors.get(ObjectKind::String);
+        string
+            .value
+            .set(StringKind::Concat(ConcatString { left, right, len, width }));
+
+        string
+    }
+
+    pub fn from_utf8(cx: &mut Context, str: String) -> Handle<StringValue> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -124,8 +153,7 @@ impl StringValue {
                 }
             }
 
-            let two_byte_string = TwoByteString::from_vec(buf);
-            StringValue::new(cx, StringKind::TwoByte(two_byte_string))
+            StringValue::new_two_byte(cx, TwoByteString::from_vec(buf))
         } else if !has_non_ascii_one_byte_chars {
             // If this string is pure ASCII then we can directly copy the UTF-8 string.
             let str_copy = str.clone();
@@ -135,7 +163,7 @@ impl StringValue {
             // Memory is managed by heap, and destructor is called when string is garbage collected.
             std::mem::forget(str_copy);
 
-            StringValue::new(cx, StringKind::OneByte(one_byte_string))
+            StringValue::new_one_byte(cx, one_byte_string)
         } else {
             // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
             let mut buf: Vec<u8> = Vec::with_capacity(length);
@@ -148,33 +176,31 @@ impl StringValue {
                 index += 1;
             }
 
-            let one_byte_string = OneByteString::from_vec(buf);
-            StringValue::new(cx, StringKind::OneByte(one_byte_string))
+            StringValue::new_one_byte(cx, OneByteString::from_vec(buf))
         }
     }
 
-    pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Gc<StringValue> {
+    pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<StringValue> {
         Self::from_code_point_impl(cx, code_unit as CodePoint)
     }
 
-    pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Gc<StringValue> {
+    pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Handle<StringValue> {
         Self::from_code_point_impl(cx, code_point)
     }
 
     #[inline]
-    fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Gc<StringValue> {
+    fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<StringValue> {
         if is_latin1_code_point(code_point) {
-            let one_byte_string = OneByteString::from_vec(vec![code_point as u8]);
-            StringValue::new(cx, StringKind::OneByte(one_byte_string))
+            StringValue::new_one_byte(cx, OneByteString::from_vec(vec![code_point as u8]))
         } else {
             match try_encode_surrogate_pair(code_point) {
                 None => {
                     let two_byte_string = TwoByteString::from_vec(vec![code_point as CodeUnit]);
-                    StringValue::new(cx, StringKind::TwoByte(two_byte_string))
+                    StringValue::new_two_byte(cx, two_byte_string)
                 }
                 Some((high, low)) => {
                     let two_byte_string = TwoByteString::from_vec(vec![high, low]);
-                    StringValue::new(cx, StringKind::TwoByte(two_byte_string))
+                    StringValue::new_two_byte(cx, two_byte_string)
                 }
             }
         }
@@ -182,9 +208,9 @@ impl StringValue {
 
     pub fn concat(
         cx: &mut Context,
-        left: Gc<StringValue>,
-        right: Gc<StringValue>,
-    ) -> Gc<StringValue> {
+        left: Handle<StringValue>,
+        right: Handle<StringValue>,
+    ) -> Handle<StringValue> {
         let new_len = left.len() + right.len();
         let width = if left.width() == StringWidth::TwoByte || right.width() == StringWidth::TwoByte
         {
@@ -193,12 +219,10 @@ impl StringValue {
             StringWidth::OneByte
         };
 
-        let concat_string = StringKind::Concat(ConcatString { left, right, len: new_len, width });
-
-        StringValue::new(cx, concat_string)
+        StringValue::new_concat(cx, left, right, new_len, width)
     }
 
-    pub fn concat_all(cx: &mut Context, strings: &[Gc<StringValue>]) -> Gc<StringValue> {
+    pub fn concat_all(cx: &mut Context, strings: &[Handle<StringValue>]) -> Handle<StringValue> {
         if strings.is_empty() {
             cx.names.empty_string().as_string()
         } else {
@@ -212,7 +236,7 @@ impl StringValue {
     }
 }
 
-impl Gc<StringValue> {
+impl StringValue {
     pub fn is_empty(&self) -> bool {
         match self.value() {
             StringKind::OneByte(str) => str.len == 0,
@@ -340,7 +364,7 @@ impl Gc<StringValue> {
     /// Return a substring of this string between the given indices. Indices refer to a half-open
     /// range of code units in the string. This function does not bounds check, so caller must make
     /// sure that 0 <= start <= end < string length.
-    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Gc<StringValue> {
+    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Handle<StringValue> {
         match self.value() {
             StringKind::Concat(_) => {
                 self.flatten();
@@ -348,11 +372,11 @@ impl Gc<StringValue> {
             }
             StringKind::OneByte(str) => {
                 let one_byte_string = OneByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new(cx, StringKind::OneByte(one_byte_string))
+                StringValue::new_one_byte(cx, one_byte_string)
             }
             StringKind::TwoByte(str) => {
                 let two_byte_string = TwoByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new(cx, StringKind::TwoByte(two_byte_string))
+                StringValue::new_two_byte(cx, two_byte_string)
             }
         }
     }
@@ -360,7 +384,7 @@ impl Gc<StringValue> {
     /// Return the index of the first occurrence of the search string in this string, starting after
     /// a given index (inclusive). This function does not bounds check the after index, so caller
     /// must be make sure to only pass an after index that is less than the length of the string.
-    pub fn find(&self, search_string: Gc<StringValue>, after: usize) -> Option<usize> {
+    pub fn find(&self, search_string: HeapPtr<StringValue>, after: usize) -> Option<usize> {
         let mut string_code_units = self.iter_slice_code_units(after, self.len());
         let mut search_string_code_units = search_string.iter_code_units();
 
@@ -399,7 +423,7 @@ impl Gc<StringValue> {
 
     /// Return the index of the last ocurrence of the search string in this string, starting before
     /// a given index (inclusive), which may be equal to the length of the string.
-    pub fn rfind(&self, search_string: Gc<StringValue>, before: usize) -> Option<usize> {
+    pub fn rfind(&self, search_string: HeapPtr<StringValue>, before: usize) -> Option<usize> {
         // Find the end index (exclusive) of the string range to check
         let search_string_len = search_string.len();
         let end_index = usize::min(before + search_string_len, self.len());
@@ -459,7 +483,7 @@ impl Gc<StringValue> {
             let mut buf: Vec<u8> = Vec::with_capacity(length);
             unsafe { buf.set_len(length) };
 
-            let mut stack = vec![*self];
+            let mut stack = vec![HeapPtr::from_ref(self)];
 
             while let Some(current_string) = stack.pop() {
                 match current_string.value() {
@@ -485,7 +509,7 @@ impl Gc<StringValue> {
             let mut buf: Vec<u16> = Vec::with_capacity(length);
             unsafe { buf.set_len(length) };
 
-            let mut stack = vec![*self];
+            let mut stack = vec![HeapPtr::from_ref(self)];
 
             while let Some(current_string) = stack.pop() {
                 match current_string.value() {
@@ -513,7 +537,7 @@ impl Gc<StringValue> {
         }
     }
 
-    pub fn trim(&self, cx: &mut Context, trim_start: bool, trim_end: bool) -> Gc<StringValue> {
+    pub fn trim(&self, cx: &mut Context, trim_start: bool, trim_end: bool) -> Handle<StringValue> {
         let mut code_points_iter = self.iter_code_points();
 
         let mut start_ptr = code_points_iter.ptr();
@@ -553,8 +577,7 @@ impl Gc<StringValue> {
                     std::slice::from_raw_parts(start_ptr, length as usize)
                 };
 
-                let string = OneByteString::from_slice(slice);
-                StringValue::new(cx, StringKind::OneByte(string))
+                StringValue::new_one_byte(cx, OneByteString::from_slice(slice))
             }
             StringWidth::TwoByte => {
                 let slice = unsafe {
@@ -562,13 +585,12 @@ impl Gc<StringValue> {
                     std::slice::from_raw_parts(start_ptr as *const u16, length as usize)
                 };
 
-                let string = TwoByteString::from_slice(slice);
-                StringValue::new(cx, StringKind::TwoByte(string))
+                StringValue::new_two_byte(cx, TwoByteString::from_slice(slice))
             }
         }
     }
 
-    pub fn repeat(&self, cx: &mut Context, n: u64) -> Gc<StringValue> {
+    pub fn repeat(&self, cx: &mut Context, n: u64) -> Handle<StringValue> {
         match self.value() {
             StringKind::Concat(_) => {
                 self.flatten();
@@ -576,18 +598,16 @@ impl Gc<StringValue> {
             }
             StringKind::OneByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
-                let string = OneByteString::from_vec(repeated_buf);
-                StringValue::new(cx, StringKind::OneByte(string))
+                StringValue::new_one_byte(cx, OneByteString::from_vec(repeated_buf))
             }
             StringKind::TwoByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
-                let string = TwoByteString::from_vec(repeated_buf);
-                StringValue::new(cx, StringKind::TwoByte(string))
+                StringValue::new_two_byte(cx, TwoByteString::from_vec(repeated_buf))
             }
         }
     }
 
-    pub fn substring_equals(&self, search: Gc<StringValue>, start_index: usize) -> bool {
+    pub fn substring_equals(&self, search: HeapPtr<StringValue>, start_index: usize) -> bool {
         let mut slice_code_units =
             self.iter_slice_code_units(start_index, start_index + search.len());
         let mut search_code_units = search.iter_code_units();
@@ -595,7 +615,7 @@ impl Gc<StringValue> {
         slice_code_units.consume_equals(&mut search_code_units)
     }
 
-    pub fn to_lower_case(&self, cx: &mut Context) -> Gc<StringValue> {
+    pub fn to_lower_case(&self, cx: &mut Context) -> Handle<StringValue> {
         match self.value() {
             StringKind::Concat(_) => {
                 self.flatten();
@@ -622,8 +642,7 @@ impl Gc<StringValue> {
                     }
                 }
 
-                let string = OneByteString::from_vec(lowercased);
-                StringValue::new(cx, StringKind::OneByte(string))
+                StringValue::new_one_byte(cx, OneByteString::from_vec(lowercased))
             }
             StringKind::TwoByte(string) => {
                 // Two byte slow path. Must convert each code point to lowercase one by one, each of
@@ -652,13 +671,12 @@ impl Gc<StringValue> {
                     }
                 }
 
-                let string = TwoByteString::from_vec(lowercased);
-                StringValue::new(cx, StringKind::TwoByte(string))
+                StringValue::new_two_byte(cx, TwoByteString::from_vec(lowercased))
             }
         }
     }
 
-    pub fn to_upper_case(&self, cx: &mut Context) -> Gc<StringValue> {
+    pub fn to_upper_case(&self, cx: &mut Context) -> Handle<StringValue> {
         let code_point_iter = match self.value() {
             StringKind::Concat(_) => {
                 self.flatten();
@@ -678,8 +696,7 @@ impl Gc<StringValue> {
                         }
                     }
 
-                    let string = OneByteString::from_vec(uppercased);
-                    return StringValue::new(cx, StringKind::OneByte(string));
+                    return StringValue::new_one_byte(cx, OneByteString::from_vec(uppercased));
                 }
 
                 CodePointIterator::from_one_byte(string)
@@ -712,8 +729,7 @@ impl Gc<StringValue> {
             }
         }
 
-        let string = TwoByteString::from_vec(uppercased);
-        StringValue::new(cx, StringKind::TwoByte(string))
+        StringValue::new_two_byte(cx, TwoByteString::from_vec(uppercased))
     }
 
     pub fn iter_code_units(&self) -> CodeUnitIterator {

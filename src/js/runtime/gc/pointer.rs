@@ -8,6 +8,15 @@ pub struct Gc<T> {
     ptr: NonNull<T>,
 }
 
+/// Preparation for handles refactor. For direct references to heap pointers, such as references to
+/// other heap objects stored within a heap object.. May not be held on stack during a GC (which can
+/// occur during any heap allocation).
+pub type HeapPtr<T> = Gc<T>;
+
+/// Preparation for handles refactor. For any heap pointers that may be held on stack during a
+/// GC (which can occur during any heap allocation).
+pub type Handle<T> = Gc<T>;
+
 impl<T> Gc<T> {
     #[inline]
     pub const fn as_ptr(&self) -> *mut T {
@@ -22,6 +31,11 @@ impl<T> Gc<T> {
     #[inline]
     pub const fn from_ptr(ptr: *mut T) -> Gc<T> {
         unsafe { Gc { ptr: NonNull::new_unchecked(ptr) } }
+    }
+
+    #[inline]
+    pub const fn from_ref(reference: &T) -> Gc<T> {
+        Gc::from_ptr(reference as *const T as *mut T)
     }
 
     #[inline]

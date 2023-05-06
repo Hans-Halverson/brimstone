@@ -673,7 +673,7 @@ pub fn is_array(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
 
     if object_value.is_proxy() {
         let proxy = object_value.cast::<ProxyObject>();
-        if proxy.handler().is_none() {
+        if proxy.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 

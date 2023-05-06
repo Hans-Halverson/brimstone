@@ -8,6 +8,7 @@ use super::{
     },
     array_object::create_array_from_list,
     error::type_error_,
+    gc::{Gc, Handle, HandleValue, HeapPtr},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -16,14 +17,14 @@ use super::{
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
     type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
-    Context, EvalResult, Gc, Realm, Value,
+    Context, EvalResult, Realm, Value,
 };
 
 // 10.5 Proxy Object
 extend_object! {
     pub struct ProxyObject {
-        proxy_handler: Option<Gc<ObjectValue>>,
-        proxy_target: Option<Gc<ObjectValue>>,
+        proxy_handler: Option<HeapPtr<ObjectValue>>,
+        proxy_target: Option<HeapPtr<ObjectValue>>,
         is_callable: bool,
         is_constructor: bool,
     }
@@ -32,30 +33,34 @@ extend_object! {
 impl ProxyObject {
     pub fn new(
         cx: &mut Context,
-        proxy_target: Gc<ObjectValue>,
-        proxy_handler: Gc<ObjectValue>,
+        proxy_target: Handle<ObjectValue>,
+        proxy_handler: Handle<ObjectValue>,
         is_callable: bool,
         is_constructor: bool,
-    ) -> Gc<ProxyObject> {
+    ) -> Handle<ProxyObject> {
         let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
 
         let mut object = cx.heap.alloc_uninit::<ProxyObject>();
         object_ordinary_init(cx, object.object(), ObjectKind::Proxy, object_proto);
 
-        object.proxy_handler = Some(proxy_handler);
-        object.proxy_target = Some(proxy_target);
+        object.proxy_handler = Some(proxy_handler.get_());
+        object.proxy_target = Some(proxy_target.get_());
         object.is_callable = is_callable;
         object.is_constructor = is_constructor;
 
         object
     }
 
-    pub fn handler(&self) -> Option<Gc<ObjectValue>> {
+    pub fn handler(&self) -> Option<Handle<ObjectValue>> {
         self.proxy_handler
     }
 
-    pub fn target(&self) -> Option<Gc<ObjectValue>> {
+    pub fn target(&self) -> Option<Handle<ObjectValue>> {
         self.proxy_target
+    }
+
+    pub fn is_revoked(&self) -> bool {
+        self.proxy_handler.is_none()
     }
 
     pub fn revoke(&mut self) {
@@ -71,12 +76,12 @@ impl VirtualObject for Gc<ProxyObject> {
         cx: &mut Context,
         key: PropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.get_own_property_descriptor()));
 
@@ -149,12 +154,12 @@ impl VirtualObject for Gc<ProxyObject> {
         key: PropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let mut target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.define_property()));
 
@@ -230,12 +235,12 @@ impl VirtualObject for Gc<ProxyObject> {
 
     // 10.5.7 [[HasProperty]]
     fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.has()));
 
@@ -270,13 +275,18 @@ impl VirtualObject for Gc<ProxyObject> {
     }
 
     // 10.5.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
-        if self.proxy_handler.is_none() {
+    fn get(
+        &self,
+        cx: &mut Context,
+        key: PropertyKey,
+        receiver: HandleValue,
+    ) -> EvalResult<HandleValue> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.get()));
 
@@ -312,15 +322,15 @@ impl VirtualObject for Gc<ProxyObject> {
         &mut self,
         cx: &mut Context,
         key: PropertyKey,
-        value: Value,
-        receiver: Value,
+        value: HandleValue,
+        receiver: HandleValue,
     ) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let mut target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.set_()));
 
@@ -355,12 +365,12 @@ impl VirtualObject for Gc<ProxyObject> {
 
     // 10.5.10 [[Delete]]
     fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let mut target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.delete_property()));
 
@@ -398,13 +408,13 @@ impl VirtualObject for Gc<ProxyObject> {
     }
 
     // 10.5.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
-        if self.proxy_handler.is_none() {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.own_keys()));
 
@@ -502,15 +512,15 @@ impl VirtualObject for Gc<ProxyObject> {
     fn call(
         &self,
         cx: &mut Context,
-        this_argument: Value,
-        arguments: &[Value],
-    ) -> EvalResult<Value> {
-        if self.proxy_handler.is_none() {
+        this_argument: HandleValue,
+        arguments: &[HandleValue],
+    ) -> EvalResult<HandleValue> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.apply()));
 
@@ -527,15 +537,15 @@ impl VirtualObject for Gc<ProxyObject> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[Value],
-        new_target: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
-        if self.proxy_handler.is_none() {
+        arguments: &[HandleValue],
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
 
         let trap = maybe!(get_method(cx, handler, cx.names.construct()));
 
@@ -562,24 +572,26 @@ impl VirtualObject for Gc<ProxyObject> {
         self.is_constructor
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
-        if self.proxy_handler.is_none() {
+    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        self.proxy_target.unwrap().get_realm(cx)
+        self.target().unwrap().get_realm(cx)
     }
 }
 
-impl Gc<ProxyObject> {
+impl ProxyObject {
     // 10.5.1 [[GetPrototypeOf]]
-    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
-        if self.proxy_handler.is_none() {
+    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
+
+        // Allocations happen after this point, so can no longer use self
 
         let trap = maybe!(get_method(cx, handler, cx.names.get_prototype_of()));
 
@@ -616,14 +628,16 @@ impl Gc<ProxyObject> {
     pub fn set_prototype_of(
         &mut self,
         cx: &mut Context,
-        proto: Option<Gc<ObjectValue>>,
+        proto: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let mut target = self.target().unwrap();
+
+        // Allocations happen after this point, so can no longer use self
 
         let trap = maybe!(get_method(cx, handler, cx.names.set_prototype_of()));
 
@@ -658,12 +672,14 @@ impl Gc<ProxyObject> {
 
     // 10.5.3 [[IsExtensible]]
     pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let target = self.target().unwrap();
+
+        // Allocations happen after this point, so can no longer use self
 
         let trap = maybe!(get_method(cx, handler, cx.names.is_extensible()));
 
@@ -685,12 +701,14 @@ impl Gc<ProxyObject> {
 
     // 10.5.4 [[PreventExtensions]]
     pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
-        if self.proxy_handler.is_none() {
+        if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
 
-        let handler = self.proxy_handler.unwrap().into();
-        let mut target = self.proxy_target.unwrap();
+        let handler = self.handler().unwrap().into();
+        let mut target = self.target().unwrap();
+
+        // Allocations happen after this point, so can no longer use self
 
         let trap = maybe!(get_method(cx, handler, cx.names.prevent_extensions()));
 
@@ -717,9 +735,9 @@ impl Gc<ProxyObject> {
 // 10.5.14 ProxyCreate
 pub fn proxy_create(
     cx: &mut Context,
-    target: Value,
-    handler: Value,
-) -> EvalResult<Gc<ProxyObject>> {
+    target: HandleValue,
+    handler: HandleValue,
+) -> EvalResult<Handle<ProxyObject>> {
     if !target.is_object() {
         return type_error_(cx, "proxy target must be an object");
     }

@@ -30,6 +30,13 @@ impl HandleValue {
     }
 }
 
+impl<T> Handle<T> {
+    /// Get the heap pointer stored behind the handle.
+    pub fn get_(&self) -> HeapPtr<T> {
+        self.clone()
+    }
+}
+
 impl<T> Gc<T> {
     #[inline]
     pub const fn as_ptr(&self) -> *mut T {

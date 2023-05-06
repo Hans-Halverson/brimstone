@@ -5,7 +5,7 @@ use super::{
     completion::EvalResult,
     environment::{environment::DynEnvironment, private_environment::PrivateName},
     error::{reference_error_, type_error_},
-    gc::Gc,
+    gc::{Handle, HandleValue},
     interned_strings::InternedStrings,
     property_key::PropertyKey,
     string_value::StringValue,
@@ -18,21 +18,21 @@ use super::{
 pub struct Reference {
     base: ReferenceBase,
     is_strict: bool,
-    this_value: Option<Value>,
+    this_value: Option<HandleValue>,
 }
 
 pub enum ReferenceBase {
     Unresolvable {
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
     },
     Property {
-        object: Value,
+        object: HandleValue,
         property: PropertyKey,
         private_name: Option<PrivateName>,
     },
     Env {
         env: DynEnvironment,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
     },
 }
 
@@ -48,7 +48,7 @@ impl Reference {
         this_value: None,
     };
 
-    pub fn new_unresolvable(name: Gc<StringValue>, is_strict: bool) -> Reference {
+    pub fn new_unresolvable(name: Handle<StringValue>, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Unresolvable { name },
             is_strict,
@@ -56,7 +56,7 @@ impl Reference {
         }
     }
 
-    pub fn new_property(object: Value, property: PropertyKey, is_strict: bool) -> Reference {
+    pub fn new_property(object: HandleValue, property: PropertyKey, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Property { object, property, private_name: None },
             is_strict,
@@ -65,10 +65,10 @@ impl Reference {
     }
 
     pub fn new_property_with_this(
-        object: Value,
+        object: HandleValue,
         property: PropertyKey,
         is_strict: bool,
-        this_value: Value,
+        this_value: HandleValue,
     ) -> Reference {
         Reference {
             base: ReferenceBase::Property { object, property, private_name: None },
@@ -77,7 +77,7 @@ impl Reference {
         }
     }
 
-    pub fn new_env(env: DynEnvironment, name: Gc<StringValue>, is_strict: bool) -> Reference {
+    pub fn new_env(env: DynEnvironment, name: Handle<StringValue>, is_strict: bool) -> Reference {
         Reference {
             base: ReferenceBase::Env { env, name },
             is_strict,
@@ -117,7 +117,7 @@ impl Reference {
     }
 
     // 6.2.4.5 GetValue
-    pub fn get_value(&self, cx: &mut Context) -> EvalResult<Value> {
+    pub fn get_value(&self, cx: &mut Context) -> EvalResult<HandleValue> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name))
@@ -134,7 +134,7 @@ impl Reference {
     }
 
     // 6.2.4.6 PutValue
-    pub fn put_value(&mut self, cx: &mut Context, value: Value) -> EvalResult<()> {
+    pub fn put_value(&mut self, cx: &mut Context, value: HandleValue) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 if self.is_strict {
@@ -167,7 +167,7 @@ impl Reference {
     }
 
     // 6.2.4.7 GetThisValue
-    pub fn get_this_value(&self) -> Value {
+    pub fn get_this_value(&self) -> HandleValue {
         match self.this_value {
             Some(value) => value,
             None => match self.base {
@@ -183,7 +183,7 @@ impl Reference {
     pub fn initialize_referenced_binding(
         &mut self,
         cx: &mut Context,
-        value: Value,
+        value: HandleValue,
     ) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Env { mut env, name, .. } => env.initialize_binding(cx, name, value),
@@ -196,7 +196,7 @@ impl Reference {
     // 6.2.4.9 MakePrivateReference
     pub fn make_private_reference(
         cx: &mut Context,
-        base_value: Value,
+        base_value: HandleValue,
         private_name_str: &str,
     ) -> Reference {
         let private_env = cx.current_execution_context().private_env().unwrap();

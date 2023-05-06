@@ -7,8 +7,8 @@ use crate::js::common::unicode::{
 };
 
 use super::{
+    gc::HeapPtr,
     string_value::{CodeUnitIterator, StringValue, StringWidth},
-    Gc,
 };
 
 pub struct StringLexer {
@@ -21,7 +21,7 @@ pub struct StringLexer {
 impl StringLexer {
     // Returns None if the lexer could not be primed, meaning the string starts with invalid
     // unicode.
-    pub fn new(string: Gc<StringValue>) -> StringLexer {
+    pub fn new(string: HeapPtr<StringValue>) -> StringLexer {
         let iter = string.iter_code_units();
         let prev_ptr = iter.ptr();
         let mut lexer = StringLexer { iter, prev_ptr, current: None };
@@ -159,7 +159,7 @@ impl StringLexer {
 // 7.1.4.1 ToNumber Applied to the String Type
 //
 // Return None if the string does not conform to the grammar.
-pub fn parse_string_to_number(string: Gc<StringValue>) -> Option<f64> {
+pub fn parse_string_to_number(string: HeapPtr<StringValue>) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
@@ -359,7 +359,7 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
 // 7.1.14.1 StringIntegerLiteral Grammar
 //
 // Return None if the string does not conform to the grammar.
-pub fn parse_string_to_bigint(string: Gc<StringValue>) -> Option<BigInt> {
+pub fn parse_string_to_bigint(string: HeapPtr<StringValue>) -> Option<BigInt> {
     let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
@@ -472,7 +472,7 @@ fn bigint_literal_with_base(
 
 /// Parse string to a u32,. String must be the canonical representation of a u32, and overflow is
 /// checked. This is used when converting a string to an array property key if possible.
-pub fn parse_string_to_u32(string: Gc<StringValue>) -> Option<u32> {
+pub fn parse_string_to_u32(string: HeapPtr<StringValue>) -> Option<u32> {
     let mut lexer = StringLexer::new(string);
 
     let mut result;

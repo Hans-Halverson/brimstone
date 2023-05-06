@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         completion::EvalResult,
-        gc::Gc,
+        gc::{Gc, Handle, HandleValue, HeapPtr},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
@@ -29,18 +29,21 @@ use crate::{
 extend_object! {
     pub struct StringObject {
         // The string value wrapped by this object
-        string_data: Gc<StringValue>,
+        string_data: HeapPtr<StringValue>,
     }
 }
 
 impl StringObject {
     pub fn new(
         cx: &mut Context,
-        proto: Gc<ObjectValue>,
-        string_data: Gc<StringValue>,
-    ) -> Gc<StringObject> {
+        proto: Handle<ObjectValue>,
+        string_data_handle: Handle<StringValue>,
+    ) -> Handle<StringObject> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
         object_ordinary_init(cx, object.object(), ObjectKind::StringObject, proto);
+
+        let string_data = string_data_handle.get_();
+        let string_length = string_data.len();
 
         object.string_data = string_data;
 
@@ -48,7 +51,7 @@ impl StringObject {
         object.object().set_property(
             cx,
             cx.names.length(),
-            Property::data((string_data.len() as f64).into(), false, false, false),
+            Property::data((string_length as f64).into(), false, false, false),
         );
 
         object
@@ -56,9 +59,9 @@ impl StringObject {
 
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-        string_data: Gc<StringValue>,
-    ) -> EvalResult<Gc<StringObject>> {
+        constructor: Handle<ObjectValue>,
+        string_data: Handle<StringValue>,
+    ) -> EvalResult<Handle<StringObject>> {
         let mut object = cx.heap.alloc_uninit::<StringObject>();
         maybe!(object_ordinary_init_from_constructor(
             cx,
@@ -80,18 +83,21 @@ impl StringObject {
         object.into()
     }
 
-    pub fn new_from_value(cx: &mut Context, string_data: Gc<StringValue>) -> Gc<StringObject> {
+    pub fn new_from_value(
+        cx: &mut Context,
+        string_data: Handle<StringValue>,
+    ) -> Handle<StringObject> {
         let proto = cx.get_intrinsic(Intrinsic::StringPrototype);
 
         StringObject::new(cx, proto, string_data)
     }
 
-    pub fn string_data(&self) -> Gc<StringValue> {
+    pub fn string_data(&self) -> Handle<StringValue> {
         self.string_data
     }
 }
 
-impl Gc<StringObject> {
+impl StringObject {
     // 10.4.3.5 StringGetOwnProperty
     fn string_get_own_property(
         &self,
@@ -108,12 +114,16 @@ impl Gc<StringObject> {
             return None;
         };
 
-        let string = self.string_data;
-        if index as usize >= string.len() {
-            return None;
-        }
+        let code_unit = {
+            let string = self.string_data;
+            if index as usize >= string.len() {
+                return None;
+            }
 
-        let char_string = StringValue::from_code_unit(cx, string.code_unit_at(index as usize));
+            string.code_unit_at(index as usize)
+        };
+
+        let char_string = StringValue::from_code_unit(cx, code_unit);
 
         Some(PropertyDescriptor::data(char_string.into(), false, true, false))
     }
@@ -152,7 +162,7 @@ impl VirtualObject for Gc<StringObject> {
     }
 
     // 10.4.3.3 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
         let mut keys = vec![];
 
         let length = self.string_data.len();

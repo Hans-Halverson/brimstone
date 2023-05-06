@@ -1,9 +1,10 @@
 use bitflags::bitflags;
 
 use super::{
+    gc::{Handle, HandleValue},
     object_value::ObjectValue,
     value::{AccessorValue, Value},
-    Context, Gc,
+    Context,
 };
 
 // A property value. If a data property then the value is the value itself. If an accessor property
@@ -14,14 +15,15 @@ use super::{
 // 6.2.9 PrivateElements are represented as properties, with bitflags noting the private property kind.
 #[derive(Clone)]
 pub struct Property {
-    value: Value,
+    value: HandleValue,
     flags: PropertyFlags,
 }
 
 /// A property that is stored on the heap. Contains direct references to heap objects.
 #[derive(Clone)]
 pub struct HeapProperty {
-    inner: Property,
+    value: Value,
+    flags: PropertyFlags,
 }
 
 bitflags! {
@@ -43,7 +45,7 @@ pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
 impl Property {
     #[inline]
     pub fn data(
-        value: Value,
+        value: HandleValue,
         is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
@@ -66,7 +68,11 @@ impl Property {
     }
 
     #[inline]
-    pub fn accessor(accessor_value: Value, is_enumerable: bool, is_configurable: bool) -> Property {
+    pub fn accessor(
+        accessor_value: HandleValue,
+        is_enumerable: bool,
+        is_configurable: bool,
+    ) -> Property {
         let mut flags = PropertyFlags::empty();
 
         if is_enumerable {
@@ -80,18 +86,18 @@ impl Property {
         Property { value: accessor_value, flags }
     }
 
-    pub fn private_field(value: Value) -> Property {
+    pub fn private_field(value: HandleValue) -> Property {
         Property { value, flags: PropertyFlags::IS_PRIVATE_FIELD }
     }
 
-    pub fn private_method(method: Gc<ObjectValue>) -> Property {
+    pub fn private_method(method: Handle<ObjectValue>) -> Property {
         Property {
             value: method.into(),
             flags: PropertyFlags::IS_PRIVATE_METHOD,
         }
     }
 
-    pub fn private_getter(cx: &mut Context, getter: Gc<ObjectValue>) -> Property {
+    pub fn private_getter(cx: &mut Context, getter: Handle<ObjectValue>) -> Property {
         let accessor_value = AccessorValue::new(cx, Some(getter), None);
         Property {
             value: accessor_value.into(),
@@ -99,7 +105,7 @@ impl Property {
         }
     }
 
-    pub fn private_setter(cx: &mut Context, setter: Gc<ObjectValue>) -> Property {
+    pub fn private_setter(cx: &mut Context, setter: Handle<ObjectValue>) -> Property {
         let accessor_value = AccessorValue::new(cx, None, Some(setter));
         Property {
             value: accessor_value.into(),
@@ -107,7 +113,7 @@ impl Property {
         }
     }
 
-    pub fn value(&self) -> Value {
+    pub fn value(&self) -> HandleValue {
         self.value
     }
 
@@ -139,7 +145,7 @@ impl Property {
         self.flags.contains(DENSE_ARRAY_PROPERTY_FLAGS)
     }
 
-    pub fn set_value(&mut self, value: Value) {
+    pub fn set_value(&mut self, value: HandleValue) {
         self.value = value;
     }
 
@@ -181,16 +187,16 @@ impl Property {
     }
 
     pub fn to_heap(&self) -> HeapProperty {
-        HeapProperty { inner: self.clone() }
+        HeapProperty { value: self.value.get(), flags: self.flags }
     }
 
     pub fn from_heap(heap_property: &HeapProperty) -> Property {
-        heap_property.inner.clone()
+        Property { value: heap_property.value, flags: heap_property.flags }
     }
 }
 
 impl HeapProperty {
     pub fn is_configurable(&self) -> bool {
-        self.inner.is_configurable()
+        self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
     }
 }

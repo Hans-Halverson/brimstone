@@ -4,7 +4,7 @@ use super::{
     abstract_operations::{get, has_property},
     completion::EvalResult,
     error::type_error_,
-    gc::Gc,
+    gc::{Handle, HandleValue},
     intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
@@ -17,17 +17,17 @@ use super::{
 // Direct translation of spec. Leaves room for optimization in the future.
 #[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
-    pub value: Option<Value>,
+    pub value: Option<HandleValue>,
     pub is_writable: Option<bool>,
     pub is_enumerable: Option<bool>,
     pub is_configurable: Option<bool>,
-    pub get: Option<Gc<ObjectValue>>,
-    pub set: Option<Gc<ObjectValue>>,
+    pub get: Option<Handle<ObjectValue>>,
+    pub set: Option<Handle<ObjectValue>>,
 }
 
 impl PropertyDescriptor {
     pub fn data(
-        value: Value,
+        value: HandleValue,
         is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
@@ -43,8 +43,8 @@ impl PropertyDescriptor {
     }
 
     pub fn accessor(
-        get: Option<Gc<ObjectValue>>,
-        set: Option<Gc<ObjectValue>>,
+        get: Option<Handle<ObjectValue>>,
+        set: Option<Handle<ObjectValue>>,
         is_enumerable: bool,
         is_configurable: bool,
     ) -> PropertyDescriptor {
@@ -58,7 +58,7 @@ impl PropertyDescriptor {
         }
     }
 
-    pub fn data_value_only(value: Value) -> PropertyDescriptor {
+    pub fn data_value_only(value: HandleValue) -> PropertyDescriptor {
         PropertyDescriptor {
             value: Some(value),
             is_writable: None,
@@ -154,7 +154,7 @@ impl PropertyDescriptor {
 }
 
 // 6.2.5.4 FromPropertyDescriptor
-pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Gc<ObjectValue> {
+pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
     let object_prototype = cx.get_intrinsic(Intrinsic::ObjectPrototype);
     let object = ordinary_object_create(cx, object_prototype);
 
@@ -201,7 +201,10 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> G
 }
 
 // 6.2.5.5 ToPropertyDescriptor
-pub fn to_property_descriptor(cx: &mut Context, value: Value) -> EvalResult<PropertyDescriptor> {
+pub fn to_property_descriptor(
+    cx: &mut Context,
+    value: HandleValue,
+) -> EvalResult<PropertyDescriptor> {
     if !value.is_object() {
         return type_error_(cx, "property descriptor must be an object");
     }

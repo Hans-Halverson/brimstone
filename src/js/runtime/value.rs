@@ -408,6 +408,11 @@ impl Value {
     pub const fn nan() -> Value {
         Value::from_raw_bits(CANONICAL_NAN)
     }
+
+    #[inline]
+    pub fn uninit() -> Value {
+        Value::symbol(Gc::uninit())
+    }
 }
 
 impl From<bool> for Value {

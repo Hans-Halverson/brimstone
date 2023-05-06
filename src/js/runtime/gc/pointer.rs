@@ -3,6 +3,8 @@ use std::{
     ptr::NonNull,
 };
 
+use crate::js::runtime::Value;
+
 /// A pointer to a value in the GC heap.
 pub struct Gc<T> {
     ptr: NonNull<T>,
@@ -16,6 +18,17 @@ pub type HeapPtr<T> = Gc<T>;
 /// Preparation for handles refactor. For any heap pointers that may be held on stack during a
 /// GC (which can occur during any heap allocation).
 pub type Handle<T> = Gc<T>;
+
+/// Preparation for handles refactor. For any values that may be held on stack during a GC (which
+/// can occur during any heap allocation).
+pub type HandleValue = Value;
+
+impl HandleValue {
+    /// Get the value stored behind the handle.
+    pub fn get(&self) -> Value {
+        *self
+    }
+}
 
 impl<T> Gc<T> {
     #[inline]

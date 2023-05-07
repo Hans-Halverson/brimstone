@@ -6,7 +6,7 @@ use crate::{
         completion::EvalResult,
         error::{type_error, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         get,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
@@ -17,7 +17,7 @@ use crate::{
         realm::Realm,
         type_utilities::is_callable,
         value::{Value, ValueMap},
-        Completion, Context,
+        Completion, Context, Handle,
     },
     maybe,
 };
@@ -34,8 +34,8 @@ extend_object! {
 impl MapObject {
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<MapObject>> {
+        constructor: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<MapObject>> {
         let mut object = maybe!(object_create_from_constructor::<MapObject>(
             cx,
             constructor,
@@ -45,7 +45,7 @@ impl MapObject {
 
         object.map_data = ValueMap::new();
 
-        object.into()
+        Handle::from_heap(object).into()
     }
 
     pub fn map_data(&mut self) -> &mut ValueMap<Value> {
@@ -57,7 +57,7 @@ pub struct MapConstructor;
 
 impl MapConstructor {
     // 24.1.1 The Map Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -89,17 +89,17 @@ impl MapConstructor {
     // 24.1.1.1 Map
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
             return type_error_(cx, "Map constructor must be called with new");
         };
 
-        let map_object: Gc<ObjectValue> =
+        let map_object: Handle<ObjectValue> =
             maybe!(MapObject::new_from_constructor(cx, new_target)).into();
 
         let iterable = get_argument(arguments, 0);
@@ -118,10 +118,10 @@ impl MapConstructor {
     // 24.1.2.2 get Map [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_value.into()
     }
 }
@@ -129,10 +129,10 @@ impl MapConstructor {
 // 24.1.1.2 AddEntriesFromIterable
 fn add_entries_from_iterable(
     cx: &mut Context,
-    target: Value,
-    iterable: Value,
-    adder: Gc<ObjectValue>,
-) -> EvalResult<Value> {
+    target: HandleValue,
+    iterable: HandleValue,
+    adder: Handle<ObjectValue>,
+) -> EvalResult<HandleValue> {
     let completion = iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {
             return Some(type_error(cx, "entry must be an object"));

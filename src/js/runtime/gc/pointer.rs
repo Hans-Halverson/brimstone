@@ -34,6 +34,13 @@ impl HandleValue {
     pub fn from_value(_: &mut Context, value: Value) -> HandleValue {
         value
     }
+
+    /// Replace the value stored behind this handle with a new value. Note that all copies of this
+    /// handle will also be changed.
+    #[inline]
+    pub fn replace(&mut self, value: Value) {
+        *self = value
+    }
 }
 
 impl<T> Handle<T> {

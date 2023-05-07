@@ -4,7 +4,7 @@ use crate::{
         array_object::create_array_from_list,
         completion::EvalResult,
         error::type_error_,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -13,7 +13,7 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         value::{Value, ValueMapIter},
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -23,8 +23,8 @@ use super::{intrinsics::Intrinsic, map_constructor::MapObject};
 // 24.1.5 Map Iterator Objects
 extend_object! {
     pub struct MapIterator<'a> {
-        // Map is not used directly, but it held so that it is not GC'd while iterator exists
-        map: Gc<MapObject>,
+        // Map is not used directly, but is held so that it is not GC'd while iterator exists
+        map: HeapPtr<MapObject>,
         iter: ValueMapIter<'a, Value>,
         kind: MapIteratorKind,
     }
@@ -37,18 +37,22 @@ pub enum MapIteratorKind {
 }
 
 impl<'a> MapIterator<'a> {
-    pub fn new(cx: &mut Context, mut map: Gc<MapObject>, kind: MapIteratorKind) -> Gc<MapIterator> {
+    pub fn new(
+        cx: &mut Context,
+        mut map: Handle<MapObject>,
+        kind: MapIteratorKind,
+    ) -> Handle<MapIterator> {
         let mut object = object_create::<MapIterator>(
             cx,
             ObjectKind::MapIterator,
             Intrinsic::MapIteratorPrototype,
         );
 
-        set_uninit!(object.map, map);
+        set_uninit!(object.map, map.get_());
         set_uninit!(object.iter, map.map_data().iter());
         set_uninit!(object.kind, kind);
 
-        object
+        Handle::from_heap(object)
     }
 
     cast_from_value_fn!(MapIterator, "Map Iterator");
@@ -58,7 +62,7 @@ impl<'a> MapIterator<'a> {
 pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
 
@@ -80,10 +84,10 @@ impl MapIteratorPrototype {
     // Adapted from the abstract closure in 24.1.5.1 CreateMapIterator
     fn next(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut map_iterator = maybe!(MapIterator::cast_from_value(cx, this_value));
 
         match map_iterator.iter.next() {

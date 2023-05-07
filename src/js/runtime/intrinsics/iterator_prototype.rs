@@ -1,6 +1,6 @@
 use crate::js::runtime::{
-    completion::EvalResult, gc::Gc, object_value::ObjectValue, property_key::PropertyKey,
-    realm::Realm, value::Value, Context,
+    completion::EvalResult, gc::HandleValue, object_value::ObjectValue, property_key::PropertyKey,
+    realm::Realm, Context, Handle,
 };
 
 use super::intrinsics::Intrinsic;
@@ -9,7 +9,7 @@ use super::intrinsics::Intrinsic;
 pub struct IteratorPrototype;
 
 impl IteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -22,10 +22,10 @@ impl IteratorPrototype {
     // 27.1.2.1 %IteratorPrototype% [ @@iterator ]
     fn iterator(
         _: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_value.into()
     }
 }

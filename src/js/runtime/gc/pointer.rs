@@ -37,6 +37,11 @@ impl<T> Handle<T> {
     pub fn get_(&self) -> HeapPtr<T> {
         self.clone()
     }
+
+    #[inline]
+    pub fn from_heap(heap_ptr: HeapPtr<T>) -> Handle<T> {
+        heap_ptr
+    }
 }
 
 impl<T> Gc<T> {

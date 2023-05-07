@@ -14,7 +14,7 @@ use super::{
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::type_error_,
-    gc::Gc,
+    gc::{Handle, HandleValue, HeapPtr},
     intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
     property::{HeapProperty, Property},
@@ -37,18 +37,18 @@ macro_rules! extend_object_without_conversions {
         #[repr(C)]
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
-            descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
+            descriptor: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
 
             // Inherited object fields
 
             // None represents the null value
-            prototype: Option<$crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue>>,
+            prototype: Option<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
             named_properties: indexmap::IndexMap<$crate::js::runtime::property_key::HeapPropertyKey, $crate::js::runtime::property::HeapProperty>,
 
             // Array index properties by their property key
-            array_properties: $crate::js::runtime::Gc<$crate::js::runtime::array_properties::ArrayProperties>,
+            array_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::array_properties::ArrayProperties>,
 
             // Whether this object can be extended with new properties
             is_extensible_field: bool,
@@ -64,26 +64,26 @@ macro_rules! extend_object_without_conversions {
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[inline]
-            pub fn descriptor(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
+            pub fn descriptor(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
                 self.descriptor
             }
 
             #[inline]
-            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::Gc<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
+            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
                 self.descriptor = descriptor
             }
         }
 
-        impl $(<$($generics),*>)? $crate::js::runtime::Gc<$name $(<$($generics),*>)?> {
+        impl $(<$($generics),*>)? $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
             #[inline]
-            pub fn object(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::object_value::ObjectValue> {
+            pub fn object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
                 self.cast()
             }
 
             /// Cast to an ordinary object so that ordinary object's methods can be called. Only
             /// used when we know we want the default ordinary methods to be called.
             #[inline]
-            pub fn ordinary_object(&self) -> $crate::js::runtime::Gc<$crate::js::runtime::ordinary_object::OrdinaryObject> {
+            pub fn ordinary_object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::ordinary_object::OrdinaryObject> {
                 self.cast()
             }
         }
@@ -119,13 +119,13 @@ extend_object_without_conversions! {
 impl ObjectValue {
     pub fn new(
         cx: &mut Context,
-        prototype: Option<Gc<ObjectValue>>,
+        prototype: Option<Handle<ObjectValue>>,
         is_extensible: bool,
-    ) -> Gc<ObjectValue> {
+    ) -> Handle<ObjectValue> {
         let mut object = cx.heap.alloc_uninit::<ObjectValue>();
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
-        set_uninit!(object.prototype, prototype);
+        set_uninit!(object.prototype, prototype.map(|p| p.get_()));
         set_uninit!(object.named_properties, IndexMap::new());
         set_uninit!(object.array_properties, ArrayProperties::initial(cx));
         set_uninit!(object.is_extensible_field, is_extensible);
@@ -224,12 +224,12 @@ impl ObjectValue {
 // Object field accessors
 impl ObjectValue {
     #[inline]
-    pub fn prototype(&self) -> Option<Gc<ObjectValue>> {
+    pub fn prototype(&self) -> Option<HeapPtr<ObjectValue>> {
         self.prototype
     }
 
     #[inline]
-    pub fn set_prototype(&mut self, prototype: Option<Gc<ObjectValue>>) {
+    pub fn set_prototype(&mut self, prototype: Option<HeapPtr<ObjectValue>>) {
         self.prototype = prototype
     }
 
@@ -239,12 +239,12 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn array_properties(&self) -> Gc<ArrayProperties> {
+    pub fn array_properties(&self) -> HeapPtr<ArrayProperties> {
         self.array_properties
     }
 
     #[inline]
-    pub fn set_array_properties(&mut self, array_properties: Gc<ArrayProperties>) {
+    pub fn set_array_properties(&mut self, array_properties: HeapPtr<ArrayProperties>) {
         self.array_properties = array_properties;
     }
 
@@ -276,21 +276,7 @@ impl ObjectValue {
     }
 }
 
-impl Gc<ObjectValue> {
-    /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
-    /// trait object using the vtable stored in the object descriptor.
-    #[inline]
-    fn virtual_object(&self) -> &mut dyn VirtualObject {
-        unsafe {
-            let data = self as *const Gc<ObjectValue>;
-            let vtable = self.descriptor().vtable();
-
-            let trait_object = ObjectTraitObject { data, vtable };
-
-            transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object)
-        }
-    }
-
+impl ObjectValue {
     fn descriptor_kind(&self) -> ObjectKind {
         self.descriptor().kind()
     }
@@ -374,9 +360,25 @@ impl Gc<ObjectValue> {
     pub fn is_object_prototype(&self) -> bool {
         self.descriptor_kind() == ObjectKind::ObjectPrototype
     }
+}
+
+impl Handle<ObjectValue> {
+    /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
+    /// trait object using the vtable stored in the object descriptor.
+    #[inline]
+    fn virtual_object(&self) -> &mut dyn VirtualObject {
+        unsafe {
+            let data = self as *const Handle<ObjectValue>;
+            let vtable = self.descriptor().vtable();
+
+            let trait_object = ObjectTraitObject { data, vtable };
+
+            transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object)
+        }
+    }
 
     // Type refinement functions
-    pub fn as_builtin_function_opt(&self) -> Option<Gc<BuiltinFunction>> {
+    pub fn as_builtin_function_opt(&self) -> Option<Handle<BuiltinFunction>> {
         if self.descriptor_kind() == ObjectKind::BuiltinFunction {
             Some(self.cast())
         } else {
@@ -416,7 +418,7 @@ impl Gc<ObjectValue> {
     }
 
     // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
+    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: PropertyKey, value: HandleValue) {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
@@ -438,7 +440,7 @@ impl Gc<ObjectValue> {
         cx: &mut Context,
         name: PropertyKey,
         func: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
+        realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
         let accessor_value = AccessorValue::new(cx, Some(getter.into()), None);
@@ -451,7 +453,7 @@ impl Gc<ObjectValue> {
         name: PropertyKey,
         getter: BuiltinFunctionPtr,
         setter: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
+        realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
@@ -465,22 +467,27 @@ impl Gc<ObjectValue> {
         name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
-        realm: Gc<Realm>,
+        realm: Handle<Realm>,
     ) {
         let func = BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into();
         self.intrinsic_data_prop(cx, name, func);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
+    pub fn intrinsic_frozen_property(
+        &mut self,
+        cx: &mut Context,
+        key: PropertyKey,
+        value: HandleValue,
+    ) {
         self.set_property(cx, key, Property::data(value, false, false, false));
     }
 }
 
 // Non-virtual object internal methods from spec
-impl Gc<ObjectValue> {
+impl Handle<ObjectValue> {
     /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
-    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Gc<ObjectValue>>> {
+    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().get_prototype_of(cx)
         } else {
@@ -493,7 +500,7 @@ impl Gc<ObjectValue> {
     pub fn set_prototype_of(
         &mut self,
         cx: &mut Context,
-        new_prototype: Option<Gc<ObjectValue>>,
+        new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if self.is_proxy() {
             self.cast::<ProxyObject>()
@@ -525,7 +532,7 @@ impl Gc<ObjectValue> {
 }
 
 // Wrap all virtual methods for easy access
-impl Gc<ObjectValue> {
+impl Handle<ObjectValue> {
     #[inline]
     pub fn get_own_property(
         &self,
@@ -551,7 +558,12 @@ impl Gc<ObjectValue> {
     }
 
     #[inline]
-    pub fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
+    pub fn get(
+        &self,
+        cx: &mut Context,
+        key: PropertyKey,
+        receiver: HandleValue,
+    ) -> EvalResult<HandleValue> {
         self.virtual_object().get(cx, key, receiver)
     }
 
@@ -560,8 +572,8 @@ impl Gc<ObjectValue> {
         &mut self,
         cx: &mut Context,
         key: PropertyKey,
-        value: Value,
-        receiver: Value,
+        value: HandleValue,
+        receiver: HandleValue,
     ) -> EvalResult<bool> {
         self.virtual_object().set(cx, key, value, receiver)
     }
@@ -572,7 +584,7 @@ impl Gc<ObjectValue> {
     }
 
     #[inline]
-    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
         self.virtual_object().own_property_keys(cx)
     }
 
@@ -580,9 +592,9 @@ impl Gc<ObjectValue> {
     pub fn call(
         &self,
         cx: &mut Context,
-        this_argument: Value,
-        arguments: &[Value],
-    ) -> EvalResult<Value> {
+        this_argument: HandleValue,
+        arguments: &[HandleValue],
+    ) -> EvalResult<HandleValue> {
         self.virtual_object().call(cx, this_argument, arguments)
     }
 
@@ -590,9 +602,9 @@ impl Gc<ObjectValue> {
     pub fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[Value],
-        new_target: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        arguments: &[HandleValue],
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         self.virtual_object().construct(cx, arguments, new_target)
     }
 
@@ -608,7 +620,7 @@ impl Gc<ObjectValue> {
     }
 
     #[inline]
-    pub fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+    pub fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         self.virtual_object().get_realm(cx)
     }
 
@@ -637,35 +649,40 @@ pub trait VirtualObject {
 
     fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
 
-    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value>;
+    fn get(
+        &self,
+        cx: &mut Context,
+        key: PropertyKey,
+        receiver: HandleValue,
+    ) -> EvalResult<HandleValue>;
 
     fn set(
         &mut self,
         cx: &mut Context,
         key: PropertyKey,
-        value: Value,
-        receiver: Value,
+        value: HandleValue,
+        receiver: HandleValue,
     ) -> EvalResult<bool>;
 
     fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
 
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>>;
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>>;
 
     fn call(
         &self,
         _: &mut Context,
-        _this_argument: Value,
-        _arguments: &[Value],
-    ) -> EvalResult<Value> {
+        _this_argument: HandleValue,
+        _arguments: &[HandleValue],
+    ) -> EvalResult<HandleValue> {
         panic!("[[Call]] not implemented for this object")
     }
 
     fn construct(
         &self,
         _: &mut Context,
-        _arguments: &[Value],
-        _new_target: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        _arguments: &[HandleValue],
+        _new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
     }
 
@@ -678,7 +695,7 @@ pub trait VirtualObject {
         false
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         cx.current_realm().into()
     }
 
@@ -691,7 +708,7 @@ pub trait VirtualObject {
 // to properly type our custom trait object creation.
 #[repr(C)]
 struct ObjectTraitObject {
-    data: *const Gc<ObjectValue>,
+    data: *const Handle<ObjectValue>,
     vtable: *const (),
 }
 

@@ -10,7 +10,7 @@ use super::{
     error::type_error_,
     eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
-    gc::Gc,
+    gc::{Gc, Handle, HeapPtr},
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -435,7 +435,10 @@ pub fn enumerable_own_property_names(
 }
 
 // 7.3.25 GetFunctionRealm
-pub fn get_function_realm(cx: &mut Context, func: Gc<ObjectValue>) -> EvalResult<Gc<Realm>> {
+pub fn get_function_realm(
+    cx: &mut Context,
+    func: Handle<ObjectValue>,
+) -> EvalResult<HeapPtr<Realm>> {
     func.get_realm(cx)
 }
 

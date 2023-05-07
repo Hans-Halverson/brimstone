@@ -10,14 +10,14 @@ use super::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     property::{HeapProperty, Property},
-    Context, Gc, Value,
+    Context, Handle, HeapPtr, Value,
 };
 
 // Properties keyed by array index. Back by dense array when possible, otherwise transition to
 // sparse array represented by map.
 #[repr(C)]
 pub struct ArrayProperties {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
 }
 
 impl GcDeref for ArrayProperties {}
@@ -26,19 +26,19 @@ impl GcDeref for ArrayProperties {}
 // to a sparse array.
 const SPARSE_ARRAY_THRESHOLD: u32 = 100;
 
-impl Gc<ArrayProperties> {
+impl HeapPtr<ArrayProperties> {
     #[inline]
-    pub fn as_dense(&self) -> Gc<DenseArrayProperties> {
+    pub fn as_dense(&self) -> HeapPtr<DenseArrayProperties> {
         self.cast()
     }
 
     #[inline]
-    pub fn as_sparse(&self) -> Gc<SparseArrayProperties> {
+    pub fn as_sparse(&self) -> HeapPtr<SparseArrayProperties> {
         self.cast()
     }
 
     #[inline]
-    pub fn as_dense_opt(&self) -> Option<Gc<DenseArrayProperties>> {
+    pub fn as_dense_opt(&self) -> Option<HeapPtr<DenseArrayProperties>> {
         if self.descriptor.kind() == ObjectKind::DenseArrayProperties {
             Some(self.as_dense())
         } else {
@@ -86,13 +86,13 @@ impl Gc<ArrayProperties> {
 }
 
 impl ArrayProperties {
-    pub fn initial(cx: &mut Context) -> Gc<ArrayProperties> {
+    pub fn initial(cx: &mut Context) -> HeapPtr<ArrayProperties> {
         cx.default_array_properties
     }
 
     /// Expand an object's dense properties to have at least enough room for the new length.
     #[inline]
-    fn grow_dense_properties(cx: &mut Context, mut object: Gc<ObjectValue>, new_length: u32) {
+    fn grow_dense_properties(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) {
         let mut dense_properties = object.array_properties().as_dense();
         let old_length = dense_properties.length;
 
@@ -130,7 +130,7 @@ impl ArrayProperties {
     }
 
     #[inline]
-    fn shrink_dense_properties(cx: &mut Context, mut object: Gc<ObjectValue>, new_length: u32) {
+    fn shrink_dense_properties(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) {
         let mut dense_properties = object.array_properties().as_dense();
 
         // Only shrink backing array if it would be less than one half filled
@@ -156,7 +156,7 @@ impl ArrayProperties {
         object.set_array_properties(new_dense_properties.cast());
     }
 
-    fn transition_to_sparse_properties(cx: &mut Context, mut object: Gc<ObjectValue>) {
+    fn transition_to_sparse_properties(cx: &mut Context, mut object: Handle<ObjectValue>) {
         let dense_properties = object.array_properties().as_dense();
 
         let mut sparse_properties = SparseArrayProperties::new(cx, dense_properties.length);
@@ -180,7 +180,7 @@ impl ArrayProperties {
     // array, stop deleting other properties, and return false.
     //
     // Returns return true on success.
-    pub fn set_len(cx: &mut Context, object: Gc<ObjectValue>, new_length: u32) -> bool {
+    pub fn set_len(cx: &mut Context, object: Handle<ObjectValue>, new_length: u32) -> bool {
         let array_properties = object.array_properties();
         if let Some(dense_properties) = array_properties.as_dense_opt() {
             let array_length = dense_properties.length;
@@ -250,7 +250,7 @@ impl ArrayProperties {
 
     pub fn set_property(
         cx: &mut Context,
-        object: Gc<ObjectValue>,
+        object: Handle<ObjectValue>,
         array_index: u32,
         property: Property,
     ) {
@@ -288,7 +288,7 @@ impl ArrayProperties {
 
 #[repr(C)]
 pub struct DenseArrayProperties {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     // Number of elements stored in this array so far
     length: u32,
     // Total number of elements that can be stored in the array, may be larger than the length
@@ -303,7 +303,7 @@ impl GcDeref for DenseArrayProperties {}
 const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, data);
 
 impl DenseArrayProperties {
-    pub fn new(cx: &mut Context, capacity: u32) -> Gc<DenseArrayProperties> {
+    pub fn new(cx: &mut Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
         // Size of a dense array with the given capacity, in bytes
         let size = DENSE_ARRAY_DATA_OFFSET + size_of::<Value>() * (capacity as usize);
         let align = align_of::<DenseArrayProperties>();
@@ -348,7 +348,7 @@ impl DenseArrayProperties {
     }
 }
 
-impl Gc<DenseArrayProperties> {
+impl Handle<DenseArrayProperties> {
     #[inline]
     pub fn iter(&self) -> DenseArrayPropertiesIter {
         DenseArrayPropertiesIter {
@@ -360,7 +360,7 @@ impl Gc<DenseArrayProperties> {
 }
 
 pub struct DenseArrayPropertiesIter {
-    dense_array_properties: Gc<DenseArrayProperties>,
+    dense_array_properties: Handle<DenseArrayProperties>,
     current: u32,
     length: u32,
 }
@@ -405,7 +405,7 @@ impl Iterator for DenseArrayPropertiesGcUnsafeIter {
 
 #[repr(C)]
 pub struct SparseArrayProperties {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     sparse_map: HashMap<u32, HeapProperty>,
     length: u32,
 }
@@ -413,7 +413,7 @@ pub struct SparseArrayProperties {
 impl GcDeref for SparseArrayProperties {}
 
 impl SparseArrayProperties {
-    pub fn new(cx: &mut Context, length: u32) -> Gc<SparseArrayProperties> {
+    fn new(cx: &mut Context, length: u32) -> HeapPtr<SparseArrayProperties> {
         let mut object = cx.heap.alloc_uninit::<SparseArrayProperties>();
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::SparseArrayProperties));

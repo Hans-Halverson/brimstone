@@ -39,7 +39,7 @@ pub use completion::{Completion, CompletionKind, EvalResult};
 pub use console::to_console_string;
 pub use context::Context;
 pub use eval::{evaluate::evaluate, module::eval_module, script::eval_script};
-pub use gc::Gc;
+pub use gc::{Gc, Handle, HeapPtr};
 pub use property_descriptor::PropertyDescriptor;
 pub use property_key::PropertyKey;
 pub use realm::{initialize_host_defined_realm, Realm};

@@ -8,7 +8,7 @@ use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     array_properties::ArrayProperties,
     completion::EvalResult,
-    gc::{Gc, Handle, HeapPtr},
+    gc::{Gc, Handle, HandleValue, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
@@ -37,8 +37,8 @@ impl Into<ObjectValue> for OrdinaryObject {
 impl ObjectValue {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
-    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Gc<ObjectValue>>> {
-        self.prototype().into()
+    pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Handle<ObjectValue>>> {
+        self.prototype().map(Handle::from_heap).into()
     }
 
     // 10.1.3 [[IsExtensible]]
@@ -55,13 +55,13 @@ impl ObjectValue {
     }
 }
 
-impl Gc<ObjectValue> {
+impl Handle<ObjectValue> {
     // 10.1.2 [[SetPrototypeOf]]
     // 10.1.2.1 OrdinarySetPrototypeOf
     pub fn ordinary_set_prototype_of(
         &mut self,
         cx: &mut Context,
-        new_prototype: Option<Gc<ObjectValue>>,
+        new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype(), new_prototype) {
             return true.into();
@@ -101,7 +101,7 @@ impl Gc<ObjectValue> {
     }
 }
 
-impl VirtualObject for Gc<OrdinaryObject> {
+impl VirtualObject for Handle<OrdinaryObject> {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -127,7 +127,12 @@ impl VirtualObject for Gc<OrdinaryObject> {
     }
 
     // 10.1.8 [[Get]]
-    fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
+    fn get(
+        &self,
+        cx: &mut Context,
+        key: PropertyKey,
+        receiver: HandleValue,
+    ) -> EvalResult<HandleValue> {
         ordinary_get(cx, self.object(), key, receiver)
     }
 
@@ -136,8 +141,8 @@ impl VirtualObject for Gc<OrdinaryObject> {
         &mut self,
         cx: &mut Context,
         key: PropertyKey,
-        value: Value,
-        receiver: Value,
+        value: HandleValue,
+        receiver: HandleValue,
     ) -> EvalResult<bool> {
         ordinary_set(cx, self.object(), key, value, receiver)
     }
@@ -148,14 +153,14 @@ impl VirtualObject for Gc<OrdinaryObject> {
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
         ordinary_own_property_keys(cx, self.object()).into()
     }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     key: PropertyKey,
 ) -> Option<PropertyDescriptor> {
     match object.get_property(key) {
@@ -184,7 +189,7 @@ pub fn ordinary_get_own_property(
 // 10.1.6.1 OrdinaryDefineOwnProperty
 pub fn ordinary_define_own_property(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     key: PropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
@@ -215,7 +220,7 @@ pub fn is_compatible_property_descriptor(
 // 10.1.6.3 ValidateAndApplyPropertyDescriptor
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
-    mut object: Option<Gc<ObjectValue>>,
+    mut object: Option<Handle<ObjectValue>>,
     key: PropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
@@ -367,7 +372,7 @@ pub fn validate_and_apply_property_descriptor(
 // 10.1.7.1 OrdinaryHasProperty
 pub fn ordinary_has_property(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     key: PropertyKey,
 ) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(cx, key));
@@ -385,10 +390,10 @@ pub fn ordinary_has_property(
 // 10.1.8.1 OrdinaryGet
 pub fn ordinary_get(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     key: PropertyKey,
-    receiver: Value,
-) -> EvalResult<Value> {
+    receiver: HandleValue,
+) -> EvalResult<HandleValue> {
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {
         None => {
@@ -410,10 +415,10 @@ pub fn ordinary_get(
 // 10.1.9.2 OrdinarySetWithOwnDescriptor
 pub fn ordinary_set(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     key: PropertyKey,
-    value: Value,
-    receiver: Value,
+    value: HandleValue,
+    receiver: HandleValue,
 ) -> EvalResult<bool> {
     let own_desc = maybe!(object.get_own_property(cx, key));
     let own_desc = match own_desc {
@@ -464,7 +469,7 @@ pub fn ordinary_set(
 // 10.1.10.1 OrdinaryDelete
 pub fn ordinary_delete(
     cx: &mut Context,
-    mut object: Gc<ObjectValue>,
+    mut object: Handle<ObjectValue>,
     key: PropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
@@ -482,8 +487,11 @@ pub fn ordinary_delete(
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(cx: &mut Context, object: Gc<ObjectValue>) -> Vec<Value> {
-    let mut keys: Vec<Value> = vec![];
+pub fn ordinary_own_property_keys(
+    cx: &mut Context,
+    object: Handle<ObjectValue>,
+) -> Vec<HandleValue> {
+    let mut keys: Vec<HandleValue> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
     ordinary_own_string_symbol_property_keys(object, &mut keys);
@@ -494,13 +502,14 @@ pub fn ordinary_own_property_keys(cx: &mut Context, object: Gc<ObjectValue>) -> 
 #[inline]
 pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
-    keys: &mut Vec<Value>,
+    object: Handle<ObjectValue>,
+    keys: &mut Vec<HandleValue>,
     filter: F,
 ) {
     // Return array index properties in numerical order
     let array_properties = object.array_properties();
     if let Some(dense_properties) = array_properties.as_dense_opt() {
+        let dense_properties = Handle::from_heap(dense_properties);
         for (index, value) in dense_properties.iter().enumerate() {
             if filter(index) {
                 if !value.is_empty() {
@@ -522,7 +531,10 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 }
 
 #[inline]
-pub fn ordinary_own_string_symbol_property_keys(object: Gc<ObjectValue>, keys: &mut Vec<Value>) {
+pub fn ordinary_own_string_symbol_property_keys(
+    object: Handle<ObjectValue>,
+    keys: &mut Vec<HandleValue>,
+) {
     // Safe since we do not allocate on managed heap during iteration
     object.iter_named_property_keys_gc_unsafe(|property_key| {
         if let Some(string_key) = property_key.as_string_opt() {

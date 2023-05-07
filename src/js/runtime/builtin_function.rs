@@ -6,7 +6,7 @@ use super::{
     completion::EvalResult,
     execution_context::{ExecutionContext, ScriptOrModule},
     function::{set_function_length, set_function_name},
-    gc::Gc,
+    gc::{Gc, HandleValue, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -201,7 +201,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
         self.has_constructor
     }
 
-    fn get_realm(&self, _: &mut Context) -> EvalResult<Gc<Realm>> {
+    fn get_realm(&self, _: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         self.realm.into()
     }
 }

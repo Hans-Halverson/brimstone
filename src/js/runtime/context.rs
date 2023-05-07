@@ -16,6 +16,7 @@ use super::{
     realm::Realm,
     string_value::StringValue,
     value::SymbolValue,
+    HeapPtr,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -36,7 +37,7 @@ pub struct Context {
     pub closure_environments: Vec<Option<Gc<ClosureEnvironment>>>,
 
     // An empty, dense array properties object to use as the initial value for array properties
-    pub default_array_properties: Gc<ArrayProperties>,
+    pub default_array_properties: HeapPtr<ArrayProperties>,
 
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: DynEnvironment,
@@ -66,7 +67,7 @@ impl Context {
             base_descriptors,
             interned_strings: InternedStrings::new(),
             closure_environments: vec![],
-            default_array_properties: Gc::uninit(),
+            default_array_properties: HeapPtr::uninit(),
             uninit_environment,
             eval_asts: vec![],
             function_constructor_asts: vec![],

@@ -5,6 +5,7 @@ use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, s
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     error::{range_error_, type_error_},
+    gc::HandleValue,
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,

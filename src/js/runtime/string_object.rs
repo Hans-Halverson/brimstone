@@ -144,7 +144,7 @@ impl StringObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Gc<StringObject> {
+impl VirtualObject for Handle<StringObject> {
     // 10.4.3.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,

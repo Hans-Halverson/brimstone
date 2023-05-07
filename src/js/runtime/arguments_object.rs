@@ -20,7 +20,7 @@ use super::{
     },
     environment::environment::{DynEnvironment, HeapDynEnvironment},
     function::{get_argument, Function},
-    gc::{GcDeref, Handle},
+    gc::{GcDeref, Handle, HandleValue},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},

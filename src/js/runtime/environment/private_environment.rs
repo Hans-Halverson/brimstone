@@ -27,7 +27,7 @@ impl PrivateName {
         HeapPrivateName { inner: *self }
     }
 
-    pub fn from_heap(heap_private_name: &HeapPrivateName) -> PrivateName {
+    pub fn from_heap_(heap_private_name: &HeapPrivateName) -> PrivateName {
         heap_private_name.inner
     }
 }
@@ -64,7 +64,7 @@ impl PrivateEnvironment {
     // 9.2.1.2 ResolvePrivateIdentifier
     pub fn resolve_private_identifier<'a>(&self, name: &str) -> PrivateName {
         match self.names.get(name) {
-            Some(private_name) => PrivateName::from_heap(private_name),
+            Some(private_name) => PrivateName::from_heap_(private_name),
             None => self.outer.unwrap().resolve_private_identifier(name),
         }
     }
@@ -79,7 +79,7 @@ impl PrivateEnvironment {
     }
 
     pub fn get_private_name(&self, name: &str) -> PrivateName {
-        PrivateName::from_heap(self.names.get(name).unwrap())
+        PrivateName::from_heap_(self.names.get(name).unwrap())
     }
 
     #[inline]

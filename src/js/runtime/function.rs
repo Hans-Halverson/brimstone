@@ -27,7 +27,7 @@ use super::{
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, HeapScriptOrModule, ScriptOrModule},
-    gc::Gc,
+    gc::{Gc, HandleValue, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -353,7 +353,7 @@ impl VirtualObject for Gc<Function> {
         self.has_construct
     }
 
-    fn get_realm(&self, _: &mut Context) -> EvalResult<Gc<Realm>> {
+    fn get_realm(&self, _: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         self.realm.into()
     }
 }
@@ -471,7 +471,7 @@ impl Gc<Function> {
         for i in 0..self.private_methods.len() {
             let (heap_private_name, heap_private_method) = &self.private_methods[i];
             maybe!(f(
-                PrivateName::from_heap(heap_private_name),
+                PrivateName::from_heap_(heap_private_name),
                 Property::from_heap(heap_private_method)
             ));
         }

@@ -13,7 +13,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
-        gc::Gc,
+        gc::{Gc, HandleValue},
         get,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},

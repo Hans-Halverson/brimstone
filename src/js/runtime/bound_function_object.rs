@@ -8,7 +8,7 @@ use crate::{
 use super::{
     abstract_operations::{call_object, construct},
     completion::EvalResult,
-    gc::Gc,
+    gc::{Gc, HandleValue, HeapPtr},
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
@@ -102,7 +102,7 @@ impl VirtualObject for Gc<BoundFunctionObject> {
         self.bound_target_function.is_constructor()
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<Gc<Realm>> {
+    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         self.bound_target_function.get_realm(cx)
     }
 }

@@ -61,7 +61,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get",
-        fn get(&self, cx: &mut Context, key: PropertyKey, receiver: Value) -> EvalResult<Value> {
+        fn get(&self, cx: &mut Context, key: PropertyKey, receiver: HandleValue) -> EvalResult<HandleValue> {
             self.ordinary_object().get(cx, key, receiver)
         }
     );
@@ -72,8 +72,8 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
             &mut self,
             cx: &mut Context,
             key: PropertyKey,
-            value: Value,
-            receiver: Value,
+            value: HandleValue,
+            receiver: HandleValue,
         ) -> EvalResult<bool> {
             self.ordinary_object().set(cx, key, value, receiver)
         }
@@ -88,7 +88,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "own_property_keys",
-        fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+        fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
             self.ordinary_object().own_property_keys(cx)
         }
     );

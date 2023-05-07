@@ -69,7 +69,7 @@ impl ProxyObject {
     }
 }
 
-impl VirtualObject for Gc<ProxyObject> {
+impl VirtualObject for Handle<ProxyObject> {
     // 10.5.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,

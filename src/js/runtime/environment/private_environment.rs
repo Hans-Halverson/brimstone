@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
-use crate::js::runtime::{
-    gc::{Gc, GcDeref},
-    object_descriptor::{ObjectDescriptor, ObjectKind},
-    value::SymbolValue,
-    Context,
+use crate::{
+    js::runtime::{
+        gc::{Gc, GcDeref, Handle},
+        object_descriptor::{ObjectDescriptor, ObjectKind},
+        value::SymbolValue,
+        Context,
+    },
+    set_uninit,
 };
 
 /// 6.2.11 Private Name
@@ -41,10 +44,17 @@ impl GcDeref for PrivateEnvironment {}
 
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
-    pub fn new(cx: &mut Context, outer: Option<Gc<PrivateEnvironment>>) -> Gc<PrivateEnvironment> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::PrivateEnvironment);
-        cx.heap
-            .alloc(PrivateEnvironment { descriptor, names: HashMap::new(), outer })
+    pub fn new(
+        cx: &mut Context,
+        outer: Option<Handle<PrivateEnvironment>>,
+    ) -> Handle<PrivateEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<PrivateEnvironment>();
+
+        set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::PrivateEnvironment));
+        set_uninit!(env.names, HashMap::new());
+        set_uninit!(env.outer, outer.map(|p| p.get_()));
+
+        env
     }
 
     pub fn outer(&self) -> Option<Gc<PrivateEnvironment>> {

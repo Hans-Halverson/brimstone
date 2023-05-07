@@ -1,6 +1,9 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, maybe};
+use crate::{
+    extend_object, js::runtime::ordinary_object::object_create_with_optional_proto, maybe,
+    set_uninit,
+};
 
 use super::{
     abstract_operations::{call_object, construct},
@@ -8,7 +11,6 @@ use super::{
     gc::Gc,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
-    ordinary_object::object_ordinary_init_optional_proto,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::same_object_value,
@@ -33,15 +35,18 @@ impl BoundFunctionObject {
         bound_this: Value,
         bound_arguments: Vec<Value>,
     ) -> EvalResult<Gc<BoundFunctionObject>> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
+        // May allocate, so call before allocating bound function object
         let proto = maybe!(target_function.get_prototype_of(cx));
 
-        let mut object = cx.heap.alloc_uninit::<BoundFunctionObject>();
-        object_ordinary_init_optional_proto(cx, object.object(), descriptor, proto);
+        let mut object = object_create_with_optional_proto::<BoundFunctionObject>(
+            cx,
+            ObjectKind::BoundFunctionObject,
+            proto,
+        );
 
-        object.bound_target_function = target_function;
-        object.bound_this = bound_this;
-        object.bound_arguments = bound_arguments;
+        set_uninit!(object.bound_target_function, target_function);
+        set_uninit!(object.bound_this, bound_this);
+        set_uninit!(object.bound_arguments, bound_arguments);
 
         object.into()
     }

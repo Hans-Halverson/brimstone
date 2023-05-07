@@ -4,9 +4,11 @@ use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
 use rand::Rng;
 
+use crate::set_uninit;
+
 use super::{
     context::Context,
-    gc::{Gc, GcDeref},
+    gc::{Gc, GcDeref, Handle, HeapPtr},
     object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -534,18 +536,21 @@ impl From<Gc<AccessorValue>> for Value {
 
 #[repr(C)]
 pub struct SymbolValue {
-    descriptor: Gc<ObjectDescriptor>,
-    description: Option<Gc<StringValue>>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    description: Option<HeapPtr<StringValue>>,
     // Stable hash code for this symbol, since symbol can be moved by GC
     hash_code: u32,
 }
 
 impl SymbolValue {
-    pub fn new(cx: &mut Context, description: Option<Gc<StringValue>>) -> Gc<SymbolValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::Symbol);
-        let hash_code = rand::thread_rng().gen::<u32>();
-        cx.heap
-            .alloc(SymbolValue { descriptor, description, hash_code })
+    pub fn new(cx: &mut Context, description: Option<Handle<StringValue>>) -> Handle<SymbolValue> {
+        let mut symbol = cx.heap.alloc_uninit::<SymbolValue>();
+
+        set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
+        set_uninit!(symbol.description, description.map(|desc| desc.get_()));
+        set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
+
+        symbol
     }
 
     pub fn description(&self) -> Option<Gc<StringValue>> {
@@ -578,14 +583,18 @@ impl GcDeref for SymbolValue {}
 
 #[repr(C)]
 pub struct BigIntValue {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     value: BigInt,
 }
 
 impl BigIntValue {
-    pub fn new(cx: &mut Context, value: BigInt) -> Gc<BigIntValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::BigInt);
-        cx.heap.alloc(BigIntValue { descriptor, value })
+    pub fn new(cx: &mut Context, value: BigInt) -> Handle<BigIntValue> {
+        let mut bigint = cx.heap.alloc_uninit::<BigIntValue>();
+
+        set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
+        set_uninit!(bigint.value, value);
+
+        bigint
     }
 }
 
@@ -601,9 +610,9 @@ impl GcDeref for BigIntValue {}
 
 #[repr(C)]
 pub struct AccessorValue {
-    descriptor: Gc<ObjectDescriptor>,
-    pub get: Option<Gc<ObjectValue>>,
-    pub set: Option<Gc<ObjectValue>>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    pub get: Option<HeapPtr<ObjectValue>>,
+    pub set: Option<HeapPtr<ObjectValue>>,
 }
 
 impl GcDeref for AccessorValue {}
@@ -611,11 +620,16 @@ impl GcDeref for AccessorValue {}
 impl AccessorValue {
     pub fn new(
         cx: &mut Context,
-        get: Option<Gc<ObjectValue>>,
-        set: Option<Gc<ObjectValue>>,
-    ) -> Gc<AccessorValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::Accessor);
-        cx.heap.alloc(AccessorValue { descriptor, get, set })
+        get: Option<Handle<ObjectValue>>,
+        set: Option<Handle<ObjectValue>>,
+    ) -> Handle<AccessorValue> {
+        let mut accessor = cx.heap.alloc_uninit::<AccessorValue>();
+
+        set_uninit!(accessor.descriptor, cx.base_descriptors.get(ObjectKind::Accessor));
+        set_uninit!(accessor.get, get.map(|v| v.get_()));
+        set_uninit!(accessor.set, set.map(|v| v.get_()));
+
+        accessor
     }
 }
 

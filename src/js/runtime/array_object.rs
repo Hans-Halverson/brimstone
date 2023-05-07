@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must};
+use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, set_uninit};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
@@ -10,7 +10,7 @@ use super::{
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
-        object_ordinary_init, ordinary_define_own_property, ordinary_delete,
+        object_create_with_proto, ordinary_define_own_property, ordinary_delete,
         ordinary_get_own_property, ordinary_own_property_keys,
     },
     property_descriptor::PropertyDescriptor,
@@ -30,10 +30,9 @@ extend_object! {
 
 impl ArrayObject {
     pub fn new(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ArrayObject> {
-        let mut array = cx.heap.alloc_uninit::<ArrayObject>();
-        object_ordinary_init(cx, array.object(), ObjectKind::ArrayObject, proto);
+        let mut array = object_create_with_proto::<ArrayObject>(cx, ObjectKind::ArrayObject, proto);
 
-        array.is_length_writable = true;
+        set_uninit!(array.is_length_writable, true);
 
         array
     }

@@ -3,11 +3,10 @@ use crate::{
     js::runtime::{
         abstract_operations::length_of_array_like, array_object::create_array_from_list,
         completion::EvalResult, error::type_error_, gc::Gc, iterator::create_iter_result_object,
-        object_descriptor::ObjectKind, object_value::ObjectValue,
-        ordinary_object::object_ordinary_init, property::Property, property_key::PropertyKey,
-        realm::Realm, value::Value, Context,
+        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
+        property::Property, property_key::PropertyKey, realm::Realm, value::Value, Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -34,10 +33,11 @@ impl ArrayIterator {
         array: Gc<ObjectValue>,
         kind: ArrayIteratorKind,
     ) -> Gc<ArrayIterator> {
-        let proto = cx.get_intrinsic(Intrinsic::ArrayIteratorPrototype);
-
-        let mut object = cx.heap.alloc_uninit::<ArrayIterator>();
-        object_ordinary_init(cx, object.object(), ObjectKind::ArrayIterator, proto);
+        let mut object = object_create::<ArrayIterator>(
+            cx,
+            ObjectKind::ArrayIterator,
+            Intrinsic::ArrayIteratorPrototype,
+        );
 
         // Only difference between array and typed array iterators is length getter, so calculate
         // on iterator start to avoid computing on every iteration.
@@ -47,10 +47,10 @@ impl ArrayIterator {
             Self::get_array_like_length
         };
 
-        object.array = array;
-        object.kind = kind;
-        object.current_index = 0;
-        object.get_length = get_length;
+        set_uninit!(object.array, array);
+        set_uninit!(object.kind, kind);
+        set_uninit!(object.current_index, 0);
+        set_uninit!(object.get_length, get_length);
 
         object
     }

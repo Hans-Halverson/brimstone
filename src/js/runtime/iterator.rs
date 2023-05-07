@@ -11,7 +11,6 @@ use crate::{
 use super::{
     abstract_operations::{call, create_data_property_or_throw},
     error::type_error,
-    intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::to_boolean,
@@ -151,8 +150,7 @@ pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Complet
 
 // 7.4.10 CreateIterResultObject
 pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) -> Gc<ObjectValue> {
-    let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-    let object = ordinary_object_create(cx, object_proto).into();
+    let object = ordinary_object_create(cx);
 
     must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
     must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done.into()));

@@ -8,13 +8,13 @@ use crate::{
         gc::Gc,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        ordinary_object::object_create,
         realm::Realm,
         type_utilities::to_string,
         value::{SymbolValue, Value},
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -29,12 +29,10 @@ extend_object! {
 
 impl SymbolObject {
     pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {
-        let proto = cx.get_intrinsic(Intrinsic::SymbolPrototype);
+        let mut object =
+            object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
 
-        let mut object = cx.heap.alloc_uninit::<SymbolObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::SymbolObject, proto);
-
-        object.symbol_data = symbol_data;
+        set_uninit!(object.symbol_data, symbol_data);
 
         object
     }

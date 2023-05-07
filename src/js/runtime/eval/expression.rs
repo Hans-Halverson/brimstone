@@ -196,8 +196,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
 
 // 13.2.5.4 Object Initializer Evaluation
 fn eval_object_expression(cx: &mut Context, expr: &ast::ObjectExpression) -> EvalResult<Value> {
-    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-    let mut object: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
+    let mut object = ordinary_object_create(cx);
 
     for property in &expr.properties {
         match property.value.as_ref() {

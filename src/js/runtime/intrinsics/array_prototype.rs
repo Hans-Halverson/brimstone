@@ -12,8 +12,9 @@ use crate::{
         get,
         interned_strings::InternedStrings,
         numeric_constants::MAX_SAFE_INTEGER_U64,
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::ordinary_object_create_optional_proto,
+        ordinary_object::object_create_with_optional_proto,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -1513,7 +1514,9 @@ impl ArrayPrototype {
 
     // 23.1.3.35 Array.prototype [ @@unscopables ]
     fn create_unscopables(cx: &mut Context) -> Gc<ObjectValue> {
-        let list = ordinary_object_create_optional_proto(cx, None).into();
+        let list =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+                .into();
 
         must!(create_data_property_or_throw(cx, list, cx.names.at(), true.into()));
         must!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true.into()));

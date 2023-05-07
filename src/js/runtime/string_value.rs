@@ -8,10 +8,13 @@ use std::{
     num::NonZeroU32,
 };
 
-use crate::js::common::unicode::{
-    code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1_char,
-    is_latin1_code_point, is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
-    try_encode_surrogate_pair, CodePoint, CodeUnit,
+use crate::{
+    js::common::unicode::{
+        code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1_char,
+        is_latin1_code_point, is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
+        try_encode_surrogate_pair, CodePoint, CodeUnit,
+    },
+    set_uninit,
 };
 
 use super::{
@@ -72,21 +75,23 @@ struct ConcatString {
 
 impl StringValue {
     fn new_one_byte(cx: &mut Context, one_byte_string: OneByteString) -> Handle<StringValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::String);
-        cx.heap.alloc(StringValue {
-            descriptor,
-            value: Cell::new(StringKind::OneByte(one_byte_string)),
-            hash_code: None,
-        })
+        let mut string = cx.heap.alloc_uninit::<StringValue>();
+
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(string.value, Cell::new(StringKind::OneByte(one_byte_string)));
+        set_uninit!(string.hash_code, None);
+
+        string
     }
 
     fn new_two_byte(cx: &mut Context, two_byte_string: TwoByteString) -> Handle<StringValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::String);
-        cx.heap.alloc(StringValue {
-            descriptor,
-            value: Cell::new(StringKind::TwoByte(two_byte_string)),
-            hash_code: None,
-        })
+        let mut string = cx.heap.alloc_uninit::<StringValue>();
+
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(string.value, Cell::new(StringKind::TwoByte(two_byte_string)));
+        set_uninit!(string.hash_code, None);
+
+        string
     }
 
     fn new_concat(
@@ -98,10 +103,17 @@ impl StringValue {
     ) -> Handle<StringValue> {
         let mut string = cx.heap.alloc_uninit::<StringValue>();
 
-        string.descriptor = cx.base_descriptors.get(ObjectKind::String);
-        string
-            .value
-            .set(StringKind::Concat(ConcatString { left, right, len, width }));
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(
+            string.value,
+            Cell::new(StringKind::Concat(ConcatString {
+                left: left.get_(),
+                right: right.get_(),
+                len,
+                width,
+            }))
+        );
+        set_uninit!(string.hash_code, None);
 
         string
     }

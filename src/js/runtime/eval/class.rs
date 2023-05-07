@@ -19,8 +19,9 @@ use crate::{
             },
             get,
             intrinsics::intrinsics::Intrinsic,
+            object_descriptor::ObjectKind,
             object_value::ObjectValue,
-            ordinary_object::ordinary_object_create_optional_proto,
+            ordinary_object::object_create_with_optional_proto,
             property_key::{HeapPropertyKey, PropertyKey},
             string_value::StringValue,
             Completion, Context, EvalResult, Gc, Value,
@@ -222,7 +223,11 @@ pub fn class_definition_evaluation(
     };
 
     // Set up prototype and constructor
-    let proto = ordinary_object_create_optional_proto(cx, proto_parent);
+    let proto = object_create_with_optional_proto::<ObjectValue>(
+        cx,
+        ObjectKind::OrdinaryObject,
+        proto_parent,
+    );
 
     current_execution_context.set_lexical_env(class_env.into_dyn_env());
     current_execution_context.set_private_env(Some(class_private_env));

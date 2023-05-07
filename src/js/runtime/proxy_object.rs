@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{extend_object, js::runtime::type_utilities::same_opt_object_value, maybe, must};
+use crate::{
+    extend_object, js::runtime::type_utilities::same_opt_object_value, maybe, must, set_uninit,
+};
 
 use super::{
     abstract_operations::{
@@ -13,7 +15,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{is_compatible_property_descriptor, object_ordinary_init},
+    ordinary_object::{is_compatible_property_descriptor, object_create},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
     type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
@@ -38,15 +40,13 @@ impl ProxyObject {
         is_callable: bool,
         is_constructor: bool,
     ) -> Handle<ProxyObject> {
-        let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+        let mut object =
+            object_create::<ProxyObject>(cx, ObjectKind::Proxy, Intrinsic::ObjectPrototype);
 
-        let mut object = cx.heap.alloc_uninit::<ProxyObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::Proxy, object_proto);
-
-        object.proxy_handler = Some(proxy_handler.get_());
-        object.proxy_target = Some(proxy_target.get_());
-        object.is_callable = is_callable;
-        object.is_constructor = is_constructor;
+        set_uninit!(object.proxy_handler, Some(proxy_handler.get_()));
+        set_uninit!(object.proxy_target, Some(proxy_target.get_()));
+        set_uninit!(object.is_callable, is_callable);
+        set_uninit!(object.is_constructor, is_constructor);
 
         object
     }

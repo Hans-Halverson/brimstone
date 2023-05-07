@@ -4,17 +4,19 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, Handle},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
+        ordinary_object::{
+            object_create, object_create_from_constructor, object_create_with_proto,
+        },
         property::Property,
         realm::Realm,
         type_utilities::to_boolean,
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -28,42 +30,46 @@ extend_object! {
 }
 
 impl BooleanObject {
-    pub fn new_with_proto(
-        cx: &mut Context,
-        proto: Gc<ObjectValue>,
-        boolean_data: bool,
-    ) -> Gc<BooleanObject> {
-        let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::BooleanObject, proto);
+    pub fn new(cx: &mut Context, boolean_data: bool) -> Handle<BooleanObject> {
+        let mut object = object_create::<BooleanObject>(
+            cx,
+            ObjectKind::BooleanObject,
+            Intrinsic::BooleanPrototype,
+        );
 
-        object.boolean_data = boolean_data;
+        set_uninit!(object.boolean_data, boolean_data);
 
         object
     }
 
-    pub fn new_from_value(cx: &mut Context, boolean_data: bool) -> Gc<BooleanObject> {
-        let proto = cx.get_intrinsic(Intrinsic::BooleanPrototype);
-
-        Self::new_with_proto(cx, proto, boolean_data)
-    }
-
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
+        constructor: Handle<ObjectValue>,
         boolean_data: bool,
-    ) -> EvalResult<Gc<BooleanObject>> {
-        let mut object = cx.heap.alloc_uninit::<BooleanObject>();
-        maybe!(object_ordinary_init_from_constructor(
+    ) -> EvalResult<Handle<BooleanObject>> {
+        let mut object = maybe!(object_create_from_constructor::<BooleanObject>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::BooleanObject,
             Intrinsic::BooleanPrototype
         ));
 
-        object.boolean_data = boolean_data;
+        set_uninit!(object.boolean_data, boolean_data);
 
         object.into()
+    }
+
+    pub fn new_with_proto(
+        cx: &mut Context,
+        proto: Handle<ObjectValue>,
+        boolean_data: bool,
+    ) -> Handle<BooleanObject> {
+        let mut object =
+            object_create_with_proto::<BooleanObject>(cx, ObjectKind::BooleanObject, proto);
+
+        set_uninit!(object.boolean_data, boolean_data);
+
+        object
     }
 
     pub fn boolean_data(&self) -> bool {

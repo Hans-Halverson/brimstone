@@ -7,7 +7,7 @@ use crate::{
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        ordinary_object::object_create,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -15,7 +15,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -31,13 +31,14 @@ extend_object! {
 
 impl StringIterator {
     pub fn new(cx: &mut Context, string: Gc<StringValue>) -> Gc<StringIterator> {
-        let proto = cx.get_intrinsic(Intrinsic::StringIteratorPrototype);
+        let mut object = object_create::<StringIterator>(
+            cx,
+            ObjectKind::StringIterator,
+            Intrinsic::StringIteratorPrototype,
+        );
 
-        let mut object = cx.heap.alloc_uninit::<StringIterator>();
-        object_ordinary_init(cx, object.object(), ObjectKind::StringIterator, proto);
-
-        object.string = string;
-        object.code_points_iter = string.iter_code_points();
+        set_uninit!(object.string, string);
+        set_uninit!(object.code_points_iter, string.iter_code_points());
 
         object
     }

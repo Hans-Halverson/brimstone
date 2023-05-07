@@ -29,7 +29,7 @@ impl StringPrototype {
     pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let object = StringObject::new(cx, object_proto, empty_string);
+        let object = StringObject::new_with_proto(cx, object_proto, empty_string);
 
         // Constructor property is added once StringConstructor has been created
         object

@@ -11,7 +11,7 @@ use crate::{
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init_from_constructor,
+        ordinary_object::object_create_from_constructor,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -36,10 +36,8 @@ impl MapObject {
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<MapObject>> {
-        let mut object = cx.heap.alloc_uninit::<MapObject>();
-        maybe!(object_ordinary_init_from_constructor(
+        let mut object = maybe!(object_create_from_constructor::<MapObject>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::MapObject,
             Intrinsic::MapPrototype

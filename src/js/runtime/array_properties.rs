@@ -3,7 +3,7 @@ use std::{
     mem::{align_of, size_of},
 };
 
-use crate::field_offset;
+use crate::{field_offset, set_uninit};
 
 use super::{
     gc::GcDeref,
@@ -311,9 +311,9 @@ impl DenseArrayProperties {
             .heap
             .alloc_uninit_with_size::<DenseArrayProperties>(size, align);
 
-        object.descriptor = cx.base_descriptors.get(ObjectKind::DenseArrayProperties);
-        object.length = 0;
-        object.capacity = capacity;
+        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
+        set_uninit!(object.length, 0);
+        set_uninit!(object.capacity, capacity);
 
         object
     }
@@ -416,9 +416,9 @@ impl SparseArrayProperties {
     pub fn new(cx: &mut Context, length: u32) -> Gc<SparseArrayProperties> {
         let mut object = cx.heap.alloc_uninit::<SparseArrayProperties>();
 
-        object.descriptor = cx.base_descriptors.get(ObjectKind::SparseArrayProperties);
-        object.sparse_map = HashMap::new();
-        object.length = length;
+        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::SparseArrayProperties));
+        set_uninit!(object.sparse_map, HashMap::new());
+        set_uninit!(object.length, length);
 
         object
     }

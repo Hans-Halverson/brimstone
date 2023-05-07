@@ -5,7 +5,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::{Gc, GcDeref},
+        gc::{Gc, GcDeref, Handle},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
@@ -14,10 +14,8 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe, must,
+    maybe, must, set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct ProxyConstructor;
 
@@ -94,8 +92,7 @@ impl ProxyConstructor {
             BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), None, None, None);
         revoker.set_closure_environment(revoke_environment);
 
-        let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-        let result: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
+        let result = ordinary_object_create(cx);
 
         must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));
         must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));
@@ -113,11 +110,19 @@ struct RevokeEnvironment {
 impl GcDeref for RevokeEnvironment {}
 
 impl RevokeEnvironment {
-    fn new(cx: &mut Context, revocable_proxy: Option<Gc<ProxyObject>>) -> Gc<RevokeEnvironment> {
-        let descriptor = cx
-            .base_descriptors
-            .get(ObjectKind::RevokeProxyClosureEnvironment);
-        cx.heap
-            .alloc(RevokeEnvironment { descriptor, revocable_proxy })
+    fn new(
+        cx: &mut Context,
+        revocable_proxy: Option<Handle<ProxyObject>>,
+    ) -> Handle<RevokeEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<RevokeEnvironment>();
+
+        set_uninit!(
+            env.descriptor,
+            cx.base_descriptors
+                .get(ObjectKind::RevokeProxyClosureEnvironment)
+        );
+        set_uninit!(env.revocable_proxy, revocable_proxy.map(|p| p.get_()));
+
+        env
     }
 }

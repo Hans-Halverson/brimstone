@@ -14,7 +14,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            get_prototype_from_constructor, object_ordinary_init, ordinary_define_own_property,
+            get_prototype_from_constructor, object_create_with_proto, ordinary_define_own_property,
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys, ordinary_set,
         },
@@ -30,7 +30,7 @@ use crate::{
         value::{BigIntValue, Value},
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::{

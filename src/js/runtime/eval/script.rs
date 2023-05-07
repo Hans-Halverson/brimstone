@@ -9,7 +9,7 @@ use crate::{
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
-            gc::Gc,
+            gc::{Gc, GcDeref, Handle},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
@@ -17,7 +17,7 @@ use crate::{
             Context,
         },
     },
-    maybe, maybe__, must,
+    maybe, maybe__, must, set_uninit,
 };
 
 use super::{pattern::id_string_value, statement::eval_toplevel_list};
@@ -30,10 +30,21 @@ pub struct Script {
     script_node: Rc<ast::Program>,
 }
 
+impl GcDeref for Script {}
+
 impl Script {
-    pub fn new(cx: &mut Context, script_node: Rc<ast::Program>, realm: Gc<Realm>) -> Gc<Script> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::Script);
-        cx.heap.alloc(Script { descriptor, script_node, realm })
+    pub fn new(
+        cx: &mut Context,
+        script_node: Rc<ast::Program>,
+        realm: Handle<Realm>,
+    ) -> Handle<Script> {
+        let mut script = cx.heap.alloc_uninit::<Script>();
+
+        set_uninit!(script.descriptor, cx.base_descriptors.get(ObjectKind::Script));
+        set_uninit!(script.script_node, script_node);
+        set_uninit!(script.realm, realm.get_());
+
+        script
     }
 }
 

@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{define_property_or_throw, get, has_property, set},
         completion::EvalResult,
         error::err_not_defined_,
-        gc::{Gc, GcDeref},
+        gc::{Gc, GcDeref, Handle},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -13,7 +13,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
@@ -33,17 +33,18 @@ impl ObjectEnvironment {
     // 9.1.2.3 NewObjectEnvironment
     pub fn new(
         cx: &mut Context,
-        binding_object: Gc<ObjectValue>,
+        binding_object: Handle<ObjectValue>,
         is_with_environment: bool,
         outer: Option<DynEnvironment>,
-    ) -> Gc<ObjectEnvironment> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::ObjectEnvironment);
-        cx.heap.alloc(ObjectEnvironment {
-            descriptor,
-            binding_object,
-            is_with_environment,
-            outer: outer.as_ref().map(DynEnvironment::to_heap),
-        })
+    ) -> Handle<ObjectEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<ObjectEnvironment>();
+
+        set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::ObjectEnvironment));
+        set_uninit!(env.binding_object, binding_object.get_());
+        set_uninit!(env.is_with_environment, is_with_environment);
+        set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
+
+        env
     }
 
     #[inline]

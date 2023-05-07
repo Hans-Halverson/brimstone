@@ -7,7 +7,7 @@ use crate::{
         gc::Gc,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init_from_constructor,
+        ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_string,
@@ -26,10 +26,8 @@ impl ErrorObject {
         cx: &mut Context,
         constructor: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let object = cx.heap.alloc_uninit::<ObjectValue>();
-        maybe!(object_ordinary_init_from_constructor(
+        let object = maybe!(object_create_from_constructor::<ObjectValue>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::ErrorObject,
             Intrinsic::ErrorPrototype

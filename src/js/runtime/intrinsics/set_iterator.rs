@@ -8,14 +8,14 @@ use crate::{
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        ordinary_object::object_create,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
         value::{Value, ValueSetIter},
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, set_constructor::SetObject};
@@ -37,14 +37,15 @@ pub enum SetIteratorKind {
 
 impl<'a> SetIterator<'a> {
     pub fn new(cx: &mut Context, mut set: Gc<SetObject>, kind: SetIteratorKind) -> Gc<SetIterator> {
-        let proto = cx.get_intrinsic(Intrinsic::SetIteratorPrototype);
+        let mut object = object_create::<SetIterator>(
+            cx,
+            ObjectKind::SetIterator,
+            Intrinsic::SetIteratorPrototype,
+        );
 
-        let mut object = cx.heap.alloc_uninit::<SetIterator>();
-        object_ordinary_init(cx, object.object(), ObjectKind::SetIterator, proto);
-
-        object.set = set;
-        object.iter = set.set_data().iter();
-        object.kind = kind;
+        set_uninit!(object.set, set);
+        set_uninit!(object.iter, set.set_data().iter());
+        set_uninit!(object.kind, kind);
 
         object
     }

@@ -4,8 +4,11 @@ use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::parser::ast::{self, AstPtr},
-    maybe, maybe_, maybe__, must,
+    js::{
+        parser::ast::{self, AstPtr},
+        runtime::ordinary_object::object_create_from_constructor,
+    },
+    maybe, maybe_, maybe__, must, set_uninit,
 };
 
 use super::{
@@ -28,9 +31,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{
-        object_ordinary_init, ordinary_create_from_constructor, ordinary_object_create,
-    },
+    ordinary_object::{object_create_with_proto, ordinary_object_create},
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::{HeapPropertyKey, PropertyKey},
@@ -108,25 +109,26 @@ impl Function {
             ThisMode::Global
         };
 
-        let mut object = cx.heap.alloc_uninit::<Function>();
-        object_ordinary_init(cx, object.object(), ObjectKind::Function, prototype);
+        let mut object = object_create_with_proto::<Function>(cx, ObjectKind::Function, prototype);
 
-        object.is_strict = is_strict;
-        object.is_class_constructor = false;
-        object.has_construct = false;
-        object.constructor_kind = ConstructorKind::Base;
-        object.this_mode = this_mode;
-        object.home_object = None;
-        object.realm = cx.current_realm();
-        object.script_or_module = cx
-            .get_active_script_or_module()
-            .as_ref()
-            .map(ScriptOrModule::to_heap);
-        object.environment = environment.to_heap();
-        object.private_environment = private_environment;
-        object.func_node = func_node.to_heap();
-        object.fields = vec![];
-        object.private_methods = vec![];
+        set_uninit!(object.is_strict, is_strict);
+        set_uninit!(object.is_class_constructor, false);
+        set_uninit!(object.has_construct, false);
+        set_uninit!(object.constructor_kind, ConstructorKind::Base);
+        set_uninit!(object.this_mode, this_mode);
+        set_uninit!(object.home_object, None);
+        set_uninit!(object.realm, cx.current_realm());
+        set_uninit!(
+            object.script_or_module,
+            cx.get_active_script_or_module()
+                .as_ref()
+                .map(ScriptOrModule::to_heap)
+        );
+        set_uninit!(object.environment, environment.to_heap());
+        set_uninit!(object.private_environment, private_environment);
+        set_uninit!(object.func_node, func_node.to_heap());
+        set_uninit!(object.fields, vec![]);
+        set_uninit!(object.private_methods, vec![]);
 
         object
     }
@@ -248,8 +250,13 @@ impl VirtualObject for Gc<Function> {
                     _ => return type_error_(cx, "super class must be a constructor"),
                 }
             } else {
-                maybe!(ordinary_create_from_constructor(cx, new_target, Intrinsic::ObjectPrototype))
-                    .into()
+                maybe!(object_create_from_constructor::<ObjectValue>(
+                    cx,
+                    new_target,
+                    ObjectKind::OrdinaryObject,
+                    Intrinsic::ObjectPrototype
+                ))
+                .into()
             };
 
             maybe!(initialize_instance_elements(cx, new_object, *self));
@@ -259,9 +266,10 @@ impl VirtualObject for Gc<Function> {
 
         let this_argument: Option<Gc<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                let object = maybe!(ordinary_create_from_constructor(
+                let object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,
+                    ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectPrototype
                 ))
                 .into();
@@ -555,8 +563,7 @@ pub fn make_constructor(
     let prototype = match prototype {
         Some(prototype) => prototype,
         None => {
-            let object_prototype = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-            let prototype = ordinary_object_create(cx, object_prototype).into();
+            let prototype = ordinary_object_create(cx);
 
             let desc = PropertyDescriptor::data(func.into(), writable_prototype, false, true);
             must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));

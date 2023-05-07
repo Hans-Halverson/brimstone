@@ -6,6 +6,8 @@ use std::{
     num::NonZeroU32,
 };
 
+use crate::set_uninit;
+
 use super::{
     array_properties::ArrayProperties,
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
@@ -121,13 +123,12 @@ impl ObjectValue {
         is_extensible: bool,
     ) -> Gc<ObjectValue> {
         let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-        let array_properties = ArrayProperties::initial(cx);
 
-        object.descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
-        object.prototype = prototype;
-        object.named_properties = IndexMap::new();
-        object.array_properties = array_properties;
-        object.is_extensible_field = is_extensible;
+        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
+        set_uninit!(object.prototype, prototype);
+        set_uninit!(object.named_properties, IndexMap::new());
+        set_uninit!(object.array_properties, ArrayProperties::initial(cx));
+        set_uninit!(object.is_extensible_field, is_extensible);
         object.set_uninit_hash_code();
 
         object
@@ -259,7 +260,7 @@ impl ObjectValue {
 
     #[inline]
     pub fn set_uninit_hash_code(&mut self) {
-        self.hash_code = None;
+        set_uninit!(self.hash_code, None);
     }
 
     #[inline]

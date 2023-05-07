@@ -18,11 +18,9 @@ use crate::{
             execution_context::resolve_binding,
             gc::Gc,
             interned_strings::InternedStrings,
-            intrinsics::intrinsics::Intrinsic,
             iterator::{
                 get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
             },
-            object_value::ObjectValue,
             ordinary_object::ordinary_object_create,
             property::Property,
             property_key::PropertyKey,
@@ -109,8 +107,7 @@ fn object_binding_initialization(
                 _ => unreachable!("invalid rest property pattern"),
             };
 
-            let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-            let rest_object: Gc<ObjectValue> = ordinary_object_create(cx, object_proto).into();
+            let rest_object = ordinary_object_create(cx);
 
             maybe!(copy_data_properties(cx, rest_object, object_value, &bound_names));
 

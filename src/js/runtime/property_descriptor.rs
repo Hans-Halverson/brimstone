@@ -5,7 +5,6 @@ use super::{
     completion::EvalResult,
     error::type_error_,
     gc::{Handle, HandleValue},
-    intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::{is_callable, to_boolean},
@@ -155,8 +154,7 @@ impl PropertyDescriptor {
 
 // 6.2.5.4 FromPropertyDescriptor
 pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
-    let object_prototype = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-    let object = ordinary_object_create(cx, object_prototype);
+    let object = ordinary_object_create(cx);
 
     if let Some(value) = desc.value {
         must!(create_data_property_or_throw(cx, object.into(), cx.names.value(), value,));

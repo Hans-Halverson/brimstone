@@ -1,3 +1,5 @@
+use crate::set_uninit;
+
 use super::{
     completion::EvalResult,
     environment::{
@@ -5,7 +7,7 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
-    gc::{Gc, GcDeref},
+    gc::{Gc, GcDeref, Handle},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -34,25 +36,26 @@ impl GcDeref for ExecutionContext {}
 impl ExecutionContext {
     pub fn new(
         cx: &mut Context,
-        function: Option<Gc<ObjectValue>>,
-        realm: Gc<Realm>,
+        function: Option<Handle<ObjectValue>>,
+        realm: Handle<Realm>,
         script_or_module: Option<ScriptOrModule>,
         lexical_env: DynEnvironment,
         variable_env: DynEnvironment,
-        private_env: Option<Gc<PrivateEnvironment>>,
+        private_env: Option<Handle<PrivateEnvironment>>,
         is_strict_mode: bool,
-    ) -> Gc<ExecutionContext> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::ExecutionContext);
-        cx.heap.alloc(ExecutionContext {
-            descriptor,
-            function,
-            realm,
-            script_or_module: script_or_module.as_ref().map(ScriptOrModule::to_heap),
-            lexical_env: lexical_env.to_heap(),
-            variable_env: variable_env.to_heap(),
-            private_env,
-            is_strict_mode,
-        })
+    ) -> Handle<ExecutionContext> {
+        let mut exec_context = cx.heap.alloc_uninit::<ExecutionContext>();
+
+        set_uninit!(exec_context.descriptor, cx.base_descriptors.get(ObjectKind::ExecutionContext));
+        set_uninit!(exec_context.function, function.map(|f| f.get_()));
+        set_uninit!(exec_context.realm, realm.get_());
+        set_uninit!(exec_context.script_or_module, script_or_module.map(|s| s.to_heap()));
+        set_uninit!(exec_context.lexical_env, lexical_env.to_heap());
+        set_uninit!(exec_context.variable_env, variable_env.to_heap());
+        set_uninit!(exec_context.private_env, private_env.map(|p| p.get_()));
+        set_uninit!(exec_context.is_strict_mode, is_strict_mode);
+
+        exec_context
     }
 
     #[inline]

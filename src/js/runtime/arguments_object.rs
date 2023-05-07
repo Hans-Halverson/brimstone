@@ -6,26 +6,28 @@ use crate::{
     extend_object,
     js::{
         parser::ast,
-        runtime::{builtin_function::BuiltinFunction, eval::pattern::id_string_value},
+        runtime::{
+            builtin_function::BuiltinFunction, eval::pattern::id_string_value,
+            ordinary_object::object_create_with_optional_proto,
+        },
     },
-    maybe, must,
+    maybe, must, set_uninit,
 };
 
 use super::{
     abstract_operations::{
         create_data_property_or_throw, define_property_or_throw, has_own_property, set,
     },
-    environment::environment::DynEnvironment,
+    environment::environment::{DynEnvironment, HeapDynEnvironment},
     function::{get_argument, Function},
-    gc::GcDeref,
+    gc::{GcDeref, Handle},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
-        object_ordinary_init, ordinary_define_own_property, ordinary_delete, ordinary_get,
-        ordinary_get_own_property, ordinary_object_create_optional_proto,
-        ordinary_object_create_with_descriptor, ordinary_set,
+        object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
+        ordinary_get_own_property, ordinary_set,
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -40,10 +42,11 @@ pub struct UnmappedArgumentsObject;
 
 impl UnmappedArgumentsObject {
     pub fn new(cx: &mut Context) -> Gc<ObjectValue> {
-        let descriptor = cx.base_descriptors.get(ObjectKind::UnmappedArgumentsObject);
-        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-
-        ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
+        object_create::<ObjectValue>(
+            cx,
+            ObjectKind::UnmappedArgumentsObject,
+            Intrinsic::ObjectPrototype,
+        )
     }
 }
 
@@ -57,12 +60,13 @@ extend_object! {
 
 impl MappedArgumentsObject {
     pub fn new(cx: &mut Context, parameter_map: Gc<ObjectValue>) -> Gc<MappedArgumentsObject> {
-        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+        let mut object = object_create::<MappedArgumentsObject>(
+            cx,
+            ObjectKind::MappedArgumentsObject,
+            Intrinsic::ObjectPrototype,
+        );
 
-        let mut object = cx.heap.alloc_uninit::<MappedArgumentsObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::MappedArgumentsObject, proto);
-
-        object.parameter_map = parameter_map;
+        set_uninit!(object.parameter_map, parameter_map);
 
         object
     }
@@ -211,7 +215,8 @@ pub fn create_mapped_arguments_object(
     arguments: &[Value],
     env: DynEnvironment,
 ) -> Value {
-    let parameter_map = ordinary_object_create_optional_proto(cx, None);
+    let parameter_map =
+        object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
     let mut object = MappedArgumentsObject::new(cx, parameter_map.into());
 
     // Gather parameter names. All parameters are guaranteed to be simple identifiers in order for
@@ -277,7 +282,7 @@ pub fn create_mapped_arguments_object(
 struct ArgAccessorEnvironment {
     descriptor: Gc<ObjectDescriptor>,
     name: Gc<StringValue>,
-    env: DynEnvironment,
+    env: HeapDynEnvironment,
 }
 
 impl GcDeref for ArgAccessorEnvironment {}
@@ -285,15 +290,20 @@ impl GcDeref for ArgAccessorEnvironment {}
 impl ArgAccessorEnvironment {
     fn new(
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         env: DynEnvironment,
-    ) -> Gc<ArgAccessorEnvironment> {
-        let descriptor = cx
-            .base_descriptors
-            .get(ObjectKind::ArgAccessorClosureEnvironment);
+    ) -> Handle<ArgAccessorEnvironment> {
+        let mut arg_env = cx.heap.alloc_uninit::<ArgAccessorEnvironment>();
 
-        cx.heap
-            .alloc(ArgAccessorEnvironment { descriptor, name, env })
+        set_uninit!(
+            arg_env.descriptor,
+            cx.base_descriptors
+                .get(ObjectKind::ArgAccessorClosureEnvironment)
+        );
+        set_uninit!(arg_env.name, name.get_());
+        set_uninit!(arg_env.env, env.to_heap());
+
+        arg_env
     }
 }
 
@@ -306,7 +316,7 @@ fn arg_getter(
 ) -> EvalResult<Value> {
     let closure_environment = cx.get_closure_environment::<ArgAccessorEnvironment>();
     let name = closure_environment.name;
-    let env = closure_environment.env;
+    let env = DynEnvironment::from_heap(&closure_environment.env);
 
     env.get_binding_value(cx, name, false)
 }
@@ -320,7 +330,7 @@ fn arg_setter(
 ) -> EvalResult<Value> {
     let closure_environment = cx.get_closure_environment::<ArgAccessorEnvironment>();
     let name = closure_environment.name;
-    let mut env = closure_environment.env;
+    let mut env = DynEnvironment::from_heap(&closure_environment.env);
     let value = get_argument(arguments, 0);
 
     must!(env.set_mutable_binding(cx, name, value, false));

@@ -11,10 +11,11 @@ use crate::{
         error::type_error_,
         function::get_argument,
         gc::Gc,
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{
-            ordinary_create_from_constructor, ordinary_object_create,
-            ordinary_object_create_optional_proto,
+            object_create_from_constructor, object_create_with_optional_proto,
+            ordinary_object_create,
         },
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
@@ -119,9 +120,10 @@ impl ObjectConstructor {
                 .unwrap()
                 .ptr_eq(&new_target)
             {
-                let new_value: Value = maybe!(ordinary_create_from_constructor(
+                let new_value: Value = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,
+                    ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectConstructor
                 ))
                 .into();
@@ -131,8 +133,7 @@ impl ObjectConstructor {
 
         let value = get_argument(arguments, 0);
         if value.is_nullish() {
-            let object_proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-            let new_value: Value = ordinary_object_create(cx, object_proto).into();
+            let new_value: Value = ordinary_object_create(cx).into();
             return new_value.into();
         }
 
@@ -189,7 +190,8 @@ impl ObjectConstructor {
             return type_error_(cx, "prototype must be an object or null");
         };
 
-        let object: Gc<ObjectValue> = ordinary_object_create_optional_proto(cx, proto).into();
+        let object =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, proto);
 
         let properties = get_argument(arguments, 1);
         if properties.is_undefined() {
@@ -324,8 +326,7 @@ impl ObjectConstructor {
 
         let keys = maybe!(object.own_property_keys(cx));
 
-        let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
-        let descriptors: Gc<ObjectValue> = ordinary_object_create(cx, proto).into();
+        let descriptors = ordinary_object_create(cx).into();
 
         for key in keys {
             let key = must!(PropertyKey::from_value(cx, key));

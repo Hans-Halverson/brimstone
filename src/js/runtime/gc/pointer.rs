@@ -25,6 +25,7 @@ pub type HandleValue = Value;
 
 impl HandleValue {
     /// Get the value stored behind the handle.
+    #[inline]
     pub fn get(&self) -> Value {
         *self
     }
@@ -32,6 +33,7 @@ impl HandleValue {
 
 impl<T> Handle<T> {
     /// Get the heap pointer stored behind the handle.
+    #[inline]
     pub fn get_(&self) -> HeapPtr<T> {
         self.clone()
     }

@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use crate::js::runtime::ordinary_object::OrdinaryObject;
+use crate::{js::runtime::ordinary_object::OrdinaryObject, set_uninit};
 
 use super::{
     arguments_object::MappedArgumentsObject,
@@ -8,7 +8,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
-    gc::{GcDeref, Heap},
+    gc::{GcDeref, Handle, Heap, HeapPtr},
     intrinsics::{
         function_prototype::FunctionPrototype,
         typed_array::{
@@ -19,14 +19,13 @@ use super::{
     object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
     proxy_object::ProxyObject,
     string_object::StringObject,
-    Gc,
 };
 
 /// An object's "hidden class".
 #[repr(C)]
 pub struct ObjectDescriptor {
     // Always the singleton descriptor descriptor
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     // Rust VirtualObject vtable, used for dynamic dispatch to some object methods
     vtable: VirtualObjectVtable,
     // Object's type
@@ -131,19 +130,23 @@ bitflags! {
 }
 
 impl ObjectDescriptor {
-    pub fn new<T: VirtualObject>(
+    pub fn new<T>(
         heap: &mut Heap,
-        descriptor: Gc<ObjectDescriptor>,
+        descriptor: Handle<ObjectDescriptor>,
         kind: ObjectKind,
         flags: DescFlags,
-    ) -> Gc<ObjectDescriptor> {
-        let desc = ObjectDescriptor {
-            descriptor,
-            vtable: extract_object_vtable::<T>(),
-            kind,
-            flags,
-        };
-        heap.alloc(desc)
+    ) -> Handle<ObjectDescriptor>
+    where
+        Handle<T>: VirtualObject,
+    {
+        let mut desc = heap.alloc_uninit::<ObjectDescriptor>();
+
+        set_uninit!(desc.descriptor, descriptor.get_());
+        set_uninit!(desc.vtable, extract_object_vtable::<Handle<T>>());
+        set_uninit!(desc.kind, kind);
+        set_uninit!(desc.flags, flags);
+
+        desc
     }
 
     pub const fn kind(&self) -> ObjectKind {
@@ -160,7 +163,7 @@ impl ObjectDescriptor {
 }
 
 pub struct BaseDescriptors {
-    descriptors: Vec<Gc<ObjectDescriptor>>,
+    descriptors: Vec<HeapPtr<ObjectDescriptor>>,
 }
 
 impl BaseDescriptors {
@@ -172,19 +175,19 @@ impl BaseDescriptors {
 
         // First set up the singleton descriptor descriptor, using an arbitrary vtable
         // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
-        let mut descriptor = ObjectDescriptor::new::<Gc<OrdinaryObject>>(
+        let mut descriptor = ObjectDescriptor::new::<OrdinaryObject>(
             heap,
-            Gc::uninit(),
+            Handle::uninit(),
             ObjectKind::Descriptor,
             DescFlags::empty(),
         );
-        descriptor.descriptor = descriptor;
+        descriptor.descriptor = descriptor.get_();
 
         macro_rules! register_descriptor {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
                 let desc =
-                    ObjectDescriptor::new::<Gc<$object_ty>>(heap, descriptor, $object_kind, $flags);
-                descriptors[$object_kind as usize] = desc;
+                    ObjectDescriptor::new::<$object_ty>(heap, descriptor, $object_kind, $flags);
+                descriptors[$object_kind as usize] = desc.get_();
             };
         }
 
@@ -284,7 +287,7 @@ impl BaseDescriptors {
         BaseDescriptors { descriptors }
     }
 
-    pub fn get(&self, kind: ObjectKind) -> Gc<ObjectDescriptor> {
+    pub fn get(&self, kind: ObjectKind) -> HeapPtr<ObjectDescriptor> {
         self.descriptors[kind as usize]
     }
 }
@@ -293,13 +296,13 @@ impl BaseDescriptors {
 /// used to determine the true type of the heap item.
 #[repr(C)]
 pub struct HeapItem {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
 }
 
 impl GcDeref for HeapItem {}
 
 impl HeapItem {
-    pub fn descriptor(&self) -> Gc<ObjectDescriptor> {
+    pub fn descriptor(&self) -> HeapPtr<ObjectDescriptor> {
         self.descriptor
     }
 }

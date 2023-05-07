@@ -1,6 +1,6 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, maybe};
+use crate::{extend_object, maybe, set_uninit};
 
 use super::{
     completion::EvalResult,
@@ -10,7 +10,7 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
-    ordinary_object::object_ordinary_init,
+    ordinary_object::object_create_with_proto,
     property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -73,16 +73,16 @@ impl BuiltinFunction {
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
-        let mut object = cx.heap.alloc_uninit::<BuiltinFunction>();
-        object_ordinary_init(cx, object.object(), ObjectKind::BuiltinFunction, prototype);
+        let mut object =
+            object_create_with_proto::<BuiltinFunction>(cx, ObjectKind::BuiltinFunction, prototype);
 
-        object.realm = realm;
-        object.script_or_module = None;
-        object.initial_name = None;
-        object.builtin_func = builtin_func;
-        object.closure_environment = None;
-        object.has_constructor = false;
-        object.script_or_module = None;
+        set_uninit!(object.realm, realm);
+        set_uninit!(object.script_or_module, None);
+        set_uninit!(object.initial_name, None);
+        set_uninit!(object.builtin_func, builtin_func);
+        set_uninit!(object.closure_environment, None);
+        set_uninit!(object.has_constructor, false);
+        set_uninit!(object.script_or_module, None);
 
         object
     }

@@ -8,14 +8,14 @@ use crate::{
         gc::Gc,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        ordinary_object::object_create,
         property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
         value::{BigIntValue, Value},
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -30,12 +30,10 @@ extend_object! {
 
 impl BigIntObject {
     pub fn new_from_value(cx: &mut Context, bigint_data: Gc<BigIntValue>) -> Gc<BigIntObject> {
-        let proto = cx.get_intrinsic(Intrinsic::BigIntPrototype);
+        let mut object =
+            object_create::<BigIntObject>(cx, ObjectKind::BigIntObject, Intrinsic::BigIntPrototype);
 
-        let mut object = cx.heap.alloc_uninit::<BigIntObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::BigIntObject, proto);
-
-        object.bigint_data = bigint_data;
+        set_uninit!(object.bigint_data, bigint_data);
 
         object
     }

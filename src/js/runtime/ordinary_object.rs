@@ -8,7 +8,7 @@ use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     array_properties::ArrayProperties,
     completion::EvalResult,
-    gc::Gc,
+    gc::{Gc, Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
@@ -538,39 +538,71 @@ pub fn ordinary_own_string_symbol_property_keys(object: Gc<ObjectValue>, keys: &
     });
 }
 
-// 10.1.12 OrdinaryObjectCreate but on an uninitialized object as part of construction
-pub fn object_ordinary_init(
-    cx: &mut Context,
-    object: Gc<ObjectValue>,
-    descriptor_kind: ObjectKind,
-    proto: Gc<ObjectValue>,
-) {
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
-    object_ordinary_init_optional_proto(cx, object, descriptor, Some(proto))
-}
-
-pub fn ordinary_object_create(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ObjectValue> {
-    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
-    ordinary_object_create_with_descriptor(cx, descriptor, Some(proto))
-}
-
-#[inline]
-pub fn ordinary_object_create_with_descriptor(
-    cx: &mut Context,
-    descriptor: Gc<ObjectDescriptor>,
-    proto: Option<Gc<ObjectValue>>,
-) -> Gc<ObjectValue> {
+pub fn ordinary_object_create(cx: &mut Context) -> Handle<ObjectValue> {
     let object = cx.heap.alloc_uninit::<ObjectValue>();
-    object_ordinary_init_optional_proto(cx, object, descriptor, proto);
+
+    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+    object_ordinary_init(cx, object, descriptor, Some(proto));
 
     object
 }
 
-pub fn object_ordinary_init_optional_proto(
+pub fn object_create<T>(
     cx: &mut Context,
-    mut object: Gc<ObjectValue>,
-    descriptor: Gc<ObjectDescriptor>,
-    proto: Option<Gc<ObjectValue>>,
+    descriptor_kind: ObjectKind,
+    intrinsic_proto: Intrinsic,
+) -> HeapPtr<T>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+{
+    let object = cx.heap.alloc_uninit::<T>();
+
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let proto = cx.get_intrinsic(intrinsic_proto);
+    object_ordinary_init(cx, object.into(), descriptor, Some(proto));
+
+    object
+}
+
+pub fn object_create_with_proto<T>(
+    cx: &mut Context,
+    descriptor_kind: ObjectKind,
+    proto: Handle<ObjectValue>,
+) -> HeapPtr<T>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+{
+    let object = cx.heap.alloc_uninit::<T>();
+
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
+
+    object
+}
+
+pub fn object_create_with_optional_proto<T>(
+    cx: &mut Context,
+    descriptor_kind: ObjectKind,
+    proto: Option<Handle<ObjectValue>>,
+) -> HeapPtr<T>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+{
+    let object = cx.heap.alloc_uninit::<T>();
+
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let proto = proto.map(|p| p.get_());
+    object_ordinary_init(cx, object.into(), descriptor, proto);
+
+    object
+}
+
+pub fn object_ordinary_init(
+    cx: &mut Context,
+    mut object: HeapPtr<ObjectValue>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    proto: Option<HeapPtr<ObjectValue>>,
 ) {
     // Object initialization does not currentlly allocate so a GC cannot occur. This means it is
     // safe to use a raw reference.
@@ -584,62 +616,36 @@ pub fn object_ordinary_init_optional_proto(
     object.set_uninit_hash_code();
 }
 
-pub fn ordinary_object_create_optional_proto(
-    cx: &mut Context,
-    proto: Option<Gc<ObjectValue>>,
-) -> Gc<ObjectValue> {
-    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
-
-    let object = cx.heap.alloc_uninit::<ObjectValue>();
-    object_ordinary_init_optional_proto(cx, object, descriptor, proto);
-
-    object
-}
-
 // 10.1.13 OrdinaryCreateFromConstructor
-pub fn object_ordinary_init_from_constructor(
+// Creates an object of type T, and initializes the standard object fields.
+pub fn object_create_from_constructor<T>(
     cx: &mut Context,
-    mut object: Gc<ObjectValue>,
-    constructor: Gc<ObjectValue>,
+    constructor: Handle<ObjectValue>,
     descriptor_kind: ObjectKind,
     intrinsic_default_proto: Intrinsic,
-) -> EvalResult<()> {
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
-
-    // Make sure to initialize object before get_prototype_from_constructor, which can allocate
-    object_ordinary_init_optional_proto(cx, object, descriptor, None);
-
+) -> EvalResult<HeapPtr<T>>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+{
+    // May allocate, so call before allocating object
     let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
-    object.set_prototype(Some(proto));
 
-    ().into()
-}
+    let object = cx.heap.alloc_uninit::<T>();
 
-pub fn ordinary_create_from_constructor(
-    cx: &mut Context,
-    constructor: Gc<ObjectValue>,
-    intrinsic_default_proto: Intrinsic,
-) -> EvalResult<Gc<ObjectValue>> {
-    let object = cx.heap.alloc_uninit::<ObjectValue>();
-    maybe!(object_ordinary_init_from_constructor(
-        cx,
-        object,
-        constructor,
-        ObjectKind::OrdinaryObject,
-        intrinsic_default_proto,
-    ));
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
 
-    object.into()
+    EvalResult::Ok(object)
 }
 
 // 10.1.14 GetPrototypeFromConstructor
 // May allocate.
 pub fn get_prototype_from_constructor(
     cx: &mut Context,
-    constructor: Gc<ObjectValue>,
+    constructor: Handle<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
-) -> EvalResult<Gc<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor.into(), cx.names.prototype()));
+) -> EvalResult<Handle<ObjectValue>> {
+    let proto = maybe!(get(cx, constructor, cx.names.prototype()));
     if proto.is_object() {
         proto.as_object().into()
     } else {

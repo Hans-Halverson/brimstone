@@ -8,14 +8,14 @@ use crate::{
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init,
+        ordinary_object::object_create,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
         value::{Value, ValueMapIter},
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, map_constructor::MapObject};
@@ -38,14 +38,15 @@ pub enum MapIteratorKind {
 
 impl<'a> MapIterator<'a> {
     pub fn new(cx: &mut Context, mut map: Gc<MapObject>, kind: MapIteratorKind) -> Gc<MapIterator> {
-        let proto = cx.get_intrinsic(Intrinsic::MapIteratorPrototype);
+        let mut object = object_create::<MapIterator>(
+            cx,
+            ObjectKind::MapIterator,
+            Intrinsic::MapIteratorPrototype,
+        );
 
-        let mut object = cx.heap.alloc_uninit::<MapIterator>();
-        object_ordinary_init(cx, object.object(), ObjectKind::MapIterator, proto);
-
-        object.map = map;
-        object.iter = map.map_data().iter();
-        object.kind = kind;
+        set_uninit!(object.map, map);
+        set_uninit!(object.iter, map.map_data().iter());
+        set_uninit!(object.kind, kind);
 
         object
     }

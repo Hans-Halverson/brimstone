@@ -8,7 +8,7 @@ use crate::{
         intrinsics::error_constructor::install_error_cause,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
+        ordinary_object::{object_create, object_create_from_constructor},
         property::Property,
         realm::Realm,
         type_utilities::to_string,
@@ -27,12 +27,15 @@ macro_rules! create_native_error {
         impl $native_error {
             #[allow(dead_code)]
             pub fn new_with_message(cx: &mut Context, message: String) -> Gc<ObjectValue> {
-                let prototype = cx.get_intrinsic(Intrinsic::$prototype);
-
-                let mut object = cx.heap.alloc_uninit::<ObjectValue>();
-                object_ordinary_init(cx, object.object(), ObjectKind::ErrorObject, prototype);
-
+                // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(message).into();
+
+                let mut object = object_create::<ObjectValue>(
+                    cx,
+                    ObjectKind::ErrorObject,
+                    Intrinsic::$prototype,
+                );
+
                 object.intrinsic_data_prop(cx, cx.names.message(), message_value);
 
                 object
@@ -42,10 +45,8 @@ macro_rules! create_native_error {
                 cx: &mut Context,
                 constructor: Gc<ObjectValue>,
             ) -> EvalResult<Gc<ObjectValue>> {
-                let object = cx.heap.alloc_uninit::<ObjectValue>();
-                maybe!(object_ordinary_init_from_constructor(
+                let object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
-                    object.object(),
                     constructor,
                     ObjectKind::ErrorObject,
                     Intrinsic::$prototype

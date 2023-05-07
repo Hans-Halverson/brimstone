@@ -1,17 +1,20 @@
 use std::collections::HashSet;
 
-use crate::js::runtime::{
-    abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
-    completion::EvalResult,
-    error::type_error_,
-    gc::{Gc, GcDeref},
-    object_descriptor::ObjectKind,
-    object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
-    string_value::StringValue,
-    value::Value,
-    Context,
+use crate::{
+    js::runtime::{
+        abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
+        completion::EvalResult,
+        error::type_error_,
+        gc::{Gc, GcDeref, Handle},
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        string_value::StringValue,
+        value::Value,
+        Context,
+    },
+    set_uninit,
 };
 use crate::{maybe, must};
 
@@ -48,20 +51,26 @@ impl GlobalEnvironment {
     // 9.1.2.5 NewGlobalEnvironment
     pub fn new(
         cx: &mut Context,
-        global_object: Gc<ObjectValue>,
-        global_this_value: Gc<ObjectValue>,
-    ) -> Gc<GlobalEnvironment> {
-        // Declarative environment contains outer environment
-        let decl_env =
-            DeclarativeEnvironment::new_as_env_base(cx, ObjectKind::GlobalEnvironment, None);
+        global_object: Handle<ObjectValue>,
+        global_this_value: Handle<ObjectValue>,
+    ) -> Handle<GlobalEnvironment> {
         let object_env = ObjectEnvironment::new(cx, global_object, false, None);
 
-        cx.heap.alloc(GlobalEnvironment {
-            decl_env,
-            object_env,
-            global_this_value,
-            var_names: HashSet::new(),
-        })
+        let mut env = cx.heap.alloc_uninit::<GlobalEnvironment>();
+
+        // Declarative environment contains outer environment
+        DeclarativeEnvironment::init_as_base(
+            cx,
+            &mut env.decl_env,
+            ObjectKind::GlobalEnvironment,
+            None,
+        );
+
+        set_uninit!(env.object_env, object_env.get_());
+        set_uninit!(env.global_this_value, global_this_value.get_());
+        set_uninit!(env.var_names, HashSet::new());
+
+        env
     }
 
     #[inline]

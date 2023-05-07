@@ -8,7 +8,7 @@ use crate::{
         gc::Gc,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_ordinary_init_from_constructor,
+        ordinary_object::object_create_from_constructor,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -39,10 +39,8 @@ impl ArrayBufferObject {
         constructor: Gc<ObjectValue>,
         byte_length: usize,
     ) -> EvalResult<Gc<ArrayBufferObject>> {
-        let mut object = cx.heap.alloc_uninit::<ArrayBufferObject>();
-        maybe!(object_ordinary_init_from_constructor(
+        let mut object = maybe!(object_create_from_constructor::<ArrayBufferObject>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::ArrayBufferObject,
             Intrinsic::ArrayBufferPrototype

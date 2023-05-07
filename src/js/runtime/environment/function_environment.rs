@@ -3,14 +3,14 @@ use crate::{
         completion::EvalResult,
         error::reference_error_,
         function::Function,
-        gc::{Gc, GcDeref},
+        gc::{Gc, GcDeref, Handle},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         string_value::StringValue,
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::{
@@ -42,8 +42,8 @@ impl FunctionEnvironment {
     // 9.1.2.4 NewFunctionEnvironment
     pub fn new(
         cx: &mut Context,
-        function_object: Gc<Function>,
-        new_target: Option<Gc<ObjectValue>>,
+        function_object: Handle<Function>,
+        new_target: Option<Handle<ObjectValue>>,
     ) -> Gc<FunctionEnvironment> {
         let this_binding_status = if function_object.is_lexical_this_mode() {
             ThisBindingStatus::Lexical
@@ -51,21 +51,21 @@ impl FunctionEnvironment {
             ThisBindingStatus::Uninitialized
         };
 
-        // Inner decl env contains the outer environment pointer
-        let decl_env = DeclarativeEnvironment::new_as_env_base(
+        let mut env = cx.heap.alloc_uninit::<FunctionEnvironment>();
+
+        DeclarativeEnvironment::init_as_base(
             cx,
+            &mut env.env,
             ObjectKind::FunctionEnvironment,
             Some(function_object.environment()),
         );
 
-        cx.heap.alloc(FunctionEnvironment {
-            env: decl_env,
-            // This value is uninitialized on creation
-            this_value: Value::undefined(),
-            function_object,
-            new_target,
-            this_binding_status,
-        })
+        set_uninit!(env.this_value, Value::undefined());
+        set_uninit!(env.function_object, function_object.get_());
+        set_uninit!(env.new_target, new_target.map(|h| h.get_()));
+        set_uninit!(env.this_binding_status, this_binding_status);
+
+        env
     }
 
     pub fn function_object(&self) -> Gc<Function> {

@@ -1,6 +1,6 @@
 use crate::js::runtime::{
     completion::EvalResult,
-    gc::{Gc, GcDeref},
+    gc::{Gc, GcDeref, Handle},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
@@ -23,10 +23,17 @@ impl GcDeref for ModuleEnvironment {}
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
-    fn _new(cx: &mut Context, outer: DynEnvironment) -> Gc<ModuleEnvironment> {
-        let env =
-            DeclarativeEnvironment::new_as_env_base(cx, ObjectKind::ModuleEnvironment, Some(outer));
-        cx.heap.alloc(ModuleEnvironment { env })
+    fn _new(cx: &mut Context, outer: DynEnvironment) -> Handle<ModuleEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<ModuleEnvironment>();
+
+        DeclarativeEnvironment::init_as_base(
+            cx,
+            &mut env.env,
+            ObjectKind::ModuleEnvironment,
+            Some(outer),
+        );
+
+        env
     }
 }
 

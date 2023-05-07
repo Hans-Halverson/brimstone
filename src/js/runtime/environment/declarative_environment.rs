@@ -1,14 +1,17 @@
 use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 
-use crate::js::runtime::{
-    completion::EvalResult,
-    error::{err_not_defined_, err_uninitialized_, type_error_},
-    gc::{Gc, GcDeref, Heap},
-    object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
-    object_value::ObjectValue,
-    string_value::StringValue,
-    value::Value,
-    Context,
+use crate::{
+    js::runtime::{
+        completion::EvalResult,
+        error::{err_not_defined_, err_uninitialized_, type_error_},
+        gc::{Gc, GcDeref, Handle, Heap},
+        object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
+        object_value::ObjectValue,
+        string_value::StringValue,
+        value::Value,
+        Context,
+    },
+    set_uninit,
 };
 
 use std::collections::HashMap;
@@ -46,35 +49,38 @@ impl GcDeref for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
-    pub fn new(cx: &mut Context, outer: Option<DynEnvironment>) -> Gc<DeclarativeEnvironment> {
-        cx.heap.alloc(DeclarativeEnvironment {
-            descriptor: cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment),
-            bindings: HashMap::new(),
-            outer: outer.as_ref().map(DynEnvironment::to_heap),
-        })
+    pub fn new(cx: &mut Context, outer: Option<DynEnvironment>) -> Handle<DeclarativeEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<DeclarativeEnvironment>();
+
+        set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment));
+        set_uninit!(env.bindings, HashMap::new());
+        set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
+
+        env
     }
 
-    pub fn new_as_env_base(
+    pub fn init_as_base(
         cx: &mut Context,
+        env: &mut DeclarativeEnvironment,
         kind: ObjectKind,
         outer: Option<DynEnvironment>,
-    ) -> DeclarativeEnvironment {
-        DeclarativeEnvironment {
-            descriptor: cx.base_descriptors.get(kind),
-            bindings: HashMap::new(),
-            outer: outer.as_ref().map(DynEnvironment::to_heap),
-        }
+    ) {
+        set_uninit!(env.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(env.bindings, HashMap::new());
+        set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
     }
 
     pub fn uninit(
         heap: &mut Heap,
         base_descriptors: &BaseDescriptors,
-    ) -> Gc<DeclarativeEnvironment> {
-        heap.alloc(DeclarativeEnvironment {
-            descriptor: base_descriptors.get(ObjectKind::DeclarativeEnvironment),
-            bindings: HashMap::new(),
-            outer: None,
-        })
+    ) -> Handle<DeclarativeEnvironment> {
+        let mut env = heap.alloc_uninit::<DeclarativeEnvironment>();
+
+        set_uninit!(env.descriptor, base_descriptors.get(ObjectKind::DeclarativeEnvironment));
+        set_uninit!(env.bindings, HashMap::new());
+        set_uninit!(env.outer, None);
+
+        env
     }
 }
 

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::js::parser::ast::{AstPtr, TemplateLiteral};
+use crate::{
+    js::parser::ast::{AstPtr, TemplateLiteral},
+    set_uninit,
+};
 
 use super::{
     environment::global_environment::GlobalEnvironment,
@@ -33,14 +36,13 @@ impl Realm {
     pub fn new(cx: &mut Context) -> Handle<Realm> {
         // Realm record must be created before setting up intrinsics, as realm must be referenced
         // during intrinsic creation.
-        let mut realm = cx.heap.alloc(Realm {
-            // Initialized in set_global_object
-            descriptor: cx.base_descriptors.get(ObjectKind::Realm),
-            global_env: HeapPtr::uninit(),
-            global_object: HeapPtr::uninit(),
-            intrinsics: Intrinsics::new_uninit(),
-            template_map: HashMap::new(),
-        });
+        let mut realm = cx.heap.alloc_uninit::<Realm>();
+
+        set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
+        set_uninit!(realm.global_env, HeapPtr::uninit());
+        set_uninit!(realm.global_object, HeapPtr::uninit());
+        set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
+        set_uninit!(realm.template_map, HashMap::new());
 
         let this_realm = realm.clone();
         realm.intrinsics.initialize(cx, this_realm);
@@ -93,9 +95,7 @@ impl Handle<Realm> {
         global_object: Option<Handle<ObjectValue>>,
         this_value: Option<Handle<ObjectValue>>,
     ) {
-        let global_object = global_object.unwrap_or_else(|| {
-            ordinary_object_create(cx, self.get_intrinsic(Intrinsic::ObjectPrototype)).into()
-        });
+        let global_object = global_object.unwrap_or_else(|| ordinary_object_create(cx));
 
         let this_value = this_value.unwrap_or(global_object);
 

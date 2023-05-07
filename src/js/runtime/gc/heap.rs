@@ -46,12 +46,6 @@ impl Heap {
         unsafe { &mut *(self.start as *const _ as *mut HeapInfo) }
     }
 
-    pub fn alloc<T>(&mut self, value: T) -> Gc<T> {
-        let uninit_value_ref = self.alloc_uninit::<T>();
-        unsafe { uninit_value_ref.as_ptr().write(value) };
-        uninit_value_ref
-    }
-
     pub fn alloc_uninit<T>(&mut self) -> Gc<T> {
         self.alloc_uninit_with_size::<T>(size_of::<T>(), align_of::<T>())
     }

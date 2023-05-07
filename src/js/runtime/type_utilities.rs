@@ -586,14 +586,12 @@ pub fn to_object(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
             NULL_TAG => type_error_(cx, "null has no properties"),
             UNDEFINED_TAG => type_error_(cx, "undefined has no properties"),
             BOOL_TAG => {
-                let object: Handle<ObjectValue> =
-                    BooleanObject::new_from_value(cx, value.as_bool()).into();
+                let object: Handle<ObjectValue> = BooleanObject::new(cx, value.as_bool()).into();
                 object.into()
             }
             // Otherwise is a number, either double or smi
             _ => {
-                let object: Handle<ObjectValue> =
-                    NumberObject::new_from_value(cx, value.as_number()).into();
+                let object: Handle<ObjectValue> = NumberObject::new(cx, value.as_number()).into();
                 object.into()
             }
         }

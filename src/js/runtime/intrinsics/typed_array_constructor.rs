@@ -224,13 +224,13 @@ macro_rules! create_typed_array_constructor {
                 byte_offset: usize,
                 array_length: usize,
             ) -> Gc<ObjectValue> {
-                let mut object = cx.heap.alloc_uninit::<$typed_array>();
-                object_ordinary_init(cx, object.object(), ObjectKind::$typed_array, proto);
+                let mut object =
+                    object_create_with_proto::<$typed_array>(cx, ObjectKind::$typed_array, proto);
 
-                object.viewed_array_buffer = viewed_array_buffer;
-                object.byte_length = byte_length;
-                object.byte_offset = byte_offset;
-                object.array_length = array_length;
+                set_uninit!(object.viewed_array_buffer, viewed_array_buffer);
+                set_uninit!(object.byte_length, byte_length);
+                set_uninit!(object.byte_offset, byte_offset);
+                set_uninit!(object.array_length, array_length);
 
                 object.into()
             }

@@ -6,20 +6,22 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, Handle},
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::{object_ordinary_init, object_ordinary_init_from_constructor},
+        ordinary_object::{
+            object_create, object_create_from_constructor, object_create_with_proto,
+        },
         property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -33,42 +35,43 @@ extend_object! {
 }
 
 impl NumberObject {
-    pub fn new_with_proto(
-        cx: &mut Context,
-        proto: Gc<ObjectValue>,
-        number_data: f64,
-    ) -> Gc<NumberObject> {
-        let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::NumberObject, proto);
+    pub fn new(cx: &mut Context, number_data: f64) -> Handle<NumberObject> {
+        let mut object =
+            object_create::<NumberObject>(cx, ObjectKind::NumberObject, Intrinsic::NumberPrototype);
 
-        object.number_data = number_data;
+        set_uninit!(object.number_data, number_data);
 
         object
     }
 
-    pub fn new_from_value(cx: &mut Context, number_data: f64) -> Gc<NumberObject> {
-        let proto = cx.get_intrinsic(Intrinsic::NumberPrototype);
-
-        Self::new_with_proto(cx, proto, number_data)
-    }
-
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
+        constructor: Handle<ObjectValue>,
         number_data: f64,
-    ) -> EvalResult<Gc<NumberObject>> {
-        let mut object = cx.heap.alloc_uninit::<NumberObject>();
-        maybe!(object_ordinary_init_from_constructor(
+    ) -> EvalResult<Handle<NumberObject>> {
+        let mut object = maybe!(object_create_from_constructor::<NumberObject>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::NumberObject,
             Intrinsic::NumberPrototype
         ));
 
-        object.number_data = number_data;
+        set_uninit!(object.number_data, number_data);
 
         object.into()
+    }
+
+    pub fn new_with_proto(
+        cx: &mut Context,
+        proto: Handle<ObjectValue>,
+        number_data: f64,
+    ) -> Handle<NumberObject> {
+        let mut object =
+            object_create_with_proto::<NumberObject>(cx, ObjectKind::NumberObject, proto);
+
+        set_uninit!(object.number_data, number_data);
+
+        object
     }
 
     pub fn number_data(&self) -> f64 {

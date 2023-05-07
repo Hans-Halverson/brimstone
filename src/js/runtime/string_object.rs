@@ -9,8 +9,8 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
-            is_compatible_property_descriptor, object_ordinary_init,
-            object_ordinary_init_from_constructor, ordinary_define_own_property,
+            is_compatible_property_descriptor, object_create, object_create_from_constructor,
+            object_create_with_proto, ordinary_define_own_property,
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
@@ -22,7 +22,7 @@ use crate::{
         value::Value,
         Context,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 // 10.4.3 String Exotic Objects
@@ -34,18 +34,17 @@ extend_object! {
 }
 
 impl StringObject {
-    pub fn new(
+    pub fn new_from_value(
         cx: &mut Context,
-        proto: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
-        let mut object = cx.heap.alloc_uninit::<StringObject>();
-        object_ordinary_init(cx, object.object(), ObjectKind::StringObject, proto);
+        let mut object =
+            object_create::<StringObject>(cx, ObjectKind::StringObject, Intrinsic::StringPrototype);
 
         let string_data = string_data_handle.get_();
         let string_length = string_data.len();
 
-        object.string_data = string_data;
+        set_uninit!(object.string_data, string_data);
 
         // String objects have an immutable length property
         object.object().set_property(
@@ -60,36 +59,51 @@ impl StringObject {
     pub fn new_from_constructor(
         cx: &mut Context,
         constructor: Handle<ObjectValue>,
-        string_data: Handle<StringValue>,
+        string_data_handle: Handle<StringValue>,
     ) -> EvalResult<Handle<StringObject>> {
-        let mut object = cx.heap.alloc_uninit::<StringObject>();
-        maybe!(object_ordinary_init_from_constructor(
+        let mut object = maybe!(object_create_from_constructor::<StringObject>(
             cx,
-            object.object(),
             constructor,
             ObjectKind::StringObject,
             Intrinsic::StringPrototype
         ));
 
-        object.string_data = string_data;
+        let string_data = string_data_handle.get_();
+        let string_length = string_data.len();
+
+        set_uninit!(object.string_data, string_data);
 
         // String objects have an immutable length property
         object.object().set_property(
             cx,
             cx.names.length(),
-            Property::data((string_data.len() as f64).into(), false, false, false),
+            Property::data((string_length as f64).into(), false, false, false),
         );
 
         object.into()
     }
 
-    pub fn new_from_value(
+    pub fn new_with_proto(
         cx: &mut Context,
-        string_data: Handle<StringValue>,
+        proto: Handle<ObjectValue>,
+        string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
-        let proto = cx.get_intrinsic(Intrinsic::StringPrototype);
+        let mut object =
+            object_create_with_proto::<StringObject>(cx, ObjectKind::StringObject, proto);
 
-        StringObject::new(cx, proto, string_data)
+        let string_data = string_data_handle.get_();
+        let string_length = string_data.len();
+
+        set_uninit!(object.string_data, string_data);
+
+        // String objects have an immutable length property
+        object.object().set_property(
+            cx,
+            cx.names.length(),
+            Property::data((string_length as f64).into(), false, false, false),
+        );
+
+        object
     }
 
     pub fn string_data(&self) -> Handle<StringValue> {

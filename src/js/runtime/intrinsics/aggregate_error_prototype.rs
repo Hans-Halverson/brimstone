@@ -1,4 +1,4 @@
-use crate::js::runtime::{gc::Gc, object_value::ObjectValue, realm::Realm, Context};
+use crate::js::runtime::{object_value::ObjectValue, realm::Realm, Context, Handle};
 
 use super::intrinsics::Intrinsic;
 
@@ -6,7 +6,7 @@ pub struct AggregateErrorPrototype;
 
 impl AggregateErrorPrototype {
     // 20.5.7.3 Properties of the AggregateError Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ErrorPrototype)), true);
 
@@ -23,6 +23,6 @@ impl AggregateErrorPrototype {
             cx.names.aggregate_error().as_string().into(),
         );
 
-        object
+        Handle::from_heap(object)
     }
 }

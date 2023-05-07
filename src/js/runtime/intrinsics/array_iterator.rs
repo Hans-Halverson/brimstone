@@ -1,10 +1,20 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        abstract_operations::length_of_array_like, array_object::create_array_from_list,
-        completion::EvalResult, error::type_error_, gc::Gc, iterator::create_iter_result_object,
-        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
-        property::Property, property_key::PropertyKey, realm::Realm, value::Value, Context,
+        abstract_operations::length_of_array_like,
+        array_object::create_array_from_list,
+        completion::EvalResult,
+        error::type_error_,
+        gc::{Gc, HandleValue},
+        iterator::create_iter_result_object,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create,
+        property::Property,
+        property_key::PropertyKey,
+        realm::Realm,
+        value::Value,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -14,10 +24,10 @@ use super::intrinsics::Intrinsic;
 // 23.1.5 Array Iterator Objects
 extend_object! {
     pub struct ArrayIterator {
-        array: Gc<ObjectValue>,
+        array: HeapPtr<ObjectValue>,
         kind: ArrayIteratorKind,
         current_index: usize,
-        get_length: fn(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64>,
+        get_length: fn(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64>,
     }
 }
 
@@ -30,9 +40,9 @@ pub enum ArrayIteratorKind {
 impl ArrayIterator {
     pub fn new(
         cx: &mut Context,
-        array: Gc<ObjectValue>,
+        array: Handle<ObjectValue>,
         kind: ArrayIteratorKind,
-    ) -> Gc<ArrayIterator> {
+    ) -> Handle<ArrayIterator> {
         let mut object = object_create::<ArrayIterator>(
             cx,
             ObjectKind::ArrayIterator,
@@ -47,15 +57,19 @@ impl ArrayIterator {
             Self::get_array_like_length
         };
 
-        set_uninit!(object.array, array);
+        set_uninit!(object.array, array.get_());
         set_uninit!(object.kind, kind);
         set_uninit!(object.current_index, 0);
         set_uninit!(object.get_length, get_length);
 
-        object
+        Handle::from_heap(object)
     }
 
-    fn get_typed_array_length(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64> {
+    fn array(&self) -> Handle<ObjectValue> {
+        Handle::from_heap(self.array)
+    }
+
+    fn get_typed_array_length(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         let typed_array = array.as_typed_array();
         if typed_array.viewed_array_buffer().is_detached() {
             return type_error_(cx, "array buffer is detached");
@@ -64,7 +78,7 @@ impl ArrayIterator {
         (typed_array.array_length() as u64).into()
     }
 
-    fn get_array_like_length(array: Gc<ObjectValue>, cx: &mut Context) -> EvalResult<u64> {
+    fn get_array_like_length(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         length_of_array_like(cx, array)
     }
 
@@ -75,7 +89,7 @@ impl ArrayIterator {
 pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
@@ -97,15 +111,15 @@ impl ArrayIteratorPrototype {
     // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
     fn next(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut array_iterator = maybe!(ArrayIterator::cast_from_value(cx, this_value));
-        let array = array_iterator.array;
+        let array = array_iterator.array();
 
         // Dispatches based on whether this is array or typed array
-        let length = maybe!((array_iterator.get_length)(array, cx));
+        let length = maybe!((array_iterator.get_length)(cx, array));
 
         let current_index = array_iterator.current_index as u64;
         if current_index >= length {

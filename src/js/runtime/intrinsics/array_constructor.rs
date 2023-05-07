@@ -5,12 +5,13 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::range_error_,
         function::get_argument,
+        gc::HandleValue,
         object_value::ObjectValue,
         ordinary_object::get_prototype_from_constructor,
         property::Property,
         property_key::PropertyKey,
         type_utilities::{is_array, is_constructor, to_uint32},
-        Context, EvalResult, Gc, Realm, Value,
+        Context, EvalResult, Handle, Realm, Value,
     },
     maybe, must,
 };
@@ -21,7 +22,7 @@ pub struct ArrayConstructor;
 
 impl ArrayConstructor {
     // 23.1.2 Properties of the Array Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -57,10 +58,10 @@ impl ArrayConstructor {
     // 23.1.1.1 Array
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target =
             new_target.unwrap_or_else(|| cx.current_execution_context_ptr().function());
         let proto =
@@ -106,20 +107,20 @@ impl ArrayConstructor {
     // 23.1.2.2 Array.isArray
     fn is_array(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         maybe!(is_array(cx, get_argument(arguments, 0))).into()
     }
 
     // 23.1.2.3 Array.of
     fn of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let length = arguments.len();
         let length_value = Value::from(length);
 
@@ -144,10 +145,10 @@ impl ArrayConstructor {
     // 23.1.2.5 get Array [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_value.into()
     }
 }

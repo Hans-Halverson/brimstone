@@ -8,7 +8,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -17,8 +17,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::to_string,
-        value::Value,
-        Context,
+        Context, Handle,
     },
     maybe, must,
 };
@@ -31,8 +30,8 @@ pub struct AggregateErrorObject;
 impl AggregateErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        constructor: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         let object = maybe!(object_create_from_constructor::<ObjectValue>(
             cx,
             constructor,
@@ -40,7 +39,7 @@ impl AggregateErrorObject {
             Intrinsic::AggregateErrorPrototype
         ));
 
-        object.into()
+        Handle::from_heap(object).into()
     }
 }
 
@@ -48,7 +47,7 @@ pub struct AggregateErrorConstructor;
 
 impl AggregateErrorConstructor {
     // 20.5.7.2 Properties of the AggregateError Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -77,18 +76,17 @@ impl AggregateErrorConstructor {
     // 20.5.7.1.1 AggregateError
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
             cx.current_execution_context_ptr().function()
         };
 
-        let object: Gc<ObjectValue> =
-            maybe!(AggregateErrorObject::new_from_constructor(cx, new_target)).into();
+        let object = maybe!(AggregateErrorObject::new_from_constructor(cx, new_target));
 
         let errors = get_argument(arguments, 0);
         let message = get_argument(arguments, 1);
@@ -113,7 +111,7 @@ impl AggregateErrorConstructor {
 
         maybe!(completion.into_eval_result());
 
-        let errors_array: Gc<ObjectValue> = create_array_from_list(cx, &errors_list).into();
+        let errors_array: Handle<ObjectValue> = create_array_from_list(cx, &errors_list).into();
 
         let errors_desc = PropertyDescriptor::data(errors_array.into(), true, false, true);
         must!(define_property_or_throw(cx, object, cx.names.errors(), errors_desc));
@@ -125,8 +123,8 @@ impl AggregateErrorConstructor {
 // 20.5.8.1 InstallErrorCause
 pub fn install_error_cause(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
-    options: Value,
+    object: Handle<ObjectValue>,
+    options: HandleValue,
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();

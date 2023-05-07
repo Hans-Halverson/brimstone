@@ -5,6 +5,7 @@ use crate::{
         console::ConsoleObject,
         eval::eval::perform_eval,
         function::get_argument,
+        gc::HandleValue,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{
@@ -14,7 +15,7 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{to_int32, to_number},
-        Context, EvalResult, Gc, Realm, Value,
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
     maybe,
 };
@@ -22,7 +23,7 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 9.3.4 SetDefaultGlobalBindings
-pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalResult<()> {
+pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> EvalResult<()> {
     macro_rules! value_prop {
         ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
             maybe!(define_property_or_throw(
@@ -120,27 +121,27 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Gc<Realm>) -> EvalRe
     ().into()
 }
 
-pub fn create_eval(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+pub fn create_eval(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
     BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None)
 }
 
 // 19.2.1 eval
 fn eval(
     cx: &mut Context,
-    _: Value,
-    arguments: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    arguments: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     perform_eval(cx, get_argument(arguments, 0), false, false)
 }
 
 // 19.2.2 isFinite
 fn is_finite(
     cx: &mut Context,
-    _: Value,
-    arguments: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    arguments: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     let num = maybe!(to_number(cx, get_argument(arguments, 0)));
     (!num.is_nan() && !num.is_infinity()).into()
 }
@@ -148,10 +149,10 @@ fn is_finite(
 // 19.2.3 isNaN
 fn is_nan(
     cx: &mut Context,
-    _: Value,
-    arguments: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    arguments: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     let num = maybe!(to_number(cx, get_argument(arguments, 0)));
     num.is_nan().into()
 }
@@ -159,19 +160,19 @@ fn is_nan(
 // 19.2.4 parseFloat
 fn parse_float(
     cx: &mut Context,
-    _: Value,
-    arguments: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    arguments: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
 
-    match parse_float_with_string_lexer(input_string) {
+    match parse_float_with_string_lexer(input_string.get_()) {
         Some(float) => Value::number(float).into(),
         None => Value::nan().into(),
     }
 }
 
-fn parse_float_with_string_lexer(string: Gc<StringValue>) -> Option<f64> {
+fn parse_float_with_string_lexer(string: HeapPtr<StringValue>) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
@@ -201,21 +202,21 @@ fn parse_float_with_string_lexer(string: Gc<StringValue>) -> Option<f64> {
 // 19.2.5 parseInt
 fn parse_int(
     cx: &mut Context,
-    _: Value,
-    arguments: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    arguments: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
     let radix = maybe!(to_int32(cx, get_argument(arguments, 1)));
 
-    match parse_int_impl(input_string, radix) {
+    match parse_int_impl(input_string.get_(), radix) {
         Some(number) => Value::number(number).into(),
         None => Value::nan().into(),
     }
 }
 
 #[inline]
-fn parse_int_impl(string: Gc<StringValue>, radix: i32) -> Option<f64> {
+fn parse_int_impl(string: HeapPtr<StringValue>, radix: i32) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     // Trim whitespace from start of string

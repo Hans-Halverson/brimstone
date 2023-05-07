@@ -4,15 +4,14 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_string,
-        value::Value,
-        Context,
+        Context, Handle,
     },
     maybe,
 };
@@ -24,8 +23,8 @@ pub struct ErrorObject;
 impl ErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        constructor: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         let object = maybe!(object_create_from_constructor::<ObjectValue>(
             cx,
             constructor,
@@ -33,7 +32,7 @@ impl ErrorObject {
             Intrinsic::ErrorPrototype
         ));
 
-        object.into()
+        Handle::from_heap(object).into()
     }
 }
 
@@ -41,7 +40,7 @@ pub struct ErrorConstructor;
 
 impl ErrorConstructor {
     // 20.5.2 Properties of the Error Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -70,18 +69,17 @@ impl ErrorConstructor {
     // 20.5.1.1 Error
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
             cx.current_execution_context_ptr().function()
         };
 
-        let object: Gc<ObjectValue> =
-            maybe!(ErrorObject::new_from_constructor(cx, new_target)).into();
+        let object = maybe!(ErrorObject::new_from_constructor(cx, new_target));
 
         let message = get_argument(arguments, 0);
         if !message.is_undefined() {
@@ -103,8 +101,8 @@ impl ErrorConstructor {
 // 20.5.8.1 InstallErrorCause
 pub fn install_error_cause(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
-    options: Value,
+    object: Handle<ObjectValue>,
+    options: HandleValue,
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();

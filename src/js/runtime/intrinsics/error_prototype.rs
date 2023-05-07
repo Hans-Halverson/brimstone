@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
-        abstract_operations::get, completion::EvalResult, error::type_error_, gc::Gc,
+        abstract_operations::get, completion::EvalResult, error::type_error_, gc::HandleValue,
         object_value::ObjectValue, realm::Realm, string_value::StringValue,
-        type_utilities::to_string, value::Value, Context,
+        type_utilities::to_string, Context, Handle,
     },
     maybe,
 };
@@ -13,7 +13,7 @@ pub struct ErrorPrototype;
 
 impl ErrorPrototype {
     // 20.5.3 Properties of the Error Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -32,10 +32,10 @@ impl ErrorPrototype {
     // 20.5.3.4 Error.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if !this_value.is_object() {
             return type_error_(cx, "expected object");
         }

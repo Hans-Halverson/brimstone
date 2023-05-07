@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
-        gc::Gc,
+        gc::HandleValue,
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
@@ -61,8 +61,7 @@ use crate::{
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        value::Value,
-        Context,
+        Context, Handle, HeapPtr,
     },
     must,
 };
@@ -156,7 +155,7 @@ impl Intrinsic {
 }
 
 pub struct Intrinsics {
-    intrinsics: Vec<Gc<ObjectValue>>,
+    intrinsics: Vec<HeapPtr<ObjectValue>>,
 }
 
 impl Intrinsics {
@@ -165,19 +164,20 @@ impl Intrinsics {
     }
 
     // 9.3.2 CreateIntrinsics
-    pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
+    pub fn initialize(&mut self, cx: &mut Context, realm: Handle<Realm>) {
         self.intrinsics.reserve_exact(Intrinsic::num_intrinsics());
         unsafe { self.intrinsics.set_len(Intrinsic::num_intrinsics()) };
 
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
-                self.intrinsics[Intrinsic::$intrinsic_name as usize] = ($expr);
+                self.intrinsics[Intrinsic::$intrinsic_name as usize] =
+                    ($expr).cast::<ObjectValue>().get_();
             };
         }
 
         macro_rules! register_intrinsic {
             ($intrinsic_name:ident, $struct_name:ident) => {
-                register_existing_intrinsic!($intrinsic_name, $struct_name::new(cx, realm).into())
+                register_existing_intrinsic!($intrinsic_name, $struct_name::new(cx, realm))
             };
         }
 
@@ -198,8 +198,8 @@ impl Intrinsics {
         let object_prototype = ObjectPrototype::new_uninit(cx);
         let mut function_prototype = FunctionPrototype::new_uninit(cx);
 
-        register_existing_intrinsic!(ObjectPrototype, object_prototype.into());
-        register_existing_intrinsic!(FunctionPrototype, function_prototype.into());
+        register_existing_intrinsic!(ObjectPrototype, object_prototype);
+        register_existing_intrinsic!(FunctionPrototype, function_prototype);
 
         ObjectPrototype::initialize(cx, object_prototype, realm);
         function_prototype.initialize(cx, realm);
@@ -282,16 +282,20 @@ impl Intrinsics {
         register_intrinsic!(Reflect, ReflectObject);
 
         // Builtin functions
-        register_existing_intrinsic!(Eval, create_eval(cx, realm).into());
+        register_existing_intrinsic!(Eval, create_eval(cx, realm));
 
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
-        register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic.into());
+        register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic);
 
         add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
     }
 
-    pub fn get(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+    pub fn get_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
         self.intrinsics[intrinsic as usize]
+    }
+
+    pub fn get(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
+        Handle::from_heap(self.get_ptr(intrinsic))
     }
 
     // Intrinsic prototypes are created before their corresponding constructors, so we must add a
@@ -313,15 +317,18 @@ impl Intrinsics {
 
 fn throw_type_error(
     cx: &mut Context,
-    _: Value,
-    _: &[Value],
-    _: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value> {
+    _: HandleValue,
+    _: &[HandleValue],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue> {
     type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
 // 10.2.4.1 %ThrowTypeError%
-fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+fn create_throw_type_error_intrinsic(
+    cx: &mut Context,
+    realm: Handle<Realm>,
+) -> Handle<BuiltinFunction> {
     let throw_type_error_func =
         BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
@@ -351,7 +358,11 @@ fn create_throw_type_error_intrinsic(cx: &mut Context, realm: Gc<Realm>) -> Gc<B
 }
 
 // 10.2.4 AddRestrictedFunctionProperties
-fn add_restricted_function_properties(cx: &mut Context, func: Gc<ObjectValue>, realm: Gc<Realm>) {
+fn add_restricted_function_properties(
+    cx: &mut Context,
+    func: Handle<ObjectValue>,
+    realm: Handle<Realm>,
+) {
     let thrower_func = realm.get_intrinsic(Intrinsic::ThrowTypeError);
 
     let caller_desc =

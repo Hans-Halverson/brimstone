@@ -5,14 +5,14 @@ use crate::{
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
         completion::EvalResult,
         error::type_error_,
-        gc::{Gc, GcDeref, Handle},
+        gc::{GcDeref, Handle, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
         value::Value,
-        Context,
+        Context, HeapPtr,
     },
     set_uninit,
 };
@@ -31,16 +31,16 @@ pub struct GlobalEnvironment {
     decl_env: DeclarativeEnvironment,
 
     // The global object. [[ObjectRecord]] in spec.
-    object_env: Gc<ObjectEnvironment>,
+    object_env: HeapPtr<ObjectEnvironment>,
 
-    global_this_value: Gc<ObjectValue>,
+    global_this_value: HeapPtr<ObjectValue>,
 
-    var_names: HashSet<Gc<StringValue>>,
+    var_names: HashSet<HeapPtr<StringValue>>,
 }
 
-impl Gc<GlobalEnvironment> {
+impl Handle<GlobalEnvironment> {
     #[inline]
-    fn decl_env(&self) -> Gc<DeclarativeEnvironment> {
+    fn decl_env(&self) -> Handle<DeclarativeEnvironment> {
         self.cast()
     }
 }
@@ -70,34 +70,39 @@ impl GlobalEnvironment {
         set_uninit!(env.global_this_value, global_this_value.get_());
         set_uninit!(env.var_names, HashSet::new());
 
-        env
+        Handle::from_heap(env)
     }
 
     #[inline]
-    pub fn global_this_value(&self) -> Gc<ObjectValue> {
-        self.global_this_value
+    pub fn object_env(&self) -> Handle<ObjectEnvironment> {
+        Handle::from_heap(self.object_env)
+    }
+
+    #[inline]
+    pub fn global_this_value(&self) -> Handle<ObjectValue> {
+        Handle::from_heap(self.global_this_value)
     }
 }
 
-impl Environment for Gc<GlobalEnvironment> {
-    fn as_global_environment(&mut self) -> Option<Gc<GlobalEnvironment>> {
+impl Environment for Handle<GlobalEnvironment> {
+    fn as_global_environment(&mut self) -> Option<Handle<GlobalEnvironment>> {
         Some(*self)
     }
 
     // 9.1.1.4.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return true.into();
         }
 
-        self.object_env.has_binding(cx, name)
+        self.object_env().has_binding(cx, name)
     }
 
     // 9.1.1.4.2 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
@@ -111,7 +116,7 @@ impl Environment for Gc<GlobalEnvironment> {
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
@@ -126,22 +131,22 @@ impl Environment for Gc<GlobalEnvironment> {
     fn initialize_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().initialize_binding(cx, name, value);
         }
 
-        self.object_env.initialize_binding(cx, name, value)
+        self.object_env().initialize_binding(cx, name, value)
     }
 
     // 9.1.1.4.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
         is_strict: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
@@ -150,7 +155,7 @@ impl Environment for Gc<GlobalEnvironment> {
                 .set_mutable_binding(cx, name, value, is_strict);
         }
 
-        self.object_env
+        self.object_env()
             .set_mutable_binding(cx, name, value, is_strict)
     }
 
@@ -158,28 +163,29 @@ impl Environment for Gc<GlobalEnvironment> {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
-    ) -> EvalResult<Value> {
+    ) -> EvalResult<HandleValue> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().get_binding_value(cx, name, is_strict);
         }
 
-        self.object_env.get_binding_value(cx, name, is_strict)
+        self.object_env().get_binding_value(cx, name, is_strict)
     }
 
     // 9.1.1.4.7 DeleteBinding
-    fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().delete_binding(cx, name);
         }
 
         let name_key = PropertyKey::string(cx, name);
+        let mut object_env = self.object_env();
 
-        if maybe!(has_own_property(cx, self.object_env.binding_object(), name_key)) {
-            let status = maybe!(self.object_env.delete_binding(cx, name));
+        if maybe!(has_own_property(cx, object_env.binding_object(), name_key)) {
+            let status = maybe!(object_env.delete_binding(cx, name));
             if status {
-                self.var_names.remove(&name);
+                self.var_names.remove(&name.get_());
             }
 
             return status.into();
@@ -199,13 +205,13 @@ impl Environment for Gc<GlobalEnvironment> {
     }
 
     // 9.1.1.4.10 WithBaseObject
-    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+    fn with_base_object(&self) -> Option<Handle<ObjectValue>> {
         None
     }
 
     // 9.1.1.4.11 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
-        self.global_this_value.into()
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
+        self.global_this_value().into()
     }
 
     fn outer(&self) -> Option<DynEnvironment> {
@@ -213,28 +219,20 @@ impl Environment for Gc<GlobalEnvironment> {
     }
 }
 
-impl Gc<GlobalEnvironment> {
+impl GlobalEnvironment {
     // 9.1.1.4.12 HasVarDeclaration
-    pub fn has_var_declaration(&self, name: Gc<StringValue>) -> bool {
-        self.var_names.contains(&name)
-    }
-
-    // 9.1.1.4.13 HasLexicalDeclaration
-    pub fn has_lexical_declaration(
-        &self,
-        cx: &mut Context,
-        name: Gc<StringValue>,
-    ) -> EvalResult<bool> {
-        self.decl_env().has_binding(cx, name)
+    pub fn has_var_declaration(&self, name: Handle<StringValue>) -> bool {
+        self.var_names.contains(&name.get_())
     }
 
     // 9.1.1.4.14 HasRestrictedGlobalProperty
     pub fn has_restricted_global_property(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
     ) -> EvalResult<bool> {
-        let global_object = &self.object_env.binding_object();
+        // GC safe since self is never referenced after this point
+        let global_object = self.object_env.binding_object();
 
         let name_key = PropertyKey::string(cx, name);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
@@ -249,8 +247,9 @@ impl Gc<GlobalEnvironment> {
     pub fn can_declare_global_var(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
     ) -> EvalResult<bool> {
+        // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name);
         if maybe!(has_own_property(cx, global_object, name_key)) {
@@ -264,8 +263,9 @@ impl Gc<GlobalEnvironment> {
     pub fn can_declare_global_function(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
     ) -> EvalResult<bool> {
+        // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
@@ -285,12 +285,23 @@ impl Gc<GlobalEnvironment> {
             }
         }
     }
+}
+
+impl Handle<GlobalEnvironment> {
+    // 9.1.1.4.13 HasLexicalDeclaration
+    pub fn has_lexical_declaration(
+        &self,
+        cx: &mut Context,
+        name: Handle<StringValue>,
+    ) -> EvalResult<bool> {
+        self.decl_env().has_binding(cx, name)
+    }
 
     // 9.1.1.4.17 CreateGlobalVarBinding
     pub fn create_global_var_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object();
@@ -300,12 +311,12 @@ impl Gc<GlobalEnvironment> {
         let is_extensible = maybe!(is_extensible(cx, global_object));
 
         if !has_property && is_extensible {
-            maybe!(self.object_env.create_mutable_binding(cx, name, can_delete));
-            maybe!(self
-                .object_env
-                .initialize_binding(cx, name, Value::undefined()));
+            let mut object_env = self.object_env();
+            maybe!(object_env.create_mutable_binding(cx, name, can_delete));
+            maybe!(object_env.initialize_binding(cx, name, Value::undefined()));
         }
 
+        let name = name.get_();
         if !self.var_names.contains(&name) {
             self.var_names.insert(name);
         }
@@ -317,8 +328,8 @@ impl Gc<GlobalEnvironment> {
     pub fn create_global_function_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
         can_delete: bool,
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object();
@@ -340,6 +351,7 @@ impl Gc<GlobalEnvironment> {
         maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
         maybe!(set(cx, global_object, name_key, value, false));
 
+        let name = name.get_();
         if !(self.var_names.contains(&name)) {
             self.var_names.insert(name);
         }

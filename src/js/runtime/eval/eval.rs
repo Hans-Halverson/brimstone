@@ -75,7 +75,7 @@ pub fn perform_eval(
                 names.insert(name.clone(), PrivateNameUsage::used());
             });
 
-            current_private_env_ptr = private_env_ptr.outer();
+            current_private_env_ptr = private_env_ptr.outer_ptr();
         }
 
         Some(names)

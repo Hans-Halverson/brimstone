@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     js::runtime::{
-        gc::{Gc, GcDeref, Handle},
+        gc::{GcDeref, Handle},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         value::SymbolValue,
-        Context,
+        Context, HeapPtr,
     },
     set_uninit,
 };
@@ -15,29 +15,17 @@ use crate::{
 /// be known from context so it is elided.
 ///
 /// Always stored on stack.
-pub type PrivateName = Gc<SymbolValue>;
+pub type PrivateName = Handle<SymbolValue>;
 
 /// A PrivateName that is stored on the heap.
-pub struct HeapPrivateName {
-    inner: PrivateName,
-}
-
-impl PrivateName {
-    pub fn to_heap(&self) -> HeapPrivateName {
-        HeapPrivateName { inner: *self }
-    }
-
-    pub fn from_heap_(heap_private_name: &HeapPrivateName) -> PrivateName {
-        heap_private_name.inner
-    }
-}
+pub type HeapPrivateName = HeapPtr<SymbolValue>;
 
 // 9.2 Private Environment Record
 #[repr(C)]
 pub struct PrivateEnvironment {
-    descriptor: Gc<ObjectDescriptor>,
+    descriptor: HeapPtr<ObjectDescriptor>,
     names: HashMap<String, HeapPrivateName>,
-    outer: Option<Gc<PrivateEnvironment>>,
+    outer: Option<HeapPtr<PrivateEnvironment>>,
 }
 
 impl GcDeref for PrivateEnvironment {}
@@ -54,24 +42,19 @@ impl PrivateEnvironment {
         set_uninit!(env.names, HashMap::new());
         set_uninit!(env.outer, outer.map(|p| p.get_()));
 
-        env
+        Handle::from_heap(env)
     }
 
-    pub fn outer(&self) -> Option<Gc<PrivateEnvironment>> {
+    pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
         self.outer
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier
     pub fn resolve_private_identifier<'a>(&self, name: &str) -> PrivateName {
         match self.names.get(name) {
-            Some(private_name) => PrivateName::from_heap_(private_name),
+            Some(private_name) => PrivateName::from_heap(*private_name),
             None => self.outer.unwrap().resolve_private_identifier(name),
         }
-    }
-
-    pub fn add_private_name(&mut self, cx: &mut Context, description: String) {
-        let symbol_name = SymbolValue::new(cx, None);
-        self.names.insert(description, symbol_name.to_heap());
     }
 
     pub fn has_private_name(&self, name: &str) -> bool {
@@ -79,7 +62,7 @@ impl PrivateEnvironment {
     }
 
     pub fn get_private_name(&self, name: &str) -> PrivateName {
-        PrivateName::from_heap_(self.names.get(name).unwrap())
+        PrivateName::from_heap(*self.names.get(name).unwrap())
     }
 
     #[inline]
@@ -87,5 +70,12 @@ impl PrivateEnvironment {
         for name in self.names.keys() {
             f(name)
         }
+    }
+}
+
+impl Handle<PrivateEnvironment> {
+    pub fn add_private_name(&mut self, cx: &mut Context, description: String) {
+        let symbol_name = SymbolValue::new(cx, None);
+        self.names.insert(description, symbol_name.get_());
     }
 }

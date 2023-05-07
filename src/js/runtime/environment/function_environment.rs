@@ -3,12 +3,12 @@ use crate::{
         completion::EvalResult,
         error::reference_error_,
         function::Function,
-        gc::{Gc, GcDeref, Handle},
+        gc::{GcDeref, Handle, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         string_value::StringValue,
         value::Value,
-        Context,
+        Context, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -23,8 +23,8 @@ use super::{
 pub struct FunctionEnvironment {
     env: DeclarativeEnvironment,
     this_value: Value,
-    function_object: Gc<Function>,
-    new_target: Option<Gc<ObjectValue>>,
+    function_object: HeapPtr<Function>,
+    new_target: Option<HeapPtr<ObjectValue>>,
     this_binding_status: ThisBindingStatus,
 }
 
@@ -44,7 +44,7 @@ impl FunctionEnvironment {
         cx: &mut Context,
         function_object: Handle<Function>,
         new_target: Option<Handle<ObjectValue>>,
-    ) -> Gc<FunctionEnvironment> {
+    ) -> Handle<FunctionEnvironment> {
         let this_binding_status = if function_object.is_lexical_this_mode() {
             ThisBindingStatus::Lexical
         } else {
@@ -65,27 +65,31 @@ impl FunctionEnvironment {
         set_uninit!(env.new_target, new_target.map(|h| h.get_()));
         set_uninit!(env.this_binding_status, this_binding_status);
 
-        env
+        Handle::from_heap(env)
     }
 
-    pub fn function_object(&self) -> Gc<Function> {
+    fn this_value(&self, cx: &mut Context) -> HandleValue {
+        HandleValue::from_value(cx, self.this_value)
+    }
+
+    pub fn function_object(&self) -> Handle<Function> {
         self.function_object
     }
 
-    pub fn new_target(&self) -> Option<Gc<ObjectValue>> {
-        self.new_target
+    pub fn new_target(&self) -> Option<Handle<ObjectValue>> {
+        self.new_target.map(|v| Handle::from_heap(v))
     }
 }
 
-impl Gc<FunctionEnvironment> {
+impl Handle<FunctionEnvironment> {
     #[inline]
-    fn env(&self) -> Gc<DeclarativeEnvironment> {
+    fn env(&self) -> Handle<DeclarativeEnvironment> {
         self.cast()
     }
 }
 
-impl Environment for Gc<FunctionEnvironment> {
-    fn as_function_environment(&mut self) -> Option<Gc<FunctionEnvironment>> {
+impl Environment for Handle<FunctionEnvironment> {
+    fn as_function_environment(&mut self) -> Option<Handle<FunctionEnvironment>> {
         Some(*self)
     }
 
@@ -104,24 +108,24 @@ impl Environment for Gc<FunctionEnvironment> {
     }
 
     // 9.1.1.3.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Value> {
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<HandleValue> {
         if self.this_binding_status == ThisBindingStatus::Uninitialized {
             return reference_error_(cx, "this is not initialized");
         }
 
-        return self.this_value.into();
+        return self.this_value(cx).into();
     }
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         self.env().create_mutable_binding(cx, name, can_delete)
@@ -130,7 +134,7 @@ impl Environment for Gc<FunctionEnvironment> {
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env().create_immutable_binding(cx, name, is_strict)
@@ -139,8 +143,8 @@ impl Environment for Gc<FunctionEnvironment> {
     fn initialize_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
     ) -> EvalResult<()> {
         self.env().initialize_binding(cx, name, value)
     }
@@ -148,8 +152,8 @@ impl Environment for Gc<FunctionEnvironment> {
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env().set_mutable_binding(cx, name, value, is_strict)
@@ -158,17 +162,17 @@ impl Environment for Gc<FunctionEnvironment> {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
-    ) -> EvalResult<Value> {
+    ) -> EvalResult<HandleValue> {
         self.env().get_binding_value(cx, name, is_strict)
     }
 
-    fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().delete_binding(cx, name)
     }
 
-    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+    fn with_base_object(&self) -> Option<Handle<ObjectValue>> {
         self.env().with_base_object()
     }
 
@@ -179,19 +183,19 @@ impl Environment for Gc<FunctionEnvironment> {
 
 impl FunctionEnvironment {
     // 9.1.1.3.1 BindThisValue
-    pub fn bind_this_value(&mut self, cx: &mut Context, value: Value) -> EvalResult<Value> {
+    pub fn bind_this_value(&mut self, cx: &mut Context, value: HandleValue) -> EvalResult<()> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
             return reference_error_(cx, "this is already initialized");
         }
 
-        self.this_value = value;
+        self.this_value = value.get();
         self.this_binding_status = ThisBindingStatus::Initialized;
 
-        value.into()
+        ().into()
     }
 
     // 9.1.1.3.5 GetSuperBase
-    pub fn get_super_base(&self, cx: &mut Context) -> EvalResult<Value> {
+    pub fn get_super_base(&self, cx: &mut Context) -> EvalResult<HandleValue> {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
         match self.function_object.home_object() {

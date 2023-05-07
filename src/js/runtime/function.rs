@@ -210,7 +210,7 @@ impl Function {
         self.private_methods.reserve_exact(private_methods.len());
         for (private_name, method_property) in private_methods {
             self.private_methods
-                .push((private_name.to_heap(), method_property.to_heap()));
+                .push((private_name.get_(), method_property.to_heap()));
         }
     }
 }
@@ -490,7 +490,7 @@ impl Handle<Function> {
         // GC safe iteration over private methods
         for i in 0..self.private_methods.len() {
             let (heap_private_name, heap_private_method) = &self.private_methods[i];
-            let private_name = PrivateName::from_heap_(heap_private_name);
+            let private_name = PrivateName::from_heap(*heap_private_name);
             let private_method = Property::from_heap(heap_private_method);
             maybe!(f(private_name, private_method));
         }

@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{define_property_or_throw, get, has_property, set},
         completion::EvalResult,
         error::err_not_defined_,
-        gc::{Gc, GcDeref, Handle},
+        gc::{GcDeref, Handle, HandleValue},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -11,7 +11,7 @@ use crate::{
         string_value::StringValue,
         type_utilities::to_boolean,
         value::Value,
-        Context,
+        Context, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -21,8 +21,8 @@ use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 // 9.1.1.2 Object Environment Record
 #[repr(C)]
 pub struct ObjectEnvironment {
-    descriptor: Gc<ObjectDescriptor>,
-    binding_object: Gc<ObjectValue>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    binding_object: HeapPtr<ObjectValue>,
     outer: Option<HeapDynEnvironment>,
     is_with_environment: bool,
 }
@@ -44,24 +44,25 @@ impl ObjectEnvironment {
         set_uninit!(env.is_with_environment, is_with_environment);
         set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
 
-        env
+        Handle::from_heap(env)
     }
 
     #[inline]
-    pub fn binding_object(&self) -> Gc<ObjectValue> {
-        self.binding_object
+    pub fn binding_object(&self) -> Handle<ObjectValue> {
+        Handle::from_heap(self.binding_object)
     }
 }
 
-impl Environment for Gc<ObjectEnvironment> {
-    fn as_object_environment(&mut self) -> Option<Gc<ObjectEnvironment>> {
+impl Environment for Handle<ObjectEnvironment> {
+    fn as_object_environment(&mut self) -> Option<Handle<ObjectEnvironment>> {
         Some(*self)
     }
 
     // 9.1.1.2.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+        let binding_object = self.binding_object();
         let name_key = PropertyKey::string(cx, name);
-        if !maybe!(has_property(cx, self.binding_object, name_key)) {
+        if !maybe!(has_property(cx, binding_object, name_key)) {
             return false.into();
         } else if !self.is_with_environment {
             return true.into();
@@ -69,7 +70,7 @@ impl Environment for Gc<ObjectEnvironment> {
 
         // Ignore properties in @@unscopables
         let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
-        let unscopables = maybe!(get(cx, self.binding_object, unscopables_key));
+        let unscopables = maybe!(get(cx, binding_object, unscopables_key));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
@@ -87,19 +88,19 @@ impl Environment for Gc<ObjectEnvironment> {
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
         let name_key = PropertyKey::string(cx, name);
-        define_property_or_throw(cx, self.binding_object, name_key, prop_desc)
+        define_property_or_throw(cx, self.binding_object(), name_key, prop_desc)
     }
 
     // 9.1.1.2.3 CreateImmutableBinding
     fn create_immutable_binding(
         &mut self,
         _: &mut Context,
-        _: Gc<StringValue>,
+        _: Handle<StringValue>,
         _: bool,
     ) -> EvalResult<()> {
         unreachable!("ObjectEnvironment::create_immutable_binding is never used in spec")
@@ -109,8 +110,8 @@ impl Environment for Gc<ObjectEnvironment> {
     fn initialize_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
     ) -> EvalResult<()> {
         self.set_mutable_binding(cx, name, value, false)
     }
@@ -119,17 +120,18 @@ impl Environment for Gc<ObjectEnvironment> {
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
         is_strict: bool,
     ) -> EvalResult<()> {
+        let binding_object = self.binding_object();
         let name_key = PropertyKey::string(cx, name);
-        let still_exists = maybe!(has_property(cx, self.binding_object, name_key));
+        let still_exists = maybe!(has_property(cx, binding_object, name_key));
         if !still_exists && is_strict {
             return err_not_defined_(cx, name);
         }
 
-        maybe!(set(cx, self.binding_object, name_key, value, is_strict));
+        maybe!(set(cx, binding_object, name_key, value, is_strict));
         ().into()
     }
 
@@ -137,11 +139,12 @@ impl Environment for Gc<ObjectEnvironment> {
     fn get_binding_value(
         &self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
-    ) -> EvalResult<Value> {
+    ) -> EvalResult<HandleValue> {
+        let binding_object = self.binding_object();
         let name_key = PropertyKey::string(cx, name);
-        if !maybe!(has_property(cx, self.binding_object, name_key)) {
+        if !maybe!(has_property(cx, binding_object, name_key)) {
             return if !is_strict {
                 Value::undefined().into()
             } else {
@@ -149,13 +152,13 @@ impl Environment for Gc<ObjectEnvironment> {
             };
         }
 
-        get(cx, self.binding_object, name_key)
+        get(cx, binding_object, name_key)
     }
 
     // 9.1.1.2.7 DeleteBinding
-    fn delete_binding(&mut self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         let name_key = PropertyKey::string(cx, name);
-        self.binding_object.delete(cx, name_key)
+        self.binding_object().delete(cx, name_key)
     }
 
     // 9.1.1.2.8 HasThisBinding
@@ -169,15 +172,15 @@ impl Environment for Gc<ObjectEnvironment> {
     }
 
     // 9.1.1.2.10 WithBaseObject
-    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+    fn with_base_object(&self) -> Option<Handle<ObjectValue>> {
         if self.is_with_environment {
-            return Some(self.binding_object);
+            return Some(self.binding_object());
         }
 
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
         panic!("ObjectEnvironment::get_this_binding is never called in spec")
     }
 

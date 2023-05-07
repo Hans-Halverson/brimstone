@@ -1,6 +1,6 @@
 use crate::js::runtime::{
     completion::EvalResult,
-    gc::{Gc, GcDeref, Handle},
+    gc::{GcDeref, Handle, HandleValue},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
@@ -33,30 +33,30 @@ impl ModuleEnvironment {
             Some(outer),
         );
 
-        env
+        Handle::from_heap(env)
     }
 }
 
-impl Gc<ModuleEnvironment> {
+impl Handle<ModuleEnvironment> {
     #[inline]
-    fn env(&self) -> Gc<DeclarativeEnvironment> {
+    fn env(&self) -> Handle<DeclarativeEnvironment> {
         self.cast()
     }
 }
 
-impl Environment for Gc<ModuleEnvironment> {
+impl Environment for Handle<ModuleEnvironment> {
     // 9.1.1.5.1 GetBindingValue
     fn get_binding_value(
         &self,
         _cx: &mut Context,
-        _name: Gc<StringValue>,
+        _name: Handle<StringValue>,
         _is_strict: bool,
-    ) -> EvalResult<Value> {
+    ) -> EvalResult<HandleValue> {
         unimplemented!()
     }
 
     // 9.1.1.5.2 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, _name: Gc<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, _: &mut Context, _name: Handle<StringValue>) -> EvalResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
@@ -66,20 +66,20 @@ impl Environment for Gc<ModuleEnvironment> {
     }
 
     // 9.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Value> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
         Value::undefined().into()
     }
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: Gc<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
         self.env().create_mutable_binding(cx, name, can_delete)
@@ -88,7 +88,7 @@ impl Environment for Gc<ModuleEnvironment> {
     fn create_immutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
+        name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env().create_immutable_binding(cx, name, is_strict)
@@ -97,8 +97,8 @@ impl Environment for Gc<ModuleEnvironment> {
     fn initialize_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
     ) -> EvalResult<()> {
         self.env().initialize_binding(cx, name, value)
     }
@@ -106,8 +106,8 @@ impl Environment for Gc<ModuleEnvironment> {
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
-        name: Gc<StringValue>,
-        value: Value,
+        name: Handle<StringValue>,
+        value: HandleValue,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env().set_mutable_binding(cx, name, value, is_strict)
@@ -117,7 +117,7 @@ impl Environment for Gc<ModuleEnvironment> {
         self.env().has_super_binding()
     }
 
-    fn with_base_object(&self) -> Option<Gc<ObjectValue>> {
+    fn with_base_object(&self) -> Option<Handle<ObjectValue>> {
         self.env().with_base_object()
     }
 
@@ -128,7 +128,7 @@ impl Environment for Gc<ModuleEnvironment> {
 
 impl ModuleEnvironment {
     // 9.1.1.5.5 CreateImportBinding
-    fn _create_import_binding(&self) -> EvalResult<Value> {
+    fn _create_import_binding(&self) -> EvalResult<HandleValue> {
         unimplemented!()
     }
 }

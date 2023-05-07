@@ -46,6 +46,8 @@ impl StringObject {
 
         set_uninit!(object.string_data, string_data);
 
+        let object = Handle::from_heap(object);
+
         // String objects have an immutable length property
         object.object().set_property(
             cx,
@@ -73,6 +75,8 @@ impl StringObject {
 
         set_uninit!(object.string_data, string_data);
 
+        let object = Handle::from_heap(object);
+
         // String objects have an immutable length property
         object.object().set_property(
             cx,
@@ -95,6 +99,8 @@ impl StringObject {
         let string_length = string_data.len();
 
         set_uninit!(object.string_data, string_data);
+
+        let object = Handle::from_heap(object);
 
         // String objects have an immutable length property
         object.object().set_property(

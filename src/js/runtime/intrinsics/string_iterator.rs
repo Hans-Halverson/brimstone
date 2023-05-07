@@ -3,7 +3,7 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         error::type_error_,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -13,7 +13,7 @@ use crate::{
         realm::Realm,
         string_value::{CodePointIterator, StringValue},
         value::Value,
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -24,13 +24,13 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct StringIterator {
         // String is not used directly, but it held so that it is not GC'd while iterator exists
-        string: Gc<StringValue>,
+        string: HeapPtr<StringValue>,
         code_points_iter: CodePointIterator,
     }
 }
 
 impl StringIterator {
-    pub fn new(cx: &mut Context, string: Gc<StringValue>) -> Gc<StringIterator> {
+    pub fn new(cx: &mut Context, string: Handle<StringValue>) -> Handle<StringIterator> {
         let mut object = object_create::<StringIterator>(
             cx,
             ObjectKind::StringIterator,
@@ -40,7 +40,7 @@ impl StringIterator {
         set_uninit!(object.string, string);
         set_uninit!(object.code_points_iter, string.iter_code_points());
 
-        object
+        Handle::from_heap(object)
     }
 
     cast_from_value_fn!(StringIterator, "String Iterator");
@@ -50,7 +50,7 @@ impl StringIterator {
 pub struct StringIteratorPrototype;
 
 impl StringIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
@@ -71,10 +71,10 @@ impl StringIteratorPrototype {
     // 22.1.5.1.1 %StringIteratorPrototype%.next
     fn next(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
         match string_iterator.code_points_iter.next() {

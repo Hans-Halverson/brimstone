@@ -5,7 +5,8 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
+        intrinsics::{intrinsics::Intrinsic, string_iterator::StringIterator},
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
@@ -15,18 +16,16 @@ use crate::{
             is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
         },
         value::Value,
-        Context, PropertyKey,
+        Context, Handle, PropertyKey,
     },
     maybe,
 };
-
-use super::{intrinsics::Intrinsic, string_iterator::StringIterator};
 
 pub struct StringPrototype;
 
 impl StringPrototype {
     // 22.1.3 Properties of the String Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
         let object = StringObject::new_with_proto(cx, object_proto, empty_string);
@@ -122,10 +121,10 @@ impl StringPrototype {
     // 22.1.3.1 String.prototype.at
     fn at(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -152,10 +151,10 @@ impl StringPrototype {
     // 22.1.3.2 String.prototype.charAt
     fn char_at(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
@@ -170,10 +169,10 @@ impl StringPrototype {
     // 22.1.3.3 String.prototype.charCodeAt
     fn char_code_at(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
@@ -189,10 +188,10 @@ impl StringPrototype {
     // 22.1.3.4 String.prototype.codePointAt
     fn code_point_at(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
@@ -208,10 +207,10 @@ impl StringPrototype {
     // 22.1.3.5 String.prototype.concat
     fn concat(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let mut concat_string = maybe!(to_string(cx, object));
 
@@ -226,10 +225,10 @@ impl StringPrototype {
     // 22.1.3.7 String.prototype.endsWith
     fn ends_with(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let length = string.len();
@@ -272,10 +271,10 @@ impl StringPrototype {
     // 22.1.3.8 String.prototype.includes
     fn includes(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -302,10 +301,10 @@ impl StringPrototype {
     // 22.1.3.9 String.prototype.indexOf
     fn index_of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -330,10 +329,10 @@ impl StringPrototype {
     // 22.1.3.10 String.prototype.lastIndexOf
     fn last_index_of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -359,10 +358,10 @@ impl StringPrototype {
     // 22.1.3.17 String.prototype.repeat
     fn repeat(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -379,10 +378,10 @@ impl StringPrototype {
     // 22.1.3.21 String.prototype.slice
     fn slice(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let length = string.len();
@@ -427,10 +426,10 @@ impl StringPrototype {
     // 22.1.3.22 String.prototype.split
     fn split(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
 
         let separator_argument = get_argument(arguments, 0);
@@ -514,10 +513,10 @@ impl StringPrototype {
     // 22.1.3.23 String.prototype.startsWith
     fn starts_with(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let length = string.len();
@@ -560,10 +559,10 @@ impl StringPrototype {
     // 22.1.3.24 String.prototype.substring
     fn substring(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
         let length = string.len();
@@ -591,10 +590,10 @@ impl StringPrototype {
     // 22.1.3.25 String.prototype.toLocaleLowerCase
     fn to_locale_lower_case(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -604,10 +603,10 @@ impl StringPrototype {
     // 22.1.3.26 String.prototype.toLocaleUpperCase
     fn to_locale_upper_case(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -617,10 +616,10 @@ impl StringPrototype {
     // 22.1.3.27 String.prototype.toLowerCase
     fn to_lower_case(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -630,20 +629,20 @@ impl StringPrototype {
     // 22.1.3.28 String.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_string_value(cx, this_value)
     }
 
     // 22.1.3.29 String.prototype.toUpperCase
     fn to_upper_case(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -653,10 +652,10 @@ impl StringPrototype {
     // 22.1.3.30 String.prototype.trim
     fn trim(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -666,10 +665,10 @@ impl StringPrototype {
     // 22.1.3.31 String.prototype.trimEnd
     fn trim_end(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -679,10 +678,10 @@ impl StringPrototype {
     // 22.1.3.32 String.prototype.trimStart
     fn trim_start(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -692,20 +691,20 @@ impl StringPrototype {
     // 22.1.3.33 String.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_string_value(cx, this_value)
     }
 
     // 22.1.3.34 String.prototype [ @@iterator ]
     fn iterator(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
@@ -713,7 +712,7 @@ impl StringPrototype {
     }
 }
 
-fn this_string_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
+fn this_string_value(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValue> {
     if value.is_string() {
         return value.into();
     }

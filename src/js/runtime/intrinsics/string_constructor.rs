@@ -6,15 +6,14 @@ use crate::{
             completion::EvalResult,
             error::range_error_,
             function::get_argument,
-            gc::Gc,
+            gc::HandleValue,
             object_value::ObjectValue,
             property::Property,
             realm::Realm,
             string_object::StringObject,
             string_value::StringValue,
             type_utilities::{to_number, to_string, to_uint16},
-            value::Value,
-            Context,
+            Context, Handle,
         },
     },
     maybe,
@@ -26,7 +25,7 @@ pub struct StringConstructor;
 
 impl StringConstructor {
     // 22.1.2 Properties of the String Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -58,10 +57,10 @@ impl StringConstructor {
     // 22.1.1.1 String
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let string_value = if arguments.is_empty() {
             cx.names.empty_string().as_string().into()
         } else {
@@ -86,10 +85,10 @@ impl StringConstructor {
     // 22.1.2.1 String.fromCharCode
     fn from_char_code(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = maybe!(to_uint16(cx, arguments[0]));
@@ -111,10 +110,10 @@ impl StringConstructor {
     // 22.1.2.2 String.fromCodePoint
     fn from_code_point(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         macro_rules! get_code_point {
             ($arg:expr) => {{
                 let arg = $arg;

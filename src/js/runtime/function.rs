@@ -39,7 +39,7 @@ use super::{
     string_value::StringValue,
     type_utilities::to_object,
     value::Value,
-    Context,
+    Context, Handle,
 };
 
 #[derive(PartialEq)]
@@ -65,12 +65,12 @@ extend_object! {
         constructor_kind: ConstructorKind,
         this_mode: ThisMode,
         // Object properties of this function
-        home_object: Option<Gc<ObjectValue>>,
-        realm: Gc<Realm>,
+        home_object: Option<HeapPtr<ObjectValue>>,
+        realm: HeapPtr<Realm>,
         script_or_module: Option<HeapScriptOrModule>,
         func_node: HeapFuncKind,
         environment: HeapDynEnvironment,
-        private_environment: Option<Gc<PrivateEnvironment>>,
+        private_environment: Option<HeapPtr<PrivateEnvironment>>,
         fields: Vec<HeapClassFieldDefinition>,
         private_methods: Vec<(HeapPrivateName, HeapProperty)>,
     }
@@ -94,13 +94,13 @@ enum HeapFuncKind {
 impl Function {
     fn new(
         cx: &mut Context,
-        prototype: Gc<ObjectValue>,
+        prototype: Handle<ObjectValue>,
         func_node: FuncKind,
         is_lexical_this: bool,
         is_strict: bool,
         environment: DynEnvironment,
-        private_environment: Option<Gc<PrivateEnvironment>>,
-    ) -> Gc<Function> {
+        private_environment: Option<Handle<PrivateEnvironment>>,
+    ) -> Handle<Function> {
         let this_mode = if is_lexical_this {
             ThisMode::Lexical
         } else if is_strict {
@@ -125,12 +125,12 @@ impl Function {
                 .map(ScriptOrModule::to_heap)
         );
         set_uninit!(object.environment, environment.to_heap());
-        set_uninit!(object.private_environment, private_environment);
+        set_uninit!(object.private_environment, private_environment.map(|p| p.get_()));
         set_uninit!(object.func_node, func_node.to_heap());
         set_uninit!(object.fields, vec![]);
         set_uninit!(object.private_methods, vec![]);
 
-        object
+        Handle::from_heap(object)
     }
 
     #[inline]
@@ -139,12 +139,30 @@ impl Function {
     }
 
     #[inline]
-    pub fn home_object(&self) -> Option<Gc<ObjectValue>> {
-        self.home_object
+    pub fn home_object(&self) -> Option<Handle<ObjectValue>> {
+        self.home_object.map(|o| Handle::from_heap(o))
     }
 
+    #[inline]
     pub fn has_home_object(&self) -> bool {
         self.home_object.is_some()
+    }
+
+    #[inline]
+    fn realm(&self) -> Handle<Realm> {
+        Handle::from_heap(self.realm)
+    }
+
+    #[inline]
+    fn private_environment(&self) -> Option<Handle<PrivateEnvironment>> {
+        self.private_environment.map(Handle::from_heap)
+    }
+
+    #[inline]
+    fn script_or_module(&self) -> Option<ScriptOrModule> {
+        self.script_or_module
+            .as_ref()
+            .map(ScriptOrModule::from_heap)
     }
 
     pub fn is_class_property(&self) -> bool {
@@ -198,14 +216,14 @@ impl Function {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Gc<Function> {
+impl VirtualObject for Handle<Function> {
     // 10.2.1 [[Call]]
     fn call(
         &self,
         cx: &mut Context,
-        this_argument: Value,
-        arguments: &[Value],
-    ) -> EvalResult<Value> {
+        this_argument: HandleValue,
+        arguments: &[HandleValue],
+    ) -> EvalResult<HandleValue> {
         let callee_context = self.prepare_for_ordinary_call(cx, None);
 
         if self.is_class_constructor {
@@ -235,9 +253,9 @@ impl VirtualObject for Gc<Function> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[Value],
-        new_target: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        arguments: &[HandleValue],
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         // Default constructor is implemented as a special function. Steps follow the default
         // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
         if self.is_default_constructor() {
@@ -264,7 +282,7 @@ impl VirtualObject for Gc<Function> {
             return new_object.into();
         }
 
-        let this_argument: Option<Gc<ObjectValue>> =
+        let this_argument: Option<Handle<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
                 let object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
@@ -358,24 +376,22 @@ impl VirtualObject for Gc<Function> {
     }
 }
 
-impl Gc<Function> {
+impl Handle<Function> {
     // 10.2.1.1 PrepareForOrdinaryCall
     fn prepare_for_ordinary_call(
         &self,
         cx: &mut Context,
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> Gc<ExecutionContext> {
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> Handle<ExecutionContext> {
         let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn_env();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),
-            self.realm,
-            self.script_or_module
-                .as_ref()
-                .map(ScriptOrModule::from_heap),
+            self.realm(),
+            self.script_or_module(),
             /* lexical_env */ func_env,
             /* variable_env */ func_env,
-            self.private_environment,
+            self.private_environment(),
             self.is_strict,
         );
 
@@ -388,8 +404,8 @@ impl Gc<Function> {
     fn ordinary_call_bind_this(
         &self,
         cx: &mut Context,
-        callee_context: Gc<ExecutionContext>,
-        this_argument: Value,
+        callee_context: Handle<ExecutionContext>,
+        this_argument: HandleValue,
     ) {
         let this_value = match self.this_mode {
             ThisMode::Lexical => return ().into(),
@@ -414,7 +430,11 @@ impl Gc<Function> {
 
     // 10.2.1.4 OrdinaryCallEvaluateBody
     // 10.2.1.3 EvaluateBody
-    fn ordinary_call_evaluate_body(&self, cx: &mut Context, arguments: &[Value]) -> Completion {
+    fn ordinary_call_evaluate_body(
+        &self,
+        cx: &mut Context,
+        arguments: &[HandleValue],
+    ) -> Completion {
         let other_self = *self;
         match &self.func_node {
             HeapFuncKind::Function(func_node) => {
@@ -455,8 +475,8 @@ impl Gc<Function> {
     ) -> EvalResult<()> {
         // GC safe iteration over class fields
         for i in 0..self.fields.len() {
-            let field = &self.fields[i];
-            maybe!(f(ClassFieldDefinition::from_heap(field)));
+            let field = ClassFieldDefinition::from_heap(&self.fields[i]);
+            maybe!(f(field));
         }
 
         ().into()
@@ -470,10 +490,9 @@ impl Gc<Function> {
         // GC safe iteration over private methods
         for i in 0..self.private_methods.len() {
             let (heap_private_name, heap_private_method) = &self.private_methods[i];
-            maybe!(f(
-                PrivateName::from_heap_(heap_private_name),
-                Property::from_heap(heap_private_method)
-            ));
+            let private_name = PrivateName::from_heap_(heap_private_name);
+            let private_method = Property::from_heap(heap_private_method);
+            maybe!(f(private_name, private_method));
         }
 
         ().into()
@@ -495,12 +514,12 @@ impl FuncKind {
 // 10.2.3 OrdinaryFunctionCreate
 pub fn ordinary_function_create(
     cx: &mut Context,
-    function_prototype: Gc<ObjectValue>,
+    function_prototype: Handle<ObjectValue>,
     func_node: &ast::Function,
     is_lexical_this: bool,
     environment: DynEnvironment,
-    private_environment: Option<Gc<PrivateEnvironment>>,
-) -> Gc<Function> {
+    private_environment: Option<Handle<PrivateEnvironment>>,
+) -> Handle<Function> {
     let is_strict = func_node.is_strict_mode;
     let argument_count = expected_argument_count(func_node);
     let func_node = FuncKind::Function(AstPtr::from_ref(func_node));
@@ -524,14 +543,14 @@ pub fn ordinary_function_create(
 // such as class properties and static initializers.
 pub fn ordinary_function_create_special_kind(
     cx: &mut Context,
-    function_prototype: Gc<ObjectValue>,
+    function_prototype: Handle<ObjectValue>,
     func_node: FuncKind,
     is_lexical_this: bool,
     is_strict: bool,
     argument_count: i32,
     environment: DynEnvironment,
-    private_environment: Option<Gc<PrivateEnvironment>>,
-) -> Gc<Function> {
+    private_environment: Option<Handle<PrivateEnvironment>>,
+) -> Handle<Function> {
     let func = Function::new(
         cx,
         function_prototype,
@@ -550,9 +569,9 @@ pub fn ordinary_function_create_special_kind(
 // 10.2.5 MakeConstructor
 pub fn make_constructor(
     cx: &mut Context,
-    mut func: Gc<Function>,
+    mut func: Handle<Function>,
     writable_prototype: Option<bool>,
-    prototype: Option<Gc<ObjectValue>>,
+    prototype: Option<Handle<ObjectValue>>,
 ) {
     // TODO: func may be a BuiltinFunction
 
@@ -577,21 +596,21 @@ pub fn make_constructor(
 }
 
 // 10.2.6 MakeClassConstructor
-pub fn make_class_constructor(mut func: Gc<Function>) {
+pub fn make_class_constructor(mut func: Handle<Function>) {
     func.is_class_constructor = true;
 }
 
 // 10.2.7 MakeMethod
-pub fn make_method(mut func: Gc<Function>, home_object: Gc<ObjectValue>) {
-    func.home_object = Some(home_object);
+pub fn make_method(mut func: Handle<Function>, home_object: Handle<ObjectValue>) {
+    func.home_object = Some(home_object.get_());
 }
 
 // 10.2.8 DefineMethodProperty
 pub fn define_method_property(
     cx: &mut Context,
-    home_object: Gc<ObjectValue>,
+    home_object: Handle<ObjectValue>,
     key: PropertyKey,
-    closure: Gc<Function>,
+    closure: Handle<Function>,
     is_enumerable: bool,
 ) -> EvalResult<()> {
     let desc = PropertyDescriptor::data(closure.into(), true, is_enumerable, true);
@@ -606,7 +625,7 @@ pub fn define_method_property(
 // 10.2.9 SetFunctionName
 pub fn set_function_name(
     cx: &mut Context,
-    func: Gc<ObjectValue>,
+    func: Handle<ObjectValue>,
     name: PropertyKey,
     prefix: Option<&str>,
 ) {
@@ -643,7 +662,7 @@ pub fn set_function_name(
 }
 
 // 10.2.10 SetFunctionLength
-pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32) {
+pub fn set_function_length(cx: &mut Context, func: Handle<ObjectValue>, length: i32) {
     let desc = PropertyDescriptor::data(Value::smi(length), false, false, true);
     must!(define_property_or_throw(cx, func, cx.names.length(), desc))
 }
@@ -651,7 +670,7 @@ pub fn set_function_length(cx: &mut Context, func: Gc<ObjectValue>, length: i32)
 // Identical to SetFunctionLength, but a None value represents a length of positive infinity
 pub fn set_function_length_maybe_infinity(
     cx: &mut Context,
-    func: Gc<ObjectValue>,
+    func: Handle<ObjectValue>,
     length: Option<i32>,
 ) {
     let length = if let Some(length) = length {
@@ -669,8 +688,8 @@ pub fn instantiate_function_object(
     cx: &mut Context,
     func_node: &ast::Function,
     env: DynEnvironment,
-    private_env: Option<Gc<PrivateEnvironment>>,
-) -> Gc<Function> {
+    private_env: Option<Handle<PrivateEnvironment>>,
+) -> Handle<Function> {
     if func_node.is_async || func_node.is_generator {
         unimplemented!("async and generator functions")
     }
@@ -694,7 +713,7 @@ fn expected_argument_count(func_node: &ast::Function) -> i32 {
     count
 }
 
-pub fn get_argument(arguments: &[Value], i: usize) -> Value {
+pub fn get_argument(arguments: &[HandleValue], i: usize) -> HandleValue {
     if i < arguments.len() {
         arguments[i]
     } else {

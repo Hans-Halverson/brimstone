@@ -11,16 +11,17 @@ use crate::{
 use super::{
     abstract_operations::{call, create_data_property_or_throw},
     error::type_error,
+    gc::HandleValue,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::to_boolean,
-    Completion, CompletionKind, Context, EvalResult, Gc, Value,
+    Completion, CompletionKind, Context, EvalResult, Handle,
 };
 
 // 7.4.1 Iterator Records
 pub struct Iterator {
-    pub iterator: Gc<ObjectValue>,
-    pub next_method: Value,
+    pub iterator: Handle<ObjectValue>,
+    pub next_method: HandleValue,
     pub is_done: bool,
 }
 
@@ -33,9 +34,9 @@ pub enum IteratorHint {
 // 7.4.2 GetIterator
 pub fn get_iterator(
     cx: &mut Context,
-    object: Value,
+    object: HandleValue,
     hint: IteratorHint,
-    method: Option<Gc<ObjectValue>>,
+    method: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Iterator> {
     let method = if let Some(method) = method {
         method
@@ -85,8 +86,8 @@ pub fn get_iterator(
 pub fn iterator_next(
     cx: &mut Context,
     iterator: &Iterator,
-    value: Option<Value>,
-) -> EvalResult<Gc<ObjectValue>> {
+    value: Option<HandleValue>,
+) -> EvalResult<Handle<ObjectValue>> {
     let result = if let Some(value) = value {
         maybe!(call(cx, iterator.next_method, iterator.iterator.into(), &[value]))
     } else {
@@ -101,18 +102,24 @@ pub fn iterator_next(
 }
 
 // 7.4.4 IteratorComplete
-pub fn iterator_complete(cx: &mut Context, iter_result: Gc<ObjectValue>) -> EvalResult<bool> {
+pub fn iterator_complete(cx: &mut Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = maybe!(get(cx, iter_result, cx.names.done()));
     to_boolean(is_done).into()
 }
 
 // 7.4.5 IteratorValue
-pub fn iterator_value(cx: &mut Context, iter_result: Gc<ObjectValue>) -> EvalResult<Value> {
+pub fn iterator_value(
+    cx: &mut Context,
+    iter_result: Handle<ObjectValue>,
+) -> EvalResult<HandleValue> {
     get(cx, iter_result, cx.names.value())
 }
 
 // 7.4.6 IteratorStep
-pub fn iterator_step(cx: &mut Context, iterator: &Iterator) -> EvalResult<Option<Gc<ObjectValue>>> {
+pub fn iterator_step(
+    cx: &mut Context,
+    iterator: &Iterator,
+) -> EvalResult<Option<Handle<ObjectValue>>> {
     let iter_result = maybe!(iterator_next(cx, iterator, None));
     let is_done = maybe!(iterator_complete(cx, iter_result));
 
@@ -149,7 +156,11 @@ pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Complet
 }
 
 // 7.4.10 CreateIterResultObject
-pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) -> Gc<ObjectValue> {
+pub fn create_iter_result_object(
+    cx: &mut Context,
+    value: HandleValue,
+    is_done: bool,
+) -> Handle<ObjectValue> {
     let object = ordinary_object_create(cx);
 
     must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
@@ -160,9 +171,9 @@ pub fn create_iter_result_object(cx: &mut Context, value: Value, is_done: bool) 
 
 // Iterate over an object, executing a callback function against every value returned by the
 // iterator. Return a completion from the callback function to stop and close the iterator.
-pub fn iter_iterator_values<F: FnMut(&mut Context, Value) -> Option<Completion>>(
+pub fn iter_iterator_values<F: FnMut(&mut Context, HandleValue) -> Option<Completion>>(
     cx: &mut Context,
-    object: Value,
+    object: HandleValue,
     f: &mut F,
 ) -> Completion {
     let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, None));
@@ -184,10 +195,10 @@ pub fn iter_iterator_values<F: FnMut(&mut Context, Value) -> Option<Completion>>
     }
 }
 
-pub fn iter_iterator_method_values<F: FnMut(&mut Context, Value) -> Option<Completion>>(
+pub fn iter_iterator_method_values<F: FnMut(&mut Context, HandleValue) -> Option<Completion>>(
     cx: &mut Context,
-    object: Value,
-    method: Gc<ObjectValue>,
+    object: HandleValue,
+    method: Handle<ObjectValue>,
     f: &mut F,
 ) -> Completion {
     let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, Some(method)));
@@ -210,6 +221,6 @@ pub fn iter_iterator_method_values<F: FnMut(&mut Context, Value) -> Option<Compl
 }
 
 // 27.1.4.1 CreateAsyncFromSyncIterator
-fn create_async_from_sync_iterator(sync_iterator_record: Iterator) -> Iterator {
+fn create_async_from_sync_iterator(_sync_iterator_record: Iterator) -> Iterator {
     unimplemented!("CreateAsyncFromSyncIterator")
 }

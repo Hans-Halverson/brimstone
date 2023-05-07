@@ -4,7 +4,7 @@ use crate::{extend_object, maybe, set_uninit};
 
 use super::{
     completion::EvalResult,
-    execution_context::{ExecutionContext, ScriptOrModule},
+    execution_context::ExecutionContext,
     function::{set_function_length, set_function_name},
     gc::{Gc, HandleValue, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
@@ -23,9 +23,8 @@ use super::{
 // 10.3 Built-in Function Object
 extend_object! {
     pub struct BuiltinFunction {
-        realm: Gc<Realm>,
-        script_or_module: Option<ScriptOrModule>,
-        initial_name: Option<Gc<StringValue>>,
+        realm: HeapPtr<Realm>,
+        initial_name: Option<HeapPtr<StringValue>>,
         builtin_func: BuiltinFunctionPtr,
         closure_environment: Option<HeapPtr<ClosureEnvironment>>,
         has_constructor: bool,
@@ -35,10 +34,10 @@ extend_object! {
 // Function pointer to a builtin function
 pub type BuiltinFunctionPtr = fn(
     cx: &mut Context,
-    this_value: Value,
-    arguments: &[Value],
-    new_target: Option<Gc<ObjectValue>>,
-) -> EvalResult<Value>;
+    this_value: HandleValue,
+    arguments: &[HandleValue],
+    new_target: Option<Handle<ObjectValue>>,
+) -> EvalResult<HandleValue>;
 
 // Generic storage for variables captured by function if it is a closure. Must be cast to specific
 // type for stored variables at each use.
@@ -51,10 +50,10 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         length: i32,
         name: PropertyKey,
-        realm: Option<Gc<Realm>>,
-        prototype: Option<Gc<ObjectValue>>,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
-    ) -> Gc<BuiltinFunction> {
+    ) -> Handle<BuiltinFunction> {
         let func = BuiltinFunction::create_without_properties(cx, builtin_func, realm, prototype);
 
         set_function_length(cx, func.into(), length);
@@ -67,8 +66,8 @@ impl BuiltinFunction {
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Handle<Realm>>,
-        prototype: Option<Gc<ObjectValue>>,
-    ) -> Gc<BuiltinFunction> {
+        prototype: Option<Handle<ObjectValue>>,
+    ) -> Handle<BuiltinFunction> {
         let realm = realm.unwrap_or_else(|| cx.current_realm());
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
@@ -76,36 +75,43 @@ impl BuiltinFunction {
         let mut object =
             object_create_with_proto::<BuiltinFunction>(cx, ObjectKind::BuiltinFunction, prototype);
 
-        set_uninit!(object.realm, realm);
-        set_uninit!(object.script_or_module, None);
+        set_uninit!(object.realm, realm.get_());
         set_uninit!(object.initial_name, None);
         set_uninit!(object.builtin_func, builtin_func);
         set_uninit!(object.closure_environment, None);
         set_uninit!(object.has_constructor, false);
-        set_uninit!(object.script_or_module, None);
 
-        object
+        Handle::from_heap(object)
+    }
+
+    fn realm(&self) -> Handle<Realm> {
+        Handle::from_heap(self.realm)
     }
 
     pub fn set_is_constructor(&mut self) {
         self.has_constructor = true;
     }
 
-    pub fn set_closure_environment<T>(&mut self, closure_environment: Gc<T>) {
-        self.closure_environment = Some(closure_environment.cast::<ClosureEnvironment>());
+    pub fn set_closure_environment<T>(&mut self, closure_environment: Handle<T>) {
+        self.closure_environment = Some(closure_environment.get_().cast::<ClosureEnvironment>());
     }
 
-    pub fn set_initial_name(&mut self, initial_name: Option<Gc<StringValue>>) {
-        self.initial_name = initial_name;
+    pub fn set_initial_name(&mut self, initial_name: Option<Handle<StringValue>>) {
+        self.initial_name = initial_name.map(|s| s.get_());
     }
 }
 
-impl Gc<BuiltinFunction> {
+impl Handle<BuiltinFunction> {
     pub fn set_property(&mut self, cx: &mut Context, key: PropertyKey, value: Property) {
         self.object().set_property(cx, key, value);
     }
 
-    pub fn intrinsic_frozen_property(&mut self, cx: &mut Context, key: PropertyKey, value: Value) {
+    pub fn intrinsic_frozen_property(
+        &mut self,
+        cx: &mut Context,
+        key: PropertyKey,
+        value: HandleValue,
+    ) {
         self.object().intrinsic_frozen_property(cx, key, value);
     }
 
@@ -115,7 +121,7 @@ impl Gc<BuiltinFunction> {
         name: PropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
-        realm: Gc<Realm>,
+        realm: Handle<Realm>,
     ) {
         self.object().intrinsic_func(cx, name, func, length, realm);
     }
@@ -125,26 +131,26 @@ impl Gc<BuiltinFunction> {
         cx: &mut Context,
         name: PropertyKey,
         func: BuiltinFunctionPtr,
-        realm: Gc<Realm>,
+        realm: Handle<Realm>,
     ) {
         self.object().intrinsic_getter(cx, name, func, realm)
     }
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Gc<BuiltinFunction> {
+impl VirtualObject for Handle<BuiltinFunction> {
     // 10.3.1 [[Call]]
     fn call(
         &self,
         cx: &mut Context,
-        this_argument: Value,
-        arguments: &[Value],
-    ) -> EvalResult<Value> {
+        this_argument: HandleValue,
+        arguments: &[HandleValue],
+    ) -> EvalResult<HandleValue> {
         let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),
-            self.realm,
+            self.realm(),
             /* script_or_module */ None,
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,
@@ -167,14 +173,14 @@ impl VirtualObject for Gc<BuiltinFunction> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[Value],
-        new_target: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<ObjectValue>> {
+        arguments: &[HandleValue],
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
         let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),
-            self.realm,
+            self.realm(),
             /* script_or_module */ None,
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,

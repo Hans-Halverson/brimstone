@@ -2,12 +2,12 @@ use crate::{
     js::runtime::{
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
         type_utilities::{to_bigint, to_boolean, to_index, to_number},
-        Context, EvalResult, PropertyKey, Value,
+        Context, EvalResult, Handle, PropertyKey, Value,
     },
     maybe,
 };
@@ -29,7 +29,7 @@ pub struct DataViewPrototype;
 
 impl DataViewPrototype {
     // 25.3.4 Properties of the DataView Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -72,10 +72,10 @@ impl DataViewPrototype {
     // 25.3.4.1 get DataView.prototype.buffer
     fn get_buffer(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let data_view = maybe!(require_is_data_view(cx, this_value));
         data_view.viewed_array_buffer().into()
     }
@@ -83,13 +83,13 @@ impl DataViewPrototype {
     // 25.3.4.2 get DataView.prototype.byteLength
     fn get_byte_length(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let data_view = maybe!(require_is_data_view(cx, this_value));
 
-        if data_view.viewed_array_buffer().is_detached() {
+        if data_view.viewed_array_buffer_ptr().is_detached() {
             return type_error_(cx, "array buffer is detached");
         }
 
@@ -99,13 +99,13 @@ impl DataViewPrototype {
     // 25.3.4.3 get DataView.prototype.byteOffset
     fn get_byte_offset(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let data_view = maybe!(require_is_data_view(cx, this_value));
 
-        if data_view.viewed_array_buffer().is_detached() {
+        if data_view.viewed_array_buffer_ptr().is_detached() {
             return type_error_(cx, "array buffer is detached");
         }
 
@@ -115,30 +115,30 @@ impl DataViewPrototype {
     // 25.3.4.5 DataView.prototype.getBigInt64
     fn get_big_int64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_big_int64_element, i64::swap_bytes)
     }
 
     // 25.3.4.6 DataView.prototype.getBigUint64
     fn get_big_uint64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_big_uint64_element, u64::swap_bytes)
     }
 
     // 25.3.4.7 DataView.prototype.getFloat32
     fn get_float32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_float32_element, |element| {
             let bits = f32::to_bits(element);
             f32::from_bits(bits.swap_bytes())
@@ -148,10 +148,10 @@ impl DataViewPrototype {
     // 25.3.4.8 DataView.prototype.getFloat64
     fn get_float64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_float64_element, |element| {
             let bits = f64::to_bits(element);
             f64::from_bits(bits.swap_bytes())
@@ -161,70 +161,70 @@ impl DataViewPrototype {
     // 25.3.4.9 DataView.prototype.getInt8
     fn get_int8(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_int8_element, |element| element)
     }
 
     // 25.3.4.10 DataView.prototype.getInt16
     fn get_int16(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_int16_element, i16::swap_bytes)
     }
 
     // 25.3.4.11 DataView.prototype.getInt32
     fn get_int32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_int32_element, i32::swap_bytes)
     }
 
     // 25.3.4.12 DataView.prototype.getUint8
     fn get_uint8(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_uint8_element, |element| element)
     }
 
     // 25.3.4.13 DataView.prototype.getUint16
     fn get_uint16(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_uint16_element, u16::swap_bytes)
     }
 
     // 25.3.4.14 DataView.prototype.getUint32
     fn get_uint32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         get_view_value(cx, this_value, arguments, from_uint32_element, u32::swap_bytes)
     }
 
     // 25.3.4.15 DataView.prototype.setBigInt64
     fn set_big_int64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -238,10 +238,10 @@ impl DataViewPrototype {
     // 25.3.4.16 DataView.prototype.setBigUint64
     fn set_big_uint64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -255,10 +255,10 @@ impl DataViewPrototype {
     // 25.3.4.17 DataView.prototype.setFloat32
     fn set_float32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -275,10 +275,10 @@ impl DataViewPrototype {
     // 25.3.4.18 DataView.prototype.setFloat64
     fn set_float64(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -295,10 +295,10 @@ impl DataViewPrototype {
     // 25.3.4.19 DataView.prototype.setInt8
     fn set_int8(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(cx, this_value, arguments, ContentType::Number, to_int8_element, |element| {
             element
         })
@@ -307,10 +307,10 @@ impl DataViewPrototype {
     // 25.3.4.20 DataView.prototype.setInt16
     fn set_int16(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -324,10 +324,10 @@ impl DataViewPrototype {
     // 25.3.4.21 DataView.prototype.setInt32
     fn set_int32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -341,10 +341,10 @@ impl DataViewPrototype {
     // 25.3.4.22 DataView.prototype.setUint8
     fn set_uint8(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -358,10 +358,10 @@ impl DataViewPrototype {
     // 25.3.4.23 DataView.prototype.setUint16
     fn set_uint16(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -375,10 +375,10 @@ impl DataViewPrototype {
     // 25.3.4.24 DataView.prototype.setUint32
     fn set_uint32(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         set_view_value(
             cx,
             this_value,
@@ -391,7 +391,10 @@ impl DataViewPrototype {
 }
 
 #[inline]
-fn require_is_data_view(cx: &mut Context, value: Value) -> EvalResult<Gc<DataViewObject>> {
+fn require_is_data_view(
+    cx: &mut Context,
+    value: HandleValue,
+) -> EvalResult<Handle<DataViewObject>> {
     if !value.is_object() {
         return type_error_(cx, "expected data view");
     }
@@ -408,17 +411,18 @@ fn require_is_data_view(cx: &mut Context, value: Value) -> EvalResult<Gc<DataVie
 #[inline]
 fn get_view_value<T>(
     cx: &mut Context,
-    this_value: Value,
-    arguments: &[Value],
+    this_value: HandleValue,
+    arguments: &[HandleValue],
     from_element_fn: fn(&mut Context, T) -> Value,
     swap_element_bytes_fn: fn(T) -> T,
-) -> EvalResult<Value> {
+) -> EvalResult<HandleValue> {
     let data_view = maybe!(require_is_data_view(cx, this_value));
 
     let get_index = maybe!(to_index(cx, get_argument(arguments, 0)));
     let is_little_endian = to_boolean(get_argument(arguments, 1));
 
-    let mut buffer = data_view.viewed_array_buffer();
+    // Does not allocate past this point, so safe to keep pointer to array buffer
+    let mut buffer = data_view.viewed_array_buffer_ptr();
 
     if buffer.is_detached() {
         return type_error_(cx, "array buffer is detached");
@@ -458,12 +462,12 @@ fn get_view_value<T>(
 #[inline]
 fn set_view_value<T>(
     cx: &mut Context,
-    this_value: Value,
-    arguments: &[Value],
+    this_value: HandleValue,
+    arguments: &[HandleValue],
     content_type: ContentType,
     to_element_fn: fn(&mut Context, Value) -> EvalResult<T>,
     swap_element_bytes_fn: fn(T) -> T,
-) -> EvalResult<Value> {
+) -> EvalResult<HandleValue> {
     let data_view = maybe!(require_is_data_view(cx, this_value));
 
     let get_index = maybe!(to_index(cx, get_argument(arguments, 0)));
@@ -475,7 +479,8 @@ fn set_view_value<T>(
         maybe!(to_number(cx, get_argument(arguments, 1)))
     };
 
-    let mut buffer = data_view.viewed_array_buffer();
+    // Does not allocate past this point, so safe to keep pointer to array buffer
+    let mut buffer = data_view.viewed_array_buffer_ptr();
 
     if buffer.is_detached() {
         return type_error_(cx, "array buffer is detached");
@@ -489,7 +494,7 @@ fn set_view_value<T>(
     }
 
     // Convert number to bytes with correct endianness
-    let element = maybe!(to_element_fn(cx, value));
+    let element = maybe!(to_element_fn(cx, value.get()));
 
     let element_bytes = if cfg!(target_endian = "little") {
         if is_little_endian {

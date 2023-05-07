@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::{Gc, Handle},
+        gc::{Gc, Handle, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{
@@ -13,7 +13,6 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::to_boolean,
-        value::Value,
         Context,
     },
     maybe, set_uninit,
@@ -81,7 +80,7 @@ pub struct BooleanConstructor;
 
 impl BooleanConstructor {
     // 20.3.2 Properties of the Boolean Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -110,10 +109,10 @@ impl BooleanConstructor {
     // 20.3.1.1 Boolean
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let bool_value = to_boolean(get_argument(arguments, 0));
 
         match new_target {

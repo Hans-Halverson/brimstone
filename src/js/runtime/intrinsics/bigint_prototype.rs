@@ -3,14 +3,14 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_integer_or_infinity,
-        value::{BigIntValue, Value},
-        Context,
+        value::BigIntValue,
+        Context, Handle,
     },
     maybe,
 };
@@ -21,7 +21,7 @@ pub struct BigIntPrototype;
 
 impl BigIntPrototype {
     // 21.2.3 Properties of the BigInt Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -43,10 +43,10 @@ impl BigIntPrototype {
     // 21.2.3.3 BigInt.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let bigint_value = maybe!(this_bigint_value(cx, this_value));
 
         let radix = get_argument(arguments, 0);
@@ -68,15 +68,15 @@ impl BigIntPrototype {
     // 21.2.3.4 BigInt.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         maybe!(this_bigint_value(cx, this_value)).into()
     }
 }
 
-fn this_bigint_value(cx: &mut Context, value: Value) -> EvalResult<Gc<BigIntValue>> {
+fn this_bigint_value(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
         return value.as_bigint().into();
     }

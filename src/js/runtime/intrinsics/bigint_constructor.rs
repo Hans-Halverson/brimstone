@@ -5,15 +5,15 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
-        value::{BigIntValue, Value},
-        Context,
+        value::BigIntValue,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -24,22 +24,25 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct BigIntObject {
         // The BigInt value wrapped by this object
-        bigint_data: Gc<BigIntValue>,
+        bigint_data: HeapPtr<BigIntValue>,
     }
 }
 
 impl BigIntObject {
-    pub fn new_from_value(cx: &mut Context, bigint_data: Gc<BigIntValue>) -> Gc<BigIntObject> {
+    pub fn new_from_value(
+        cx: &mut Context,
+        bigint_data: Handle<BigIntValue>,
+    ) -> Handle<BigIntObject> {
         let mut object =
             object_create::<BigIntObject>(cx, ObjectKind::BigIntObject, Intrinsic::BigIntPrototype);
 
-        set_uninit!(object.bigint_data, bigint_data);
+        set_uninit!(object.bigint_data, bigint_data.get_());
 
-        object
+        Handle::from_heap(object)
     }
 
-    pub fn bigint_data(&self) -> Gc<BigIntValue> {
-        self.bigint_data
+    pub fn bigint_data(&self) -> Handle<BigIntValue> {
+        Handle::from_heap(self.bigint_data)
     }
 }
 
@@ -47,7 +50,7 @@ pub struct BigIntConstructor;
 
 impl BigIntConstructor {
     // 21.2.1 The BigInt Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -76,10 +79,10 @@ impl BigIntConstructor {
     // 21.2.1.1 BigInt
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if new_target.is_some() {
             return type_error_(cx, "BigInt is not a constructor");
         }

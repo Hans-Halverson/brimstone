@@ -5,15 +5,14 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_index,
-        value::Value,
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe,
 };
@@ -23,7 +22,7 @@ use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
 // 25.3 DataView Objects
 extend_object! {
     pub struct DataViewObject {
-        viewed_array_buffer: Gc<ArrayBufferObject>,
+        viewed_array_buffer: HeapPtr<ArrayBufferObject>,
         byte_length: usize,
         byte_offset: usize,
     }
@@ -32,17 +31,19 @@ extend_object! {
 impl DataViewObject {
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-        viewed_array_buffer: Gc<ArrayBufferObject>,
+        constructor: Handle<ObjectValue>,
+        viewed_array_buffer: Handle<ArrayBufferObject>,
         byte_length: usize,
         byte_offset: usize,
-    ) -> EvalResult<Gc<DataViewObject>> {
+    ) -> EvalResult<Handle<DataViewObject>> {
         let mut object = maybe!(object_create_from_constructor::<DataViewObject>(
             cx,
             constructor,
             ObjectKind::DataViewObject,
             Intrinsic::DataViewPrototype
         ));
+
+        let viewed_array_buffer = viewed_array_buffer.get_();
 
         object.viewed_array_buffer = viewed_array_buffer;
         object.byte_length = byte_length;
@@ -53,11 +54,15 @@ impl DataViewObject {
             return type_error_(cx, "array buffer is detached");
         }
 
-        object.into()
+        Handle::from_heap(object).into()
     }
 
-    pub fn viewed_array_buffer(&self) -> Gc<ArrayBufferObject> {
+    pub fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
         self.viewed_array_buffer
+    }
+
+    pub fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject> {
+        Handle::from_heap(self.viewed_array_buffer)
     }
 
     pub fn byte_length(&self) -> usize {
@@ -73,7 +78,7 @@ pub struct DataViewConstructor;
 
 impl DataViewConstructor {
     // 25.3.3 Properties of the DataView Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -102,10 +107,10 @@ impl DataViewConstructor {
     // 25.3.2.1 DataView
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {

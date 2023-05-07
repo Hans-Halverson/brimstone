@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::{Gc, Handle},
+        gc::{Gc, Handle, HandleValue},
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
@@ -83,7 +83,7 @@ pub struct NumberConstructor;
 
 impl NumberConstructor {
     // 21.1.2 Properties of the Number Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -154,10 +154,10 @@ impl NumberConstructor {
     // 21.1.1.1 Number
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let number_value = if arguments.is_empty() {
             0.0
         } else {
@@ -182,10 +182,10 @@ impl NumberConstructor {
     // 21.1.2.2 Number.isFinite
     fn is_finite(
         _: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let value = get_argument(arguments, 0);
         if !value.is_number() {
             return false.into();
@@ -197,10 +197,10 @@ impl NumberConstructor {
     // 21.1.2.3 Number.isInteger
     fn is_integer(
         _: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let value = get_argument(arguments, 0);
         is_integral_number(value).into()
     }
@@ -208,10 +208,10 @@ impl NumberConstructor {
     // 21.1.2.4 Number.isNaN
     fn is_nan(
         _: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let value = get_argument(arguments, 0);
         if !value.is_number() {
             return false.into();
@@ -223,10 +223,10 @@ impl NumberConstructor {
     // 21.1.2.5 Number.isSafeInteger
     fn is_safe_integer(
         _: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let value = get_argument(arguments, 0);
         if !is_integral_number(value) {
             return false.into();

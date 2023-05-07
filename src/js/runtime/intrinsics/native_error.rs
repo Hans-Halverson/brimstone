@@ -4,21 +4,19 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         intrinsics::error_constructor::install_error_cause,
+        intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         property::Property,
         realm::Realm,
         type_utilities::to_string,
-        value::Value,
-        Context,
+        Context, Handle,
     },
     maybe,
 };
-
-use super::intrinsics::Intrinsic;
 
 macro_rules! create_native_error {
     ($native_error:ident, $rust_name:ident, $prototype:ident, $constructor:ident) => {
@@ -26,15 +24,17 @@ macro_rules! create_native_error {
 
         impl $native_error {
             #[allow(dead_code)]
-            pub fn new_with_message(cx: &mut Context, message: String) -> Gc<ObjectValue> {
+            pub fn new_with_message(cx: &mut Context, message: String) -> Handle<ObjectValue> {
                 // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(message).into();
 
-                let mut object = object_create::<ObjectValue>(
+                let object = object_create::<ObjectValue>(
                     cx,
                     ObjectKind::ErrorObject,
                     Intrinsic::$prototype,
                 );
+
+                let mut object = Handle::from_heap(object);
 
                 object.intrinsic_data_prop(cx, cx.names.message(), message_value);
 
@@ -43,8 +43,8 @@ macro_rules! create_native_error {
 
             pub fn new_from_constructor(
                 cx: &mut Context,
-                constructor: Gc<ObjectValue>,
-            ) -> EvalResult<Gc<ObjectValue>> {
+                constructor: Handle<ObjectValue>,
+            ) -> EvalResult<Handle<ObjectValue>> {
                 let object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     constructor,
@@ -52,7 +52,7 @@ macro_rules! create_native_error {
                     Intrinsic::$prototype
                 ));
 
-                object.into()
+                Handle::from_heap(object).into()
             }
         }
 
@@ -60,7 +60,7 @@ macro_rules! create_native_error {
 
         impl $constructor {
             // 20.5.6.2 Properties of the NativeError Constructors
-            pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
                 let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
                 let mut func = BuiltinFunction::create(
                     cx,
@@ -90,18 +90,17 @@ macro_rules! create_native_error {
             // 20.5.6.1.1 NativeError
             fn construct(
                 cx: &mut Context,
-                _: Value,
-                arguments: &[Value],
-                new_target: Option<Gc<ObjectValue>>,
-            ) -> EvalResult<Value> {
+                _: HandleValue,
+                arguments: &[HandleValue],
+                new_target: Option<Handle<ObjectValue>>,
+            ) -> EvalResult<HandleValue> {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
                     cx.current_execution_context_ptr().function()
                 };
 
-                let object: Gc<ObjectValue> =
-                    maybe!($native_error::new_from_constructor(cx, new_target)).into();
+                let object = maybe!($native_error::new_from_constructor(cx, new_target));
 
                 let message = get_argument(arguments, 0);
                 if !message.is_undefined() {
@@ -124,7 +123,7 @@ macro_rules! create_native_error {
 
         impl $prototype {
             // 20.5.6.3 Properties of the NativeError Prototype Objects
-            pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let proto = realm.get_intrinsic(Intrinsic::ErrorPrototype);
                 let mut object = ObjectValue::new(cx, Some(proto), true);
 

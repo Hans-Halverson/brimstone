@@ -3,12 +3,12 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         object_value::ObjectValue,
         realm::Realm,
         type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,
-        Context,
+        Context, Handle,
     },
     maybe,
 };
@@ -19,7 +19,7 @@ pub struct NumberPrototype;
 
 impl NumberPrototype {
     // 21.1.3 Properties of the Number Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object = NumberObject::new_with_proto(cx, object_proto, 0.0);
 
@@ -47,10 +47,10 @@ impl NumberPrototype {
     // 21.1.3.3 Number.prototype.toFixed
     fn to_fixed(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let number_value = maybe!(this_number_value(cx, this_value));
         let mut number = number_value.as_number();
 
@@ -95,20 +95,20 @@ impl NumberPrototype {
     // 21.1.3.4 Number.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         Self::to_string(cx, this_value, &[], None)
     }
 
     // 21.1.3.6 Number.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let number_value = maybe!(this_number_value(cx, this_value));
 
         let radix = get_argument(arguments, 0);
@@ -151,15 +151,16 @@ impl NumberPrototype {
     // 21.1.3.7 Number.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
-        this_number_value(cx, this_value)
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
+        let number_value = maybe!(this_number_value(cx, this_value));
+        HandleValue::from_value(cx, number_value).into()
     }
 }
 
-fn this_number_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
+fn this_number_value(cx: &mut Context, value: HandleValue) -> EvalResult<Value> {
     if value.is_number() {
         return value.into();
     }

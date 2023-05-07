@@ -3,7 +3,7 @@ use std::{
     ptr::NonNull,
 };
 
-use crate::js::runtime::Value;
+use crate::js::runtime::{Context, Value};
 
 /// A pointer to a value in the GC heap.
 pub struct Gc<T> {
@@ -28,6 +28,11 @@ impl HandleValue {
     #[inline]
     pub fn get(&self) -> Value {
         *self
+    }
+
+    #[inline]
+    pub fn from_value(_: &mut Context, value: Value) -> HandleValue {
+        value
     }
 }
 

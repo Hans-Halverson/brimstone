@@ -17,7 +17,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
-    Context, EvalResult, Gc, Value,
+    Context, EvalResult, Gc, Handle, Value,
 };
 
 // 10.4.2 Array Exotic Objects
@@ -30,17 +30,17 @@ extend_object! {
 }
 
 impl ArrayObject {
-    pub fn new(cx: &mut Context, proto: Gc<ObjectValue>) -> Gc<ArrayObject> {
+    pub fn new(cx: &mut Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
         let mut array = object_create_with_proto::<ArrayObject>(cx, ObjectKind::ArrayObject, proto);
 
         set_uninit!(array.is_length_writable, true);
 
-        array
+        Handle::from_heap(array)
     }
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Gc<ArrayObject> {
+impl VirtualObject for Handle<ArrayObject> {
     // 10.4.2.1 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
@@ -96,11 +96,10 @@ impl VirtualObject for Gc<ArrayObject> {
     }
 
     // Not part of spec, but needed to add custom length property
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
         let mut property_keys = ordinary_own_property_keys(cx, self.object());
 
         // Insert length property after all the array index properies
-        // TODO: Correctly order all properties
         property_keys.push(cx.names.length.as_string().into());
 
         property_keys.into()
@@ -111,8 +110,8 @@ impl VirtualObject for Gc<ArrayObject> {
 pub fn array_create(
     cx: &mut Context,
     length: u64,
-    proto: Option<Gc<ObjectValue>>,
-) -> EvalResult<Gc<ArrayObject>> {
+    proto: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<ArrayObject>> {
     if length > (u32::MAX as u64) {
         return range_error_(cx, "array length out of range");
     }
@@ -131,11 +130,11 @@ pub fn array_create(
 // 10.4.2.3 ArraySpeciesCreate
 pub fn array_species_create(
     cx: &mut Context,
-    original_array: Gc<ObjectValue>,
+    original_array: Handle<ObjectValue>,
     length: u64,
-) -> EvalResult<Gc<ObjectValue>> {
+) -> EvalResult<Handle<ObjectValue>> {
     if !maybe!(is_array(cx, original_array.into())) {
-        let array_object: Gc<ObjectValue> = maybe!(array_create(cx, length, None)).into();
+        let array_object: Handle<ObjectValue> = maybe!(array_create(cx, length, None)).into();
         return array_object.into();
     }
 
@@ -164,7 +163,7 @@ pub fn array_species_create(
     }
 
     if constructor.is_undefined() {
-        let array_object: Gc<ObjectValue> = maybe!(array_create(cx, length, None)).into();
+        let array_object: Handle<ObjectValue> = maybe!(array_create(cx, length, None)).into();
         return array_object.into();
     }
 
@@ -180,7 +179,7 @@ pub fn array_species_create(
 // Modified from spec to use custom length property.
 fn array_set_length(
     cx: &mut Context,
-    mut array: Gc<ArrayObject>,
+    mut array: Handle<ArrayObject>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let mut new_len = array.object().array_properties_length();
@@ -220,7 +219,7 @@ fn array_set_length(
 }
 
 // 7.3.18 CreateArrayFromList
-pub fn create_array_from_list(cx: &mut Context, elements: &[Value]) -> Gc<ArrayObject> {
+pub fn create_array_from_list(cx: &mut Context, elements: &[HandleValue]) -> Handle<ArrayObject> {
     let array = must!(array_create(cx, 0, None));
 
     for (index, element) in elements.iter().enumerate() {

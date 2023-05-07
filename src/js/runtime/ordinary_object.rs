@@ -554,7 +554,7 @@ pub fn ordinary_object_create(cx: &mut Context) -> Handle<ObjectValue> {
     let object = cx.heap.alloc_uninit::<ObjectValue>();
 
     let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
-    let proto = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+    let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
     object_ordinary_init(cx, object, descriptor, Some(proto));
 
     object
@@ -571,7 +571,7 @@ where
     let object = cx.heap.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
-    let proto = cx.get_intrinsic(intrinsic_proto);
+    let proto = cx.get_intrinsic_ptr(intrinsic_proto);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto));
 
     object

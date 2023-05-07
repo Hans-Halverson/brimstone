@@ -199,8 +199,11 @@ impl Reference {
         base_value: HandleValue,
         private_name_str: &str,
     ) -> Reference {
-        let private_env = cx.current_execution_context().private_env().unwrap();
-        let private_name = private_env.resolve_private_identifier(private_name_str);
+        let private_name = cx
+            .current_execution_context_ptr()
+            .private_env_ptr()
+            .unwrap()
+            .resolve_private_identifier(private_name_str);
 
         let private_name_string_value = InternedStrings::get_str(cx, private_name_str);
         let property_key = PropertyKey::string(cx, private_name_string_value);

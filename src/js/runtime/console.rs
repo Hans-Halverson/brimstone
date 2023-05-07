@@ -1,34 +1,34 @@
 use super::{
     abstract_operations::get,
     completion::EvalResult,
-    gc::Gc,
+    gc::HandleValue,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::number_to_string,
     value::{Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-    Context,
+    Context, Handle,
 };
 
 pub struct ConsoleObject;
 
 impl ConsoleObject {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         object.intrinsic_func(cx, cx.names.log(), Self::log, 0, realm);
 
-        object.into()
+        object
     }
 
     fn log(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let formatted = arguments
             .iter()
             .map(|argument| to_console_string(cx, *argument))
@@ -41,7 +41,7 @@ impl ConsoleObject {
 }
 
 /// Format for printing value to console
-pub fn to_console_string(cx: &mut Context, value: Value) -> String {
+pub fn to_console_string(cx: &mut Context, value: HandleValue) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
             ObjectKind::String => format!("{}", value.as_string()),

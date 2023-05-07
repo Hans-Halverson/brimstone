@@ -696,7 +696,7 @@ pub trait VirtualObject {
     }
 
     fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
-        cx.current_realm().into()
+        cx.current_realm_ptr().into()
     }
 
     fn as_typed_array(&self) -> DynTypedArray {

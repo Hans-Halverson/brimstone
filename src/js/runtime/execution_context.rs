@@ -7,7 +7,7 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
-    gc::{Gc, GcDeref, Handle},
+    gc::{GcDeref, Handle},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -15,19 +15,19 @@ use super::{
     reference::Reference,
     string_value::StringValue,
     value::Value,
-    Context,
+    Context, HeapPtr,
 };
 
 // 9.4 Execution Context
 #[repr(C)]
 pub struct ExecutionContext {
-    descriptor: Gc<ObjectDescriptor>,
-    function: Option<Gc<ObjectValue>>,
-    realm: Gc<Realm>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    function: Option<HeapPtr<ObjectValue>>,
+    realm: HeapPtr<Realm>,
     script_or_module: Option<HeapScriptOrModule>,
     lexical_env: HeapDynEnvironment,
     variable_env: HeapDynEnvironment,
-    private_env: Option<Gc<PrivateEnvironment>>,
+    private_env: Option<HeapPtr<PrivateEnvironment>>,
     is_strict_mode: bool,
 }
 
@@ -59,13 +59,25 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn function(&self) -> Option<Gc<ObjectValue>> {
-        self.function
+    pub fn function(&self) -> Handle<ObjectValue> {
+        Handle::from_heap(self.function.unwrap())
     }
 
     #[inline]
-    pub fn realm(&self) -> Gc<Realm> {
+    pub fn realm_ptr(&self) -> HeapPtr<Realm> {
         self.realm
+    }
+
+    #[inline]
+    pub fn realm(&self) -> Handle<Realm> {
+        Handle::from_heap(self.realm)
+    }
+
+    #[inline]
+    pub fn script_or_module(&self) -> Option<ScriptOrModule> {
+        self.script_or_module
+            .as_ref()
+            .map(ScriptOrModule::from_heap)
     }
 
     #[inline]
@@ -79,8 +91,13 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn private_env(&self) -> Option<Gc<PrivateEnvironment>> {
+    pub fn private_env_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
         self.private_env
+    }
+
+    #[inline]
+    pub fn private_env(&self) -> Option<Handle<PrivateEnvironment>> {
+        self.private_env.map(|p| Handle::from_heap(p))
     }
 
     #[inline]
@@ -99,48 +116,45 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn set_private_env(&mut self, private_env: Option<Gc<PrivateEnvironment>>) {
-        self.private_env = private_env;
+    pub fn set_private_env(&mut self, private_env: Option<Handle<PrivateEnvironment>>) {
+        self.private_env = private_env.map(|p| p.get_());
     }
 
     #[inline]
-    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Gc<ObjectValue> {
+    pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
+        self.realm.get_intrinsic_ptr(intrinsic)
+    }
+
+    #[inline]
+    pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
         self.realm.get_intrinsic(intrinsic)
     }
 
     #[inline]
-    pub fn global_object(&self) -> Gc<ObjectValue> {
+    pub fn global_object(&self) -> Handle<ObjectValue> {
         self.realm.global_object()
-    }
-}
-
-impl Gc<ExecutionContext> {
-    pub fn script_or_module(&self) -> Option<ScriptOrModule> {
-        self.script_or_module
-            .as_ref()
-            .map(ScriptOrModule::from_heap)
     }
 }
 
 // 9.4.2 ResolveBinding
 pub fn resolve_binding(
     cx: &mut Context,
-    name: Gc<StringValue>,
+    name: Handle<StringValue>,
     env: Option<DynEnvironment>,
 ) -> EvalResult<Reference> {
     let env = match env {
         Some(env) => env,
-        None => cx.current_execution_context().lexical_env(),
+        None => cx.current_execution_context_ptr().lexical_env(),
     };
 
-    let is_strict = cx.current_execution_context().is_strict_mode;
+    let is_strict = cx.current_execution_context_ptr().is_strict_mode();
 
     get_identifier_reference(cx, Some(env), name, is_strict)
 }
 
 // 9.4.3 GetThisEnvironment
 pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
-    let mut current_env = cx.current_execution_context().lexical_env();
+    let mut current_env = cx.current_execution_context_ptr().lexical_env();
     loop {
         if current_env.has_this_binding() {
             return current_env;
@@ -158,7 +172,7 @@ pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Value> {
 }
 
 // 9.4.5 GetNewTarget
-pub fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
+pub fn get_new_target(cx: &mut Context) -> Option<Handle<ObjectValue>> {
     let mut this_env = get_this_environment(cx);
     let func_env = this_env.as_function_environment().unwrap();
     func_env.new_target()
@@ -167,20 +181,26 @@ pub fn get_new_target(cx: &mut Context) -> Option<Gc<ObjectValue>> {
 /// ScriptOrModule that is stored on the stack.
 #[derive(Clone)]
 pub enum ScriptOrModule {
-    Script(Gc<Script>),
+    Script(Handle<Script>),
 }
 
 /// ScriptOrModule that is stored on the managed heap.
-pub struct HeapScriptOrModule {
-    inner: ScriptOrModule,
+pub enum HeapScriptOrModule {
+    Script(HeapPtr<Script>),
 }
 
 impl ScriptOrModule {
     pub fn to_heap(&self) -> HeapScriptOrModule {
-        HeapScriptOrModule { inner: self.clone() }
+        match self {
+            ScriptOrModule::Script(script) => HeapScriptOrModule::Script(script.get_()),
+        }
     }
 
     pub fn from_heap(heap_script_or_module: &HeapScriptOrModule) -> ScriptOrModule {
-        heap_script_or_module.inner.clone()
+        match heap_script_or_module {
+            HeapScriptOrModule::Script(script) => {
+                ScriptOrModule::Script(Handle::from_heap(*script))
+            }
+        }
     }
 }

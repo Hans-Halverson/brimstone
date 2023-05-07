@@ -9,18 +9,21 @@ macro_rules! heap_trait_object {
         #[derive(Clone, Copy)]
         #[repr(C)]
         pub struct $stack_object {
-            pub data: $crate::js::runtime::Gc<()>,
+            pub data: $crate::js::runtime::Handle<()>,
             vtable: *const (),
         }
 
         /// The same custom trait object, but stored on the heap.
+        #[derive(Clone, Copy)]
+        #[repr(C)]
         pub struct $heap_object {
-            inner: $stack_object,
+            data: $crate::js::runtime::HeapPtr<()>,
+            vtable: *const (),
         }
 
-        impl<T> $crate::js::runtime::Gc<T>
+        impl<T> $crate::js::runtime::Handle<T>
         where
-            $crate::js::runtime::Gc<T>: $trait,
+            $crate::js::runtime::Handle<T>: $trait,
         {
             #[inline]
             pub fn $into_dyn(&self) -> $stack_object
@@ -39,12 +42,15 @@ macro_rules! heap_trait_object {
 
             #[inline]
             pub fn to_heap(&self) -> $heap_object {
-                $heap_object { inner: *self }
+                $heap_object { data: self.data.get_(), vtable: self.vtable }
             }
 
             #[inline]
             pub fn from_heap(heap_object: &$heap_object) -> $stack_object {
-                heap_object.inner
+                $stack_object {
+                    data: $crate::js::runtime::Handle::from_heap(heap_object.data),
+                    vtable: heap_object.vtable,
+                }
             }
         }
 

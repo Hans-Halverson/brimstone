@@ -344,7 +344,10 @@ fn eval_member_expression(cx: &mut Context, expr: &ast::MemberExpression) -> Eva
         base.get(cx, property_key, base_value)
     } else if expr.is_private {
         let base = maybe!(to_object(cx, base_value));
-        let private_env = cx.current_execution_context().private_env().unwrap();
+        let private_env = cx
+            .current_execution_context_ptr()
+            .private_env_ptr()
+            .unwrap();
         let private_name = expr.property.to_id().name.as_str();
         let private_name = private_env.resolve_private_identifier(private_name);
 
@@ -371,7 +374,7 @@ fn eval_member_expression_to_reference_with_base(
     expr: &ast::MemberExpression,
     base_value: Value,
 ) -> EvalResult<Reference> {
-    let is_strict = cx.current_execution_context().is_strict_mode();
+    let is_strict = cx.current_execution_context_ptr().is_strict_mode();
 
     if expr.is_computed {
         let property_name_value = maybe!(eval_expression(cx, &expr.property));
@@ -429,8 +432,8 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
             let func_value = maybe!(reference.get_value(cx));
 
             // Check for direct call to eval
-            let eval_func = cx.get_intrinsic(Intrinsic::Eval);
-            if func_value.is_object() && same_object_value(func_value.as_object(), eval_func) {
+            let eval_func_ptr = cx.get_intrinsic_ptr(Intrinsic::Eval);
+            if func_value.is_object() && same_object_value(func_value.as_object(), eval_func_ptr) {
                 let is_non_property_eval_reference = match reference.base() {
                     ReferenceBase::Property { .. } => false,
                     ReferenceBase::Unresolvable { name } | ReferenceBase::Env { name, .. } => {
@@ -445,7 +448,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                     }
 
                     let eval_arg = arg_values[0];
-                    let is_strict_caller = cx.current_execution_context().is_strict_mode();
+                    let is_strict_caller = cx.current_execution_context_ptr().is_strict_mode();
 
                     return perform_eval(cx, eval_arg, is_strict_caller, true);
                 }
@@ -515,7 +518,7 @@ pub fn eval_super_member_expression_to_reference(
     };
 
     // 13.3.7.3 MakeSuperPropertyReference inlined
-    let is_strict = cx.current_execution_context().is_strict_mode();
+    let is_strict = cx.current_execution_context_ptr().is_strict_mode();
     let base_value = maybe!(env.get_super_base(cx));
 
     Reference::new_property_with_this(base_value, property_key, is_strict, actual_this).into()
@@ -1458,8 +1461,8 @@ fn eval_private_in_expression(
     }
 
     let private_name = cx
-        .current_execution_context()
-        .private_env()
+        .current_execution_context_ptr()
+        .private_env_ptr()
         .unwrap()
         .resolve_private_identifier(&private_property.name);
 

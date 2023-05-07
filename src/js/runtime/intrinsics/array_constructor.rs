@@ -62,7 +62,7 @@ impl ArrayConstructor {
         new_target: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
         let new_target =
-            new_target.unwrap_or_else(|| cx.current_execution_context().function().unwrap());
+            new_target.unwrap_or_else(|| cx.current_execution_context_ptr().function());
         let proto =
             maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype));
 

@@ -141,13 +141,13 @@ pub fn array_species_create(
 
     let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
     if is_constructor(constructor) {
-        let this_realm = cx.current_realm();
+        let this_realm_ptr = cx.current_realm_ptr();
         let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
 
-        if !this_realm.ptr_eq(&constructor_realm)
+        if !this_realm_ptr.ptr_eq(&constructor_realm)
             && same_object_value(
                 constructor.as_object(),
-                constructor_realm.get_intrinsic(Intrinsic::ArrayConstructor),
+                constructor_realm.get_intrinsic_ptr(Intrinsic::ArrayConstructor),
             )
         {
             constructor = Value::undefined();

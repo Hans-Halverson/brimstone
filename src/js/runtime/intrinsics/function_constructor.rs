@@ -46,7 +46,7 @@ impl FunctionConstructor {
         arguments: &[Value],
         new_target: Option<Gc<ObjectValue>>,
     ) -> EvalResult<Value> {
-        let constructor = cx.current_execution_context().function().unwrap();
+        let constructor = cx.current_execution_context_ptr().function();
         maybe!(create_dynamic_function(cx, constructor, new_target, arguments)).into()
     }
 }

@@ -97,7 +97,7 @@ macro_rules! create_native_error {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
-                    cx.current_execution_context().function().unwrap()
+                    cx.current_execution_context_ptr().function()
                 };
 
                 let object: Gc<ObjectValue> =

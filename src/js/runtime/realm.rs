@@ -64,6 +64,10 @@ impl Realm {
         self.global_env.global_this_value()
     }
 
+    pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
+        self.intrinsics.get(intrinsic)
+    }
+
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
         self.intrinsics.get(intrinsic)
     }

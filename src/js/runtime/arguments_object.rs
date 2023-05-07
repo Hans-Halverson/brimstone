@@ -314,9 +314,9 @@ fn arg_getter(
     _: &[Value],
     _: Option<Gc<ObjectValue>>,
 ) -> EvalResult<Value> {
-    let closure_environment = cx.get_closure_environment::<ArgAccessorEnvironment>();
-    let name = closure_environment.name;
-    let env = DynEnvironment::from_heap(&closure_environment.env);
+    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
+    let name = closure_environment_ptr.name;
+    let env = DynEnvironment::from_heap(&closure_environment_ptr.env);
 
     env.get_binding_value(cx, name, false)
 }
@@ -328,9 +328,9 @@ fn arg_setter(
     arguments: &[Value],
     _: Option<Gc<ObjectValue>>,
 ) -> EvalResult<Value> {
-    let closure_environment = cx.get_closure_environment::<ArgAccessorEnvironment>();
-    let name = closure_environment.name;
-    let mut env = DynEnvironment::from_heap(&closure_environment.env);
+    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
+    let name = closure_environment_ptr.name;
+    let mut env = DynEnvironment::from_heap(&closure_environment_ptr.env);
     let value = get_argument(arguments, 0);
 
     must!(env.set_mutable_binding(cx, name, value, false));

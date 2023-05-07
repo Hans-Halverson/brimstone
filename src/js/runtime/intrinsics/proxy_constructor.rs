@@ -73,14 +73,14 @@ impl ProxyConstructor {
                       _: &[Value],
                       _: Option<Gc<ObjectValue>>|
          -> EvalResult<Value> {
-            let mut closure_environment = cx.get_closure_environment::<RevokeEnvironment>();
-            let revocable_proxy = closure_environment.revocable_proxy;
+            let mut closure_environment_ptr = cx.get_closure_environment_ptr::<RevokeEnvironment>();
+            let revocable_proxy = closure_environment_ptr.revocable_proxy;
 
             if revocable_proxy.is_none() {
                 return Value::undefined().into();
             }
 
-            closure_environment.revocable_proxy = None;
+            closure_environment_ptr.revocable_proxy = None;
             revocable_proxy.unwrap().revoke();
 
             Value::undefined().into()

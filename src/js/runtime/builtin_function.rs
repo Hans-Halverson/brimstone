@@ -17,7 +17,7 @@ use super::{
     realm::Realm,
     string_value::StringValue,
     value::Value,
-    Context,
+    Context, Handle,
 };
 
 // 10.3 Built-in Function Object
@@ -27,7 +27,7 @@ extend_object! {
         script_or_module: Option<ScriptOrModule>,
         initial_name: Option<Gc<StringValue>>,
         builtin_func: BuiltinFunctionPtr,
-        closure_environment: Option<Gc<ClosureEnvironment>>,
+        closure_environment: Option<HeapPtr<ClosureEnvironment>>,
         has_constructor: bool,
     }
 }
@@ -66,7 +66,7 @@ impl BuiltinFunction {
     pub fn create_without_properties(
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
-        realm: Option<Gc<Realm>>,
+        realm: Option<Handle<Realm>>,
         prototype: Option<Gc<ObjectValue>>,
     ) -> Gc<BuiltinFunction> {
         let realm = realm.unwrap_or_else(|| cx.current_realm());
@@ -140,7 +140,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
         this_argument: Value,
         arguments: &[Value],
     ) -> EvalResult<Value> {
-        let current_execution_context = cx.current_execution_context();
+        let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),
@@ -149,7 +149,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,
             /* private_env */ None,
-            current_execution_context.is_strict_mode(),
+            is_strict_mode,
         );
 
         cx.push_closure_environment(self.closure_environment);
@@ -170,7 +170,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
         arguments: &[Value],
         new_target: Gc<ObjectValue>,
     ) -> EvalResult<Gc<ObjectValue>> {
-        let current_execution_context = cx.current_execution_context();
+        let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
         let callee_context = ExecutionContext::new(
             cx,
             /* function */ Some(self.object()),
@@ -179,7 +179,7 @@ impl VirtualObject for Gc<BuiltinFunction> {
             /* lexical_env */ cx.uninit_environment,
             /* variable_env */ cx.uninit_environment,
             /* private_env */ None,
-            current_execution_context.is_strict_mode(),
+            is_strict_mode,
         );
 
         cx.push_closure_environment(self.closure_environment);

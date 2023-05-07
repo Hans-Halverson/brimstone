@@ -115,9 +115,8 @@ impl ObjectConstructor {
     ) -> EvalResult<Value> {
         if let Some(new_target) = new_target {
             if !cx
-                .current_execution_context()
+                .current_execution_context_ptr()
                 .function()
-                .unwrap()
                 .ptr_eq(&new_target)
             {
                 let new_value: Value = maybe!(object_create_from_constructor::<ObjectValue>(

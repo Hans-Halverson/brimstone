@@ -69,13 +69,13 @@ pub fn perform_eval(
         let mut names = HashMap::new();
 
         // Walk private contexts, gathering all defined private names
-        let mut current_private_env = running_context.private_env();
-        while let Some(private_env) = current_private_env {
-            private_env.iter_names_gc_unsafe(|name| {
+        let mut current_private_env_ptr = running_context.private_env_ptr();
+        while let Some(private_env_ptr) = current_private_env_ptr {
+            private_env_ptr.iter_names_gc_unsafe(|name| {
                 names.insert(name.clone(), PrivateNameUsage::used());
             });
 
-            current_private_env = private_env.outer();
+            current_private_env_ptr = private_env_ptr.outer();
         }
 
         Some(names)

@@ -117,7 +117,7 @@ impl Function {
         set_uninit!(object.constructor_kind, ConstructorKind::Base);
         set_uninit!(object.this_mode, this_mode);
         set_uninit!(object.home_object, None);
-        set_uninit!(object.realm, cx.current_realm());
+        set_uninit!(object.realm, cx.current_realm_ptr());
         set_uninit!(
             object.script_or_module,
             cx.get_active_script_or_module()

@@ -52,9 +52,9 @@ impl FunctionPrototype {
 impl Gc<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
     pub fn initialize(&mut self, cx: &mut Context, realm: Gc<Realm>) {
-        let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-        object_ordinary_init(cx, self.object(), descriptor, Some(object_proto));
+        let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
+        let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
+        object_ordinary_init(cx, self.object(), descriptor_ptr, Some(object_proto_ptr));
 
         self.object().intrinsic_name_prop(cx, "");
         self.object().instrinsic_length_prop(cx, 0);

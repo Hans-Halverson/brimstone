@@ -104,11 +104,11 @@ fn class_field_definition_evaluation(
     property_key: PropertyKey,
     home_object: Gc<ObjectValue>,
 ) -> EvalResult<Gc<Function>> {
-    let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env();
+    let current_execution_context_ptr = cx.current_execution_context_ptr();
+    let env = current_execution_context_ptr.lexical_env();
+    let private_env = current_execution_context_ptr.private_env();
 
-    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
+    let prototype = current_execution_context_ptr.get_intrinsic(Intrinsic::FunctionPrototype);
 
     let func_node = FuncKind::ClassProperty(AstPtr::from_ref(prop), property_key);
 
@@ -133,11 +133,11 @@ fn class_static_block_definition_evaluation(
     block: &ast::ClassMethod,
     home_object: Gc<ObjectValue>,
 ) -> Gc<Function> {
-    let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env();
+    let current_execution_context_ptr = cx.current_execution_context_ptr();
+    let env = current_execution_context_ptr.lexical_env();
+    let private_env = current_execution_context_ptr.private_env();
 
-    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
+    let prototype = current_execution_context_ptr.get_intrinsic(Intrinsic::FunctionPrototype);
     let body_function =
         ordinary_function_create(cx, prototype, &block.value, false, env, private_env);
     make_method(body_function, home_object);
@@ -471,7 +471,7 @@ fn binding_class_declaration_evaluation(
         let name_key = PropertyKey::string(cx, name_value);
         let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
 
-        let lexical_env = cx.current_execution_context().lexical_env();
+        let lexical_env = cx.current_execution_context_ptr().lexical_env();
         maybe!(initialize_bound_name(cx, name_value, value.into(), Some(lexical_env)));
 
         value.into()

@@ -387,17 +387,14 @@ pub fn instantiate_arrow_function_expression(
     func_node: &ast::Function,
     name: Option<PropertyKey>,
 ) -> Gc<Function> {
-    let current_context = cx.current_execution_context();
+    let current_context_ptr = cx.current_execution_context_ptr();
+    let lexical_env = current_context_ptr.lexical_env();
+    let private_env = current_context_ptr.private_env();
 
     let function_prototype = cx.get_intrinsic(Intrinsic::FunctionPrototype);
-    let closure = ordinary_function_create(
-        cx,
-        function_prototype,
-        func_node,
-        true,
-        current_context.lexical_env(),
-        current_context.private_env(),
-    );
+
+    let closure =
+        ordinary_function_create(cx, function_prototype, func_node, true, lexical_env, private_env);
 
     match name {
         None => set_function_name(cx, closure.into(), cx.names.empty_string(), None),
@@ -414,13 +411,13 @@ pub fn define_method(
     func_node: &ast::Function,
     function_prototype: Option<Gc<ObjectValue>>,
 ) -> Gc<Function> {
-    let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env();
+    let current_execution_context_ptr = cx.current_execution_context_ptr();
+    let env = current_execution_context_ptr.lexical_env();
+    let private_env = current_execution_context_ptr.private_env();
 
     let prototype = match function_prototype {
         Some(prototype) => prototype,
-        None => current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype),
+        None => current_execution_context_ptr.get_intrinsic(Intrinsic::FunctionPrototype),
     };
 
     let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
@@ -450,11 +447,10 @@ pub fn method_definition_evaluation(
     }
 
     // Otherwise is a getter or setter
-    let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env();
-
-    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
+    let current_execution_context_ptr = cx.current_execution_context_ptr();
+    let env = current_execution_context_ptr.lexical_env();
+    let private_env = current_execution_context_ptr.private_env();
+    let prototype = current_execution_context_ptr.get_intrinsic(Intrinsic::FunctionPrototype);
 
     let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
     make_method(closure, object);
@@ -501,11 +497,10 @@ pub fn private_method_definition_evaluation(
     }
 
     // Otherwise is a getter or setter
-    let current_execution_context = cx.current_execution_context();
-    let env = current_execution_context.lexical_env();
-    let private_env = current_execution_context.private_env();
-
-    let prototype = current_execution_context.get_intrinsic(Intrinsic::FunctionPrototype);
+    let current_execution_context_ptr = cx.current_execution_context_ptr();
+    let env = current_execution_context_ptr.lexical_env();
+    let private_env = current_execution_context_ptr.private_env();
+    let prototype = current_execution_context_ptr.get_intrinsic(Intrinsic::FunctionPrototype);
 
     let closure = ordinary_function_create(cx, prototype, func_node, false, env, private_env);
     make_method(closure, object);
@@ -593,7 +588,7 @@ pub fn create_dynamic_function(
 
     // Create function object
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
-    let env = cx.current_realm().global_env();
+    let env = cx.current_realm_ptr().global_env();
 
     let func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn_env(), None);
     set_function_name(cx, func.into(), cx.names.anonymous(), None);

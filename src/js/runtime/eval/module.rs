@@ -5,6 +5,7 @@ use crate::js::{
     runtime::{Completion, Context, Gc, Realm},
 };
 
-pub fn eval_module(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
+#[allow(dead_code)]
+pub fn eval_module(_cx: &mut Context, _program: Rc<ast::Program>, _realm: Gc<Realm>) -> Completion {
     unimplemented!("module evaluation")
 }

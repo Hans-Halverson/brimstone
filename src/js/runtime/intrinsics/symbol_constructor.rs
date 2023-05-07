@@ -5,14 +5,14 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
         type_utilities::to_string,
         value::{SymbolValue, Value},
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -23,22 +23,25 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct SymbolObject {
         // The symbol value wrapped by this object
-        symbol_data: Gc<SymbolValue>,
+        symbol_data: HeapPtr<SymbolValue>,
     }
 }
 
 impl SymbolObject {
-    pub fn new_from_value(cx: &mut Context, symbol_data: Gc<SymbolValue>) -> Gc<SymbolObject> {
+    pub fn new_from_value(
+        cx: &mut Context,
+        symbol_data: Handle<SymbolValue>,
+    ) -> Handle<SymbolObject> {
         let mut object =
             object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
 
         set_uninit!(object.symbol_data, symbol_data);
 
-        object
+        Handle::from_heap(object)
     }
 
-    pub fn symbol_data(&self) -> Gc<SymbolValue> {
-        self.symbol_data
+    pub fn symbol_data(&self) -> Handle<SymbolValue> {
+        Handle::from_heap(self.symbol_data)
     }
 }
 
@@ -46,7 +49,7 @@ pub struct SymbolConstructor;
 
 impl SymbolConstructor {
     // 20.4.2 Properties of the Symbol Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -117,10 +120,10 @@ impl SymbolConstructor {
     // 20.4.1.1 Symbol
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if new_target.is_some() {
             return type_error_(cx, "Symbol is not a constructor");
         }
@@ -138,10 +141,10 @@ impl SymbolConstructor {
     // 20.4.2.2 Symbol.for
     fn for_(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let string_key = maybe!(to_string(cx, get_argument(arguments, 0)));
         if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key) {
             return (*symbol_value).into();
@@ -156,10 +159,10 @@ impl SymbolConstructor {
     // 20.4.2.6 Symbol.keyFor
     fn key_for(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let symbol_value = get_argument(arguments, 0);
         if !symbol_value.is_symbol() {
             return type_error_(cx, "expected symbol value");

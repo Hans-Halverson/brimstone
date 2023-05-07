@@ -48,7 +48,7 @@ struct FunctionStackEntry {
     // during eval code.
     func: Option<AstPtr<Function>>,
     is_arrow_function: bool,
-    is_method: bool,
+    _is_method: bool,
     is_derived_constructor: bool,
 }
 
@@ -631,7 +631,7 @@ impl Analyzer {
         self.function_stack.push(FunctionStackEntry {
             func: Some(AstPtr::from_ref(func)),
             is_arrow_function,
-            is_method,
+            _is_method: is_method,
             is_derived_constructor,
         });
 
@@ -1237,7 +1237,7 @@ pub fn analyze_for_eval(
         analyzer.function_stack.push(FunctionStackEntry {
             func: None,
             is_arrow_function: false,
-            is_method: in_method,
+            _is_method: in_method,
             is_derived_constructor: in_derived_constructor,
         });
 

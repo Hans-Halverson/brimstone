@@ -214,8 +214,8 @@ impl VirtualObject for Handle<BuiltinFunction> {
 
 // TODO: For some reason this suppresses seemingly unrelated unused function warnings. Keeping for
 // now until this is figured out and the functions are cleaned up.
-impl Into<Gc<()>> for &() {
-    fn into(self) -> Gc<()> {
+impl Into<HeapPtr<()>> for &() {
+    fn into(self) -> HeapPtr<()> {
         unimplemented!("")
     }
 }

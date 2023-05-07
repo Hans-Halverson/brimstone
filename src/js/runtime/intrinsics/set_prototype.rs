@@ -1,9 +1,9 @@
 use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument, gc::Gc,
+        completion::EvalResult, error::type_error_, function::get_argument, gc::HandleValue,
         object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
-        type_utilities::is_callable, value::Value, Context,
+        type_utilities::is_callable, value::Value, Context, Handle,
     },
     maybe,
 };
@@ -18,7 +18,7 @@ pub struct SetPrototype;
 
 impl SetPrototype {
     // 24.2.3 Properties of the Set Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -63,10 +63,10 @@ impl SetPrototype {
     // 24.2.3.1 Set.prototype.add
     fn add(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -87,10 +87,10 @@ impl SetPrototype {
     // 24.2.3.2 Set.prototype.clear
     fn clear(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -105,10 +105,10 @@ impl SetPrototype {
     // 24.2.3.4 Set.prototype.delete
     fn delete(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -124,10 +124,10 @@ impl SetPrototype {
     // 24.2.3.5 Set.prototype.entries
     fn entries(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -140,10 +140,10 @@ impl SetPrototype {
     // 24.2.3.6 Set.prototype.forEach
     fn for_each(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -158,10 +158,15 @@ impl SetPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(arguments, 1);
 
-        for value in set.set_data().iter() {
-            let value = (*value).into();
-            let arguments = [value, value, this_value];
+        // Reuse handle during iteration
+        let mut value_handle = HandleValue::uninit();
 
+        // GC safe iteration, since ValueSet's data is off the managed heap so this iterator cannot
+        // be invalidated by a GC.
+        for value in set.set_data().iter() {
+            value_handle.replace((*value).into());
+
+            let arguments = [value_handle, value_handle, this_value];
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
@@ -171,10 +176,10 @@ impl SetPrototype {
     // 24.2.3.7 Set.prototype.has
     fn has(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -189,10 +194,10 @@ impl SetPrototype {
     // 24.2.3.9 get Set.prototype.size
     fn size(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -205,10 +210,10 @@ impl SetPrototype {
     // 24.2.3.10 Set.prototype.values
     fn values(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
@@ -219,7 +224,7 @@ impl SetPrototype {
     }
 }
 
-fn this_set_value(value: Value) -> Option<Gc<SetObject>> {
+fn this_set_value(value: HandleValue) -> Option<Handle<SetObject>> {
     if !value.is_object() {
         return None;
     }

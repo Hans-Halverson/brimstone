@@ -4,7 +4,7 @@ use crate::{
         array_object::create_array_from_list,
         completion::EvalResult,
         error::type_error_,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -13,7 +13,7 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         value::{Value, ValueSetIter},
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -24,7 +24,7 @@ use super::{intrinsics::Intrinsic, set_constructor::SetObject};
 extend_object! {
     pub struct SetIterator<'a> {
         // Set is not used directly, but it held so that it is not GC'd while iterator exists
-        set: Gc<SetObject>,
+        set: HeapPtr<SetObject>,
         iter: ValueSetIter<'a>,
         kind: SetIteratorKind,
     }
@@ -36,18 +36,22 @@ pub enum SetIteratorKind {
 }
 
 impl<'a> SetIterator<'a> {
-    pub fn new(cx: &mut Context, mut set: Gc<SetObject>, kind: SetIteratorKind) -> Gc<SetIterator> {
+    pub fn new(
+        cx: &mut Context,
+        mut set: Handle<SetObject>,
+        kind: SetIteratorKind,
+    ) -> Handle<SetIterator> {
         let mut object = object_create::<SetIterator>(
             cx,
             ObjectKind::SetIterator,
             Intrinsic::SetIteratorPrototype,
         );
 
-        set_uninit!(object.set, set);
+        set_uninit!(object.set, set.get_());
         set_uninit!(object.iter, set.set_data().iter());
         set_uninit!(object.kind, kind);
 
-        object
+        Handle::from_heap(object)
     }
 
     cast_from_value_fn!(SetIterator, "Set Iterator");
@@ -57,7 +61,7 @@ impl<'a> SetIterator<'a> {
 pub struct SetIteratorPrototype;
 
 impl SetIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
 
@@ -79,10 +83,10 @@ impl SetIteratorPrototype {
     // Adapted from the abstract closure in 24.2.5.1 CreateSetIterator
     fn next(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
 
         match set_iterator.iter.next() {

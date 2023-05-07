@@ -33,7 +33,7 @@ impl Scope {
 
 struct NameMetadata {
     kind: NameKind,
-    loc: Loc,
+    _loc: Loc,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -157,7 +157,7 @@ impl ScopeBuilder {
 
         scope
             .lex_declared_names
-            .insert(name.clone(), NameMetadata { kind, loc: *loc });
+            .insert(name.clone(), NameMetadata { kind, _loc: *loc });
 
         None
     }
@@ -179,7 +179,7 @@ impl ScopeBuilder {
 
             scope
                 .var_declared_names
-                .insert(name.clone(), NameMetadata { kind, loc: *loc });
+                .insert(name.clone(), NameMetadata { kind, _loc: *loc });
 
             if let ScopeKind::Toplevel(_) | ScopeKind::Function(_) = scope.kind {
                 return None;

@@ -6,7 +6,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         get,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
@@ -16,8 +16,8 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
-        value::{Value, ValueSet},
-        Completion, Context,
+        value::ValueSet,
+        Completion, Context, Handle,
     },
     maybe,
 };
@@ -34,8 +34,8 @@ extend_object! {
 impl SetObject {
     pub fn new_from_constructor(
         cx: &mut Context,
-        constructor: Gc<ObjectValue>,
-    ) -> EvalResult<Gc<SetObject>> {
+        constructor: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<SetObject>> {
         let mut object = maybe!(object_create_from_constructor::<SetObject>(
             cx,
             constructor,
@@ -45,7 +45,7 @@ impl SetObject {
 
         object.set_data = ValueSet::new();
 
-        object.into()
+        Handle::from_heap(object).into()
     }
 
     pub fn set_data(&mut self) -> &mut ValueSet {
@@ -57,7 +57,7 @@ pub struct SetConstructor;
 
 impl SetConstructor {
     // 24.2.1 The Set Constructor
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -89,17 +89,17 @@ impl SetConstructor {
     // 24.2.1.1 Set
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        new_target: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
             return type_error_(cx, "Set constructor must be called with new");
         };
 
-        let set_object: Gc<ObjectValue> =
+        let set_object: Handle<ObjectValue> =
             maybe!(SetObject::new_from_constructor(cx, new_target)).into();
 
         let iterable = get_argument(arguments, 0);
@@ -131,10 +131,10 @@ impl SetConstructor {
     // 24.2.2.2 get Set [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_value.into()
     }
 }

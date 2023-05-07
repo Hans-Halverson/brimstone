@@ -5,7 +5,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
@@ -13,7 +13,7 @@ use crate::{
         realm::Realm,
         type_utilities::{is_callable, is_constructor, to_property_key},
         value::Value,
-        Context,
+        Context, Handle,
     },
     maybe,
 };
@@ -24,7 +24,7 @@ use super::intrinsics::Intrinsic;
 pub struct ReflectObject;
 
 impl ReflectObject {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -69,10 +69,10 @@ impl ReflectObject {
     // 28.1.1 Reflect.apply
     fn apply(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !is_callable(target) {
             return type_error_(cx, "value is not a function");
@@ -87,10 +87,10 @@ impl ReflectObject {
     // 28.1.2 Reflect.construct
     fn construct(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !is_constructor(target) {
             return type_error_(cx, "value is not a constructor");
@@ -117,10 +117,10 @@ impl ReflectObject {
     // 28.1.3 Reflect.defineProperty
     fn define_property(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -136,10 +136,10 @@ impl ReflectObject {
     // 28.1.4 Reflect.deleteProperty
     fn delete_property(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -154,10 +154,10 @@ impl ReflectObject {
     // 28.1.5 Reflect.get
     fn get(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -177,10 +177,10 @@ impl ReflectObject {
     // 28.1.6 Reflect.getOwnPropertyDescriptor
     fn get_own_property_descriptor(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -199,10 +199,10 @@ impl ReflectObject {
     // 28.1.7 Reflect.getPrototypeOf
     fn get_prototype_of(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -219,10 +219,10 @@ impl ReflectObject {
     // 28.1.8 Reflect.has
     fn has(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -237,10 +237,10 @@ impl ReflectObject {
     // 28.1.9 Reflect.isExtensible
     fn is_extensible(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -252,10 +252,10 @@ impl ReflectObject {
     // 28.1.10 Reflect.ownKeys
     fn own_keys(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -269,10 +269,10 @@ impl ReflectObject {
     // 28.1.11 Reflect.preventExtensions
     fn prevent_extensions(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -284,10 +284,10 @@ impl ReflectObject {
     // 28.1.12 Reflect.set
     fn set(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");
@@ -308,10 +308,10 @@ impl ReflectObject {
     // 28.1.13 Reflect.setPrototypeOf
     fn set_prototype_of(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let target = get_argument(arguments, 0);
         if !target.is_object() {
             return type_error_(cx, "value is not an object");

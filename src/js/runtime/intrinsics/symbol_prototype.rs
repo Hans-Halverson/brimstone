@@ -3,14 +3,14 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
-        gc::Gc,
+        gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
         string_value::StringValue,
         value::{SymbolValue, Value},
-        Context,
+        Context, Handle,
     },
     maybe,
 };
@@ -21,7 +21,7 @@ pub struct SymbolPrototype;
 
 impl SymbolPrototype {
     // 20.4.3 Properties of the Symbol Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -64,10 +64,10 @@ impl SymbolPrototype {
     // 20.4.3.2 get Symbol.prototype.description
     fn get_description(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         match symbol_value.as_symbol().description() {
             None => Value::undefined().into(),
@@ -78,10 +78,10 @@ impl SymbolPrototype {
     // 20.4.3.3 Symbol.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         symbol_descriptive_string(cx, symbol_value.as_symbol()).into()
     }
@@ -89,25 +89,25 @@ impl SymbolPrototype {
     // 20.4.3.4 Symbol.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_symbol_value(cx, this_value)
     }
 
     // 20.4.3.5 Symbol.prototype [ @@toPrimitive ]
     fn to_primitive(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_symbol_value(cx, this_value)
     }
 }
 
-fn this_symbol_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
+fn this_symbol_value(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValue> {
     if value.is_symbol() {
         return value.into();
     }
@@ -123,7 +123,10 @@ fn this_symbol_value(cx: &mut Context, value: Value) -> EvalResult<Value> {
 }
 
 // 20.4.3.3.1 SymbolDescriptiveString
-pub fn symbol_descriptive_string(cx: &mut Context, symbol: Gc<SymbolValue>) -> Gc<StringValue> {
+pub fn symbol_descriptive_string(
+    cx: &mut Context,
+    symbol: Handle<SymbolValue>,
+) -> Handle<StringValue> {
     match symbol.description() {
         None => cx.alloc_string(String::from("Symbol()")),
         Some(description) => {

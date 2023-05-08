@@ -41,7 +41,7 @@ impl NumberObject {
 
         set_uninit!(object.number_data, number_data);
 
-        object
+        Handle::from_heap(object)
     }
 
     pub fn new_from_constructor(
@@ -71,7 +71,7 @@ impl NumberObject {
 
         set_uninit!(object.number_data, number_data);
 
-        object
+        Handle::from_heap(object)
     }
 
     pub fn number_data(&self) -> f64 {

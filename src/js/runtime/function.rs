@@ -268,13 +268,13 @@ impl VirtualObject for Handle<Function> {
                     _ => return type_error_(cx, "super class must be a constructor"),
                 }
             } else {
-                maybe!(object_create_from_constructor::<ObjectValue>(
+                let object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,
                     ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectPrototype
-                ))
-                .into()
+                ));
+                Handle::from_heap(object).into()
             };
 
             maybe!(initialize_instance_elements(cx, new_object, *self));
@@ -284,13 +284,15 @@ impl VirtualObject for Handle<Function> {
 
         let this_argument: Option<Handle<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                let object = maybe!(object_create_from_constructor::<ObjectValue>(
-                    cx,
-                    new_target,
-                    ObjectKind::OrdinaryObject,
-                    Intrinsic::ObjectPrototype
-                ))
-                .into();
+                let object = {
+                    let object = maybe!(object_create_from_constructor::<ObjectValue>(
+                        cx,
+                        new_target,
+                        ObjectKind::OrdinaryObject,
+                        Intrinsic::ObjectPrototype
+                    ));
+                    Handle::from_heap(object)
+                };
 
                 if self.is_default_constructor() {
                     maybe!(initialize_instance_elements(cx, object, *self));

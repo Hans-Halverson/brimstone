@@ -188,11 +188,14 @@ impl ObjectConstructor {
             return type_error_(cx, "prototype must be an object or null");
         };
 
-        let object = Handle::from_heap(object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            ObjectKind::OrdinaryObject,
-            proto,
-        ));
+        let object = {
+            let object = object_create_with_optional_proto::<ObjectValue>(
+                cx,
+                ObjectKind::OrdinaryObject,
+                proto,
+            );
+            Handle::from_heap(object)
+        };
 
         let properties = get_argument(cx, arguments, 1);
         if properties.is_undefined() {

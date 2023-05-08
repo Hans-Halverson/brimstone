@@ -48,7 +48,7 @@ impl ProxyObject {
         set_uninit!(object.is_callable, is_callable);
         set_uninit!(object.is_constructor, is_constructor);
 
-        object
+        Handle::from_heap(object)
     }
 
     pub fn handler(&self) -> Option<Handle<ObjectValue>> {

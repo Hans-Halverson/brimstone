@@ -227,11 +227,14 @@ pub fn class_definition_evaluation(
     };
 
     // Set up prototype and constructor
-    let proto = object_create_with_optional_proto::<ObjectValue>(
-        cx,
-        ObjectKind::OrdinaryObject,
-        proto_parent,
-    );
+    let proto = {
+        let object = object_create_with_optional_proto::<ObjectValue>(
+            cx,
+            ObjectKind::OrdinaryObject,
+            proto_parent,
+        );
+        Handle::from_heap(object)
+    };
 
     current_execution_context.set_lexical_env(class_env.into_dyn_env());
     current_execution_context.set_private_env(Some(class_private_env));

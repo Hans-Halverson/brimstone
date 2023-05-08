@@ -15,7 +15,7 @@ use brimstone::{
                 global_object::set_default_global_bindings, intrinsics::Intrinsic,
             },
             object_value::ObjectValue,
-            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
+            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm,
         },
     },
     must,

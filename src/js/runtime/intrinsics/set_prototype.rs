@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, gc::HandleValue,
-        object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
-        type_utilities::is_callable, value::Value, Context, Handle,
+        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
+        value::Value, Context, Handle,
     },
     maybe,
 };
@@ -46,11 +46,11 @@ impl SetPrototype {
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
         // 24.2.3.11 Set.prototype [ @@iterator ]
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
         // 24.2.3.12 Set.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

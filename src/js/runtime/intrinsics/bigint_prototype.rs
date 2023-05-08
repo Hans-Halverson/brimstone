@@ -6,7 +6,6 @@ use crate::{
         gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
-        property_key::PropertyKey,
         realm::Realm,
         type_utilities::to_integer_or_infinity,
         value::BigIntValue,
@@ -30,7 +29,7 @@ impl BigIntPrototype {
         object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // 21.2.3.5 BigInt.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

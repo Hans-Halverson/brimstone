@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
-        property_key::PropertyKey,
         realm::Realm,
         string_value::{CodePointIterator, StringValue},
         value::Value,
@@ -57,7 +56,7 @@ impl StringIteratorPrototype {
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
         // 22.1.5.1.2 %StringIteratorPrototype% [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string(String::from("String Iterator")).into();
         object.set_property(
             cx,

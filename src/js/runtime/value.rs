@@ -8,7 +8,7 @@ use crate::set_uninit;
 
 use super::{
     context::Context,
-    gc::{Gc, GcDeref, Handle, HeapPtr},
+    gc::{GcDeref, Handle, HeapPtr},
     object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -300,33 +300,33 @@ impl Value {
     }
 
     #[inline]
-    pub const fn as_pointer(&self) -> Gc<HeapItem> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_pointer(&self) -> HeapPtr<HeapItem> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub const fn as_object(&self) -> Gc<ObjectValue> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_object(&self) -> HeapPtr<ObjectValue> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub const fn as_string(&self) -> Gc<StringValue> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_string(&self) -> HeapPtr<StringValue> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub const fn as_symbol(&self) -> Gc<SymbolValue> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_symbol(&self) -> HeapPtr<SymbolValue> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub const fn as_bigint(&self) -> Gc<BigIntValue> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_bigint(&self) -> HeapPtr<BigIntValue> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     #[inline]
-    pub const fn as_accessor(&self) -> Gc<AccessorValue> {
-        Gc::from_ptr(self.restore_pointer_bits())
+    pub const fn as_accessor(&self) -> HeapPtr<AccessorValue> {
+        HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
     // Constructors
@@ -382,27 +382,27 @@ impl Value {
     }
 
     #[inline]
-    pub fn object(value: Gc<ObjectValue>) -> Value {
+    pub fn object(value: HeapPtr<ObjectValue>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
-    pub fn string(value: Gc<StringValue>) -> Value {
+    pub fn string(value: HeapPtr<StringValue>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
-    pub fn symbol(value: Gc<SymbolValue>) -> Value {
+    pub fn symbol(value: HeapPtr<SymbolValue>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
-    pub fn bigint(value: Gc<BigIntValue>) -> Value {
+    pub fn bigint(value: HeapPtr<BigIntValue>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
     #[inline]
-    pub fn accessor(value: Gc<AccessorValue>) -> Value {
+    pub fn accessor(value: HeapPtr<AccessorValue>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
@@ -413,7 +413,7 @@ impl Value {
 
     #[inline]
     pub fn uninit() -> Value {
-        Value::symbol(Gc::uninit())
+        Value::symbol(HeapPtr::uninit())
     }
 }
 
@@ -504,32 +504,32 @@ impl From<f64> for Value {
     }
 }
 
-impl<T: Into<Gc<ObjectValue>>> From<T> for Value {
+impl<T: Into<HeapPtr<ObjectValue>>> From<T> for Value {
     fn from(value: T) -> Self {
         Value::object(value.into())
     }
 }
 
-impl From<Gc<StringValue>> for Value {
-    fn from(value: Gc<StringValue>) -> Self {
+impl From<HeapPtr<StringValue>> for Value {
+    fn from(value: HeapPtr<StringValue>) -> Self {
         Value::string(value)
     }
 }
 
-impl From<Gc<SymbolValue>> for Value {
-    fn from(value: Gc<SymbolValue>) -> Self {
+impl From<HeapPtr<SymbolValue>> for Value {
+    fn from(value: HeapPtr<SymbolValue>) -> Self {
         Value::symbol(value)
     }
 }
 
-impl From<Gc<BigIntValue>> for Value {
-    fn from(value: Gc<BigIntValue>) -> Self {
+impl From<HeapPtr<BigIntValue>> for Value {
+    fn from(value: HeapPtr<BigIntValue>) -> Self {
         Value::bigint(value)
     }
 }
 
-impl From<Gc<AccessorValue>> for Value {
-    fn from(value: Gc<AccessorValue>) -> Self {
+impl From<HeapPtr<AccessorValue>> for Value {
+    fn from(value: HeapPtr<AccessorValue>) -> Self {
         Value::accessor(value)
     }
 }
@@ -550,12 +550,15 @@ impl SymbolValue {
         set_uninit!(symbol.description, description.map(|desc| desc.get_()));
         set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
 
-        symbol
+        Handle::from_heap(symbol)
     }
 
-    pub fn description(&self) -> Option<Gc<StringValue>> {
-        // Intentionally break lifetime, as SymbolValues are managed by the Gc heap
+    pub fn description_ptr(&self) -> Option<HeapPtr<StringValue>> {
         self.description
+    }
+
+    pub fn description(&self) -> Option<Handle<StringValue>> {
+        self.description.map(Handle::from_heap)
     }
 }
 
@@ -565,19 +568,19 @@ impl hash::Hash for SymbolValue {
     }
 }
 
-impl hash::Hash for Gc<SymbolValue> {
+impl hash::Hash for HeapPtr<SymbolValue> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.hash_code.hash(state)
     }
 }
 
-impl PartialEq for Gc<SymbolValue> {
+impl PartialEq for HeapPtr<SymbolValue> {
     fn eq(&self, other: &Self) -> bool {
         self.ptr_eq(other)
     }
 }
 
-impl Eq for Gc<SymbolValue> {}
+impl Eq for HeapPtr<SymbolValue> {}
 
 impl GcDeref for SymbolValue {}
 
@@ -594,11 +597,11 @@ impl BigIntValue {
         set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
         set_uninit!(bigint.value, value);
 
-        bigint
+        Handle::from_heap(bigint)
     }
 }
 
-impl Gc<BigIntValue> {
+impl BigIntValue {
     pub fn bigint<'a, 'b>(&'a self) -> &'b BigInt {
         // Intentionally break lifetime, as BigIntValues are managed by the Gc heap
         // unsafe { std::mem::transmute(&self.0) }
@@ -629,7 +632,7 @@ impl AccessorValue {
         set_uninit!(accessor.get, get.map(|v| v.get_()));
         set_uninit!(accessor.set, set.map(|v| v.get_()));
 
-        accessor
+        Handle::from_heap(accessor)
     }
 }
 

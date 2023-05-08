@@ -51,7 +51,7 @@ impl TypedArrayConstructor {
         func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
         // 23.2.2.4 get %TypedArray% [ @@species ]
-        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func.into()
@@ -94,7 +94,7 @@ impl TypedArrayConstructor {
         let source = get_argument(arguments, 0);
         let this_argument = get_argument(arguments, 2);
 
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         let iterator = maybe!(get_method(cx, source, iterator_key));
 
         // If source is iterable then add all values from iterator
@@ -565,7 +565,7 @@ macro_rules! create_typed_array_constructor {
                     );
                 }
 
-                let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+                let iterator_key = cx.well_known_symbols.iterator();
                 let iterator = maybe!(get_method(cx, argument.into(), iterator_key));
 
                 if let Some(iterator) = iterator {

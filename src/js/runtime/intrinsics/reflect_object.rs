@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
-        property_key::PropertyKey,
         realm::Realm,
         type_utilities::{is_callable, is_constructor, to_property_key},
         value::Value,
@@ -55,7 +54,7 @@ impl ReflectObject {
         object.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
 
         // 28.1.14 Reflect [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let reflect_name_value = cx.names.reflect().as_string().into();
         object.set_property(
             cx,

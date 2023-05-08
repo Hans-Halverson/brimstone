@@ -154,7 +154,7 @@ impl ArrayPrototype {
             .intrinsic_data_prop(cx, cx.names.values(), values_function);
 
         // 23.1.3.34 Array.prototype [ @@iterator ]
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         array.object().set_property(
             cx,
             iterator_key,
@@ -162,7 +162,7 @@ impl ArrayPrototype {
         );
 
         // 23.1.3.35 Array.prototype [ @@unscopables ]
-        let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
+        let unscopables_key = cx.well_known_symbols.unscopables();
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
         array
             .object()
@@ -227,8 +227,7 @@ impl ArrayPrototype {
             return false.into();
         }
 
-        let is_concat_spreadable_key =
-            PropertyKey::symbol(cx.well_known_symbols.is_concat_spreadable);
+        let is_concat_spreadable_key = cx.well_known_symbols.is_concat_spreadable();
         let is_spreadable = maybe!(get(cx, object.as_object(), is_concat_spreadable_key));
 
         if !is_spreadable.is_undefined() {

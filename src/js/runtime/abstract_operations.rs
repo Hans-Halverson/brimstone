@@ -386,7 +386,7 @@ pub fn species_constructor(
         return type_error_(cx, "constructor must be a function");
     }
 
-    let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+    let species_key = cx.well_known_symbols.species();
     let species = maybe!(get(cx, constructor.as_object(), species_key));
 
     if species.is_nullish() {

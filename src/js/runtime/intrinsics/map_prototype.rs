@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, gc::HandleValue,
-        object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
-        type_utilities::is_callable, value::Value, Context, Handle,
+        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
+        value::Value, Context, Handle,
     },
     maybe,
 };
@@ -47,11 +47,11 @@ impl MapPrototype {
         object.intrinsic_func(cx, cx.names.values(), Self::values, 0, realm);
 
         // 24.1.3.12 Map.prototype [ @@iterator ]
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(entries_function, true, false, true));
 
         // 24.1.3.13 Map.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

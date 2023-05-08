@@ -3,7 +3,6 @@ use crate::{
         abstract_operations::{call_object, get_method},
         error::type_error_,
         get,
-        property_key::PropertyKey,
     },
     maybe, maybe_, maybe__, must,
 };
@@ -42,13 +41,13 @@ pub fn get_iterator(
         method
     } else {
         if hint == IteratorHint::Async {
-            let async_iterator_key = PropertyKey::symbol(cx.well_known_symbols.async_iterator);
+            let async_iterator_key = cx.well_known_symbols.async_iterator();
             let method = maybe!(get_method(cx, object, async_iterator_key));
 
             if let Some(method) = method {
                 method
             } else {
-                let sync_iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+                let sync_iterator_key = cx.well_known_symbols.iterator();
                 let sync_method = maybe!(get_method(cx, object, sync_iterator_key));
                 let sync_iterator_record =
                     maybe!(get_iterator(cx, object, IteratorHint::Sync, sync_method));
@@ -56,7 +55,7 @@ pub fn get_iterator(
                 return create_async_from_sync_iterator(sync_iterator_record).into();
             }
         } else {
-            let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+            let iterator_key = cx.well_known_symbols.iterator();
             let method = maybe!(get_method(cx, object, iterator_key));
 
             if let Some(method) = method {

@@ -45,7 +45,7 @@ pub fn to_console_string(cx: &mut Context, value: HandleValue) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
             ObjectKind::String => format!("{}", value.as_string()),
-            ObjectKind::Symbol => match value.as_symbol().description() {
+            ObjectKind::Symbol => match value.as_symbol().description_ptr() {
                 None => String::from("Symbol()"),
                 Some(description) => format!("Symbol({})", description),
             },

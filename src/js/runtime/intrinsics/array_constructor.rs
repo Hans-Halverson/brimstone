@@ -49,7 +49,7 @@ impl ArrayConstructor {
         func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
         // 23.1.2.5 get Array [ @@species ]
-        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func

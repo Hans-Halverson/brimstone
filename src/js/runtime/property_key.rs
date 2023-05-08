@@ -197,7 +197,7 @@ impl fmt::Display for HeapPropertyKey {
         } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
             self.as_string().fmt(f)
         } else {
-            match self.as_symbol().description() {
+            match self.as_symbol().description_ptr() {
                 None => write!(f, "Symbol()"),
                 Some(description) => write!(f, "Symbol({})", description),
             }

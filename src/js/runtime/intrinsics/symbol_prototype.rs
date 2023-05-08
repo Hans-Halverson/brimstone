@@ -31,7 +31,7 @@ impl SymbolPrototype {
         object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // [Symbol.toPrimitive] property
-        let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
+        let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_name = cx.alloc_string(String::from("[Symbol.toPrimitive]"));
         let to_primitive_name_key = PropertyKey::string(cx, to_primitive_name);
         let to_primitive_func = BuiltinFunction::create(
@@ -51,7 +51,7 @@ impl SymbolPrototype {
         );
 
         // [Symbol.toStringTag] property
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

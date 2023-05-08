@@ -87,11 +87,11 @@ impl TypedArrayPrototype {
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
         // 23.2.3.32 %TypedArray%.prototype [ @@iterator ]
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
         // 23.2.3.33 get %TypedArray%.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm);
 
         object.into()

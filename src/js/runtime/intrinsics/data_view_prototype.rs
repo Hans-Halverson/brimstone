@@ -7,7 +7,7 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::{to_bigint, to_boolean, to_index, to_number},
-        Context, EvalResult, Handle, PropertyKey, Value,
+        Context, EvalResult, Handle, Value,
     },
     maybe,
 };
@@ -59,7 +59,7 @@ impl DataViewPrototype {
         object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm);
 
         // 25.3.4.25 DataView.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

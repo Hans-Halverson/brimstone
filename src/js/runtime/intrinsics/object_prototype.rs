@@ -9,7 +9,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
         realm::Realm,
         string_value::StringValue,
         type_utilities::{
@@ -151,7 +150,7 @@ impl ObjectPrototype {
 
         let is_array = maybe!(is_array(cx, object.into()));
 
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let tag = maybe!(get(cx, object, to_string_tag_key));
 
         let tag_string = if tag.is_string() {

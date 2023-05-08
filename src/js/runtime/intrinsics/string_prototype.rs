@@ -16,7 +16,7 @@ use crate::{
             is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
         },
         value::Value,
-        Context, Handle, PropertyKey,
+        Context, Handle,
     },
     maybe,
 };
@@ -110,7 +110,7 @@ impl StringPrototype {
             .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // 22.1.3.34 String.prototype [ @@iterator ]
-        let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+        let iterator_key = cx.well_known_symbols.iterator();
         object
             .object()
             .intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
@@ -437,7 +437,7 @@ impl StringPrototype {
 
         // Use the @@split method of the separator if one exists
         if !separator_argument.is_nullish() {
-            let split_key = PropertyKey::symbol(cx.well_known_symbols.split);
+            let split_key = cx.well_known_symbols.split();
             let splitter = maybe!(get_method(cx, separator_argument, split_key));
 
             if let Some(splitter) = splitter {

@@ -1,4 +1,4 @@
-use super::{context::Context, property_key::PropertyKey, value::SymbolValue, Gc};
+use super::{context::Context, property_key::PropertyKey, value::SymbolValue};
 
 // All built-in string property keys referenced in the spec
 macro_rules! builtin_names {
@@ -300,7 +300,7 @@ macro_rules! builtin_symbols {
     ( $( ($rust_name:ident, $description:expr) ),* ) => {
         pub struct BuiltinSymbols {
             $(
-                pub $rust_name: Gc<SymbolValue>,
+                pub $rust_name: PropertyKey,
             )*
         }
 
@@ -308,10 +308,17 @@ macro_rules! builtin_symbols {
             pub fn uninit() -> BuiltinSymbols {
                 BuiltinSymbols {
                     $(
-                        $rust_name: Gc::uninit(),
+                        $rust_name: PropertyKey::uninit(),
                     )*
                 }
             }
+
+            $(
+                #[inline]
+                pub fn $rust_name(&self) -> PropertyKey {
+                    self.$rust_name.clone()
+                }
+            )*
         }
 
         impl Context {
@@ -319,7 +326,7 @@ macro_rules! builtin_symbols {
                 $(
                     self.well_known_symbols.$rust_name = {
                         let description = self.alloc_string(String::from($description));
-                        SymbolValue::new(self, Some(description))
+                        PropertyKey::symbol(SymbolValue::new(self, Some(description)))
                     };
                 )*
             }

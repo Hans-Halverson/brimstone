@@ -8,7 +8,6 @@ use crate::{
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,
-        property_key::PropertyKey,
         realm::Realm,
         type_utilities::{to_number, to_uint32},
         value::Value,
@@ -58,7 +57,7 @@ impl MathObject {
         );
 
         // 21.3.1.9 Math [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let math_name_value = cx.names.math().as_string().into();
         object.set_property(
             cx,

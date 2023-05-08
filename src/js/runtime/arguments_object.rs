@@ -215,7 +215,7 @@ pub fn create_unmapped_arguments_object(
     }
 
     // Set @@iterator to Array.prototype.values
-    let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+    let iterator_key = cx.well_known_symbols.iterator();
     let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
     let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
     must!(define_property_or_throw(cx, object, iterator_key, iterator_desc));
@@ -291,7 +291,7 @@ pub fn create_mapped_arguments_object(
     }
 
     // Set @@iterator to Array.prototype.values
-    let iterator_key = PropertyKey::symbol(cx.well_known_symbols.iterator);
+    let iterator_key = cx.well_known_symbols.iterator();
     let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
     let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
     must!(define_property_or_throw(cx, object.into(), iterator_key, iterator_desc));

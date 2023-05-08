@@ -69,7 +69,7 @@ impl Environment for Handle<ObjectEnvironment> {
         }
 
         // Ignore properties in @@unscopables
-        let unscopables_key = PropertyKey::symbol(cx.well_known_symbols.unscopables);
+        let unscopables_key = cx.well_known_symbols.unscopables();
         let unscopables = maybe!(get(cx, binding_object, unscopables_key));
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();

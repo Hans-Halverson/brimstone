@@ -1,6 +1,6 @@
 use crate::js::runtime::{
     error::type_error_, gc::HandleValue, object_value::ObjectValue, property::Property,
-    realm::Realm, Context, EvalResult, Handle, PropertyKey, Value,
+    realm::Realm, Context, EvalResult, Handle, Value,
 };
 
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
@@ -17,7 +17,7 @@ impl ArrayBufferPrototype {
         object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
 
         // 25.1.5.4 ArrayBuffer.prototype [ @@toStringTag ]
-        let to_string_tag_key = PropertyKey::symbol(cx.well_known_symbols.to_string_tag);
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
             to_string_tag_key,

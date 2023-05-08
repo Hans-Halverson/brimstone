@@ -154,7 +154,7 @@ pub fn array_species_create(
     }
 
     if constructor.is_object() {
-        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        let species_key = cx.well_known_symbols.species();
         constructor = maybe!(get(cx, constructor.as_object(), species_key));
 
         if constructor.is_null() {

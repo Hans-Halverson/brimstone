@@ -5,7 +5,7 @@ use std::{
 
 use crate::js::runtime::Context;
 
-use super::pointer::Gc;
+use super::HeapPtr;
 
 pub struct Heap {
     /// Pointer to the start of the heap
@@ -35,7 +35,7 @@ impl Heap {
             let current = start.add(size_of::<HeapInfo>());
             let end = start.add(DEFAULT_HEAP_SIZE);
 
-            HeapInfo::init(HeapInfo::from_heap_ptr(start));
+            HeapInfo::init(HeapInfo::from_raw_heap_ptr(start));
 
             Heap { start, current, end, layout }
         }
@@ -46,14 +46,14 @@ impl Heap {
         unsafe { &mut *(self.start as *const _ as *mut HeapInfo) }
     }
 
-    pub fn alloc_uninit<T>(&mut self) -> Gc<T> {
+    pub fn alloc_uninit<T>(&mut self) -> HeapPtr<T> {
         self.alloc_uninit_with_size::<T>(size_of::<T>(), align_of::<T>())
     }
 
     /// Allocate an object of a given type with the specified size in bytes. When called directly,
     /// is used to allocate dynamically sized objects.
     #[inline]
-    pub fn alloc_uninit_with_size<T>(&mut self, size: usize, align: usize) -> Gc<T> {
+    pub fn alloc_uninit_with_size<T>(&mut self, size: usize, align: usize) -> HeapPtr<T> {
         unsafe {
             // First align start offset to alignment of type
             let start = self.current.add(self.current.align_offset(align));
@@ -68,7 +68,7 @@ impl Heap {
             self.current = next_current;
             let start = start.cast_mut().cast();
 
-            Gc::from_ptr(start)
+            HeapPtr::from_ptr(start)
         }
     }
 }
@@ -93,12 +93,12 @@ impl HeapInfo {
     }
 
     #[inline]
-    pub fn from_gc<'a, T>(heap_ptr: Gc<T>) -> &'a mut HeapInfo {
-        HeapInfo::from_heap_ptr(heap_ptr.as_ptr())
+    pub fn from_heap_ptr<'a, T>(heap_ptr: HeapPtr<T>) -> &'a mut HeapInfo {
+        HeapInfo::from_raw_heap_ptr(heap_ptr.as_ptr())
     }
 
     #[inline]
-    pub fn from_heap_ptr<'a, T>(heap_ptr: *const T) -> &'a mut HeapInfo {
+    pub fn from_raw_heap_ptr<'a, T>(heap_ptr: *const T) -> &'a mut HeapInfo {
         const HEAP_BASE_MASK: usize = !(HEAP_ALIGNMENT - 1);
         let heap_base = ((heap_ptr as usize) & HEAP_BASE_MASK) as *mut HeapInfo;
 

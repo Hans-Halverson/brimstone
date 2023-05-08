@@ -43,7 +43,7 @@ pub fn to_primitive(
         return value.into();
     }
 
-    let to_primitive_key = PropertyKey::symbol(cx.well_known_symbols.to_primitive);
+    let to_primitive_key = cx.well_known_symbols.to_primitive();
     let exotic_prim = maybe!(get_method(cx, value, to_primitive_key));
     match exotic_prim {
         Some(exotic_prim) => {
@@ -729,7 +729,7 @@ pub fn is_regexp(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
     }
 
     let object = value.as_object();
-    let match_key = PropertyKey::symbol(cx.well_known_symbols.match_);
+    let match_key = cx.well_known_symbols.match_();
     let matcher = maybe!(get(cx, object, match_key));
 
     if !matcher.is_undefined() {

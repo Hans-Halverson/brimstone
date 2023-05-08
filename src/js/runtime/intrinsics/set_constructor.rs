@@ -13,7 +13,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
-        property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
         value::ValueSet,
@@ -80,7 +79,7 @@ impl SetConstructor {
             ),
         );
 
-        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func

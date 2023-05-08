@@ -1490,7 +1490,7 @@ pub fn eval_instanceof_expression(
         return type_error_(cx, "invalid instanceof operand");
     }
 
-    let has_instance_key = PropertyKey::symbol(cx.well_known_symbols.has_instance);
+    let has_instance_key = cx.well_known_symbols.has_instance();
     let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));

@@ -80,7 +80,7 @@ impl MapConstructor {
             ),
         );
 
-        let species_key = PropertyKey::symbol(cx.well_known_symbols.species);
+        let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func

@@ -2,7 +2,7 @@
 #[macro_export]
 macro_rules! cast_from_value_fn {
     ($type:ident, $name:expr) => {
-        pub fn cast_from_value(cx: &mut Context, value: Value) -> EvalResult<Gc<$type>> {
+        pub fn cast_from_value(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<$type>> {
             if !value.is_object() {
                 return type_error_(cx, concat!("expected object of type ", $name));
             }

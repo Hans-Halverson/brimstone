@@ -14,7 +14,7 @@ use brimstone::js::{
     self,
     runtime::{
         eval_module, eval_script, get, initialize_host_defined_realm, to_console_string, to_string,
-        Completion, CompletionKind, Context, EvalResult, Gc, Realm, Value,
+        Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
     },
 };
 
@@ -236,7 +236,7 @@ fn parse_file(
     }
 }
 
-fn load_harness_test_file(cx: &mut Context, realm: Gc<Realm>, test262_root: &str, file: &str) {
+fn load_harness_test_file(cx: &mut Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
     let mut ast_and_source = parse_file(full_path.to_str().unwrap(), None, test262_root, false)

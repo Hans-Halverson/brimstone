@@ -13,7 +13,7 @@ pub mod error;
 pub mod eval;
 mod execution_context;
 pub mod function;
-mod gc;
+pub mod gc;
 mod interned_strings;
 pub mod intrinsics;
 mod iterator;

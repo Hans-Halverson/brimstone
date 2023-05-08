@@ -6,6 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error_,
         function::get_argument,
+        gc::HandleValue,
         get,
         interned_strings::InternedStrings,
         intrinsics::array_iterator::{ArrayIterator, ArrayIteratorKind},
@@ -17,7 +18,7 @@ use crate::{
             is_callable, is_strictly_equal, same_value_zero, to_bigint, to_boolean,
             to_integer_or_infinity, to_number,
         },
-        Context, EvalResult, Gc, PropertyKey, Realm, Value,
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
     maybe, must,
 };
@@ -31,7 +32,7 @@ pub struct TypedArrayPrototype;
 
 impl TypedArrayPrototype {
     // 23.2.3 Properties of the %TypedArray% Prototype Object
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -99,10 +100,10 @@ impl TypedArrayPrototype {
     // 23.2.3.1 %TypedArray%.prototype.at
     fn at(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -129,10 +130,10 @@ impl TypedArrayPrototype {
     // 23.2.3.2 get %TypedArray%.prototype.buffer
     fn buffer(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
         typed_array.viewed_array_buffer().into()
     }
@@ -140,10 +141,10 @@ impl TypedArrayPrototype {
     // 23.2.3.3 get %TypedArray%.prototype.byteLength
     fn byte_length(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
 
         if typed_array.viewed_array_buffer().is_detached() {
@@ -156,10 +157,10 @@ impl TypedArrayPrototype {
     // 23.2.3.4 get %TypedArray%.prototype.byteOffset
     fn byte_offset(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
 
         if typed_array.viewed_array_buffer().is_detached() {
@@ -172,10 +173,10 @@ impl TypedArrayPrototype {
     // 23.2.3.6 %TypedArray%.prototype.copyWithin
     fn copy_within(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -276,10 +277,10 @@ impl TypedArrayPrototype {
     // 23.2.3.7 %TypedArray%.prototype.entries
     fn entries(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value)).into_object_value();
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::KeyAndValue).into()
     }
@@ -287,10 +288,10 @@ impl TypedArrayPrototype {
     // 23.2.3.8 %TypedArray%.prototype.every
     fn every(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -322,10 +323,10 @@ impl TypedArrayPrototype {
     // 23.2.3.9 %TypedArray%.prototype.fill
     fn fill(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -378,10 +379,10 @@ impl TypedArrayPrototype {
     // 23.2.3.10 %TypedArray%.prototype.filter
     fn filter(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -431,10 +432,10 @@ impl TypedArrayPrototype {
     // 23.2.3.11 %TypedArray%.prototype.find
     fn find(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -466,10 +467,10 @@ impl TypedArrayPrototype {
     // 23.2.3.12 %TypedArray%.prototype.findIndex
     fn find_index(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -501,10 +502,10 @@ impl TypedArrayPrototype {
     // 23.2.3.13 %TypedArray%.prototype.forEach
     fn for_each(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -533,10 +534,10 @@ impl TypedArrayPrototype {
     // 23.2.3.14 %TypedArray%.prototype.includes
     fn includes(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -575,10 +576,10 @@ impl TypedArrayPrototype {
     // 23.2.3.15 %TypedArray%.prototype.indexOf
     fn index_of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -618,10 +619,10 @@ impl TypedArrayPrototype {
     // 23.2.3.16 %TypedArray%.prototype.join
     fn join(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -655,10 +656,10 @@ impl TypedArrayPrototype {
     // 23.2.3.17 %TypedArray%.prototype.keys
     fn keys(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value)).into_object_value();
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Key).into()
     }
@@ -666,10 +667,10 @@ impl TypedArrayPrototype {
     // 23.2.3.18 %TypedArray%.prototype.lastIndexOf
     fn last_index_of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -717,10 +718,10 @@ impl TypedArrayPrototype {
     // 23.2.3.19 get %TypedArray%.prototype.length
     fn length(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
 
         if typed_array.viewed_array_buffer().is_detached() {
@@ -733,10 +734,10 @@ impl TypedArrayPrototype {
     // 23.2.3.20 %TypedArray%.prototype.map
     fn map(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -773,10 +774,10 @@ impl TypedArrayPrototype {
     // 23.2.3.21 %TypedArray%.prototype.reduce
     fn reduce(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -816,10 +817,10 @@ impl TypedArrayPrototype {
     // 23.2.3.22 %TypedArray%.prototype.reduceRight
     fn reduce_right(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -859,10 +860,10 @@ impl TypedArrayPrototype {
     // 23.2.3.23 %TypedArray%.prototype.reverse
     fn reverse(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -892,10 +893,10 @@ impl TypedArrayPrototype {
     // 23.2.3.25 %TypedArray%.prototype.slice
     fn slice(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
@@ -988,10 +989,10 @@ impl TypedArrayPrototype {
     // 23.2.3.26 %TypedArray%.prototype.some
     fn some(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -1023,10 +1024,10 @@ impl TypedArrayPrototype {
     // 23.2.3.28 %TypedArray%.prototype.subarray
     fn subarray(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
         let length = typed_array.array_length() as u64;
         let buffer = typed_array.viewed_array_buffer();
@@ -1082,10 +1083,10 @@ impl TypedArrayPrototype {
     // 23.2.3.29 %TypedArray%.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
@@ -1116,10 +1117,10 @@ impl TypedArrayPrototype {
     // 23.2.3.31 %TypedArray%.prototype.values
     fn values(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let typed_array = maybe!(validate_typed_array(cx, this_value)).into_object_value();
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Value).into()
     }
@@ -1127,10 +1128,10 @@ impl TypedArrayPrototype {
     // 23.2.3.33 get %TypedArray%.prototype [ @@toStringTag ]
     pub fn get_to_string_tag(
         cx: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if !this_value.is_object() {
             return Value::undefined().into();
         }
@@ -1151,7 +1152,7 @@ macro_rules! create_typed_array_prototype {
 
         impl $prototype {
             // 23.2.7 Properties of the TypedArray Prototype Objects
-            pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let mut object = ObjectValue::new(
                     cx,
                     Some(realm.get_intrinsic(Intrinsic::TypedArrayPrototype)),
@@ -1177,7 +1178,7 @@ macro_rules! create_typed_array_prototype {
 }
 
 #[inline]
-fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<DynTypedArray> {
+fn require_typed_array(cx: &mut Context, value: HandleValue) -> EvalResult<DynTypedArray> {
     if !value.is_object() {
         return type_error_(cx, "expected typed array");
     }
@@ -1194,16 +1195,16 @@ fn require_typed_array(cx: &mut Context, value: Value) -> EvalResult<DynTypedArr
 fn typed_array_species_create_object(
     cx: &mut Context,
     exemplar: DynTypedArray,
-    arguments: &[Value],
+    arguments: &[HandleValue],
     length: Option<usize>,
-) -> EvalResult<Gc<ObjectValue>> {
+) -> EvalResult<Handle<ObjectValue>> {
     let result = maybe!(typed_array_species_create(cx, exemplar, arguments, length));
     result.into_object_value().into()
 }
 fn typed_array_species_create(
     cx: &mut Context,
     exemplar: DynTypedArray,
-    arguments: &[Value],
+    arguments: &[HandleValue],
     length: Option<usize>,
 ) -> EvalResult<DynTypedArray> {
     let intrinsic = match exemplar.kind() {
@@ -1236,18 +1237,18 @@ fn typed_array_species_create(
 // 23.2.4.2 TypedArrayCreate
 pub fn typed_array_create_object(
     cx: &mut Context,
-    constructor: Gc<ObjectValue>,
-    arguments: &[Value],
+    constructor: Handle<ObjectValue>,
+    arguments: &[HandleValue],
     length: Option<usize>,
-) -> EvalResult<Gc<ObjectValue>> {
+) -> EvalResult<Handle<ObjectValue>> {
     let result = maybe!(typed_array_create(cx, constructor, arguments, length));
     result.into_object_value().into()
 }
 
 pub fn typed_array_create(
     cx: &mut Context,
-    constructor: Gc<ObjectValue>,
-    arguments: &[Value],
+    constructor: Handle<ObjectValue>,
+    arguments: &[HandleValue],
     length: Option<usize>,
 ) -> EvalResult<DynTypedArray> {
     let new_typed_array = maybe!(construct(cx, constructor, arguments, None));
@@ -1265,7 +1266,7 @@ pub fn typed_array_create(
 
 // 23.2.4.3 ValidateTypedArray
 #[inline]
-fn validate_typed_array(cx: &mut Context, value: Value) -> EvalResult<DynTypedArray> {
+fn validate_typed_array(cx: &mut Context, value: HandleValue) -> EvalResult<DynTypedArray> {
     let typed_array = maybe!(require_typed_array(cx, value));
 
     if typed_array.viewed_array_buffer().is_detached() {

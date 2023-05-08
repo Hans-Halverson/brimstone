@@ -9,7 +9,7 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::Gc,
+        gc::{Gc, HandleValue},
         iterator::iter_iterator_method_values,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
@@ -28,7 +28,7 @@ use crate::{
             to_int32, to_int8, to_number, to_uint16, to_uint32, to_uint8, to_uint8_clamp,
         },
         value::{BigIntValue, Value},
-        Context,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -52,9 +52,11 @@ pub trait TypedArray {
 
     fn byte_offset(&self) -> usize;
 
-    fn viewed_array_buffer(&self) -> Gc<ArrayBufferObject>;
+    fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject>;
 
-    fn name(&self, cx: &mut Context) -> Gc<StringValue>;
+    fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject>;
+
+    fn name(&self, cx: &mut Context) -> Handle<StringValue>;
 
     fn content_type(&self) -> ContentType;
 
@@ -65,7 +67,7 @@ pub trait TypedArray {
     fn read_element_value(
         &self,
         cx: &mut Context,
-        array_buffer: Gc<ArrayBufferObject>,
+        array_buffer: HeapPtr<ArrayBufferObject>,
         byte_index: usize,
     ) -> Value;
 }
@@ -73,7 +75,7 @@ pub trait TypedArray {
 heap_trait_object!(TypedArray, DynTypedArray, HeapDynTypedArray, into_dyn_typed_array);
 
 impl DynTypedArray {
-    pub fn into_object_value(&self) -> Gc<ObjectValue> {
+    pub fn into_object_value(&self) -> Handle<ObjectValue> {
         self.data.cast()
     }
 }

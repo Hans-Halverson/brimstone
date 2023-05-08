@@ -9,12 +9,13 @@ use brimstone::{
             error::{syntax_error_, type_error_},
             eval::script::eval_script,
             function::get_argument,
+            gc::HandleValue,
             intrinsics::{
                 array_buffer_constructor::ArrayBufferObject,
                 global_object::set_default_global_bindings, intrinsics::Intrinsic,
             },
             object_value::ObjectValue,
-            Context, EvalResult, Gc, PropertyDescriptor, PropertyKey, Realm, Value,
+            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
         },
     },
     must,
@@ -23,7 +24,7 @@ use brimstone::{
 pub struct Test262Object;
 
 impl Test262Object {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -43,10 +44,10 @@ impl Test262Object {
         let detach_array_buffer_key = PropertyKey::string(cx, detach_array_buffer_string);
         object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
 
-        object
+        Handle::from_heap(object)
     }
 
-    pub fn install(cx: &mut Context, realm: Gc<Realm>, test_262_object: Gc<ObjectValue>) {
+    pub fn install(cx: &mut Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
         let test_262_string = cx.alloc_string(String::from("$262"));
         let test_262_key = PropertyKey::string(cx, test_262_string);
         let desc = PropertyDescriptor::data(test_262_object.into(), true, false, true);
@@ -55,10 +56,10 @@ impl Test262Object {
 
     fn create_realm(
         cx: &mut Context,
-        _: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         // Create a new realm
         let mut realm = Realm::new(cx);
         realm.set_global_object(cx, None, None);
@@ -73,10 +74,10 @@ impl Test262Object {
 
     fn eval_script(
         cx: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let script_text = get_argument(arguments, 0);
         if !script_text.is_string() {
             return type_error_(cx, "expected string");
@@ -113,10 +114,10 @@ impl Test262Object {
 
     fn detach_array_buffer(
         _: &mut Context,
-        _: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         let value = get_argument(arguments, 0);
         if !value.is_object() {
             return Value::undefined().into();

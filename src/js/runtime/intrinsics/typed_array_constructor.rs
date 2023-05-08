@@ -5,7 +5,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::Gc,
+        gc::HandleValue,
         get,
         intrinsics::typed_array_prototype::typed_array_create_object,
         iterator::iter_iterator_method_values,
@@ -13,7 +13,7 @@ use crate::{
         property::Property,
         type_utilities::{is_callable, is_constructor, to_object},
         value::Value,
-        Context, PropertyKey, Realm,
+        Context, Handle, PropertyKey, Realm,
     },
     maybe, must,
 };
@@ -24,7 +24,7 @@ use super::{intrinsics::Intrinsic, typed_array_prototype::typed_array_create};
 pub struct TypedArrayConstructor;
 
 impl TypedArrayConstructor {
-    pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<ObjectValue> {
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -60,20 +60,20 @@ impl TypedArrayConstructor {
     // 23.2.1.1 %TypedArray%
     fn construct(
         cx: &mut Context,
-        _: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        _: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         type_error_(cx, "TypedArray constructor is abstract and cannot be called")
     }
 
     // 23.2.2.1 %TypedArray%.from
     fn from(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if !is_constructor(this_value) {
             return type_error_(cx, "TypedArray.from must be called on constructor");
         }
@@ -163,10 +163,10 @@ impl TypedArrayConstructor {
     // 23.2.2.2 %TypedArray%.of
     fn of(
         cx: &mut Context,
-        this_value: Value,
-        arguments: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        arguments: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         if !is_constructor(this_value) {
             return type_error_(cx, "TypedArray.of must be called on constructor");
         }
@@ -189,10 +189,10 @@ impl TypedArrayConstructor {
     // 23.2.2.4 get %TypedArray% [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: Value,
-        _: &[Value],
-        _: Option<Gc<ObjectValue>>,
-    ) -> EvalResult<Value> {
+        this_value: HandleValue,
+        _: &[HandleValue],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<HandleValue> {
         this_value.into()
     }
 }
@@ -208,7 +208,7 @@ macro_rules! create_typed_array_constructor {
 
         extend_object! {
             pub struct $typed_array {
-                viewed_array_buffer: Gc<ArrayBufferObject>,
+                viewed_array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_length: usize,
                 byte_offset: usize,
                 array_length: usize,
@@ -218,26 +218,26 @@ macro_rules! create_typed_array_constructor {
         impl $typed_array {
             fn new_with_proto(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
-                viewed_array_buffer: Gc<ArrayBufferObject>,
+                proto: Handle<ObjectValue>,
+                viewed_array_buffer: Handle<ArrayBufferObject>,
                 byte_length: usize,
                 byte_offset: usize,
                 array_length: usize,
-            ) -> Gc<ObjectValue> {
+            ) -> Handle<ObjectValue> {
                 let mut object =
                     object_create_with_proto::<$typed_array>(cx, ObjectKind::$typed_array, proto);
 
-                set_uninit!(object.viewed_array_buffer, viewed_array_buffer);
+                set_uninit!(object.viewed_array_buffer, viewed_array_buffer.get_());
                 set_uninit!(object.byte_length, byte_length);
                 set_uninit!(object.byte_offset, byte_offset);
                 set_uninit!(object.array_length, array_length);
 
-                object.into()
+                Handle::from_heap(object).into()
             }
 
             #[inline]
             fn write_element(
-                mut array_buffer: Gc<ArrayBufferObject>,
+                mut array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
                 value: $element_type,
             ) {
@@ -251,7 +251,7 @@ macro_rules! create_typed_array_constructor {
         }
 
         #[wrap_ordinary_object]
-        impl VirtualObject for Gc<$typed_array> {
+        impl VirtualObject for Handle<$typed_array> {
             // 10.4.5.1 [[GetOwnProperty]]
             fn get_own_property(
                 &self,
@@ -261,14 +261,14 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get_own_property(self.object(), key).into(),
                     Some(index) => {
-                        let array_buffer = self.viewed_array_buffer;
-                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
                             return None.into();
                         }
 
                         let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        let value = self.read_element_value(cx, array_buffer, byte_index);
+                        let value = self.read_element_value(cx, array_buffer_ptr, byte_index);
 
                         let desc = PropertyDescriptor::data(value, true, true, true);
 
@@ -282,7 +282,7 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
-                        let is_valid_index = !self.viewed_array_buffer.is_detached()
+                        let is_valid_index = !self.viewed_array_buffer_ptr().is_detached()
                             && (index as usize) < self.array_length;
 
                         is_valid_index.into()
@@ -300,8 +300,9 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_define_own_property(cx, self.object(), key, desc),
                     Some(index) => {
-                        let array_buffer = self.viewed_array_buffer;
-                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                        if self.viewed_array_buffer_ptr().is_detached()
+                            || (index as usize) >= self.array_length
+                        {
                             return false.into();
                         }
 
@@ -316,16 +317,18 @@ macro_rules! create_typed_array_constructor {
                         }
 
                         if let Some(value) = desc.value {
+                            // May allocate, so array buffer must be refetched after this point
                             let element_value = maybe!($to_element(cx, value));
 
                             // The element conversion could have detached the array buffer as a side
                             // effect, so check again.
-                            if !array_buffer.is_detached() {
+                            let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                            if !array_buffer_ptr.is_detached() {
                                 let byte_index =
                                     (index as usize) * element_size!() + self.byte_offset;
 
                                 $typed_array::write_element(
-                                    array_buffer,
+                                    array_buffer_ptr,
                                     byte_index,
                                     element_value,
                                 );
@@ -342,19 +345,20 @@ macro_rules! create_typed_array_constructor {
                 &self,
                 cx: &mut Context,
                 key: PropertyKey,
-                receiver: Value,
-            ) -> EvalResult<Value> {
+                receiver: HandleValue,
+            ) -> EvalResult<HandleValue> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get(cx, self.object(), key, receiver),
                     Some(index) => {
-                        let array_buffer = self.viewed_array_buffer;
-                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
                             return Value::undefined().into();
                         }
 
                         let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        self.read_element_value(cx, array_buffer, byte_index).into()
+                        self.read_element_value(cx, array_buffer_ptr, byte_index)
+                            .into()
                     }
                 }
             }
@@ -364,22 +368,23 @@ macro_rules! create_typed_array_constructor {
                 &mut self,
                 cx: &mut Context,
                 key: PropertyKey,
-                value: Value,
-                receiver: Value,
+                value: HandleValue,
+                receiver: HandleValue,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_set(cx, self.object(), key, value, receiver),
                     Some(index) => {
+                        // May allocate, so call before accessing array buffer
                         let element_value = maybe!($to_element(cx, value));
 
-                        let array_buffer = self.viewed_array_buffer;
-                        if array_buffer.is_detached() || (index as usize) >= self.array_length {
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
                             return true.into();
                         }
 
                         let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
-                        $typed_array::write_element(array_buffer, byte_index, element_value);
+                        $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
                         true.into()
                     }
@@ -391,7 +396,7 @@ macro_rules! create_typed_array_constructor {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
-                        let is_invalid_index = self.viewed_array_buffer.is_detached()
+                        let is_invalid_index = self.viewed_array_buffer_ptr().is_detached()
                             || (index as usize) >= self.array_length;
 
                         is_invalid_index.into()
@@ -400,10 +405,10 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.7 [[OwnPropertyKeys]]
-            fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Value>> {
+            fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
                 let mut keys = vec![];
 
-                if !self.viewed_array_buffer.is_detached() {
+                if !self.viewed_array_buffer_ptr().is_detached() {
                     for i in 0..self.array_length {
                         let index_string = cx.alloc_string(i.to_string());
                         keys.push(Value::string(index_string));
@@ -420,7 +425,7 @@ macro_rules! create_typed_array_constructor {
             }
         }
 
-        impl TypedArray for Gc<$typed_array> {
+        impl TypedArray for Handle<$typed_array> {
             fn array_length(&self) -> usize {
                 self.array_length
             }
@@ -433,11 +438,15 @@ macro_rules! create_typed_array_constructor {
                 self.byte_offset
             }
 
-            fn viewed_array_buffer(&self) -> Gc<ArrayBufferObject> {
+            fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
                 self.viewed_array_buffer
             }
 
-            fn name(&self, cx: &mut Context) -> Gc<StringValue> {
+            fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject> {
+                Handle::from_heap(self.viewed_array_buffer)
+            }
+
+            fn name(&self, cx: &mut Context) -> Handle<StringValue> {
                 cx.names.$rust_name().as_string()
             }
 
@@ -457,7 +466,7 @@ macro_rules! create_typed_array_constructor {
             fn read_element_value(
                 &self,
                 cx: &mut Context,
-                mut array_buffer: Gc<ArrayBufferObject>,
+                mut array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
             ) -> Value {
                 let element = unsafe {
@@ -465,6 +474,7 @@ macro_rules! create_typed_array_constructor {
                     byte_ptr.cast::<$element_type>().read()
                 };
 
+                // May allocate
                 $from_element(cx, element)
             }
         }
@@ -473,7 +483,7 @@ macro_rules! create_typed_array_constructor {
 
         impl $constructor {
             // 23.2.6 Properties of the TypedArray Constructors
-            pub fn new(cx: &mut Context, realm: Gc<Realm>) -> Gc<BuiltinFunction> {
+            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
                 let prototype = realm.get_intrinsic(Intrinsic::TypedArrayConstructor);
                 let mut func = BuiltinFunction::create(
                     cx,
@@ -509,10 +519,10 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1 TypedArray
             fn construct(
                 cx: &mut Context,
-                _: Value,
-                arguments: &[Value],
-                new_target: Option<Gc<ObjectValue>>,
-            ) -> EvalResult<Value> {
+                _: HandleValue,
+                arguments: &[HandleValue],
+                new_target: Option<Handle<ObjectValue>>,
+            ) -> EvalResult<HandleValue> {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
@@ -569,9 +579,9 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.6 AllocateTypedArrayBuffer
             fn allocate_with_length(
                 cx: &mut Context,
-                new_target: Gc<ObjectValue>,
+                new_target: Handle<ObjectValue>,
                 length: usize,
-            ) -> EvalResult<Value> {
+            ) -> EvalResult<HandleValue> {
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
 
@@ -581,9 +591,9 @@ macro_rules! create_typed_array_constructor {
             #[inline]
             fn allocate_from_object_with_length(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
+                proto: Handle<ObjectValue>,
                 length: usize,
-            ) -> EvalResult<Gc<ObjectValue>> {
+            ) -> EvalResult<Handle<ObjectValue>> {
                 let byte_length = element_size!() * length;
 
                 let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
@@ -596,9 +606,9 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.2 InitializeTypedArrayFromTypedArray
             fn initialize_typed_array_from_typed_array(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
+                proto: Handle<ObjectValue>,
                 source_typed_array: DynTypedArray,
-            ) -> EvalResult<Value> {
+            ) -> EvalResult<HandleValue> {
                 let source_data = source_typed_array.viewed_array_buffer();
                 if source_data.is_detached() {
                     return type_error_(cx, "cannot create typed array from detached array buffer");
@@ -664,7 +674,11 @@ macro_rules! create_typed_array_constructor {
                         let target_element_value = maybe!($to_element(cx, value));
 
                         // Write element to target array
-                        $typed_array::write_element(data, target_byte_index, target_element_value);
+                        $typed_array::write_element(
+                            data.get_(),
+                            target_byte_index,
+                            target_element_value,
+                        );
 
                         source_byte_index += element_size!();
                         target_byte_index += element_size!();
@@ -685,11 +699,11 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.3 InitializeTypedArrayFromArrayBuffer
             fn initialize_typed_array_from_array_buffer(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
-                mut array_buffer: Gc<ArrayBufferObject>,
-                byte_offset: Value,
-                length: Value,
-            ) -> EvalResult<Value> {
+                proto: Handle<ObjectValue>,
+                mut array_buffer: Handle<ArrayBufferObject>,
+                byte_offset: HandleValue,
+                length: HandleValue,
+            ) -> EvalResult<HandleValue> {
                 let offset = maybe!(to_index(cx, byte_offset));
                 if offset % element_size!() != 0 {
                     return range_error_(
@@ -755,10 +769,10 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.4 InitializeTypedArrayFromList
             fn initialize_typed_array_from_list(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
-                iterable: Value,
-                iterator: Gc<ObjectValue>,
-            ) -> EvalResult<Value> {
+                proto: Handle<ObjectValue>,
+                iterable: HandleValue,
+                iterator: Handle<ObjectValue>,
+            ) -> EvalResult<HandleValue> {
                 // Collect all values from iterator
                 let mut values = vec![];
                 let completion =
@@ -786,9 +800,9 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1.5 InitializeTypedArrayFromArrayLike
             fn initialize_typed_array_from_array_like(
                 cx: &mut Context,
-                proto: Gc<ObjectValue>,
-                array_like: Gc<ObjectValue>,
-            ) -> EvalResult<Value> {
+                proto: Handle<ObjectValue>,
+                array_like: Handle<ObjectValue>,
+            ) -> EvalResult<HandleValue> {
                 // Allocated typed array
                 let length = maybe!(length_of_array_like(cx, array_like));
                 let typed_array_object =

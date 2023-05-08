@@ -48,7 +48,7 @@ impl BooleanPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
-        bool_value.into()
+        cx.bool(bool_value).into()
     }
 }
 

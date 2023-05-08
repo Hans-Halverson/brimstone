@@ -15,7 +15,6 @@ use crate::{
             is_array, is_callable, require_object_coercible, same_object_value, to_object,
             to_property_key,
         },
-        value::Value,
         Context, Handle,
     },
     maybe,
@@ -71,10 +70,12 @@ impl ObjectPrototype {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+        let property_arg = get_argument(cx, arguments, 0);
+        let property_key = maybe!(to_property_key(cx, property_arg));
         let this_object = maybe!(to_object(cx, this_value));
 
-        maybe!(has_own_property(cx, this_object, property_key)).into()
+        let has_own_property = maybe!(has_own_property(cx, this_object, property_key));
+        cx.bool(has_own_property).into()
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
@@ -84,9 +85,9 @@ impl ObjectPrototype {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return false.into();
+            return cx.bool(false).into();
         }
 
         let this_object = maybe!(to_object(cx, this_value));
@@ -95,10 +96,10 @@ impl ObjectPrototype {
         let mut current_value = value.as_object();
         loop {
             match maybe!(current_value.get_prototype_of(cx)) {
-                None => return false.into(),
+                None => return cx.bool(false).into(),
                 Some(prototype) => {
                     if same_object_value(this_object, prototype) {
-                        return true.into();
+                        return cx.bool(true).into();
                     }
 
                     current_value = prototype;
@@ -114,12 +115,13 @@ impl ObjectPrototype {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+        let property_arg = get_argument(cx, arguments, 0);
+        let property_key = maybe!(to_property_key(cx, property_arg));
         let this_object = maybe!(to_object(cx, this_value));
 
         match maybe!(this_object.get_own_property(cx, property_key)) {
-            None => false.into(),
-            Some(desc) => desc.is_enumerable().into(),
+            None => cx.bool(false).into(),
+            Some(desc) => cx.bool(desc.is_enumerable()).into(),
         }
     }
 
@@ -203,7 +205,7 @@ impl ObjectPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(to_object(cx, this_value));
         match maybe!(object.get_prototype_of(cx)) {
-            None => Value::null().into(),
+            None => cx.null().into(),
             Some(prototype) => prototype.into(),
         }
     }
@@ -217,24 +219,24 @@ impl ObjectPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
 
-        let proto = get_argument(arguments, 0);
+        let proto = get_argument(cx, arguments, 0);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
             None
         } else {
-            return Value::undefined().into();
+            return cx.undefined().into();
         };
 
         if !object.is_object() {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         if !maybe!(object.as_object().set_prototype_of(cx, proto)) {
             return type_error_(cx, "failed to set object prototype");
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 20.1.3.9.1 Object.prototype.__defineGetter__
@@ -246,17 +248,18 @@ impl ObjectPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(to_object(cx, this_value));
 
-        let getter = get_argument(arguments, 0);
+        let getter = get_argument(cx, arguments, 0);
         if !is_callable(getter) {
             return type_error_(cx, "getter must be a function");
         }
 
-        let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let key_arg = get_argument(cx, arguments, 1);
+        let key = maybe!(to_property_key(cx, key_arg));
         let desc = PropertyDescriptor::accessor(Some(getter.as_object()), None, true, true);
 
         maybe!(define_property_or_throw(cx, object, key, desc));
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 20.1.3.9.2 Object.prototype.__defineSetter__
@@ -268,17 +271,18 @@ impl ObjectPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(to_object(cx, this_value));
 
-        let setter = get_argument(arguments, 0);
+        let setter = get_argument(cx, arguments, 0);
         if !is_callable(setter) {
             return type_error_(cx, "setter must be a function");
         }
 
-        let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let key_arg = get_argument(cx, arguments, 1);
+        let key = maybe!(to_property_key(cx, key_arg));
         let desc = PropertyDescriptor::accessor(None, Some(setter.as_object()), true, true);
 
         maybe!(define_property_or_throw(cx, object, key, desc));
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 20.1.3.9.3 Object.prototype.__lookupGetter__
@@ -289,7 +293,8 @@ impl ObjectPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         let object = maybe!(to_object(cx, this_value));
-        let key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+        let key_arg = get_argument(cx, arguments, 0);
+        let key = maybe!(to_property_key(cx, key_arg));
 
         let mut current_object = object;
         loop {
@@ -299,15 +304,15 @@ impl ObjectPrototype {
                     return if desc.is_accessor_descriptor() {
                         match desc.get {
                             Some(get) => get.into(),
-                            None => Value::undefined().into(),
+                            None => cx.undefined().into(),
                         }
                     } else {
-                        Value::undefined().into()
+                        cx.undefined().into()
                     }
                 }
                 None => match maybe!(current_object.get_prototype_of(cx)) {
                     Some(proto) => current_object = proto,
-                    None => return Value::undefined().into(),
+                    None => return cx.undefined().into(),
                 },
             }
         }
@@ -321,7 +326,8 @@ impl ObjectPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         let object = maybe!(to_object(cx, this_value));
-        let key = maybe!(to_property_key(cx, get_argument(arguments, 0)));
+        let key_arg = get_argument(cx, arguments, 0);
+        let key = maybe!(to_property_key(cx, key_arg));
 
         let mut current_object = object;
         loop {
@@ -331,15 +337,15 @@ impl ObjectPrototype {
                     return if desc.is_accessor_descriptor() {
                         match desc.set {
                             Some(set) => set.into(),
-                            None => Value::undefined().into(),
+                            None => cx.undefined().into(),
                         }
                     } else {
-                        Value::undefined().into()
+                        cx.undefined().into()
                     }
                 }
                 None => match maybe!(current_object.get_prototype_of(cx)) {
                     Some(proto) => current_object = proto,
-                    None => return Value::undefined().into(),
+                    None => return cx.undefined().into(),
                 },
             }
         }

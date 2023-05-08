@@ -62,8 +62,8 @@ use super::{
 pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<HandleValue> {
     match expr {
         ast::Expression::Id(id) => eval_identifier(cx, id),
-        ast::Expression::Null(_) => eval_null_literal(),
-        ast::Expression::Boolean(lit) => eval_boolean_literal(lit),
+        ast::Expression::Null(_) => eval_null_literal(cx),
+        ast::Expression::Boolean(lit) => eval_boolean_literal(cx, lit),
         ast::Expression::Number(lit) => eval_number_literal(lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
         ast::Expression::BigInt(lit) => eval_bigint_literal(cx, lit),
@@ -131,12 +131,12 @@ fn eval_this_expression(cx: &mut Context) -> EvalResult<HandleValue> {
 }
 
 // 13.2.3.1 Literal Evaluation
-fn eval_null_literal() -> EvalResult<HandleValue> {
-    Value::null().into()
+fn eval_null_literal(cx: &mut Context) -> EvalResult<HandleValue> {
+    cx.null().into()
 }
 
-fn eval_boolean_literal(lit: &ast::BooleanLiteral) -> EvalResult<HandleValue> {
-    Value::bool(lit.value).into()
+fn eval_boolean_literal(cx: &mut Context, lit: &ast::BooleanLiteral) -> EvalResult<HandleValue> {
+    cx.bool(lit.value).into()
 }
 
 fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<HandleValue> {
@@ -162,7 +162,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
         match element {
             ast::ArrayElement::Hole => {
                 let key = PropertyKey::array_index(cx, index);
-                let desc = Property::data(Value::empty(), true, true, true);
+                let desc = Property::data(cx.empty(), true, true, true);
 
                 array.object().set_property(cx, key, desc);
                 index += 1;
@@ -451,7 +451,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                 if is_non_property_eval_reference {
                     let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
                     if arg_values.is_empty() {
-                        return Value::undefined().into();
+                        return cx.undefined().into();
                     }
 
                     let eval_arg = arg_values[0];
@@ -465,7 +465,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                 ReferenceBase::Property { .. } => reference.get_this_value(),
                 ReferenceBase::Env { env, .. } => match env.with_base_object() {
                     Some(base_object) => base_object.into(),
-                    None => Value::undefined(),
+                    None => cx.undefined(),
                 },
                 _ => unreachable!(),
             };
@@ -474,7 +474,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
         }
         None => {
             let func_value = maybe!(eval_expression(cx, &expr.callee));
-            (func_value, Value::undefined())
+            (func_value, cx.undefined())
         }
     };
 
@@ -616,7 +616,7 @@ fn eval_chain_expression_part(
         ast::Expression::Member(member_expr) => {
             let base_value = maybe!(eval_chain_expression_part(cx, &member_expr.object)).0;
             if base_value.is_nullish() {
-                return (Value::undefined(), Reference::EMPTY).into();
+                return (cx.undefined(), Reference::EMPTY).into();
             }
 
             let reference =
@@ -632,7 +632,7 @@ fn eval_chain_expression_part(
                 ast::Expression::Member(expr) => {
                     let base_value = maybe!(eval_chain_expression_part(cx, &expr.object)).0;
                     if base_value.is_nullish() {
-                        return (Value::undefined(), Reference::EMPTY).into();
+                        return (cx.undefined(), Reference::EMPTY).into();
                     }
 
                     Some(maybe!(eval_member_expression_to_reference_with_base(
@@ -650,14 +650,14 @@ fn eval_chain_expression_part(
                 Some(reference) => {
                     let func_value = maybe!(reference.get_value(cx));
                     if func_value.is_nullish() {
-                        return (Value::undefined(), Reference::EMPTY).into();
+                        return (cx.undefined(), Reference::EMPTY).into();
                     }
 
                     let this_value = match reference.base() {
                         ReferenceBase::Property { .. } => reference.get_this_value(),
                         ReferenceBase::Env { env, .. } => match env.with_base_object() {
                             Some(base_object) => base_object.into(),
-                            None => Value::undefined(),
+                            None => cx.undefined(),
                         },
                         _ => unreachable!(),
                     };
@@ -667,10 +667,10 @@ fn eval_chain_expression_part(
                 None => {
                     let func_value = maybe!(eval_chain_expression_part(cx, &call_expr.callee)).0;
                     if func_value.is_nullish() {
-                        return (Value::undefined(), Reference::EMPTY).into();
+                        return (cx.undefined(), Reference::EMPTY).into();
                     }
 
-                    (func_value, Value::undefined())
+                    (func_value, cx.undefined())
                 }
             };
 
@@ -695,7 +695,7 @@ fn eval_tagged_template_expression(
                 ReferenceBase::Property { .. } => reference.get_this_value(),
                 ReferenceBase::Env { env, .. } => match env.with_base_object() {
                     Some(base_object) => base_object.into(),
-                    None => Value::undefined(),
+                    None => cx.undefined(),
                 },
                 _ => unreachable!(),
             };
@@ -704,7 +704,7 @@ fn eval_tagged_template_expression(
         }
         None => {
             let func_value = maybe!(eval_expression(cx, &expr.tag));
-            (func_value, Value::undefined())
+            (func_value, cx.undefined())
         }
     };
 
@@ -739,7 +739,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
         let index_key = PropertyKey::array_index(cx, i as u32);
 
         let cooked_value = match &quasi.cooked {
-            None => Value::undefined(),
+            None => cx.undefined(),
             Some(cooked) => InternedStrings::get_str(cx, cooked).into(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
@@ -765,7 +765,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
 // 13.3.12.1 NewTarget Evaluation
 fn eval_new_target(cx: &mut Context) -> EvalResult<HandleValue> {
     match get_new_target(cx) {
-        None => Value::undefined().into(),
+        None => cx.undefined().into(),
         Some(new_target) => new_target.into(),
     }
 }
@@ -824,12 +824,12 @@ fn eval_delete_expression(
         Some(reference) => reference,
         None => {
             maybe!(eval_expression(cx, expr.argument.as_ref()));
-            return true.into();
+            return cx.bool(true).into();
         }
     };
 
     match reference.base() {
-        ReferenceBase::Unresolvable { .. } => true.into(),
+        ReferenceBase::Unresolvable { .. } => cx.bool(true).into(),
         ReferenceBase::Property { object, property, .. } => {
             if reference.is_super_reference() {
                 return reference_error_(cx, "cannot delete super");
@@ -841,11 +841,11 @@ fn eval_delete_expression(
                 return type_error_(cx, "cannot delete property");
             }
 
-            delete_status.into()
+            cx.bool(delete_status).into()
         }
         ReferenceBase::Env { mut env, name } => {
             let delete_status = maybe!((*env).delete_binding(cx, *name));
-            delete_status.into()
+            cx.bool(delete_status).into()
         }
     }
 }
@@ -853,7 +853,7 @@ fn eval_delete_expression(
 // 13.5.2.1 Void Expression Evaluation
 fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<HandleValue> {
     maybe!(eval_expression(cx, &expr.argument));
-    Value::undefined().into()
+    cx.undefined().into()
 }
 
 // 13.5.3.1 TypeOf Expression Evaluation
@@ -939,7 +939,7 @@ fn eval_logical_not_expression(
     expr: &ast::UnaryExpression,
 ) -> EvalResult<HandleValue> {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
-    (!to_boolean(expr_value)).into()
+    cx.bool(!to_boolean(expr_value)).into()
 }
 
 fn eval_binary_expression(
@@ -980,22 +980,26 @@ fn eval_binary_expression(
         ast::BinaryOperator::EqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            maybe!(is_loosely_equal(cx, left_value, right_value)).into()
+            let is_equal = maybe!(is_loosely_equal(cx, left_value, right_value));
+            cx.bool(is_equal).into()
         }
         ast::BinaryOperator::NotEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            (!maybe!(is_loosely_equal(cx, left_value, right_value))).into()
+            let is_equal = maybe!(is_loosely_equal(cx, left_value, right_value));
+            cx.bool(!is_equal).into()
         }
         ast::BinaryOperator::EqEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            is_strictly_equal(left_value, right_value).into()
+            let is_equal = is_strictly_equal(left_value, right_value);
+            cx.bool(is_equal).into()
         }
         ast::BinaryOperator::NotEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            (!is_strictly_equal(left_value, right_value)).into()
+            let is_equal = is_strictly_equal(left_value, right_value);
+            cx.bool(!is_equal).into()
         }
         ast::BinaryOperator::LessThan => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
@@ -1239,9 +1243,9 @@ fn eval_less_than(
 
     let result = maybe!(is_less_than(cx, left, right));
     if result.is_undefined() {
-        false.into()
+        cx.bool(false).into()
     } else {
-        result.into()
+        cx.bool(result.as_bool()).into()
     }
 }
 
@@ -1256,9 +1260,9 @@ fn eval_greater_than(
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
     if result.is_undefined() {
-        false.into()
+        cx.bool(false).into()
     } else {
-        result.into()
+        cx.bool(result.as_bool()).into()
     }
 }
 
@@ -1272,7 +1276,7 @@ fn eval_less_than_or_equal(
 
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
-    (result.is_false()).into()
+    cx.bool(result.is_false()).into()
 }
 
 fn eval_greater_than_or_equal(
@@ -1284,7 +1288,7 @@ fn eval_greater_than_or_equal(
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     let result = maybe!(is_less_than(cx, left, right));
-    (result.is_false()).into()
+    cx.bool(result.is_false()).into()
 }
 
 fn eval_bitwise_and(
@@ -1518,7 +1522,7 @@ fn eval_in_expression(
     let property_key = maybe!(to_property_key(cx, left_value));
 
     let has_property = maybe!(has_property(cx, right_value.as_object(), property_key));
-    has_property.into()
+    cx.bool(has_property).into()
 }
 
 fn eval_private_in_expression(
@@ -1536,10 +1540,8 @@ fn eval_private_in_expression(
         .unwrap()
         .resolve_private_identifier(&private_property.name);
 
-    right_value
-        .as_object()
-        .has_private_element(private_name)
-        .into()
+    let has_private_property = right_value.as_object().has_private_element(private_name);
+    cx.bool(has_private_property).into()
 }
 
 // 13.13.1 Logical Expression Evaluation
@@ -1741,7 +1743,7 @@ fn eval_sequence_expression(
     cx: &mut Context,
     expr: &ast::SequenceExpression,
 ) -> EvalResult<HandleValue> {
-    let mut value = Value::empty();
+    let mut value = cx.empty();
 
     for expr in &expr.expressions {
         value = maybe!(eval_expression(cx, expr))

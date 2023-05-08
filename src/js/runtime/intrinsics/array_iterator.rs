@@ -123,7 +123,7 @@ impl ArrayIteratorPrototype {
 
         let current_index = array_iterator.current_index as u64;
         if current_index >= length {
-            return create_iter_result_object(cx, Value::undefined(), true).into();
+            return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 
         array_iterator.current_index += 1;

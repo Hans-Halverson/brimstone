@@ -113,10 +113,10 @@ impl BooleanConstructor {
         arguments: &[HandleValue],
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let bool_value = to_boolean(get_argument(arguments, 0));
+        let bool_value = to_boolean(get_argument(cx, arguments, 0));
 
         match new_target {
-            None => bool_value.into(),
+            None => cx.bool(bool_value).into(),
             Some(new_target) => {
                 maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value)).into()
             }

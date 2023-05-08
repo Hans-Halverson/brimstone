@@ -22,7 +22,6 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::{require_object_coercible, same_value, to_object, to_property_key},
-        value::Value,
         Context, Handle,
     },
     maybe, must,
@@ -129,7 +128,7 @@ impl ObjectConstructor {
             }
         }
 
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if value.is_nullish() {
             let new_value: HandleValue = ordinary_object_create(cx).into();
             return new_value.into();
@@ -145,7 +144,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let to = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let to_arg = get_argument(cx, arguments, 0);
+        let to = maybe!(to_object(cx, to_arg));
 
         if arguments.len() <= 1 {
             return to.into();
@@ -179,7 +179,7 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let proto = get_argument(arguments, 0);
+        let proto = get_argument(cx, arguments, 0);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
@@ -194,7 +194,7 @@ impl ObjectConstructor {
             proto,
         ));
 
-        let properties = get_argument(arguments, 1);
+        let properties = get_argument(cx, arguments, 1);
         if properties.is_undefined() {
             object.into()
         } else {
@@ -209,12 +209,13 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = get_argument(arguments, 0);
+        let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
             return type_error_(cx, "value is not an object");
         }
 
-        Self::object_define_properties(cx, object.as_object(), get_argument(arguments, 1))
+        let properties_arg = get_argument(cx, arguments, 1);
+        Self::object_define_properties(cx, object.as_object(), properties_arg)
     }
 
     // 20.1.2.3.1 ObjectDefineProperties
@@ -256,13 +257,16 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = get_argument(arguments, 0);
+        let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
             return type_error_(cx, "can only define property on an object");
         }
 
-        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
-        let desc = maybe!(to_property_descriptor(cx, get_argument(arguments, 2)));
+        let property_arg = get_argument(cx, arguments, 1);
+        let property_key = maybe!(to_property_key(cx, property_arg));
+
+        let desc_arg = get_argument(cx, arguments, 2);
+        let desc = maybe!(to_property_descriptor(cx, desc_arg));
 
         maybe!(define_property_or_throw(cx, object.as_object(), property_key, desc,));
 
@@ -276,7 +280,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::KeyAndValue));
         create_array_from_list(cx, &name_list).into()
     }
@@ -288,7 +293,7 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = get_argument(arguments, 0);
+        let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
             return object.into();
         }
@@ -307,11 +312,14 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
-        let property_key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
+
+        let property_arg = get_argument(cx, arguments, 1);
+        let property_key = maybe!(to_property_key(cx, property_arg));
 
         match maybe!(object.get_own_property(cx, property_key)) {
-            None => Value::undefined().into(),
+            None => cx.undefined().into(),
             Some(desc) => from_property_descriptor(cx, desc).into(),
         }
     }
@@ -323,7 +331,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
 
         let keys = maybe!(object.own_property_keys(cx));
 
@@ -348,7 +357,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let symbol_keys = maybe!(Self::get_own_property_keys(cx, get_argument(arguments, 0), true));
+        let object_arg = get_argument(cx, arguments, 0);
+        let symbol_keys = maybe!(Self::get_own_property_keys(cx, object_arg, true));
         create_array_from_list(cx, &symbol_keys).into()
     }
 
@@ -359,8 +369,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let symbol_keys =
-            maybe!(Self::get_own_property_keys(cx, get_argument(arguments, 0), false));
+        let object_arg = get_argument(cx, arguments, 0);
+        let symbol_keys = maybe!(Self::get_own_property_keys(cx, object_arg, false));
         create_array_from_list(cx, &symbol_keys).into()
     }
 
@@ -394,11 +404,12 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
         let prototype = maybe!(object.get_prototype_of(cx));
 
         match prototype {
-            None => Value::null().into(),
+            None => cx.null().into(),
             Some(prototype) => prototype.into(),
         }
     }
@@ -410,20 +421,25 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
-        let key = maybe!(to_property_key(cx, get_argument(arguments, 1)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
 
-        maybe!(has_own_property(cx, object, key)).into()
+        let key_arg = get_argument(cx, arguments, 1);
+        let key = maybe!(to_property_key(cx, key_arg));
+
+        let has_own = maybe!(has_own_property(cx, object, key));
+        cx.bool(has_own).into()
     }
 
     // 20.1.2.14 Object.is
     fn is(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        same_value(get_argument(arguments, 0), get_argument(arguments, 1)).into()
+        let is_same = same_value(get_argument(cx, arguments, 0), get_argument(cx, arguments, 1));
+        cx.bool(is_same).into()
     }
 
     // 20.1.2.15 Object.isExtensible
@@ -433,12 +449,13 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return type_error_(cx, "expected object");
         }
 
-        maybe!(is_extensible(cx, value.as_object())).into()
+        let is_extensible = maybe!(is_extensible(cx, value.as_object()));
+        cx.bool(is_extensible).into()
     }
 
     // 20.1.2.16 Object.isFrozen
@@ -448,12 +465,13 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return type_error_(cx, "expected object");
         }
 
-        maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen)).into()
+        let is_frozen = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen));
+        cx.bool(is_frozen).into()
     }
 
     // 20.1.2.17 Object.isSealed
@@ -463,12 +481,13 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return type_error_(cx, "expected object");
         }
 
-        maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed)).into()
+        let is_sealed = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed));
+        cx.bool(is_sealed).into()
     }
 
     // 20.1.2.18 Object.keys
@@ -478,7 +497,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Key));
         create_array_from_list(cx, &name_list).into()
     }
@@ -490,7 +510,7 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return type_error_(cx, "expected object");
         }
@@ -509,7 +529,7 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = get_argument(arguments, 0);
+        let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
             return object.into();
         }
@@ -528,9 +548,10 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(require_object_coercible(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(require_object_coercible(cx, object_arg));
 
-        let proto = get_argument(arguments, 1);
+        let proto = get_argument(cx, arguments, 1);
         let proto = if proto.is_object() {
             Some(proto.as_object())
         } else if proto.is_null() {
@@ -558,7 +579,8 @@ impl ObjectConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let object = maybe!(to_object(cx, get_argument(arguments, 0)));
+        let object_arg = get_argument(cx, arguments, 0);
+        let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Value));
         create_array_from_list(cx, &name_list).into()
     }

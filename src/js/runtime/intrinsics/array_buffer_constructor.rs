@@ -122,7 +122,8 @@ impl ArrayBufferConstructor {
             return type_error_(cx, "ArrayBuffer constructor must be called with new");
         };
 
-        let byte_length = maybe!(to_index(cx, get_argument(arguments, 0)));
+        let byte_length_arg = get_argument(cx, arguments, 0);
+        let byte_length = maybe!(to_index(cx, byte_length_arg));
 
         maybe!(ArrayBufferObject::new(cx, new_target, byte_length)).into()
     }

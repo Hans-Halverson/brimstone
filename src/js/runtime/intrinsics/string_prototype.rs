@@ -130,9 +130,10 @@ impl StringPrototype {
 
         let length = string.len() as i64;
 
-        let relative_index = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let index_arg = get_argument(cx, arguments, 0);
+        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
         if relative_index == f64::INFINITY {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let index = if relative_index >= 0.0 {
@@ -142,7 +143,7 @@ impl StringPrototype {
         };
 
         if index < 0 || index >= length {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         StringValue::from_code_unit(cx, string.code_unit_at(index as usize)).into()
@@ -157,7 +158,9 @@ impl StringPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
-        let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let position_arg = get_argument(cx, arguments, 0);
+        let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
@@ -175,7 +178,9 @@ impl StringPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
-        let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let position_arg = get_argument(cx, arguments, 0);
+        let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
@@ -194,7 +199,9 @@ impl StringPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
-        let position = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+
+        let position_arg = get_argument(cx, arguments, 0);
+        let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
             return cx.names.empty_string.as_string().into();
@@ -233,14 +240,14 @@ impl StringPrototype {
         let string = maybe!(to_string(cx, object));
         let length = string.len();
 
-        let search_value = get_argument(arguments, 0);
+        let search_value = get_argument(cx, arguments, 0);
         if search_value.is_object() && search_value.as_object().is_regexp_object() {
             return type_error_(cx, "first argument to startsWith cannot be a RegExp");
         }
 
         let search_string = maybe!(to_string(cx, search_value));
 
-        let end_index_argument = get_argument(arguments, 1);
+        let end_index_argument = get_argument(cx, arguments, 1);
         let end_index = if end_index_argument.is_undefined() {
             length
         } else {
@@ -257,15 +264,17 @@ impl StringPrototype {
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return true.into();
+            return cx.bool(true).into();
         }
 
         let start_index = match end_index.checked_sub(search_length) {
             Some(start_index) => start_index,
-            None => return false.into(),
+            None => return cx.bool(false).into(),
         };
 
-        string.substring_equals(search_string, start_index).into()
+        let ends_with_string = string.substring_equals(search_string, start_index);
+
+        cx.bool(ends_with_string).into()
     }
 
     // 22.1.3.8 String.prototype.includes
@@ -278,14 +287,15 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        let search_string = get_argument(arguments, 0);
+        let search_string = get_argument(cx, arguments, 0);
         if maybe!(is_regexp(cx, search_string)) {
             return type_error_(cx, "String.prototype.includes cannot take a regular expression");
         }
 
         let search_string = maybe!(to_string(cx, search_string));
 
-        let pos = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let pos_arg = get_argument(cx, arguments, 1);
+        let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
         if pos == f64::INFINITY {
             return Value::smi(-1).into();
         }
@@ -295,7 +305,8 @@ impl StringPrototype {
             return Value::smi(-1).into();
         }
 
-        string.find(search_string, pos).is_some().into()
+        let found_search_string = string.find(search_string, pos).is_some();
+        cx.bool(found_search_string).into()
     }
 
     // 22.1.3.9 String.prototype.indexOf
@@ -308,9 +319,11 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
+        let search_arg = get_argument(cx, arguments, 0);
+        let search_string = maybe!(to_string(cx, search_arg));
 
-        let pos = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let pos_arg = get_argument(cx, arguments, 1);
+        let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
         if pos == f64::INFINITY {
             return Value::smi(-1).into();
         }
@@ -336,11 +349,13 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        let search_string = maybe!(to_string(cx, get_argument(arguments, 0)));
+        let search_arg = get_argument(cx, arguments, 0);
+        let search_string = maybe!(to_string(cx, search_arg));
 
         let mut string_end = search_string.len();
 
-        let num_pos = maybe!(to_number(cx, get_argument(arguments, 1)));
+        let pos_arg = get_argument(cx, arguments, 1);
+        let num_pos = maybe!(to_number(cx, pos_arg));
 
         if !num_pos.is_nan() {
             let pos = maybe!(to_integer_or_infinity(cx, num_pos));
@@ -365,7 +380,8 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        let n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let n_arg = get_argument(cx, arguments, 0);
+        let n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n < 0.0 || n == f64::INFINITY {
             return range_error_(cx, "count must be a finite, positive number");
         } else if n == 0.0 {
@@ -386,7 +402,8 @@ impl StringPrototype {
         let string = maybe!(to_string(cx, object));
         let length = string.len();
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -397,7 +414,7 @@ impl StringPrototype {
             u64::min(relative_start as u64, length as u64)
         };
 
-        let end_argument = get_argument(arguments, 1);
+        let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -432,8 +449,8 @@ impl StringPrototype {
     ) -> EvalResult<HandleValue> {
         let object = maybe!(require_object_coercible(cx, this_value));
 
-        let separator_argument = get_argument(arguments, 0);
-        let limit_argument = get_argument(arguments, 1);
+        let separator_argument = get_argument(cx, arguments, 0);
+        let limit_argument = get_argument(cx, arguments, 1);
 
         // Use the @@split method of the separator if one exists
         if !separator_argument.is_nullish() {
@@ -521,14 +538,14 @@ impl StringPrototype {
         let string = maybe!(to_string(cx, object));
         let length = string.len();
 
-        let search_value = get_argument(arguments, 0);
+        let search_value = get_argument(cx, arguments, 0);
         if search_value.is_object() && search_value.as_object().is_regexp_object() {
             return type_error_(cx, "first argument to startsWith cannot be a RegExp");
         }
 
         let search_string = maybe!(to_string(cx, search_value));
 
-        let start_index_argument = get_argument(arguments, 1);
+        let start_index_argument = get_argument(cx, arguments, 1);
         let start_index = if start_index_argument.is_undefined() {
             0
         } else {
@@ -545,15 +562,17 @@ impl StringPrototype {
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return true.into();
+            return cx.bool(true).into();
         }
 
         let end_index = start_index + search_length;
         if end_index > length {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        string.substring_equals(search_string, start_index).into()
+        let starts_with_string = string.substring_equals(search_string, start_index);
+
+        cx.bool(starts_with_string).into()
     }
 
     // 22.1.3.24 String.prototype.substring
@@ -567,10 +586,11 @@ impl StringPrototype {
         let string = maybe!(to_string(cx, object));
         let length = string.len();
 
-        let start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let start = maybe!(to_integer_or_infinity(cx, start_arg));
         let mut int_start = f64::max(0.0, f64::min(start, length as f64)) as usize;
 
-        let end_argument = get_argument(arguments, 1);
+        let end_argument = get_argument(cx, arguments, 1);
         let mut int_end = if end_argument.is_undefined() {
             length as usize
         } else {

@@ -5,7 +5,7 @@ use super::{
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue, Value},
-    HeapPtr,
+    Context, HeapPtr,
 };
 
 /// 6.2.3 Completion Record
@@ -44,18 +44,18 @@ impl Completion {
     }
 
     #[inline]
-    pub const fn break_(label: LabelId) -> Completion {
-        Completion { kind: CompletionKind::Break, label, value: Value::empty() }
+    pub fn break_(cx: &mut Context, label: LabelId) -> Completion {
+        Completion { kind: CompletionKind::Break, label, value: cx.empty() }
     }
 
     #[inline]
-    pub const fn continue_(label: LabelId) -> Completion {
-        Completion { kind: CompletionKind::Continue, label, value: Value::empty() }
+    pub fn continue_(cx: &mut Context, label: LabelId) -> Completion {
+        Completion { kind: CompletionKind::Continue, label, value: cx.empty() }
     }
 
     #[inline]
-    pub const fn empty() -> Completion {
-        Completion::normal(Value::empty())
+    pub fn empty(cx: &mut Context) -> Completion {
+        Completion::normal(cx.empty())
     }
 
     #[inline]

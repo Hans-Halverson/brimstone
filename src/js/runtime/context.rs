@@ -8,7 +8,7 @@ use super::{
     builtin_names::{BuiltinNames, BuiltinSymbols},
     environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
     execution_context::{ExecutionContext, ScriptOrModule},
-    gc::Heap,
+    gc::{HandleValue, Heap},
     interned_strings::InternedStrings,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::BaseDescriptors,
@@ -16,10 +16,11 @@ use super::{
     realm::Realm,
     string_value::StringValue,
     value::SymbolValue,
-    Handle, HeapPtr,
+    Handle, HeapPtr, Value,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
+/// Must never be moved, as there may be internal pointers held.
 ///
 /// Includes properties from section 8.6 Agent.
 pub struct Context {
@@ -29,6 +30,13 @@ pub struct Context {
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
     pub base_descriptors: BaseDescriptors,
+
+    // Canonical values
+    undefined: Value,
+    null: Value,
+    empty: Value,
+    true_: Value,
+    false_: Value,
 
     // Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
@@ -65,6 +73,11 @@ impl Context {
             names,
             well_known_symbols,
             base_descriptors,
+            undefined: Value::undefined(),
+            null: Value::null(),
+            empty: Value::empty(),
+            true_: Value::bool(true),
+            false_: Value::bool(false),
             interned_strings: InternedStrings::new(),
             closure_environments: vec![],
             default_array_properties: HeapPtr::uninit(),
@@ -153,5 +166,29 @@ impl Context {
     #[inline]
     pub fn alloc_string(&mut self, str: String) -> Handle<StringValue> {
         Handle::from_heap(self.alloc_string_ptr(str))
+    }
+
+    #[inline]
+    pub fn undefined(&self) -> HandleValue {
+        self.undefined
+    }
+
+    #[inline]
+    pub fn null(&self) -> HandleValue {
+        self.null
+    }
+
+    #[inline]
+    pub fn empty(&self) -> HandleValue {
+        self.empty
+    }
+
+    #[inline]
+    pub fn bool(&self, value: bool) -> HandleValue {
+        if value {
+            self.true_
+        } else {
+            self.false_
+        }
     }
 }

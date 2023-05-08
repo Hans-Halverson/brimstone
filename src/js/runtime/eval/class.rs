@@ -487,7 +487,7 @@ fn binding_class_declaration_evaluation(
 // 15.7.16 Class Declaration and Expression Evaluation
 pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completion {
     maybe__!(binding_class_declaration_evaluation(cx, class));
-    Completion::empty()
+    Completion::empty(cx)
 }
 
 pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<HandleValue> {

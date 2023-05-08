@@ -64,7 +64,7 @@ impl StringConstructor {
         let string_value = if arguments.is_empty() {
             cx.names.empty_string().as_string().into()
         } else {
-            let value = get_argument(arguments, 0);
+            let value = get_argument(cx, arguments, 0);
             if new_target.is_none() && value.is_symbol() {
                 return symbol_descriptive_string(cx, value.as_symbol()).into();
             }

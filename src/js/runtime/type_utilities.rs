@@ -833,7 +833,8 @@ pub fn to_property_key(cx: &mut Context, value_handle: HandleValue) -> EvalResul
 }
 
 // 7.2.14 IsLessThan
-// ToPrimitive calls are inlined at call sites instead of passing LeftFirst argument
+// ToPrimitive calls are inlined at call sites instead of passing LeftFirst argument.
+// Returns either a bool or undefined if values cannot be compared.
 pub fn is_less_than(
     cx: &mut Context,
     x_handle: HandleValue,

@@ -18,7 +18,6 @@ use super::{
     type_utilities::{
         is_callable, is_callable_object, is_constructor, same_object_value, to_length, to_object,
     },
-    value::Value,
     Context,
 };
 
@@ -544,7 +543,7 @@ pub fn define_field(
     field_def: ClassFieldDefinition,
 ) -> EvalResult<()> {
     let init_value = match field_def.initializer {
-        None => Value::undefined(),
+        None => cx.undefined(),
         Some(func) => maybe!(call_object(cx, func.into(), receiver.into(), &[])),
     };
 

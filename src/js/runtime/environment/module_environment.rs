@@ -4,7 +4,6 @@ use crate::js::runtime::{
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
-    value::Value,
     Context,
 };
 
@@ -66,8 +65,8 @@ impl Environment for Handle<ModuleEnvironment> {
     }
 
     // 9.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
-        Value::undefined().into()
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<HandleValue> {
+        cx.undefined().into()
     }
 
     // All other methods inherited from DeclarativeEnvironment

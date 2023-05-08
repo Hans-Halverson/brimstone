@@ -74,7 +74,7 @@ impl SetPrototype {
         };
 
         // Convert negative zero to positive zero in set
-        let mut value = get_argument(arguments, 0);
+        let mut value = get_argument(cx, arguments, 0);
         if value.is_negative_zero() {
             value = Value::number(0.0);
         }
@@ -99,7 +99,7 @@ impl SetPrototype {
 
         set.set_data().clear();
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 24.2.3.4 Set.prototype.delete
@@ -115,10 +115,10 @@ impl SetPrototype {
             return type_error_(cx, "delete method must be called on set");
         };
 
-        let key = get_argument(arguments, 0);
+        let key = get_argument(cx, arguments, 0);
         let existed = set.set_data().remove(key);
 
-        existed.into()
+        cx.bool(existed).into()
     }
 
     // 24.2.3.5 Set.prototype.entries
@@ -150,13 +150,13 @@ impl SetPrototype {
             return type_error_(cx, "forEach method must be called on set");
         };
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         // Reuse handle during iteration
         let mut value_handle = HandleValue::uninit();
@@ -170,7 +170,7 @@ impl SetPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 24.2.3.7 Set.prototype.has
@@ -186,9 +186,9 @@ impl SetPrototype {
             return type_error_(cx, "has method must be called on set");
         };
 
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
 
-        set.set_data().contains(value).into()
+        cx.bool(set.set_data().contains(value)).into()
     }
 
     // 24.2.3.9 get Set.prototype.size

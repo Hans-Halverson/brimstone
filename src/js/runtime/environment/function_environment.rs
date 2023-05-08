@@ -199,11 +199,11 @@ impl FunctionEnvironment {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
         match self.function_object.home_object() {
-            None => Value::undefined().into(),
+            None => cx.undefined().into(),
             Some(home) => {
                 let prototype = maybe!(home.get_prototype_of(cx));
                 match prototype {
-                    None => Value::null().into(),
+                    None => cx.null().into(),
                     Some(prototype) => prototype.into(),
                 }
             }

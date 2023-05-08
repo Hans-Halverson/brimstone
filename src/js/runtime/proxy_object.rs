@@ -19,7 +19,7 @@ use super::{
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
     type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
-    Context, EvalResult, Realm, Value,
+    Context, EvalResult, Realm,
 };
 
 // 10.5 Proxy Object
@@ -124,7 +124,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let is_target_extensible = maybe!(is_extensible_(cx, target));
 
         let mut result_desc = maybe!(to_property_descriptor(cx, trap_result));
-        result_desc.complete_property_descriptor();
+        result_desc.complete_property_descriptor(cx);
 
         if !is_compatible_property_descriptor(cx, is_target_extensible, result_desc, target_desc) {
             return type_error_(
@@ -646,7 +646,7 @@ impl ProxyObject {
         }
 
         let proto_value = match proto {
-            None => Value::null(),
+            None => cx.null(),
             Some(object_value) => object_value.into(),
         };
 

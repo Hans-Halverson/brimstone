@@ -7,7 +7,7 @@ use super::{
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::number_to_string,
-    value::{Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
+    value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
     Context, Handle,
 };
 
@@ -36,7 +36,8 @@ impl ConsoleObject {
             .join(" ");
 
         println!("{}", formatted);
-        return Value::undefined().into();
+
+        cx.undefined().into()
     }
 }
 

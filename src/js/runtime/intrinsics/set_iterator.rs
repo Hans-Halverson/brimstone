@@ -11,7 +11,7 @@ use crate::{
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
-        value::{Value, ValueSetIter},
+        value::ValueSetIter,
         Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
@@ -89,7 +89,7 @@ impl SetIteratorPrototype {
         let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
 
         match set_iterator.iter.next() {
-            None => create_iter_result_object(cx, Value::undefined(), true).into(),
+            None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(value) => {
                 let value = (*value).into();
 

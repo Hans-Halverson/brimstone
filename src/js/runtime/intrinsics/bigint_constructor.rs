@@ -87,7 +87,7 @@ impl BigIntConstructor {
             return type_error_(cx, "BigInt is not a constructor");
         }
 
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
 
         if primitive.is_number() {

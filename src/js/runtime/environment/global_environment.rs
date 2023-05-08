@@ -11,7 +11,6 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
-        value::Value,
         Context, HeapPtr,
     },
     set_uninit,
@@ -313,7 +312,7 @@ impl Handle<GlobalEnvironment> {
         if !has_property && is_extensible {
             let mut object_env = self.object_env();
             maybe!(object_env.create_mutable_binding(cx, name, can_delete));
-            maybe!(object_env.initialize_binding(cx, name, Value::undefined()));
+            maybe!(object_env.initialize_binding(cx, name, cx.undefined()));
         }
 
         let name = name.get_();

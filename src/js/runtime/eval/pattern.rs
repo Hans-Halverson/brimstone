@@ -27,7 +27,6 @@ use crate::{
             reference::Reference,
             string_value::StringValue,
             type_utilities::require_object_coercible,
-            value::Value,
             Completion, Context, Handle,
         },
     },
@@ -57,7 +56,7 @@ pub fn binding_initialization(
                 let completion = if let EvalResult::Throw(thrown_value) = result {
                     Completion::throw(thrown_value)
                 } else {
-                    Completion::empty()
+                    Completion::empty(cx)
                 };
 
                 let close_completion = iterator_close(cx, &iterator, completion);
@@ -276,7 +275,7 @@ fn iterator_binding_initialization(
 
         match element {
             ast::ArrayPatternElement::Pattern(pattern) => {
-                let mut value = Value::undefined();
+                let mut value = cx.undefined();
 
                 // Perform a step of the iterator if it is not complete
                 if !iterator.is_done {

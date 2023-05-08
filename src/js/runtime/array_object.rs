@@ -149,7 +149,7 @@ pub fn array_species_create(
                 constructor_realm.get_intrinsic_ptr(Intrinsic::ArrayConstructor),
             )
         {
-            constructor = Value::undefined();
+            constructor = cx.undefined();
         }
     }
 
@@ -158,7 +158,7 @@ pub fn array_species_create(
         constructor = maybe!(get(cx, constructor.as_object(), species_key));
 
         if constructor.is_null() {
-            constructor = Value::undefined();
+            constructor = cx.undefined();
         }
     }
 

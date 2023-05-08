@@ -81,7 +81,7 @@ impl TypedArrayConstructor {
         let this_constructor = this_value.as_object();
 
         let map_function = {
-            let argument = get_argument(arguments, 1);
+            let argument = get_argument(cx, arguments, 1);
             if argument.is_undefined() {
                 None
             } else if !is_callable(argument) {
@@ -91,8 +91,8 @@ impl TypedArrayConstructor {
             }
         };
 
-        let source = get_argument(arguments, 0);
-        let this_argument = get_argument(arguments, 2);
+        let source = get_argument(cx, arguments, 0);
+        let this_argument = get_argument(cx, arguments, 2);
 
         let iterator_key = cx.well_known_symbols.iterator();
         let iterator = maybe!(get_method(cx, source, iterator_key));
@@ -352,7 +352,7 @@ macro_rules! create_typed_array_constructor {
                     Some(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
-                            return Value::undefined().into();
+                            return cx.undefined().into();
                         }
 
                         let byte_index = (index as usize) * element_size!() + self.byte_offset;
@@ -539,7 +539,7 @@ macro_rules! create_typed_array_constructor {
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
 
-                let argument = get_argument(arguments, 0);
+                let argument = get_argument(cx, arguments, 0);
                 if !argument.is_object() {
                     let length = maybe!(to_index(cx, argument));
                     return Self::allocate_with_length(cx, new_target, length);
@@ -553,8 +553,8 @@ macro_rules! create_typed_array_constructor {
                         argument.as_typed_array(),
                     );
                 } else if argument.is_array_buffer() {
-                    let byte_offset = get_argument(arguments, 1);
-                    let length = get_argument(arguments, 2);
+                    let byte_offset = get_argument(cx, arguments, 1);
+                    let length = get_argument(cx, arguments, 2);
 
                     return Self::initialize_typed_array_from_array_buffer(
                         cx,

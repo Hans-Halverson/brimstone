@@ -13,7 +13,6 @@ use crate::{
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
-            value::Value,
             Context, HeapPtr,
         },
     },
@@ -79,7 +78,7 @@ pub fn eval_script(
     }
 
     if result.is_empty() {
-        result = Value::undefined().into();
+        result = cx.undefined().into();
     }
 
     cx.pop_execution_context();
@@ -203,5 +202,5 @@ fn global_declaration_instantiation(
         maybe__!(env.create_global_var_binding(cx, var_name, false));
     }
 
-    Completion::empty()
+    Completion::empty(cx)
 }

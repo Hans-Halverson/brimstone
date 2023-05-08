@@ -8,7 +8,6 @@ use super::{
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::{is_callable, to_boolean},
-    value::Value,
     Context,
 };
 
@@ -129,10 +128,10 @@ impl PropertyDescriptor {
     }
 
     // 6.2.5.6 CompletePropertyDescriptor
-    pub fn complete_property_descriptor(&mut self) {
+    pub fn complete_property_descriptor(&mut self, cx: &mut Context) {
         if self.is_generic_descriptor() || self.is_data_descriptor() {
             if self.value.is_none() {
-                self.value = Some(Value::undefined());
+                self.value = Some(cx.undefined());
             }
 
             if self.is_writable.is_none() {

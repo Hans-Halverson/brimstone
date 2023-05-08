@@ -90,7 +90,7 @@ impl MapIteratorPrototype {
         let mut map_iterator = maybe!(MapIterator::cast_from_value(cx, this_value));
 
         match map_iterator.iter.next() {
-            None => create_iter_result_object(cx, Value::undefined(), true).into(),
+            None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
                     let key = (*key).into();

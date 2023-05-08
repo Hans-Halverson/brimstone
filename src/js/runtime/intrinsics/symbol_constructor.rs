@@ -11,7 +11,7 @@ use crate::{
         ordinary_object::object_create,
         realm::Realm,
         type_utilities::to_string,
-        value::{SymbolValue, Value},
+        value::SymbolValue,
         Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
@@ -128,7 +128,7 @@ impl SymbolConstructor {
             return type_error_(cx, "Symbol is not a constructor");
         }
 
-        let description_arg = get_argument(arguments, 0);
+        let description_arg = get_argument(cx, arguments, 0);
         let description_value = if description_arg.is_undefined() {
             None
         } else {
@@ -145,7 +145,8 @@ impl SymbolConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let string_key = maybe!(to_string(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let string_key = maybe!(to_string(cx, argument));
         if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key) {
             return (*symbol_value).into();
         }
@@ -163,7 +164,7 @@ impl SymbolConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let symbol_value = get_argument(arguments, 0);
+        let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {
             return type_error_(cx, "expected symbol value");
         }
@@ -175,6 +176,6 @@ impl SymbolConstructor {
             }
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 }

@@ -117,7 +117,7 @@ impl DataViewConstructor {
             return type_error_(cx, "DataView constructor must be called with new");
         };
 
-        let buffer_argument = get_argument(arguments, 0);
+        let buffer_argument = get_argument(cx, arguments, 0);
         if !buffer_argument.is_object() {
             return type_error_(cx, "first argument must be an array buffer");
         }
@@ -129,7 +129,8 @@ impl DataViewConstructor {
 
         let mut buffer_object = buffer_object.cast::<ArrayBufferObject>();
 
-        let offset = maybe!(to_index(cx, get_argument(arguments, 1)));
+        let offset_arg = get_argument(cx, arguments, 1);
+        let offset = maybe!(to_index(cx, offset_arg));
 
         if buffer_object.is_detached() {
             return type_error_(cx, "array buffer is detached");
@@ -146,7 +147,7 @@ impl DataViewConstructor {
             );
         }
 
-        let byte_length_argument = get_argument(arguments, 2);
+        let byte_length_argument = get_argument(cx, arguments, 2);
         let view_byte_length = if byte_length_argument.is_undefined() {
             buffer_byte_length - offset
         } else {

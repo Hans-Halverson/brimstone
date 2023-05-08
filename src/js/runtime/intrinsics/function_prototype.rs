@@ -23,7 +23,6 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity},
-        value::Value,
         Context, Handle,
     },
     maybe, must,
@@ -105,8 +104,8 @@ impl FunctionPrototype {
             return type_error_(cx, "value is not a function");
         }
 
-        let this_arg = get_argument(arguments, 0);
-        let arg_array = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 0);
+        let arg_array = get_argument(cx, arguments, 1);
 
         if arg_array.is_nullish() {
             call_object(cx, this_value.as_object(), this_arg, &[])
@@ -129,7 +128,7 @@ impl FunctionPrototype {
 
         let target = this_value.as_object();
 
-        let this_arg = get_argument(arguments, 0);
+        let this_arg = get_argument(cx, arguments, 0);
         let bound_args = if arguments.is_empty() {
             Vec::new()
         } else {
@@ -180,9 +179,10 @@ impl FunctionPrototype {
         }
 
         if arguments.is_empty() {
-            call_object(cx, this_value.as_object(), Value::undefined(), &[])
+            call_object(cx, this_value.as_object(), cx.undefined(), &[])
         } else {
-            call_object(cx, this_value.as_object(), get_argument(arguments, 0), &arguments[1..])
+            let argument = get_argument(cx, arguments, 0);
+            call_object(cx, this_value.as_object(), argument, &arguments[1..])
         }
     }
 
@@ -193,7 +193,9 @@ impl FunctionPrototype {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        maybe!(ordinary_has_instance(cx, this_value, get_argument(arguments, 0))).into()
+        let argument = get_argument(cx, arguments, 0);
+        let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
+        cx.bool(has_instance).into()
     }
 }
 
@@ -201,13 +203,13 @@ impl FunctionPrototype {
 impl VirtualObject for Handle<FunctionPrototype> {
     fn call(
         &self,
-        _: &mut Context,
+        cx: &mut Context,
         _this_argument: HandleValue,
         _arguments: &[HandleValue],
     ) -> EvalResult<HandleValue> {
         // 20.2.3 Properties of the Function Prototype Object
         // Accepts any arguments and returns undefined when invoked
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     fn is_callable(&self) -> bool {

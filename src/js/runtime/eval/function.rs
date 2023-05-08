@@ -37,9 +37,7 @@ use crate::{
             property::Property,
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
-            to_string,
-            value::Value,
-            Context, Handle,
+            to_string, Context, Handle,
         },
     },
     maybe, maybe__, must,
@@ -107,7 +105,7 @@ pub fn function_declaration_instantiation(
             if !already_declared {
                 must!(env.create_mutable_binding(cx, name_value, false));
                 if func_node.has_duplicate_parameters {
-                    must!(env.initialize_binding(cx, name_value, Value::undefined()));
+                    must!(env.initialize_binding(cx, name_value, cx.undefined()));
                 }
             }
 
@@ -145,7 +143,7 @@ pub fn function_declaration_instantiation(
     // Perform inlined IteratorBindingInitialization instead of creating an actual iterator object
     let mut arg_index = 0;
     for param in &func_node.params {
-        let mut value = Value::undefined();
+        let mut value = cx.undefined();
 
         // For rest parameters create an array holding all the values, then evaluate pattern as
         // normal with this new array as the value.
@@ -219,7 +217,7 @@ pub fn function_declaration_instantiation(
                 if instantiated_var_names.insert(&id.name) {
                     let name_value = id_string_value(cx, id);
                     must!(env.create_mutable_binding(cx, name_value, false));
-                    must!(env.initialize_binding(cx, name_value, Value::undefined()));
+                    must!(env.initialize_binding(cx, name_value, cx.undefined()));
                 }
 
                 ().into()
@@ -245,7 +243,7 @@ pub fn function_declaration_instantiation(
                     let initial_value = if !parameter_names.contains(id.name.as_str())
                         || function_names.contains(&id.name)
                     {
-                        Value::undefined()
+                        cx.undefined()
                     } else {
                         must!(env.get_binding_value(cx, name_value, false))
                     };
@@ -297,7 +295,7 @@ pub fn function_declaration_instantiation(
         must!(var_env.set_mutable_binding(cx, func_name, func_object.into(), false));
     }
 
-    Completion::empty()
+    Completion::empty(cx)
 }
 
 // 15.2.4 InstantiateOrdinaryFunctionObject

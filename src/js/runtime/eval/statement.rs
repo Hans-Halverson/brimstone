@@ -21,7 +21,6 @@ use crate::{
             iterator::iter_iterator_values,
             property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
-            value::Value,
             Context, Handle,
         },
     },
@@ -40,7 +39,7 @@ use super::{
 // 14.2.2 StatementList Evaluation
 pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Completion {
     // Value of the statement list is the last non-empty completion
-    let mut result = Completion::empty();
+    let mut result = Completion::empty(cx);
     for stmt in stmts {
         let new_result = eval_statement(cx, stmt);
 
@@ -57,7 +56,7 @@ pub fn eval_statement_list(cx: &mut Context, stmts: &[ast::Statement]) -> Comple
 // Equivalent to evaluating StatementList, but for toplevel items
 pub fn eval_toplevel_list(cx: &mut Context, toplevels: &[ast::Toplevel]) -> Completion {
     // Value of the statement list is the last non-empty completion
-    let mut result = Completion::empty();
+    let mut result = Completion::empty(cx);
     for toplevel in toplevels {
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
@@ -88,7 +87,7 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
                 eval_lexical_declaration(cx, var_decl)
             }
         }
-        ast::Statement::FuncDecl(_) => eval_function_declaration(),
+        ast::Statement::FuncDecl(_) => eval_function_declaration(cx),
         ast::Statement::ClassDecl(class) => eval_class_declaration(cx, class),
         ast::Statement::Expr(stmt) => eval_expression_statement(cx, stmt),
         ast::Statement::Block(block) => eval_block(cx, block),
@@ -108,24 +107,24 @@ fn eval_statement(cx: &mut Context, stmt: &ast::Statement) -> Completion {
         ast::Statement::Try(stmt) => eval_try_statement(cx, stmt),
         ast::Statement::Throw(stmt) => eval_throw_statement(cx, stmt),
         ast::Statement::Return(stmt) => eval_return_statement(cx, stmt),
-        ast::Statement::Break(stmt) => eval_break_statement(stmt),
-        ast::Statement::Continue(stmt) => eval_continue_statement(stmt),
+        ast::Statement::Break(stmt) => eval_break_statement(cx, stmt),
+        ast::Statement::Continue(stmt) => eval_continue_statement(cx, stmt),
         ast::Statement::Labeled(stmt) => eval_labeled_statement(cx, stmt),
-        ast::Statement::Empty(_) => eval_empty_statement(),
-        ast::Statement::Debugger(_) => eval_debugger_statement(),
+        ast::Statement::Empty(_) => eval_empty_statement(cx),
+        ast::Statement::Debugger(_) => eval_debugger_statement(cx),
     }
 }
 
 // 14.1.1 HoistableDeclaration Evaluation
 // 15.2.6 FunctionDeclaration Evaluation
-fn eval_function_declaration() -> Completion {
-    Completion::empty()
+fn eval_function_declaration(cx: &mut Context) -> Completion {
+    Completion::empty(cx)
 }
 
 // 14.2.2 Block Evaluation
 fn eval_block(cx: &mut Context, block: &ast::Block) -> Completion {
     if block.body.is_empty() {
-        return Completion::empty();
+        return Completion::empty(cx);
     }
 
     let mut current_context = cx.current_execution_context();
@@ -193,7 +192,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
                         name_key
                     ))
                 } else {
-                    Value::undefined()
+                    cx.undefined()
                 };
 
                 maybe__!(reference.initialize_referenced_binding(cx, value));
@@ -206,7 +205,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
         }
     }
 
-    Completion::empty()
+    Completion::empty(cx)
 }
 
 // 14.3.2.1 Variable Declaration Evaluation
@@ -234,7 +233,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
         }
     }
 
-    Completion::empty()
+    Completion::empty(cx)
 }
 
 #[inline]
@@ -281,8 +280,8 @@ pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
 }
 
 // 14.4.1 Empty Statement Evaluation
-fn eval_empty_statement() -> Completion {
-    Completion::empty()
+fn eval_empty_statement(cx: &mut Context) -> Completion {
+    Completion::empty(cx)
 }
 
 // 14.5.1 Expression Statement Evaluation
@@ -300,11 +299,11 @@ fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
         if let Some(ref altern) = stmt.altern {
             eval_statement(cx, altern)
         } else {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
     };
 
-    completion.update_if_empty(Value::undefined())
+    completion.update_if_empty(cx.undefined())
 }
 
 // 14.7.1.1 LoopContinues
@@ -326,7 +325,7 @@ fn eval_do_while_statement(
     stmt: &ast::DoWhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = Value::undefined();
+    let mut last_value = cx.undefined();
     loop {
         let body_result = eval_statement(cx, &stmt.body);
 
@@ -363,7 +362,7 @@ fn eval_while_statement(
     stmt: &ast::WhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = Value::undefined();
+    let mut last_value = cx.undefined();
     loop {
         let test_value = maybe__!(eval_expression(cx, &stmt.test));
         if !to_boolean(test_value) {
@@ -457,7 +456,7 @@ fn for_body_evaluation(
     per_iteration_decl: Option<&ast::VariableDeclaration>,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = Value::undefined();
+    let mut last_value = cx.undefined();
 
     if let Some(per_iteration_decl) = per_iteration_decl {
         create_per_iteration_environment(cx, per_iteration_decl);
@@ -653,13 +652,13 @@ fn eval_for_in_statement(
 
     // Part of ForIn/OfHeadEvaluation that is specific to enumeration
     if right_value.is_nullish() {
-        return Value::undefined().into();
+        return cx.undefined().into();
     }
 
     let old_env = cx.current_execution_context().lexical_env();
 
     let object_value = maybe__!(to_object(cx, right_value));
-    let mut last_value = Value::undefined();
+    let mut last_value = cx.undefined();
 
     // 14.7.5.9 EnumerateObjectProperties inlined
     // Walk prototype chain, collecting properties that haven't already been collected
@@ -734,7 +733,7 @@ fn eval_for_of_statement(
 
     let old_env = cx.current_execution_context_ptr().lexical_env();
 
-    let mut last_value = Value::undefined();
+    let mut last_value = cx.undefined();
     let mut last_completion = None;
 
     maybe_!(iter_iterator_values(cx, right_value, &mut |cx, value| {
@@ -779,18 +778,18 @@ fn eval_for_of_statement(
 }
 
 // 14.8.2 Continue Statement Evaluation
-fn eval_continue_statement(stmt: &ast::ContinueStatement) -> Completion {
+fn eval_continue_statement(cx: &mut Context, stmt: &ast::ContinueStatement) -> Completion {
     match stmt.label.as_ref() {
-        None => Completion::continue_(EMPTY_LABEL),
-        Some(label) => Completion::continue_(label.id),
+        None => Completion::continue_(cx, EMPTY_LABEL),
+        Some(label) => Completion::continue_(cx, label.id),
     }
 }
 
 // 14.9.2 Break Statement Evaluation
-fn eval_break_statement(stmt: &ast::BreakStatement) -> Completion {
+fn eval_break_statement(cx: &mut Context, stmt: &ast::BreakStatement) -> Completion {
     match stmt.label.as_ref() {
-        None => Completion::break_(EMPTY_LABEL),
-        Some(label) => Completion::break_(label.id),
+        None => Completion::break_(cx, EMPTY_LABEL),
+        Some(label) => Completion::break_(cx, label.id),
     }
 }
 
@@ -799,7 +798,7 @@ fn eval_return_statement(cx: &mut Context, stmt: &ast::ReturnStatement) -> Compl
     let return_value = if let Some(ref argument) = stmt.argument {
         maybe__!(eval_expression(cx, argument))
     } else {
-        Value::undefined()
+        cx.undefined()
     };
 
     // TODO: Check for generator
@@ -821,7 +820,7 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
 
     current_execution_context.set_lexical_env(old_env);
 
-    completion.update_if_empty(Value::undefined())
+    completion.update_if_empty(cx.undefined())
 }
 
 // 14.12.2 CaseBlockEvaluation
@@ -830,7 +829,7 @@ fn eval_case_block(
     stmt: &ast::SwitchStatement,
     discriminant_value: HandleValue,
 ) -> Completion {
-    let mut v = Value::undefined();
+    let mut v = cx.undefined();
 
     macro_rules! eval_case {
         ($case:expr) => {{
@@ -1016,7 +1015,7 @@ fn eval_try_statement(cx: &mut Context, stmt: &ast::TryStatement) -> Completion 
         block_catch_result
     };
 
-    result.update_if_empty(Value::undefined())
+    result.update_if_empty(cx.undefined())
 }
 
 // 14.15.2 CatchClauseEvaluation
@@ -1058,6 +1057,6 @@ fn eval_catch_clause(
 }
 
 // 14.16.1 Debugger Statement Evaluation
-fn eval_debugger_statement() -> Completion {
-    Completion::empty()
+fn eval_debugger_statement(cx: &mut Context) -> Completion {
+    Completion::empty(cx)
 }

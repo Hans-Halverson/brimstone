@@ -181,17 +181,18 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let relative_index = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let index_arg = get_argument(cx, arguments, 0);
+        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return Value::undefined().into();
+                return cx.undefined().into();
             }
 
             PropertyKey::from_u64(cx, relative_index as u64)
         } else {
             if -relative_index > length as f64 {
-                return Value::undefined().into();
+                return cx.undefined().into();
             }
 
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64)
@@ -287,7 +288,8 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let relative_target = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let target_arg = get_argument(cx, arguments, 0);
+        let relative_target = maybe!(to_integer_or_infinity(cx, target_arg));
         let mut to_index = if relative_target < 0.0 {
             if relative_target == f64::NEG_INFINITY {
                 0
@@ -298,7 +300,8 @@ impl ArrayPrototype {
             u64::min(relative_target as u64, length)
         };
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let start_arg = get_argument(cx, arguments, 1);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let mut from_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -309,7 +312,7 @@ impl ArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 2);
+        let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -396,13 +399,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
@@ -414,12 +417,12 @@ impl ArrayPrototype {
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
                 if !to_boolean(test_result) {
-                    return false.into();
+                    return cx.bool(false).into();
                 }
             }
         }
 
-        true.into()
+        cx.bool(true).into()
     }
 
     // 23.1.3.7 Array.prototype.fill
@@ -432,9 +435,10 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let start_arg = get_argument(cx, arguments, 1);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -445,7 +449,7 @@ impl ArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 2);
+        let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -480,13 +484,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         let array = maybe!(array_species_create(cx, object, 0));
 
@@ -524,13 +528,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let predicate_function = get_argument(arguments, 0);
+        let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
             return type_error_(cx, "expected function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
@@ -547,7 +551,7 @@ impl ArrayPrototype {
             }
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 23.1.3.10 Array.prototype.findIndex
@@ -560,13 +564,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let predicate_function = get_argument(arguments, 0);
+        let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
             return type_error_(cx, "expected function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
@@ -596,7 +600,7 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let depth = get_argument(arguments, 0);
+        let depth = get_argument(cx, arguments, 0);
         let depth = if depth.is_undefined() {
             1.0
         } else {
@@ -614,7 +618,7 @@ impl ArrayPrototype {
             0,
             depth,
             None,
-            Value::undefined()
+            cx.undefined()
         ));
 
         array.into()
@@ -695,8 +699,8 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let mapper_function = get_argument(arguments, 0);
-        let this_arg = get_argument(arguments, 1);
+        let mapper_function = get_argument(cx, arguments, 0);
+        let this_arg = get_argument(cx, arguments, 1);
 
         if !is_callable(mapper_function) {
             return type_error_(cx, "expected function");
@@ -728,13 +732,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
@@ -748,7 +752,7 @@ impl ArrayPrototype {
             }
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 23.1.3.14 Array.prototype.includes
@@ -762,14 +766,15 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
-        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let n_arg = get_argument(cx, arguments, 1);
+        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return false.into();
+            return cx.bool(false).into();
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -785,11 +790,11 @@ impl ArrayPrototype {
             let element = maybe!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
-                return true.into();
+                return cx.bool(true).into();
             }
         }
 
-        false.into()
+        cx.bool(false).into()
     }
 
     // 23.1.3.15 Array.prototype.indexOf
@@ -806,9 +811,10 @@ impl ArrayPrototype {
             return Value::smi(-1).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
-        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let n_arg = get_argument(cx, arguments, 1);
+        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
             return Value::smi(-1).into();
         } else if n == f64::NEG_INFINITY {
@@ -844,7 +850,7 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let separator = get_argument(arguments, 0);
+        let separator = get_argument(cx, arguments, 0);
         let separator = if separator.is_undefined() {
             InternedStrings::get_str(cx, ",")
         } else {
@@ -895,10 +901,11 @@ impl ArrayPrototype {
             return Value::smi(-1).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
         let start_index = if arguments.len() >= 2 {
-            let n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+            let start_arg = get_argument(cx, arguments, 1);
+            let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
                 return Value::smi(-1).into();
             }
@@ -941,13 +948,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         let array = maybe!(array_species_create(cx, object, length));
 
@@ -979,7 +986,7 @@ impl ArrayPrototype {
 
         if length == 0 {
             maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let new_length = length - 1;
@@ -1030,7 +1037,7 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
@@ -1039,7 +1046,7 @@ impl ArrayPrototype {
         let mut initial_index = 0;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(arguments, 1)
+            get_argument(cx, arguments, 1)
         } else if length == 0 {
             return type_error_(cx, "reduce does not have initial value");
         } else {
@@ -1067,7 +1074,7 @@ impl ArrayPrototype {
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator =
-                    maybe!(call_object(cx, callback_function, Value::undefined(), &arguments));
+                    maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
             }
         }
 
@@ -1084,7 +1091,7 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
@@ -1093,7 +1100,7 @@ impl ArrayPrototype {
         let mut initial_index = length as i64 - 1;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(arguments, 1)
+            get_argument(cx, arguments, 1)
         } else if length == 0 {
             return type_error_(cx, "reduceRight does not have initial value");
         } else {
@@ -1121,7 +1128,7 @@ impl ArrayPrototype {
                 let arguments = [accumulator, value, index_value, object.into()];
 
                 accumulator =
-                    maybe!(call_object(cx, callback_function, Value::undefined(), &arguments));
+                    maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
             }
         }
 
@@ -1192,7 +1199,7 @@ impl ArrayPrototype {
 
         if length == 0 {
             maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let first_key = PropertyKey::array_index(cx, 0);
@@ -1227,7 +1234,8 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1238,7 +1246,7 @@ impl ArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 1);
+        let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -1286,13 +1294,13 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i);
@@ -1304,12 +1312,12 @@ impl ArrayPrototype {
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
                 if to_boolean(test_result) {
-                    return true.into();
+                    return cx.bool(true).into();
                 }
             }
         }
 
-        false.into()
+        cx.bool(false).into()
     }
 
     // 23.1.3.29 Array.prototype.splice
@@ -1322,7 +1330,8 @@ impl ArrayPrototype {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1340,7 +1349,8 @@ impl ArrayPrototype {
         } else if arguments.len() == 1 {
             length - start_index
         } else {
-            let delete_count = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+            let delete_count_arg = get_argument(cx, arguments, 1);
+            let delete_count = maybe!(to_integer_or_infinity(cx, delete_count_arg));
             f64::min(f64::max(delete_count, 0.0), (length - start_index) as f64) as u64
         };
 
@@ -1522,17 +1532,19 @@ impl ArrayPrototype {
             Handle::from_heap(object.into())
         };
 
-        must!(create_data_property_or_throw(cx, list, cx.names.at(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.entries(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.fill(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.find(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.find_index(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.flat(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.includes(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.keys(), true.into()));
-        must!(create_data_property_or_throw(cx, list, cx.names.values(), true.into()));
+        let true_value = cx.bool(true);
+
+        must!(create_data_property_or_throw(cx, list, cx.names.at(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.entries(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.fill(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.find(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.find_index(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.flat(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.includes(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.keys(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.values(), true_value));
 
         list
     }

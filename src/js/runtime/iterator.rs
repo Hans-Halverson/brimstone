@@ -180,7 +180,7 @@ pub fn iter_iterator_values<F: FnMut(&mut Context, HandleValue) -> Option<Comple
     loop {
         let iter_result = maybe__!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return Completion::empty(),
+            None => return Completion::empty(cx),
             Some(iter_result) => {
                 let value = maybe__!(iterator_value(cx, iter_result));
 
@@ -205,7 +205,7 @@ pub fn iter_iterator_method_values<F: FnMut(&mut Context, HandleValue) -> Option
     loop {
         let iter_result = maybe__!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return Completion::empty(),
+            None => return Completion::empty(cx),
             Some(iter_result) => {
                 let value = maybe__!(iterator_value(cx, iter_result));
 

@@ -11,7 +11,6 @@ use crate::{
         property::Property,
         realm::Realm,
         string_value::{CodePointIterator, StringValue},
-        value::Value,
         Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
@@ -77,7 +76,7 @@ impl StringIteratorPrototype {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
         match string_iterator.code_points_iter.next() {
-            None => create_iter_result_object(cx, Value::undefined(), true).into(),
+            None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(next_code_point) => {
                 let code_point_string = StringValue::from_code_point(cx, next_code_point);
                 create_iter_result_object(cx, code_point_string.into(), false).into()

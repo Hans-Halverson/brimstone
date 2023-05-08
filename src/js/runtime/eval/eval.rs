@@ -22,7 +22,7 @@ use crate::{
             function::{instantiate_function_object, ConstructorKind},
             gc::HandleValue,
             string_value::StringValue,
-            Completion, CompletionKind, Context, EvalResult, Handle, Value,
+            Completion, CompletionKind, Context, EvalResult, Handle,
         },
     },
     maybe, must,
@@ -149,7 +149,7 @@ pub fn perform_eval(
     };
 
     if result.is_normal() && result.is_empty() {
-        result = Completion::normal(Value::undefined());
+        result = Completion::normal(cx.undefined());
     }
 
     cx.pop_execution_context();
@@ -313,7 +313,7 @@ fn eval_declaration_instantiation(
         } else {
             if !must!(var_env.has_binding(cx, name)) {
                 must!(var_env.create_mutable_binding(cx, name, true));
-                must!(var_env.initialize_binding(cx, name, Value::undefined()));
+                must!(var_env.initialize_binding(cx, name, cx.undefined()));
             }
         }
     }

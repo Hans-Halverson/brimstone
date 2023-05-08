@@ -101,7 +101,7 @@ impl SetConstructor {
         let set_object: Handle<ObjectValue> =
             maybe!(SetObject::new_from_constructor(cx, new_target)).into();
 
-        let iterable = get_argument(arguments, 0);
+        let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
             return set_object.into();
         }

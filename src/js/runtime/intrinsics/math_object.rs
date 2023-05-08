@@ -111,7 +111,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         if n.is_smi() {
             Value::smi(i32::abs(n.as_smi())).into()
@@ -127,7 +128,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::acos(n.as_number())).into()
     }
 
@@ -138,7 +140,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::acosh(n.as_number())).into()
     }
 
@@ -149,7 +152,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::asin(n.as_number())).into()
     }
 
@@ -160,7 +164,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::asinh(n.as_number())).into()
     }
 
@@ -171,7 +176,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::atan(n.as_number())).into()
     }
 
@@ -182,7 +188,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::atanh(n.as_number())).into()
     }
 
@@ -193,8 +200,12 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let y = maybe!(to_number(cx, get_argument(arguments, 0)));
-        let x = maybe!(to_number(cx, get_argument(arguments, 1)));
+        let y_arg = get_argument(cx, arguments, 0);
+        let y = maybe!(to_number(cx, y_arg));
+
+        let x_arg = get_argument(cx, arguments, 1);
+        let x = maybe!(to_number(cx, x_arg));
+
         Value::number(y.as_number().atan2(x.as_number())).into()
     }
 
@@ -205,7 +216,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::cbrt(n.as_number())).into()
     }
 
@@ -216,7 +228,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         if n.is_smi() {
             n.into()
@@ -232,7 +245,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_uint32(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_uint32(cx, argument));
         Value::smi(n.leading_zeros() as i32).into()
     }
 
@@ -243,7 +257,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::cos(n.as_number())).into()
     }
 
@@ -254,7 +269,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::cosh(n.as_number())).into()
     }
 
@@ -265,7 +281,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::exp(n.as_number())).into()
     }
 
@@ -276,7 +293,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::exp_m1(n.as_number())).into()
     }
 
@@ -287,7 +305,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         if n.is_smi() {
             n.into()
@@ -303,7 +322,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number((n.as_number() as f32) as f64).into()
     }
 
@@ -359,8 +379,11 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let x = maybe!(to_uint32(cx, get_argument(arguments, 0)));
-        let y = maybe!(to_uint32(cx, get_argument(arguments, 1)));
+        let x_arg = get_argument(cx, arguments, 0);
+        let x = maybe!(to_uint32(cx, x_arg));
+
+        let y_arg = get_argument(cx, arguments, 1);
+        let y = maybe!(to_uint32(cx, y_arg));
 
         let mod_mul = ((x as u64) * (y as u64)) as u32;
 
@@ -374,7 +397,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::ln(n.as_number())).into()
     }
 
@@ -385,7 +409,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::ln_1p(n.as_number())).into()
     }
 
@@ -396,7 +421,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::log10(n.as_number())).into()
     }
 
@@ -407,7 +433,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::log2(n.as_number())).into()
     }
 
@@ -486,8 +513,11 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let base = maybe!(to_number(cx, get_argument(arguments, 0)));
-        let exponent = maybe!(to_number(cx, get_argument(arguments, 1)));
+        let base_arg = get_argument(cx, arguments, 0);
+        let base = maybe!(to_number(cx, base_arg));
+
+        let exponent_arg = get_argument(cx, arguments, 1);
+        let exponent = maybe!(to_number(cx, exponent_arg));
 
         number_exponentiate(base.as_number(), exponent.as_number()).into()
     }
@@ -510,7 +540,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         if n.is_smi() {
             n.into()
@@ -535,7 +566,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         let value = if n.is_smi() {
             let n_smi = n.as_smi();
@@ -568,7 +600,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::sin(n.as_number())).into()
     }
 
@@ -579,7 +612,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::sinh(n.as_number())).into()
     }
 
@@ -590,7 +624,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::sqrt(n.as_number())).into()
     }
 
@@ -601,7 +636,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::tan(n.as_number())).into()
     }
 
@@ -612,7 +648,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
         Value::number(f64::tanh(n.as_number())).into()
     }
 
@@ -623,7 +660,8 @@ impl MathObject {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let n = maybe!(to_number(cx, get_argument(arguments, 0)));
+        let argument = get_argument(cx, arguments, 0);
+        let n = maybe!(to_number(cx, argument));
 
         if n.is_smi() {
             n.into()

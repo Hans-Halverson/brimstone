@@ -78,7 +78,7 @@ impl Test262Object {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let script_text = get_argument(arguments, 0);
+        let script_text = get_argument(cx, arguments, 0);
         if !script_text.is_string() {
             return type_error_(cx, "expected string");
         }
@@ -113,24 +113,24 @@ impl Test262Object {
     }
 
     fn detach_array_buffer(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let object = value.as_object();
         if !object.is_array_buffer() {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let mut array_buffer = object.cast::<ArrayBufferObject>();
         array_buffer.detach();
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 }

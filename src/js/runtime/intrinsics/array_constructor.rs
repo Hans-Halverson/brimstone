@@ -70,7 +70,7 @@ impl ArrayConstructor {
         if arguments.is_empty() {
             return must!(array_create(cx, 0, Some(proto))).into();
         } else if arguments.len() == 1 {
-            let length = get_argument(arguments, 0);
+            let length = get_argument(cx, arguments, 0);
             let array = must!(array_create(cx, 0, Some(proto)));
 
             let int_len = if length.is_number() {
@@ -95,7 +95,7 @@ impl ArrayConstructor {
 
             for index in 0..arguments.len() {
                 let key = PropertyKey::array_index(cx, index as u32);
-                let value = get_argument(arguments, index);
+                let value = get_argument(cx, arguments, index);
 
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
             }
@@ -111,7 +111,9 @@ impl ArrayConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        maybe!(is_array(cx, get_argument(arguments, 0))).into()
+        let argument = get_argument(cx, arguments, 0);
+        let is_array = maybe!(is_array(cx, argument));
+        cx.bool(is_array).into()
     }
 
     // 23.1.2.3 Array.of
@@ -132,7 +134,7 @@ impl ArrayConstructor {
 
         for index in 0..length {
             let key = PropertyKey::array_index(cx, index as u32);
-            let value = get_argument(arguments, index);
+            let value = get_argument(cx, arguments, index);
 
             maybe!(create_data_property_or_throw(cx, array.into(), key, value));
         }

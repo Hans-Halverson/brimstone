@@ -1,16 +1,8 @@
 use crate::{
     js::runtime::{
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error_,
-        gc::HandleValue,
-        object_value::ObjectValue,
-        property::Property,
-        property_key::PropertyKey,
-        realm::Realm,
-        string_value::StringValue,
-        value::{SymbolValue, Value},
-        Context, Handle,
+        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
+        gc::HandleValue, object_value::ObjectValue, property::Property, property_key::PropertyKey,
+        realm::Realm, string_value::StringValue, value::SymbolValue, Context, Handle,
     },
     maybe,
 };
@@ -70,7 +62,7 @@ impl SymbolPrototype {
     ) -> EvalResult<HandleValue> {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         match symbol_value.as_symbol().description() {
-            None => Value::undefined().into(),
+            None => cx.undefined().into(),
             Some(desc) => desc.into(),
         }
     }

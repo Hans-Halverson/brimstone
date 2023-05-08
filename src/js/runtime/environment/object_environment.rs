@@ -10,7 +10,6 @@ use crate::{
         property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::to_boolean,
-        value::Value,
         Context, HeapPtr,
     },
     maybe, set_uninit,
@@ -91,7 +90,7 @@ impl Environment for Handle<ObjectEnvironment> {
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
-        let prop_desc = PropertyDescriptor::data(Value::undefined(), true, true, can_delete);
+        let prop_desc = PropertyDescriptor::data(cx.undefined(), true, true, can_delete);
         let name_key = PropertyKey::string(cx, name);
         define_property_or_throw(cx, self.binding_object(), name_key, prop_desc)
     }
@@ -146,7 +145,7 @@ impl Environment for Handle<ObjectEnvironment> {
         let name_key = PropertyKey::string(cx, name);
         if !maybe!(has_property(cx, binding_object, name_key)) {
             return if !is_strict {
-                Value::undefined().into()
+                cx.undefined().into()
             } else {
                 err_not_defined_(cx, name)
             };

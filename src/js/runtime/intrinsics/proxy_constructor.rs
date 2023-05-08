@@ -11,7 +11,6 @@ use crate::{
         ordinary_object::ordinary_object_create,
         proxy_object::{proxy_create, ProxyObject},
         realm::Realm,
-        value::Value,
         Context, HeapPtr,
     },
     maybe, must, set_uninit,
@@ -50,8 +49,8 @@ impl ProxyConstructor {
             return type_error_(cx, "Proxy is a constructor");
         }
 
-        let target = get_argument(arguments, 0);
-        let handler = get_argument(arguments, 1);
+        let target = get_argument(cx, arguments, 0);
+        let handler = get_argument(cx, arguments, 1);
 
         maybe!(proxy_create(cx, target, handler)).into()
     }
@@ -63,8 +62,8 @@ impl ProxyConstructor {
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let target = get_argument(arguments, 0);
-        let handler = get_argument(arguments, 1);
+        let target = get_argument(cx, arguments, 0);
+        let handler = get_argument(cx, arguments, 1);
         let proxy = maybe!(proxy_create(cx, target, handler));
 
         let revoke_environment = RevokeEnvironment::new(cx, Some(proxy));
@@ -93,13 +92,13 @@ fn revoke(
     let revocable_proxy_ptr = closure_environment_ptr.revocable_proxy_ptr();
 
     if revocable_proxy_ptr.is_none() {
-        return Value::undefined().into();
+        return cx.undefined().into();
     }
 
     closure_environment_ptr.revocable_proxy = None;
     revocable_proxy_ptr.unwrap().revoke();
 
-    Value::undefined().into()
+    cx.undefined().into()
 }
 
 #[repr(C)]

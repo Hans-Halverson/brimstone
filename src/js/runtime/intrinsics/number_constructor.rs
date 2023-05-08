@@ -161,7 +161,8 @@ impl NumberConstructor {
         let number_value = if arguments.is_empty() {
             0.0
         } else {
-            let numeric_value = maybe!(to_numeric(cx, get_argument(arguments, 0)));
+            let argument = get_argument(cx, arguments, 0);
+            let numeric_value = maybe!(to_numeric(cx, argument));
             if numeric_value.is_bigint() {
                 // TODO: Create better conversion directly from BigInt to f64 instead of through string
                 let bigint_string = numeric_value.as_bigint().bigint().to_string();
@@ -181,57 +182,58 @@ impl NumberConstructor {
 
     // 21.1.2.2 Number.isFinite
     fn is_finite(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        (!value.is_nan() && !value.is_infinity()).into()
+        cx.bool(!value.is_nan() && !value.is_infinity()).into()
     }
 
     // 21.1.2.3 Number.isInteger
     fn is_integer(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
-        is_integral_number(value).into()
+        let value = get_argument(cx, arguments, 0);
+        cx.bool(is_integral_number(value)).into()
     }
 
     // 21.1.2.4 Number.isNaN
     fn is_nan(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        value.is_nan().into()
+        cx.bool(value.is_nan()).into()
     }
 
     // 21.1.2.5 Number.isSafeInteger
     fn is_safe_integer(
-        _: &mut Context,
+        cx: &mut Context,
         _: HandleValue,
         arguments: &[HandleValue],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
-        let value = get_argument(arguments, 0);
+        let value = get_argument(cx, arguments, 0);
         if !is_integral_number(value) {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        (value.as_number().abs() <= MAX_SAFE_INTEGER_F64).into()
+        cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64)
+            .into()
     }
 }

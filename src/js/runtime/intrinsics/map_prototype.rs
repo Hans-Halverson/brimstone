@@ -76,7 +76,7 @@ impl MapPrototype {
 
         map.map_data().clear();
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 24.1.3.3 Map.prototype.delete
@@ -92,10 +92,10 @@ impl MapPrototype {
             return type_error_(cx, "delete method must be called on map");
         };
 
-        let key = get_argument(arguments, 0);
+        let key = get_argument(cx, arguments, 0);
         let existed = map.map_data().remove(key).is_some();
 
-        existed.into()
+        cx.bool(existed).into()
     }
 
     // 24.1.3.4 Map.prototype.entries
@@ -127,13 +127,13 @@ impl MapPrototype {
             return type_error_(cx, "forEach method must be called on map");
         };
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         // Reuse key and value handles during iteration
         let mut key_handle = HandleValue::uninit();
@@ -149,7 +149,7 @@ impl MapPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 24.1.3.6 Map.prototype.get
@@ -165,11 +165,11 @@ impl MapPrototype {
             return type_error_(cx, "get method must be called on map");
         };
 
-        let key = get_argument(arguments, 0);
+        let key = get_argument(cx, arguments, 0);
 
         match map.map_data().get(key) {
             Some(value) => (*value).into(),
-            None => Value::undefined().into(),
+            None => cx.undefined().into(),
         }
     }
 
@@ -186,9 +186,9 @@ impl MapPrototype {
             return type_error_(cx, "has method must be called on map");
         };
 
-        let key = get_argument(arguments, 0);
+        let key = get_argument(cx, arguments, 0);
 
-        map.map_data().contains_key(key).into()
+        cx.bool(map.map_data().contains_key(key)).into()
     }
 
     // 24.1.3.8 Map.prototype.keys
@@ -220,8 +220,8 @@ impl MapPrototype {
             return type_error_(cx, "set method must be called on map");
         };
 
-        let mut key = get_argument(arguments, 0);
-        let value = get_argument(arguments, 1);
+        let mut key = get_argument(cx, arguments, 0);
+        let value = get_argument(cx, arguments, 1);
 
         // Convert negative zero to positive zero for key in map
         if key.is_negative_zero() {

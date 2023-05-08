@@ -16,7 +16,6 @@ use super::{
     property_key::PropertyKey,
     realm::Realm,
     string_value::StringValue,
-    value::Value,
     Context, Handle,
 };
 
@@ -191,7 +190,7 @@ impl VirtualObject for Handle<BuiltinFunction> {
         cx.push_closure_environment(self.closure_environment);
         cx.push_execution_context(callee_context);
 
-        let result = (self.builtin_func)(cx, Value::undefined(), arguments, Some(new_target));
+        let result = (self.builtin_func)(cx, cx.undefined(), arguments, Some(new_target));
 
         cx.pop_execution_context();
         cx.pop_closure_environment();

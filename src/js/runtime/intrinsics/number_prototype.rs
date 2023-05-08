@@ -54,7 +54,8 @@ impl NumberPrototype {
         let number_value = maybe!(this_number_value(cx, this_value));
         let mut number = number_value.as_number();
 
-        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let fraction_digits_arg = get_argument(cx, arguments, 0);
+        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
         if !num_fraction_digits.is_finite()
             || num_fraction_digits < 0.0
             || num_fraction_digits > 100.0
@@ -111,7 +112,7 @@ impl NumberPrototype {
     ) -> EvalResult<HandleValue> {
         let number_value = maybe!(this_number_value(cx, this_value));
 
-        let radix = get_argument(arguments, 0);
+        let radix = get_argument(cx, arguments, 0);
 
         let is_radix_10 = if radix.is_undefined() {
             true

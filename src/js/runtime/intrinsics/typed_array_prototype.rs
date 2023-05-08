@@ -108,17 +108,18 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let relative_index = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let index_arg = get_argument(cx, arguments, 0);
+        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return Value::undefined().into();
+                return cx.undefined().into();
             }
 
             PropertyKey::from_u64(cx, relative_index as u64)
         } else {
             if -relative_index > length as f64 {
-                return Value::undefined().into();
+                return cx.undefined().into();
             }
 
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64)
@@ -181,7 +182,8 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
-        let relative_target = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let target_arg = get_argument(cx, arguments, 0);
+        let relative_target = maybe!(to_integer_or_infinity(cx, target_arg));
         let to_index = if relative_target < 0.0 {
             if relative_target == f64::NEG_INFINITY {
                 0
@@ -192,7 +194,8 @@ impl TypedArrayPrototype {
             u64::min(relative_target as u64, length)
         };
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let start_arg = get_argument(cx, arguments, 1);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let from_start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -203,7 +206,7 @@ impl TypedArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 2);
+        let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -296,13 +299,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i as u64);
@@ -313,11 +316,11 @@ impl TypedArrayPrototype {
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
             if !to_boolean(test_result) {
-                return false.into();
+                return cx.bool(false).into();
             }
         }
 
-        true.into()
+        cx.bool(true).into()
     }
 
     // 23.2.3.9 %TypedArray%.prototype.fill
@@ -331,12 +334,14 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
+        let value_arg = get_argument(cx, arguments, 0);
         let value = match typed_array.content_type() {
-            ContentType::Number => maybe!(to_number(cx, get_argument(arguments, 0))),
-            ContentType::BigInt => maybe!(to_bigint(cx, get_argument(arguments, 0))).into(),
+            ContentType::Number => maybe!(to_number(cx, value_arg)),
+            ContentType::BigInt => maybe!(to_bigint(cx, value_arg)).into(),
         };
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let start_arg = get_argument(cx, arguments, 1);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -347,7 +352,7 @@ impl TypedArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 2);
+        let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -387,13 +392,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         let mut kept_values = vec![];
 
@@ -440,13 +445,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let predicate_function = get_argument(arguments, 0);
+        let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
             return type_error_(cx, "expected function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i as u64);
@@ -461,7 +466,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 23.2.3.12 %TypedArray%.prototype.findIndex
@@ -475,13 +480,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let predicate_function = get_argument(arguments, 0);
+        let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
             return type_error_(cx, "expected function");
         }
 
         let predicate_function = predicate_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i as u64);
@@ -510,13 +515,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i as u64);
@@ -528,7 +533,7 @@ impl TypedArrayPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        Value::undefined().into()
+        cx.undefined().into()
     }
 
     // 23.2.3.14 %TypedArray%.prototype.includes
@@ -543,14 +548,15 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length() as u64;
 
         if length == 0 {
-            return false.into();
+            return cx.bool(false).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
-        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let n_arg = get_argument(cx, arguments, 1);
+        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return false.into();
+            return cx.bool(false).into();
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -566,11 +572,11 @@ impl TypedArrayPrototype {
             let element = must!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
-                return true.into();
+                return cx.bool(true).into();
             }
         }
 
-        false.into()
+        cx.bool(false).into()
     }
 
     // 23.2.3.15 %TypedArray%.prototype.indexOf
@@ -588,9 +594,10 @@ impl TypedArrayPrototype {
             return Value::smi(-1).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
-        let mut n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+        let n_arg = get_argument(cx, arguments, 1);
+        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
             return Value::smi(-1).into();
         } else if n == f64::NEG_INFINITY {
@@ -627,7 +634,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let separator = get_argument(arguments, 0);
+        let separator = get_argument(cx, arguments, 0);
         let separator = if separator.is_undefined() {
             InternedStrings::get_str(cx, ",")
         } else {
@@ -679,10 +686,11 @@ impl TypedArrayPrototype {
             return Value::smi(-1).into();
         }
 
-        let search_element = get_argument(arguments, 0);
+        let search_element = get_argument(cx, arguments, 0);
 
         let start_index = if arguments.len() >= 2 {
-            let n = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 1)));
+            let start_arg = get_argument(cx, arguments, 1);
+            let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
                 return Value::smi(-1).into();
             }
@@ -742,13 +750,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         let array = maybe!(typed_array_species_create_object(
             cx,
@@ -782,7 +790,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
@@ -791,7 +799,7 @@ impl TypedArrayPrototype {
         let mut initial_index = 0;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(arguments, 1)
+            get_argument(cx, arguments, 1)
         } else if length == 0 {
             return type_error_(cx, "reduce does not have initial value");
         } else {
@@ -807,8 +815,7 @@ impl TypedArrayPrototype {
             let index_value = Value::from(i);
             let arguments = [accumulator, value, index_value, object.into()];
 
-            accumulator =
-                maybe!(call_object(cx, callback_function, Value::undefined(), &arguments));
+            accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
         }
 
         accumulator.into()
@@ -825,7 +832,7 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
@@ -834,7 +841,7 @@ impl TypedArrayPrototype {
         let mut initial_index = length as i64 - 1;
 
         let mut accumulator = if arguments.len() >= 2 {
-            get_argument(arguments, 1)
+            get_argument(cx, arguments, 1)
         } else if length == 0 {
             return type_error_(cx, "reduceRight does not have initial value");
         } else {
@@ -850,8 +857,7 @@ impl TypedArrayPrototype {
             let index_value = Value::from(i);
             let arguments = [accumulator, value, index_value, object.into()];
 
-            accumulator =
-                maybe!(call_object(cx, callback_function, Value::undefined(), &arguments));
+            accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
         }
 
         accumulator.into()
@@ -901,7 +907,8 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length() as u64;
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -912,7 +919,7 @@ impl TypedArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 1);
+        let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -997,13 +1004,13 @@ impl TypedArrayPrototype {
         let object = typed_array.into_object_value();
         let length = typed_array.array_length();
 
-        let callback_function = get_argument(arguments, 0);
+        let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
             return type_error_(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
-        let this_arg = get_argument(arguments, 1);
+        let this_arg = get_argument(cx, arguments, 1);
 
         for i in 0..length {
             let index_key = PropertyKey::from_u64(cx, i as u64);
@@ -1014,11 +1021,11 @@ impl TypedArrayPrototype {
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
             if to_boolean(test_result) {
-                return true.into();
+                return cx.bool(true).into();
             }
         }
 
-        false.into()
+        cx.bool(false).into()
     }
 
     // 23.2.3.28 %TypedArray%.prototype.subarray
@@ -1032,7 +1039,8 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length() as u64;
         let buffer = typed_array.viewed_array_buffer();
 
-        let relative_start = maybe!(to_integer_or_infinity(cx, get_argument(arguments, 0)));
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1043,7 +1051,7 @@ impl TypedArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let end_argument = get_argument(arguments, 1);
+        let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
             let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
 
@@ -1133,12 +1141,12 @@ impl TypedArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         if !this_value.is_object() {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         let this_object = this_value.as_object();
         if !this_object.is_typed_array() {
-            return Value::undefined().into();
+            return cx.undefined().into();
         }
 
         this_object.as_typed_array().name(cx).into()

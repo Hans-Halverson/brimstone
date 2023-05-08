@@ -241,7 +241,7 @@ impl VirtualObject for Handle<Function> {
 
         match result.kind() {
             CompletionKind::Return => result.value().into(),
-            CompletionKind::Normal => Value::undefined().into(),
+            CompletionKind::Normal => cx.undefined().into(),
             CompletionKind::Throw => EvalResult::Throw(result.value().into()),
             CompletionKind::Break | CompletionKind::Continue => {
                 panic!("Call completion cannot be Break or Continue")
@@ -713,10 +713,10 @@ fn expected_argument_count(func_node: &ast::Function) -> i32 {
     count
 }
 
-pub fn get_argument(arguments: &[HandleValue], i: usize) -> HandleValue {
+pub fn get_argument(cx: &mut Context, arguments: &[HandleValue], i: usize) -> HandleValue {
     if i < arguments.len() {
         arguments[i]
     } else {
-        Value::undefined()
+        cx.undefined()
     }
 }

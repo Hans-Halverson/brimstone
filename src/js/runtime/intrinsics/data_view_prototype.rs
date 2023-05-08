@@ -418,8 +418,9 @@ fn get_view_value<T>(
 ) -> EvalResult<HandleValue> {
     let data_view = maybe!(require_is_data_view(cx, this_value));
 
-    let get_index = maybe!(to_index(cx, get_argument(arguments, 0)));
-    let is_little_endian = to_boolean(get_argument(arguments, 1));
+    let get_index_arg = get_argument(cx, arguments, 0);
+    let get_index = maybe!(to_index(cx, get_index_arg));
+    let is_little_endian = to_boolean(get_argument(cx, arguments, 1));
 
     // Does not allocate past this point, so safe to keep pointer to array buffer
     let mut buffer = data_view.viewed_array_buffer_ptr();
@@ -470,13 +471,15 @@ fn set_view_value<T>(
 ) -> EvalResult<HandleValue> {
     let data_view = maybe!(require_is_data_view(cx, this_value));
 
-    let get_index = maybe!(to_index(cx, get_argument(arguments, 0)));
-    let is_little_endian = to_boolean(get_argument(arguments, 2));
+    let get_index_arg = get_argument(cx, arguments, 0);
+    let get_index = maybe!(to_index(cx, get_index_arg));
+    let is_little_endian = to_boolean(get_argument(cx, arguments, 2));
 
+    let value_arg = get_argument(cx, arguments, 1);
     let value = if content_type == ContentType::BigInt {
-        maybe!(to_bigint(cx, get_argument(arguments, 1))).into()
+        maybe!(to_bigint(cx, value_arg)).into()
     } else {
-        maybe!(to_number(cx, get_argument(arguments, 1)))
+        maybe!(to_number(cx, value_arg))
     };
 
     // Does not allocate past this point, so safe to keep pointer to array buffer
@@ -518,5 +521,5 @@ fn set_view_value<T>(
         element_ptr.write(element_bytes)
     }
 
-    Value::undefined().into()
+    cx.undefined().into()
 }

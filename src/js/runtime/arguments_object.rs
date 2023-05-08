@@ -365,9 +365,9 @@ fn arg_setter(
     let name = closure_environment_ptr.name();
     let mut env = closure_environment_ptr.env();
 
-    let value = get_argument(arguments, 0);
+    let value = get_argument(cx, arguments, 0);
 
     must!(env.set_mutable_binding(cx, name, value, false));
 
-    Value::undefined().into()
+    cx.undefined().into()
 }

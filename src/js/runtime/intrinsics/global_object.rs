@@ -67,7 +67,7 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> Ev
     value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
     value_prop!(cx.names.infinity(), Value::number(f64::INFINITY), false, false, false);
     value_prop!(cx.names.nan(), Value::nan(), false, false, false);
-    value_prop!(cx.names.undefined(), Value::undefined(), false, false, false);
+    value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
     // 19.2 Function Properties of the Global Object
     intrinsic_prop!(cx.names.eval(), Eval);
@@ -132,7 +132,8 @@ fn eval(
     arguments: &[HandleValue],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<HandleValue> {
-    perform_eval(cx, get_argument(arguments, 0), false, false)
+    let code_arg = get_argument(cx, arguments, 0);
+    perform_eval(cx, code_arg, false, false)
 }
 
 // 19.2.2 isFinite
@@ -142,8 +143,9 @@ fn is_finite(
     arguments: &[HandleValue],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<HandleValue> {
-    let num = maybe!(to_number(cx, get_argument(arguments, 0)));
-    (!num.is_nan() && !num.is_infinity()).into()
+    let argument = get_argument(cx, arguments, 0);
+    let num = maybe!(to_number(cx, argument));
+    cx.bool(!num.is_nan() && !num.is_infinity()).into()
 }
 
 // 19.2.3 isNaN
@@ -153,8 +155,9 @@ fn is_nan(
     arguments: &[HandleValue],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<HandleValue> {
-    let num = maybe!(to_number(cx, get_argument(arguments, 0)));
-    num.is_nan().into()
+    let argument = get_argument(cx, arguments, 0);
+    let num = maybe!(to_number(cx, argument));
+    cx.bool(num.is_nan()).into()
 }
 
 // 19.2.4 parseFloat
@@ -164,7 +167,8 @@ fn parse_float(
     arguments: &[HandleValue],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<HandleValue> {
-    let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
+    let input_string_arg = get_argument(cx, arguments, 0);
+    let input_string = maybe!(to_string(cx, input_string_arg));
 
     match parse_float_with_string_lexer(input_string.get_()) {
         Some(float) => Value::number(float).into(),
@@ -206,8 +210,11 @@ fn parse_int(
     arguments: &[HandleValue],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<HandleValue> {
-    let input_string = maybe!(to_string(cx, get_argument(arguments, 0)));
-    let radix = maybe!(to_int32(cx, get_argument(arguments, 1)));
+    let input_string_arg = get_argument(cx, arguments, 0);
+    let input_string = maybe!(to_string(cx, input_string_arg));
+
+    let radix_arg = get_argument(cx, arguments, 1);
+    let radix = maybe!(to_int32(cx, radix_arg));
 
     match parse_int_impl(input_string.get_(), radix) {
         Some(number) => Value::number(number).into(),

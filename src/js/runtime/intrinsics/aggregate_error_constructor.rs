@@ -88,8 +88,8 @@ impl AggregateErrorConstructor {
 
         let object = maybe!(AggregateErrorObject::new_from_constructor(cx, new_target));
 
-        let errors = get_argument(arguments, 0);
-        let message = get_argument(arguments, 1);
+        let errors = get_argument(cx, arguments, 0);
+        let message = get_argument(cx, arguments, 1);
         if !message.is_undefined() {
             let message_string = maybe!(to_string(cx, message));
             create_non_enumerable_data_property_or_throw(
@@ -100,7 +100,8 @@ impl AggregateErrorConstructor {
             );
         }
 
-        maybe!(install_error_cause(cx, object, get_argument(arguments, 2)));
+        let options_arg = get_argument(cx, arguments, 2);
+        maybe!(install_error_cause(cx, object, options_arg));
 
         // Collect errors in iterable and create a new array containing all errors
         let mut errors_list = vec![];

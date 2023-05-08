@@ -48,7 +48,7 @@ impl BigIntPrototype {
     ) -> EvalResult<HandleValue> {
         let bigint_value = maybe!(this_bigint_value(cx, this_value));
 
-        let radix = get_argument(arguments, 0);
+        let radix = get_argument(cx, arguments, 0);
         let radix = if radix.is_undefined() {
             10
         } else {

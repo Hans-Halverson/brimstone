@@ -102,7 +102,7 @@ macro_rules! create_native_error {
 
                 let object = maybe!($native_error::new_from_constructor(cx, new_target));
 
-                let message = get_argument(arguments, 0);
+                let message = get_argument(cx, arguments, 0);
                 if !message.is_undefined() {
                     let message_string = maybe!(to_string(cx, message));
                     create_non_enumerable_data_property_or_throw(
@@ -113,7 +113,8 @@ macro_rules! create_native_error {
                     );
                 }
 
-                maybe!(install_error_cause(cx, object, get_argument(arguments, 1)));
+                let options_arg = get_argument(cx, arguments, 1);
+                maybe!(install_error_cause(cx, object, options_arg));
 
                 object.into()
             }

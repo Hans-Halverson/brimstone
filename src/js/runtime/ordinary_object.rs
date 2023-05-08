@@ -246,7 +246,7 @@ pub fn validate_and_apply_property_descriptor(
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
         } else {
             let is_writable = desc.is_writable.unwrap_or(false);
-            let value = desc.value.unwrap_or_else(|| Value::undefined());
+            let value = desc.value.unwrap_or_else(|| cx.undefined());
 
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
@@ -286,7 +286,7 @@ pub fn validate_and_apply_property_descriptor(
                 // their defaults.
                 let mut property = object.get_property(key).unwrap();
                 if desc.is_data_descriptor() {
-                    property.set_value(Value::undefined());
+                    property.set_value(cx.undefined());
                     property.set_is_writable(false);
                 } else {
                     let accessor_value = AccessorValue::new(cx, None, None);
@@ -399,12 +399,12 @@ pub fn ordinary_get(
         None => {
             let parent = maybe!(object.get_prototype_of(cx));
             match parent {
-                None => Value::undefined().into(),
+                None => cx.undefined().into(),
                 Some(parent) => parent.get(cx, key, receiver),
             }
         }
         Some(desc) if desc.is_data_descriptor() => desc.value.unwrap().into(),
-        Some(PropertyDescriptor { get: None, .. }) => Value::undefined().into(),
+        Some(PropertyDescriptor { get: None, .. }) => cx.undefined().into(),
         Some(PropertyDescriptor { get: Some(getter), .. }) => {
             call_object(cx, getter, receiver, &[])
         }
@@ -425,7 +425,7 @@ pub fn ordinary_set(
         None => {
             let parent = maybe!(object.get_prototype_of(cx));
             match parent {
-                None => PropertyDescriptor::data(Value::undefined(), true, true, true),
+                None => PropertyDescriptor::data(cx.undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
             }
         }

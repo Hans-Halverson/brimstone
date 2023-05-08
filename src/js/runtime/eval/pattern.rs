@@ -16,7 +16,7 @@ use crate::{
                 statement::eval_named_anonymous_function_or_expression_if,
             },
             execution_context::resolve_binding,
-            gc::Gc,
+            gc::HandleValue,
             interned_strings::InternedStrings,
             iterator::{
                 get_iterator, iterator_close, iterator_step, iterator_value, Iterator, IteratorHint,
@@ -28,7 +28,7 @@ use crate::{
             string_value::StringValue,
             type_utilities::require_object_coercible,
             value::Value,
-            Completion, Context,
+            Completion, Context, Handle,
         },
     },
     maybe, must,
@@ -41,7 +41,7 @@ use crate::{
 pub fn binding_initialization(
     cx: &mut Context,
     patt: &ast::Pattern,
-    value: Value,
+    value: HandleValue,
     env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     match patt {
@@ -82,7 +82,7 @@ pub fn binding_initialization(
 fn object_binding_initialization(
     cx: &mut Context,
     object: &ast::ObjectPattern,
-    object_value: Value,
+    object_value: HandleValue,
     env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     maybe!(require_object_coercible(cx, object_value));
@@ -419,8 +419,8 @@ fn iterator_binding_initialization(
 // 8.5.2.1 InitializeBoundName
 pub fn initialize_bound_name(
     cx: &mut Context,
-    name: Gc<StringValue>,
-    value: Value,
+    name: Handle<StringValue>,
+    value: HandleValue,
     env: Option<DynEnvironment>,
 ) -> EvalResult<()> {
     match env {
@@ -439,13 +439,13 @@ pub fn initialize_bound_name(
 pub fn destructuring_assignment_evaluation(
     cx: &mut Context,
     patt: &ast::Pattern,
-    value: Value,
+    value: HandleValue,
 ) -> EvalResult<()> {
     binding_initialization(cx, patt, value, None)
 }
 
 #[inline]
-pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Gc<StringValue> {
+pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Handle<StringValue> {
     InternedStrings::get_str(cx, &id.name)
 }
 

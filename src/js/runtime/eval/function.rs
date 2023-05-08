@@ -29,7 +29,7 @@ use crate::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
                 ordinary_function_create, set_function_name, Function,
             },
-            gc::Gc,
+            gc::HandleValue,
             interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
@@ -39,7 +39,7 @@ use crate::{
             property_key::PropertyKey,
             to_string,
             value::Value,
-            Context,
+            Context, Handle,
         },
     },
     maybe, maybe__, must,
@@ -54,8 +54,8 @@ use super::{
 // 10.2.11 FunctionDeclarationInstantiation
 pub fn function_declaration_instantiation(
     cx: &mut Context,
-    func: Gc<Function>,
-    arguments: &[Value],
+    func: Handle<Function>,
+    arguments: &[HandleValue],
 ) -> Completion {
     let func_node = if let Some(func_node) = func.func_ast_node() {
         func_node
@@ -305,8 +305,8 @@ pub fn instantiate_ordinary_function_object(
     cx: &mut Context,
     func_node: &ast::Function,
     env: DynEnvironment,
-    private_env: Option<Gc<PrivateEnvironment>>,
-) -> Gc<Function> {
+    private_env: Option<Handle<PrivateEnvironment>>,
+) -> Handle<Function> {
     let name_key = match &func_node.id {
         None => cx.names.default(),
         Some(id) => id_property_key(cx, id),
@@ -327,7 +327,7 @@ pub fn instantiate_ordinary_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
     name: Option<PropertyKey>,
-) -> Gc<Function> {
+) -> Handle<Function> {
     if func_node.is_async || func_node.is_generator {
         unimplemented!("async and generator functions")
     }
@@ -386,7 +386,7 @@ pub fn instantiate_arrow_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
     name: Option<PropertyKey>,
-) -> Gc<Function> {
+) -> Handle<Function> {
     let current_context_ptr = cx.current_execution_context_ptr();
     let lexical_env = current_context_ptr.lexical_env();
     let private_env = current_context_ptr.private_env();
@@ -407,10 +407,10 @@ pub fn instantiate_arrow_function_expression(
 // 15.4.4 DefineMethod
 pub fn define_method(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     func_node: &ast::Function,
-    function_prototype: Option<Gc<ObjectValue>>,
-) -> Gc<Function> {
+    function_prototype: Option<Handle<ObjectValue>>,
+) -> Handle<Function> {
     let current_execution_context_ptr = cx.current_execution_context_ptr();
     let env = current_execution_context_ptr.lexical_env();
     let private_env = current_execution_context_ptr.private_env();
@@ -429,7 +429,7 @@ pub fn define_method(
 // 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
 pub fn method_definition_evaluation(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     func_node: &ast::Function,
     property_key: PropertyKey,
     property_kind: &ast::PropertyKind,
@@ -479,7 +479,7 @@ pub fn method_definition_evaluation(
 // 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
 pub fn private_method_definition_evaluation(
     cx: &mut Context,
-    object: Gc<ObjectValue>,
+    object: Handle<ObjectValue>,
     func_node: &ast::Function,
     property_name: PropertyKey,
     method_kind: ast::ClassMethodKind,
@@ -521,10 +521,10 @@ pub fn private_method_definition_evaluation(
 // 20.2.1.1.1 CreateDynamicFunction
 pub fn create_dynamic_function(
     cx: &mut Context,
-    constructor: Gc<ObjectValue>,
-    new_target: Option<Gc<ObjectValue>>,
-    args: &[Value],
-) -> EvalResult<Gc<Function>> {
+    constructor: Handle<ObjectValue>,
+    new_target: Option<Handle<ObjectValue>>,
+    args: &[HandleValue],
+) -> EvalResult<Handle<Function>> {
     let new_target = new_target.unwrap_or(constructor);
 
     let prefix = "function";

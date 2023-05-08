@@ -9,12 +9,12 @@ use crate::{
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
-            gc::{Gc, GcDeref, Handle},
+            gc::{GcDeref, Handle},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
             value::Value,
-            Context,
+            Context, HeapPtr,
         },
     },
     maybe, maybe__, must, set_uninit,
@@ -25,8 +25,8 @@ use super::{pattern::id_string_value, statement::eval_toplevel_list};
 // 16.1.4 Script Record
 #[repr(C)]
 pub struct Script {
-    descriptor: Gc<ObjectDescriptor>,
-    realm: Gc<Realm>,
+    descriptor: HeapPtr<ObjectDescriptor>,
+    realm: HeapPtr<Realm>,
     script_node: Rc<ast::Program>,
 }
 
@@ -49,7 +49,11 @@ impl Script {
 }
 
 /// 16.1.6 ScriptEvaluation
-pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>) -> Completion {
+pub fn eval_script(
+    cx: &mut Context,
+    program: Rc<ast::Program>,
+    realm: Handle<Realm>,
+) -> Completion {
     let script = Script::new(cx, program.clone(), realm);
 
     let global_env = realm.global_env();
@@ -87,7 +91,7 @@ pub fn eval_script(cx: &mut Context, program: Rc<ast::Program>, realm: Gc<Realm>
 fn global_declaration_instantiation(
     cx: &mut Context,
     script: &ast::Program,
-    mut env: Gc<GlobalEnvironment>,
+    mut env: Handle<GlobalEnvironment>,
 ) -> Completion {
     for lex_decl in script.lex_decls() {
         maybe__!(lex_decl.iter_bound_names(&mut |id| {
@@ -146,7 +150,7 @@ fn global_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<Gc<StringValue>> = HashSet::new();
+    let mut declared_var_names: HashSet<Handle<StringValue>> = HashSet::new();
 
     for var_decl in script.var_decls() {
         match var_decl {

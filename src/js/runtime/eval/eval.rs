@@ -20,8 +20,9 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
+            gc::HandleValue,
             string_value::StringValue,
-            Completion, CompletionKind, Context, EvalResult, Gc, Value,
+            Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
     },
     maybe, must,
@@ -31,10 +32,10 @@ use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 pub fn perform_eval(
     cx: &mut Context,
-    code: Value,
+    code: HandleValue,
     is_strict_caller: bool,
     is_direct: bool,
-) -> EvalResult<Value> {
+) -> EvalResult<HandleValue> {
     if !code.is_string() {
         return code.into();
     }
@@ -173,7 +174,7 @@ fn eval_declaration_instantiation(
     ast: &ast::Program,
     mut var_env: DynEnvironment,
     mut lex_env: DynEnvironment,
-    private_env: Option<Gc<PrivateEnvironment>>,
+    private_env: Option<Handle<PrivateEnvironment>>,
     is_strict_eval: bool,
 ) -> EvalResult<()> {
     if !is_strict_eval {
@@ -242,7 +243,7 @@ fn eval_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<Gc<StringValue>> = HashSet::new();
+    let mut declared_var_names: HashSet<Handle<StringValue>> = HashSet::new();
 
     for var_decl in ast.var_decls() {
         if let VarDecl::Var(var_decl) = var_decl {

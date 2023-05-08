@@ -8,7 +8,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::Environment,
-                private_environment::{PrivateEnvironment, PrivateName},
+                private_environment::{HeapPrivateName, PrivateEnvironment, PrivateName},
             },
             error::type_error_,
             eval::pattern::initialize_bound_name,
@@ -17,6 +17,7 @@ use crate::{
                 ordinary_function_create_special_kind, set_function_name, ConstructorKind,
                 FuncKind, Function,
             },
+            gc::HandleValue,
             get,
             intrinsics::intrinsics::Intrinsic,
             object_descriptor::ObjectKind,
@@ -24,7 +25,7 @@ use crate::{
             ordinary_object::object_create_with_optional_proto,
             property_key::{HeapPropertyKey, PropertyKey},
             string_value::StringValue,
-            Completion, Context, EvalResult, Gc, Value,
+            Completion, Context, EvalResult, Handle, HeapPtr,
         },
     },
     maybe, maybe__, must,
@@ -39,13 +40,13 @@ use super::{
 // 6.2.10 ClassFieldDefinition Record. Stored on the stack.
 pub struct ClassFieldDefinition {
     pub name: ClassFieldDefinitionName,
-    pub initializer: Option<Gc<Function>>,
+    pub initializer: Option<Handle<Function>>,
 }
 
 // A ClassFieldDefinition that is stored on the heap.
 pub struct HeapClassFieldDefinition {
     name: HeapClassFieldDefinitionName,
-    initializer: Option<Gc<Function>>,
+    initializer: Option<HeapPtr<Function>>,
 }
 
 // Stored on the stack.
@@ -57,18 +58,21 @@ pub enum ClassFieldDefinitionName {
 // Stored on the heap.
 pub enum HeapClassFieldDefinitionName {
     Normal(HeapPropertyKey),
-    Private(PrivateName),
+    Private(HeapPrivateName),
 }
 
 impl ClassFieldDefinition {
     pub fn to_heap(&self) -> HeapClassFieldDefinition {
-        HeapClassFieldDefinition { name: self.name.to_heap(), initializer: self.initializer }
+        HeapClassFieldDefinition {
+            name: self.name.to_heap(),
+            initializer: self.initializer.map(|i| i.get_()),
+        }
     }
 
     pub fn from_heap(heap_field_def: &HeapClassFieldDefinition) -> ClassFieldDefinition {
         ClassFieldDefinition {
             name: ClassFieldDefinitionName::from_heap(&heap_field_def.name),
-            initializer: heap_field_def.initializer,
+            initializer: heap_field_def.initializer.map(Handle::from_heap),
         }
     }
 }
@@ -80,7 +84,7 @@ impl ClassFieldDefinitionName {
                 HeapClassFieldDefinitionName::Normal(property_key.to_heap())
             }
             ClassFieldDefinitionName::Private(private_name) => {
-                HeapClassFieldDefinitionName::Private(*private_name)
+                HeapClassFieldDefinitionName::Private(private_name.get_())
             }
         }
     }
@@ -91,7 +95,7 @@ impl ClassFieldDefinitionName {
                 ClassFieldDefinitionName::Normal(PropertyKey::from_heap(property_key))
             }
             HeapClassFieldDefinitionName::Private(private_name) => {
-                ClassFieldDefinitionName::Private(*private_name)
+                ClassFieldDefinitionName::Private(Handle::from_heap(*private_name))
             }
         }
     }
@@ -102,8 +106,8 @@ fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
     property_key: PropertyKey,
-    home_object: Gc<ObjectValue>,
-) -> EvalResult<Gc<Function>> {
+    home_object: Handle<ObjectValue>,
+) -> EvalResult<Handle<Function>> {
     let current_execution_context_ptr = cx.current_execution_context_ptr();
     let env = current_execution_context_ptr.lexical_env();
     let private_env = current_execution_context_ptr.private_env();
@@ -131,8 +135,8 @@ fn class_field_definition_evaluation(
 fn class_static_block_definition_evaluation(
     cx: &mut Context,
     block: &ast::ClassMethod,
-    home_object: Gc<ObjectValue>,
-) -> Gc<Function> {
+    home_object: Handle<ObjectValue>,
+) -> Handle<Function> {
     let current_execution_context_ptr = cx.current_execution_context_ptr();
     let env = current_execution_context_ptr.lexical_env();
     let private_env = current_execution_context_ptr.private_env();
@@ -147,16 +151,16 @@ fn class_static_block_definition_evaluation(
 
 enum StaticElement {
     Field(ClassFieldDefinition),
-    Initializer(Gc<Function>),
+    Initializer(Handle<Function>),
 }
 
 // 15.7.14 ClassDefinitionEvaluation
 pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
-    class_binding: Option<Gc<StringValue>>,
+    class_binding: Option<Handle<StringValue>>,
     class_name: PropertyKey,
-) -> EvalResult<Gc<Function>> {
+) -> EvalResult<Handle<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm();
     let env = current_execution_context.lexical_env();
@@ -277,7 +281,7 @@ pub fn class_definition_evaluation(
     for element in &class.body {
         match element {
             ClassElement::Property(prop) => {
-                let home_object: Gc<ObjectValue> = if prop.is_static {
+                let home_object: Handle<ObjectValue> = if prop.is_static {
                     proto.into()
                 } else {
                     func.into()
@@ -332,7 +336,7 @@ pub fn class_definition_evaluation(
                     continue;
                 }
 
-                let home_object: Gc<ObjectValue> = if method.is_static {
+                let home_object: Handle<ObjectValue> = if method.is_static {
                     func.into()
                 } else {
                     proto.into()
@@ -430,7 +434,7 @@ pub fn class_definition_evaluation(
 
     // Define static private methods as private properties of the constructor function
     for (private_name, static_private_method) in static_private_methods {
-        let mut func_object: Gc<ObjectValue> = func.into();
+        let mut func_object: Handle<ObjectValue> = func.into();
         must!(func_object.private_method_or_accessor_add(cx, private_name, static_private_method));
     }
 
@@ -465,7 +469,7 @@ pub fn class_definition_evaluation(
 fn binding_class_declaration_evaluation(
     cx: &mut Context,
     class: &ast::Class,
-) -> EvalResult<Gc<Function>> {
+) -> EvalResult<Handle<Function>> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value);
@@ -486,7 +490,7 @@ pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completio
     Completion::empty()
 }
 
-pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<Value> {
+pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<HandleValue> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value);

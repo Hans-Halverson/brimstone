@@ -157,7 +157,7 @@ impl NumberPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         let number_value = maybe!(this_number_value(cx, this_value));
-        HandleValue::from_value(cx, number_value).into()
+        number_value.to_handle(cx).into()
     }
 }
 

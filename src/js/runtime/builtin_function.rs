@@ -80,11 +80,11 @@ impl BuiltinFunction {
         set_uninit!(object.closure_environment, None);
         set_uninit!(object.has_constructor, false);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     fn realm(&self) -> Handle<Realm> {
-        Handle::from_heap(self.realm)
+        self.realm.to_handle()
     }
 
     pub fn set_is_constructor(&mut self) {

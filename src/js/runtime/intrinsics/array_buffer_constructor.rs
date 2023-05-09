@@ -58,7 +58,7 @@ impl ArrayBufferObject {
 
         object.data = vec![0; byte_length];
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 
     pub fn data(&mut self) -> &mut [u8] {

@@ -23,6 +23,6 @@ impl AggregateErrorPrototype {
             cx.names.aggregate_error().as_string().into(),
         );
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 }

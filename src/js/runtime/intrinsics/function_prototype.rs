@@ -44,7 +44,7 @@ impl FunctionPrototype {
         let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
         object_ordinary_init(cx, object.object(), descriptor, None);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 }
 

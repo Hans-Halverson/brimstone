@@ -48,7 +48,7 @@ impl UnmappedArgumentsObject {
             Intrinsic::ObjectPrototype,
         );
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 }
 
@@ -73,11 +73,11 @@ impl MappedArgumentsObject {
 
         set_uninit!(object.parameter_map, parameter_map.get_());
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     fn parameter_map(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.parameter_map)
+        self.parameter_map.to_handle()
     }
 }
 
@@ -237,11 +237,9 @@ pub fn create_mapped_arguments_object(
     arguments: &[HandleValue],
     env: DynEnvironment,
 ) -> HandleValue {
-    let mut parameter_map = {
-        let object =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
-        Handle::from_heap(object)
-    };
+    let mut parameter_map =
+        object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+            .to_handle();
     let object = MappedArgumentsObject::new(cx, parameter_map);
 
     // Gather parameter names. All parameters are guaranteed to be simple identifiers in order for
@@ -328,11 +326,11 @@ impl ArgAccessorEnvironment {
         set_uninit!(arg_env.name, name.get_());
         set_uninit!(arg_env.env, env.to_heap());
 
-        Handle::from_heap(arg_env)
+        arg_env.to_handle()
     }
 
     fn name(&self) -> Handle<StringValue> {
-        Handle::from_heap(self.name)
+        self.name.to_handle()
     }
 
     fn env(&self) -> DynEnvironment {

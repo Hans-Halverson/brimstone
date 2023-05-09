@@ -35,7 +35,7 @@ impl ArrayObject {
 
         set_uninit!(array.is_length_writable, true);
 
-        Handle::from_heap(array)
+        array.to_handle()
     }
 }
 

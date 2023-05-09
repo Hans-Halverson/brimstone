@@ -34,7 +34,7 @@ macro_rules! create_native_error {
                     Intrinsic::$prototype,
                 );
 
-                let mut object = Handle::from_heap(object);
+                let mut object = object.to_handle();
 
                 object.intrinsic_data_prop(cx, cx.names.message(), message_value);
 
@@ -52,7 +52,7 @@ macro_rules! create_native_error {
                     Intrinsic::$prototype
                 ));
 
-                Handle::from_heap(object).into()
+                object.to_handle().into()
             }
         }
 

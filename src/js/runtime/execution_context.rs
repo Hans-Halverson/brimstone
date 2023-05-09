@@ -60,7 +60,7 @@ impl ExecutionContext {
 
     #[inline]
     pub fn function(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.function.unwrap())
+        self.function.unwrap().to_handle()
     }
 
     #[inline]
@@ -70,7 +70,7 @@ impl ExecutionContext {
 
     #[inline]
     pub fn realm(&self) -> Handle<Realm> {
-        Handle::from_heap(self.realm)
+        self.realm.to_handle()
     }
 
     #[inline]
@@ -97,7 +97,7 @@ impl ExecutionContext {
 
     #[inline]
     pub fn private_env(&self) -> Option<Handle<PrivateEnvironment>> {
-        self.private_env.map(|p| Handle::from_heap(p))
+        self.private_env.map(|p| p.to_handle())
     }
 
     #[inline]
@@ -198,9 +198,7 @@ impl ScriptOrModule {
 
     pub fn from_heap(heap_script_or_module: &HeapScriptOrModule) -> ScriptOrModule {
         match heap_script_or_module {
-            HeapScriptOrModule::Script(script) => {
-                ScriptOrModule::Script(Handle::from_heap(*script))
-            }
+            HeapScriptOrModule::Script(script) => ScriptOrModule::Script(script.to_handle()),
         }
     }
 }

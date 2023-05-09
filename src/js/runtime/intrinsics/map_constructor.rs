@@ -45,7 +45,7 @@ impl MapObject {
 
         object.map_data = ValueMap::new();
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 
     pub fn map_data(&mut self) -> &mut ValueMap<Value> {

@@ -42,7 +42,7 @@ impl PrivateEnvironment {
         set_uninit!(env.names, HashMap::new());
         set_uninit!(env.outer, outer.map(|p| p.get_()));
 
-        Handle::from_heap(env)
+        env.to_handle()
     }
 
     pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
@@ -52,7 +52,7 @@ impl PrivateEnvironment {
     // 9.2.1.2 ResolvePrivateIdentifier
     pub fn resolve_private_identifier<'a>(&self, name: &str) -> PrivateName {
         match self.names.get(name) {
-            Some(private_name) => PrivateName::from_heap(*private_name),
+            Some(private_name) => private_name.to_handle(),
             None => self.outer.unwrap().resolve_private_identifier(name),
         }
     }
@@ -62,7 +62,7 @@ impl PrivateEnvironment {
     }
 
     pub fn get_private_name(&self, name: &str) -> PrivateName {
-        PrivateName::from_heap(*self.names.get(name).unwrap())
+        self.names.get(name).unwrap().to_handle()
     }
 
     #[inline]

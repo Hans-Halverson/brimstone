@@ -43,12 +43,12 @@ impl ObjectEnvironment {
         set_uninit!(env.is_with_environment, is_with_environment);
         set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
 
-        Handle::from_heap(env)
+        env.to_handle()
     }
 
     #[inline]
     pub fn binding_object(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.binding_object)
+        self.binding_object.to_handle()
     }
 }
 

@@ -38,7 +38,7 @@ impl BooleanObject {
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     pub fn new_from_constructor(
@@ -68,7 +68,7 @@ impl BooleanObject {
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     pub fn boolean_data(&self) -> bool {

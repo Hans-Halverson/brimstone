@@ -48,24 +48,24 @@ impl BoundFunctionObject {
         set_uninit!(object.bound_this, bound_this.get());
         set_uninit!(object.bound_arguments, bound_arguments.iter().map(HandleValue::get).collect());
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 
     #[inline]
     pub fn bound_target_function(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.bound_target_function)
+        self.bound_target_function.to_handle()
     }
 
     #[inline]
     fn bound_this(&self, cx: &mut Context) -> HandleValue {
-        HandleValue::from_value(cx, self.bound_this)
+        self.bound_this.to_handle(cx)
     }
 
     #[inline]
     fn bound_arguments(&self, cx: &mut Context) -> Vec<HandleValue> {
         self.bound_arguments
             .iter()
-            .map(|arg| HandleValue::from_value(cx, *arg))
+            .map(|arg| arg.to_handle(cx))
             .collect()
     }
 }

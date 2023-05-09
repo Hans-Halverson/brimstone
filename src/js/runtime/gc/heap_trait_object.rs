@@ -48,7 +48,7 @@ macro_rules! heap_trait_object {
             #[inline]
             pub fn from_heap(heap_object: &$heap_object) -> $stack_object {
                 $stack_object {
-                    data: $crate::js::runtime::Handle::from_heap(heap_object.data),
+                    data: heap_object.data.to_handle(),
                     vtable: heap_object.vtable,
                 }
             }

@@ -232,7 +232,7 @@ macro_rules! create_typed_array_constructor {
                 set_uninit!(object.byte_offset, byte_offset);
                 set_uninit!(object.array_length, array_length);
 
-                Handle::from_heap(object).into()
+                object.to_handle().into()
             }
 
             #[inline]
@@ -443,7 +443,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject> {
-                Handle::from_heap(self.viewed_array_buffer)
+                self.viewed_array_buffer.to_handle()
             }
 
             fn name(&self, cx: &mut Context) -> Handle<StringValue> {

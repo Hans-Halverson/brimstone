@@ -38,7 +38,7 @@ impl ObjectValue {
     // 10.1.1 [[GetPrototypeOf]]
     // 10.1.1.1 OrdinaryGetPrototypeOf
     pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Handle<ObjectValue>>> {
-        self.prototype().map(Handle::from_heap).into()
+        self.prototype().map(|p| p.to_handle()).into()
     }
 
     // 10.1.3 [[IsExtensible]]
@@ -509,7 +509,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     // Return array index properties in numerical order
     let array_properties = object.array_properties();
     if let Some(dense_properties) = array_properties.as_dense_opt() {
-        let dense_properties = Handle::from_heap(dense_properties);
+        let dense_properties = dense_properties.to_handle();
         for (index, value) in dense_properties.iter().enumerate() {
             if filter(index) {
                 if !value.is_empty() {

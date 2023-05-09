@@ -130,7 +130,7 @@ impl Function {
         set_uninit!(object.fields, vec![]);
         set_uninit!(object.private_methods, vec![]);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     #[inline]
@@ -140,7 +140,7 @@ impl Function {
 
     #[inline]
     pub fn home_object(&self) -> Option<Handle<ObjectValue>> {
-        self.home_object.map(|o| Handle::from_heap(o))
+        self.home_object.map(|o| o.to_handle())
     }
 
     #[inline]
@@ -150,12 +150,12 @@ impl Function {
 
     #[inline]
     fn realm(&self) -> Handle<Realm> {
-        Handle::from_heap(self.realm)
+        self.realm.to_handle()
     }
 
     #[inline]
     fn private_environment(&self) -> Option<Handle<PrivateEnvironment>> {
-        self.private_environment.map(Handle::from_heap)
+        self.private_environment.map(|env| env.to_handle())
     }
 
     #[inline]
@@ -268,13 +268,14 @@ impl VirtualObject for Handle<Function> {
                     _ => return type_error_(cx, "super class must be a constructor"),
                 }
             } else {
-                let object = maybe!(object_create_from_constructor::<ObjectValue>(
+                maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,
                     ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectPrototype
-                ));
-                Handle::from_heap(object).into()
+                ))
+                .to_handle()
+                .into()
             };
 
             maybe!(initialize_instance_elements(cx, new_object, *self));
@@ -284,15 +285,13 @@ impl VirtualObject for Handle<Function> {
 
         let this_argument: Option<Handle<ObjectValue>> =
             if self.constructor_kind == ConstructorKind::Base {
-                let object = {
-                    let object = maybe!(object_create_from_constructor::<ObjectValue>(
-                        cx,
-                        new_target,
-                        ObjectKind::OrdinaryObject,
-                        Intrinsic::ObjectPrototype
-                    ));
-                    Handle::from_heap(object)
-                };
+                let object = maybe!(object_create_from_constructor::<ObjectValue>(
+                    cx,
+                    new_target,
+                    ObjectKind::OrdinaryObject,
+                    Intrinsic::ObjectPrototype
+                ))
+                .to_handle();
 
                 if self.is_default_constructor() {
                     maybe!(initialize_instance_elements(cx, object, *self));
@@ -492,7 +491,7 @@ impl Handle<Function> {
         // GC safe iteration over private methods
         for i in 0..self.private_methods.len() {
             let (heap_private_name, heap_private_method) = &self.private_methods[i];
-            let private_name = PrivateName::from_heap(*heap_private_name);
+            let private_name = heap_private_name.to_handle();
             let private_method = Property::from_heap(heap_private_method);
             maybe!(f(private_name, private_method));
         }

@@ -44,7 +44,7 @@ impl Realm {
         set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
         set_uninit!(realm.template_map, HashMap::new());
 
-        let mut realm = Handle::from_heap(realm);
+        let mut realm = realm.to_handle();
 
         let this_realm = realm.clone();
         realm.intrinsics.initialize(cx, this_realm);

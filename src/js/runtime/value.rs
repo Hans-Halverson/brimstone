@@ -550,7 +550,7 @@ impl SymbolValue {
         set_uninit!(symbol.description, description.map(|desc| desc.get_()));
         set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
 
-        Handle::from_heap(symbol)
+        symbol.to_handle()
     }
 
     pub fn description_ptr(&self) -> Option<HeapPtr<StringValue>> {
@@ -558,7 +558,7 @@ impl SymbolValue {
     }
 
     pub fn description(&self) -> Option<Handle<StringValue>> {
-        self.description.map(Handle::from_heap)
+        self.description.map(|d| d.to_handle())
     }
 }
 
@@ -597,7 +597,7 @@ impl BigIntValue {
         set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
         set_uninit!(bigint.value, value);
 
-        Handle::from_heap(bigint)
+        bigint.to_handle()
     }
 }
 
@@ -632,7 +632,7 @@ impl AccessorValue {
         set_uninit!(accessor.get, get.map(|v| v.get_()));
         set_uninit!(accessor.set, set.map(|v| v.get_()));
 
-        Handle::from_heap(accessor)
+        accessor.to_handle()
     }
 }
 

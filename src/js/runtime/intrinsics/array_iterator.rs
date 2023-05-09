@@ -62,11 +62,11 @@ impl ArrayIterator {
         set_uninit!(object.current_index, 0);
         set_uninit!(object.get_length, get_length);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     fn array(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.array)
+        self.array.to_handle()
     }
 
     fn get_typed_array_length(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64> {

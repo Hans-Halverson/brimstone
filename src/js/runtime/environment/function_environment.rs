@@ -65,11 +65,11 @@ impl FunctionEnvironment {
         set_uninit!(env.new_target, new_target.map(|h| h.get_()));
         set_uninit!(env.this_binding_status, this_binding_status);
 
-        Handle::from_heap(env)
+        env.to_handle()
     }
 
     fn this_value(&self, cx: &mut Context) -> HandleValue {
-        HandleValue::from_value(cx, self.this_value)
+        self.this_value.to_handle(cx)
     }
 
     pub fn function_object(&self) -> Handle<Function> {
@@ -77,7 +77,7 @@ impl FunctionEnvironment {
     }
 
     pub fn new_target(&self) -> Option<Handle<ObjectValue>> {
-        self.new_target.map(|v| Handle::from_heap(v))
+        self.new_target.map(|v| v.to_handle())
     }
 }
 

@@ -38,7 +38,7 @@ impl StringIterator {
         set_uninit!(object.string, string);
         set_uninit!(object.code_points_iter, string.iter_code_points());
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     cast_from_value_fn!(StringIterator, "String Iterator");

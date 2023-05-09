@@ -39,7 +39,7 @@ impl AggregateErrorObject {
             Intrinsic::AggregateErrorPrototype
         ));
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 }
 

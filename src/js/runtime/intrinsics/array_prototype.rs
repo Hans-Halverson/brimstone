@@ -582,12 +582,12 @@ impl ArrayPrototype {
 
                 let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
                 if to_boolean(test_result) {
-                    return index_value.into();
+                    return index_value.to_handle(cx).into();
                 }
             }
         }
 
-        Value::number(-1.0).into()
+        Value::number(-1.0).to_handle(cx).into()
     }
 
     // 23.1.3.11 Array.prototype.flat
@@ -808,7 +808,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -816,7 +816,7 @@ impl ArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -832,12 +832,12 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).into();
+                    return Value::from(i).to_handle(cx).into();
                 }
             }
         }
 
-        Value::smi(-1).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.1.3.16 Array.prototype.join
@@ -898,7 +898,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -907,7 +907,7 @@ impl ArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
-                return Value::smi(-1).into();
+                return Value::smi(-1).to_handle(cx).into();
             }
 
             if n >= 0.0 {
@@ -916,7 +916,7 @@ impl ArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Value::smi(-1).into();
+                    return Value::smi(-1).to_handle(cx).into();
                 }
 
                 start_index as u64
@@ -930,12 +930,12 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).into();
+                    return Value::from(i).to_handle(cx).into();
                 }
             }
         }
 
-        Value::smi(-1).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.1.3.19 Array.prototype.map
@@ -985,7 +985,8 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
+            let length_zero = Value::smi(0).to_handle(cx);
+            maybe!(set(cx, object, cx.names.length(), length_zero, true));
             return cx.undefined().into();
         }
 
@@ -995,7 +996,7 @@ impl ArrayPrototype {
         let element = maybe!(get(cx, object, index_key));
         maybe!(delete_property_or_throw(cx, object, index_key));
 
-        let new_length_value = Value::from(new_length);
+        let new_length_value = Value::from(new_length).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
         element.into()
@@ -1021,7 +1022,7 @@ impl ArrayPrototype {
             maybe!(set(cx, object, key, *argument, true));
         }
 
-        let new_length_value = Value::from(new_length);
+        let new_length_value = Value::from(new_length).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
         new_length_value.into()
@@ -1504,7 +1505,7 @@ impl ArrayPrototype {
             }
         }
 
-        let new_length = Value::from(length + num_arguments);
+        let new_length = Value::from(length + num_arguments).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length, true));
 
         new_length.into()
@@ -1523,14 +1524,9 @@ impl ArrayPrototype {
 
     // 23.1.3.35 Array.prototype [ @@unscopables ]
     fn create_unscopables(cx: &mut Context) -> Handle<ObjectValue> {
-        let list = {
-            let object = object_create_with_optional_proto::<ObjectValue>(
-                cx,
-                ObjectKind::OrdinaryObject,
-                None,
-            );
-            Handle::from_heap(object.into())
-        };
+        let list =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+                .to_handle();
 
         let true_value = cx.bool(true);
 

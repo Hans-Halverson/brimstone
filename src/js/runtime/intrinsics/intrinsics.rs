@@ -295,7 +295,7 @@ impl Intrinsics {
     }
 
     pub fn get(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
-        Handle::from_heap(self.get_ptr(intrinsic))
+        self.get_ptr(intrinsic).to_handle()
     }
 
     // Intrinsic prototypes are created before their corresponding constructors, so we must add a

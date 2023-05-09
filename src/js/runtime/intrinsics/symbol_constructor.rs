@@ -37,11 +37,11 @@ impl SymbolObject {
 
         set_uninit!(object.symbol_data, symbol_data);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     pub fn symbol_data(&self) -> Handle<SymbolValue> {
-        Handle::from_heap(self.symbol_data)
+        self.symbol_data.to_handle()
     }
 }
 

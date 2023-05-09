@@ -54,7 +54,7 @@ impl DataViewObject {
             return type_error_(cx, "array buffer is detached");
         }
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 
     pub fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
@@ -62,7 +62,7 @@ impl DataViewObject {
     }
 
     pub fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject> {
-        Handle::from_heap(self.viewed_array_buffer)
+        self.viewed_array_buffer.to_handle()
     }
 
     pub fn byte_length(&self) -> usize {

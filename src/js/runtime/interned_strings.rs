@@ -35,7 +35,7 @@ impl InternedStrings {
 
     pub fn get_str(cx: &mut Context, str: &str) -> Handle<StringValue> {
         match cx.interned_strings.str_cache.get(str) {
-            Some(interned_string) => Handle::from_heap(*interned_string),
+            Some(interned_string) => interned_string.to_handle(),
             None => {
                 let string_value = cx.alloc_string_ptr(String::from(str));
                 let interned_string = InternedStrings::get(cx, string_value);
@@ -44,7 +44,7 @@ impl InternedStrings {
                     .str_cache
                     .insert(String::from(str), interned_string);
 
-                Handle::from_heap(interned_string)
+                interned_string.to_handle()
             }
         }
     }

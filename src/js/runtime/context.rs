@@ -110,7 +110,7 @@ impl Context {
 
     #[inline]
     pub fn current_execution_context(&self) -> Handle<ExecutionContext> {
-        Handle::from_heap(self.current_execution_context_ptr())
+        self.current_execution_context_ptr().to_handle()
     }
 
     pub fn current_realm_ptr(&self) -> HeapPtr<Realm> {
@@ -165,7 +165,7 @@ impl Context {
 
     #[inline]
     pub fn alloc_string(&mut self, str: String) -> Handle<StringValue> {
-        Handle::from_heap(self.alloc_string_ptr(str))
+        self.alloc_string_ptr(str).to_handle()
     }
 
     #[inline]

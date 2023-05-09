@@ -20,7 +20,7 @@ impl ConsoleObject {
 
         object.intrinsic_func(cx, cx.names.log(), Self::log, 0, realm);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     fn log(

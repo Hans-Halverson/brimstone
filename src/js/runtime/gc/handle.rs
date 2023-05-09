@@ -22,11 +22,6 @@ impl HandleValue {
         *self
     }
 
-    #[inline]
-    pub fn from_value(_: &mut Context, value: Value) -> HandleValue {
-        value
-    }
-
     /// Replace the value stored behind this handle with a new value. Note that all copies of this
     /// handle will also be changed.
     #[inline]
@@ -41,9 +36,18 @@ impl<T> Handle<T> {
     pub fn get_(&self) -> HeapPtr<T> {
         self.clone()
     }
+}
 
+impl Value {
     #[inline]
-    pub fn from_heap(heap_ptr: HeapPtr<T>) -> Handle<T> {
-        heap_ptr
+    pub fn to_handle(&self, _: &mut Context) -> HandleValue {
+        *self
+    }
+}
+
+impl<T> HeapPtr<T> {
+    #[inline]
+    pub fn to_handle(&self) -> Handle<T> {
+        *self
     }
 }

@@ -124,7 +124,7 @@ impl ObjectConstructor {
                     ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectConstructor
                 ));
-                return Handle::from_heap(new_object).into();
+                return new_object.to_handle().into();
             }
         }
 
@@ -188,14 +188,9 @@ impl ObjectConstructor {
             return type_error_(cx, "prototype must be an object or null");
         };
 
-        let object = {
-            let object = object_create_with_optional_proto::<ObjectValue>(
-                cx,
-                ObjectKind::OrdinaryObject,
-                proto,
-            );
-            Handle::from_heap(object)
-        };
+        let object =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, proto)
+                .to_handle();
 
         let properties = get_argument(cx, arguments, 1);
         if properties.is_undefined() {

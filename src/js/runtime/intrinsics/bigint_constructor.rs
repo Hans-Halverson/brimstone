@@ -38,11 +38,11 @@ impl BigIntObject {
 
         set_uninit!(object.bigint_data, bigint_data.get_());
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     pub fn bigint_data(&self) -> Handle<BigIntValue> {
-        Handle::from_heap(self.bigint_data)
+        self.bigint_data.to_handle()
     }
 }
 

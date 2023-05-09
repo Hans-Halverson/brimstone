@@ -172,7 +172,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
             return err_uninitialized_(cx, name);
         }
 
-        HandleValue::from_value(cx, binding.value).into()
+        binding.value.to_handle(cx).into()
     }
 
     // 9.1.1.1.7 DeleteBinding

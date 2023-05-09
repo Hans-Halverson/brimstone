@@ -44,7 +44,7 @@ impl Test262Object {
         let detach_array_buffer_key = PropertyKey::string(cx, detach_array_buffer_string);
         object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     pub fn install(cx: &mut Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {

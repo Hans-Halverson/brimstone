@@ -44,7 +44,7 @@ impl SetObject {
 
         object.set_data = ValueSet::new();
 
-        Handle::from_heap(object).into()
+        object.to_handle().into()
     }
 
     pub fn set_data(&mut self) -> &mut ValueSet {

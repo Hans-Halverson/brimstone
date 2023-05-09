@@ -50,7 +50,7 @@ impl<'a> SetIterator<'a> {
         set_uninit!(object.iter, set.set_data().iter());
         set_uninit!(object.kind, kind);
 
-        Handle::from_heap(object)
+        object.to_handle()
     }
 
     cast_from_value_fn!(SetIterator, "Set Iterator");

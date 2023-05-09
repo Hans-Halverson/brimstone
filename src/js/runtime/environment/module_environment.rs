@@ -32,7 +32,7 @@ impl ModuleEnvironment {
             Some(outer),
         );
 
-        Handle::from_heap(env)
+        env.to_handle()
     }
 }
 

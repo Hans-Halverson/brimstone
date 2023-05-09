@@ -72,7 +72,7 @@ impl ClassFieldDefinition {
     pub fn from_heap(heap_field_def: &HeapClassFieldDefinition) -> ClassFieldDefinition {
         ClassFieldDefinition {
             name: ClassFieldDefinitionName::from_heap(&heap_field_def.name),
-            initializer: heap_field_def.initializer.map(Handle::from_heap),
+            initializer: heap_field_def.initializer.map(|i| i.to_handle()),
         }
     }
 }
@@ -95,7 +95,7 @@ impl ClassFieldDefinitionName {
                 ClassFieldDefinitionName::Normal(PropertyKey::from_heap(property_key))
             }
             HeapClassFieldDefinitionName::Private(private_name) => {
-                ClassFieldDefinitionName::Private(Handle::from_heap(*private_name))
+                ClassFieldDefinitionName::Private(private_name.to_handle())
             }
         }
     }
@@ -227,14 +227,12 @@ pub fn class_definition_evaluation(
     };
 
     // Set up prototype and constructor
-    let proto = {
-        let object = object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            ObjectKind::OrdinaryObject,
-            proto_parent,
-        );
-        Handle::from_heap(object)
-    };
+    let proto = object_create_with_optional_proto::<ObjectValue>(
+        cx,
+        ObjectKind::OrdinaryObject,
+        proto_parent,
+    )
+    .to_handle();
 
     current_execution_context.set_lexical_env(class_env.into_dyn_env());
     current_execution_context.set_private_env(Some(class_private_env));

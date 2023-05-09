@@ -69,17 +69,17 @@ impl GlobalEnvironment {
         set_uninit!(env.global_this_value, global_this_value.get_());
         set_uninit!(env.var_names, HashSet::new());
 
-        Handle::from_heap(env)
+        env.to_handle()
     }
 
     #[inline]
     pub fn object_env(&self) -> Handle<ObjectEnvironment> {
-        Handle::from_heap(self.object_env)
+        self.object_env.to_handle()
     }
 
     #[inline]
     pub fn global_this_value(&self) -> Handle<ObjectValue> {
-        Handle::from_heap(self.global_this_value)
+        self.global_this_value.to_handle()
     }
 }
 

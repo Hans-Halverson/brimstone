@@ -1,4 +1,8 @@
-use super::{context::Context, property_key::PropertyKey, value::SymbolValue};
+use super::{
+    context::Context,
+    property_key::{HandlePropertyKey, PropertyKey},
+    value::SymbolValue,
+};
 
 // All built-in string property keys referenced in the spec
 macro_rules! builtin_names {
@@ -20,8 +24,8 @@ macro_rules! builtin_names {
 
             $(
                 #[inline]
-                pub fn $rust_name(&self) -> PropertyKey {
-                    self.$rust_name.clone()
+                pub fn $rust_name(&self) -> HandlePropertyKey {
+                    self.$rust_name
                 }
             )*
         }
@@ -315,8 +319,8 @@ macro_rules! builtin_symbols {
 
             $(
                 #[inline]
-                pub fn $rust_name(&self) -> PropertyKey {
-                    self.$rust_name.clone()
+                pub fn $rust_name(&self) -> HandlePropertyKey {
+                    self.$rust_name
                 }
             )*
         }

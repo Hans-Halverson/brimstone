@@ -620,7 +620,7 @@ impl ArrayPrototype {
             }
         }
 
-        Value::number(-1.0).to_handle(cx).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.1.3.11 Array.prototype.flat
@@ -672,6 +672,7 @@ impl ArrayPrototype {
 
         // Property key is shared between iterations
         let mut source_key = PropertyKey::uninit().to_handle(cx);
+        let mut target_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..source_length {
             source_key.replace(PropertyKey::from_u64(cx, i));
@@ -679,7 +680,8 @@ impl ArrayPrototype {
                 let mut element = maybe!(get(cx, source, source_key));
 
                 if let Some(mapper_function) = mapper_function {
-                    let arguments = [element, Value::from(i), source.into()];
+                    let index_value = Value::from(i).to_handle(cx);
+                    let arguments = [element, index_value, source.into()];
                     element = maybe!(call(cx, mapper_function, this_arg, &arguments));
                 }
 
@@ -713,9 +715,6 @@ impl ArrayPrototype {
                     if target_index >= MAX_SAFE_INTEGER_U64 {
                         return type_error_(cx, "array is too large");
                     }
-
-                    // Reuse source_key handle as it is never referenced again
-                    let mut target_key = source_key;
 
                     target_key.replace(PropertyKey::from_u64(cx, target_index));
                     maybe!(create_data_property_or_throw(cx, target, target_key, element));
@@ -1278,7 +1277,8 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            maybe!(set(cx, object, cx.names.length(), Value::smi(0), true));
+            let zero_value = Value::smi(0).to_handle(cx);
+            maybe!(set(cx, object, cx.names.length(), zero_value, true));
             return cx.undefined().into();
         }
 
@@ -1303,7 +1303,9 @@ impl ArrayPrototype {
 
         let last_key = PropertyKey::from_u64(cx, length - 1).to_handle(cx);
         maybe!(delete_property_or_throw(cx, object, last_key));
-        maybe!(set(cx, object, cx.names.length(), Value::from(length - 1), true));
+
+        let new_length_value = Value::from(length - 1).to_handle(cx);
+        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
         first.into()
     }
@@ -1370,7 +1372,8 @@ impl ArrayPrototype {
             to_index += 1;
         }
 
-        maybe!(set(cx, array, cx.names.length(), Value::from(to_index), true));
+        let to_index_value = Value::from(to_index).to_handle(cx);
+        maybe!(set(cx, array, cx.names.length(), to_index_value, true));
 
         array.into()
     }
@@ -1470,7 +1473,8 @@ impl ArrayPrototype {
             }
         }
 
-        maybe!(set(cx, array, cx.names.length(), Value::from(actual_delete_count), true));
+        let actual_delete_count_value = Value::from(actual_delete_count).to_handle(cx);
+        maybe!(set(cx, array, cx.names.length(), actual_delete_count_value, true));
 
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {

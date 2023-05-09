@@ -106,41 +106,48 @@ impl NumberConstructor {
             ),
         );
 
+        let epsilon_value = Value::number(f64::EPSILON).to_handle(cx);
         func.set_property(
             cx,
             cx.names.epsilon(),
-            Property::data(Value::number(f64::EPSILON), false, false, false),
+            Property::data(epsilon_value, false, false, false),
         );
+
+        let max_safe_integer_value = Value::number(MAX_SAFE_INTEGER_F64).to_handle(cx);
         func.set_property(
             cx,
             cx.names.max_safe_integer(),
-            Property::data(Value::number(MAX_SAFE_INTEGER_F64), false, false, false),
+            Property::data(max_safe_integer_value, false, false, false),
         );
-        func.set_property(
-            cx,
-            cx.names.max_value(),
-            Property::data(Value::number(f64::MAX), false, false, false),
-        );
+
+        let max_value = Value::number(f64::MAX).to_handle(cx);
+        func.set_property(cx, cx.names.max_value(), Property::data(max_value, false, false, false));
+
+        let min_safe_integer_value = Value::number(MIN_SAFE_INTEGER_F64).to_handle(cx);
         func.set_property(
             cx,
             cx.names.min_safe_integer(),
-            Property::data(Value::number(MIN_SAFE_INTEGER_F64), false, false, false),
+            Property::data(min_safe_integer_value, false, false, false),
         );
-        func.set_property(
-            cx,
-            cx.names.min_value(),
-            Property::data(Value::number(MIN_POSITIVE_SUBNORMAL_F64), false, false, false),
-        );
-        func.set_property(cx, cx.names.nan(), Property::data(Value::nan(), false, false, false));
+
+        let min_value = Value::number(MIN_POSITIVE_SUBNORMAL_F64).to_handle(cx);
+        func.set_property(cx, cx.names.min_value(), Property::data(min_value, false, false, false));
+
+        let nan_value = Value::nan().to_handle(cx);
+        func.set_property(cx, cx.names.nan(), Property::data(nan_value, false, false, false));
+
+        let neg_infinity_value = Value::number(f64::NEG_INFINITY).to_handle(cx);
         func.set_property(
             cx,
             cx.names.negative_infinity(),
-            Property::data(Value::number(f64::NEG_INFINITY), false, false, false),
+            Property::data(neg_infinity_value, false, false, false),
         );
+
+        let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
         func.set_property(
             cx,
             cx.names.positive_infinity(),
-            Property::data(Value::number(f64::INFINITY), false, false, false),
+            Property::data(infinity_value, false, false, false),
         );
 
         func.intrinsic_func(cx, cx.names.is_finite(), Self::is_finite, 1, realm);
@@ -173,7 +180,7 @@ impl NumberConstructor {
         };
 
         match new_target {
-            None => number_value.into(),
+            None => Value::from(number_value).to_handle(cx).into(),
             Some(new_target) => {
                 maybe!(NumberObject::new_from_constructor(cx, new_target, number_value)).into()
             }

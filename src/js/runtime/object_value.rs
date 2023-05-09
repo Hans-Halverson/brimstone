@@ -427,11 +427,8 @@ impl Handle<ObjectValue> {
     }
 
     pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
-        self.set_property(
-            cx,
-            cx.names.length(),
-            Property::data(Value::smi(length), false, false, true),
-        )
+        let length_value = Value::smi(length).to_handle(cx);
+        self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {

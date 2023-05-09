@@ -145,7 +145,7 @@ pub fn to_number(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
 
     // Fast path
     if value.is_number() {
-        return value.into();
+        return value_handle.into();
     }
 
     if value.is_pointer() {
@@ -163,13 +163,13 @@ pub fn to_number(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Value::smi(0).into(),
-            UNDEFINED_TAG => Value::nan().into(),
+            NULL_TAG => Value::smi(0).to_handle(cx).into(),
+            UNDEFINED_TAG => Value::nan().to_handle(cx).into(),
             BOOL_TAG => {
                 if value.as_bool() {
-                    Value::smi(1).into()
+                    Value::smi(1).to_handle(cx).into()
                 } else {
-                    Value::smi(0).into()
+                    Value::smi(0).to_handle(cx).into()
                 }
             }
             _ => unreachable!(),

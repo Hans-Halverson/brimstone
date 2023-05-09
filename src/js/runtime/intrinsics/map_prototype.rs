@@ -93,7 +93,7 @@ impl MapPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = map.map_data().remove(key).is_some();
+        let existed = map.map_data().remove(key.get()).is_some();
 
         cx.bool(existed).into()
     }
@@ -167,8 +167,8 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        match map.map_data().get(key) {
-            Some(value) => (*value).into(),
+        match map.map_data().get(key.get()) {
+            Some(value) => value.to_handle(cx).into(),
             None => cx.undefined().into(),
         }
     }
@@ -188,7 +188,7 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        cx.bool(map.map_data().contains_key(key)).into()
+        cx.bool(map.map_data().contains_key(key.get())).into()
     }
 
     // 24.1.3.8 Map.prototype.keys
@@ -220,8 +220,8 @@ impl MapPrototype {
             return type_error_(cx, "set method must be called on map");
         };
 
-        let mut key = get_argument(cx, arguments, 0);
-        let value = get_argument(cx, arguments, 1);
+        let mut key = get_argument(cx, arguments, 0).get();
+        let value = get_argument(cx, arguments, 1).get();
 
         // Convert negative zero to positive zero for key in map
         if key.is_negative_zero() {
@@ -246,7 +246,7 @@ impl MapPrototype {
             return type_error_(cx, "size accessor must be called on map");
         };
 
-        Value::from(map.map_data().len()).into()
+        Value::from(map.map_data().len()).to_handle(cx).into()
     }
 
     // 24.1.3.11 Map.prototype.values

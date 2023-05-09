@@ -74,9 +74,9 @@ impl SetPrototype {
         };
 
         // Convert negative zero to positive zero in set
-        let mut value = get_argument(cx, arguments, 0);
+        let mut value = get_argument(cx, arguments, 0).get();
         if value.is_negative_zero() {
-            value = Value::number(0.0);
+            value = Value::smi(0);
         }
 
         set.set_data().insert(value);
@@ -116,7 +116,7 @@ impl SetPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = set.set_data().remove(key);
+        let existed = set.set_data().remove(key.get());
 
         cx.bool(existed).into()
     }
@@ -188,7 +188,7 @@ impl SetPrototype {
 
         let value = get_argument(cx, arguments, 0);
 
-        cx.bool(set.set_data().contains(value)).into()
+        cx.bool(set.set_data().contains(value.get())).into()
     }
 
     // 24.2.3.9 get Set.prototype.size
@@ -204,7 +204,7 @@ impl SetPrototype {
             return type_error_(cx, "size accessor must be called on set");
         };
 
-        Value::from(set.set_data().len()).into()
+        Value::from(set.set_data().len()).to_handle(cx).into()
     }
 
     // 24.2.3.10 Set.prototype.values

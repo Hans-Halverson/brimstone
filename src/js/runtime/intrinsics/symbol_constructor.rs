@@ -12,7 +12,7 @@ use crate::{
         realm::Realm,
         type_utilities::to_string,
         value::SymbolValue,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -147,12 +147,13 @@ impl SymbolConstructor {
     ) -> EvalResult<HandleValue> {
         let argument = get_argument(cx, arguments, 0);
         let string_key = maybe!(to_string(cx, argument));
-        if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key) {
+        if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key.get_()) {
             return (*symbol_value).into();
         }
 
         let new_symbol = SymbolValue::new(cx, Some(string_key));
-        cx.global_symbol_registry.insert(string_key, new_symbol);
+        cx.global_symbol_registry
+            .insert(string_key.get_(), new_symbol.get_());
 
         new_symbol.into()
     }
@@ -168,11 +169,12 @@ impl SymbolConstructor {
         if !symbol_value.is_symbol() {
             return type_error_(cx, "expected symbol value");
         }
-        let symbol_value = symbol_value.as_symbol();
+        let symbol_value = symbol_value.as_symbol().get_();
 
         for (string, symbol) in &cx.global_symbol_registry {
             if symbol.ptr_eq(&symbol_value) {
-                return (*string).into();
+                let string_value: Value = (*string).into();
+                return string_value.to_handle(cx).into();
             }
         }
 

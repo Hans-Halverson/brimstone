@@ -73,9 +73,9 @@ impl VirtualObject for Handle<ArrayObject> {
         key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
-            let length_value = self.object().array_properties_length();
+            let length_value = Value::from(self.object().array_properties_length()).to_handle(cx);
             return Some(PropertyDescriptor::data(
-                Value::number(length_value.into()),
+                length_value,
                 self.is_length_writable,
                 false,
                 false,
@@ -120,7 +120,7 @@ pub fn array_create(
 
     let mut array_object = ArrayObject::new(cx, proto);
 
-    let length_value = Value::number((length as u32).into());
+    let length_value = Value::from(length as u32).to_handle(cx);
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
     must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
 
@@ -171,7 +171,7 @@ pub fn array_species_create(
         return type_error_(cx, "expected array constructor");
     }
 
-    let length_value = Value::from(length);
+    let length_value = Value::from(length).to_handle(cx);
     construct(cx, constructor.as_object(), &[length_value], None)
 }
 

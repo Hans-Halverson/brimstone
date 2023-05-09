@@ -64,9 +64,12 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> Ev
     }
 
     // 19.1 Value Properties of the Global Object
+    let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
+    let nan_value = Value::nan().to_handle(cx);
+
     value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
-    value_prop!(cx.names.infinity(), Value::number(f64::INFINITY), false, false, false);
-    value_prop!(cx.names.nan(), Value::nan(), false, false, false);
+    value_prop!(cx.names.infinity(), infinity_value, false, false, false);
+    value_prop!(cx.names.nan(), nan_value, false, false, false);
     value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
     // 19.2 Function Properties of the Global Object
@@ -171,8 +174,8 @@ fn parse_float(
     let input_string = maybe!(to_string(cx, input_string_arg));
 
     match parse_float_with_string_lexer(input_string.get_()) {
-        Some(float) => Value::number(float).into(),
-        None => Value::nan().into(),
+        Some(float) => Value::number(float).to_handle(cx).into(),
+        None => Value::nan().to_handle(cx).into(),
     }
 }
 
@@ -217,8 +220,8 @@ fn parse_int(
     let radix = maybe!(to_int32(cx, radix_arg));
 
     match parse_int_impl(input_string.get_(), radix) {
-        Some(number) => Value::number(number).into(),
-        None => Value::nan().into(),
+        Some(number) => Value::number(number).to_handle(cx).into(),
+        None => Value::nan().to_handle(cx).into(),
     }
 }
 

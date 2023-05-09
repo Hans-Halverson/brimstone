@@ -204,8 +204,8 @@ pub fn create_unmapped_arguments_object(
     let object = UnmappedArgumentsObject::new(cx).into();
 
     // Set length property
-    let length_desc =
-        PropertyDescriptor::data(Value::smi(arguments.len() as i32), true, false, true);
+    let length_value = Value::smi(arguments.len() as i32).to_handle(cx);
+    let length_desc = PropertyDescriptor::data(length_value, true, false, true);
     must!(define_property_or_throw(cx, object, cx.names.length(), length_desc));
 
     // Property key is shared between iterations
@@ -265,8 +265,8 @@ pub fn create_mapped_arguments_object(
     }
 
     // Set length property
-    let length_desc =
-        PropertyDescriptor::data(Value::smi(arguments.len() as i32), true, false, true);
+    let length_value = Value::smi(arguments.len() as i32).to_handle(cx);
+    let length_desc = PropertyDescriptor::data(length_value, true, false, true);
     must!(define_property_or_throw(cx, object.into(), cx.names.length(), length_desc));
 
     let mut mapped_names = HashSet::new();

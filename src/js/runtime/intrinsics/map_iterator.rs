@@ -54,7 +54,7 @@ impl<'a> MapIterator<'a> {
         object.to_handle()
     }
 
-    cast_from_value_fn!(MapIterator, "Map Iterator");
+    cast_from_value_fn!(MapIterator<'a>, "Map Iterator");
 }
 
 // 24.1.5.2 The %MapIteratorPrototype% Object
@@ -93,17 +93,19 @@ impl MapIteratorPrototype {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
-                    let key = (*key).into();
-                    create_iter_result_object(cx, key, false).into()
+                    let key_value: Value = (*key).into();
+                    let key_handle = key_value.to_handle(cx);
+                    create_iter_result_object(cx, key_handle, false).into()
                 }
                 MapIteratorKind::Value => {
-                    let value = *value;
-                    create_iter_result_object(cx, value, false).into()
+                    let value_handle = value.to_handle(cx);
+                    create_iter_result_object(cx, value_handle, false).into()
                 }
                 MapIteratorKind::KeyAndValue => {
-                    let key = (*key).into();
-                    let value = *value;
-                    let result_pair = create_array_from_list(cx, &[key, value]);
+                    let key_value: Value = (*key).into();
+                    let key_handle = key_value.to_handle(cx);
+                    let value_handle = value.to_handle(cx);
+                    let result_pair = create_array_from_list(cx, &[key_handle, value_handle]);
 
                     create_iter_result_object(cx, result_pair.into(), false).into()
                 }

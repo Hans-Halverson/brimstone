@@ -138,7 +138,7 @@ impl ArrayIteratorPrototype {
                 create_iter_result_object(cx, value, false).into()
             }
             ArrayIteratorKind::KeyAndValue => {
-                let key = Value::from(current_index);
+                let key = Value::from(current_index).to_handle(cx);
                 let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
                 let value = maybe!(array.get(cx, property_key, array.into()));
 

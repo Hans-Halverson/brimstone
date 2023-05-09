@@ -93,7 +93,7 @@ impl DataViewPrototype {
             return type_error_(cx, "array buffer is detached");
         }
 
-        Value::from(data_view.byte_length()).into()
+        Value::from(data_view.byte_length()).to_handle(cx).into()
     }
 
     // 25.3.4.3 get DataView.prototype.byteOffset
@@ -109,7 +109,7 @@ impl DataViewPrototype {
             return type_error_(cx, "array buffer is detached");
         }
 
-        Value::from(data_view.byte_offset()).into()
+        Value::from(data_view.byte_offset()).to_handle(cx).into()
     }
 
     // 25.3.4.5 DataView.prototype.getBigInt64

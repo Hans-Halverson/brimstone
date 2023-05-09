@@ -665,7 +665,8 @@ pub fn set_function_name(
 
 // 10.2.10 SetFunctionLength
 pub fn set_function_length(cx: &mut Context, func: Handle<ObjectValue>, length: i32) {
-    let desc = PropertyDescriptor::data(Value::smi(length), false, false, true);
+    let length_value = Value::smi(length).to_handle(cx);
+    let desc = PropertyDescriptor::data(length_value, false, false, true);
     must!(define_property_or_throw(cx, func, cx.names.length(), desc))
 }
 
@@ -676,9 +677,9 @@ pub fn set_function_length_maybe_infinity(
     length: Option<i32>,
 ) {
     let length = if let Some(length) = length {
-        Value::smi(length)
+        Value::smi(length).to_handle(cx)
     } else {
-        Value::number(f64::INFINITY)
+        Value::number(f64::INFINITY).to_handle(cx)
     };
 
     let desc = PropertyDescriptor::data(length, false, false, true);

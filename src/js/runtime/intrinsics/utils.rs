@@ -1,8 +1,11 @@
 // Generate a function that casts from a value to a particular object type by comparing vtables
 #[macro_export]
 macro_rules! cast_from_value_fn {
-    ($type:ident, $name:expr) => {
-        pub fn cast_from_value(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<$type>> {
+    ($type:ident $(<$($generics:tt),*>)?, $name:expr) => {
+        pub fn cast_from_value<'cx>(
+            cx: &'cx mut Context,
+            value: HandleValue,
+        ) -> EvalResult<Handle<$type $(<$($generics),*>)?>> {
             if !value.is_object() {
                 return type_error_(cx, concat!("expected object of type ", $name));
             }

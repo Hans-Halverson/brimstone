@@ -12,7 +12,7 @@ use crate::{
         property::Property,
         realm::Realm,
         value::ValueSetIter,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -53,7 +53,7 @@ impl<'a> SetIterator<'a> {
         object.to_handle()
     }
 
-    cast_from_value_fn!(SetIterator, "Set Iterator");
+    cast_from_value_fn!(SetIterator<'a>, "Set Iterator");
 }
 
 // 24.2.5.2 The %SetIteratorPrototype% Object
@@ -91,12 +91,15 @@ impl SetIteratorPrototype {
         match set_iterator.iter.next() {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(value) => {
-                let value = (*value).into();
+                let value_value: Value = (*value).into();
+                let value_handle = value_value.to_handle(cx);
 
                 match set_iterator.kind {
-                    SetIteratorKind::Value => create_iter_result_object(cx, value, false).into(),
+                    SetIteratorKind::Value => {
+                        create_iter_result_object(cx, value_handle, false).into()
+                    }
                     SetIteratorKind::KeyAndValue => {
-                        let result_pair = create_array_from_list(cx, &[value, value]);
+                        let result_pair = create_array_from_list(cx, &[value_handle, value_handle]);
                         create_iter_result_object(cx, result_pair.into(), false).into()
                     }
                 }

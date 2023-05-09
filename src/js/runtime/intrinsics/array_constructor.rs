@@ -87,7 +87,8 @@ impl ArrayConstructor {
                 1
             };
 
-            must!(set(cx, array.into(), cx.names.length(), Value::from(int_len), true));
+            let int_len_value = Value::from(int_len).to_handle(cx);
+            must!(set(cx, array.into(), cx.names.length(), int_len_value, true));
 
             return array.into();
         } else {
@@ -127,7 +128,7 @@ impl ArrayConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<HandleValue> {
         let length = arguments.len();
-        let length_value = Value::from(length);
+        let length_value = Value::from(length).to_handle(cx);
 
         let array = if is_constructor(this_value) {
             maybe!(construct(cx, this_value.as_object(), &[length_value], None))

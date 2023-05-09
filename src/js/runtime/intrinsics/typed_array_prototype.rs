@@ -149,10 +149,10 @@ impl TypedArrayPrototype {
         let typed_array = maybe!(require_typed_array(cx, this_value));
 
         if typed_array.viewed_array_buffer().is_detached() {
-            return Value::smi(0).into();
+            return Value::smi(0).to_handle(cx).into();
         }
 
-        Value::from(typed_array.byte_length()).into()
+        Value::from(typed_array.byte_length()).to_handle(cx).into()
     }
 
     // 23.2.3.4 get %TypedArray%.prototype.byteOffset
@@ -165,10 +165,10 @@ impl TypedArrayPrototype {
         let typed_array = maybe!(require_typed_array(cx, this_value));
 
         if typed_array.viewed_array_buffer().is_detached() {
-            return Value::smi(0).into();
+            return Value::smi(0).to_handle(cx).into();
         }
 
-        Value::from(typed_array.byte_offset()).into()
+        Value::from(typed_array.byte_offset()).to_handle(cx).into()
     }
 
     // 23.2.3.6 %TypedArray%.prototype.copyWithin
@@ -430,10 +430,11 @@ impl TypedArrayPrototype {
 
         // Then create a new array that contains the kept values
         let num_kept_values = kept_values.len();
+        let num_kept_values_value = Value::from(num_kept_values).to_handle(cx);
         let array = maybe!(typed_array_species_create_object(
             cx,
             typed_array,
-            &[Value::from(num_kept_values)],
+            &[num_kept_values_value],
             Some(num_kept_values)
         ));
 
@@ -523,7 +524,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        Value::number(-1.0).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.2.3.13 %TypedArray%.prototype.forEach
@@ -620,7 +621,7 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length() as u64;
 
         if length == 0 {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -628,7 +629,7 @@ impl TypedArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -647,12 +648,12 @@ impl TypedArrayPrototype {
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).into();
+                    return Value::from(i).to_handle(cx).into();
                 }
             }
         }
 
-        Value::smi(-1).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.2.3.16 %TypedArray%.prototype.join
@@ -718,7 +719,7 @@ impl TypedArrayPrototype {
         let length = typed_array.array_length() as u64;
 
         if length == 0 {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -727,7 +728,7 @@ impl TypedArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
-                return Value::smi(-1).into();
+                return Value::smi(-1).to_handle(cx).into();
             }
 
             if n >= 0.0 {
@@ -774,7 +775,7 @@ impl TypedArrayPrototype {
             return Value::smi(0).into();
         }
 
-        Value::from(typed_array.array_length()).into()
+        Value::from(typed_array.array_length()).to_handle(cx).into()
     }
 
     // 23.2.3.20 %TypedArray%.prototype.map
@@ -796,10 +797,11 @@ impl TypedArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        let length_value = Value::from(length).to_handle(cx);
         let array = maybe!(typed_array_species_create_object(
             cx,
             typed_array,
-            &[Value::from(length)],
+            &[length_value],
             Some(length)
         ));
 
@@ -991,10 +993,11 @@ impl TypedArrayPrototype {
         };
 
         let count = end_index.saturating_sub(start_index);
+        let count_value = Value::from(count).to_handle(cx);
         let new_typed_array = maybe!(typed_array_species_create(
             cx,
             typed_array,
-            &[Value::from(count)],
+            &[count_value],
             Some(count as usize)
         ));
         let array = new_typed_array.into_object_value();
@@ -1136,14 +1139,12 @@ impl TypedArrayPrototype {
         let source_byte_offset = typed_array.byte_offset();
         let begin_byte_offset = source_byte_offset + (start_index as usize) * element_size;
 
+        let begin_byte_offset_value = Value::from(begin_byte_offset).to_handle(cx);
+        let new_length_value = Value::from(new_length).to_handle(cx);
         let subarray = maybe!(typed_array_species_create_object(
             cx,
             typed_array,
-            &[
-                buffer.into(),
-                Value::from(begin_byte_offset),
-                Value::from(new_length),
-            ],
+            &[buffer.into(), begin_byte_offset_value, new_length_value,],
             None,
         ));
 
@@ -1230,15 +1231,12 @@ macro_rules! create_typed_array_prototype {
                 );
 
                 // Constructor property is added once TypedArrayConstructor has been created
+                let element_size_value =
+                    Value::smi(std::mem::size_of::<$element_type>() as i32).to_handle(cx);
                 object.set_property(
                     cx,
                     cx.names.bytes_per_element(),
-                    Property::data(
-                        Value::smi(std::mem::size_of::<$element_type>() as i32),
-                        false,
-                        false,
-                        false,
-                    ),
+                    Property::data(element_size_value, false, false, false),
                 );
 
                 object.into()

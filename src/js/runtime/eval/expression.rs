@@ -64,7 +64,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<H
         ast::Expression::Id(id) => eval_identifier(cx, id),
         ast::Expression::Null(_) => eval_null_literal(cx),
         ast::Expression::Boolean(lit) => eval_boolean_literal(cx, lit),
-        ast::Expression::Number(lit) => eval_number_literal(lit),
+        ast::Expression::Number(lit) => eval_number_literal(cx, lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
         ast::Expression::BigInt(lit) => eval_bigint_literal(cx, lit),
         ast::Expression::Regexp(_) => unimplemented!("regexp literal"),
@@ -139,8 +139,8 @@ fn eval_boolean_literal(cx: &mut Context, lit: &ast::BooleanLiteral) -> EvalResu
     cx.bool(lit.value).into()
 }
 
-fn eval_number_literal(lit: &ast::NumberLiteral) -> EvalResult<HandleValue> {
-    Value::number(lit.value).into()
+fn eval_number_literal(cx: &mut Context, lit: &ast::NumberLiteral) -> EvalResult<HandleValue> {
+    Value::number(lit.value).to_handle(cx).into()
 }
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<HandleValue> {
@@ -149,7 +149,7 @@ fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult
 }
 
 fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult<HandleValue> {
-    Value::bigint(BigIntValue::new(cx, lit.value.clone())).into()
+    BigIntValue::new(cx, lit.value.clone()).to_handle().into()
 }
 
 // 13.2.4.2 Array Initializer Evaluation
@@ -799,17 +799,17 @@ fn eval_update_expression(
         UpdateOperator::Increment => {
             if old_value.is_bigint() {
                 let inc_value = old_value.as_bigint().bigint() + 1;
-                Value::bigint(BigIntValue::new(cx, inc_value))
+                BigIntValue::new(cx, inc_value).into()
             } else {
-                Value::number(old_value.as_number() + 1.0)
+                Value::number(old_value.as_number() + 1.0).to_handle(cx)
             }
         }
         UpdateOperator::Decrement => {
             if old_value.is_bigint() {
                 let dec_value = old_value.as_bigint().bigint() - 1;
-                Value::bigint(BigIntValue::new(cx, dec_value))
+                BigIntValue::new(cx, dec_value).into()
             } else {
-                Value::number(old_value.as_number() - 1.0)
+                Value::number(old_value.as_number() - 1.0).to_handle(cx)
             }
         }
     };
@@ -921,9 +921,9 @@ fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 
     if value.is_bigint() {
         let neg_bignum = -value.as_bigint().bigint();
-        Value::bigint(BigIntValue::new(cx, neg_bignum)).into()
+        BigIntValue::new(cx, neg_bignum).into()
     } else {
-        Value::number(-value.as_number()).into()
+        Value::number(-value.as_number()).to_handle(cx).into()
     }
 }
 
@@ -934,10 +934,10 @@ fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 
     if value.is_bigint() {
         let not_bignum = !value.as_bigint().bigint();
-        Value::bigint(BigIntValue::new(cx, not_bignum)).into()
+        BigIntValue::new(cx, not_bignum).into()
     } else {
         let value = must!(to_int32(cx, value));
-        Value::smi(!value).into()
+        Value::smi(!value).to_handle(cx).into()
     }
 }
 
@@ -1100,9 +1100,11 @@ fn eval_add(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
-        return Value::number(left_num.as_number() + right_num.as_number()).into();
+        return Value::number(left_num.as_number() + right_num.as_number())
+            .to_handle(cx)
+            .into();
     }
 }
 
@@ -1121,9 +1123,11 @@ fn eval_subtract(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
-        return Value::number(left_num.as_number() - right_num.as_number()).into();
+        return Value::number(left_num.as_number() - right_num.as_number())
+            .to_handle(cx)
+            .into();
     }
 }
 
@@ -1142,9 +1146,11 @@ fn eval_multiply(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
-        return Value::number(left_num.as_number() * right_num.as_number()).into();
+        return Value::number(left_num.as_number() * right_num.as_number())
+            .to_handle(cx)
+            .into();
     }
 }
 
@@ -1168,9 +1174,11 @@ fn eval_divide(
         }
 
         let result = left_num.as_bigint().bigint() / bigint_right;
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
-        return Value::number(left_num.as_number() / right_num.as_number()).into();
+        return Value::number(left_num.as_number() / right_num.as_number())
+            .to_handle(cx)
+            .into();
     }
 }
 
@@ -1195,13 +1203,15 @@ fn eval_remainder(
 
         let bigint_left = left_num.as_bigint().bigint();
         if bigint_left.eq(&BigInt::default()) {
-            return Value::bigint(BigIntValue::new(cx, BigInt::default())).into();
+            return BigIntValue::new(cx, BigInt::default()).into();
         }
 
         let result = bigint_left % bigint_right;
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
-        return Value::number(left_num.as_number() % right_num.as_number()).into();
+        return Value::number(left_num.as_number() % right_num.as_number())
+            .to_handle(cx)
+            .into();
     }
 }
 
@@ -1225,18 +1235,19 @@ fn eval_exponentiation(
         if exponent_bignum.lt(&BigInt::default()) {
             return range_error_(cx, "BigInt negative exponent");
         } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
-            return Value::bigint(BigIntValue::new(cx, 1.into())).into();
+            return BigIntValue::new(cx, 1.into()).into();
         }
 
         if let Ok(exponent_u32) = exponent_bignum.try_into() {
             let result = base_bignum.pow(exponent_u32);
-            return Value::bigint(BigIntValue::new(cx, result)).into();
+            return BigIntValue::new(cx, result).into();
         } else {
             // This guarantees a bigint that is too large
             return range_error_(cx, "BigInt is too large");
         }
     } else {
         return Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
+            .to_handle(cx)
             .into();
     }
 }
@@ -1314,12 +1325,12 @@ fn eval_bitwise_and(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        return Value::smi(left_smi & right_smi).into();
+        return Value::smi(left_smi & right_smi).to_handle(cx).into();
     }
 }
 
@@ -1338,12 +1349,12 @@ fn eval_bitwise_or(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        return Value::smi(left_smi | right_smi).into();
+        return Value::smi(left_smi | right_smi).to_handle(cx).into();
     }
 }
 
@@ -1362,12 +1373,12 @@ fn eval_bitwise_xor(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        return Value::smi(left_smi ^ right_smi).into();
+        return Value::smi(left_smi ^ right_smi).to_handle(cx).into();
     }
 }
 
@@ -1391,7 +1402,7 @@ fn eval_shift_left(
             right_num.as_bigint().bigint()
         ));
 
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -1399,7 +1410,7 @@ fn eval_shift_left(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        return Value::smi(left_smi << shift).into();
+        return Value::smi(left_smi << shift).to_handle(cx).into();
     }
 }
 
@@ -1423,7 +1434,7 @@ fn eval_shift_right_arithmetic(
             &-right_num.as_bigint().bigint()
         ));
 
-        return Value::bigint(BigIntValue::new(cx, result)).into();
+        return BigIntValue::new(cx, result).into();
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -1431,7 +1442,7 @@ fn eval_shift_right_arithmetic(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        return Value::smi(left_smi >> shift).into();
+        return Value::smi(left_smi >> shift).to_handle(cx).into();
     }
 }
 
@@ -1489,7 +1500,7 @@ fn eval_shift_right_logical(
     // Shift modulus 32
     let shift = right_u32 & 0x1F;
 
-    return Value::from(left_smi >> shift).into();
+    return Value::from(left_smi >> shift).to_handle(cx).into();
 }
 
 // 13.10.2 InstanceofOperator

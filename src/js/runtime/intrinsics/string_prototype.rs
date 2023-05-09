@@ -187,7 +187,7 @@ impl StringPrototype {
         }
 
         let code_unit = string.code_unit_at(position as usize);
-        Value::smi(code_unit as i32).into()
+        Value::smi(code_unit as i32).to_handle(cx).into()
     }
 
     // 22.1.3.4 String.prototype.codePointAt
@@ -208,7 +208,7 @@ impl StringPrototype {
         }
 
         let code_point = string.code_point_at(position as usize);
-        Value::smi(code_point as i32).into()
+        Value::smi(code_point as i32).to_handle(cx).into()
     }
 
     // 22.1.3.5 String.prototype.concat
@@ -297,12 +297,12 @@ impl StringPrototype {
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
         if pos == f64::INFINITY {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let pos = pos as usize;
         if pos >= string.len() {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let found_search_string = string.find(search_string, pos).is_some();
@@ -325,17 +325,17 @@ impl StringPrototype {
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
         if pos == f64::INFINITY {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         let pos = pos as usize;
         if pos >= string.len() {
-            return Value::smi(-1).into();
+            return Value::smi(-1).to_handle(cx).into();
         }
 
         match string.find(search_string, pos) {
-            None => Value::smi(-1).into(),
-            Some(index) => Value::from(index).into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+            Some(index) => Value::from(index).to_handle(cx).into(),
         }
     }
 
@@ -365,8 +365,8 @@ impl StringPrototype {
         }
 
         match string.rfind(search_string, string_end) {
-            None => Value::smi(-1).into(),
-            Some(index) => Value::from(index).into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+            Some(index) => Value::from(index).to_handle(cx).into(),
         }
     }
 

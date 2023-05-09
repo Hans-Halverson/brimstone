@@ -34,7 +34,7 @@ use super::{
     ordinary_object::{object_create_with_proto, ordinary_object_create},
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
-    property_key::{HeapPropertyKey, PropertyKey},
+    property_key::{HandlePropertyKey, PropertyKey},
     realm::Realm,
     string_value::StringValue,
     type_utilities::to_object,
@@ -80,14 +80,14 @@ extend_object! {
 // function node, or executing a builtin constructor. Stored on stack.
 pub enum FuncKind {
     Function(AstPtr<ast::Function>),
-    ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
+    ClassProperty(AstPtr<ast::ClassProperty>, HandlePropertyKey),
     DefaultConstructor,
 }
 
 /// A FuncKind that is stored on the heap.
 enum HeapFuncKind {
     Function(AstPtr<ast::Function>),
-    ClassProperty(AstPtr<ast::ClassProperty>, HeapPropertyKey),
+    ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
     DefaultConstructor,
 }
 
@@ -457,7 +457,7 @@ impl Handle<Function> {
             }
             // Initializer evaluation in EvaluateBody
             HeapFuncKind::ClassProperty(prop, name) => {
-                let name = PropertyKey::from_heap(name);
+                let name = name.to_handle(cx);
                 let expr = prop.as_ref().value.as_ref().unwrap();
                 let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name));
 
@@ -470,14 +470,15 @@ impl Handle<Function> {
     }
 
     #[inline]
-    pub fn iter_fields<F: FnMut(ClassFieldDefinition) -> EvalResult<()>>(
+    pub fn iter_fields<F: FnMut(&mut Context, ClassFieldDefinition) -> EvalResult<()>>(
         &self,
+        cx: &mut Context,
         mut f: F,
     ) -> EvalResult<()> {
         // GC safe iteration over class fields
         for i in 0..self.fields.len() {
-            let field = ClassFieldDefinition::from_heap(&self.fields[i]);
-            maybe!(f(field));
+            let field = ClassFieldDefinition::from_heap(cx, &self.fields[i]);
+            maybe!(f(cx, field));
         }
 
         ().into()
@@ -505,7 +506,7 @@ impl FuncKind {
         match self {
             FuncKind::Function(func_node) => HeapFuncKind::Function(func_node.clone()),
             FuncKind::ClassProperty(class_property_node, property_key) => {
-                HeapFuncKind::ClassProperty(class_property_node.clone(), property_key.to_heap())
+                HeapFuncKind::ClassProperty(class_property_node.clone(), property_key.get())
             }
             FuncKind::DefaultConstructor => HeapFuncKind::DefaultConstructor,
         }
@@ -610,7 +611,7 @@ pub fn make_method(mut func: Handle<Function>, home_object: Handle<ObjectValue>)
 pub fn define_method_property(
     cx: &mut Context,
     home_object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     closure: Handle<Function>,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -627,7 +628,7 @@ pub fn define_method_property(
 pub fn set_function_name(
     cx: &mut Context,
     func: Handle<ObjectValue>,
-    name: PropertyKey,
+    name: HandlePropertyKey,
     prefix: Option<&str>,
 ) {
     // Convert name to string value, property formatting symbol name

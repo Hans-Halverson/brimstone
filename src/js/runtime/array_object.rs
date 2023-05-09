@@ -15,7 +15,7 @@ use super::{
         ordinary_get_own_property, ordinary_own_property_keys,
     },
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
     Context, EvalResult, Gc, Handle, Value,
 };
@@ -45,7 +45,7 @@ impl VirtualObject for Handle<ArrayObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if key.is_array_index() {
@@ -70,7 +70,7 @@ impl VirtualObject for Handle<ArrayObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             let length_value = self.object().array_properties_length();
@@ -87,7 +87,7 @@ impl VirtualObject for Handle<ArrayObject> {
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
-    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             return false.into();
         }

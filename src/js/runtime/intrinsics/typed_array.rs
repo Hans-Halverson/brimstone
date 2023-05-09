@@ -20,7 +20,7 @@ use crate::{
         },
         property::Property,
         property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property_key::{HandlePropertyKey, PropertyKey},
         realm::Realm,
         string_value::StringValue,
         type_utilities::{

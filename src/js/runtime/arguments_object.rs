@@ -30,7 +30,7 @@ use super::{
         ordinary_get_own_property, ordinary_set,
     },
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     string_value::StringValue,
     type_utilities::same_object_value,
     Context, EvalResult, Gc, HeapPtr, Value,
@@ -87,7 +87,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let mut desc = ordinary_get_own_property(self.object(), key);
         if let Some(desc) = &mut desc {
@@ -106,7 +106,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let mut parameter_map = self.parameter_map();
@@ -147,7 +147,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         receiver: HandleValue,
     ) -> EvalResult<HandleValue> {
         let parameter_map = self.parameter_map();
@@ -162,7 +162,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
         receiver: HandleValue,
     ) -> EvalResult<bool> {
@@ -182,7 +182,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     }
 
     // 10.4.4.5 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         let mut parameter_map = self.parameter_map();
         let is_mapped = must!(has_own_property(cx, parameter_map, key));
 
@@ -210,7 +210,7 @@ pub fn create_unmapped_arguments_object(
 
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(cx, i as u32);
+        let index_key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
         must!(create_data_property_or_throw(cx, object, index_key, *argument));
     }
 
@@ -254,7 +254,7 @@ pub fn create_mapped_arguments_object(
 
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(cx, i as u32);
+        let index_key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
         must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
     }
 

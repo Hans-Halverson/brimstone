@@ -13,7 +13,7 @@ use super::{
     gc::{Handle, HandleValue, HeapPtr},
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     realm::Realm,
     type_utilities::{
         is_callable, is_callable_object, is_constructor, same_object_value, to_length, to_object,
@@ -31,13 +31,17 @@ pub fn is_extensible(cx: &mut Context, object: Handle<ObjectValue>) -> EvalResul
 pub fn get(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<HandleValue> {
     object.get(cx, key, object.into())
 }
 
 // 7.3.3 GetV
-pub fn get_v(cx: &mut Context, value: HandleValue, key: PropertyKey) -> EvalResult<HandleValue> {
+pub fn get_v(
+    cx: &mut Context,
+    value: HandleValue,
+    key: HandlePropertyKey,
+) -> EvalResult<HandleValue> {
     let object = maybe!(to_object(cx, value));
     object.get(cx, key, value)
 }
@@ -46,7 +50,7 @@ pub fn get_v(cx: &mut Context, value: HandleValue, key: PropertyKey) -> EvalResu
 pub fn set(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
     should_throw: bool,
 ) -> EvalResult<()> {
@@ -62,7 +66,7 @@ pub fn set(
 pub fn create_method_property(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -73,7 +77,7 @@ pub fn create_method_property(
 pub fn create_data_property(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
 ) -> EvalResult<bool> {
     let new_desc = PropertyDescriptor::data(value, true, true, true);
@@ -84,7 +88,7 @@ pub fn create_data_property(
 pub fn create_data_property_or_throw(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
 ) -> EvalResult<()> {
     let success = maybe!(create_data_property(cx, object, key, value));
@@ -99,7 +103,7 @@ pub fn create_data_property_or_throw(
 pub fn create_non_enumerable_data_property_or_throw(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
@@ -110,7 +114,7 @@ pub fn create_non_enumerable_data_property_or_throw(
 pub fn define_property_or_throw(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     prop_desc: PropertyDescriptor,
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
@@ -125,7 +129,7 @@ pub fn define_property_or_throw(
 pub fn delete_property_or_throw(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<()> {
     if !maybe!(object.delete(cx, key)) {
         return type_error_(cx, &format!("cannot delete property {}", key));
@@ -138,7 +142,7 @@ pub fn delete_property_or_throw(
 pub fn get_method(
     cx: &mut Context,
     value: HandleValue,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<Option<Handle<ObjectValue>>> {
     let func = maybe!(get_v(cx, value, key));
     if func.is_nullish() {
@@ -156,7 +160,7 @@ pub fn get_method(
 pub fn has_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<bool> {
     object.has_property(cx, key)
 }
@@ -165,7 +169,7 @@ pub fn has_property(
 pub fn has_own_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     desc.is_some().into()
@@ -319,7 +323,7 @@ pub fn create_list_from_array_like(
 pub fn invoke(
     cx: &mut Context,
     value: HandleValue,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     arguments: &[HandleValue],
 ) -> EvalResult<HandleValue> {
     let func = maybe!(get_v(cx, value, key));
@@ -457,7 +461,7 @@ pub fn copy_data_properties(
     cx: &mut Context,
     target: Handle<ObjectValue>,
     source: HandleValue,
-    excluded_items: &HashSet<PropertyKey>,
+    excluded_items: &HashSet<HandlePropertyKey>,
 ) -> EvalResult<()> {
     if source.is_nullish() {
         return ().into();
@@ -569,7 +573,7 @@ pub fn initialize_instance_elements(
         object.private_method_or_accessor_add(cx, private_name, private_method)
     }));
 
-    maybe!(constructor.iter_fields(|field| { define_field(cx, object, field) }));
+    maybe!(constructor.iter_fields(cx, |cx, field| { define_field(cx, object, field) }));
 
     ().into()
 }

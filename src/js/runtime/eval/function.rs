@@ -36,7 +36,7 @@ use crate::{
             ordinary_object::get_prototype_from_constructor,
             property::Property,
             property_descriptor::PropertyDescriptor,
-            property_key::PropertyKey,
+            property_key::{HandlePropertyKey, PropertyKey},
             to_string, Context, Handle,
         },
     },
@@ -324,7 +324,7 @@ pub fn instantiate_ordinary_function_object(
 pub fn instantiate_ordinary_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<PropertyKey>,
+    name: Option<HandlePropertyKey>,
 ) -> Handle<Function> {
     if func_node.is_async || func_node.is_generator {
         unimplemented!("async and generator functions")
@@ -383,7 +383,7 @@ pub fn instantiate_ordinary_function_expression(
 pub fn instantiate_arrow_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<PropertyKey>,
+    name: Option<HandlePropertyKey>,
 ) -> Handle<Function> {
     let current_context_ptr = cx.current_execution_context_ptr();
     let lexical_env = current_context_ptr.lexical_env();
@@ -429,7 +429,7 @@ pub fn method_definition_evaluation(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
-    property_key: PropertyKey,
+    property_key: HandlePropertyKey,
     property_kind: &ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -479,7 +479,7 @@ pub fn private_method_definition_evaluation(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
-    property_name: PropertyKey,
+    property_name: HandlePropertyKey,
     method_kind: ast::ClassMethodKind,
 ) -> Property {
     if func_node.is_async || func_node.is_generator {

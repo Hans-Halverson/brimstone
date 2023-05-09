@@ -17,7 +17,7 @@ use super::{
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{is_compatible_property_descriptor, object_create},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
     Context, EvalResult, Realm,
 };
@@ -74,7 +74,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
@@ -151,7 +151,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
@@ -234,7 +234,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -278,7 +278,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         receiver: HandleValue,
     ) -> EvalResult<HandleValue> {
         if self.is_revoked() {
@@ -321,7 +321,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
         receiver: HandleValue,
     ) -> EvalResult<bool> {
@@ -364,7 +364,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }

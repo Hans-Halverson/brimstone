@@ -13,7 +13,7 @@ use super::{
     ordinary_object::object_create_with_proto,
     property::Property,
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::HandlePropertyKey,
     realm::Realm,
     string_value::StringValue,
     Context, Handle,
@@ -48,7 +48,7 @@ impl BuiltinFunction {
         cx: &mut Context,
         builtin_func: BuiltinFunctionPtr,
         length: i32,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
@@ -101,14 +101,14 @@ impl BuiltinFunction {
 }
 
 impl Handle<BuiltinFunction> {
-    pub fn set_property(&mut self, cx: &mut Context, key: PropertyKey, value: Property) {
+    pub fn set_property(&mut self, cx: &mut Context, key: HandlePropertyKey, value: Property) {
         self.object().set_property(cx, key, value);
     }
 
     pub fn intrinsic_frozen_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
     ) {
         self.object().intrinsic_frozen_property(cx, key, value);
@@ -117,7 +117,7 @@ impl Handle<BuiltinFunction> {
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Handle<Realm>,
@@ -128,7 +128,7 @@ impl Handle<BuiltinFunction> {
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
     ) {

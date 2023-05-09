@@ -3,7 +3,7 @@ use std::{fmt, hash};
 use crate::maybe;
 
 use super::{
-    gc::{Handle, HandleValue, HeapPtr},
+    gc::{Handle, HandleValue},
     interned_strings::InternedStrings,
     numeric_constants::MAX_U32_AS_F64,
     object_descriptor::ObjectKind,
@@ -22,17 +22,36 @@ use super::{
 /// Always stored on the stack.
 #[derive(Clone, Copy)]
 pub struct PropertyKey {
-    value: HandleValue,
-}
-
-/// A property key that is stored on the heap.
-#[derive(Clone)]
-pub struct HeapPropertyKey {
     value: Value,
 }
 
+/// Preparation for handles refactor. For any property keys that may be held on stack during a GC.
+pub type HandlePropertyKey = PropertyKey;
+
+impl HandlePropertyKey {
+    /// Get the value stored behind the handle.
+    #[inline]
+    pub fn get(&self) -> PropertyKey {
+        *self
+    }
+
+    /// Replace the value stored behind this handle with a new value. Note that all copies of this
+    /// handle will also be changed.
+    #[inline]
+    pub fn replace(&mut self, value: PropertyKey) {
+        *self = value
+    }
+}
+
 impl PropertyKey {
-    pub fn uninit() -> PropertyKey {
+    #[inline]
+    pub fn to_handle(&self, _: &mut Context) -> HandlePropertyKey {
+        *self
+    }
+}
+
+impl PropertyKey {
+    pub const fn uninit() -> PropertyKey {
         PropertyKey { value: HandleValue::uninit() }
     }
 
@@ -160,25 +179,17 @@ impl PropertyKey {
             self.value
         }
     }
-
-    pub fn to_heap(&self) -> HeapPropertyKey {
-        HeapPropertyKey { value: self.value.get() }
-    }
-
-    pub fn from_heap(heap_property_key: &HeapPropertyKey) -> PropertyKey {
-        PropertyKey { value: heap_property_key.value }
-    }
 }
 
-impl PartialEq for HeapPropertyKey {
+impl PartialEq for PropertyKey {
     fn eq(&self, other: &Self) -> bool {
         self.value.as_raw_bits() == other.value.as_raw_bits()
     }
 }
 
-impl Eq for HeapPropertyKey {}
+impl Eq for PropertyKey {}
 
-impl hash::Hash for HeapPropertyKey {
+impl hash::Hash for PropertyKey {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         if self.is_array_index() {
             self.as_array_index().hash(state);
@@ -190,7 +201,7 @@ impl hash::Hash for HeapPropertyKey {
     }
 }
 
-impl fmt::Display for HeapPropertyKey {
+impl fmt::Display for PropertyKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_array_index() {
             write!(f, "{}", self.as_array_index())
@@ -201,67 +212,6 @@ impl fmt::Display for HeapPropertyKey {
                 None => write!(f, "Symbol()"),
                 Some(description) => write!(f, "Symbol({})", description),
             }
-        }
-    }
-}
-
-impl PartialEq for PropertyKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.to_heap().eq(&other.to_heap())
-    }
-}
-
-impl Eq for PropertyKey {}
-
-impl hash::Hash for PropertyKey {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.to_heap().hash(state)
-    }
-}
-
-impl fmt::Display for PropertyKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.to_heap().fmt(f)
-    }
-}
-
-impl HeapPropertyKey {
-    #[inline]
-    pub fn is_array_index(&self) -> bool {
-        self.value.is_smi()
-    }
-
-    #[inline]
-    pub fn as_array_index(&self) -> u32 {
-        // A u32 value was stored in the i32 smi payload
-        self.value.as_smi() as u32
-    }
-
-    #[inline]
-    pub fn as_string(&self) -> HeapPtr<StringValue> {
-        self.value.as_string()
-    }
-
-    #[inline]
-    pub fn as_string_opt(&self) -> Option<HeapPtr<StringValue>> {
-        if self.value.is_string() {
-            Some(self.value.as_string())
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn as_symbol(&self) -> HeapPtr<SymbolValue> {
-        self.value.as_symbol()
-    }
-
-    #[inline]
-    pub fn as_symbol_opt(&self) -> Option<HeapPtr<SymbolValue>> {
-        if self.value.is_symbol() {
-            Some(self.value.as_symbol())
-        } else {
-            None
         }
     }
 }

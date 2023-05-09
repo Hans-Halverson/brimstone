@@ -14,7 +14,7 @@ use super::{
     object_value::{ObjectValue, VirtualObject},
     property::Property,
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::HandlePropertyKey,
     type_utilities::{same_object_value, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
     Context,
@@ -106,7 +106,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn get_own_property(
         &self,
         _: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(self.object(), key).into()
     }
@@ -115,14 +115,14 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self.object(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         ordinary_has_property(cx, self.object(), key)
     }
 
@@ -130,7 +130,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         receiver: HandleValue,
     ) -> EvalResult<HandleValue> {
         ordinary_get(cx, self.object(), key, receiver)
@@ -140,7 +140,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
         receiver: HandleValue,
     ) -> EvalResult<bool> {
@@ -148,7 +148,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         ordinary_delete(cx, self.object(), key)
     }
 
@@ -161,7 +161,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> Option<PropertyDescriptor> {
     match object.get_property(key) {
         None => None,
@@ -190,7 +190,7 @@ pub fn ordinary_get_own_property(
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(cx, key));
@@ -221,7 +221,7 @@ pub fn is_compatible_property_descriptor(
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<Handle<ObjectValue>>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -373,7 +373,7 @@ pub fn validate_and_apply_property_descriptor(
 pub fn ordinary_has_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(cx, key));
     if own_property.is_some() {
@@ -391,7 +391,7 @@ pub fn ordinary_has_property(
 pub fn ordinary_get(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     receiver: HandleValue,
 ) -> EvalResult<HandleValue> {
     let desc = maybe!(object.get_own_property(cx, key));
@@ -416,7 +416,7 @@ pub fn ordinary_get(
 pub fn ordinary_set(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
     value: HandleValue,
     receiver: HandleValue,
 ) -> EvalResult<bool> {
@@ -470,7 +470,7 @@ pub fn ordinary_set(
 pub fn ordinary_delete(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: PropertyKey,
+    key: HandlePropertyKey,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {

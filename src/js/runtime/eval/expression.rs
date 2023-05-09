@@ -32,7 +32,7 @@ use crate::{
             ordinary_object::ordinary_object_create,
             property::Property,
             property_descriptor::PropertyDescriptor,
-            property_key::PropertyKey,
+            property_key::{HandlePropertyKey, PropertyKey},
             reference::{Reference, ReferenceBase},
             string_value::StringValue,
             type_utilities::{
@@ -275,7 +275,7 @@ pub fn eval_property_name<'a>(
     cx: &mut Context,
     key: &ast::Expression,
     is_computed: bool,
-) -> EvalResult<PropertyKey> {
+) -> EvalResult<HandlePropertyKey> {
     let property_key = if is_computed {
         let property_key_value = maybe!(eval_expression(cx, key));
         maybe!(to_property_key(cx, property_key_value))
@@ -284,23 +284,25 @@ pub fn eval_property_name<'a>(
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
                 let string_value = InternedStrings::get_str(cx, lit.value.as_str());
-                PropertyKey::string(cx, string_value)
+                PropertyKey::string(cx, string_value).to_handle(cx)
             }
             ast::Expression::Number(lit) => {
                 let key_value = Value::number(lit.value);
                 if key_value.is_smi() {
                     let smi_value = key_value.as_smi();
                     if smi_value >= 0 {
-                        return PropertyKey::array_index(cx, smi_value as u32).into();
+                        return PropertyKey::array_index(cx, smi_value as u32)
+                            .to_handle(cx)
+                            .into();
                     }
                 }
 
                 let string_value = cx.alloc_string(number_to_string(key_value.as_double()));
-                PropertyKey::string(cx, string_value)
+                PropertyKey::string(cx, string_value).to_handle(cx)
             }
             ast::Expression::BigInt(lit) => {
                 let string_value = cx.alloc_string(lit.value.to_string());
-                PropertyKey::string(cx, string_value)
+                PropertyKey::string(cx, string_value).to_handle(cx)
             }
             _ => unreachable!(),
         }

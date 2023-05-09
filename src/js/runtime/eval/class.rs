@@ -23,7 +23,7 @@ use crate::{
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_with_optional_proto,
-            property_key::{HeapPropertyKey, PropertyKey},
+            property_key::{HandlePropertyKey, PropertyKey},
             string_value::StringValue,
             Completion, Context, EvalResult, Handle, HeapPtr,
         },
@@ -51,13 +51,13 @@ pub struct HeapClassFieldDefinition {
 
 // Stored on the stack.
 pub enum ClassFieldDefinitionName {
-    Normal(PropertyKey),
+    Normal(HandlePropertyKey),
     Private(PrivateName),
 }
 
 // Stored on the heap.
 pub enum HeapClassFieldDefinitionName {
-    Normal(HeapPropertyKey),
+    Normal(PropertyKey),
     Private(HeapPrivateName),
 }
 
@@ -69,9 +69,12 @@ impl ClassFieldDefinition {
         }
     }
 
-    pub fn from_heap(heap_field_def: &HeapClassFieldDefinition) -> ClassFieldDefinition {
+    pub fn from_heap(
+        cx: &mut Context,
+        heap_field_def: &HeapClassFieldDefinition,
+    ) -> ClassFieldDefinition {
         ClassFieldDefinition {
-            name: ClassFieldDefinitionName::from_heap(&heap_field_def.name),
+            name: ClassFieldDefinitionName::from_heap(cx, &heap_field_def.name),
             initializer: heap_field_def.initializer.map(|i| i.to_handle()),
         }
     }
@@ -81,7 +84,7 @@ impl ClassFieldDefinitionName {
     pub fn to_heap(&self) -> HeapClassFieldDefinitionName {
         match self {
             ClassFieldDefinitionName::Normal(property_key) => {
-                HeapClassFieldDefinitionName::Normal(property_key.to_heap())
+                HeapClassFieldDefinitionName::Normal(property_key.get())
             }
             ClassFieldDefinitionName::Private(private_name) => {
                 HeapClassFieldDefinitionName::Private(private_name.get_())
@@ -89,10 +92,13 @@ impl ClassFieldDefinitionName {
         }
     }
 
-    pub fn from_heap(heap_name_def: &HeapClassFieldDefinitionName) -> ClassFieldDefinitionName {
+    pub fn from_heap(
+        cx: &mut Context,
+        heap_name_def: &HeapClassFieldDefinitionName,
+    ) -> ClassFieldDefinitionName {
         match heap_name_def {
             HeapClassFieldDefinitionName::Normal(property_key) => {
-                ClassFieldDefinitionName::Normal(PropertyKey::from_heap(property_key))
+                ClassFieldDefinitionName::Normal(property_key.to_handle(cx))
             }
             HeapClassFieldDefinitionName::Private(private_name) => {
                 ClassFieldDefinitionName::Private(private_name.to_handle())
@@ -105,7 +111,7 @@ impl ClassFieldDefinitionName {
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
-    property_key: PropertyKey,
+    property_key: HandlePropertyKey,
     home_object: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Function>> {
     let current_execution_context_ptr = cx.current_execution_context_ptr();
@@ -159,7 +165,7 @@ pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
     class_binding: Option<Handle<StringValue>>,
-    class_name: PropertyKey,
+    class_name: HandlePropertyKey,
 ) -> EvalResult<Handle<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm();

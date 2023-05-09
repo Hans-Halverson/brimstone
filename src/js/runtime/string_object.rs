@@ -16,7 +16,6 @@ use crate::{
         },
         property::Property,
         property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::canonical_numeric_index_string,
         value::Value,
@@ -24,6 +23,8 @@ use crate::{
     },
     maybe, set_uninit,
 };
+
+use super::property_key::HandlePropertyKey;
 
 // 10.4.3 String Exotic Objects
 extend_object! {
@@ -122,7 +123,7 @@ impl StringObject {
     fn string_get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> Option<PropertyDescriptor> {
         if key.is_symbol() {
             return None;
@@ -155,7 +156,7 @@ impl VirtualObject for Handle<StringObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let desc = ordinary_get_own_property(self.object(), key);
         if desc.is_none() {
@@ -169,7 +170,7 @@ impl VirtualObject for Handle<StringObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);

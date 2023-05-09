@@ -20,7 +20,7 @@ use crate::{
         ordinary_object::object_ordinary_init,
         property::Property,
         property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
+        property_key::{HandlePropertyKey, PropertyKey},
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity},
         Context, Handle,

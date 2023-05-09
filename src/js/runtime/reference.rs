@@ -7,10 +7,9 @@ use super::{
     error::{reference_error_, type_error_},
     gc::{Handle, HandleValue},
     interned_strings::InternedStrings,
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     string_value::StringValue,
     type_utilities::to_object,
-    value::Value,
     Context,
 };
 
@@ -27,7 +26,7 @@ pub enum ReferenceBase {
     },
     Property {
         object: HandleValue,
-        property: PropertyKey,
+        property: HandlePropertyKey,
         private_name: Option<PrivateName>,
     },
     Env {
@@ -40,8 +39,8 @@ impl Reference {
     // An empty reference that will never be used
     pub const EMPTY: Reference = Reference {
         base: ReferenceBase::Property {
-            object: Value::undefined(),
-            property: PropertyKey::from_u8(0),
+            object: HandleValue::uninit(),
+            property: HandlePropertyKey::uninit(),
             private_name: None,
         },
         is_strict: false,
@@ -56,7 +55,11 @@ impl Reference {
         }
     }
 
-    pub fn new_property(object: HandleValue, property: PropertyKey, is_strict: bool) -> Reference {
+    pub fn new_property(
+        object: HandleValue,
+        property: HandlePropertyKey,
+        is_strict: bool,
+    ) -> Reference {
         Reference {
             base: ReferenceBase::Property { object, property, private_name: None },
             is_strict,
@@ -66,7 +69,7 @@ impl Reference {
 
     pub fn new_property_with_this(
         object: HandleValue,
-        property: PropertyKey,
+        property: HandlePropertyKey,
         is_strict: bool,
         this_value: HandleValue,
     ) -> Reference {

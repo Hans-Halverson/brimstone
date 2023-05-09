@@ -12,7 +12,7 @@ use super::{
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
+    property_key::HandlePropertyKey,
     type_utilities::same_object_value,
     value::Value,
     Context, Handle, Realm,

@@ -19,7 +19,7 @@ use super::{
     object_descriptor::ObjectKind,
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
-    property_key::{HeapPropertyKey, PropertyKey},
+    property_key::{HandlePropertyKey, PropertyKey},
     proxy_object::ProxyObject,
     value::{AccessorValue, Value},
     Context, Realm,
@@ -45,7 +45,7 @@ macro_rules! extend_object_without_conversions {
             prototype: Option<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            named_properties: indexmap::IndexMap<$crate::js::runtime::property_key::HeapPropertyKey, $crate::js::runtime::property::HeapProperty>,
+            named_properties: indexmap::IndexMap<$crate::js::runtime::property_key::PropertyKey, $crate::js::runtime::property::HeapProperty>,
 
             // Array index properties by their property key
             array_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::array_properties::ArrayProperties>,
@@ -145,14 +145,14 @@ impl ObjectValue {
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
         self.named_properties
-            .get(&property_key.to_heap())
+            .get(&property_key.get())
             .map(Property::from_heap)
     }
 
     pub fn has_private_element(&self, private_name: PrivateName) -> bool {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since contains_key does not allocate on managed heap
-        self.named_properties.contains_key(&property_key.to_heap())
+        self.named_properties.contains_key(&property_key.get())
     }
 
     pub fn private_element_set(&mut self, private_name: PrivateName, value: Value) {
@@ -160,7 +160,7 @@ impl ObjectValue {
         let property = Property::private_field(value);
         // Safe since insert does not allocate on managed heap
         self.named_properties
-            .insert(property_key.to_heap(), property.to_heap());
+            .insert(property_key.get(), property.to_heap());
     }
 
     // 7.3.28 PrivateFieldAdd
@@ -176,7 +176,7 @@ impl ObjectValue {
             let property = Property::private_field(value);
             // Safe since insert does not allocate on managed heap
             self.named_properties
-                .insert(PropertyKey::symbol(private_name).to_heap(), property.to_heap());
+                .insert(PropertyKey::symbol(private_name).get(), property.to_heap());
             ().into()
         }
     }
@@ -193,13 +193,13 @@ impl ObjectValue {
         } else {
             // Safe since insert does not allocate on managed heap
             self.named_properties
-                .insert(PropertyKey::symbol(private_name).to_heap(), private_method.to_heap());
+                .insert(PropertyKey::symbol(private_name).get(), private_method.to_heap());
             ().into()
         }
     }
 
     // Property accessors and mutators
-    pub fn get_property(&self, key: PropertyKey) -> Option<Property> {
+    pub fn get_property(&self, key: HandlePropertyKey) -> Option<Property> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             return self.array_properties.get_property(array_index);
@@ -207,14 +207,14 @@ impl ObjectValue {
 
         // Safe since get does not allocate on managed heap
         self.named_properties
-            .get(&key.to_heap())
+            .get(&key.get())
             .map(Property::from_heap)
     }
 
     /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
     /// that a GC cannot occur while the iterator is in use.
     #[inline]
-    pub fn iter_named_property_keys_gc_unsafe<F: FnMut(HeapPropertyKey)>(&self, mut f: F) {
+    pub fn iter_named_property_keys_gc_unsafe<F: FnMut(PropertyKey)>(&self, mut f: F) {
         for property_key in self.named_properties.keys() {
             f(property_key.clone());
         }
@@ -234,7 +234,7 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn set_named_properties(&mut self, properties: IndexMap<HeapPropertyKey, HeapProperty>) {
+    pub fn set_named_properties(&mut self, properties: IndexMap<PropertyKey, HeapProperty>) {
         self.named_properties = properties;
     }
 
@@ -387,7 +387,7 @@ impl Handle<ObjectValue> {
     }
 
     // Property accessors and mutators
-    pub fn set_property(&mut self, cx: &mut Context, key: PropertyKey, property: Property) {
+    pub fn set_property(&mut self, cx: &mut Context, key: HandlePropertyKey, property: Property) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             ArrayProperties::set_property(cx, *self, array_index, property);
@@ -396,11 +396,10 @@ impl Handle<ObjectValue> {
         }
 
         // Safe since insert does allocate on managed heap
-        self.named_properties
-            .insert(key.to_heap(), property.to_heap());
+        self.named_properties.insert(key.get(), property.to_heap());
     }
 
-    pub fn remove_property(&mut self, key: PropertyKey) {
+    pub fn remove_property(&mut self, key: HandlePropertyKey) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             self.array_properties.remove_property(array_index);
@@ -410,7 +409,7 @@ impl Handle<ObjectValue> {
 
         // TODO: Removal is currently O(n) to maintain order, improve if possible
         // Safe since shift_remove does allocate on managed heap
-        self.named_properties.shift_remove(&key.to_heap());
+        self.named_properties.shift_remove(&key.get());
     }
 
     pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {
@@ -418,7 +417,12 @@ impl Handle<ObjectValue> {
     }
 
     // Intrinsic creation utilities
-    pub fn intrinsic_data_prop(&mut self, cx: &mut Context, key: PropertyKey, value: HandleValue) {
+    pub fn intrinsic_data_prop(
+        &mut self,
+        cx: &mut Context,
+        key: HandlePropertyKey,
+        value: HandleValue,
+    ) {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
@@ -438,7 +442,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
     ) {
@@ -450,7 +454,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_getter_and_setter(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         getter: BuiltinFunctionPtr,
         setter: BuiltinFunctionPtr,
         realm: Handle<Realm>,
@@ -464,7 +468,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: PropertyKey,
+        name: HandlePropertyKey,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Handle<Realm>,
@@ -476,7 +480,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_frozen_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
     ) {
         self.set_property(cx, key, Property::data(value, false, false, false));
@@ -537,7 +541,7 @@ impl Handle<ObjectValue> {
     pub fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         self.virtual_object().get_own_property(cx, key)
     }
@@ -546,14 +550,14 @@ impl Handle<ObjectValue> {
     pub fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         self.virtual_object().define_own_property(cx, key, desc)
     }
 
     #[inline]
-    pub fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    pub fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         self.virtual_object().has_property(cx, key)
     }
 
@@ -561,7 +565,7 @@ impl Handle<ObjectValue> {
     pub fn get(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         receiver: HandleValue,
     ) -> EvalResult<HandleValue> {
         self.virtual_object().get(cx, key, receiver)
@@ -571,7 +575,7 @@ impl Handle<ObjectValue> {
     pub fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
         receiver: HandleValue,
     ) -> EvalResult<bool> {
@@ -579,7 +583,7 @@ impl Handle<ObjectValue> {
     }
 
     #[inline]
-    pub fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+    pub fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
         self.virtual_object().delete(cx, key)
     }
 
@@ -637,34 +641,34 @@ pub trait VirtualObject {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
     ) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
+    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool>;
 
     fn get(
         &self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         receiver: HandleValue,
     ) -> EvalResult<HandleValue>;
 
     fn set(
         &mut self,
         cx: &mut Context,
-        key: PropertyKey,
+        key: HandlePropertyKey,
         value: HandleValue,
         receiver: HandleValue,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool>;
+    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool>;
 
     fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>>;
 

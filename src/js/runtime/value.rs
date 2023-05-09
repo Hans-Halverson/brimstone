@@ -412,8 +412,8 @@ impl Value {
     }
 
     #[inline]
-    pub fn uninit() -> Value {
-        Value::symbol(HeapPtr::uninit())
+    pub const fn uninit() -> Value {
+        Value::empty()
     }
 }
 

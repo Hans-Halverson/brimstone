@@ -256,7 +256,7 @@ macro_rules! create_typed_array_constructor {
             fn get_own_property(
                 &self,
                 cx: &mut Context,
-                key: PropertyKey,
+                key: HandlePropertyKey,
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get_own_property(self.object(), key).into(),
@@ -278,7 +278,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.2 [[HasProperty]]
-            fn has_property(&self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+            fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
@@ -294,7 +294,7 @@ macro_rules! create_typed_array_constructor {
             fn define_own_property(
                 &mut self,
                 cx: &mut Context,
-                key: PropertyKey,
+                key: HandlePropertyKey,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
@@ -344,7 +344,7 @@ macro_rules! create_typed_array_constructor {
             fn get(
                 &self,
                 cx: &mut Context,
-                key: PropertyKey,
+                key: HandlePropertyKey,
                 receiver: HandleValue,
             ) -> EvalResult<HandleValue> {
                 match canonical_numeric_index_string(key) {
@@ -367,7 +367,7 @@ macro_rules! create_typed_array_constructor {
             fn set(
                 &mut self,
                 cx: &mut Context,
-                key: PropertyKey,
+                key: HandlePropertyKey,
                 value: HandleValue,
                 receiver: HandleValue,
             ) -> EvalResult<bool> {
@@ -392,7 +392,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.6 [[Delete]]
-            fn delete(&mut self, cx: &mut Context, key: PropertyKey) -> EvalResult<bool> {
+            fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {

@@ -19,7 +19,7 @@ use crate::{
             function::instantiate_function_object,
             gc::HandleValue,
             iterator::iter_iterator_values,
-            property_key::PropertyKey,
+            property_key::{HandlePropertyKey, PropertyKey},
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             Context, Handle,
         },
@@ -240,7 +240,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
 pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: PropertyKey,
+    name: HandlePropertyKey,
 ) -> EvalResult<HandleValue> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
@@ -261,7 +261,7 @@ pub fn eval_named_anonymous_function_or_expression(
 pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: PropertyKey,
+    name: HandlePropertyKey,
     if_predicate: F,
 ) -> EvalResult<HandleValue> {
     match expr {

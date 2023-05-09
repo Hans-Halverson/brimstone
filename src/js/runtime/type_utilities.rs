@@ -16,7 +16,7 @@ use super::{
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
-    property_key::PropertyKey,
+    property_key::{HandlePropertyKey, PropertyKey},
     proxy_object::ProxyObject,
     string_object::StringObject,
     string_parsing::{parse_string_to_bigint, parse_string_to_number},
@@ -614,7 +614,7 @@ pub fn to_length(cx: &mut Context, value: HandleValue) -> EvalResult<u64> {
 }
 
 // 7.1.21 CanonicalNumericIndexString
-pub fn canonical_numeric_index_string(key: PropertyKey) -> Option<u32> {
+pub fn canonical_numeric_index_string(key: HandlePropertyKey) -> Option<u32> {
     // TODO: Support full safe integer range instead of just array index range
     if key.is_array_index() {
         Some(key.as_array_index())
@@ -812,24 +812,31 @@ fn string_to_bigint(value: HeapPtr<StringValue>) -> Option<BigInt> {
 }
 
 // 7.1.19 ToPropertyKey
-pub fn to_property_key(cx: &mut Context, value_handle: HandleValue) -> EvalResult<PropertyKey> {
+pub fn to_property_key(
+    cx: &mut Context,
+    value_handle: HandleValue,
+) -> EvalResult<HandlePropertyKey> {
     let value = value_handle.get();
     if value.is_smi() {
         let smi_value = value.as_smi();
         if smi_value >= 0 {
-            return PropertyKey::array_index(cx, smi_value as u32).into();
+            return PropertyKey::array_index(cx, smi_value as u32)
+                .to_handle(cx)
+                .into();
         }
     }
 
     let key = maybe!(to_primitive(cx, value_handle, ToPrimitivePreferredType::String));
     if key.is_string() {
-        return PropertyKey::string(cx, key.as_string()).into();
+        return PropertyKey::string(cx, key.as_string())
+            .to_handle(cx)
+            .into();
     } else if key.is_symbol() {
-        return PropertyKey::symbol(key.as_symbol()).into();
+        return PropertyKey::symbol(key.as_symbol()).to_handle(cx).into();
     }
 
     let string_key = maybe!(to_string(cx, key));
-    PropertyKey::string(cx, string_key).into()
+    PropertyKey::string(cx, string_key).to_handle(cx).into()
 }
 
 // 7.2.14 IsLessThan

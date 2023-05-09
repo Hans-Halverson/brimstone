@@ -233,15 +233,21 @@ pub fn set_integrity_level(
 
     match level {
         IntegrityLevel::Sealed => {
-            for key in keys {
-                let key = must!(PropertyKey::from_value(cx, key));
+            // Property key is shared between iterations
+            let mut key = PropertyKey::uninit().to_handle(cx);
+
+            for key_value in keys {
+                key.replace(must!(PropertyKey::from_value(cx, key_value)));
                 let desc = PropertyDescriptor::attributes(None, None, Some(false));
                 maybe!(define_property_or_throw(cx, object, key, desc));
             }
         }
         IntegrityLevel::Frozen => {
-            for key in keys {
-                let key = must!(PropertyKey::from_value(cx, key));
+            // Property key is shared between iterations
+            let mut key = PropertyKey::uninit().to_handle(cx);
+
+            for key_value in keys {
+                key.replace(must!(PropertyKey::from_value(cx, key_value)));
                 let current_desc = maybe!(object.get_own_property(cx, key));
                 if let Some(current_desc) = current_desc {
                     let desc = if current_desc.is_accessor_descriptor() {
@@ -271,8 +277,11 @@ pub fn test_integrity_level(
 
     let keys = maybe!(object.own_property_keys(cx));
 
-    for key in keys {
-        let key = must!(PropertyKey::from_value(cx, key));
+    // Property key is shared between iterations
+    let mut key = PropertyKey::uninit().to_handle(cx);
+
+    for key_value in keys {
+        key.replace(must!(PropertyKey::from_value(cx, key_value)));
         let current_desc = maybe!(object.get_own_property(cx, key));
         if let Some(current_desc) = current_desc {
             if let Some(true) = current_desc.is_configurable {
@@ -310,8 +319,11 @@ pub fn create_list_from_array_like(
 
     let mut vec = Vec::with_capacity(length as usize);
 
+    // Property key is shared between iterations
+    let mut key = PropertyKey::uninit().to_handle(cx);
+
     for i in 0..length {
-        let key = PropertyKey::array_index(cx, i as u32);
+        key.replace(PropertyKey::array_index(cx, i as u32));
         let next = maybe!(get(cx, object, key));
         vec.push(next);
     }
@@ -419,25 +431,29 @@ pub fn enumerable_own_property_names(
 
     let mut properties = vec![];
 
+    // Property key is shared between iterations
+    let mut key = PropertyKey::uninit().to_handle(cx);
+
     for key_value in keys {
         if key_value.is_symbol() {
             continue;
         }
 
-        let key = must!(PropertyKey::from_value(cx, key_value));
+        key.replace(must!(PropertyKey::from_value(cx, key_value)));
         let desc = maybe!(object.get_own_property(cx, key));
 
         if let Some(desc) = desc {
             if let Some(true) = desc.is_enumerable {
                 match kind {
-                    KeyOrValue::Key => properties.push(key_value),
+                    KeyOrValue::Key => properties.push(key_value.to_handle(cx)),
                     KeyOrValue::Value => {
                         let value = maybe!(get(cx, object, key));
                         properties.push(value);
                     }
                     KeyOrValue::KeyAndValue => {
                         let value = maybe!(get(cx, object, key));
-                        let entry = create_array_from_list(cx, &[key_value, value]);
+                        let key_and_value = [key_value.to_handle(cx), value];
+                        let entry = create_array_from_list(cx, &key_and_value);
                         properties.push(entry.into());
                     }
                 }
@@ -470,8 +486,11 @@ pub fn copy_data_properties(
     let from = must!(to_object(cx, source));
     let keys = maybe!(from.own_property_keys(cx));
 
-    for next_key in keys {
-        let next_key = must!(PropertyKey::from_value(cx, next_key));
+    // Property key is shared between iterations
+    let mut next_key = PropertyKey::uninit().to_handle(cx);
+
+    for next_key_value in keys {
+        next_key.replace(must!(PropertyKey::from_value(cx, next_key_value)));
 
         if !excluded_items.contains(&next_key) {
             let desc = maybe!(from.get_own_property(cx, next_key));

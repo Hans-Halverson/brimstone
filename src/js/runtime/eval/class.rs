@@ -479,7 +479,7 @@ fn binding_class_declaration_evaluation(
 ) -> EvalResult<Handle<Function>> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
-        let name_key = PropertyKey::string(cx, name_value);
+        let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
         let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
 
         let lexical_env = cx.current_execution_context_ptr().lexical_env();
@@ -500,7 +500,7 @@ pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completio
 pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<HandleValue> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
-        let name_key = PropertyKey::string(cx, name_value);
+        let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
         let value = maybe!(class_definition_evaluation(cx, class, Some(name_value), name_key));
         value.into()
     } else {

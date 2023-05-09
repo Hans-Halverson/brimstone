@@ -110,23 +110,29 @@ impl TypedArrayConstructor {
 
             let length = values.len();
 
+            let length_value = Value::from(length).to_handle(cx);
             let target_object = maybe!(typed_array_create_object(
                 cx,
                 this_constructor,
-                &[Value::from(length)],
+                &[length_value],
                 Some(length)
             ));
 
+            // Shared between iterations
+            let mut index_key = PropertyKey::uninit().to_handle(cx);
+            let mut index_value = Value::uninit().to_handle(cx);
+
             for (i, value) in values.into_iter().enumerate() {
-                let key = PropertyKey::from_u64(cx, i as u64);
+                index_key.replace(PropertyKey::from_u64(cx, i as u64));
 
                 let value = if let Some(map_function) = map_function {
-                    maybe!(call_object(cx, map_function, this_argument, &[value, Value::from(i)]))
+                    index_value.replace(Value::from(i));
+                    maybe!(call_object(cx, map_function, this_argument, &[value, index_value]))
                 } else {
                     value
                 };
 
-                maybe!(set(cx, target_object, key, value, true));
+                maybe!(set(cx, target_object, index_key, value, true));
             }
 
             return target_object.into();
@@ -136,25 +142,27 @@ impl TypedArrayConstructor {
         let array_like = must!(to_object(cx, source));
         let length = maybe!(length_of_array_like(cx, array_like)) as usize;
 
-        let target_object = maybe!(typed_array_create_object(
-            cx,
-            this_constructor,
-            &[Value::from(length)],
-            Some(length)
-        ));
+        let length_value = Value::from(length).to_handle(cx);
+        let target_object =
+            maybe!(typed_array_create_object(cx, this_constructor, &[length_value], Some(length)));
+
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            let key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
 
-            let value = maybe!(get(cx, array_like, key));
+            let value = maybe!(get(cx, array_like, index_key));
 
             let value = if let Some(map_function) = map_function {
-                maybe!(call_object(cx, map_function, this_argument, &[value, Value::from(i)]))
+                index_value.replace(Value::from(i));
+                maybe!(call_object(cx, map_function, this_argument, &[value, index_value]))
             } else {
                 value
             };
 
-            maybe!(set(cx, target_object, key, value, true));
+            maybe!(set(cx, target_object, index_key, value, true));
         }
 
         target_object.into()
@@ -173,13 +181,17 @@ impl TypedArrayConstructor {
 
         let this_constructor = this_value.as_object();
         let length = arguments.len();
+        let length_value = Value::from(length).to_handle(cx);
 
         let typed_array =
-            maybe!(typed_array_create(cx, this_constructor, &[Value::from(length)], Some(length)));
+            maybe!(typed_array_create(cx, this_constructor, &[length_value], Some(length)));
         let object = typed_array.into_object_value();
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for (i, value) in arguments.iter().enumerate() {
-            let key = PropertyKey::from_u64(cx, i as u64);
+            key.replace(PropertyKey::from_u64(cx, i as u64));
             maybe!(set(cx, object, key, *value, true));
         }
 
@@ -788,9 +800,12 @@ macro_rules! create_typed_array_constructor {
                 let typed_array_object =
                     maybe!(Self::allocate_from_object_with_length(cx, proto, length));
 
+                // Shared between iterations
+                let mut key = PropertyKey::uninit().to_handle(cx);
+
                 // Add each value from iterator into typed array
                 for (i, value) in values.into_iter().enumerate() {
-                    let key = PropertyKey::from_u64(cx, i as u64);
+                    key.replace(PropertyKey::from_u64(cx, i as u64));
                     maybe!(set(cx, typed_array_object, key, value, true));
                 }
 
@@ -808,9 +823,12 @@ macro_rules! create_typed_array_constructor {
                 let typed_array_object =
                     maybe!(Self::allocate_from_object_with_length(cx, proto, length as usize));
 
+                // Shared between iterations
+                let mut key = PropertyKey::uninit().to_handle(cx);
+
                 // Add each value from array into typed array
                 for i in 0..length {
-                    let key = PropertyKey::from_u64(cx, i);
+                    key.replace(PropertyKey::from_u64(cx, i));
                     let value = maybe!(get(cx, array_like, key));
                     maybe!(set(cx, typed_array_object, key, value, true));
                 }

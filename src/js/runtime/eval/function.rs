@@ -160,8 +160,11 @@ pub fn function_declaration_instantiation(
             ast::FunctionParam::Rest(rest) => {
                 let rest_array = must!(array_create(cx, 0, None));
 
+                // Property key is shared between iterations
+                let mut array_key = PropertyKey::uninit().to_handle(cx);
+
                 for (array_index, arg_index) in (arg_index..arguments.len()).enumerate() {
-                    let array_key = PropertyKey::array_index(cx, array_index as u32);
+                    array_key.replace(PropertyKey::array_index(cx, array_index as u32));
                     let array_property = Property::data(arguments[arg_index], true, true, true);
                     rest_array
                         .object()
@@ -179,7 +182,7 @@ pub fn function_declaration_instantiation(
         match patt {
             ast::Pattern::Id(id) => {
                 let name_value = id_string_value(cx, id);
-                let name_key = PropertyKey::string(cx, name_value);
+                let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
                 let mut reference = maybe__!(resolve_binding(cx, name_value, binding_init_env));
 
                 if let Some(init) = init {
@@ -357,7 +360,7 @@ pub fn instantiate_ordinary_function_expression(
             let mut func_env = DeclarativeEnvironment::new(cx, Some(current_context.lexical_env()));
 
             let name_value = id_string_value(cx, id);
-            let name_key = PropertyKey::string(cx, name_value);
+            let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
             must!(func_env.create_immutable_binding(cx, name_value, false));
 
             let closure = ordinary_function_create(

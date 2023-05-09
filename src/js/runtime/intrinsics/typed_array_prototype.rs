@@ -116,13 +116,13 @@ impl TypedArrayPrototype {
                 return cx.undefined().into();
             }
 
-            PropertyKey::from_u64(cx, relative_index as u64)
+            PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
         } else {
             if -relative_index > length as f64 {
                 return cx.undefined().into();
             }
 
-            PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64)
+            PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
         };
 
         get(cx, object, key)
@@ -307,11 +307,15 @@ impl TypedArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -373,8 +377,11 @@ impl TypedArrayPrototype {
             return type_error_(cx, "array buffer is detached");
         }
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for i in start_index..end_index {
-            let key = PropertyKey::from_u64(cx, i);
+            key.replace(PropertyKey::from_u64(cx, i));
             must!(set(cx, object, key, value, true));
         }
 
@@ -402,12 +409,16 @@ impl TypedArrayPrototype {
 
         let mut kept_values = vec![];
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         // First collect all values that pass the predicate
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i);
+            index_key.replace(PropertyKey::from_u64(cx, i));
             let value = maybe!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -426,8 +437,11 @@ impl TypedArrayPrototype {
             Some(num_kept_values)
         ));
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
         for (i, value) in kept_values.into_iter().enumerate() {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             must!(set(cx, array, index_key, value, true));
         }
 
@@ -453,11 +467,15 @@ impl TypedArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
@@ -488,11 +506,15 @@ impl TypedArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
@@ -523,11 +545,15 @@ impl TypedArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -567,8 +593,11 @@ impl TypedArrayPrototype {
             i64::max(length as i64 + n as i64, 0) as u64
         };
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for i in start_index..length {
-            let key = PropertyKey::from_u64(cx, i);
+            key.replace(PropertyKey::from_u64(cx, i));
             let element = must!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
@@ -610,8 +639,11 @@ impl TypedArrayPrototype {
             i64::max(length as i64 + n as i64, 0) as u64
         };
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for i in start_index..length {
-            let key = PropertyKey::from_u64(cx, i);
+            key.replace(PropertyKey::from_u64(cx, i));
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
@@ -643,12 +675,15 @@ impl TypedArrayPrototype {
 
         let mut joined = cx.names.empty_string().as_string();
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for i in 0..length {
             if i > 0 {
                 joined = StringValue::concat(cx, joined, separator);
             }
 
-            let key = PropertyKey::from_u64(cx, i as u64);
+            key.replace(PropertyKey::from_u64(cx, i as u64));
             let element = must!(get(cx, object, key));
 
             if !element.is_undefined() {
@@ -701,7 +736,7 @@ impl TypedArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Value::smi(-1).into();
+                    return Value::smi(-1).to_handle(cx).into();
                 }
 
                 start_index as u64
@@ -710,17 +745,20 @@ impl TypedArrayPrototype {
             length - 1
         };
 
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for i in (0..=start_index).rev() {
-            let key = PropertyKey::from_u64(cx, i);
+            key.replace(PropertyKey::from_u64(cx, i));
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).into();
+                    return Value::from(i).to_handle(cx).into();
                 }
             }
         }
 
-        Value::smi(-1).into()
+        Value::smi(-1).to_handle(cx).into()
     }
 
     // 23.2.3.19 get %TypedArray%.prototype.length
@@ -765,11 +803,15 @@ impl TypedArrayPrototype {
             Some(length)
         ));
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -804,15 +846,19 @@ impl TypedArrayPrototype {
             return type_error_(cx, "reduce does not have initial value");
         } else {
             initial_index = 1;
-            let first_index_key = PropertyKey::array_index(cx, 0);
+            let first_index_key = PropertyKey::array_index(cx, 0).to_handle(cx);
             must!(get(cx, object, first_index_key))
         };
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in initial_index..length {
-            let index_key = PropertyKey::from_u64(cx, i);
+            index_key.replace(PropertyKey::from_u64(cx, i));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
             accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
@@ -850,11 +896,15 @@ impl TypedArrayPrototype {
             must!(get(cx, object, last_index_key))
         };
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in (0..=initial_index).rev() {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
             accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
@@ -879,9 +929,13 @@ impl TypedArrayPrototype {
         // Safe to wrap as this only occurs when length is 0 and loop will be skipped
         let mut upper = length.wrapping_sub(1);
 
+        // Shared between iterations
+        let mut lower_key = PropertyKey::uninit().to_handle(cx);
+        let mut upper_key = PropertyKey::uninit().to_handle(cx);
+
         while lower != middle {
-            let lower_key = PropertyKey::from_u64(cx, lower);
-            let upper_key = PropertyKey::from_u64(cx, upper);
+            lower_key.replace(PropertyKey::from_u64(cx, lower));
+            upper_key.replace(PropertyKey::from_u64(cx, upper));
 
             let lower_value = must!(get(cx, object, lower_key));
             let upper_value = must!(get(cx, object, upper_key));
@@ -956,10 +1010,14 @@ impl TypedArrayPrototype {
 
         // If types are different then must call get and set and convert types
         if typed_array.kind() != new_typed_array.kind() {
+            // Shared between iterations
+            let mut from_key = PropertyKey::uninit().to_handle(cx);
+            let mut to_key = PropertyKey::uninit().to_handle(cx);
+
             let mut current_index = start_index;
             for i in 0..count {
-                let from_key = PropertyKey::from_u64(cx, current_index);
-                let to_key = PropertyKey::from_u64(cx, i);
+                from_key.replace(PropertyKey::from_u64(cx, current_index));
+                to_key.replace(PropertyKey::from_u64(cx, i));
 
                 let value = maybe!(get(cx, object, from_key));
                 maybe!(set(cx, array, to_key, value, true));
@@ -1012,11 +1070,15 @@ impl TypedArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let mut index_value = Value::uninit().to_handle(cx);
+
         for i in 0..length {
-            let index_key = PropertyKey::from_u64(cx, i as u64);
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
             let value = must!(get(cx, object, index_key));
 
-            let index_value = Value::from(i);
+            index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));

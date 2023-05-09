@@ -436,7 +436,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let mut unchecked_result_keys = HashSet::new();
 
         for i in 0..length {
-            let key = PropertyKey::array_index(cx, i as u32);
+            let key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
             let next = maybe!(get(cx, trap_result_object, key));
             trap_result_keys.push(next);
 
@@ -449,7 +449,8 @@ impl VirtualObject for Handle<ProxyObject> {
                 );
             }
 
-            if !unchecked_result_keys.insert(must!(PropertyKey::from_value(cx, next))) {
+            let next_key = must!(PropertyKey::from_value(cx, next)).to_handle(cx);
+            if !unchecked_result_keys.insert(next_key) {
                 return type_error_(
                     cx,
                     &format!("proxy ownKeys can't report property '{}' more than once", key),
@@ -464,7 +465,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let mut target_non_configurable_keys = vec![];
 
         for key in target_keys {
-            let property_key = must!(PropertyKey::from_value(cx, key));
+            let property_key = must!(PropertyKey::from_value(cx, key)).to_handle(cx);
             let desc = maybe!(target.get_own_property(cx, property_key));
 
             if let Some(PropertyDescriptor { is_configurable: Some(false), .. }) = desc {

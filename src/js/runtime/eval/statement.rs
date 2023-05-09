@@ -182,7 +182,7 @@ fn eval_lexical_declaration(cx: &mut Context, var_decl: &ast::VariableDeclaratio
         match decl.id.as_ref() {
             ast::Pattern::Id(id) => {
                 let name_value = id_string_value(cx, id);
-                let name_key = PropertyKey::string(cx, name_value);
+                let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
                 let mut reference = maybe__!(resolve_binding(cx, name_value, None));
 
                 let value = if let Some(init) = &decl.init {
@@ -215,7 +215,7 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
             ast::Pattern::Id(id) => {
                 if let Some(init) = &decl.init {
                     let name_value = id_string_value(cx, id);
-                    let name_key = PropertyKey::string(cx, name_value);
+                    let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
                     let mut id_reference = maybe__!(resolve_binding(cx, name_value, None));
                     let value = maybe__!(eval_named_anonymous_function_or_expression(
                         cx,
@@ -672,8 +672,8 @@ fn eval_for_in_statement(
                 continue;
             }
 
-            let property_key = must!(PropertyKey::from_value(cx, key));
-            if !collected.insert(property_key.clone()) {
+            let property_key = must!(PropertyKey::from_value(cx, key)).to_handle(cx);
+            if !collected.insert(property_key) {
                 continue;
             }
 

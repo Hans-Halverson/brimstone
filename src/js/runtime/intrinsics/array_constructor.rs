@@ -82,7 +82,7 @@ impl ArrayConstructor {
 
                 int_len
             } else {
-                let first_key = PropertyKey::array_index(cx, 0);
+                let first_key = PropertyKey::array_index(cx, 0).to_handle(cx);
                 must!(create_data_property_or_throw(cx, array.into(), first_key, length));
                 1
             };
@@ -93,8 +93,11 @@ impl ArrayConstructor {
         } else {
             let array = maybe!(array_create(cx, arguments.len() as u64, Some(proto)));
 
+            // Property key is shared between iterations
+            let mut key = PropertyKey::uninit().to_handle(cx);
+
             for index in 0..arguments.len() {
-                let key = PropertyKey::array_index(cx, index as u32);
+                key.replace(PropertyKey::array_index(cx, index as u32));
                 let value = get_argument(cx, arguments, index);
 
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
@@ -132,8 +135,10 @@ impl ArrayConstructor {
             maybe!(array_create(cx, length as u64, None)).into()
         };
 
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
         for index in 0..length {
-            let key = PropertyKey::array_index(cx, index as u32);
+            key.replace(PropertyKey::array_index(cx, index as u32));
             let value = get_argument(cx, arguments, index);
 
             maybe!(create_data_property_or_throw(cx, array.into(), key, value));

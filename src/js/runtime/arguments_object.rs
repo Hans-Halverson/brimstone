@@ -208,9 +208,12 @@ pub fn create_unmapped_arguments_object(
         PropertyDescriptor::data(Value::smi(arguments.len() as i32), true, false, true);
     must!(define_property_or_throw(cx, object, cx.names.length(), length_desc));
 
+    // Property key is shared between iterations
+    let mut index_key = PropertyKey::uninit().to_handle(cx);
+
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
+        index_key.replace(PropertyKey::array_index(cx, i as u32));
         must!(create_data_property_or_throw(cx, object, index_key, *argument));
     }
 
@@ -252,9 +255,12 @@ pub fn create_mapped_arguments_object(
         })
         .collect::<Vec<_>>();
 
+    // Property key is shared between iterations
+    let mut index_key = PropertyKey::uninit().to_handle(cx);
+
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        let index_key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
+        index_key.replace(PropertyKey::array_index(cx, i as u32));
         must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
     }
 
@@ -284,8 +290,8 @@ pub fn create_mapped_arguments_object(
         let desc =
             PropertyDescriptor::accessor(Some(getter.into()), Some(setter.into()), false, true);
 
-        let key = PropertyKey::array_index(cx, i as u32);
-        must!(parameter_map.define_own_property(cx, key, desc));
+        index_key.replace(PropertyKey::array_index(cx, i as u32));
+        must!(parameter_map.define_own_property(cx, index_key, desc));
     }
 
     // Set @@iterator to Array.prototype.values

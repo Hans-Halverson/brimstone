@@ -133,6 +133,9 @@ fn add_entries_from_iterable(
     iterable: HandleValue,
     adder: Handle<ObjectValue>,
 ) -> EvalResult<HandleValue> {
+    let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
+    let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
+
     let completion = iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {
             return Some(type_error(cx, "entry must be an object"));
@@ -141,7 +144,6 @@ fn add_entries_from_iterable(
         let entry = entry.as_object();
 
         // Extract key from entry, returning throw completion on error
-        let key_index = PropertyKey::array_index(cx, 0);
         let key_result = get(cx, entry, key_index);
         let key = match key_result {
             EvalResult::Ok(key) => key,
@@ -149,7 +151,6 @@ fn add_entries_from_iterable(
         };
 
         // Extract value from entry, returning throw completion on error
-        let value_index = PropertyKey::array_index(cx, 1);
         let value_result = get(cx, entry, value_index);
         let value = match value_result {
             EvalResult::Ok(value) => value,

@@ -151,13 +151,16 @@ impl ObjectConstructor {
             return to.into();
         }
 
+        // Shared between iterations
+        let mut property_key = PropertyKey::uninit().to_handle(cx);
+
         for argument in &arguments[1..] {
             if !argument.is_nullish() {
                 let from = must!(to_object(cx, *argument));
                 let keys = maybe!(from.own_property_keys(cx));
 
                 for next_key in keys {
-                    let property_key = must!(PropertyKey::from_value(cx, next_key));
+                    property_key.replace(must!(PropertyKey::from_value(cx, next_key)));
                     let desc = maybe!(from.get_own_property(cx, property_key));
                     if let Some(desc) = desc {
                         if let Some(true) = desc.is_enumerable {
@@ -228,8 +231,11 @@ impl ObjectConstructor {
 
         let mut descriptors = vec![];
 
-        for key in keys {
-            let key = must!(PropertyKey::from_value(cx, key));
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        for key_value in keys {
+            key.replace(must!(PropertyKey::from_value(cx, key_value)));
             let prop_desc = maybe!(properties.get_own_property(cx, key));
             if let Some(prop_desc) = prop_desc {
                 if let Some(true) = prop_desc.is_enumerable {
@@ -336,8 +342,11 @@ impl ObjectConstructor {
 
         let descriptors = ordinary_object_create(cx).into();
 
-        for key in keys {
-            let key = must!(PropertyKey::from_value(cx, key));
+        // Shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        for key_value in keys {
+            key.replace(must!(PropertyKey::from_value(cx, key_value)));
             let desc = maybe!(object.get_own_property(cx, key));
             if let Some(desc) = desc {
                 let desc_object = from_property_descriptor(cx, desc);

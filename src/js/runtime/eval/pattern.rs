@@ -23,7 +23,7 @@ use crate::{
             },
             ordinary_object::ordinary_object_create,
             property::Property,
-            property_key::PropertyKey,
+            property_key::{HandlePropertyKey, PropertyKey},
             reference::Reference,
             string_value::StringValue,
             type_utilities::require_object_coercible,
@@ -400,7 +400,7 @@ fn iterator_binding_initialization(
                             return EvalResult::Throw(thrown_value);
                         }
                         EvalResult::Ok(next_value) => {
-                            let property_key = PropertyKey::array_index(cx, index);
+                            let property_key = PropertyKey::array_index(cx, index).to_handle(cx);
                             let property = Property::data(next_value, true, true, true);
                             array.object().set_property(cx, property_key, property);
                             index += 1;
@@ -449,15 +449,15 @@ pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Handle<StringV
 }
 
 #[inline]
-pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
+pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> HandlePropertyKey {
     let string_value = InternedStrings::get_str(cx, &id.name);
-    PropertyKey::string(cx, string_value)
+    PropertyKey::string(cx, string_value).to_handle(cx)
 }
 
 #[inline]
-pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> PropertyKey {
+pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> HandlePropertyKey {
     let private_string_value = cx.alloc_string(format!("#{}", id.name));
-    PropertyKey::string(cx, private_string_value)
+    PropertyKey::string(cx, private_string_value).to_handle(cx)
 }
 
 // Initializers are represented as an assignment pattern as the value, wrapping the binding pattern.

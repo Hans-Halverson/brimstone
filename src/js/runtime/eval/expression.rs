@@ -157,18 +157,21 @@ fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult
 fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalResult<HandleValue> {
     let array = must!(array_create(cx, 0, None));
 
+    // Property key is shared between iterations
+    let mut key = PropertyKey::uninit().to_handle(cx);
+
     let mut index = 0;
     for element in expr.elements.iter() {
         match element {
             ast::ArrayElement::Hole => {
-                let key = PropertyKey::array_index(cx, index);
+                key.replace(PropertyKey::array_index(cx, index));
                 let desc = Property::data(cx.empty(), true, true, true);
 
                 array.object().set_property(cx, key, desc);
                 index += 1;
             }
             ast::ArrayElement::Expression(expr) => {
-                let key = PropertyKey::array_index(cx, index);
+                key.replace(PropertyKey::array_index(cx, index));
                 let element_value = maybe!(eval_expression(cx, expr));
                 let desc = Property::data(element_value, true, true, true);
 
@@ -178,7 +181,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
             ast::ArrayElement::Spread(spread) => {
                 let iterable = maybe!(eval_expression(cx, &spread.argument));
                 let completion = iter_iterator_values(cx, iterable, &mut |cx, value| {
-                    let key = PropertyKey::array_index(cx, index);
+                    key.replace(PropertyKey::array_index(cx, index));
                     let desc = Property::data(value, true, true, true);
 
                     array.object().set_property(cx, key, desc);
@@ -737,8 +740,11 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
         must!(array_create(cx, num_strings as u64, None)).into();
     let raw_object: Handle<ObjectValue> = must!(array_create(cx, num_strings as u64, None)).into();
 
+    // Property key is shared between iterations
+    let mut index_key = PropertyKey::uninit().to_handle(cx);
+
     for (i, quasi) in lit.quasis.iter().enumerate() {
-        let index_key = PropertyKey::array_index(cx, i as u32);
+        index_key.replace(PropertyKey::array_index(cx, i as u32));
 
         let cooked_value = match &quasi.cooked {
             None => cx.undefined(),

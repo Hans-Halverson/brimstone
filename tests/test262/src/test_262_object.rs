@@ -29,19 +29,20 @@ impl Test262Object {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         let create_realm_string = cx.alloc_string(String::from("createRealm"));
-        let create_realm_key = PropertyKey::string(cx, create_realm_string);
+        let create_realm_key = PropertyKey::string(cx, create_realm_string).to_handle(cx);
         object.intrinsic_func(cx, create_realm_key, Self::create_realm, 0, realm);
 
         let eval_script_string = cx.alloc_string(String::from("evalScript"));
-        let eval_script_key = PropertyKey::string(cx, eval_script_string);
+        let eval_script_key = PropertyKey::string(cx, eval_script_string).to_handle(cx);
         object.intrinsic_func(cx, eval_script_key, Self::eval_script, 1, realm);
 
         let global_string = cx.alloc_string(String::from("global"));
-        let global_key = PropertyKey::string(cx, global_string);
+        let global_key = PropertyKey::string(cx, global_string).to_handle(cx);
         object.intrinsic_data_prop(cx, global_key, realm.global_object().into());
 
         let detach_array_buffer_string = cx.alloc_string(String::from("detachArrayBuffer"));
-        let detach_array_buffer_key = PropertyKey::string(cx, detach_array_buffer_string);
+        let detach_array_buffer_key =
+            PropertyKey::string(cx, detach_array_buffer_string).to_handle(cx);
         object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
 
         object.to_handle()
@@ -49,7 +50,7 @@ impl Test262Object {
 
     pub fn install(cx: &mut Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
         let test_262_string = cx.alloc_string(String::from("$262"));
-        let test_262_key = PropertyKey::string(cx, test_262_string);
+        let test_262_key = PropertyKey::string(cx, test_262_string).to_handle(cx);
         let desc = PropertyDescriptor::data(test_262_object.into(), true, false, true);
         must!(define_property_or_throw(cx, realm.global_object(), test_262_key, desc));
     }

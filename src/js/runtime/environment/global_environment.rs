@@ -178,7 +178,7 @@ impl Environment for Handle<GlobalEnvironment> {
             return self.decl_env().delete_binding(cx, name);
         }
 
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let mut object_env = self.object_env();
 
         if maybe!(has_own_property(cx, object_env.binding_object(), name_key)) {
@@ -233,7 +233,7 @@ impl GlobalEnvironment {
         // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
 
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
 
         match existing_prop {
@@ -250,7 +250,7 @@ impl GlobalEnvironment {
     ) -> EvalResult<bool> {
         // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         if maybe!(has_own_property(cx, global_object, name_key)) {
             return true.into();
         }
@@ -266,7 +266,7 @@ impl GlobalEnvironment {
     ) -> EvalResult<bool> {
         // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
 
         match existing_prop {
@@ -305,7 +305,7 @@ impl Handle<GlobalEnvironment> {
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object();
 
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let has_property = maybe!(has_own_property(cx, global_object, name_key));
         let is_extensible = maybe!(is_extensible(cx, global_object));
 
@@ -333,7 +333,7 @@ impl Handle<GlobalEnvironment> {
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object();
 
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
 
         let is_writable = match existing_prop {

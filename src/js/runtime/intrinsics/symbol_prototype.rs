@@ -25,7 +25,7 @@ impl SymbolPrototype {
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_name = cx.alloc_string(String::from("[Symbol.toPrimitive]"));
-        let to_primitive_name_key = PropertyKey::string(cx, to_primitive_name);
+        let to_primitive_name_key = PropertyKey::string(cx, to_primitive_name).to_handle(cx);
         let to_primitive_func = BuiltinFunction::create(
             cx,
             Self::to_primitive,

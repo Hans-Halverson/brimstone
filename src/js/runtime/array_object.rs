@@ -222,9 +222,12 @@ fn array_set_length(
 pub fn create_array_from_list(cx: &mut Context, elements: &[HandleValue]) -> Handle<ArrayObject> {
     let array = must!(array_create(cx, 0, None));
 
+    // Property key is shared between iterations
+    let mut key = PropertyKey::uninit().to_handle(cx);
+
     for (index, element) in elements.iter().enumerate() {
         // TODO: Handle keys out of u32 range
-        let key = PropertyKey::array_index(cx, index as u32);
+        key.replace(PropertyKey::array_index(cx, index as u32));
         must!(create_data_property_or_throw(cx, array.into(), key, *element));
     }
 

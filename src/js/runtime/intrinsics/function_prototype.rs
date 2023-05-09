@@ -73,7 +73,7 @@ impl Handle<FunctionPrototype> {
         // [Function.hasInstance] property
         let has_instance_key = cx.well_known_symbols.has_instance();
         let has_instance_name = cx.alloc_string(String::from("[Function.hasInstance]"));
-        let has_instance_name_key = PropertyKey::string(cx, has_instance_name);
+        let has_instance_name_key = PropertyKey::string(cx, has_instance_name).to_handle(cx);
         let has_instance_func = BuiltinFunction::create(
             cx,
             FunctionPrototype::has_instance,
@@ -161,7 +161,7 @@ impl FunctionPrototype {
         set_function_length_maybe_infinity(cx, bound_func, length);
 
         let target_name = maybe!(get(cx, target, cx.names.name()));
-        let name_key = maybe!(PropertyKey::from_value(cx, target_name));
+        let name_key = maybe!(PropertyKey::from_value(cx, target_name)).to_handle(cx);
         set_function_name(cx, bound_func, name_key, Some("bound"));
 
         bound_func.into()

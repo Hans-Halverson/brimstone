@@ -60,7 +60,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.1 HasBinding
     fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
         let binding_object = self.binding_object();
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         if !maybe!(has_property(cx, binding_object, name_key)) {
             return false.into();
         } else if !self.is_with_environment {
@@ -91,7 +91,7 @@ impl Environment for Handle<ObjectEnvironment> {
         can_delete: bool,
     ) -> EvalResult<()> {
         let prop_desc = PropertyDescriptor::data(cx.undefined(), true, true, can_delete);
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         define_property_or_throw(cx, self.binding_object(), name_key, prop_desc)
     }
 
@@ -124,7 +124,7 @@ impl Environment for Handle<ObjectEnvironment> {
         is_strict: bool,
     ) -> EvalResult<()> {
         let binding_object = self.binding_object();
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         let still_exists = maybe!(has_property(cx, binding_object, name_key));
         if !still_exists && is_strict {
             return err_not_defined_(cx, name);
@@ -142,7 +142,7 @@ impl Environment for Handle<ObjectEnvironment> {
         is_strict: bool,
     ) -> EvalResult<HandleValue> {
         let binding_object = self.binding_object();
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         if !maybe!(has_property(cx, binding_object, name_key)) {
             return if !is_strict {
                 cx.undefined().into()
@@ -156,7 +156,7 @@ impl Environment for Handle<ObjectEnvironment> {
 
     // 9.1.1.2.7 DeleteBinding
     fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
-        let name_key = PropertyKey::string(cx, name);
+        let name_key = PropertyKey::string(cx, name).to_handle(cx);
         self.binding_object().delete(cx, name_key)
     }
 

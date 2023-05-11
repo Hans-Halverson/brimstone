@@ -1,8 +1,4 @@
-use super::{
-    context::Context,
-    property_key::{HandlePropertyKey, PropertyKey},
-    value::SymbolValue,
-};
+use super::{context::Context, property_key::PropertyKey, value::SymbolValue, Handle};
 
 // All built-in string property keys referenced in the spec
 macro_rules! builtin_names {
@@ -24,8 +20,8 @@ macro_rules! builtin_names {
 
             $(
                 #[inline]
-                pub fn $rust_name(&self) -> HandlePropertyKey {
-                    self.$rust_name
+                pub fn $rust_name(&self) -> Handle<PropertyKey> {
+                Handle::<PropertyKey>::from_fixed_non_heap_ptr(&self.$rust_name)
                 }
             )*
         }
@@ -319,8 +315,8 @@ macro_rules! builtin_symbols {
 
             $(
                 #[inline]
-                pub fn $rust_name(&self) -> HandlePropertyKey {
-                    self.$rust_name
+                pub fn $rust_name(&self) -> Handle<PropertyKey> {
+                    Handle::<PropertyKey>::from_fixed_non_heap_ptr(&self.$rust_name)
                 }
             )*
         }
@@ -330,7 +326,7 @@ macro_rules! builtin_symbols {
                 $(
                     self.well_known_symbols.$rust_name = {
                         let description = self.alloc_string(String::from($description));
-                        PropertyKey::symbol(SymbolValue::new(self, Some(description)))
+                        PropertyKey::symbol(SymbolValue::new(self, Some(description))).get()
                     };
                 )*
             }

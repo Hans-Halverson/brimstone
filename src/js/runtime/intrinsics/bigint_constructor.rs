@@ -5,7 +5,6 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -13,7 +12,7 @@ use crate::{
         realm::Realm,
         type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
         value::BigIntValue,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -79,10 +78,10 @@ impl BigIntConstructor {
     // 21.2.1.1 BigInt
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if new_target.is_some() {
             return type_error_(cx, "BigInt is not a constructor");
         }
@@ -91,7 +90,7 @@ impl BigIntConstructor {
         let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
 
         if primitive.is_number() {
-            if !is_integral_number(primitive) {
+            if !is_integral_number(primitive.get()) {
                 return range_error_(cx, "number is not an integer");
             }
 

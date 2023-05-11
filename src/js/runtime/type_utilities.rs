@@ -8,7 +8,7 @@ use super::{
     abstract_operations::{call_object, get, get_method},
     completion::EvalResult,
     error::{range_error_, syntax_error_, type_error_},
-    gc::{Handle, HandleValue, HeapPtr},
+    gc::{Handle, HeapPtr},
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
         number_constructor::NumberObject, symbol_constructor::SymbolObject,
@@ -16,7 +16,7 @@ use super::{
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     proxy_object::ProxyObject,
     string_object::StringObject,
     string_parsing::{parse_string_to_bigint, parse_string_to_number},
@@ -36,9 +36,9 @@ pub enum ToPrimitivePreferredType {
 #[inline]
 pub fn to_primitive(
     cx: &mut Context,
-    value: HandleValue,
+    value: Handle<Value>,
     mut preferred_type: ToPrimitivePreferredType,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     if !value.is_object() {
         return value.into();
     }
@@ -52,7 +52,7 @@ pub fn to_primitive(
                 ToPrimitivePreferredType::Number => "number",
                 ToPrimitivePreferredType::String => "string",
             };
-            let hint_value: HandleValue = cx.alloc_string(hint_str.to_owned()).into();
+            let hint_value: Handle<Value> = cx.alloc_string(hint_str.to_owned()).into();
 
             let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
@@ -76,8 +76,8 @@ fn ordinary_to_primitive(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     preferred_type: ToPrimitivePreferredType,
-) -> EvalResult<HandleValue> {
-    let object_value: HandleValue = object.into();
+) -> EvalResult<Handle<Value>> {
+    let object_value: Handle<Value> = object.into();
 
     macro_rules! call_method {
         ($method_name:expr) => {
@@ -129,7 +129,7 @@ pub fn to_boolean(value: Value) -> bool {
 }
 
 // 7.1.3 ToNumeric
-pub fn to_numeric(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValue> {
+pub fn to_numeric(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     let prim_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
     if prim_value.is_bigint() {
         return prim_value.into();
@@ -139,7 +139,7 @@ pub fn to_numeric(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValu
 }
 
 // 7.1.4 ToNumber
-pub fn to_number(cx: &mut Context, value_handle: HandleValue) -> EvalResult<HandleValue> {
+pub fn to_number(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Handle<Value>> {
     // Safe since value is never referenced after allocation
     let value = value_handle.get();
 
@@ -155,7 +155,7 @@ pub fn to_number(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
             to_number(cx, primitive_value)
         } else {
             match value.as_pointer().descriptor().kind() {
-                ObjectKind::String => string_to_number(value.as_string()).into(),
+                ObjectKind::String => string_to_number(value.as_string()).to_handle(cx).into(),
                 ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to number"),
                 ObjectKind::BigInt => type_error_(cx, "BigInt cannot be converted to number"),
                 _ => unreachable!(),
@@ -186,7 +186,7 @@ fn string_to_number(value: HeapPtr<StringValue>) -> Value {
 }
 
 // 7.1.5 ToIntegerOrInfinity
-pub fn to_integer_or_infinity(cx: &mut Context, value: HandleValue) -> EvalResult<f64> {
+pub fn to_integer_or_infinity(cx: &mut Context, value: Handle<Value>) -> EvalResult<f64> {
     let number_handle = maybe!(to_number(cx, value));
     let number = number_handle.get();
 
@@ -209,7 +209,7 @@ pub fn to_integer_or_infinity(cx: &mut Context, value: HandleValue) -> EvalResul
 }
 
 // 7.1.6 ToInt32
-pub fn to_int32(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i32> {
+pub fn to_int32(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     // Fast pass if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -243,7 +243,7 @@ pub fn to_int32(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i32> 
 }
 
 // 7.1.7 ToUint32
-pub fn to_uint32(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u32> {
+pub fn to_uint32(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     // Fast pass if the value is a non-negative smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -275,7 +275,7 @@ pub fn to_uint32(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u32>
 }
 
 // 7.1.8 ToInt16
-pub fn to_int16(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i16> {
+pub fn to_int16(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     // Fast path if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -309,7 +309,7 @@ pub fn to_int16(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i16> 
 }
 
 // 7.1.9 ToUint16
-pub fn to_uint16(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u16> {
+pub fn to_uint16(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     // Fast path if the value is a non-negative smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -341,7 +341,7 @@ pub fn to_uint16(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u16>
 }
 
 // 7.1.10 ToInt8
-pub fn to_int8(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i8> {
+pub fn to_int8(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     // Fast path if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -375,7 +375,7 @@ pub fn to_int8(cx: &mut Context, value_handle: HandleValue) -> EvalResult<i8> {
 }
 
 // 7.1.11 ToUint8
-pub fn to_uint8(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u8> {
+pub fn to_uint8(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     // Fast path if the value is a non-negative smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -407,7 +407,7 @@ pub fn to_uint8(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u8> {
 }
 
 // 7.1.12 ToUint8Clamp
-pub fn to_uint8_clamp(cx: &mut Context, value_handle: HandleValue) -> EvalResult<u8> {
+pub fn to_uint8_clamp(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     // Fast path if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
@@ -452,13 +452,13 @@ pub fn to_uint8_clamp(cx: &mut Context, value_handle: HandleValue) -> EvalResult
 }
 
 // 7.1.13 ToBigInt
-pub fn to_bigint(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<BigIntValue>> {
+pub fn to_bigint(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     let primitive_handle = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
     let primitive = primitive_handle.get();
 
     if primitive.is_pointer() {
         match primitive.as_pointer().descriptor().kind() {
-            ObjectKind::BigInt => return primitive.as_bigint().into(),
+            ObjectKind::BigInt => return primitive_handle.as_bigint().into(),
             ObjectKind::String => {
                 return if let Some(bigint) = string_to_bigint(primitive.as_string()) {
                     BigIntValue::new(cx, bigint).into()
@@ -480,7 +480,7 @@ pub fn to_bigint(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<BigI
 }
 
 // 7.1.15 ToBigInt64
-pub fn to_big_int64(cx: &mut Context, value: HandleValue) -> EvalResult<BigInt> {
+pub fn to_big_int64(cx: &mut Context, value: Handle<Value>) -> EvalResult<BigInt> {
     let bigint = maybe!(to_bigint(cx, value)).bigint();
 
     // Compute modulus according to spec
@@ -496,7 +496,7 @@ pub fn to_big_int64(cx: &mut Context, value: HandleValue) -> EvalResult<BigInt> 
 }
 
 // 7.1.16 ToBigUint64
-pub fn to_big_uint64(cx: &mut Context, value: HandleValue) -> EvalResult<BigInt> {
+pub fn to_big_uint64(cx: &mut Context, value: Handle<Value>) -> EvalResult<BigInt> {
     let bigint = maybe!(to_bigint(cx, value)).bigint();
 
     // Compute modulus according to spec
@@ -507,13 +507,13 @@ pub fn to_big_uint64(cx: &mut Context, value: HandleValue) -> EvalResult<BigInt>
 }
 
 // 7.1.17 ToString
-pub fn to_string(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Handle<StringValue>> {
+pub fn to_string(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Handle<StringValue>> {
     // Safe since value is never referenced after allocation
     let value = value_handle.get();
 
     // Fast path
     if value.is_string() {
-        return value.as_string().into();
+        return value_handle.as_string().into();
     }
 
     if value.is_pointer() {
@@ -553,7 +553,7 @@ pub fn to_string(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
 }
 
 // 7.1.18 ToObject
-pub fn to_object(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Handle<ObjectValue>> {
+pub fn to_object(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Handle<ObjectValue>> {
     // Safe since pointer value is never referenced after allocation
     let value = value_handle.get();
 
@@ -599,7 +599,7 @@ pub fn to_object(cx: &mut Context, value_handle: HandleValue) -> EvalResult<Hand
 }
 
 // 7.1.20 ToLength
-pub fn to_length(cx: &mut Context, value: HandleValue) -> EvalResult<u64> {
+pub fn to_length(cx: &mut Context, value: Handle<Value>) -> EvalResult<u64> {
     let len = maybe!(to_integer_or_infinity(cx, value));
     if len <= 0.0 {
         return 0.into();
@@ -614,7 +614,7 @@ pub fn to_length(cx: &mut Context, value: HandleValue) -> EvalResult<u64> {
 }
 
 // 7.1.21 CanonicalNumericIndexString
-pub fn canonical_numeric_index_string(key: HandlePropertyKey) -> Option<u32> {
+pub fn canonical_numeric_index_string(key: Handle<PropertyKey>) -> Option<u32> {
     // TODO: Support full safe integer range instead of just array index range
     if key.is_array_index() {
         Some(key.as_array_index())
@@ -624,7 +624,7 @@ pub fn canonical_numeric_index_string(key: HandlePropertyKey) -> Option<u32> {
 }
 
 // 7.1.22 ToIndex
-pub fn to_index(cx: &mut Context, value_handle: HandleValue) -> EvalResult<usize> {
+pub fn to_index(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     let value = value_handle.get();
     if value.is_smi() {
         let smi = value.as_smi();
@@ -646,7 +646,10 @@ pub fn to_index(cx: &mut Context, value_handle: HandleValue) -> EvalResult<usize
 }
 
 // 7.2.1 RequireObjectCoercible
-pub fn require_object_coercible(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValue> {
+pub fn require_object_coercible(
+    cx: &mut Context,
+    value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     if value.is_nullish() {
         if value.is_null() {
             return type_error_(cx, "can't convert null to object");
@@ -659,7 +662,7 @@ pub fn require_object_coercible(cx: &mut Context, value: HandleValue) -> EvalRes
 }
 
 // 7.2.2 IsArray
-pub fn is_array(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
+pub fn is_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
     if !value.is_object() {
         return false.into();
     }
@@ -682,7 +685,7 @@ pub fn is_array(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
 }
 
 // 7.2.3 IsCallable
-pub fn is_callable(value: HandleValue) -> bool {
+pub fn is_callable(value: Handle<Value>) -> bool {
     if !value.is_object() {
         return false;
     }
@@ -695,7 +698,7 @@ pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
 }
 
 // 7.2.4 IsConstructor
-pub fn is_constructor(value: HandleValue) -> bool {
+pub fn is_constructor(value: Handle<Value>) -> bool {
     if !value.is_object() {
         return false;
     }
@@ -723,7 +726,7 @@ pub fn is_integral_number(value: Value) -> bool {
 }
 
 // 7.2.8 IsRegExp
-pub fn is_regexp(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
+pub fn is_regexp(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
     if !value.is_object() {
         return false.into();
     }
@@ -733,7 +736,7 @@ pub fn is_regexp(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
     let matcher = maybe!(get(cx, object, match_key));
 
     if !matcher.is_undefined() {
-        return to_boolean(matcher).into();
+        return to_boolean(matcher.get()).into();
     }
 
     object.is_regexp_object().into()
@@ -814,8 +817,8 @@ fn string_to_bigint(value: HeapPtr<StringValue>) -> Option<BigInt> {
 // 7.1.19 ToPropertyKey
 pub fn to_property_key(
     cx: &mut Context,
-    value_handle: HandleValue,
-) -> EvalResult<HandlePropertyKey> {
+    value_handle: Handle<Value>,
+) -> EvalResult<Handle<PropertyKey>> {
     let value = value_handle.get();
     if value.is_smi() {
         let smi_value = value.as_smi();
@@ -832,7 +835,7 @@ pub fn to_property_key(
             .to_handle(cx)
             .into();
     } else if key.is_symbol() {
-        return PropertyKey::symbol(key.as_symbol()).to_handle(cx).into();
+        return PropertyKey::symbol(key.as_symbol()).into();
     }
 
     let string_key = maybe!(to_string(cx, key));
@@ -844,8 +847,8 @@ pub fn to_property_key(
 // Returns either a bool or undefined if values cannot be compared.
 pub fn is_less_than(
     cx: &mut Context,
-    x_handle: HandleValue,
-    y_handle: HandleValue,
+    x_handle: Handle<Value>,
+    y_handle: Handle<Value>,
 ) -> EvalResult<Value> {
     // Safe since allocation can only occur during to_numeric, and direct values are not held
     // across the to_numeric calls.
@@ -972,8 +975,8 @@ pub fn is_less_than(
 // 7.2.15 IsLooselyEqual
 pub fn is_loosely_equal(
     cx: &mut Context,
-    v1_handle: HandleValue,
-    v2_handle: HandleValue,
+    v1_handle: Handle<Value>,
+    v2_handle: Handle<Value>,
 ) -> EvalResult<bool> {
     // Safe since allocation can only occur during to_number, to_primitive, and recursive calls to
     // is_loosely_equal, and direct values are not held across these calls.
@@ -1023,7 +1026,7 @@ pub fn is_loosely_equal(
             }
         } else {
             if v2.is_bool() {
-                let v2_number = maybe!(to_number(cx, v2));
+                let v2_number = maybe!(to_number(cx, v2_handle));
                 is_loosely_equal(cx, v1_handle, v2_number)
             } else {
                 false.into()
@@ -1178,6 +1181,11 @@ pub fn same_object_value(value1: HeapPtr<ObjectValue>, value2: HeapPtr<ObjectVal
     value1.ptr_eq(&value2)
 }
 
+#[inline]
+pub fn same_object_value_handles(value1: Handle<ObjectValue>, value2: Handle<ObjectValue>) -> bool {
+    value1.get_().ptr_eq(&value2.get_())
+}
+
 // Specialization of SameValue for optional objects, checks object identity
 #[inline]
 pub fn same_opt_object_value(
@@ -1187,6 +1195,18 @@ pub fn same_opt_object_value(
     match (value1, value2) {
         (None, None) => true,
         (Some(value1), Some(value2)) => value1.ptr_eq(&value2),
+        _ => false,
+    }
+}
+
+#[inline]
+pub fn same_opt_object_value_handles(
+    value1: Option<Handle<ObjectValue>>,
+    value2: Option<Handle<ObjectValue>>,
+) -> bool {
+    match (value1, value2) {
+        (None, None) => true,
+        (Some(value1), Some(value2)) => value1.get_().ptr_eq(&value2.get_()),
         _ => false,
     }
 }

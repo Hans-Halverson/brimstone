@@ -17,15 +17,14 @@ use crate::{
                 ordinary_function_create_special_kind, set_function_name, ConstructorKind,
                 FuncKind, Function,
             },
-            gc::HandleValue,
             get,
             intrinsics::intrinsics::Intrinsic,
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_with_optional_proto,
-            property_key::{HandlePropertyKey, PropertyKey},
+            property_key::PropertyKey,
             string_value::StringValue,
-            Completion, Context, EvalResult, Handle, HeapPtr,
+            Completion, Context, EvalResult, Handle, HeapPtr, Value,
         },
     },
     maybe, maybe__, must,
@@ -51,7 +50,7 @@ pub struct HeapClassFieldDefinition {
 
 // Stored on the stack.
 pub enum ClassFieldDefinitionName {
-    Normal(HandlePropertyKey),
+    Normal(Handle<PropertyKey>),
     Private(PrivateName),
 }
 
@@ -111,7 +110,7 @@ impl ClassFieldDefinitionName {
 fn class_field_definition_evaluation(
     cx: &mut Context,
     prop: &ast::ClassProperty,
-    property_key: HandlePropertyKey,
+    property_key: Handle<PropertyKey>,
     home_object: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Function>> {
     let current_execution_context_ptr = cx.current_execution_context_ptr();
@@ -165,7 +164,7 @@ pub fn class_definition_evaluation(
     cx: &mut Context,
     class: &ast::Class,
     class_binding: Option<Handle<StringValue>>,
-    class_name: HandlePropertyKey,
+    class_name: Handle<PropertyKey>,
 ) -> EvalResult<Handle<Function>> {
     let mut current_execution_context = cx.current_execution_context();
     let realm = current_execution_context.realm();
@@ -497,7 +496,7 @@ pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completio
     Completion::empty(cx)
 }
 
-pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<HandleValue> {
+pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<Handle<Value>> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value).to_handle(cx);

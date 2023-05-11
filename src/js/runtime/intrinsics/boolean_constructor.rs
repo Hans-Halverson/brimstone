@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::{Gc, Handle, HandleValue},
+        gc::Handle,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{
@@ -13,7 +13,7 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::to_boolean,
-        Context,
+        Context, Value,
     },
     maybe, set_uninit,
 };
@@ -55,7 +55,7 @@ impl BooleanObject {
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        object.into()
+        object.to_handle().into()
     }
 
     pub fn new_with_proto(
@@ -109,11 +109,11 @@ impl BooleanConstructor {
     // 20.3.1.1 Boolean
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
-        let bool_value = to_boolean(get_argument(cx, arguments, 0));
+    ) -> EvalResult<Handle<Value>> {
+        let bool_value = to_boolean(get_argument(cx, arguments, 0).get());
 
         match new_target {
             None => cx.bool(bool_value).into(),

@@ -6,7 +6,6 @@ use crate::{
         completion::EvalResult,
         error::{type_error, type_error_},
         function::get_argument,
-        gc::{Gc, HandleValue},
         get,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
@@ -89,10 +88,10 @@ impl MapConstructor {
     // 24.1.1.1 Map
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
@@ -118,10 +117,10 @@ impl MapConstructor {
     // 24.1.2.2 get Map [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }
@@ -129,10 +128,10 @@ impl MapConstructor {
 // 24.1.1.2 AddEntriesFromIterable
 fn add_entries_from_iterable(
     cx: &mut Context,
-    target: HandleValue,
-    iterable: HandleValue,
+    target: Handle<Value>,
+    iterable: Handle<Value>,
     adder: Handle<ObjectValue>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
     let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
 

@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
-        gc::HandleValue, object_value::ObjectValue, property::Property, property_key::PropertyKey,
-        realm::Realm, string_value::StringValue, value::SymbolValue, Context, Handle,
+        object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
+        string_value::StringValue, value::SymbolValue, Context, Handle, Value,
     },
     maybe,
 };
@@ -56,10 +56,10 @@ impl SymbolPrototype {
     // 20.4.3.2 get Symbol.prototype.description
     fn get_description(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         match symbol_value.as_symbol().description() {
             None => cx.undefined().into(),
@@ -70,10 +70,10 @@ impl SymbolPrototype {
     // 20.4.3.3 Symbol.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         symbol_descriptive_string(cx, symbol_value.as_symbol()).into()
     }
@@ -81,25 +81,25 @@ impl SymbolPrototype {
     // 20.4.3.4 Symbol.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_symbol_value(cx, this_value)
     }
 
     // 20.4.3.5 Symbol.prototype [ @@toPrimitive ]
     fn to_primitive(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_symbol_value(cx, this_value)
     }
 }
 
-fn this_symbol_value(cx: &mut Context, value: HandleValue) -> EvalResult<HandleValue> {
+fn this_symbol_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_symbol() {
         return value.into();
     }

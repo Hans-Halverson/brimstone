@@ -1,6 +1,6 @@
 use crate::js::runtime::{
-    error::type_error_, gc::HandleValue, object_value::ObjectValue, property::Property,
-    realm::Realm, Context, EvalResult, Handle, Value,
+    error::type_error_, object_value::ObjectValue, property::Property, realm::Realm, Context,
+    EvalResult, Handle, Value,
 };
 
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
@@ -30,10 +30,10 @@ impl ArrayBufferPrototype {
     // 25.1.5.1 get ArrayBuffer.prototype.byteLength
     fn get_byte_length(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if this_value.is_object() {
             let this_object = this_value.as_object();
             if this_object.is_array_buffer() {

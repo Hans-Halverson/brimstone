@@ -8,12 +8,12 @@ use crate::{
 use super::{
     abstract_operations::{call_object, construct},
     completion::EvalResult,
-    gc::{Gc, HandleValue, HeapPtr},
+    gc::HeapPtr,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
-    property_key::HandlePropertyKey,
-    type_utilities::same_object_value,
+    property_key::PropertyKey,
+    type_utilities::same_object_value_handles,
     value::Value,
     Context, Handle, Realm,
 };
@@ -32,8 +32,8 @@ impl BoundFunctionObject {
     pub fn new(
         cx: &mut Context,
         target_function: Handle<ObjectValue>,
-        bound_this: HandleValue,
-        bound_arguments: Vec<HandleValue>,
+        bound_this: Handle<Value>,
+        bound_arguments: Vec<Handle<Value>>,
     ) -> EvalResult<Handle<BoundFunctionObject>> {
         // May allocate, so call before allocating bound function object
         let proto = maybe!(target_function.get_prototype_of(cx));
@@ -46,7 +46,7 @@ impl BoundFunctionObject {
 
         set_uninit!(object.bound_target_function, target_function.get_());
         set_uninit!(object.bound_this, bound_this.get());
-        set_uninit!(object.bound_arguments, bound_arguments.iter().map(HandleValue::get).collect());
+        set_uninit!(object.bound_arguments, bound_arguments.iter().map(|v| v.get()).collect());
 
         object.to_handle().into()
     }
@@ -57,12 +57,12 @@ impl BoundFunctionObject {
     }
 
     #[inline]
-    fn bound_this(&self, cx: &mut Context) -> HandleValue {
+    fn bound_this(&self, cx: &mut Context) -> Handle<Value> {
         self.bound_this.to_handle(cx)
     }
 
     #[inline]
-    fn bound_arguments(&self, cx: &mut Context) -> Vec<HandleValue> {
+    fn bound_arguments(&self, cx: &mut Context) -> Vec<Handle<Value>> {
         self.bound_arguments
             .iter()
             .map(|arg| arg.to_handle(cx))
@@ -76,9 +76,9 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     fn call(
         &self,
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         let bound_this = self.bound_this(cx);
         if self.bound_arguments.is_empty() {
             call_object(cx, self.bound_target_function(), bound_this, arguments)
@@ -96,10 +96,10 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[HandleValue],
+        arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        let new_target = if same_object_value(self.object(), new_target) {
+        let new_target = if same_object_value_handles(self.object(), new_target) {
             self.bound_target_function()
         } else {
             new_target
@@ -122,10 +122,10 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     }
 
     fn is_constructor(&self) -> bool {
-        self.bound_target_function.is_constructor()
+        self.bound_target_function().is_constructor()
     }
 
     fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
-        self.bound_target_function.get_realm(cx)
+        self.bound_target_function().get_realm(cx)
     }
 }

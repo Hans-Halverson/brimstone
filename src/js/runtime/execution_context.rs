@@ -7,7 +7,7 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
-    gc::{GcDeref, Handle},
+    gc::{Handle, IsHeapObject},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -31,7 +31,7 @@ pub struct ExecutionContext {
     is_strict_mode: bool,
 }
 
-impl GcDeref for ExecutionContext {}
+impl IsHeapObject for ExecutionContext {}
 
 impl ExecutionContext {
     pub fn new(
@@ -55,7 +55,7 @@ impl ExecutionContext {
         set_uninit!(exec_context.private_env, private_env.map(|p| p.get_()));
         set_uninit!(exec_context.is_strict_mode, is_strict_mode);
 
-        exec_context
+        exec_context.to_handle()
     }
 
     #[inline]
@@ -167,7 +167,7 @@ pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
 }
 
 // 9.4.4 ResolveThisBinding
-pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Value> {
+pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Handle<Value>> {
     get_this_environment(cx).get_this_binding(cx)
 }
 

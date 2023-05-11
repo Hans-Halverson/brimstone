@@ -1,20 +1,11 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        abstract_operations::length_of_array_like,
-        array_object::create_array_from_list,
-        completion::EvalResult,
-        error::type_error_,
-        gc::{Gc, HandleValue},
-        iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create,
-        property::Property,
-        property_key::PropertyKey,
-        realm::Realm,
-        value::Value,
-        Context, Handle, HeapPtr,
+        abstract_operations::length_of_array_like, array_object::create_array_from_list,
+        completion::EvalResult, error::type_error_, iterator::create_iter_result_object,
+        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
+        property::Property, property_key::PropertyKey, realm::Realm, value::Value, Context, Handle,
+        HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -111,10 +102,10 @@ impl ArrayIteratorPrototype {
     // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
     fn next(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut array_iterator = maybe!(ArrayIterator::cast_from_value(cx, this_value));
         let array = array_iterator.array();
 
@@ -130,7 +121,8 @@ impl ArrayIteratorPrototype {
 
         match array_iterator.kind {
             ArrayIteratorKind::Key => {
-                create_iter_result_object(cx, Value::from(current_index), false).into()
+                let key = Value::from(current_index).to_handle(cx);
+                create_iter_result_object(cx, key, false).into()
             }
             ArrayIteratorKind::Value => {
                 let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);

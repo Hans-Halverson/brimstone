@@ -1,11 +1,10 @@
 use crate::js::parser::ast::LabelId;
 
 use super::{
-    gc::HandleValue,
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue, Value},
-    Context, HeapPtr,
+    Context, Handle, HeapPtr,
 };
 
 /// 6.2.3 Completion Record
@@ -22,24 +21,24 @@ pub enum CompletionKind {
 pub struct Completion {
     kind: CompletionKind,
     label: LabelId,
-    value: HandleValue,
+    value: Handle<Value>,
 }
 
 pub const EMPTY_LABEL: u16 = 0;
 
 impl Completion {
     #[inline]
-    pub const fn normal(value: HandleValue) -> Completion {
+    pub const fn normal(value: Handle<Value>) -> Completion {
         Completion { kind: CompletionKind::Normal, label: EMPTY_LABEL, value }
     }
 
     #[inline]
-    pub const fn throw(value: HandleValue) -> Completion {
+    pub const fn throw(value: Handle<Value>) -> Completion {
         Completion { kind: CompletionKind::Throw, label: EMPTY_LABEL, value }
     }
 
     #[inline]
-    pub const fn return_(value: HandleValue) -> Completion {
+    pub const fn return_(value: Handle<Value>) -> Completion {
         Completion { kind: CompletionKind::Return, label: EMPTY_LABEL, value }
     }
 
@@ -64,7 +63,7 @@ impl Completion {
     }
 
     #[inline]
-    pub fn value(&self) -> HandleValue {
+    pub fn value(&self) -> Handle<Value> {
         self.value
     }
 
@@ -85,7 +84,7 @@ impl Completion {
 
     // 6.2.3.4 UpdateEmpty
     #[inline]
-    pub fn update_if_empty(mut self, value: HandleValue) -> Completion {
+    pub fn update_if_empty(mut self, value: Handle<Value>) -> Completion {
         if self.is_empty() {
             self.value = value;
         }
@@ -97,7 +96,7 @@ impl Completion {
     /// abnormal completion. This is only safe to call when the completion must be normal or throw,
     /// such as for expression evaluation.
     #[inline]
-    pub fn into_eval_result(&self) -> EvalResult<HandleValue> {
+    pub fn into_eval_result(&self) -> EvalResult<Handle<Value>> {
         match self.kind() {
             CompletionKind::Normal => EvalResult::Ok(self.value()),
             CompletionKind::Throw => EvalResult::Throw(self.value()),
@@ -108,7 +107,7 @@ impl Completion {
     }
 }
 
-impl<T: Into<HandleValue>> From<T> for Completion {
+impl<T: Into<Handle<Value>>> From<T> for Completion {
     #[inline]
     fn from(value: T) -> Self {
         Completion::normal(value.into())
@@ -118,7 +117,7 @@ impl<T: Into<HandleValue>> From<T> for Completion {
 /// EvalResult is for functions which are either sucessful or throw a value.
 pub enum EvalResult<T> {
     Ok(T),
-    Throw(HandleValue),
+    Throw(Handle<Value>),
 }
 
 impl<T> From<T> for EvalResult<T> {
@@ -163,7 +162,7 @@ impl From<HeapPtr<BigIntValue>> for EvalResult<Value> {
     }
 }
 
-impl<T: Into<HeapPtr<ObjectValue>>> From<T> for EvalResult<Value> {
+impl<T: Into<Handle<ObjectValue>>> From<T> for EvalResult<Handle<Value>> {
     #[inline]
     fn from(value: T) -> Self {
         EvalResult::Ok(value.into().into())

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     js::runtime::{
-        gc::{GcDeref, Handle},
+        gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         value::SymbolValue,
         Context, HeapPtr,
@@ -28,7 +28,7 @@ pub struct PrivateEnvironment {
     outer: Option<HeapPtr<PrivateEnvironment>>,
 }
 
-impl GcDeref for PrivateEnvironment {}
+impl IsHeapObject for PrivateEnvironment {}
 
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment

@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
-        abstract_operations::get, completion::EvalResult, error::type_error_, gc::HandleValue,
+        abstract_operations::get, completion::EvalResult, error::type_error_,
         object_value::ObjectValue, realm::Realm, string_value::StringValue,
-        type_utilities::to_string, Context, Handle,
+        type_utilities::to_string, Context, Handle, Value,
     },
     maybe,
 };
@@ -32,10 +32,10 @@ impl ErrorPrototype {
     // 20.5.3.4 Error.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error_(cx, "expected object");
         }

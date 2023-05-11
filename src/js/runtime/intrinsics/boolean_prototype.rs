@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
-        completion::EvalResult, error::type_error_, gc::HandleValue, object_value::ObjectValue,
-        realm::Realm, Context, Handle,
+        completion::EvalResult, error::type_error_, object_value::ObjectValue, realm::Realm,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -30,10 +30,10 @@ impl BooleanPrototype {
     // 20.3.3.2 Boolean.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
         let string_value = if bool_value { "true" } else { "false" };
 
@@ -43,16 +43,16 @@ impl BooleanPrototype {
     // 20.3.3.3 Boolean.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
         cx.bool(bool_value).into()
     }
 }
 
-fn this_boolean_value(cx: &mut Context, value: HandleValue) -> EvalResult<bool> {
+fn this_boolean_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
     if value.is_bool() {
         return value.as_bool().into();
     }

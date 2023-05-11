@@ -5,14 +5,13 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_index,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     maybe,
 };
@@ -107,10 +106,10 @@ impl DataViewConstructor {
     // 25.3.2.1 DataView
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {

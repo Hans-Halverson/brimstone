@@ -1,22 +1,11 @@
 use crate::{
     extend_object,
     js::runtime::{
-        abstract_operations::call_object,
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error_,
-        function::get_argument,
-        gc::{Gc, HandleValue},
-        get,
-        iterator::iter_iterator_values,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
-        property::Property,
-        realm::Realm,
-        type_utilities::is_callable,
-        value::ValueSet,
-        Completion, Context, Handle,
+        abstract_operations::call_object, builtin_function::BuiltinFunction,
+        completion::EvalResult, error::type_error_, function::get_argument, get,
+        iterator::iter_iterator_values, object_descriptor::ObjectKind, object_value::ObjectValue,
+        ordinary_object::object_create_from_constructor, property::Property, realm::Realm,
+        type_utilities::is_callable, value::ValueSet, Completion, Context, Handle, Value,
     },
     maybe,
 };
@@ -88,10 +77,10 @@ impl SetConstructor {
     // 24.2.1.1 Set
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
@@ -130,10 +119,10 @@ impl SetConstructor {
     // 24.2.2.2 get Set [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }

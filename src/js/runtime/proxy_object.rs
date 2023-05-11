@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{
-    extend_object, js::runtime::type_utilities::same_opt_object_value, maybe, must, set_uninit,
-};
+use crate::{extend_object, maybe, must, set_uninit};
 
 use super::{
     abstract_operations::{
@@ -10,16 +8,19 @@ use super::{
     },
     array_object::create_array_from_list,
     error::type_error_,
-    gc::{Gc, Handle, HandleValue, HeapPtr},
+    gc::{Handle, HeapPtr},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{is_compatible_property_descriptor, object_create},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
-    property_key::{HandlePropertyKey, PropertyKey},
-    type_utilities::{is_callable_object, is_constructor_object, same_value, to_boolean},
-    Context, EvalResult, Realm,
+    property_key::PropertyKey,
+    type_utilities::{
+        is_callable_object, is_constructor_object, same_opt_object_value_handles, same_value,
+        to_boolean,
+    },
+    Context, EvalResult, Realm, Value,
 };
 
 // 10.5 Proxy Object
@@ -52,11 +53,11 @@ impl ProxyObject {
     }
 
     pub fn handler(&self) -> Option<Handle<ObjectValue>> {
-        self.proxy_handler
+        self.proxy_handler.map(|o| o.to_handle())
     }
 
     pub fn target(&self) -> Option<Handle<ObjectValue>> {
-        self.proxy_target
+        self.proxy_target.map(|o| o.to_handle())
     }
 
     pub fn is_revoked(&self) -> bool {
@@ -74,7 +75,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
@@ -151,7 +152,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
@@ -171,7 +172,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx), desc_value.into()];
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
-        if !to_boolean(trap_result) {
+        if !to_boolean(trap_result.get()) {
             return false.into();
         }
 
@@ -234,7 +235,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -250,7 +251,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         let trap_arguments = [target.into(), key.to_value(cx)];
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
-        let trap_result = to_boolean(trap_result);
+        let trap_result = to_boolean(trap_result.get());
 
         if !trap_result {
             let target_desc = maybe!(target.get_own_property(cx, key));
@@ -278,9 +279,9 @@ impl VirtualObject for Handle<ProxyObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        receiver: HandleValue,
-    ) -> EvalResult<HandleValue> {
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -302,7 +303,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
-                        if !same_value(trap_result, target_desc.value.unwrap()) {
+                        if !same_value(trap_result.get(), target_desc.value.unwrap().get()) {
                             return type_error_(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key));
                         }
                     }
@@ -321,9 +322,9 @@ impl VirtualObject for Handle<ProxyObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
-        receiver: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
@@ -341,7 +342,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx), value, receiver];
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
-        if !to_boolean(trap_result) {
+        if !to_boolean(trap_result.get()) {
             return false.into();
         }
 
@@ -350,7 +351,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
-                        if !same_value(value, target_desc.value.unwrap()) {
+                        if !same_value(value.get(), target_desc.value.unwrap().get()) {
                             return type_error_(cx, &format!("proxy can't successfully set a non-writable, non-configurable property '{}'", key));
                         }
                     }
@@ -364,7 +365,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -381,7 +382,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx)];
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
-        if !to_boolean(trap_result) {
+        if !to_boolean(trap_result.get()) {
             return false.into();
         }
 
@@ -408,7 +409,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -513,9 +514,9 @@ impl VirtualObject for Handle<ProxyObject> {
     fn call(
         &self,
         cx: &mut Context,
-        this_argument: HandleValue,
-        arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        this_argument: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -538,7 +539,7 @@ impl VirtualObject for Handle<ProxyObject> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[HandleValue],
+        arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         if self.is_revoked() {
@@ -615,7 +616,7 @@ impl ProxyObject {
 
         let target_proto = maybe!(target.get_prototype_of(cx));
 
-        if !same_opt_object_value(handler_proto, target_proto) {
+        if !same_opt_object_value_handles(handler_proto, target_proto) {
             return type_error_(
                 cx,
                 "proxy getPrototypeOf handler didn't return the target object's prototype",
@@ -654,7 +655,7 @@ impl ProxyObject {
         let trap_arguments = [target.into(), proto_value];
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
-        if !to_boolean(trap_result) {
+        if !to_boolean(trap_result.get()) {
             return false.into();
         }
 
@@ -664,7 +665,7 @@ impl ProxyObject {
 
         let target_proto = maybe!(target.get_prototype_of(cx));
 
-        if !same_opt_object_value(proto, target_proto) {
+        if !same_opt_object_value_handles(proto, target_proto) {
             return type_error_(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
         }
 
@@ -689,7 +690,7 @@ impl ProxyObject {
         }
 
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
-        let trap_result = to_boolean(trap_result);
+        let trap_result = to_boolean(trap_result.get());
 
         let target_result = maybe!(is_extensible_(cx, target));
 
@@ -718,7 +719,7 @@ impl ProxyObject {
         }
 
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
-        let trap_result = to_boolean(trap_result);
+        let trap_result = to_boolean(trap_result.get());
 
         if trap_result {
             if maybe!(is_extensible_(cx, target)) {
@@ -736,8 +737,8 @@ impl ProxyObject {
 // 10.5.14 ProxyCreate
 pub fn proxy_create(
     cx: &mut Context,
-    target: HandleValue,
-    handler: HandleValue,
+    target: Handle<Value>,
+    handler: Handle<Value>,
 ) -> EvalResult<Handle<ProxyObject>> {
     if !target.is_object() {
         return type_error_(cx, "proxy target must be an object");

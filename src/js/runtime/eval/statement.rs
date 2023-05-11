@@ -17,11 +17,10 @@ use crate::{
             },
             execution_context::resolve_binding,
             function::instantiate_function_object,
-            gc::HandleValue,
             iterator::iter_iterator_values,
-            property_key::{HandlePropertyKey, PropertyKey},
+            property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
-            Context, Handle,
+            Context, Handle, Value,
         },
     },
     maybe, maybe_, maybe__, must,
@@ -240,8 +239,8 @@ fn eval_variable_declaration(cx: &mut Context, var_decl: &ast::VariableDeclarati
 pub fn eval_named_anonymous_function_or_expression(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: HandlePropertyKey,
-) -> EvalResult<HandleValue> {
+    name: Handle<PropertyKey>,
+) -> EvalResult<Handle<Value>> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
             instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
@@ -261,9 +260,9 @@ pub fn eval_named_anonymous_function_or_expression(
 pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
     cx: &mut Context,
     expr: &ast::Expression,
-    name: HandlePropertyKey,
+    name: Handle<PropertyKey>,
     if_predicate: F,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     match expr {
         ast::Expression::Function(func @ ast::Function { id: None, .. }) if if_predicate() => {
             instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
@@ -293,7 +292,7 @@ fn eval_expression_statement(cx: &mut Context, stmt: &ast::ExpressionStatement) 
 fn eval_if_statement(cx: &mut Context, stmt: &ast::IfStatement) -> Completion {
     let test = maybe__!(eval_expression(cx, &stmt.test));
 
-    let completion = if to_boolean(test) {
+    let completion = if to_boolean(test.get()) {
         eval_statement(cx, &stmt.conseq)
     } else {
         if let Some(ref altern) = stmt.altern {
@@ -350,7 +349,7 @@ fn eval_do_while_statement(
         }
 
         let test_value = maybe__!(eval_expression(cx, &stmt.test));
-        if !to_boolean(test_value) {
+        if !to_boolean(test_value.get()) {
             return last_value.into();
         }
     }
@@ -365,7 +364,7 @@ fn eval_while_statement(
     let mut last_value = cx.undefined();
     loop {
         let test_value = maybe__!(eval_expression(cx, &stmt.test));
-        if !to_boolean(test_value) {
+        if !to_boolean(test_value.get()) {
             return last_value.into();
         }
 
@@ -465,7 +464,7 @@ fn for_body_evaluation(
     loop {
         if let Some(test) = stmt.test.as_deref() {
             let test_value = maybe__!(eval_expression(cx, test));
-            if !to_boolean(test_value) {
+            if !to_boolean(test_value.get()) {
                 return last_value.into();
             }
         }
@@ -530,7 +529,7 @@ fn create_per_iteration_environment(
 fn for_each_head_evaluation_shared(
     cx: &mut Context,
     stmt: &ast::ForEachStatement,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     match stmt.left.as_ref() {
         ast::ForEachInit::Pattern(_)
         | ast::ForEachInit::VarDecl(ast::VariableDeclaration { kind: ast::VarKind::Var, .. }) => {
@@ -567,7 +566,7 @@ fn for_each_head_evaluation_shared(
 fn for_each_body_evaluation_shared(
     cx: &mut Context,
     stmt: &ast::ForEachStatement,
-    right_value: HandleValue,
+    right_value: Handle<Value>,
 ) -> EvalResult<()> {
     let mut current_execution_context = cx.current_execution_context();
     let old_env = current_execution_context.lexical_env();
@@ -827,7 +826,7 @@ fn eval_with_statement(cx: &mut Context, stmt: &ast::WithStatement) -> Completio
 fn eval_case_block(
     cx: &mut Context,
     stmt: &ast::SwitchStatement,
-    discriminant_value: HandleValue,
+    discriminant_value: Handle<Value>,
 ) -> Completion {
     let mut v = cx.undefined();
 
@@ -910,10 +909,10 @@ fn eval_case_block(
 fn is_case_clause_selected(
     cx: &mut Context,
     case_selector_value: &ast::Expression,
-    discriminant_value: HandleValue,
+    discriminant_value: Handle<Value>,
 ) -> EvalResult<bool> {
     let case_selector_value = maybe!(eval_expression(cx, case_selector_value));
-    is_strictly_equal(discriminant_value, case_selector_value).into()
+    is_strictly_equal(discriminant_value.get(), case_selector_value.get()).into()
 }
 
 // 14.12.4 Switch Statement Evaluation
@@ -1022,7 +1021,7 @@ fn eval_try_statement(cx: &mut Context, stmt: &ast::TryStatement) -> Completion 
 fn eval_catch_clause(
     cx: &mut Context,
     catch: &ast::CatchClause,
-    thrown_value: HandleValue,
+    thrown_value: Handle<Value>,
 ) -> Completion {
     match catch.param {
         None => eval_block(cx, &catch.body),

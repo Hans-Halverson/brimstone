@@ -14,12 +14,12 @@ use super::{
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::type_error_,
-    gc::{Handle, HandleValue, HeapPtr},
+    gc::{Handle, HeapPtr},
     intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     proxy_object::ProxyObject,
     value::{AccessorValue, Value},
     Context, Realm,
@@ -60,7 +60,7 @@ macro_rules! extend_object_without_conversions {
             $($field_vis $field_name: $field_type,)*
         }
 
-        impl $(<$($generics),*>)? $crate::js::runtime::gc::GcDeref for $name $(<$($generics),*>)? {}
+        impl $(<$($generics),*>)? $crate::js::runtime::gc::IsHeapObject for $name $(<$($generics),*>)? {}
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[inline]
@@ -103,9 +103,15 @@ macro_rules! extend_object {
             }
         }
 
-        impl $(<$($generics),*>)? Into<Gc<$crate::js::runtime::object_value::ObjectValue>> for Gc<$name $(<$($generics),*>)?> {
-            fn into(self) -> Gc<$crate::js::runtime::object_value::ObjectValue> {
+        impl $(<$($generics),*>)? Into<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>> for $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
+            fn into(self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
                 self.cast()
+            }
+        }
+
+        impl $(<$($generics),*>)? Into<$crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue>> for $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
+            fn into(self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
+                self.cast::<$crate::js::runtime::object_value::ObjectValue>()
             }
         }
     }
@@ -131,7 +137,7 @@ impl ObjectValue {
         set_uninit!(object.is_extensible_field, is_extensible);
         object.set_uninit_hash_code();
 
-        object
+        object.to_handle()
     }
 
     // Array properties methods
@@ -140,13 +146,17 @@ impl ObjectValue {
     }
 
     // 7.3.27 PrivateElementFind
-    pub fn private_element_find(&mut self, private_name: PrivateName) -> Option<Property> {
+    pub fn private_element_find(
+        &mut self,
+        cx: &mut Context,
+        private_name: PrivateName,
+    ) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
         self.named_properties
             .get(&property_key.get())
-            .map(Property::from_heap)
+            .map(|property| Property::from_heap(cx, property))
     }
 
     pub fn has_private_element(&self, private_name: PrivateName) -> bool {
@@ -155,7 +165,7 @@ impl ObjectValue {
         self.named_properties.contains_key(&property_key.get())
     }
 
-    pub fn private_element_set(&mut self, private_name: PrivateName, value: Value) {
+    pub fn private_element_set(&mut self, private_name: PrivateName, value: Handle<Value>) {
         let property_key = PropertyKey::symbol(private_name);
         let property = Property::private_field(value);
         // Safe since insert does not allocate on managed heap
@@ -168,15 +178,16 @@ impl ObjectValue {
         &mut self,
         cx: &mut Context,
         private_name: PrivateName,
-        value: Value,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         if self.has_private_element(private_name) {
             type_error_(cx, "private property already defined")
         } else {
+            let property_key = PropertyKey::symbol(private_name);
             let property = Property::private_field(value);
             // Safe since insert does not allocate on managed heap
             self.named_properties
-                .insert(PropertyKey::symbol(private_name).get(), property.to_heap());
+                .insert(property_key.get(), property.to_heap());
             ().into()
         }
     }
@@ -192,23 +203,24 @@ impl ObjectValue {
             type_error_(cx, "private property already defined")
         } else {
             // Safe since insert does not allocate on managed heap
+            let property_key = PropertyKey::symbol(private_name);
             self.named_properties
-                .insert(PropertyKey::symbol(private_name).get(), private_method.to_heap());
+                .insert(property_key.get(), private_method.to_heap());
             ().into()
         }
     }
 
     // Property accessors and mutators
-    pub fn get_property(&self, key: HandlePropertyKey) -> Option<Property> {
+    pub fn get_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> Option<Property> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
-            return self.array_properties.get_property(array_index);
+            return self.array_properties.get_property(cx, array_index);
         }
 
         // Safe since get does not allocate on managed heap
         self.named_properties
             .get(&key.get())
-            .map(Property::from_heap)
+            .map(|property| Property::from_heap(cx, property))
     }
 
     /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
@@ -387,7 +399,7 @@ impl Handle<ObjectValue> {
     }
 
     // Property accessors and mutators
-    pub fn set_property(&mut self, cx: &mut Context, key: HandlePropertyKey, property: Property) {
+    pub fn set_property(&mut self, cx: &mut Context, key: Handle<PropertyKey>, property: Property) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             ArrayProperties::set_property(cx, *self, array_index, property);
@@ -399,7 +411,7 @@ impl Handle<ObjectValue> {
         self.named_properties.insert(key.get(), property.to_heap());
     }
 
-    pub fn remove_property(&mut self, key: HandlePropertyKey) {
+    pub fn remove_property(&mut self, key: Handle<PropertyKey>) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             self.array_properties.remove_property(array_index);
@@ -420,8 +432,8 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_data_prop(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
     ) {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
@@ -432,14 +444,14 @@ impl Handle<ObjectValue> {
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
-        let name_value = Value::string(cx.alloc_string(name.to_owned()));
+        let name_value = cx.alloc_string(name.to_owned()).into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 
     pub fn intrinsic_getter(
         &mut self,
         cx: &mut Context,
-        name: HandlePropertyKey,
+        name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
     ) {
@@ -451,7 +463,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_getter_and_setter(
         &mut self,
         cx: &mut Context,
-        name: HandlePropertyKey,
+        name: Handle<PropertyKey>,
         getter: BuiltinFunctionPtr,
         setter: BuiltinFunctionPtr,
         realm: Handle<Realm>,
@@ -465,7 +477,7 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_func(
         &mut self,
         cx: &mut Context,
-        name: HandlePropertyKey,
+        name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         length: i32,
         realm: Handle<Realm>,
@@ -477,8 +489,8 @@ impl Handle<ObjectValue> {
     pub fn intrinsic_frozen_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
     ) {
         self.set_property(cx, key, Property::data(value, false, false, false));
     }
@@ -538,7 +550,7 @@ impl Handle<ObjectValue> {
     pub fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         self.virtual_object().get_own_property(cx, key)
     }
@@ -547,14 +559,14 @@ impl Handle<ObjectValue> {
     pub fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         self.virtual_object().define_own_property(cx, key, desc)
     }
 
     #[inline]
-    pub fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    pub fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         self.virtual_object().has_property(cx, key)
     }
 
@@ -562,9 +574,9 @@ impl Handle<ObjectValue> {
     pub fn get(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        receiver: HandleValue,
-    ) -> EvalResult<HandleValue> {
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
         self.virtual_object().get(cx, key, receiver)
     }
 
@@ -572,20 +584,20 @@ impl Handle<ObjectValue> {
     pub fn set(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
-        receiver: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
     ) -> EvalResult<bool> {
         self.virtual_object().set(cx, key, value, receiver)
     }
 
     #[inline]
-    pub fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    pub fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         self.virtual_object().delete(cx, key)
     }
 
     #[inline]
-    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
         self.virtual_object().own_property_keys(cx)
     }
 
@@ -593,9 +605,9 @@ impl Handle<ObjectValue> {
     pub fn call(
         &self,
         cx: &mut Context,
-        this_argument: HandleValue,
-        arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        this_argument: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         self.virtual_object().call(cx, this_argument, arguments)
     }
 
@@ -603,7 +615,7 @@ impl Handle<ObjectValue> {
     pub fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[HandleValue],
+        arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         self.virtual_object().construct(cx, arguments, new_target)
@@ -638,50 +650,50 @@ pub trait VirtualObject {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool>;
+    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
 
     fn get(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        receiver: HandleValue,
-    ) -> EvalResult<HandleValue>;
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>>;
 
     fn set(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
-        receiver: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool>;
+    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
 
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>>;
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>>;
 
     fn call(
         &self,
         _: &mut Context,
-        _this_argument: HandleValue,
-        _arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        _this_argument: Handle<Value>,
+        _arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         panic!("[[Call]] not implemented for this object")
     }
 
     fn construct(
         &self,
         _: &mut Context,
-        _arguments: &[HandleValue],
+        _arguments: &[Handle<Value>],
         _new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")

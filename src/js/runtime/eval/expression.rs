@@ -22,7 +22,6 @@ use crate::{
             execution_context::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
-            gc::HandleValue,
             interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             iterator::iter_iterator_values,
@@ -32,7 +31,7 @@ use crate::{
             ordinary_object::ordinary_object_create,
             property::Property,
             property_descriptor::PropertyDescriptor,
-            property_key::{HandlePropertyKey, PropertyKey},
+            property_key::PropertyKey,
             reference::{Reference, ReferenceBase},
             string_value::StringValue,
             type_utilities::{
@@ -59,7 +58,7 @@ use super::{
     statement::eval_named_anonymous_function_or_expression,
 };
 
-pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<HandleValue> {
+pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<Handle<Value>> {
     match expr {
         ast::Expression::Id(id) => eval_identifier(cx, id),
         ast::Expression::Null(_) => eval_null_literal(cx),
@@ -108,7 +107,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<H
 }
 
 // 13.1.3 Identifier Evaluation
-pub fn eval_identifier(cx: &mut Context, id: &ast::Identifier) -> EvalResult<HandleValue> {
+pub fn eval_identifier(cx: &mut Context, id: &ast::Identifier) -> EvalResult<Handle<Value>> {
     let name_value = id_string_value(cx, id);
     let reference = maybe!(resolve_binding(cx, name_value, None));
 
@@ -126,35 +125,38 @@ pub fn eval_identifier_to_reference(
 }
 
 // 13.2.1.1 This Expression Evaluation
-fn eval_this_expression(cx: &mut Context) -> EvalResult<HandleValue> {
+fn eval_this_expression(cx: &mut Context) -> EvalResult<Handle<Value>> {
     resolve_this_binding(cx)
 }
 
 // 13.2.3.1 Literal Evaluation
-fn eval_null_literal(cx: &mut Context) -> EvalResult<HandleValue> {
+fn eval_null_literal(cx: &mut Context) -> EvalResult<Handle<Value>> {
     cx.null().into()
 }
 
-fn eval_boolean_literal(cx: &mut Context, lit: &ast::BooleanLiteral) -> EvalResult<HandleValue> {
+fn eval_boolean_literal(cx: &mut Context, lit: &ast::BooleanLiteral) -> EvalResult<Handle<Value>> {
     cx.bool(lit.value).into()
 }
 
-fn eval_number_literal(cx: &mut Context, lit: &ast::NumberLiteral) -> EvalResult<HandleValue> {
+fn eval_number_literal(cx: &mut Context, lit: &ast::NumberLiteral) -> EvalResult<Handle<Value>> {
     Value::number(lit.value).to_handle(cx).into()
 }
 
-fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<HandleValue> {
+fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Handle<Value>> {
     let interned_value = InternedStrings::get_str(cx, &lit.value);
     interned_value.into()
 }
 
-fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult<HandleValue> {
+fn eval_bigint_literal(cx: &mut Context, lit: &ast::BigIntLiteral) -> EvalResult<Handle<Value>> {
     BigIntValue::new(cx, lit.value.clone()).to_handle().into()
 }
 
 // 13.2.4.2 Array Initializer Evaluation
 // 13.2.4.1 ArrayAccumulation
-fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalResult<HandleValue> {
+fn eval_array_expression(
+    cx: &mut Context,
+    expr: &ast::ArrayExpression,
+) -> EvalResult<Handle<Value>> {
     let array = must!(array_create(cx, 0, None));
 
     // Property key is shared between iterations
@@ -202,7 +204,7 @@ fn eval_array_expression(cx: &mut Context, expr: &ast::ArrayExpression) -> EvalR
 fn eval_object_expression(
     cx: &mut Context,
     expr: &ast::ObjectExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let mut object = ordinary_object_create(cx);
 
     for property in &expr.properties {
@@ -250,7 +252,8 @@ fn eval_object_expression(
                     maybe!(eval_property_name(cx, &property.key, property.is_computed));
 
                 // TODO: Check if in JSON.parse
-                let is_proto_setter = property_key == cx.names.__proto__ && !property.is_computed;
+                let is_proto_setter =
+                    property_key.get() == cx.names.__proto__ && !property.is_computed;
                 if is_proto_setter {
                     let prop_value = maybe!(eval_expression(cx, value));
                     if prop_value.is_object() {
@@ -278,7 +281,7 @@ pub fn eval_property_name<'a>(
     cx: &mut Context,
     key: &ast::Expression,
     is_computed: bool,
-) -> EvalResult<HandlePropertyKey> {
+) -> EvalResult<Handle<PropertyKey>> {
     let property_key = if is_computed {
         let property_key_value = maybe!(eval_expression(cx, key));
         maybe!(to_property_key(cx, property_key_value))
@@ -315,7 +318,10 @@ pub fn eval_property_name<'a>(
 }
 
 // 13.2.8.5 Template Literal Evaluation
-fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalResult<HandleValue> {
+fn eval_template_literal(
+    cx: &mut Context,
+    lit: &ast::TemplateLiteral,
+) -> EvalResult<Handle<Value>> {
     let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
 
     let first_quasi_part = InternedStrings::get_str(cx, &lit.quasis[0].cooked.as_deref().unwrap());
@@ -345,7 +351,7 @@ fn eval_template_literal(cx: &mut Context, lit: &ast::TemplateLiteral) -> EvalRe
 fn eval_member_expression(
     cx: &mut Context,
     expr: &ast::MemberExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let base_value = maybe!(eval_expression(cx, &expr.object));
 
     if expr.is_computed {
@@ -384,7 +390,7 @@ pub fn eval_member_expression_to_reference(
 fn eval_member_expression_to_reference_with_base(
     cx: &mut Context,
     expr: &ast::MemberExpression,
-    base_value: HandleValue,
+    base_value: Handle<Value>,
 ) -> EvalResult<Reference> {
     let is_strict = cx.current_execution_context_ptr().is_strict_mode();
 
@@ -404,7 +410,7 @@ fn eval_member_expression_to_reference_with_base(
 
 // 13.3.5.1 New Expression Evaluation
 // 13.3.5.1.1 EvaluateNew
-fn eval_new_expression(cx: &mut Context, expr: &ast::NewExpression) -> EvalResult<HandleValue> {
+fn eval_new_expression(cx: &mut Context, expr: &ast::NewExpression) -> EvalResult<Handle<Value>> {
     let constructor = maybe!(eval_expression(cx, &expr.callee));
     let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
 
@@ -436,7 +442,7 @@ fn maybe_eval_expression_to_reference(
 }
 
 // 13.3.6.1 Call Expression Evaluation
-fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalResult<HandleValue> {
+fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalResult<Handle<Value>> {
     let callee_reference = maybe!(maybe_eval_expression_to_reference(cx, expr.callee.as_ref()));
 
     let (func_value, this_value) = match callee_reference {
@@ -445,7 +451,9 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
 
             // Check for direct call to eval
             let eval_func_ptr = cx.get_intrinsic_ptr(Intrinsic::Eval);
-            if func_value.is_object() && same_object_value(func_value.as_object(), eval_func_ptr) {
+            if func_value.is_object()
+                && same_object_value(func_value.as_object().get_(), eval_func_ptr)
+            {
                 let is_non_property_eval_reference = match reference.base() {
                     ReferenceBase::Property { .. } => false,
                     ReferenceBase::Unresolvable { name } | ReferenceBase::Env { name, .. } => {
@@ -490,10 +498,10 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
 // Modified to take the function value and this value instead of a reference.
 fn eval_call(
     cx: &mut Context,
-    func_value: HandleValue,
-    this_value: HandleValue,
+    func_value: Handle<Value>,
+    this_value: Handle<Value>,
     arguments: &[ast::CallArgument],
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let arg_values = maybe!(eval_argument_list(cx, arguments));
     if !is_callable(func_value) {
         return type_error_(cx, "value is not a function");
@@ -506,7 +514,7 @@ fn eval_call(
 fn eval_super_member_expression(
     cx: &mut Context,
     expr: &ast::SuperMemberExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let reference = maybe!(eval_super_member_expression_to_reference(cx, expr));
     reference.get_value(cx)
 }
@@ -540,7 +548,7 @@ pub fn eval_super_member_expression_to_reference(
 fn eval_super_call_expression(
     cx: &mut Context,
     expr: &ast::SuperCallExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let new_target = get_new_target(cx);
 
     // 13.3.7.2 GetSuperConstructor inlined
@@ -573,7 +581,7 @@ fn eval_super_call_expression(
 fn eval_argument_list(
     cx: &mut Context,
     arguments: &[ast::CallArgument],
-) -> EvalResult<Vec<HandleValue>> {
+) -> EvalResult<Vec<Handle<Value>>> {
     let mut arg_values = vec![];
 
     for arg in arguments {
@@ -598,7 +606,10 @@ fn eval_argument_list(
 }
 
 // 13.3.9.1 Optional Chain Evaluation
-fn eval_chain_expression(cx: &mut Context, expr: &ast::ChainExpression) -> EvalResult<HandleValue> {
+fn eval_chain_expression(
+    cx: &mut Context,
+    expr: &ast::ChainExpression,
+) -> EvalResult<Handle<Value>> {
     maybe!(eval_chain_expression_part(cx, &expr.expression))
         .0
         .into()
@@ -616,7 +627,7 @@ fn eval_chain_expression_to_reference(
 fn eval_chain_expression_part(
     cx: &mut Context,
     expr: &ast::Expression,
-) -> EvalResult<(HandleValue, Reference)> {
+) -> EvalResult<(Handle<Value>, Reference)> {
     match expr {
         ast::Expression::Member(member_expr) => {
             let base_value = maybe!(eval_chain_expression_part(cx, &member_expr.object)).0;
@@ -691,7 +702,7 @@ fn eval_chain_expression_part(
 fn eval_tagged_template_expression(
     cx: &mut Context,
     expr: &ast::TaggedTemplateExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let (func_value, this_value) = match maybe!(maybe_eval_expression_to_reference(cx, &expr.tag)) {
         Some(reference) => {
             let func_value = maybe!(reference.get_value(cx));
@@ -771,7 +782,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
 }
 
 // 13.3.12.1 NewTarget Evaluation
-fn eval_new_target(cx: &mut Context) -> EvalResult<HandleValue> {
+fn eval_new_target(cx: &mut Context) -> EvalResult<Handle<Value>> {
     match get_new_target(cx) {
         None => cx.undefined().into(),
         Some(new_target) => new_target.into(),
@@ -785,7 +796,7 @@ fn eval_new_target(cx: &mut Context) -> EvalResult<HandleValue> {
 fn eval_update_expression(
     cx: &mut Context,
     expr: &ast::UpdateExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let mut argument_reference =
         match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
             Some(reference) => reference,
@@ -827,7 +838,7 @@ fn eval_update_expression(
 fn eval_delete_expression(
     cx: &mut Context,
     expr: &ast::UnaryExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let reference = match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
         Some(reference) => reference,
         None => {
@@ -859,7 +870,10 @@ fn eval_delete_expression(
 }
 
 // 13.5.2.1 Void Expression Evaluation
-fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<HandleValue> {
+fn eval_void_expression(
+    cx: &mut Context,
+    expr: &ast::UnaryExpression,
+) -> EvalResult<Handle<Value>> {
     maybe!(eval_expression(cx, &expr.argument));
     cx.undefined().into()
 }
@@ -868,7 +882,7 @@ fn eval_void_expression(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalRe
 fn eval_typeof_expression(
     cx: &mut Context,
     expr: &ast::UnaryExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let value = match maybe!(maybe_eval_expression_to_reference(cx, expr.argument.as_ref())) {
         Some(reference) => {
             if reference.is_unresolvable_reference() {
@@ -909,13 +923,13 @@ fn eval_typeof_expression(
 }
 
 // 13.5.4.1 Unary Plus Evaluation
-fn eval_unary_plus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<HandleValue> {
+fn eval_unary_plus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Handle<Value>> {
     let value = maybe!(eval_expression(cx, &expr.argument));
     to_number(cx, value)
 }
 
 // 13.5.5.1 Unary Minus Evaluation
-fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<HandleValue> {
+fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Handle<Value>> {
     let value = maybe!(eval_expression(cx, &expr.argument));
     let value = maybe!(to_numeric(cx, value));
 
@@ -928,7 +942,7 @@ fn eval_unary_minus(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 }
 
 // 13.5.6.1 Bitwise Not Evaluation
-fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<HandleValue> {
+fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult<Handle<Value>> {
     let value = maybe!(eval_expression(cx, &expr.argument));
     let value = maybe!(to_numeric(cx, value));
 
@@ -945,15 +959,15 @@ fn eval_bitwise_not(cx: &mut Context, expr: &ast::UnaryExpression) -> EvalResult
 fn eval_logical_not_expression(
     cx: &mut Context,
     expr: &ast::UnaryExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let expr_value = maybe!(eval_expression(cx, &expr.argument));
-    cx.bool(!to_boolean(expr_value)).into()
+    cx.bool(!to_boolean(expr_value.get())).into()
 }
 
 fn eval_binary_expression(
     cx: &mut Context,
     expr: &ast::BinaryExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     match expr.operator {
         ast::BinaryOperator::Add => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
@@ -1000,13 +1014,13 @@ fn eval_binary_expression(
         ast::BinaryOperator::EqEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            let is_equal = is_strictly_equal(left_value, right_value);
+            let is_equal = is_strictly_equal(left_value.get(), right_value.get());
             cx.bool(is_equal).into()
         }
         ast::BinaryOperator::NotEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            let is_equal = is_strictly_equal(left_value, right_value);
+            let is_equal = is_strictly_equal(left_value.get(), right_value.get());
             cx.bool(!is_equal).into()
         }
         ast::BinaryOperator::LessThan => {
@@ -1062,7 +1076,8 @@ fn eval_binary_expression(
         ast::BinaryOperator::InstanceOf => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            maybe!(eval_instanceof_expression(cx, left_value, right_value)).into()
+            let is_instance_of = maybe!(eval_instanceof_expression(cx, left_value, right_value));
+            cx.bool(is_instance_of).into()
         }
         ast::BinaryOperator::In => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
@@ -1078,9 +1093,9 @@ fn eval_binary_expression(
 
 fn eval_add(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_prim = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::None));
     let right_prim = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::None));
     if left_prim.is_string() || right_prim.is_string() {
@@ -1110,9 +1125,9 @@ fn eval_add(
 
 fn eval_subtract(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1133,9 +1148,9 @@ fn eval_subtract(
 
 fn eval_multiply(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1156,9 +1171,9 @@ fn eval_multiply(
 
 fn eval_divide(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1184,9 +1199,9 @@ fn eval_divide(
 
 fn eval_remainder(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1217,9 +1232,9 @@ fn eval_remainder(
 
 fn eval_exponentiation(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1254,9 +1269,9 @@ fn eval_exponentiation(
 
 fn eval_less_than(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
@@ -1270,9 +1285,9 @@ fn eval_less_than(
 
 fn eval_greater_than(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
@@ -1287,9 +1302,9 @@ fn eval_greater_than(
 
 fn eval_less_than_or_equal(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
@@ -1300,9 +1315,9 @@ fn eval_less_than_or_equal(
 
 fn eval_greater_than_or_equal(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
@@ -1312,9 +1327,9 @@ fn eval_greater_than_or_equal(
 
 fn eval_bitwise_and(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1336,9 +1351,9 @@ fn eval_bitwise_and(
 
 fn eval_bitwise_or(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1360,9 +1375,9 @@ fn eval_bitwise_or(
 
 fn eval_bitwise_xor(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1384,9 +1399,9 @@ fn eval_bitwise_xor(
 
 fn eval_shift_left(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1416,9 +1431,9 @@ fn eval_shift_left(
 
 fn eval_shift_right_arithmetic(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1483,9 +1498,9 @@ fn eval_bigint_left_shift(cx: &mut Context, left: &BigInt, right: &BigInt) -> Ev
 
 fn eval_shift_right_logical(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let left_num = maybe!(to_numeric(cx, left_value));
     let right_num = maybe!(to_numeric(cx, right_value));
 
@@ -1506,8 +1521,8 @@ fn eval_shift_right_logical(
 // 13.10.2 InstanceofOperator
 pub fn eval_instanceof_expression(
     cx: &mut Context,
-    value: HandleValue,
-    target: HandleValue,
+    value: Handle<Value>,
+    target: Handle<Value>,
 ) -> EvalResult<bool> {
     if !target.is_object() {
         return type_error_(cx, "invalid instanceof operand");
@@ -1517,7 +1532,7 @@ pub fn eval_instanceof_expression(
     let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
-        return to_boolean(result).into();
+        return to_boolean(result.get()).into();
     }
 
     let target_object = target.as_object();
@@ -1531,9 +1546,9 @@ pub fn eval_instanceof_expression(
 
 fn eval_in_expression(
     cx: &mut Context,
-    left_value: HandleValue,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    left_value: Handle<Value>,
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     if !right_value.is_object() {
         return type_error_(cx, "right side of 'in' must be an object");
     }
@@ -1547,8 +1562,8 @@ fn eval_in_expression(
 fn eval_private_in_expression(
     cx: &mut Context,
     private_property: &ast::Identifier,
-    right_value: HandleValue,
-) -> EvalResult<HandleValue> {
+    right_value: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     if !right_value.is_object() {
         return type_error_(cx, "right side of 'in' must be an object");
     }
@@ -1567,11 +1582,11 @@ fn eval_private_in_expression(
 fn eval_logical_expression(
     cx: &mut Context,
     expr: &ast::LogicalExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     match expr.operator {
         ast::LogicalOperator::And => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
-            if !to_boolean(left_value) {
+            if !to_boolean(left_value.get()) {
                 left_value.into()
             } else {
                 eval_expression(cx, &expr.right)
@@ -1579,7 +1594,7 @@ fn eval_logical_expression(
         }
         ast::LogicalOperator::Or => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
-            if to_boolean(left_value) {
+            if to_boolean(left_value.get()) {
                 left_value.into()
             } else {
                 eval_expression(cx, &expr.right)
@@ -1600,9 +1615,9 @@ fn eval_logical_expression(
 fn eval_conditional_expression(
     cx: &mut Context,
     expr: &ast::ConditionalExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let test_value = maybe!(eval_expression(cx, &expr.test));
-    if to_boolean(test_value) {
+    if to_boolean(test_value.get()) {
         eval_expression(cx, &expr.conseq)
     } else {
         eval_expression(cx, &expr.altern)
@@ -1613,7 +1628,7 @@ fn eval_conditional_expression(
 fn eval_assignment_expression(
     cx: &mut Context,
     expr: &ast::AssignmentExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let mut reference = match expr.left.as_ref() {
         ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
         ast::Pattern::Reference(ast::Expression::Member(expr)) => {
@@ -1710,7 +1725,7 @@ fn eval_assignment_expression(
         }
         ast::AssignmentOperator::LogicalAnd => {
             let left_value = maybe!(reference.get_value(cx));
-            if !to_boolean(left_value) {
+            if !to_boolean(left_value.get()) {
                 return left_value.into();
             }
 
@@ -1724,7 +1739,7 @@ fn eval_assignment_expression(
         }
         ast::AssignmentOperator::LogicalOr => {
             let left_value = maybe!(reference.get_value(cx));
-            if to_boolean(left_value) {
+            if to_boolean(left_value.get()) {
                 return left_value.into();
             }
 
@@ -1761,7 +1776,7 @@ fn eval_assignment_expression(
 fn eval_sequence_expression(
     cx: &mut Context,
     expr: &ast::SequenceExpression,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let mut value = cx.empty();
 
     for expr in &expr.expressions {
@@ -1772,11 +1787,11 @@ fn eval_sequence_expression(
 }
 
 // 15.2.6 Function Expression Evaluation
-fn eval_function_expression(cx: &mut Context, func: &ast::Function) -> EvalResult<HandleValue> {
+fn eval_function_expression(cx: &mut Context, func: &ast::Function) -> EvalResult<Handle<Value>> {
     instantiate_ordinary_function_expression(cx, func, None).into()
 }
 
 // 15.3.5 Arrow Function Evaluation
-fn eval_arrow_function(cx: &mut Context, func: &ast::Function) -> EvalResult<HandleValue> {
+fn eval_arrow_function(cx: &mut Context, func: &ast::Function) -> EvalResult<Handle<Value>> {
     instantiate_arrow_function_expression(cx, func, None).into()
 }

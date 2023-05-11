@@ -5,13 +5,13 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::{GcDeref, Handle, HandleValue},
+        gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         proxy_object::{proxy_create, ProxyObject},
         realm::Realm,
-        Context, HeapPtr,
+        Context, HeapPtr, Value,
     },
     maybe, must, set_uninit,
 };
@@ -41,10 +41,10 @@ impl ProxyConstructor {
     // 28.2.1.1 Proxy
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if new_target.is_none() {
             return type_error_(cx, "Proxy is a constructor");
         }
@@ -58,10 +58,10 @@ impl ProxyConstructor {
     // 28.2.2.1 Proxy.revocable
     fn revocable(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
         let proxy = maybe!(proxy_create(cx, target, handler));
@@ -84,10 +84,10 @@ impl ProxyConstructor {
 // The revoker abstract closure
 fn revoke(
     cx: &mut Context,
-    _: HandleValue,
-    _: &[HandleValue],
+    _: Handle<Value>,
+    _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let mut closure_environment_ptr = cx.get_closure_environment_ptr::<RevokeEnvironment>();
     let revocable_proxy_ptr = closure_environment_ptr.revocable_proxy_ptr();
 
@@ -107,7 +107,7 @@ struct RevokeEnvironment {
     revocable_proxy: Option<HeapPtr<ProxyObject>>,
 }
 
-impl GcDeref for RevokeEnvironment {}
+impl IsHeapObject for RevokeEnvironment {}
 
 impl RevokeEnvironment {
     fn new(
@@ -123,7 +123,7 @@ impl RevokeEnvironment {
         );
         set_uninit!(env.revocable_proxy, revocable_proxy.map(|p| p.get_()));
 
-        env
+        env.to_handle()
     }
 
     fn revocable_proxy_ptr(&self) -> Option<HeapPtr<ProxyObject>> {

@@ -337,7 +337,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
     }
 }
 
-fn to_console_string_test262(cx: &mut Context, value: Value) -> String {
+fn to_console_string_test262(cx: &mut Context, value: Handle<Value>) -> String {
     // Extract message for Test262Error, otherwise print to console normally
     if value.is_object() {
         match to_string(cx, value) {

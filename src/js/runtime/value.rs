@@ -8,7 +8,7 @@ use crate::set_uninit;
 
 use super::{
     context::Context,
-    gc::{GcDeref, Handle, HeapPtr},
+    gc::{Handle, HeapPtr, IsHeapObject},
     object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -504,9 +504,9 @@ impl From<f64> for Value {
     }
 }
 
-impl<T: Into<HeapPtr<ObjectValue>>> From<T> for Value {
-    fn from(value: T) -> Self {
-        Value::object(value.into())
+impl From<HeapPtr<ObjectValue>> for Value {
+    fn from(value: HeapPtr<ObjectValue>) -> Self {
+        Value::object(value)
     }
 }
 
@@ -563,18 +563,21 @@ impl SymbolValue {
 }
 
 impl hash::Hash for SymbolValue {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.hash_code.hash(state)
     }
 }
 
 impl hash::Hash for HeapPtr<SymbolValue> {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.hash_code.hash(state)
     }
 }
 
 impl PartialEq for HeapPtr<SymbolValue> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.ptr_eq(other)
     }
@@ -582,7 +585,29 @@ impl PartialEq for HeapPtr<SymbolValue> {
 
 impl Eq for HeapPtr<SymbolValue> {}
 
-impl GcDeref for SymbolValue {}
+impl hash::Hash for Handle<SymbolValue> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.get_().hash(state)
+    }
+}
+
+impl PartialEq for Handle<SymbolValue> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.get_().eq(&other.get_())
+    }
+}
+
+impl Eq for Handle<SymbolValue> {}
+
+impl IsHeapObject for SymbolValue {}
+
+impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
+    fn from(value: Handle<SymbolValue>) -> Self {
+        value.cast()
+    }
+}
 
 #[repr(C)]
 pub struct BigIntValue {
@@ -609,7 +634,13 @@ impl BigIntValue {
     }
 }
 
-impl GcDeref for BigIntValue {}
+impl IsHeapObject for BigIntValue {}
+
+impl From<Handle<BigIntValue>> for Handle<ObjectValue> {
+    fn from(value: Handle<BigIntValue>) -> Self {
+        value.cast()
+    }
+}
 
 #[repr(C)]
 pub struct AccessorValue {
@@ -618,7 +649,7 @@ pub struct AccessorValue {
     pub set: Option<HeapPtr<ObjectValue>>,
 }
 
-impl GcDeref for AccessorValue {}
+impl IsHeapObject for AccessorValue {}
 
 impl AccessorValue {
     pub fn new(

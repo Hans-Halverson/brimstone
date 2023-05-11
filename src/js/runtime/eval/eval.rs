@@ -20,9 +20,8 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
-            gc::HandleValue,
             string_value::StringValue,
-            Completion, CompletionKind, Context, EvalResult, Handle,
+            Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
     },
     maybe, must,
@@ -32,10 +31,10 @@ use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 pub fn perform_eval(
     cx: &mut Context,
-    code: HandleValue,
+    code: Handle<Value>,
     is_strict_caller: bool,
     is_direct: bool,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     if !code.is_string() {
         return code.into();
     }

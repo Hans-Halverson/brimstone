@@ -6,7 +6,7 @@ use std::{
 use crate::{field_offset, set_uninit};
 
 use super::{
-    gc::GcDeref,
+    gc::IsHeapObject,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     property::{HeapProperty, Property},
@@ -20,7 +20,7 @@ pub struct ArrayProperties {
     descriptor: HeapPtr<ObjectDescriptor>,
 }
 
-impl GcDeref for ArrayProperties {}
+impl IsHeapObject for ArrayProperties {}
 
 // Number of indices past the end of an array an access can occur before dense array is converted
 // to a sparse array.
@@ -54,7 +54,7 @@ impl HeapPtr<ArrayProperties> {
         }
     }
 
-    pub fn get_property(&self, array_index: u32) -> Option<Property> {
+    pub fn get_property(&self, cx: &mut Context, array_index: u32) -> Option<Property> {
         if let Some(dense_properties) = self.as_dense_opt() {
             if array_index >= dense_properties.length {
                 return None;
@@ -65,13 +65,13 @@ impl HeapPtr<ArrayProperties> {
                 return None;
             }
 
-            Some(Property::data(value, true, true, true))
+            Some(Property::data(value.to_handle(cx), true, true, true))
         } else {
             let sparse_properties = self.as_sparse();
             sparse_properties
                 .sparse_map
                 .get(&array_index)
-                .map(Property::from_heap)
+                .map(|property| Property::from_heap(cx, property))
         }
     }
 
@@ -161,11 +161,16 @@ impl ArrayProperties {
 
         let mut sparse_properties = SparseArrayProperties::new(cx, dense_properties.length);
 
+        // Share handle across iterations
+        let mut value_handle = Handle::<Value>::uninit();
+
         // Can reference internal pointer to map since loop does not allocate on managed heap
         let sparse_map = &mut sparse_properties.sparse_map;
         for (index, value) in dense_properties.iter_gc_unsafe().enumerate() {
             if !value.is_empty() {
-                sparse_map.insert(index as u32, Property::data(value, true, true, true).to_heap());
+                value_handle.replace(value);
+                sparse_map
+                    .insert(index as u32, Property::data(value_handle, true, true, true).to_heap());
             }
         }
 
@@ -271,7 +276,7 @@ impl ArrayProperties {
 
                 Self::set_property(cx, object, array_index, property);
             } else {
-                dense_properties.set(array_index, property.value());
+                dense_properties.set(array_index, property.value().get());
             }
         } else {
             let mut sparse_properties = array_properties.as_sparse();
@@ -298,7 +303,7 @@ pub struct DenseArrayProperties {
     data: [Value; 1],
 }
 
-impl GcDeref for DenseArrayProperties {}
+impl IsHeapObject for DenseArrayProperties {}
 
 const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, data);
 
@@ -410,7 +415,7 @@ pub struct SparseArrayProperties {
     length: u32,
 }
 
-impl GcDeref for SparseArrayProperties {}
+impl IsHeapObject for SparseArrayProperties {}
 
 impl SparseArrayProperties {
     fn new(cx: &mut Context, length: u32) -> HeapPtr<SparseArrayProperties> {

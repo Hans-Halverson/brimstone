@@ -4,7 +4,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::HandleValue,
         intrinsics::error_constructor::install_error_cause,
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
@@ -13,7 +12,7 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -90,10 +89,10 @@ macro_rules! create_native_error {
             // 20.5.6.1.1 NativeError
             fn construct(
                 cx: &mut Context,
-                _: HandleValue,
-                arguments: &[HandleValue],
+                _: Handle<Value>,
+                arguments: &[Handle<Value>],
                 new_target: Option<Handle<ObjectValue>>,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {

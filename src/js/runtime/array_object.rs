@@ -5,7 +5,6 @@ use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, s
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     error::{range_error_, type_error_},
-    gc::HandleValue,
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -15,9 +14,9 @@ use super::{
         ordinary_get_own_property, ordinary_own_property_keys,
     },
     property_descriptor::PropertyDescriptor,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
-    Context, EvalResult, Gc, Handle, Value,
+    Context, EvalResult, Handle, Value,
 };
 
 // 10.4.2 Array Exotic Objects
@@ -45,7 +44,7 @@ impl VirtualObject for Handle<ArrayObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if key.is_array_index() {
@@ -70,7 +69,7 @@ impl VirtualObject for Handle<ArrayObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             let length_value = Value::from(self.object().array_properties_length()).to_handle(cx);
@@ -83,11 +82,11 @@ impl VirtualObject for Handle<ArrayObject> {
             .into();
         }
 
-        ordinary_get_own_property(self.object(), key).into()
+        ordinary_get_own_property(cx, self.object(), key).into()
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
-    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if key.is_string() && key.as_string() == cx.names.length().as_string() {
             return false.into();
         }
@@ -96,11 +95,11 @@ impl VirtualObject for Handle<ArrayObject> {
     }
 
     // Not part of spec, but needed to add custom length property
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut property_keys = ordinary_own_property_keys(cx, self.object());
 
         // Insert length property after all the array index properies
-        property_keys.push(cx.names.length.as_string().into());
+        property_keys.push(cx.names.length().as_string().into());
 
         property_keys.into()
     }
@@ -145,7 +144,7 @@ pub fn array_species_create(
 
         if !this_realm_ptr.ptr_eq(&constructor_realm)
             && same_object_value(
-                constructor.as_object(),
+                constructor.as_object().get_(),
                 constructor_realm.get_intrinsic_ptr(Intrinsic::ArrayConstructor),
             )
         {
@@ -219,7 +218,7 @@ fn array_set_length(
 }
 
 // 7.3.18 CreateArrayFromList
-pub fn create_array_from_list(cx: &mut Context, elements: &[HandleValue]) -> Handle<ArrayObject> {
+pub fn create_array_from_list(cx: &mut Context, elements: &[Handle<Value>]) -> Handle<ArrayObject> {
     let array = must!(array_create(cx, 0, None));
 
     // Property key is shared between iterations

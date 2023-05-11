@@ -8,7 +8,7 @@ use crate::{
 use super::{
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
-    gc::{GcDeref, Handle, HeapPtr},
+    gc::{Handle, HeapPtr, IsHeapObject},
     intrinsics::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
@@ -29,7 +29,7 @@ pub struct Realm {
     intrinsics: Intrinsics,
 }
 
-impl GcDeref for Realm {}
+impl IsHeapObject for Realm {}
 
 impl Realm {
     // 9.3.1 CreateRealm
@@ -44,22 +44,21 @@ impl Realm {
         set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
         set_uninit!(realm.template_map, HashMap::new());
 
-        let mut realm = realm.to_handle();
+        let realm = realm.to_handle();
 
-        let this_realm = realm.clone();
-        realm.intrinsics.initialize(cx, this_realm);
+        realm.clone().intrinsics.initialize(cx, realm);
 
         realm
     }
 
     #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
-        self.global_object
+        self.global_object.to_handle()
     }
 
     #[inline]
     pub fn global_env(&self) -> Handle<GlobalEnvironment> {
-        self.global_env
+        self.global_env.to_handle()
     }
 
     pub fn global_this_value(&self) -> Handle<ObjectValue> {
@@ -80,7 +79,7 @@ impl Realm {
     ) -> Option<Handle<ObjectValue>> {
         self.template_map
             .get(&template_node)
-            .map(|template_object| *template_object)
+            .map(|template_object| template_object.to_handle())
     }
 
     pub fn add_template_object(
@@ -105,8 +104,8 @@ impl Handle<Realm> {
 
         let this_value = this_value.unwrap_or(global_object);
 
-        self.global_object = global_object;
-        self.global_env = GlobalEnvironment::new(cx, global_object, this_value);
+        self.global_object = global_object.get_();
+        self.global_env = GlobalEnvironment::new(cx, global_object, this_value).get_();
     }
 }
 

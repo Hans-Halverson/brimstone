@@ -18,9 +18,10 @@ use crate::{
 };
 
 use super::{
-    gc::{GcDeref, Handle, HeapPtr},
+    gc::{Handle, HeapPtr, IsHeapObject},
     object_descriptor::{ObjectDescriptor, ObjectKind},
-    Context, Gc,
+    object_value::ObjectValue,
+    Context,
 };
 
 #[repr(C)]
@@ -74,7 +75,7 @@ struct ConcatString {
 }
 
 impl StringValue {
-    fn new_one_byte(cx: &mut Context, one_byte_string: OneByteString) -> Handle<StringValue> {
+    fn new_one_byte(cx: &mut Context, one_byte_string: OneByteString) -> HeapPtr<StringValue> {
         let mut string = cx.heap.alloc_uninit::<StringValue>();
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
@@ -84,7 +85,7 @@ impl StringValue {
         string
     }
 
-    fn new_two_byte(cx: &mut Context, two_byte_string: TwoByteString) -> Handle<StringValue> {
+    fn new_two_byte(cx: &mut Context, two_byte_string: TwoByteString) -> HeapPtr<StringValue> {
         let mut string = cx.heap.alloc_uninit::<StringValue>();
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
@@ -115,10 +116,10 @@ impl StringValue {
         );
         set_uninit!(string.hash_code, None);
 
-        string
+        string.to_handle()
     }
 
-    pub fn from_utf8(cx: &mut Context, str: String) -> Handle<StringValue> {
+    pub fn from_utf8(cx: &mut Context, str: String) -> HeapPtr<StringValue> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -204,15 +205,16 @@ impl StringValue {
     fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<StringValue> {
         if is_latin1_code_point(code_point) {
             StringValue::new_one_byte(cx, OneByteString::from_vec(vec![code_point as u8]))
+                .to_handle()
         } else {
             match try_encode_surrogate_pair(code_point) {
                 None => {
                     let two_byte_string = TwoByteString::from_vec(vec![code_point as CodeUnit]);
-                    StringValue::new_two_byte(cx, two_byte_string)
+                    StringValue::new_two_byte(cx, two_byte_string).to_handle()
                 }
                 Some((high, low)) => {
                     let two_byte_string = TwoByteString::from_vec(vec![high, low]);
-                    StringValue::new_two_byte(cx, two_byte_string)
+                    StringValue::new_two_byte(cx, two_byte_string).to_handle()
                 }
             }
         }
@@ -384,11 +386,11 @@ impl StringValue {
             }
             StringKind::OneByte(str) => {
                 let one_byte_string = OneByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new_one_byte(cx, one_byte_string)
+                StringValue::new_one_byte(cx, one_byte_string).to_handle()
             }
             StringKind::TwoByte(str) => {
                 let two_byte_string = TwoByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new_two_byte(cx, two_byte_string)
+                StringValue::new_two_byte(cx, two_byte_string).to_handle()
             }
         }
     }
@@ -579,7 +581,7 @@ impl StringValue {
         }
 
         if code_points_iter.is_end() {
-            return cx.names.empty_string.as_string();
+            return cx.names.empty_string().as_string();
         }
 
         match code_points_iter.width() {
@@ -589,7 +591,7 @@ impl StringValue {
                     std::slice::from_raw_parts(start_ptr, length as usize)
                 };
 
-                StringValue::new_one_byte(cx, OneByteString::from_slice(slice))
+                StringValue::new_one_byte(cx, OneByteString::from_slice(slice)).to_handle()
             }
             StringWidth::TwoByte => {
                 let slice = unsafe {
@@ -597,7 +599,7 @@ impl StringValue {
                     std::slice::from_raw_parts(start_ptr as *const u16, length as usize)
                 };
 
-                StringValue::new_two_byte(cx, TwoByteString::from_slice(slice))
+                StringValue::new_two_byte(cx, TwoByteString::from_slice(slice)).to_handle()
             }
         }
     }
@@ -610,11 +612,11 @@ impl StringValue {
             }
             StringKind::OneByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
-                StringValue::new_one_byte(cx, OneByteString::from_vec(repeated_buf))
+                StringValue::new_one_byte(cx, OneByteString::from_vec(repeated_buf)).to_handle()
             }
             StringKind::TwoByte(str) => {
                 let repeated_buf = str.as_slice().repeat(n as usize);
-                StringValue::new_two_byte(cx, TwoByteString::from_vec(repeated_buf))
+                StringValue::new_two_byte(cx, TwoByteString::from_vec(repeated_buf)).to_handle()
             }
         }
     }
@@ -654,7 +656,7 @@ impl StringValue {
                     }
                 }
 
-                StringValue::new_one_byte(cx, OneByteString::from_vec(lowercased))
+                StringValue::new_one_byte(cx, OneByteString::from_vec(lowercased)).to_handle()
             }
             StringKind::TwoByte(string) => {
                 // Two byte slow path. Must convert each code point to lowercase one by one, each of
@@ -683,7 +685,7 @@ impl StringValue {
                     }
                 }
 
-                StringValue::new_two_byte(cx, TwoByteString::from_vec(lowercased))
+                StringValue::new_two_byte(cx, TwoByteString::from_vec(lowercased)).to_handle()
             }
         }
     }
@@ -708,7 +710,8 @@ impl StringValue {
                         }
                     }
 
-                    return StringValue::new_one_byte(cx, OneByteString::from_vec(uppercased));
+                    return StringValue::new_one_byte(cx, OneByteString::from_vec(uppercased))
+                        .to_handle();
                 }
 
                 CodePointIterator::from_one_byte(string)
@@ -741,7 +744,7 @@ impl StringValue {
             }
         }
 
-        StringValue::new_two_byte(cx, TwoByteString::from_vec(uppercased))
+        StringValue::new_two_byte(cx, TwoByteString::from_vec(uppercased)).to_handle()
     }
 
     pub fn iter_code_units(&self) -> CodeUnitIterator {
@@ -1013,9 +1016,9 @@ impl DoubleEndedIterator for CodePointIterator {
     }
 }
 
-impl GcDeref for StringValue {}
+impl IsHeapObject for StringValue {}
 
-impl fmt::Display for Gc<StringValue> {
+impl fmt::Display for HeapPtr<StringValue> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let iter = self.iter_code_points();
 
@@ -1028,7 +1031,13 @@ impl fmt::Display for Gc<StringValue> {
     }
 }
 
-impl PartialEq for Gc<StringValue> {
+impl fmt::Display for Handle<StringValue> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.get_().fmt(f)
+    }
+}
+
+impl PartialEq for HeapPtr<StringValue> {
     fn eq(&self, other: &Self) -> bool {
         // Fast path if lengths differ
         if self.len() != other.len() {
@@ -1042,9 +1051,17 @@ impl PartialEq for Gc<StringValue> {
     }
 }
 
-impl Eq for Gc<StringValue> {}
+impl PartialEq for Handle<StringValue> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_().eq(&other.get_())
+    }
+}
 
-impl PartialOrd for Gc<StringValue> {
+impl Eq for HeapPtr<StringValue> {}
+
+impl Eq for Handle<StringValue> {}
+
+impl PartialOrd for HeapPtr<StringValue> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let mut iter1 = self.iter_code_units();
         let mut iter2 = other.iter_code_units();
@@ -1066,9 +1083,21 @@ impl PartialOrd for Gc<StringValue> {
     }
 }
 
-impl hash::Hash for Gc<StringValue> {
+impl hash::Hash for HeapPtr<StringValue> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.clone().hash_code().hash(state)
+    }
+}
+
+impl hash::Hash for Handle<StringValue> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.get_().hash(state)
+    }
+}
+
+impl From<Handle<StringValue>> for Handle<ObjectValue> {
+    fn from(value: Handle<StringValue>) -> Self {
+        value.cast()
     }
 }
 

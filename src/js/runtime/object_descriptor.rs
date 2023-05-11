@@ -8,7 +8,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
-    gc::{GcDeref, Handle, Heap, HeapPtr},
+    gc::{Handle, Heap, HeapPtr, IsHeapObject},
     intrinsics::{
         function_prototype::FunctionPrototype,
         typed_array::{
@@ -34,7 +34,7 @@ pub struct ObjectDescriptor {
     flags: DescFlags,
 }
 
-impl GcDeref for ObjectDescriptor {}
+impl IsHeapObject for ObjectDescriptor {}
 
 /// Type of an object on the heap. May also represent other non-object data stored on the heap,
 /// e.g. descriptors and realms.
@@ -146,7 +146,7 @@ impl ObjectDescriptor {
         set_uninit!(desc.kind, kind);
         set_uninit!(desc.flags, flags);
 
-        desc
+        desc.to_handle()
     }
 
     pub const fn kind(&self) -> ObjectKind {
@@ -177,7 +177,7 @@ impl BaseDescriptors {
         // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
         let mut descriptor = ObjectDescriptor::new::<OrdinaryObject>(
             heap,
-            Handle::uninit(),
+            Handle::<ObjectDescriptor>::uninit(),
             ObjectKind::Descriptor,
             DescFlags::empty(),
         );
@@ -299,7 +299,7 @@ pub struct HeapItem {
     descriptor: HeapPtr<ObjectDescriptor>,
 }
 
-impl GcDeref for HeapItem {}
+impl IsHeapObject for HeapItem {}
 
 impl HeapItem {
     pub fn descriptor(&self) -> HeapPtr<ObjectDescriptor> {

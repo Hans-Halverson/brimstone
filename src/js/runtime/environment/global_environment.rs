@@ -5,13 +5,13 @@ use crate::{
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
         completion::EvalResult,
         error::type_error_,
-        gc::{GcDeref, Handle, HandleValue},
+        gc::{Handle, IsHeapObject},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
-        Context, HeapPtr,
+        Context, HeapPtr, Value,
     },
     set_uninit,
 };
@@ -44,7 +44,7 @@ impl Handle<GlobalEnvironment> {
     }
 }
 
-impl GcDeref for GlobalEnvironment {}
+impl IsHeapObject for GlobalEnvironment {}
 
 impl GlobalEnvironment {
     // 9.1.2.5 NewGlobalEnvironment
@@ -131,7 +131,7 @@ impl Environment for Handle<GlobalEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().initialize_binding(cx, name, value);
@@ -145,7 +145,7 @@ impl Environment for Handle<GlobalEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()> {
         if must!(self.decl_env().has_binding(cx, name)) {
@@ -164,7 +164,7 @@ impl Environment for Handle<GlobalEnvironment> {
         cx: &mut Context,
         name: Handle<StringValue>,
         is_strict: bool,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().get_binding_value(cx, name, is_strict);
         }
@@ -209,7 +209,7 @@ impl Environment for Handle<GlobalEnvironment> {
     }
 
     // 9.1.1.4.11 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
         self.global_this_value().into()
     }
 
@@ -328,7 +328,7 @@ impl Handle<GlobalEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         can_delete: bool,
     ) -> EvalResult<()> {
         let global_object = self.object_env.binding_object();

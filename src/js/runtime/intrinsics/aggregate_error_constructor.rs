@@ -8,7 +8,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::HandleValue,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -17,7 +16,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe, must,
 };
@@ -76,10 +75,10 @@ impl AggregateErrorConstructor {
     // 20.5.7.1.1 AggregateError
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
@@ -125,7 +124,7 @@ impl AggregateErrorConstructor {
 pub fn install_error_cause(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    options: HandleValue,
+    options: Handle<Value>,
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();

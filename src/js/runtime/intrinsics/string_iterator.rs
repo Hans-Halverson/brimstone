@@ -3,7 +3,6 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         error::type_error_,
-        gc::{Gc, HandleValue},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -11,7 +10,7 @@ use crate::{
         property::Property,
         realm::Realm,
         string_value::{CodePointIterator, StringValue},
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -35,7 +34,7 @@ impl StringIterator {
             Intrinsic::StringIteratorPrototype,
         );
 
-        set_uninit!(object.string, string);
+        set_uninit!(object.string, string.get_());
         set_uninit!(object.code_points_iter, string.iter_code_points());
 
         object.to_handle()
@@ -69,10 +68,10 @@ impl StringIteratorPrototype {
     // 22.1.5.1.1 %StringIteratorPrototype%.next
     fn next(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
         match string_iterator.code_points_iter.next() {

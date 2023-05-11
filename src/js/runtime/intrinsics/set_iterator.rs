@@ -1,18 +1,10 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        array_object::create_array_from_list,
-        completion::EvalResult,
-        error::type_error_,
-        gc::{Gc, HandleValue},
-        iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create,
-        property::Property,
-        realm::Realm,
-        value::ValueSetIter,
-        Context, Handle, HeapPtr, Value,
+        array_object::create_array_from_list, completion::EvalResult, error::type_error_,
+        iterator::create_iter_result_object, object_descriptor::ObjectKind,
+        object_value::ObjectValue, ordinary_object::object_create, property::Property,
+        realm::Realm, value::ValueSetIter, Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -82,10 +74,10 @@ impl SetIteratorPrototype {
     // Adapted from the abstract closure in 24.2.5.1 CreateSetIterator
     fn next(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
 
         match set_iterator.iter.next() {

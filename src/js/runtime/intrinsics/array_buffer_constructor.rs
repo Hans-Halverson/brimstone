@@ -5,14 +5,13 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::{Gc, HandleValue},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_index,
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -112,10 +111,10 @@ impl ArrayBufferConstructor {
     // 25.1.3.1 ArrayBuffer
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
@@ -131,10 +130,10 @@ impl ArrayBufferConstructor {
     // 25.1.4.3 get ArrayBuffer [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }

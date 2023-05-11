@@ -8,14 +8,14 @@ use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
     array_properties::ArrayProperties,
     completion::EvalResult,
-    gc::{Gc, Handle, HandleValue, HeapPtr},
+    gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
     property::Property,
     property_descriptor::PropertyDescriptor,
-    property_key::HandlePropertyKey,
-    type_utilities::{same_object_value, same_opt_object_value, same_value},
+    property_key::PropertyKey,
+    type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
     value::{AccessorValue, Value},
     Context,
 };
@@ -63,7 +63,7 @@ impl Handle<ObjectValue> {
         cx: &mut Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if same_opt_object_value(self.prototype(), new_prototype) {
+        if same_opt_object_value(self.prototype(), new_prototype.map(|p| p.get_())) {
             return true.into();
         }
 
@@ -82,7 +82,7 @@ impl Handle<ObjectValue> {
             match current_prototype {
                 None => break,
                 Some(current_proto) => {
-                    if same_object_value(current_proto, *self) {
+                    if same_object_value_handles(current_proto, *self) {
                         return false.into();
                     }
 
@@ -95,7 +95,7 @@ impl Handle<ObjectValue> {
             }
         }
 
-        self.set_prototype(new_prototype);
+        self.set_prototype(new_prototype.map(|p| p.get_()));
 
         return true.into();
     }
@@ -105,24 +105,24 @@ impl VirtualObject for Handle<OrdinaryObject> {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
-        _: &mut Context,
-        key: HandlePropertyKey,
+        cx: &mut Context,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        ordinary_get_own_property(self.object(), key).into()
+        ordinary_get_own_property(cx, self.object(), key).into()
     }
 
     // 10.1.6 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         ordinary_define_own_property(cx, self.object(), key, desc)
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_has_property(cx, self.object(), key)
     }
 
@@ -130,9 +130,9 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        receiver: HandleValue,
-    ) -> EvalResult<HandleValue> {
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
         ordinary_get(cx, self.object(), key, receiver)
     }
 
@@ -140,37 +140,38 @@ impl VirtualObject for Handle<OrdinaryObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
-        receiver: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
     ) -> EvalResult<bool> {
         ordinary_set(cx, self.object(), key, value, receiver)
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_delete(cx, self.object(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
         ordinary_own_property_keys(cx, self.object()).into()
     }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
+    cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> Option<PropertyDescriptor> {
-    match object.get_property(key) {
+    match object.get_property(cx, key) {
         None => None,
         Some(property) => {
             if property.value().is_accessor() {
                 let accessor_value = property.value().as_accessor();
                 Some(PropertyDescriptor::accessor(
-                    accessor_value.get,
-                    accessor_value.set,
+                    accessor_value.get.map(|f| f.to_handle()),
+                    accessor_value.set.map(|f| f.to_handle()),
                     property.is_enumerable(),
                     property.is_configurable(),
                 ))
@@ -190,7 +191,7 @@ pub fn ordinary_get_own_property(
 pub fn ordinary_define_own_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
     let current_desc = maybe!(object.get_own_property(cx, key));
@@ -221,7 +222,7 @@ pub fn is_compatible_property_descriptor(
 pub fn validate_and_apply_property_descriptor(
     cx: &mut Context,
     mut object: Option<Handle<ObjectValue>>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -284,7 +285,7 @@ pub fn validate_and_apply_property_descriptor(
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
-                let mut property = object.get_property(key).unwrap();
+                let mut property = object.get_property(cx, key).unwrap();
                 if desc.is_data_descriptor() {
                     property.set_value(cx.undefined());
                     property.set_is_writable(false);
@@ -304,7 +305,9 @@ pub fn validate_and_apply_property_descriptor(
             }
 
             match desc.value {
-                Some(value) if !same_value(value, current_desc.value.unwrap()) => return false,
+                Some(value) if !same_value(value.get(), current_desc.value.unwrap().get()) => {
+                    return false
+                }
                 _ => {}
             }
 
@@ -313,12 +316,16 @@ pub fn validate_and_apply_property_descriptor(
     } else {
         if !current_desc.is_configurable() {
             match desc.get {
-                Some(get) if !same_object_value(get, current_desc.get.unwrap()) => return false,
+                Some(get) if !same_object_value_handles(get, current_desc.get.unwrap()) => {
+                    return false
+                }
                 _ => {}
             }
 
             match desc.set {
-                Some(set) if !same_object_value(set, current_desc.set.unwrap()) => return false,
+                Some(set) if !same_object_value_handles(set, current_desc.set.unwrap()) => {
+                    return false
+                }
                 _ => {}
             }
 
@@ -330,7 +337,7 @@ pub fn validate_and_apply_property_descriptor(
         Some(object) => {
             // For every field in new descriptor that is present, set the corresponding attribute in
             // the existing descriptor.
-            let mut property = object.get_property(key).unwrap();
+            let mut property = object.get_property(cx, key).unwrap();
 
             if let Some(is_enumerable) = desc.is_enumerable {
                 property.set_is_enumerable(is_enumerable);
@@ -352,11 +359,11 @@ pub fn validate_and_apply_property_descriptor(
                 let mut accessor_value = property.value().as_accessor();
 
                 if let Some(get) = desc.get {
-                    accessor_value.get = Some(get);
+                    accessor_value.get = Some(get.get_());
                 }
 
                 if let Some(set) = desc.set {
-                    accessor_value.set = Some(set);
+                    accessor_value.set = Some(set.get_());
                 }
             }
 
@@ -373,7 +380,7 @@ pub fn validate_and_apply_property_descriptor(
 pub fn ordinary_has_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
     let own_property = maybe!(object.get_own_property(cx, key));
     if own_property.is_some() {
@@ -391,9 +398,9 @@ pub fn ordinary_has_property(
 pub fn ordinary_get(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    receiver: HandleValue,
-) -> EvalResult<HandleValue> {
+    key: Handle<PropertyKey>,
+    receiver: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {
         None => {
@@ -416,9 +423,9 @@ pub fn ordinary_get(
 pub fn ordinary_set(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
-    receiver: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
+    receiver: Handle<Value>,
 ) -> EvalResult<bool> {
     let own_desc = maybe!(object.get_own_property(cx, key));
     let own_desc = match own_desc {
@@ -470,7 +477,7 @@ pub fn ordinary_set(
 pub fn ordinary_delete(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     match desc {
@@ -490,8 +497,8 @@ pub fn ordinary_delete(
 pub fn ordinary_own_property_keys(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-) -> Vec<HandleValue> {
-    let mut keys: Vec<HandleValue> = vec![];
+) -> Vec<Handle<Value>> {
+    let mut keys: Vec<Handle<Value>> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
     ordinary_own_string_symbol_property_keys(object, &mut keys);
@@ -503,7 +510,7 @@ pub fn ordinary_own_property_keys(
 pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    keys: &mut Vec<HandleValue>,
+    keys: &mut Vec<Handle<Value>>,
     filter: F,
 ) {
     // Return array index properties in numerical order
@@ -514,7 +521,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
             if filter(index) {
                 if !value.is_empty() {
                     let index_string = cx.alloc_string(index.to_string());
-                    keys.push(Value::string(index_string));
+                    keys.push(index_string.into());
                 }
             }
         }
@@ -524,7 +531,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
         for index in sparse_properties.ordered_keys() {
             if filter(index as usize) {
                 let index_string = cx.alloc_string(index.to_string());
-                keys.push(Value::string(index_string));
+                keys.push(index_string.into());
             }
         }
     }
@@ -533,19 +540,19 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 #[inline]
 pub fn ordinary_own_string_symbol_property_keys(
     object: Handle<ObjectValue>,
-    keys: &mut Vec<HandleValue>,
+    keys: &mut Vec<Handle<Value>>,
 ) {
     // Safe since we do not allocate on managed heap during iteration
     object.iter_named_property_keys_gc_unsafe(|property_key| {
-        if let Some(string_key) = property_key.as_string_opt() {
-            keys.push(string_key.into());
+        if property_key.is_string() {
+            keys.push(property_key.as_string().to_handle().into());
         }
     });
 
     // Safe since we do not allocate on managed heap during iteration
     object.iter_named_property_keys_gc_unsafe(|property_key| {
-        if let Some(symbol_key) = property_key.as_symbol_opt() {
-            keys.push(symbol_key.into());
+        if property_key.is_symbol() {
+            keys.push(property_key.as_symbol().to_handle().into());
         }
     });
 }
@@ -557,7 +564,7 @@ pub fn ordinary_object_create(cx: &mut Context) -> Handle<ObjectValue> {
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
     object_ordinary_init(cx, object, descriptor, Some(proto));
 
-    object
+    object.to_handle()
 }
 
 pub fn object_create<T>(

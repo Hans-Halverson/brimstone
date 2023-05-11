@@ -20,7 +20,7 @@ use super::{
     },
     environment::environment::{DynEnvironment, HeapDynEnvironment},
     function::{get_argument, Function},
-    gc::{GcDeref, Handle, HandleValue},
+    gc::{Handle, IsHeapObject},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
@@ -30,10 +30,10 @@ use super::{
         ordinary_get_own_property, ordinary_set,
     },
     property_descriptor::PropertyDescriptor,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     string_value::StringValue,
-    type_utilities::same_object_value,
-    Context, EvalResult, Gc, HeapPtr, Value,
+    type_utilities::same_object_value_handles,
+    Context, EvalResult, HeapPtr, Value,
 };
 
 // An unmapped arguments that is identical to an ordinary object, but has an arguments object
@@ -87,9 +87,9 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        let mut desc = ordinary_get_own_property(self.object(), key);
+        let mut desc = ordinary_get_own_property(cx, self.object(), key);
         if let Some(desc) = &mut desc {
             let parameter_map = self.parameter_map();
             if must!(has_own_property(cx, parameter_map, key)) {
@@ -106,7 +106,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let mut parameter_map = self.parameter_map();
@@ -147,9 +147,9 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn get(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        receiver: HandleValue,
-    ) -> EvalResult<HandleValue> {
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
         let parameter_map = self.parameter_map();
         if must!(has_own_property(cx, parameter_map, key)) {
             get(cx, parameter_map, key)
@@ -162,17 +162,18 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn set(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
-        value: HandleValue,
-        receiver: HandleValue,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
     ) -> EvalResult<bool> {
         let parameter_map = self.parameter_map();
-        let is_mapped =
-            if receiver.is_object() && same_object_value(self.object(), receiver.as_object()) {
-                must!(has_own_property(cx, parameter_map, key))
-            } else {
-                false
-            };
+        let is_mapped = if receiver.is_object()
+            && same_object_value_handles(self.object(), receiver.as_object())
+        {
+            must!(has_own_property(cx, parameter_map, key))
+        } else {
+            false
+        };
 
         if is_mapped {
             must!(set(cx, parameter_map, key, value, false));
@@ -182,7 +183,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     }
 
     // 10.4.4.5 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         let mut parameter_map = self.parameter_map();
         let is_mapped = must!(has_own_property(cx, parameter_map, key));
 
@@ -199,8 +200,8 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 // 10.4.4.6 CreateUnmappedArgumentsObject
 pub fn create_unmapped_arguments_object(
     cx: &mut Context,
-    arguments: &[HandleValue],
-) -> HandleValue {
+    arguments: &[Handle<Value>],
+) -> Handle<Value> {
     let object = UnmappedArgumentsObject::new(cx).into();
 
     // Set length property
@@ -237,9 +238,9 @@ pub fn create_mapped_arguments_object(
     cx: &mut Context,
     func: Handle<Function>,
     param_nodes: &[ast::FunctionParam],
-    arguments: &[HandleValue],
+    arguments: &[Handle<Value>],
     env: DynEnvironment,
-) -> HandleValue {
+) -> Handle<Value> {
     let mut parameter_map =
         object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
             .to_handle();
@@ -314,7 +315,7 @@ struct ArgAccessorEnvironment {
     env: HeapDynEnvironment,
 }
 
-impl GcDeref for ArgAccessorEnvironment {}
+impl IsHeapObject for ArgAccessorEnvironment {}
 
 impl ArgAccessorEnvironment {
     fn new(
@@ -347,10 +348,10 @@ impl ArgAccessorEnvironment {
 // 10.4.4.7.1 MakeArgGetter
 fn arg_getter(
     cx: &mut Context,
-    _: HandleValue,
-    _: &[HandleValue],
+    _: Handle<Value>,
+    _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
     let name = closure_environment_ptr.name();
     let env = closure_environment_ptr.env();
@@ -361,10 +362,10 @@ fn arg_getter(
 // 10.4.4.7.2 MakeArgSetter
 fn arg_setter(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
     let name = closure_environment_ptr.name();
     let mut env = closure_environment_ptr.env();

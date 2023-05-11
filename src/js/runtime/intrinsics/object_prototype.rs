@@ -4,7 +4,6 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::HandleValue,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
@@ -12,10 +11,10 @@ use crate::{
         realm::Realm,
         string_value::StringValue,
         type_utilities::{
-            is_array, is_callable, require_object_coercible, same_object_value, to_object,
+            is_array, is_callable, require_object_coercible, same_object_value_handles, to_object,
             to_property_key,
         },
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -33,7 +32,7 @@ impl ObjectPrototype {
     // 20.1.3 Properties of the Object Prototype Object
     pub fn initialize(cx: &mut Context, mut object: Handle<ObjectValue>, realm: Handle<Realm>) {
         let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
-        object_ordinary_init(cx, object.object(), descriptor, None);
+        object_ordinary_init(cx, object.get_(), descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
         object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm);
@@ -66,10 +65,10 @@ impl ObjectPrototype {
     // 20.1.3.2 Object.prototype.hasOwnProperty
     fn has_own_property(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let property_arg = get_argument(cx, arguments, 0);
         let property_key = maybe!(to_property_key(cx, property_arg));
         let this_object = maybe!(to_object(cx, this_value));
@@ -81,10 +80,10 @@ impl ObjectPrototype {
     // 20.1.3.3 Object.prototype.isPrototypeOf
     fn is_prototype_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return cx.bool(false).into();
@@ -98,7 +97,7 @@ impl ObjectPrototype {
             match maybe!(current_value.get_prototype_of(cx)) {
                 None => return cx.bool(false).into(),
                 Some(prototype) => {
-                    if same_object_value(this_object, prototype) {
+                    if same_object_value_handles(this_object, prototype) {
                         return cx.bool(true).into();
                     }
 
@@ -111,10 +110,10 @@ impl ObjectPrototype {
     // 20.1.3.4 Object.prototype.propertyIsEnumerable
     fn property_is_enumerable(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let property_arg = get_argument(cx, arguments, 0);
         let property_key = maybe!(to_property_key(cx, property_arg));
         let this_object = maybe!(to_object(cx, this_value));
@@ -128,20 +127,20 @@ impl ObjectPrototype {
     // 20.1.3.5 Object.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         invoke(cx, this_value, cx.names.to_string(), &[])
     }
 
     // 20.1.3.6 Object.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
             return cx.alloc_string("[object Undefined]".to_owned()).into();
         } else if this_value.is_null() {
@@ -189,20 +188,20 @@ impl ObjectPrototype {
     // 20.1.3.7 Object.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         maybe!(to_object(cx, this_value)).into()
     }
 
     // 20.1.3.8.1 get Object.prototype.__proto__
     fn get_proto(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         match maybe!(object.get_prototype_of(cx)) {
             None => cx.null().into(),
@@ -213,10 +212,10 @@ impl ObjectPrototype {
     // 20.1.3.8.2 set Object.prototype.__proto__
     fn set_proto(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(require_object_coercible(cx, this_value));
 
         let proto = get_argument(cx, arguments, 0);
@@ -242,10 +241,10 @@ impl ObjectPrototype {
     // 20.1.3.9.1 Object.prototype.__defineGetter__
     fn define_getter(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
 
         let getter = get_argument(cx, arguments, 0);
@@ -265,10 +264,10 @@ impl ObjectPrototype {
     // 20.1.3.9.2 Object.prototype.__defineSetter__
     fn define_setter(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
 
         let setter = get_argument(cx, arguments, 0);
@@ -288,10 +287,10 @@ impl ObjectPrototype {
     // 20.1.3.9.3 Object.prototype.__lookupGetter__
     fn lookup_getter(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let key_arg = get_argument(cx, arguments, 0);
         let key = maybe!(to_property_key(cx, key_arg));
@@ -321,10 +320,10 @@ impl ObjectPrototype {
     // 20.1.3.9.4 Object.prototype.__lookupSetter__
     fn lookup_setter(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let key_arg = get_argument(cx, arguments, 0);
         let key = maybe!(to_property_key(cx, key_arg));

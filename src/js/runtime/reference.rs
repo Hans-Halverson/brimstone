@@ -5,19 +5,19 @@ use super::{
     completion::EvalResult,
     environment::{environment::DynEnvironment, private_environment::PrivateName},
     error::{reference_error_, type_error_},
-    gc::{Handle, HandleValue},
+    gc::Handle,
     interned_strings::InternedStrings,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     string_value::StringValue,
     type_utilities::to_object,
-    Context,
+    Context, Value,
 };
 
 // 6.2.4 Reference Record
 pub struct Reference {
     base: ReferenceBase,
     is_strict: bool,
-    this_value: Option<HandleValue>,
+    this_value: Option<Handle<Value>>,
 }
 
 pub enum ReferenceBase {
@@ -25,8 +25,8 @@ pub enum ReferenceBase {
         name: Handle<StringValue>,
     },
     Property {
-        object: HandleValue,
-        property: HandlePropertyKey,
+        object: Handle<Value>,
+        property: Handle<PropertyKey>,
         private_name: Option<PrivateName>,
     },
     Env {
@@ -39,8 +39,8 @@ impl Reference {
     // An empty reference that will never be used
     pub const EMPTY: Reference = Reference {
         base: ReferenceBase::Property {
-            object: HandleValue::uninit(),
-            property: HandlePropertyKey::uninit(),
+            object: Handle::<Value>::uninit(),
+            property: Handle::<PropertyKey>::uninit(),
             private_name: None,
         },
         is_strict: false,
@@ -56,8 +56,8 @@ impl Reference {
     }
 
     pub fn new_property(
-        object: HandleValue,
-        property: HandlePropertyKey,
+        object: Handle<Value>,
+        property: Handle<PropertyKey>,
         is_strict: bool,
     ) -> Reference {
         Reference {
@@ -68,10 +68,10 @@ impl Reference {
     }
 
     pub fn new_property_with_this(
-        object: HandleValue,
-        property: HandlePropertyKey,
+        object: Handle<Value>,
+        property: Handle<PropertyKey>,
         is_strict: bool,
-        this_value: HandleValue,
+        this_value: Handle<Value>,
     ) -> Reference {
         Reference {
             base: ReferenceBase::Property { object, property, private_name: None },
@@ -92,7 +92,7 @@ impl Reference {
         &self.base
     }
 
-    pub fn name_as_property_key(&self, cx: &mut Context) -> HandlePropertyKey {
+    pub fn name_as_property_key(&self, cx: &mut Context) -> Handle<PropertyKey> {
         match self.base {
             ReferenceBase::Unresolvable { name, .. } | ReferenceBase::Env { name, .. } => {
                 PropertyKey::string(cx, name).to_handle(cx)
@@ -120,7 +120,7 @@ impl Reference {
     }
 
     // 6.2.4.5 GetValue
-    pub fn get_value(&self, cx: &mut Context) -> EvalResult<HandleValue> {
+    pub fn get_value(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name))
@@ -137,7 +137,7 @@ impl Reference {
     }
 
     // 6.2.4.6 PutValue
-    pub fn put_value(&mut self, cx: &mut Context, value: HandleValue) -> EvalResult<()> {
+    pub fn put_value(&mut self, cx: &mut Context, value: Handle<Value>) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 if self.is_strict {
@@ -170,7 +170,7 @@ impl Reference {
     }
 
     // 6.2.4.7 GetThisValue
-    pub fn get_this_value(&self) -> HandleValue {
+    pub fn get_this_value(&self) -> Handle<Value> {
         match self.this_value {
             Some(value) => value,
             None => match self.base {
@@ -186,7 +186,7 @@ impl Reference {
     pub fn initialize_referenced_binding(
         &mut self,
         cx: &mut Context,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Env { mut env, name, .. } => env.initialize_binding(cx, name, value),
@@ -199,7 +199,7 @@ impl Reference {
     // 6.2.4.9 MakePrivateReference
     pub fn make_private_reference(
         cx: &mut Context,
-        base_value: HandleValue,
+        base_value: Handle<Value>,
         private_name_str: &str,
     ) -> Reference {
         let private_name = cx

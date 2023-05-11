@@ -9,13 +9,12 @@ use brimstone::{
             error::{syntax_error_, type_error_},
             eval::script::eval_script,
             function::get_argument,
-            gc::HandleValue,
             intrinsics::{
                 array_buffer_constructor::ArrayBufferObject,
                 global_object::set_default_global_bindings, intrinsics::Intrinsic,
             },
             object_value::ObjectValue,
-            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm,
+            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
         },
     },
     must,
@@ -57,10 +56,10 @@ impl Test262Object {
 
     fn create_realm(
         cx: &mut Context,
-        _: HandleValue,
-        _: &[HandleValue],
+        _: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         // Create a new realm
         let mut realm = Realm::new(cx);
         realm.set_global_object(cx, None, None);
@@ -75,10 +74,10 @@ impl Test262Object {
 
     fn eval_script(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let script_text = get_argument(cx, arguments, 0);
         if !script_text.is_string() {
             return type_error_(cx, "expected string");
@@ -115,10 +114,10 @@ impl Test262Object {
 
     fn detach_array_buffer(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
             return cx.undefined().into();

@@ -8,7 +8,7 @@ use super::{
     builtin_names::{BuiltinNames, BuiltinSymbols},
     environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
     execution_context::{ExecutionContext, ScriptOrModule},
-    gc::{HandleValue, Heap},
+    gc::Heap,
     interned_strings::InternedStrings,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::BaseDescriptors,
@@ -169,26 +169,26 @@ impl Context {
     }
 
     #[inline]
-    pub fn undefined(&self) -> HandleValue {
-        self.undefined
+    pub fn undefined(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.undefined)
     }
 
     #[inline]
-    pub fn null(&self) -> HandleValue {
-        self.null
+    pub fn null(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.null)
     }
 
     #[inline]
-    pub fn empty(&self) -> HandleValue {
-        self.empty
+    pub fn empty(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.empty)
     }
 
     #[inline]
-    pub fn bool(&self, value: bool) -> HandleValue {
+    pub fn bool(&self, value: bool) -> Handle<Value> {
         if value {
-            self.true_
+            Handle::<Value>::from_fixed_non_heap_ptr(&self.true_)
         } else {
-            self.false_
+            Handle::<Value>::from_fixed_non_heap_ptr(&self.false_)
         }
     }
 }

@@ -17,6 +17,9 @@ pub struct Heap {
     layout: Layout,
 }
 
+/// Marker trait that denotes an object on the managed heap
+pub trait IsHeapObject {}
+
 /// Default size of the heap, in bytes
 const DEFAULT_HEAP_SIZE: usize = 256 * 1024 * 1024;
 

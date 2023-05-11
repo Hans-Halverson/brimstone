@@ -5,7 +5,6 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::HandleValue,
         get,
         intrinsics::typed_array_prototype::typed_array_create_object,
         iterator::iter_iterator_method_values,
@@ -60,20 +59,20 @@ impl TypedArrayConstructor {
     // 23.2.1.1 %TypedArray%
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        _: &[HandleValue],
+        _: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         type_error_(cx, "TypedArray constructor is abstract and cannot be called")
     }
 
     // 23.2.2.1 %TypedArray%.from
     fn from(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !is_constructor(this_value) {
             return type_error_(cx, "TypedArray.from must be called on constructor");
         }
@@ -171,10 +170,10 @@ impl TypedArrayConstructor {
     // 23.2.2.2 %TypedArray%.of
     fn of(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !is_constructor(this_value) {
             return type_error_(cx, "TypedArray.of must be called on constructor");
         }
@@ -201,10 +200,10 @@ impl TypedArrayConstructor {
     // 23.2.2.4 get %TypedArray% [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }
@@ -268,10 +267,10 @@ macro_rules! create_typed_array_constructor {
             fn get_own_property(
                 &self,
                 cx: &mut Context,
-                key: HandlePropertyKey,
+                key: Handle<PropertyKey>,
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(key) {
-                    None => ordinary_get_own_property(self.object(), key).into(),
+                    None => ordinary_get_own_property(cx, self.object(), key).into(),
                     Some(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
@@ -290,7 +289,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.2 [[HasProperty]]
-            fn has_property(&self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+            fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
@@ -306,7 +305,7 @@ macro_rules! create_typed_array_constructor {
             fn define_own_property(
                 &mut self,
                 cx: &mut Context,
-                key: HandlePropertyKey,
+                key: Handle<PropertyKey>,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
@@ -356,9 +355,9 @@ macro_rules! create_typed_array_constructor {
             fn get(
                 &self,
                 cx: &mut Context,
-                key: HandlePropertyKey,
-                receiver: HandleValue,
-            ) -> EvalResult<HandleValue> {
+                key: Handle<PropertyKey>,
+                receiver: Handle<Value>,
+            ) -> EvalResult<Handle<Value>> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_get(cx, self.object(), key, receiver),
                     Some(index) => {
@@ -379,9 +378,9 @@ macro_rules! create_typed_array_constructor {
             fn set(
                 &mut self,
                 cx: &mut Context,
-                key: HandlePropertyKey,
-                value: HandleValue,
-                receiver: HandleValue,
+                key: Handle<PropertyKey>,
+                value: Handle<Value>,
+                receiver: Handle<Value>,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_set(cx, self.object(), key, value, receiver),
@@ -404,7 +403,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.6 [[Delete]]
-            fn delete(&mut self, cx: &mut Context, key: HandlePropertyKey) -> EvalResult<bool> {
+            fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(key) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
@@ -417,13 +416,13 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 10.4.5.7 [[OwnPropertyKeys]]
-            fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
+            fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
                 let mut keys = vec![];
 
                 if !self.viewed_array_buffer_ptr().is_detached() {
                     for i in 0..self.array_length {
                         let index_string = cx.alloc_string(i.to_string());
-                        keys.push(Value::string(index_string));
+                        keys.push(index_string.into());
                     }
                 }
 
@@ -480,7 +479,7 @@ macro_rules! create_typed_array_constructor {
                 cx: &mut Context,
                 mut array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
-            ) -> Value {
+            ) -> Handle<Value> {
                 let element = unsafe {
                     let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
                     byte_ptr.cast::<$element_type>().read()
@@ -519,10 +518,11 @@ macro_rules! create_typed_array_constructor {
                     ),
                 );
 
+                let element_size_value = Value::smi(element_size!() as i32).to_handle(cx);
                 func.set_property(
                     cx,
                     cx.names.bytes_per_element(),
-                    Property::data(Value::smi(element_size!() as i32), false, false, false),
+                    Property::data(element_size_value, false, false, false),
                 );
 
                 func
@@ -531,10 +531,10 @@ macro_rules! create_typed_array_constructor {
             // 23.2.5.1 TypedArray
             fn construct(
                 cx: &mut Context,
-                _: HandleValue,
-                arguments: &[HandleValue],
+                _: Handle<Value>,
+                arguments: &[Handle<Value>],
                 new_target: Option<Handle<ObjectValue>>,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
@@ -593,7 +593,7 @@ macro_rules! create_typed_array_constructor {
                 cx: &mut Context,
                 new_target: Handle<ObjectValue>,
                 length: usize,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
 
@@ -620,7 +620,7 @@ macro_rules! create_typed_array_constructor {
                 cx: &mut Context,
                 proto: Handle<ObjectValue>,
                 source_typed_array: DynTypedArray,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 let source_data = source_typed_array.viewed_array_buffer();
                 if source_data.is_detached() {
                     return type_error_(cx, "cannot create typed array from detached array buffer");
@@ -678,7 +678,7 @@ macro_rules! create_typed_array_constructor {
                         // Read element from source array
                         let value = source_typed_array.read_element_value(
                             cx,
-                            source_data,
+                            source_data.get_(),
                             source_byte_index,
                         );
 
@@ -713,9 +713,9 @@ macro_rules! create_typed_array_constructor {
                 cx: &mut Context,
                 proto: Handle<ObjectValue>,
                 mut array_buffer: Handle<ArrayBufferObject>,
-                byte_offset: HandleValue,
-                length: HandleValue,
-            ) -> EvalResult<HandleValue> {
+                byte_offset: Handle<Value>,
+                length: Handle<Value>,
+            ) -> EvalResult<Handle<Value>> {
                 let offset = maybe!(to_index(cx, byte_offset));
                 if offset % element_size!() != 0 {
                     return range_error_(
@@ -782,9 +782,9 @@ macro_rules! create_typed_array_constructor {
             fn initialize_typed_array_from_list(
                 cx: &mut Context,
                 proto: Handle<ObjectValue>,
-                iterable: HandleValue,
+                iterable: Handle<Value>,
                 iterator: Handle<ObjectValue>,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 // Collect all values from iterator
                 let mut values = vec![];
                 let completion =
@@ -817,7 +817,7 @@ macro_rules! create_typed_array_constructor {
                 cx: &mut Context,
                 proto: Handle<ObjectValue>,
                 array_like: Handle<ObjectValue>,
-            ) -> EvalResult<HandleValue> {
+            ) -> EvalResult<Handle<Value>> {
                 // Allocated typed array
                 let length = maybe!(length_of_array_like(cx, array_like));
                 let typed_array_object =

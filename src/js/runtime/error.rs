@@ -1,24 +1,23 @@
 use super::{
     completion::{Completion, EvalResult},
-    gc::HandleValue,
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError},
     string_value::StringValue,
-    Context, Handle,
+    Context, Handle, Value,
 };
 
-fn syntax_error_value(cx: &mut Context, message: &str) -> HandleValue {
+fn syntax_error_value(cx: &mut Context, message: &str) -> Handle<Value> {
     SyntaxError::new_with_message(cx, message.to_owned()).into()
 }
 
-fn type_error_value(cx: &mut Context, message: &str) -> HandleValue {
+fn type_error_value(cx: &mut Context, message: &str) -> Handle<Value> {
     TypeError::new_with_message(cx, message.to_owned()).into()
 }
 
-fn reference_error_value(cx: &mut Context, message: &str) -> HandleValue {
+fn reference_error_value(cx: &mut Context, message: &str) -> Handle<Value> {
     ReferenceError::new_with_message(cx, message.to_owned()).into()
 }
 
-fn range_error_value(cx: &mut Context, message: &str) -> HandleValue {
+fn range_error_value(cx: &mut Context, message: &str) -> Handle<Value> {
     RangeError::new_with_message(cx, message.to_owned()).into()
 }
 

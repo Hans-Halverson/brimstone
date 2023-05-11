@@ -1,18 +1,15 @@
-use std::{fmt, hash};
+use std::{
+    fmt, hash,
+    ops::{Deref, DerefMut},
+};
 
 use crate::maybe;
 
 use super::{
-    gc::{Handle, HandleValue},
-    interned_strings::InternedStrings,
-    numeric_constants::MAX_U32_AS_F64,
-    object_descriptor::ObjectKind,
-    string_parsing::parse_string_to_u32,
-    string_value::StringValue,
-    to_string,
-    type_utilities::is_integral_number,
-    value::SymbolValue,
-    Context, EvalResult, Value,
+    gc::Handle, interned_strings::InternedStrings, numeric_constants::MAX_U32_AS_F64,
+    object_descriptor::ObjectKind, string_parsing::parse_string_to_u32, string_value::StringValue,
+    to_string, type_utilities::is_integral_number, value::SymbolValue, Context, EvalResult,
+    HeapPtr, Value,
 };
 
 /// A property key must be either an interned string or a symbol for named properties,
@@ -25,34 +22,9 @@ pub struct PropertyKey {
     value: Value,
 }
 
-/// Preparation for handles refactor. For any property keys that may be held on stack during a GC.
-pub type HandlePropertyKey = PropertyKey;
-
-impl HandlePropertyKey {
-    /// Get the value stored behind the handle.
-    #[inline]
-    pub fn get(&self) -> PropertyKey {
-        *self
-    }
-
-    /// Replace the value stored behind this handle with a new value. Note that all copies of this
-    /// handle will also be changed.
-    #[inline]
-    pub fn replace(&mut self, value: PropertyKey) {
-        *self = value
-    }
-}
-
-impl PropertyKey {
-    #[inline]
-    pub fn to_handle(&self, _: &mut Context) -> HandlePropertyKey {
-        *self
-    }
-}
-
 impl PropertyKey {
     pub const fn uninit() -> PropertyKey {
-        PropertyKey { value: HandleValue::uninit() }
+        PropertyKey { value: Value::empty() }
     }
 
     #[inline]
@@ -70,12 +42,12 @@ impl PropertyKey {
     #[inline]
     pub fn string_not_array_index(cx: &mut Context, value: Handle<StringValue>) -> PropertyKey {
         // Enforce that all string property keys are interned
-        PropertyKey { value: InternedStrings::get(cx, value).into() }
+        PropertyKey { value: InternedStrings::get(cx, value.get_()).into() }
     }
 
     #[inline]
-    pub fn symbol(value: Handle<SymbolValue>) -> PropertyKey {
-        PropertyKey { value: Value::symbol(value) }
+    pub fn symbol(value: Handle<SymbolValue>) -> Handle<PropertyKey> {
+        value.cast()
     }
 
     #[inline]
@@ -102,7 +74,7 @@ impl PropertyKey {
         PropertyKey { value: Value::smi(value as u32 as i32) }
     }
 
-    pub fn from_value(cx: &mut Context, value_handle: HandleValue) -> EvalResult<PropertyKey> {
+    pub fn from_value(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
         let value = value_handle.get();
         if is_integral_number(value) {
             let number = value.as_double();
@@ -112,7 +84,7 @@ impl PropertyKey {
         }
 
         if value.is_symbol() {
-            PropertyKey::symbol(value_handle.as_symbol()).into()
+            PropertyKey::symbol(value_handle.as_symbol()).get().into()
         } else {
             let string_value = maybe!(to_string(cx, value_handle));
             PropertyKey::string(cx, string_value).into()
@@ -136,17 +108,8 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn as_string(&self) -> Handle<StringValue> {
+    pub fn as_string(&self) -> HeapPtr<StringValue> {
         self.value.as_string()
-    }
-
-    #[inline]
-    pub fn as_string_opt(&self) -> Option<Handle<StringValue>> {
-        if self.value.is_string() {
-            Some(self.value.as_string())
-        } else {
-            None
-        }
     }
 
     #[inline]
@@ -155,28 +118,31 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn as_symbol(&self) -> Handle<SymbolValue> {
+    pub fn as_symbol(&self) -> HeapPtr<SymbolValue> {
         self.value.as_symbol()
+    }
+}
+
+impl Handle<PropertyKey> {
+    #[inline]
+    pub fn as_string(&self) -> Handle<StringValue> {
+        self.cast()
     }
 
     #[inline]
-    pub fn as_symbol_opt(&self) -> Option<Handle<SymbolValue>> {
-        if self.value.is_symbol() {
-            Some(self.value.as_symbol())
-        } else {
-            None
-        }
+    pub fn as_symbol(&self) -> Handle<SymbolValue> {
+        self.cast()
     }
 
     /// Convert this property key to a string or symbol value as defined in the spec. All array
     /// index keys will be converted to strings.
     #[inline]
-    pub fn to_value(&self, cx: &mut Context) -> HandleValue {
+    pub fn to_value(&self, cx: &mut Context) -> Handle<Value> {
         if self.value.is_smi() {
             let array_index_string = self.as_array_index().to_string();
             cx.alloc_string(array_index_string).into()
         } else {
-            self.value
+            self.cast()
         }
     }
 }
@@ -213,5 +179,71 @@ impl fmt::Display for PropertyKey {
                 Some(description) => write!(f, "Symbol({})", description),
             }
         }
+    }
+}
+
+impl PartialEq for Handle<PropertyKey> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get().eq(&other.get())
+    }
+}
+
+impl Eq for Handle<PropertyKey> {}
+
+impl hash::Hash for Handle<PropertyKey> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.get().hash(state)
+    }
+}
+
+impl fmt::Display for Handle<PropertyKey> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.get().fmt(f)
+    }
+}
+
+impl Handle<PropertyKey> {
+    /// Get the value stored behind the handle.
+    #[inline]
+    pub fn get(&self) -> PropertyKey {
+        PropertyKey { value: self.cast::<Value>().get() }
+    }
+
+    /// Replace the value stored behind this handle with a new value. Note that all copies of this
+    /// handle will also be changed.
+    #[inline]
+    pub fn replace(&mut self, value: PropertyKey) {
+        unsafe {
+            let handle = std::mem::transmute::<&mut Handle<PropertyKey>, &mut Handle<Value>>(self);
+            handle.replace(value.value);
+        }
+    }
+
+    #[inline]
+    pub fn from_fixed_non_heap_ptr(value_ref: &PropertyKey) -> Handle<PropertyKey> {
+        Handle::new(value_ref.value)
+    }
+}
+
+impl PropertyKey {
+    #[inline]
+    pub fn to_handle(&self, _: &mut Context) -> Handle<PropertyKey> {
+        Handle::new(self.value)
+    }
+}
+
+impl Deref for Handle<PropertyKey> {
+    type Target = PropertyKey;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::mem::transmute::<&Handle<PropertyKey>, &Self::Target>(self) }
+    }
+}
+
+impl DerefMut for Handle<PropertyKey> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::mem::transmute::<&mut Handle<PropertyKey>, &mut Self::Target>(self) }
     }
 }

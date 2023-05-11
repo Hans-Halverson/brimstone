@@ -4,7 +4,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
-        gc::HandleValue,
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
@@ -61,7 +60,7 @@ use crate::{
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     must,
 };
@@ -317,10 +316,10 @@ impl Intrinsics {
 
 fn throw_type_error(
     cx: &mut Context,
-    _: HandleValue,
-    _: &[HandleValue],
+    _: Handle<Value>,
+    _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
@@ -332,7 +331,8 @@ fn create_throw_type_error_intrinsic(
     let throw_type_error_func =
         BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
-    let length_desc = PropertyDescriptor::data(0.into(), false, false, false);
+    let zero_value = Value::smi(0).to_handle(cx);
+    let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
     must!(define_property_or_throw(
         cx,
         throw_type_error_func.into(),

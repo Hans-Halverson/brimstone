@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         completion::EvalResult,
-        gc::{Gc, Handle, HandleValue, HeapPtr},
+        gc::{Handle, HeapPtr},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
@@ -19,12 +19,10 @@ use crate::{
         string_value::StringValue,
         type_utilities::canonical_numeric_index_string,
         value::Value,
-        Context,
+        Context, PropertyKey,
     },
     maybe, set_uninit,
 };
-
-use super::property_key::HandlePropertyKey;
 
 // 10.4.3 String Exotic Objects
 extend_object! {
@@ -50,10 +48,11 @@ impl StringObject {
         let object = object.to_handle();
 
         // String objects have an immutable length property
+        let length_value = Value::from(string_length).to_handle(cx);
         object.object().set_property(
             cx,
             cx.names.length(),
-            Property::data((string_length as f64).into(), false, false, false),
+            Property::data(length_value, false, false, false),
         );
 
         object
@@ -79,10 +78,11 @@ impl StringObject {
         let object = object.to_handle();
 
         // String objects have an immutable length property
+        let length_value = Value::from(string_length).to_handle(cx);
         object.object().set_property(
             cx,
             cx.names.length(),
-            Property::data((string_length as f64).into(), false, false, false),
+            Property::data(length_value, false, false, false),
         );
 
         object.into()
@@ -104,17 +104,18 @@ impl StringObject {
         let object = object.to_handle();
 
         // String objects have an immutable length property
+        let length_value = Value::from(string_length).to_handle(cx);
         object.object().set_property(
             cx,
             cx.names.length(),
-            Property::data((string_length as f64).into(), false, false, false),
+            Property::data(length_value, false, false, false),
         );
 
         object
     }
 
     pub fn string_data(&self) -> Handle<StringValue> {
-        self.string_data
+        self.string_data.to_handle()
     }
 }
 
@@ -123,7 +124,7 @@ impl StringObject {
     fn string_get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> Option<PropertyDescriptor> {
         if key.is_symbol() {
             return None;
@@ -156,9 +157,9 @@ impl VirtualObject for Handle<StringObject> {
     fn get_own_property(
         &self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        let desc = ordinary_get_own_property(self.object(), key);
+        let desc = ordinary_get_own_property(cx, self.object(), key);
         if desc.is_none() {
             self.string_get_own_property(cx, key).into()
         } else {
@@ -170,7 +171,7 @@ impl VirtualObject for Handle<StringObject> {
     fn define_own_property(
         &mut self,
         cx: &mut Context,
-        key: HandlePropertyKey,
+        key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);
@@ -183,13 +184,13 @@ impl VirtualObject for Handle<StringObject> {
     }
 
     // 10.4.3.3 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<HandleValue>> {
-        let mut keys = vec![];
+    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+        let mut keys: Vec<Handle<Value>> = vec![];
 
         let length = self.string_data.len();
         for i in 0..length {
             let index_string = cx.alloc_string(i.to_string());
-            keys.push(Value::string(index_string));
+            keys.push(index_string.into());
         }
 
         ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, &|index| {

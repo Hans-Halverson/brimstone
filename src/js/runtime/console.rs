@@ -1,14 +1,13 @@
 use super::{
     abstract_operations::get,
     completion::EvalResult,
-    gc::HandleValue,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::number_to_string,
     value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-    Context, Handle,
+    Context, Handle, Value,
 };
 
 pub struct ConsoleObject;
@@ -25,10 +24,10 @@ impl ConsoleObject {
 
     fn log(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let formatted = arguments
             .iter()
             .map(|argument| to_console_string(cx, *argument))
@@ -42,7 +41,7 @@ impl ConsoleObject {
 }
 
 /// Format for printing value to console
-pub fn to_console_string(cx: &mut Context, value: HandleValue) -> String {
+pub fn to_console_string(cx: &mut Context, value: Handle<Value>) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
             ObjectKind::String => format!("{}", value.as_string()),
@@ -60,7 +59,7 @@ pub fn to_console_string(cx: &mut Context, value: HandleValue) -> String {
                         EvalResult::Ok(name_value) if name_value.is_string() => {
                             name_value.as_string()
                         }
-                        _ => cx.names.error.as_string(),
+                        _ => cx.names.error().as_string(),
                     };
 
                     match get(cx, object, cx.names.message()) {

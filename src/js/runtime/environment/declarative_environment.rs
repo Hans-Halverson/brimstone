@@ -4,7 +4,7 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         error::{err_not_defined_, err_uninitialized_, type_error_},
-        gc::{GcDeref, Handle, HandleValue, Heap},
+        gc::{Handle, Heap, IsHeapObject},
         object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         string_value::StringValue,
@@ -45,7 +45,7 @@ pub struct DeclarativeEnvironment {
     outer: Option<HeapDynEnvironment>,
 }
 
-impl GcDeref for DeclarativeEnvironment {}
+impl IsHeapObject for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
@@ -56,7 +56,7 @@ impl DeclarativeEnvironment {
         set_uninit!(env.bindings, HashMap::new());
         set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
 
-        env
+        env.to_handle()
     }
 
     pub fn init_as_base(
@@ -80,7 +80,7 @@ impl DeclarativeEnvironment {
         set_uninit!(env.bindings, HashMap::new());
         set_uninit!(env.outer, None);
 
-        env
+        env.to_handle()
     }
 }
 
@@ -119,7 +119,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         &mut self,
         _: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         let binding = self.bindings.get_mut(&name.get_()).unwrap();
         binding.value = value.get();
@@ -132,7 +132,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()> {
         match self.bindings.get_mut(&name.get_()) {
@@ -166,7 +166,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         cx: &mut Context,
         name: Handle<StringValue>,
         _is_strict: bool,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let binding = self.bindings.get(&name.get_()).unwrap();
         if !binding.is_initialized {
             return err_uninitialized_(cx, name);
@@ -203,7 +203,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
         panic!("DeclarativeEnvironment::get_this_binding is never called in spec")
     }
 

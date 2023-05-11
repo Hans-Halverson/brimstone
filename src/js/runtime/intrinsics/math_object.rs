@@ -4,7 +4,6 @@ use crate::{
     js::runtime::{
         completion::EvalResult,
         function::get_argument,
-        gc::HandleValue,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,
@@ -102,10 +101,10 @@ impl MathObject {
     // 21.3.2.1 Math.abs
     fn abs(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
 
@@ -119,10 +118,10 @@ impl MathObject {
     // 21.3.2.2 Math.acos
     fn acos(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::acos(n.as_number())).to_handle(cx).into()
@@ -131,10 +130,10 @@ impl MathObject {
     // 21.3.2.3 Math.acosh
     fn acosh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::acosh(n.as_number()))
@@ -145,10 +144,10 @@ impl MathObject {
     // 21.3.2.4 Math.asin
     fn asin(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::asin(n.as_number())).to_handle(cx).into()
@@ -157,22 +156,24 @@ impl MathObject {
     // 21.3.2.5 Math.asinh
     fn asinh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
-        Value::number(f64::asinh(n.as_number())).into()
+        Value::number(f64::asinh(n.as_number()))
+            .to_handle(cx)
+            .into()
     }
 
     // 21.3.2.6 Math.atan
     fn atan(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::atan(n.as_number())).to_handle(cx).into()
@@ -181,10 +182,10 @@ impl MathObject {
     // 21.3.2.7 Math.atanh
     fn atanh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::atanh(n.as_number()))
@@ -195,10 +196,10 @@ impl MathObject {
     // 21.3.2.8 Math.atan2
     fn atan2(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let y_arg = get_argument(cx, arguments, 0);
         let y = maybe!(to_number(cx, y_arg));
 
@@ -213,10 +214,10 @@ impl MathObject {
     // 21.3.2.9 Math.cbrt
     fn cbrt(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::cbrt(n.as_number())).to_handle(cx).into()
@@ -225,10 +226,10 @@ impl MathObject {
     // 21.3.2.10 Math.ceil
     fn ceil(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
 
@@ -242,10 +243,10 @@ impl MathObject {
     // 21.3.2.11 Math.clz32
     fn clz32(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_uint32(cx, argument));
         Value::smi(n.leading_zeros() as i32).to_handle(cx).into()
@@ -254,10 +255,10 @@ impl MathObject {
     // 21.3.2.12 Math.cos
     fn cos(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::cos(n.as_number())).to_handle(cx).into()
@@ -266,10 +267,10 @@ impl MathObject {
     // 21.3.2.13 Math.cosh
     fn cosh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::cosh(n.as_number())).to_handle(cx).into()
@@ -278,10 +279,10 @@ impl MathObject {
     // 21.3.2.14 Math.exp
     fn exp(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::exp(n.as_number())).to_handle(cx).into()
@@ -290,10 +291,10 @@ impl MathObject {
     // 21.3.2.15 Math.expm1
     fn expm1(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::exp_m1(n.as_number()))
@@ -304,10 +305,10 @@ impl MathObject {
     // 21.3.2.16 Math.floor
     fn floor(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
 
@@ -323,10 +324,10 @@ impl MathObject {
     // 21.3.2.17 Math.fround
     fn fround(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number((n.as_number() as f32) as f64)
@@ -337,10 +338,10 @@ impl MathObject {
     // 21.3.2.18 Math.hypot
     fn hypot(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut sum = Value::smi(0);
         let mut has_infinity: bool = false;
         let mut has_nan: bool = false;
@@ -384,10 +385,10 @@ impl MathObject {
     // 21.3.2.19 Math.imul
     fn imul(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let x_arg = get_argument(cx, arguments, 0);
         let x = maybe!(to_uint32(cx, x_arg));
 
@@ -402,10 +403,10 @@ impl MathObject {
     // 21.3.2.20 Math.log
     fn log(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::ln(n.as_number())).to_handle(cx).into()
@@ -414,10 +415,10 @@ impl MathObject {
     // 21.3.2.21 Math.log1p
     fn log1p(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::ln_1p(n.as_number()))
@@ -428,10 +429,10 @@ impl MathObject {
     // 21.3.2.22 Math.log10
     fn log10(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::log10(n.as_number()))
@@ -442,10 +443,10 @@ impl MathObject {
     // 21.3.2.23 Math.log2
     fn log2(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::log2(n.as_number())).to_handle(cx).into()
@@ -454,10 +455,10 @@ impl MathObject {
     // 21.3.2.24 Math.max
     fn max(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut highest = Value::number(f64::NEG_INFINITY);
         let mut found_nan = false;
 
@@ -488,10 +489,10 @@ impl MathObject {
     // 21.3.2.25 Math.min
     fn min(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut lowest = Value::number(f64::INFINITY);
         let mut found_nan = false;
 
@@ -522,10 +523,10 @@ impl MathObject {
     // 21.3.2.26 Math.pow
     fn pow(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let base_arg = get_argument(cx, arguments, 0);
         let base = maybe!(to_number(cx, base_arg));
 
@@ -540,10 +541,10 @@ impl MathObject {
     // 21.3.2.27 Math.random
     fn random(
         cx: &mut Context,
-        _: HandleValue,
-        _: &[HandleValue],
+        _: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let n = rand::thread_rng().gen::<f64>();
         Value::number(n).to_handle(cx).into()
     }
@@ -551,10 +552,10 @@ impl MathObject {
     // 21.3.2.28 Math.round
     fn round(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
 
@@ -577,10 +578,10 @@ impl MathObject {
     // 21.3.2.29 Math.sign
     fn sign(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument)).get();
 
@@ -611,10 +612,10 @@ impl MathObject {
     // 21.3.2.30 Math.sin
     fn sin(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::sin(n.as_number())).to_handle(cx).into()
@@ -623,10 +624,10 @@ impl MathObject {
     // 21.3.2.31 Math.sinh
     fn sinh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::sinh(n.as_number())).to_handle(cx).into()
@@ -635,10 +636,10 @@ impl MathObject {
     // 21.3.2.32 Math.sqrt
     fn sqrt(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::sqrt(n.as_number())).to_handle(cx).into()
@@ -647,10 +648,10 @@ impl MathObject {
     // 21.3.2.33 Math.tan
     fn tan(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::tan(n.as_number())).to_handle(cx).into()
@@ -659,10 +660,10 @@ impl MathObject {
     // 21.3.2.34 Math.tanh
     fn tanh(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
         Value::number(f64::tanh(n.as_number())).to_handle(cx).into()
@@ -671,10 +672,10 @@ impl MathObject {
     // 21.3.2.35 Math.trunc
     fn trunc(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = maybe!(to_number(cx, argument));
 

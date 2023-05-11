@@ -9,7 +9,7 @@ use crate::{
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
-            gc::{GcDeref, Handle},
+            gc::{Handle, IsHeapObject},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
@@ -29,7 +29,7 @@ pub struct Script {
     script_node: Rc<ast::Program>,
 }
 
-impl GcDeref for Script {}
+impl IsHeapObject for Script {}
 
 impl Script {
     pub fn new(
@@ -43,7 +43,7 @@ impl Script {
         set_uninit!(script.script_node, script_node);
         set_uninit!(script.realm, realm.get_());
 
-        script
+        script.to_handle()
     }
 }
 

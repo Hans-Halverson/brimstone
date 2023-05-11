@@ -29,15 +29,14 @@ use crate::{
                 define_method_property, instantiate_function_object, make_constructor, make_method,
                 ordinary_function_create, set_function_name, Function,
             },
-            gc::HandleValue,
             interned_strings::InternedStrings,
             intrinsics::intrinsics::Intrinsic,
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
             property::Property,
             property_descriptor::PropertyDescriptor,
-            property_key::{HandlePropertyKey, PropertyKey},
-            to_string, Context, Handle,
+            property_key::PropertyKey,
+            to_string, Context, Handle, Value,
         },
     },
     maybe, maybe__, must,
@@ -53,7 +52,7 @@ use super::{
 pub fn function_declaration_instantiation(
     cx: &mut Context,
     func: Handle<Function>,
-    arguments: &[HandleValue],
+    arguments: &[Handle<Value>],
 ) -> Completion {
     let func_node = if let Some(func_node) = func.func_ast_node() {
         func_node
@@ -98,8 +97,6 @@ pub fn function_declaration_instantiation(
             parameter_names.insert(&id.name);
 
             let name_value = id_string_value(cx, id);
-
-            // println!("right before the virtual callsite env is {:?} with value at ptr {:?} and {:?} and {:?}", unsafe { std::mem::transmute::< DynEnvironment, EnvironmentTraitObject>(env) }, env.cast::<ObjectValue>().as_ptr(), &env as * const _ as * const (), unsafe {(&env as *const _ as *const *const ()).read() }  );
 
             let already_declared = must!(env.has_binding(cx, name_value));
             if !already_declared {
@@ -327,7 +324,7 @@ pub fn instantiate_ordinary_function_object(
 pub fn instantiate_ordinary_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<HandlePropertyKey>,
+    name: Option<Handle<PropertyKey>>,
 ) -> Handle<Function> {
     if func_node.is_async || func_node.is_generator {
         unimplemented!("async and generator functions")
@@ -386,7 +383,7 @@ pub fn instantiate_ordinary_function_expression(
 pub fn instantiate_arrow_function_expression(
     cx: &mut Context,
     func_node: &ast::Function,
-    name: Option<HandlePropertyKey>,
+    name: Option<Handle<PropertyKey>>,
 ) -> Handle<Function> {
     let current_context_ptr = cx.current_execution_context_ptr();
     let lexical_env = current_context_ptr.lexical_env();
@@ -432,7 +429,7 @@ pub fn method_definition_evaluation(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
-    property_key: HandlePropertyKey,
+    property_key: Handle<PropertyKey>,
     property_kind: &ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -482,7 +479,7 @@ pub fn private_method_definition_evaluation(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
-    property_name: HandlePropertyKey,
+    property_name: Handle<PropertyKey>,
     method_kind: ast::ClassMethodKind,
 ) -> Property {
     if func_node.is_async || func_node.is_generator {
@@ -524,7 +521,7 @@ pub fn create_dynamic_function(
     cx: &mut Context,
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
-    args: &[HandleValue],
+    args: &[Handle<Value>],
 ) -> EvalResult<Handle<Function>> {
     let new_target = new_target.unwrap_or(constructor);
 

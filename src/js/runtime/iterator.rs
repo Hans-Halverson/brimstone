@@ -10,17 +10,16 @@ use crate::{
 use super::{
     abstract_operations::{call, create_data_property_or_throw},
     error::type_error,
-    gc::HandleValue,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::to_boolean,
-    Completion, CompletionKind, Context, EvalResult, Handle,
+    Completion, CompletionKind, Context, EvalResult, Handle, Value,
 };
 
 // 7.4.1 Iterator Records
 pub struct Iterator {
     pub iterator: Handle<ObjectValue>,
-    pub next_method: HandleValue,
+    pub next_method: Handle<Value>,
     pub is_done: bool,
 }
 
@@ -33,7 +32,7 @@ pub enum IteratorHint {
 // 7.4.2 GetIterator
 pub fn get_iterator(
     cx: &mut Context,
-    object: HandleValue,
+    object: Handle<Value>,
     hint: IteratorHint,
     method: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Iterator> {
@@ -85,7 +84,7 @@ pub fn get_iterator(
 pub fn iterator_next(
     cx: &mut Context,
     iterator: &Iterator,
-    value: Option<HandleValue>,
+    value: Option<Handle<Value>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = if let Some(value) = value {
         maybe!(call(cx, iterator.next_method, iterator.iterator.into(), &[value]))
@@ -103,14 +102,14 @@ pub fn iterator_next(
 // 7.4.4 IteratorComplete
 pub fn iterator_complete(cx: &mut Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = maybe!(get(cx, iter_result, cx.names.done()));
-    to_boolean(is_done).into()
+    to_boolean(is_done.get()).into()
 }
 
 // 7.4.5 IteratorValue
 pub fn iterator_value(
     cx: &mut Context,
     iter_result: Handle<ObjectValue>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     get(cx, iter_result, cx.names.value())
 }
 
@@ -157,22 +156,24 @@ pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Complet
 // 7.4.10 CreateIterResultObject
 pub fn create_iter_result_object(
     cx: &mut Context,
-    value: HandleValue,
+    value: Handle<Value>,
     is_done: bool,
 ) -> Handle<ObjectValue> {
     let object = ordinary_object_create(cx);
 
     must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
-    must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done.into()));
+
+    let is_done_value = cx.bool(is_done);
+    must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
 
     object
 }
 
 // Iterate over an object, executing a callback function against every value returned by the
 // iterator. Return a completion from the callback function to stop and close the iterator.
-pub fn iter_iterator_values<F: FnMut(&mut Context, HandleValue) -> Option<Completion>>(
+pub fn iter_iterator_values<F: FnMut(&mut Context, Handle<Value>) -> Option<Completion>>(
     cx: &mut Context,
-    object: HandleValue,
+    object: Handle<Value>,
     f: &mut F,
 ) -> Completion {
     let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, None));
@@ -194,9 +195,9 @@ pub fn iter_iterator_values<F: FnMut(&mut Context, HandleValue) -> Option<Comple
     }
 }
 
-pub fn iter_iterator_method_values<F: FnMut(&mut Context, HandleValue) -> Option<Completion>>(
+pub fn iter_iterator_method_values<F: FnMut(&mut Context, Handle<Value>) -> Option<Completion>>(
     cx: &mut Context,
-    object: HandleValue,
+    object: Handle<Value>,
     method: Handle<ObjectValue>,
     f: &mut F,
 ) -> Completion {

@@ -4,14 +4,13 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::HandleValue,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -69,10 +68,10 @@ impl ErrorConstructor {
     // 20.5.1.1 Error
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
@@ -103,7 +102,7 @@ impl ErrorConstructor {
 pub fn install_error_cause(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    options: HandleValue,
+    options: Handle<Value>,
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();

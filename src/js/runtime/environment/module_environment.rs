@@ -1,10 +1,10 @@
 use crate::js::runtime::{
     completion::EvalResult,
-    gc::{GcDeref, Handle, HandleValue},
+    gc::{Handle, IsHeapObject},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
-    Context,
+    Context, Value,
 };
 
 use super::{
@@ -17,7 +17,7 @@ pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
 }
 
-impl GcDeref for ModuleEnvironment {}
+impl IsHeapObject for ModuleEnvironment {}
 
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
@@ -50,7 +50,7 @@ impl Environment for Handle<ModuleEnvironment> {
         _cx: &mut Context,
         _name: Handle<StringValue>,
         _is_strict: bool,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         unimplemented!()
     }
 
@@ -65,7 +65,7 @@ impl Environment for Handle<ModuleEnvironment> {
     }
 
     // 9.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<HandleValue> {
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
         cx.undefined().into()
     }
 
@@ -97,7 +97,7 @@ impl Environment for Handle<ModuleEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         self.env().initialize_binding(cx, name, value)
     }
@@ -106,7 +106,7 @@ impl Environment for Handle<ModuleEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()> {
         self.env().set_mutable_binding(cx, name, value, is_strict)
@@ -127,7 +127,7 @@ impl Environment for Handle<ModuleEnvironment> {
 
 impl ModuleEnvironment {
     // 9.1.1.5.5 CreateImportBinding
-    fn _create_import_binding(&self) -> EvalResult<HandleValue> {
+    fn _create_import_binding(&self) -> EvalResult<Handle<Value>> {
         unimplemented!()
     }
 }

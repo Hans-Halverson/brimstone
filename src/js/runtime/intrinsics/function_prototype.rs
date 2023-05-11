@@ -13,17 +13,16 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
-        gc::{Gc, HandleValue},
         get,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init,
         property::Property,
         property_descriptor::PropertyDescriptor,
-        property_key::{HandlePropertyKey, PropertyKey},
+        property_key::PropertyKey,
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity},
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe, must,
 };
@@ -42,7 +41,7 @@ impl FunctionPrototype {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
         let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-        object_ordinary_init(cx, object.object(), descriptor, None);
+        object_ordinary_init(cx, object.into(), descriptor, None);
 
         object.to_handle()
     }
@@ -53,7 +52,7 @@ impl Handle<FunctionPrototype> {
     pub fn initialize(&mut self, cx: &mut Context, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-        object_ordinary_init(cx, self.object(), descriptor_ptr, Some(object_proto_ptr));
+        object_ordinary_init(cx, self.object().get_(), descriptor_ptr, Some(object_proto_ptr));
 
         self.object().intrinsic_name_prop(cx, "");
         self.object().instrinsic_length_prop(cx, 0);
@@ -96,10 +95,10 @@ impl FunctionPrototype {
     // 20.2.3.1 Function.prototype.apply
     fn apply(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error_(cx, "value is not a function");
         }
@@ -118,10 +117,10 @@ impl FunctionPrototype {
     // 20.2.3.2 Function.prototype.bind
     fn bind(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error_(cx, "value is not a function");
         }
@@ -170,10 +169,10 @@ impl FunctionPrototype {
     // 20.2.3.3 Function.prototype.call
     fn call_intrinsic(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error_(cx, "value is not a function");
         }
@@ -189,10 +188,10 @@ impl FunctionPrototype {
     // 20.2.3.6 Function.prototype [ @@hasInstance ]
     fn has_instance(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
         cx.bool(has_instance).into()
@@ -204,9 +203,9 @@ impl VirtualObject for Handle<FunctionPrototype> {
     fn call(
         &self,
         cx: &mut Context,
-        _this_argument: HandleValue,
-        _arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        _this_argument: Handle<Value>,
+        _arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         // 20.2.3 Properties of the Function Prototype Object
         // Accepts any arguments and returns undefined when invoked
         cx.undefined().into()

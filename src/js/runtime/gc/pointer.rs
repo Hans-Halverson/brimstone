@@ -3,25 +3,28 @@ use std::{
     ptr::NonNull,
 };
 
-/// A pointer to a value in the GC heap.
-pub struct Gc<T> {
+use super::IsHeapObject;
+
+/// For direct references to heap pointers, such as references to other heap objects stored within a
+/// heap object. May not be held on stack during a GC (which can occur during any heap allocation).
+pub struct HeapPtr<T> {
     ptr: NonNull<T>,
 }
 
-impl<T> Gc<T> {
+impl<T> HeapPtr<T> {
     #[inline]
     pub const fn as_ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }
 
     #[inline]
-    pub const fn from_ptr(ptr: *mut T) -> Gc<T> {
-        unsafe { Gc { ptr: NonNull::new_unchecked(ptr) } }
+    pub const fn from_ptr(ptr: *mut T) -> HeapPtr<T> {
+        unsafe { HeapPtr { ptr: NonNull::new_unchecked(ptr) } }
     }
 
     #[inline]
-    pub const fn from_ref(reference: &T) -> Gc<T> {
-        Gc::from_ptr(reference as *const T as *mut T)
+    pub const fn from_ref(reference: &T) -> HeapPtr<T> {
+        HeapPtr::from_ptr(reference as *const T as *mut T)
     }
 
     #[inline]
@@ -30,28 +33,25 @@ impl<T> Gc<T> {
     }
 
     #[inline]
-    pub fn cast<U>(&self) -> Gc<U> {
-        Gc::from_ptr(self.as_ptr() as *mut U)
+    pub fn cast<U>(&self) -> HeapPtr<U> {
+        HeapPtr::from_ptr(self.as_ptr() as *mut U)
     }
 
     #[inline]
-    pub const fn uninit() -> Gc<T> {
-        Gc { ptr: NonNull::dangling() }
+    pub const fn uninit() -> HeapPtr<T> {
+        HeapPtr { ptr: NonNull::dangling() }
     }
 }
 
-impl<T> Clone for Gc<T> {
+impl<T> Clone for HeapPtr<T> {
     fn clone(&self) -> Self {
-        Gc { ptr: self.ptr }
+        HeapPtr { ptr: self.ptr }
     }
 }
 
-impl<T> Copy for Gc<T> {}
+impl<T> Copy for HeapPtr<T> {}
 
-/// Marker trait to allow generic autoderef of a particular type.
-pub trait GcDeref {}
-
-impl<T: GcDeref> Deref for Gc<T> {
+impl<T: IsHeapObject> Deref for HeapPtr<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -59,7 +59,7 @@ impl<T: GcDeref> Deref for Gc<T> {
     }
 }
 
-impl<T: GcDeref> DerefMut for Gc<T> {
+impl<T: IsHeapObject> DerefMut for HeapPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
     }

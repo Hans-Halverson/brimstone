@@ -1,6 +1,5 @@
 use crate::js::runtime::{
-    completion::EvalResult, gc::HandleValue, object_value::ObjectValue, realm::Realm, Context,
-    Handle,
+    completion::EvalResult, object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -22,10 +21,10 @@ impl IteratorPrototype {
     // 27.1.2.1 %IteratorPrototype% [ @@iterator ]
     fn iterator(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }

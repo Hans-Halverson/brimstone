@@ -10,15 +10,16 @@ use super::{
     error::type_error_,
     eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
-    gc::{Handle, HandleValue, HeapPtr},
+    gc::{Handle, HeapPtr},
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     realm::Realm,
     type_utilities::{
-        is_callable, is_callable_object, is_constructor, same_object_value, to_length, to_object,
+        is_callable, is_callable_object, is_constructor, same_object_value_handles, to_length,
+        to_object,
     },
-    Context,
+    Context, Value,
 };
 
 // 7.2.5 IsExtensible
@@ -31,17 +32,17 @@ pub fn is_extensible(cx: &mut Context, object: Handle<ObjectValue>) -> EvalResul
 pub fn get(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-) -> EvalResult<HandleValue> {
+    key: Handle<PropertyKey>,
+) -> EvalResult<Handle<Value>> {
     object.get(cx, key, object.into())
 }
 
 // 7.3.3 GetV
 pub fn get_v(
     cx: &mut Context,
-    value: HandleValue,
-    key: HandlePropertyKey,
-) -> EvalResult<HandleValue> {
+    value: Handle<Value>,
+    key: Handle<PropertyKey>,
+) -> EvalResult<Handle<Value>> {
     let object = maybe!(to_object(cx, value));
     object.get(cx, key, value)
 }
@@ -50,8 +51,8 @@ pub fn get_v(
 pub fn set(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
     should_throw: bool,
 ) -> EvalResult<()> {
     let success = maybe!(object.set(cx, key, value, object.into()));
@@ -66,8 +67,8 @@ pub fn set(
 pub fn create_method_property(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
     must!(object.define_own_property(cx, key, new_desc));
@@ -77,8 +78,8 @@ pub fn create_method_property(
 pub fn create_data_property(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
 ) -> EvalResult<bool> {
     let new_desc = PropertyDescriptor::data(value, true, true, true);
     object.define_own_property(cx, key, new_desc)
@@ -88,8 +89,8 @@ pub fn create_data_property(
 pub fn create_data_property_or_throw(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
 ) -> EvalResult<()> {
     let success = maybe!(create_data_property(cx, object, key, value));
     if !success {
@@ -103,8 +104,8 @@ pub fn create_data_property_or_throw(
 pub fn create_non_enumerable_data_property_or_throw(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
-    value: HandleValue,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
 ) {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
     must!(define_property_or_throw(cx, object, key, new_desc));
@@ -114,7 +115,7 @@ pub fn create_non_enumerable_data_property_or_throw(
 pub fn define_property_or_throw(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
     prop_desc: PropertyDescriptor,
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
@@ -129,7 +130,7 @@ pub fn define_property_or_throw(
 pub fn delete_property_or_throw(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
     if !maybe!(object.delete(cx, key)) {
         return type_error_(cx, &format!("cannot delete property {}", key));
@@ -141,8 +142,8 @@ pub fn delete_property_or_throw(
 // 7.3.11 GetMethod
 pub fn get_method(
     cx: &mut Context,
-    value: HandleValue,
-    key: HandlePropertyKey,
+    value: Handle<Value>,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<Option<Handle<ObjectValue>>> {
     let func = maybe!(get_v(cx, value, key));
     if func.is_nullish() {
@@ -160,7 +161,7 @@ pub fn get_method(
 pub fn has_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
     object.has_property(cx, key)
 }
@@ -169,7 +170,7 @@ pub fn has_property(
 pub fn has_own_property(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
     let desc = maybe!(object.get_own_property(cx, key));
     desc.is_some().into()
@@ -178,10 +179,10 @@ pub fn has_own_property(
 // 7.3.14 Call
 pub fn call(
     cx: &mut Context,
-    func: HandleValue,
-    receiver: HandleValue,
-    arguments: &[HandleValue],
-) -> EvalResult<HandleValue> {
+    func: Handle<Value>,
+    receiver: Handle<Value>,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
     if !is_callable(func) {
         return type_error_(cx, "value is not a function");
     }
@@ -192,9 +193,9 @@ pub fn call(
 pub fn call_object(
     cx: &mut Context,
     func: Handle<ObjectValue>,
-    receiver: HandleValue,
-    arguments: &[HandleValue],
-) -> EvalResult<HandleValue> {
+    receiver: Handle<Value>,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
     if !is_callable_object(func) {
         return type_error_(cx, "value is not a function");
     }
@@ -206,7 +207,7 @@ pub fn call_object(
 pub fn construct(
     cx: &mut Context,
     func: Handle<ObjectValue>,
-    arguments: &[HandleValue],
+    arguments: &[Handle<Value>],
     new_target: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);
@@ -308,8 +309,8 @@ pub fn length_of_array_like(cx: &mut Context, object: Handle<ObjectValue>) -> Ev
 // 7.3.20 CreateListFromArrayLike
 pub fn create_list_from_array_like(
     cx: &mut Context,
-    object: HandleValue,
-) -> EvalResult<Vec<HandleValue>> {
+    object: Handle<Value>,
+) -> EvalResult<Vec<Handle<Value>>> {
     if !object.is_object() {
         return type_error_(cx, "value is not an object");
     }
@@ -334,10 +335,10 @@ pub fn create_list_from_array_like(
 // 7.3.21 Invoke
 pub fn invoke(
     cx: &mut Context,
-    value: HandleValue,
-    key: HandlePropertyKey,
-    arguments: &[HandleValue],
-) -> EvalResult<HandleValue> {
+    value: Handle<Value>,
+    key: Handle<PropertyKey>,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
     let func = maybe!(get_v(cx, value, key));
     call(cx, func, value, arguments)
 }
@@ -345,8 +346,8 @@ pub fn invoke(
 // 7.3.22 OrdinaryHasInstance
 pub fn ordinary_has_instance(
     cx: &mut Context,
-    func: HandleValue,
-    object: HandleValue,
+    func: Handle<Value>,
+    object: Handle<Value>,
 ) -> EvalResult<bool> {
     if !is_callable(func) {
         return false.into();
@@ -375,7 +376,7 @@ pub fn ordinary_has_instance(
         match maybe!(current_object.get_prototype_of(cx)) {
             None => return false.into(),
             Some(current_prototype) => {
-                if same_object_value(target_prototype, current_prototype) {
+                if same_object_value_handles(target_prototype, current_prototype) {
                     return true.into();
                 }
 
@@ -426,7 +427,7 @@ pub fn enumerable_own_property_names(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     kind: KeyOrValue,
-) -> EvalResult<Vec<HandleValue>> {
+) -> EvalResult<Vec<Handle<Value>>> {
     let keys = maybe!(object.own_property_keys(cx));
 
     let mut properties = vec![];
@@ -476,8 +477,8 @@ pub fn get_function_realm(
 pub fn copy_data_properties(
     cx: &mut Context,
     target: Handle<ObjectValue>,
-    source: HandleValue,
-    excluded_items: &HashSet<HandlePropertyKey>,
+    source: Handle<Value>,
+    excluded_items: &HashSet<Handle<PropertyKey>>,
 ) -> EvalResult<()> {
     if source.is_nullish() {
         return ().into();
@@ -512,8 +513,8 @@ pub fn private_get(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
     private_name: PrivateName,
-) -> EvalResult<HandleValue> {
-    let property = match object.private_element_find(private_name) {
+) -> EvalResult<Handle<Value>> {
+    let property = match object.private_element_find(cx, private_name) {
         None => return type_error_(cx, "can't access private field or method"),
         Some(property) => property,
     };
@@ -525,7 +526,10 @@ pub fn private_get(
     let accessor = property.value().as_accessor();
     match accessor.get {
         None => return type_error_(cx, "cannot access private field or method"),
-        Some(getter) => call_object(cx, getter, object.into(), &[]),
+        Some(getter) => {
+            let getter_handle = getter.to_handle();
+            call_object(cx, getter_handle, object.into(), &[])
+        }
     }
 }
 
@@ -534,15 +538,15 @@ pub fn private_set(
     cx: &mut Context,
     mut object: Handle<ObjectValue>,
     private_name: PrivateName,
-    value: HandleValue,
+    value: Handle<Value>,
 ) -> EvalResult<()> {
-    let property = match object.private_element_find(private_name) {
+    let property = match object.private_element_find(cx, private_name) {
         None => return type_error_(cx, "cannot set private field or method"),
         Some(entry) => entry,
     };
 
     if property.is_private_field() {
-        object.private_element_set(private_name, value.get());
+        object.private_element_set(private_name, value);
         ().into()
     } else if property.is_private_method() {
         type_error_(cx, "cannot assign to private method")
@@ -552,7 +556,8 @@ pub fn private_set(
         match accessor.set {
             None => type_error_(cx, "cannot set getter-only private property"),
             Some(setter) => {
-                maybe!(call_object(cx, setter, object.into(), &[value]));
+                let setter_handle = setter.to_handle();
+                maybe!(call_object(cx, setter_handle, object.into(), &[value]));
                 ().into()
             }
         }
@@ -588,7 +593,7 @@ pub fn initialize_instance_elements(
     mut object: Handle<ObjectValue>,
     constructor: Handle<Function>,
 ) -> EvalResult<()> {
-    maybe!(constructor.iter_private_methods(|private_name, private_method| {
+    maybe!(constructor.iter_private_methods(cx, |cx, private_name, private_method| {
         object.private_method_or_accessor_add(cx, private_name, private_method)
     }));
 

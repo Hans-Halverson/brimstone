@@ -3,7 +3,6 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::HandleValue,
         object_value::ObjectValue,
         realm::Realm,
         type_utilities::{number_to_string, to_integer_or_infinity},
@@ -47,10 +46,10 @@ impl NumberPrototype {
     // 21.1.3.3 Number.prototype.toFixed
     fn to_fixed(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let number_value = maybe!(this_number_value(cx, this_value));
         let mut number = number_value.as_number();
 
@@ -96,20 +95,20 @@ impl NumberPrototype {
     // 21.1.3.4 Number.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         Self::to_string(cx, this_value, &[], None)
     }
 
     // 21.1.3.6 Number.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let number_value = maybe!(this_number_value(cx, this_value));
 
         let radix = get_argument(cx, arguments, 0);
@@ -152,16 +151,17 @@ impl NumberPrototype {
     // 21.1.3.7 Number.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let number_value = maybe!(this_number_value(cx, this_value));
         number_value.to_handle(cx).into()
     }
 }
 
-fn this_number_value(cx: &mut Context, value: HandleValue) -> EvalResult<Value> {
+fn this_number_value(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Value> {
+    let value = value_handle.get();
     if value.is_number() {
         return value.into();
     }

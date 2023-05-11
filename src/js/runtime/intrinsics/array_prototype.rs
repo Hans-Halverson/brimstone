@@ -8,7 +8,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error_,
         function::get_argument,
-        gc::HandleValue,
         get,
         interned_strings::InternedStrings,
         numeric_constants::MAX_SAFE_INTEGER_U64,
@@ -174,10 +173,10 @@ impl ArrayPrototype {
     // 23.1.3.1 Array.prototype.at
     fn at(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -204,10 +203,10 @@ impl ArrayPrototype {
     // 23.1.3.2 Array.prototype.concat
     fn concat(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let array = maybe!(array_species_create(cx, object, 0));
 
@@ -223,7 +222,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.2.1 IsConcatSpreadable
-    fn is_concat_spreadable(cx: &mut Context, object: HandleValue) -> EvalResult<bool> {
+    fn is_concat_spreadable(cx: &mut Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
             return false.into();
         }
@@ -232,7 +231,7 @@ impl ArrayPrototype {
         let is_spreadable = maybe!(get(cx, object.as_object(), is_concat_spreadable_key));
 
         if !is_spreadable.is_undefined() {
-            return to_boolean(is_spreadable).into();
+            return to_boolean(is_spreadable.get()).into();
         }
 
         is_array(cx, object)
@@ -241,7 +240,7 @@ impl ArrayPrototype {
     #[inline]
     fn apply_concat_to_element(
         cx: &mut Context,
-        element: HandleValue,
+        element: Handle<Value>,
         array: Handle<ObjectValue>,
         n: &mut u64,
     ) -> EvalResult<()> {
@@ -288,10 +287,10 @@ impl ArrayPrototype {
     // 23.1.3.4 Array.prototype.copyWithin
     fn copy_within(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -392,10 +391,10 @@ impl ArrayPrototype {
     // 23.1.3.5 Array.prototype.entries
     fn entries(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).into()
     }
@@ -403,10 +402,10 @@ impl ArrayPrototype {
     // 23.1.3.6 Array.prototype.every
     fn every(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -431,7 +430,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
-                if !to_boolean(test_result) {
+                if !to_boolean(test_result.get()) {
                     return cx.bool(false).into();
                 }
             }
@@ -443,10 +442,10 @@ impl ArrayPrototype {
     // 23.1.3.7 Array.prototype.fill
     fn fill(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -495,10 +494,10 @@ impl ArrayPrototype {
     // 23.1.3.8 Array.prototype.filter
     fn filter(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -528,7 +527,7 @@ impl ArrayPrototype {
 
                 let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
 
-                if to_boolean(is_selected) {
+                if to_boolean(is_selected.get()) {
                     // Reuse index_key handle as it is never referenced again
                     let mut result_index_key = index_key;
 
@@ -546,10 +545,10 @@ impl ArrayPrototype {
     // 23.1.3.9 Array.prototype.find
     fn find(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -574,7 +573,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-                if to_boolean(test_result) {
+                if to_boolean(test_result.get()) {
                     return value.into();
                 }
             }
@@ -586,10 +585,10 @@ impl ArrayPrototype {
     // 23.1.3.10 Array.prototype.findIndex
     fn find_index(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -614,7 +613,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-                if to_boolean(test_result) {
+                if to_boolean(test_result.get()) {
                     return index_value.to_handle(cx).into();
                 }
             }
@@ -626,10 +625,10 @@ impl ArrayPrototype {
     // 23.1.3.11 Array.prototype.flat
     fn flat(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -665,8 +664,8 @@ impl ArrayPrototype {
         source_length: u64,
         start: u64,
         depth: f64,
-        mapper_function: Option<HandleValue>,
-        this_arg: HandleValue,
+        mapper_function: Option<Handle<Value>>,
+        this_arg: Handle<Value>,
     ) -> EvalResult<u64> {
         let mut target_index = start;
 
@@ -730,10 +729,10 @@ impl ArrayPrototype {
     // 23.1.3.12 Array.prototype.flatMap
     fn flat_map(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -763,10 +762,10 @@ impl ArrayPrototype {
     // 23.1.3.13 Array.prototype.forEach
     fn for_each(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -800,10 +799,10 @@ impl ArrayPrototype {
     // 23.1.3.14 Array.prototype.includes
     fn includes(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -834,7 +833,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             let element = maybe!(get(cx, object, key));
 
-            if same_value_zero(search_element, element) {
+            if same_value_zero(search_element.get(), element.get()) {
                 return cx.bool(true).into();
             }
         }
@@ -845,10 +844,10 @@ impl ArrayPrototype {
     // 23.1.3.15 Array.prototype.indexOf
     fn index_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -879,7 +878,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element.get(), element.get()) {
                     return Value::from(i).to_handle(cx).into();
                 }
             }
@@ -891,10 +890,10 @@ impl ArrayPrototype {
     // 23.1.3.16 Array.prototype.join
     fn join(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -930,10 +929,10 @@ impl ArrayPrototype {
     // 23.1.3.17 Array.prototype.keys
     fn keys(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
     }
@@ -941,10 +940,10 @@ impl ArrayPrototype {
     // 23.1.3.18 Array.prototype.lastIndexOf
     fn last_index_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -983,7 +982,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element.get(), element.get()) {
                     return Value::from(i).to_handle(cx).into();
                 }
             }
@@ -995,10 +994,10 @@ impl ArrayPrototype {
     // 23.1.3.19 Array.prototype.map
     fn map(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1035,10 +1034,10 @@ impl ArrayPrototype {
     // 23.1.3.20 Array.prototype.pop
     fn pop(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1063,10 +1062,10 @@ impl ArrayPrototype {
     // 23.1.3.21 Array.prototype.push
     fn push(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1092,10 +1091,10 @@ impl ArrayPrototype {
     // 23.1.3.22 Array.prototype.reduce
     fn reduce(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1153,10 +1152,10 @@ impl ArrayPrototype {
     // 23.1.3.23 Array.prototype.reduceRight
     fn reduce_right(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1213,10 +1212,10 @@ impl ArrayPrototype {
     // 23.1.3.24 Array.prototype.reverse
     fn reverse(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1269,10 +1268,10 @@ impl ArrayPrototype {
     // 23.1.3.25 Array.prototype.shift
     fn shift(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1313,10 +1312,10 @@ impl ArrayPrototype {
     // 23.1.3.26 Array.prototype.slice
     fn slice(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1381,10 +1380,10 @@ impl ArrayPrototype {
     // 23.1.3.27 Array.prototype.some
     fn some(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1409,7 +1408,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
-                if to_boolean(test_result) {
+                if to_boolean(test_result.get()) {
                     return cx.bool(true).into();
                 }
             }
@@ -1421,10 +1420,10 @@ impl ArrayPrototype {
     // 23.1.3.29 Array.prototype.splice
     fn splice(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1525,10 +1524,10 @@ impl ArrayPrototype {
     // 23.1.3.30 Array.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1561,10 +1560,10 @@ impl ArrayPrototype {
     // 23.1.3.31 Array.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let array = maybe!(to_object(cx, this_value));
         let func = maybe!(get(cx, array, cx.names.join()));
 
@@ -1580,10 +1579,10 @@ impl ArrayPrototype {
     // 23.1.3.32 Array.prototype.unshift
     fn unshift(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         let length = maybe!(length_of_array_like(cx, object));
 
@@ -1624,10 +1623,10 @@ impl ArrayPrototype {
     // 23.1.3.33 Array.prototype.values
     fn values(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
     }

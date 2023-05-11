@@ -5,7 +5,6 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::range_error_,
         function::get_argument,
-        gc::HandleValue,
         object_value::ObjectValue,
         ordinary_object::get_prototype_from_constructor,
         property::Property,
@@ -58,10 +57,10 @@ impl ArrayConstructor {
     // 23.1.1.1 Array
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let new_target =
             new_target.unwrap_or_else(|| cx.current_execution_context_ptr().function());
         let proto =
@@ -111,10 +110,10 @@ impl ArrayConstructor {
     // 23.1.2.2 Array.isArray
     fn is_array(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let is_array = maybe!(is_array(cx, argument));
         cx.bool(is_array).into()
@@ -123,10 +122,10 @@ impl ArrayConstructor {
     // 23.1.2.3 Array.of
     fn of(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let length = arguments.len();
         let length_value = Value::from(length).to_handle(cx);
 
@@ -153,10 +152,10 @@ impl ArrayConstructor {
     // 23.1.2.5 get Array [ @@species ]
     fn get_species(
         _: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         this_value.into()
     }
 }

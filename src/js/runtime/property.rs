@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 
 use super::{
-    gc::{Handle, HandleValue},
+    gc::Handle,
     object_value::ObjectValue,
     value::{AccessorValue, Value},
     Context,
@@ -15,7 +15,7 @@ use super::{
 // 6.2.9 PrivateElements are represented as properties, with bitflags noting the private property kind.
 #[derive(Clone)]
 pub struct Property {
-    value: HandleValue,
+    value: Handle<Value>,
     flags: PropertyFlags,
 }
 
@@ -45,7 +45,7 @@ pub const DENSE_ARRAY_PROPERTY_FLAGS: PropertyFlags = PropertyFlags::IS_WRITABLE
 impl Property {
     #[inline]
     pub fn data(
-        value: HandleValue,
+        value: Handle<Value>,
         is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
@@ -69,7 +69,7 @@ impl Property {
 
     #[inline]
     pub fn accessor(
-        accessor_value: HandleValue,
+        accessor_value: Handle<Value>,
         is_enumerable: bool,
         is_configurable: bool,
     ) -> Property {
@@ -86,7 +86,7 @@ impl Property {
         Property { value: accessor_value, flags }
     }
 
-    pub fn private_field(value: HandleValue) -> Property {
+    pub fn private_field(value: Handle<Value>) -> Property {
         Property { value, flags: PropertyFlags::IS_PRIVATE_FIELD }
     }
 
@@ -113,7 +113,7 @@ impl Property {
         }
     }
 
-    pub fn value(&self) -> HandleValue {
+    pub fn value(&self) -> Handle<Value> {
         self.value
     }
 
@@ -145,7 +145,7 @@ impl Property {
         self.flags.contains(DENSE_ARRAY_PROPERTY_FLAGS)
     }
 
-    pub fn set_value(&mut self, value: HandleValue) {
+    pub fn set_value(&mut self, value: Handle<Value>) {
         self.value = value;
     }
 
@@ -190,8 +190,11 @@ impl Property {
         HeapProperty { value: self.value.get(), flags: self.flags }
     }
 
-    pub fn from_heap(heap_property: &HeapProperty) -> Property {
-        Property { value: heap_property.value, flags: heap_property.flags }
+    pub fn from_heap(cx: &mut Context, heap_property: &HeapProperty) -> Property {
+        Property {
+            value: heap_property.value.to_handle(cx),
+            flags: heap_property.flags,
+        }
     }
 }
 

@@ -4,7 +4,6 @@ use crate::{
         array_object::create_array_from_list,
         completion::EvalResult,
         error::type_error_,
-        gc::{Gc, HandleValue},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -83,10 +82,10 @@ impl MapIteratorPrototype {
     // Adapted from the abstract closure in 24.1.5.1 CreateMapIterator
     fn next(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map_iterator = maybe!(MapIterator::cast_from_value(cx, this_value));
 
         match map_iterator.iter.next() {

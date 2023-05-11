@@ -27,14 +27,14 @@ use super::{
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, HeapScriptOrModule, ScriptOrModule},
-    gc::{Gc, HandleValue, HeapPtr},
+    gc::HeapPtr,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{object_create_with_proto, ordinary_object_create},
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
-    property_key::{HandlePropertyKey, PropertyKey},
+    property_key::PropertyKey,
     realm::Realm,
     string_value::StringValue,
     type_utilities::to_object,
@@ -80,7 +80,7 @@ extend_object! {
 // function node, or executing a builtin constructor. Stored on stack.
 pub enum FuncKind {
     Function(AstPtr<ast::Function>),
-    ClassProperty(AstPtr<ast::ClassProperty>, HandlePropertyKey),
+    ClassProperty(AstPtr<ast::ClassProperty>, Handle<PropertyKey>),
     DefaultConstructor,
 }
 
@@ -221,9 +221,9 @@ impl VirtualObject for Handle<Function> {
     fn call(
         &self,
         cx: &mut Context,
-        this_argument: HandleValue,
-        arguments: &[HandleValue],
-    ) -> EvalResult<HandleValue> {
+        this_argument: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         let callee_context = self.prepare_for_ordinary_call(cx, None);
 
         if self.is_class_constructor {
@@ -253,7 +253,7 @@ impl VirtualObject for Handle<Function> {
     fn construct(
         &self,
         cx: &mut Context,
-        arguments: &[HandleValue],
+        arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         // Default constructor is implemented as a special function. Steps follow the default
@@ -406,7 +406,7 @@ impl Handle<Function> {
         &self,
         cx: &mut Context,
         callee_context: Handle<ExecutionContext>,
-        this_argument: HandleValue,
+        this_argument: Handle<Value>,
     ) {
         let this_value = match self.this_mode {
             ThisMode::Lexical => return ().into(),
@@ -434,7 +434,7 @@ impl Handle<Function> {
     fn ordinary_call_evaluate_body(
         &self,
         cx: &mut Context,
-        arguments: &[HandleValue],
+        arguments: &[Handle<Value>],
     ) -> Completion {
         let other_self = *self;
         match &self.func_node {
@@ -485,16 +485,17 @@ impl Handle<Function> {
     }
 
     #[inline]
-    pub fn iter_private_methods<F: FnMut(PrivateName, Property) -> EvalResult<()>>(
+    pub fn iter_private_methods<F: FnMut(&mut Context, PrivateName, Property) -> EvalResult<()>>(
         &self,
+        cx: &mut Context,
         mut f: F,
     ) -> EvalResult<()> {
         // GC safe iteration over private methods
         for i in 0..self.private_methods.len() {
             let (heap_private_name, heap_private_method) = &self.private_methods[i];
             let private_name = heap_private_name.to_handle();
-            let private_method = Property::from_heap(heap_private_method);
-            maybe!(f(private_name, private_method));
+            let private_method = Property::from_heap(cx, heap_private_method);
+            maybe!(f(cx, private_name, private_method));
         }
 
         ().into()
@@ -611,7 +612,7 @@ pub fn make_method(mut func: Handle<Function>, home_object: Handle<ObjectValue>)
 pub fn define_method_property(
     cx: &mut Context,
     home_object: Handle<ObjectValue>,
-    key: HandlePropertyKey,
+    key: Handle<PropertyKey>,
     closure: Handle<Function>,
     is_enumerable: bool,
 ) -> EvalResult<()> {
@@ -628,22 +629,21 @@ pub fn define_method_property(
 pub fn set_function_name(
     cx: &mut Context,
     func: Handle<ObjectValue>,
-    name: HandlePropertyKey,
+    name: Handle<PropertyKey>,
     prefix: Option<&str>,
 ) {
     // Convert name to string value, property formatting symbol name
-    let name_string = match name.as_symbol_opt() {
-        Some(sym) => {
-            if let Some(description) = sym.description() {
-                let left_paren = cx.alloc_string(String::from("["));
-                let right_paren = cx.alloc_string(String::from("]"));
+    let name_string = if name.is_symbol() {
+        if let Some(description) = name.as_symbol().description() {
+            let left_paren = cx.alloc_string(String::from("["));
+            let right_paren = cx.alloc_string(String::from("]"));
 
-                StringValue::concat_all(cx, &[left_paren, description, right_paren])
-            } else {
-                cx.names.empty_string().as_string()
-            }
+            StringValue::concat_all(cx, &[left_paren, description, right_paren])
+        } else {
+            cx.names.empty_string().as_string()
         }
-        None => name.to_value(cx).as_string(),
+    } else {
+        name.to_value(cx).as_string()
     };
 
     // Add prefix to name
@@ -716,7 +716,7 @@ fn expected_argument_count(func_node: &ast::Function) -> i32 {
     count
 }
 
-pub fn get_argument(cx: &mut Context, arguments: &[HandleValue], i: usize) -> HandleValue {
+pub fn get_argument(cx: &mut Context, arguments: &[Handle<Value>], i: usize) -> Handle<Value> {
     if i < arguments.len() {
         arguments[i]
     } else {

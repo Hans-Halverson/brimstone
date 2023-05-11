@@ -4,18 +4,18 @@ use super::{
     abstract_operations::{get, has_property},
     completion::EvalResult,
     error::type_error_,
-    gc::{Handle, HandleValue},
+    gc::Handle,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::{is_callable, to_boolean},
-    Context,
+    Context, Value,
 };
 
 // 6.2.5 Property Descriptor
 // Direct translation of spec. Leaves room for optimization in the future.
 #[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
-    pub value: Option<HandleValue>,
+    pub value: Option<Handle<Value>>,
     pub is_writable: Option<bool>,
     pub is_enumerable: Option<bool>,
     pub is_configurable: Option<bool>,
@@ -25,7 +25,7 @@ pub struct PropertyDescriptor {
 
 impl PropertyDescriptor {
     pub fn data(
-        value: HandleValue,
+        value: Handle<Value>,
         is_writable: bool,
         is_enumerable: bool,
         is_configurable: bool,
@@ -56,7 +56,7 @@ impl PropertyDescriptor {
         }
     }
 
-    pub fn data_value_only(value: HandleValue) -> PropertyDescriptor {
+    pub fn data_value_only(value: Handle<Value>) -> PropertyDescriptor {
         PropertyDescriptor {
             value: Some(value),
             is_writable: None,
@@ -160,11 +160,12 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> H
     }
 
     if let Some(is_writable) = desc.is_writable {
+        let is_writable_value = cx.bool(is_writable);
         must!(create_data_property_or_throw(
             cx,
             object.into(),
             cx.names.writable(),
-            is_writable.into(),
+            is_writable_value,
         ));
     }
 
@@ -177,20 +178,22 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> H
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {
+        let is_enumerable_value = cx.bool(is_enumerable);
         must!(create_data_property_or_throw(
             cx,
             object.into(),
             cx.names.enumerable(),
-            is_enumerable.into(),
+            is_enumerable_value,
         ));
     }
 
     if let Some(is_configurable) = desc.is_configurable {
+        let is_configurable_value = cx.bool(is_configurable);
         must!(create_data_property_or_throw(
             cx,
             object.into(),
             cx.names.configurable(),
-            is_configurable.into(),
+            is_configurable_value,
         ));
     }
 
@@ -200,7 +203,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> H
 // 6.2.5.5 ToPropertyDescriptor
 pub fn to_property_descriptor(
     cx: &mut Context,
-    value: HandleValue,
+    value: Handle<Value>,
 ) -> EvalResult<PropertyDescriptor> {
     if !value.is_object() {
         return type_error_(cx, "property descriptor must be an object");
@@ -219,12 +222,12 @@ pub fn to_property_descriptor(
 
     if maybe!(has_property(cx, object, cx.names.enumerable())) {
         let enumerable = maybe!(get(cx, object, cx.names.enumerable()));
-        desc.is_enumerable = Some(to_boolean(enumerable));
+        desc.is_enumerable = Some(to_boolean(enumerable.get()));
     }
 
     if maybe!(has_property(cx, object, cx.names.configurable())) {
         let configurable = maybe!(get(cx, object, cx.names.configurable()));
-        desc.is_configurable = Some(to_boolean(configurable));
+        desc.is_configurable = Some(to_boolean(configurable.get()));
     }
 
     if maybe!(has_property(cx, object, cx.names.value())) {
@@ -233,7 +236,7 @@ pub fn to_property_descriptor(
 
     if maybe!(has_property(cx, object, cx.names.writable())) {
         let writable = maybe!(get(cx, object, cx.names.writable()));
-        desc.is_writable = Some(to_boolean(writable));
+        desc.is_writable = Some(to_boolean(writable.get()));
     }
 
     if maybe!(has_property(cx, object, cx.names.get())) {

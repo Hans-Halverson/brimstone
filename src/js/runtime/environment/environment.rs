@@ -1,8 +1,8 @@
 use crate::{
     heap_trait_object,
     js::runtime::{
-        completion::EvalResult, gc::HandleValue, object_value::ObjectValue, reference::Reference,
-        string_value::StringValue, Context, Handle,
+        completion::EvalResult, object_value::ObjectValue, reference::Reference,
+        string_value::StringValue, Context, Handle, Value,
     },
     maybe,
 };
@@ -32,13 +32,13 @@ pub trait Environment {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()>;
     fn set_mutable_binding(
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()>;
     fn get_binding_value(
@@ -46,13 +46,13 @@ pub trait Environment {
         cx: &mut Context,
         name: Handle<StringValue>,
         _is_strict: bool,
-    ) -> EvalResult<HandleValue>;
+    ) -> EvalResult<Handle<Value>>;
     fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Option<Handle<ObjectValue>>;
 
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<HandleValue>;
+    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Handle<Value>>;
 
     // Optional reference to the outer (parent) environment. If None this is the global environment.
     // Implements section 8.1 Lexical Environment, but embedded in each environment record.

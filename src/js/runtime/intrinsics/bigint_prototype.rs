@@ -3,13 +3,12 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        gc::HandleValue,
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
         type_utilities::to_integer_or_infinity,
         value::BigIntValue,
-        Context, Handle,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -42,10 +41,10 @@ impl BigIntPrototype {
     // 21.2.3.3 BigInt.prototype.toString
     fn to_string(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let bigint_value = maybe!(this_bigint_value(cx, this_value));
 
         let radix = get_argument(cx, arguments, 0);
@@ -67,15 +66,15 @@ impl BigIntPrototype {
     // 21.2.3.4 BigInt.prototype.valueOf
     fn value_of(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         maybe!(this_bigint_value(cx, this_value)).into()
     }
 }
 
-fn this_bigint_value(cx: &mut Context, value: HandleValue) -> EvalResult<Handle<BigIntValue>> {
+fn this_bigint_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
         return value.as_bigint().into();
     }

@@ -3,14 +3,14 @@ use crate::{
         abstract_operations::{define_property_or_throw, get, has_property, set},
         completion::EvalResult,
         error::err_not_defined_,
-        gc::{GcDeref, Handle, HandleValue},
+        gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::to_boolean,
-        Context, HeapPtr,
+        Context, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -26,7 +26,7 @@ pub struct ObjectEnvironment {
     is_with_environment: bool,
 }
 
-impl GcDeref for ObjectEnvironment {}
+impl IsHeapObject for ObjectEnvironment {}
 
 impl ObjectEnvironment {
     // 9.1.2.3 NewObjectEnvironment
@@ -74,7 +74,7 @@ impl Environment for Handle<ObjectEnvironment> {
             let unscopables = unscopables.as_object();
 
             let value = maybe!(get(cx, unscopables, name_key));
-            let blocked = to_boolean(value);
+            let blocked = to_boolean(value.get());
             if blocked {
                 return false.into();
             }
@@ -110,7 +110,7 @@ impl Environment for Handle<ObjectEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
     ) -> EvalResult<()> {
         self.set_mutable_binding(cx, name, value, false)
     }
@@ -120,7 +120,7 @@ impl Environment for Handle<ObjectEnvironment> {
         &mut self,
         cx: &mut Context,
         name: Handle<StringValue>,
-        value: HandleValue,
+        value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()> {
         let binding_object = self.binding_object();
@@ -140,7 +140,7 @@ impl Environment for Handle<ObjectEnvironment> {
         cx: &mut Context,
         name: Handle<StringValue>,
         is_strict: bool,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let binding_object = self.binding_object();
         let name_key = PropertyKey::string(cx, name).to_handle(cx);
         if !maybe!(has_property(cx, binding_object, name_key)) {
@@ -179,7 +179,7 @@ impl Environment for Handle<ObjectEnvironment> {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<HandleValue> {
+    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
         panic!("ObjectEnvironment::get_this_binding is never called in spec")
     }
 

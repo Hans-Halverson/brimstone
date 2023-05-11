@@ -9,7 +9,7 @@ macro_rules! heap_trait_object {
         #[derive(Clone, Copy)]
         #[repr(C)]
         pub struct $stack_object {
-            pub data: $crate::js::runtime::Handle<()>,
+            pub data: $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue>,
             vtable: *const (),
         }
 
@@ -17,7 +17,7 @@ macro_rules! heap_trait_object {
         #[derive(Clone, Copy)]
         #[repr(C)]
         pub struct $heap_object {
-            data: $crate::js::runtime::HeapPtr<()>,
+            data: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>,
             vtable: *const (),
         }
 
@@ -37,7 +37,7 @@ macro_rules! heap_trait_object {
 
         impl $stack_object {
             pub fn ptr_eq(&self, other: &Self) -> bool {
-                self.data.ptr_eq(&other.data)
+                self.data.get_().ptr_eq(&other.data.get_())
             }
 
             #[inline]

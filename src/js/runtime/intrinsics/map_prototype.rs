@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument, gc::HandleValue,
+        completion::EvalResult, error::type_error_, function::get_argument,
         object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
         value::Value, Context, Handle,
     },
@@ -64,10 +64,10 @@ impl MapPrototype {
     // 24.1.3.1 Map.prototype.clear
     fn clear(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -82,10 +82,10 @@ impl MapPrototype {
     // 24.1.3.3 Map.prototype.delete
     fn delete(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -101,10 +101,10 @@ impl MapPrototype {
     // 24.1.3.4 Map.prototype.entries
     fn entries(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -117,10 +117,10 @@ impl MapPrototype {
     // 24.1.3.5 Map.prototype.forEach
     fn for_each(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -135,9 +135,9 @@ impl MapPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        // Reuse key and value handles during iteration
-        let mut key_handle = HandleValue::uninit();
-        let mut value_handle = HandleValue::uninit();
+        // Share key and value handles during iteration
+        let mut key_handle: Handle<Value> = Handle::uninit();
+        let mut value_handle: Handle<Value> = Handle::uninit();
 
         // GC safe iteration, since ValueMap's data is off the managed heap so this iterator cannot
         // be invalidated by a GC.
@@ -155,10 +155,10 @@ impl MapPrototype {
     // 24.1.3.6 Map.prototype.get
     fn get(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -176,10 +176,10 @@ impl MapPrototype {
     // 24.1.3.7 Map.prototype.has
     fn has(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -194,10 +194,10 @@ impl MapPrototype {
     // 24.1.3.8 Map.prototype.keys
     fn keys(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -210,10 +210,10 @@ impl MapPrototype {
     // 24.1.3.9 Map.prototype.set
     fn set(
         cx: &mut Context,
-        this_value: HandleValue,
-        arguments: &[HandleValue],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -236,10 +236,10 @@ impl MapPrototype {
     // 24.1.3.10 get Map.prototype.size
     fn size(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let mut map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -252,10 +252,10 @@ impl MapPrototype {
     // 24.1.3.11 Map.prototype.values
     fn values(
         cx: &mut Context,
-        this_value: HandleValue,
-        _: &[HandleValue],
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
@@ -266,7 +266,7 @@ impl MapPrototype {
     }
 }
 
-fn this_map_value(value: HandleValue) -> Option<Handle<MapObject>> {
+fn this_map_value(value: Handle<Value>) -> Option<Handle<MapObject>> {
     if !value.is_object() {
         return None;
     }

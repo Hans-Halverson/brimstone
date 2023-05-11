@@ -1,18 +1,10 @@
 use crate::{
     extend_object,
     js::runtime::{
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error_,
-        function::get_argument,
-        gc::{Gc, HandleValue},
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create,
-        realm::Realm,
-        type_utilities::to_string,
-        value::SymbolValue,
-        Context, Handle, HeapPtr, Value,
+        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
+        function::get_argument, object_descriptor::ObjectKind, object_value::ObjectValue,
+        ordinary_object::object_create, realm::Realm, type_utilities::to_string,
+        value::SymbolValue, Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -35,7 +27,7 @@ impl SymbolObject {
         let mut object =
             object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
 
-        set_uninit!(object.symbol_data, symbol_data);
+        set_uninit!(object.symbol_data, symbol_data.get_());
 
         object.to_handle()
     }
@@ -120,10 +112,10 @@ impl SymbolConstructor {
     // 20.4.1.1 Symbol
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         if new_target.is_some() {
             return type_error_(cx, "Symbol is not a constructor");
         }
@@ -141,14 +133,14 @@ impl SymbolConstructor {
     // 20.4.2.2 Symbol.for
     fn for_(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let string_key = maybe!(to_string(cx, argument));
         if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key.get_()) {
-            return (*symbol_value).into();
+            return symbol_value.to_handle().into();
         }
 
         let new_symbol = SymbolValue::new(cx, Some(string_key));
@@ -161,10 +153,10 @@ impl SymbolConstructor {
     // 20.4.2.6 Symbol.keyFor
     fn key_for(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {
             return type_error_(cx, "expected symbol value");

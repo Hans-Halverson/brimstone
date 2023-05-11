@@ -6,14 +6,13 @@ use crate::{
             completion::EvalResult,
             error::range_error_,
             function::get_argument,
-            gc::HandleValue,
             object_value::ObjectValue,
             property::Property,
             realm::Realm,
             string_object::StringObject,
             string_value::StringValue,
             type_utilities::{to_number, to_string, to_uint16},
-            Context, Handle,
+            Context, Handle, Value,
         },
     },
     maybe,
@@ -57,10 +56,10 @@ impl StringConstructor {
     // 22.1.1.1 String
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let string_value = if arguments.is_empty() {
             cx.names.empty_string().as_string().into()
         } else {
@@ -85,10 +84,10 @@ impl StringConstructor {
     // 22.1.2.1 String.fromCharCode
     fn from_char_code(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = maybe!(to_uint16(cx, arguments[0]));
@@ -110,10 +109,10 @@ impl StringConstructor {
     // 22.1.2.2 String.fromCodePoint
     fn from_code_point(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         macro_rules! get_code_point {
             ($arg:expr) => {{
                 let arg = $arg;

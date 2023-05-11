@@ -5,7 +5,6 @@ use crate::{
         console::ConsoleObject,
         eval::eval::perform_eval,
         function::get_argument,
-        gc::HandleValue,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{
@@ -131,10 +130,10 @@ pub fn create_eval(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunc
 // 19.2.1 eval
 fn eval(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let code_arg = get_argument(cx, arguments, 0);
     perform_eval(cx, code_arg, false, false)
 }
@@ -142,10 +141,10 @@ fn eval(
 // 19.2.2 isFinite
 fn is_finite(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = maybe!(to_number(cx, argument));
     cx.bool(!num.is_nan() && !num.is_infinity()).into()
@@ -154,10 +153,10 @@ fn is_finite(
 // 19.2.3 isNaN
 fn is_nan(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = maybe!(to_number(cx, argument));
     cx.bool(num.is_nan()).into()
@@ -166,10 +165,10 @@ fn is_nan(
 // 19.2.4 parseFloat
 fn parse_float(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = maybe!(to_string(cx, input_string_arg));
 
@@ -209,10 +208,10 @@ fn parse_float_with_string_lexer(string: HeapPtr<StringValue>) -> Option<f64> {
 // 19.2.5 parseInt
 fn parse_int(
     cx: &mut Context,
-    _: HandleValue,
-    arguments: &[HandleValue],
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
-) -> EvalResult<HandleValue> {
+) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = maybe!(to_string(cx, input_string_arg));
 

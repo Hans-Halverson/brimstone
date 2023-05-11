@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::{Gc, Handle, HandleValue},
+        gc::Handle,
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
@@ -58,7 +58,7 @@ impl NumberObject {
 
         set_uninit!(object.number_data, number_data);
 
-        object.into()
+        object.to_handle().into()
     }
 
     pub fn new_with_proto(
@@ -161,10 +161,10 @@ impl NumberConstructor {
     // 21.1.1.1 Number
     fn construct(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let number_value = if arguments.is_empty() {
             0.0
         } else {
@@ -190,10 +190,10 @@ impl NumberConstructor {
     // 21.1.2.2 Number.isFinite
     fn is_finite(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
             return cx.bool(false).into();
@@ -205,21 +205,21 @@ impl NumberConstructor {
     // 21.1.2.3 Number.isInteger
     fn is_integer(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        cx.bool(is_integral_number(value)).into()
+        cx.bool(is_integral_number(value.get())).into()
     }
 
     // 21.1.2.4 Number.isNaN
     fn is_nan(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
             return cx.bool(false).into();
@@ -231,12 +231,12 @@ impl NumberConstructor {
     // 21.1.2.5 Number.isSafeInteger
     fn is_safe_integer(
         cx: &mut Context,
-        _: HandleValue,
-        arguments: &[HandleValue],
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<HandleValue> {
+    ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        if !is_integral_number(value) {
+        if !is_integral_number(value.get()) {
             return cx.bool(false).into();
         }
 

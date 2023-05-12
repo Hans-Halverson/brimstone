@@ -159,7 +159,7 @@ impl SetPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         // Share handle across iterations
-        let mut value_handle: Handle<Value> = Handle::uninit();
+        let mut value_handle = Handle::<Value>::empty(cx);
 
         // GC safe iteration, since ValueSet's data is off the managed heap so this iterator cannot
         // be invalidated by a GC.

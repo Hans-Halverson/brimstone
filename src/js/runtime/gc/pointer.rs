@@ -3,7 +3,7 @@ use std::{
     ptr::NonNull,
 };
 
-use super::IsHeapObject;
+use super::{HandleContents, IsHeapObject};
 
 /// For direct references to heap pointers, such as references to other heap objects stored within a
 /// heap object. May not be held on stack during a GC (which can occur during any heap allocation).
@@ -40,6 +40,11 @@ impl<T> HeapPtr<T> {
     #[inline]
     pub const fn uninit() -> HeapPtr<T> {
         HeapPtr { ptr: NonNull::dangling() }
+    }
+
+    #[inline]
+    pub fn to_handle_contents(&self) -> HandleContents {
+        self.ptr.as_ptr() as usize
     }
 }
 

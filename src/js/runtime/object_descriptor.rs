@@ -1,6 +1,9 @@
 use bitflags::bitflags;
 
-use crate::{js::runtime::ordinary_object::OrdinaryObject, set_uninit};
+use crate::{
+    js::runtime::{ordinary_object::OrdinaryObject, Value},
+    set_uninit,
+};
 
 use super::{
     arguments_object::MappedArgumentsObject,
@@ -173,11 +176,15 @@ impl BaseDescriptors {
         descriptors.reserve_exact(ObjectKind::count());
         unsafe { descriptors.set_len(ObjectKind::count()) };
 
+        // Create fake handle which will be read from, in order to initialize descriptor descriptor
+        let value = Value::empty();
+        let fake_descriptor_handle = Handle::<Value>::from_fixed_non_heap_ptr(&value).cast();
+
         // First set up the singleton descriptor descriptor, using an arbitrary vtable
         // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
         let mut descriptor = ObjectDescriptor::new::<OrdinaryObject>(
             heap,
-            Handle::<ObjectDescriptor>::uninit(),
+            fake_descriptor_handle,
             ObjectKind::Descriptor,
             DescFlags::empty(),
         );

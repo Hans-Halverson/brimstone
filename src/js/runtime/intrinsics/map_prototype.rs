@@ -136,8 +136,8 @@ impl MapPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         // Share key and value handles during iteration
-        let mut key_handle: Handle<Value> = Handle::uninit();
-        let mut value_handle: Handle<Value> = Handle::uninit();
+        let mut key_handle = Handle::<Value>::empty(cx);
+        let mut value_handle = Handle::<Value>::empty(cx);
 
         // GC safe iteration, since ValueMap's data is off the managed heap so this iterator cannot
         // be invalidated by a GC.

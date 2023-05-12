@@ -9,7 +9,7 @@ use crate::{
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
-            gc::{Handle, IsHeapObject},
+            gc::{Handle, HandleScope, IsHeapObject},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::StringValue,
@@ -53,37 +53,39 @@ pub fn eval_script(
     program: Rc<ast::Program>,
     realm: Handle<Realm>,
 ) -> Completion {
-    let script = Script::new(cx, program.clone(), realm);
+    HandleScope::enter(cx, |cx| {
+        let script = Script::new(cx, program.clone(), realm);
 
-    let global_env = realm.global_env();
-    let global_env_object = global_env.into_dyn_env();
+        let global_env = realm.global_env();
+        let global_env_object = global_env.into_dyn_env();
 
-    let script_ctx = ExecutionContext::new(
-        cx,
-        /* function */ None,
-        realm,
-        Some(ScriptOrModule::Script(script)),
-        /* lexical_env */ global_env_object,
-        /* variable_env */ global_env_object,
-        /* private_env */ None,
-        program.has_use_strict_directive,
-    );
+        let script_ctx = ExecutionContext::new(
+            cx,
+            /* function */ None,
+            realm,
+            Some(ScriptOrModule::Script(script)),
+            /* lexical_env */ global_env_object,
+            /* variable_env */ global_env_object,
+            /* private_env */ None,
+            program.has_use_strict_directive,
+        );
 
-    cx.push_execution_context(script_ctx);
+        cx.push_execution_context(script_ctx);
 
-    let mut result = global_declaration_instantiation(cx, &program, global_env);
+        let mut result = global_declaration_instantiation(cx, &program, global_env);
 
-    if result.is_normal() {
-        result = eval_toplevel_list(cx, &program.toplevels);
-    }
+        if result.is_normal() {
+            result = eval_toplevel_list(cx, &program.toplevels);
+        }
 
-    if result.is_empty() {
-        result = cx.undefined().into();
-    }
+        if result.is_empty() {
+            result = cx.undefined().into();
+        }
 
-    cx.pop_execution_context();
+        cx.pop_execution_context();
 
-    return result;
+        result
+    })
 }
 
 /// 16.1.7 GlobalDeclarationInstantiation

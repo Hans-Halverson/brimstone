@@ -6,7 +6,7 @@ use super::{
     completion::EvalResult,
     execution_context::ExecutionContext,
     function::{set_function_length, set_function_name},
-    gc::{HeapPtr, IsHeapObject},
+    gc::{HandleScope, HeapPtr, IsHeapObject},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -145,27 +145,29 @@ impl VirtualObject for Handle<BuiltinFunction> {
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
-        let callee_context = ExecutionContext::new(
-            cx,
-            /* function */ Some(self.object()),
-            self.realm(),
-            /* script_or_module */ None,
-            /* lexical_env */ cx.uninit_environment,
-            /* variable_env */ cx.uninit_environment,
-            /* private_env */ None,
-            is_strict_mode,
-        );
+        HandleScope::enter(cx, |cx| {
+            let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
+            let callee_context = ExecutionContext::new(
+                cx,
+                /* function */ Some(self.object()),
+                self.realm(),
+                /* script_or_module */ None,
+                /* lexical_env */ cx.uninit_environment,
+                /* variable_env */ cx.uninit_environment,
+                /* private_env */ None,
+                is_strict_mode,
+            );
 
-        cx.push_closure_environment(self.closure_environment);
-        cx.push_execution_context(callee_context);
+            cx.push_closure_environment(self.closure_environment);
+            cx.push_execution_context(callee_context);
 
-        let result = (self.builtin_func)(cx, this_argument, arguments, None);
+            let result = (self.builtin_func)(cx, this_argument, arguments, None);
 
-        cx.pop_execution_context();
-        cx.pop_closure_environment();
+            cx.pop_execution_context();
+            cx.pop_closure_environment();
 
-        result
+            result
+        })
     }
 
     // 10.3.2 [[Construct]]
@@ -175,27 +177,29 @@ impl VirtualObject for Handle<BuiltinFunction> {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
-        let callee_context = ExecutionContext::new(
-            cx,
-            /* function */ Some(self.object()),
-            self.realm(),
-            /* script_or_module */ None,
-            /* lexical_env */ cx.uninit_environment,
-            /* variable_env */ cx.uninit_environment,
-            /* private_env */ None,
-            is_strict_mode,
-        );
+        HandleScope::enter(cx, |cx| {
+            let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
+            let callee_context = ExecutionContext::new(
+                cx,
+                /* function */ Some(self.object()),
+                self.realm(),
+                /* script_or_module */ None,
+                /* lexical_env */ cx.uninit_environment,
+                /* variable_env */ cx.uninit_environment,
+                /* private_env */ None,
+                is_strict_mode,
+            );
 
-        cx.push_closure_environment(self.closure_environment);
-        cx.push_execution_context(callee_context);
+            cx.push_closure_environment(self.closure_environment);
+            cx.push_execution_context(callee_context);
 
-        let result = (self.builtin_func)(cx, cx.undefined(), arguments, Some(new_target));
+            let result = (self.builtin_func)(cx, cx.undefined(), arguments, Some(new_target));
 
-        cx.pop_execution_context();
-        cx.pop_closure_environment();
+            cx.pop_execution_context();
+            cx.pop_closure_environment();
 
-        maybe!(result).as_object().into()
+            maybe!(result).as_object().into()
+        })
     }
 
     fn is_callable(&self) -> bool {

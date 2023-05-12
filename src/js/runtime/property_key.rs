@@ -1,7 +1,4 @@
-use std::{
-    fmt, hash,
-    ops::{Deref, DerefMut},
-};
+use std::{fmt, hash};
 
 use crate::maybe;
 
@@ -221,29 +218,13 @@ impl Handle<PropertyKey> {
 
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &PropertyKey) -> Handle<PropertyKey> {
-        Handle::new(value_ref.value)
+        Handle::<Value>::from_fixed_non_heap_ptr(&value_ref.value).cast()
     }
 }
 
 impl PropertyKey {
     #[inline]
-    pub fn to_handle(&self, _: &mut Context) -> Handle<PropertyKey> {
-        Handle::new(self.value)
-    }
-}
-
-impl Deref for Handle<PropertyKey> {
-    type Target = PropertyKey;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { std::mem::transmute::<&Handle<PropertyKey>, &Self::Target>(self) }
-    }
-}
-
-impl DerefMut for Handle<PropertyKey> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::mem::transmute::<&mut Handle<PropertyKey>, &mut Self::Target>(self) }
+    pub fn to_handle(&self, cx: &mut Context) -> Handle<PropertyKey> {
+        self.value.to_handle(cx).cast()
     }
 }

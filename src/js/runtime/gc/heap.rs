@@ -5,7 +5,7 @@ use std::{
 
 use crate::js::runtime::Context;
 
-use super::HeapPtr;
+use super::{handle::HandleContext, HeapPtr};
 
 pub struct Heap {
     /// Pointer to the start of the heap
@@ -38,7 +38,7 @@ impl Heap {
             let current = start.add(size_of::<HeapInfo>());
             let end = start.add(DEFAULT_HEAP_SIZE);
 
-            HeapInfo::init(HeapInfo::from_raw_heap_ptr(start));
+            HeapInfo::from_raw_heap_ptr(start).init();
 
             Heap { start, current, end, layout }
         }
@@ -86,10 +86,13 @@ impl Drop for Heap {
 pub struct HeapInfo {
     /// Reference to the context that holds this heap.
     context: *mut Context,
+    handle_context: HandleContext,
 }
 
 impl HeapInfo {
-    pub fn init(&mut self) {}
+    pub fn init(&mut self) {
+        self.handle_context.init();
+    }
 
     pub fn set_context(&mut self, cx: &mut Context) {
         self.context = cx as *mut Context;
@@ -110,5 +113,9 @@ impl HeapInfo {
 
     pub fn cx(&self) -> &mut Context {
         unsafe { &mut *self.context }
+    }
+
+    pub fn handle_context(&mut self) -> &mut HandleContext {
+        &mut self.handle_context
     }
 }

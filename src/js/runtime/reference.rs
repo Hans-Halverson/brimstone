@@ -39,8 +39,8 @@ impl Reference {
     // An empty reference that will never be used
     pub const EMPTY: Reference = Reference {
         base: ReferenceBase::Property {
-            object: Handle::<Value>::uninit(),
-            property: Handle::<PropertyKey>::uninit(),
+            object: Handle::<Value>::dangling(),
+            property: Handle::<PropertyKey>::dangling(),
             private_name: None,
         },
         is_strict: false,

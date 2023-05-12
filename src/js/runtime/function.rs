@@ -27,7 +27,7 @@ use super::{
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, HeapScriptOrModule, ScriptOrModule},
-    gc::HeapPtr,
+    gc::{HandleScope, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -224,29 +224,31 @@ impl VirtualObject for Handle<Function> {
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let callee_context = self.prepare_for_ordinary_call(cx, None);
+        HandleScope::enter(cx, |cx| {
+            let callee_context = self.prepare_for_ordinary_call(cx, None);
 
-        if self.is_class_constructor {
-            // Ensure that error is created in callee's execution context
-            let error = type_error_(cx, &format!("Cannot call class constructor"));
+            if self.is_class_constructor {
+                // Ensure that error is created in callee's execution context
+                let error = type_error_(cx, &format!("Cannot call class constructor"));
+                cx.pop_execution_context();
+
+                return error;
+            }
+
+            self.ordinary_call_bind_this(cx, callee_context, this_argument);
+            let result = self.ordinary_call_evaluate_body(cx, &arguments);
+
             cx.pop_execution_context();
 
-            return error;
-        }
-
-        self.ordinary_call_bind_this(cx, callee_context, this_argument);
-        let result = self.ordinary_call_evaluate_body(cx, &arguments);
-
-        cx.pop_execution_context();
-
-        match result.kind() {
-            CompletionKind::Return => result.value().into(),
-            CompletionKind::Normal => cx.undefined().into(),
-            CompletionKind::Throw => EvalResult::Throw(result.value().into()),
-            CompletionKind::Break | CompletionKind::Continue => {
-                panic!("Call completion cannot be Break or Continue")
+            match result.kind() {
+                CompletionKind::Return => result.value().into(),
+                CompletionKind::Normal => cx.undefined().into(),
+                CompletionKind::Throw => EvalResult::Throw(result.value().into()),
+                CompletionKind::Break | CompletionKind::Continue => {
+                    panic!("Call completion cannot be Break or Continue")
+                }
             }
-        }
+        })
     }
 
     // 10.2.2 [[Construct]]
@@ -256,112 +258,114 @@ impl VirtualObject for Handle<Function> {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        // Default constructor is implemented as a special function. Steps follow the default
-        // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
-        if self.is_default_constructor() {
-            let new_object = if self.constructor_kind == ConstructorKind::Derived {
-                let func = must!(self.object().get_prototype_of(cx));
-                match func {
-                    Some(func) if func.is_constructor() => {
-                        maybe!(construct(cx, func, arguments, Some(new_target)))
-                    }
-                    _ => return type_error_(cx, "super class must be a constructor"),
-                }
-            } else {
-                maybe!(object_create_from_constructor::<ObjectValue>(
-                    cx,
-                    new_target,
-                    ObjectKind::OrdinaryObject,
-                    Intrinsic::ObjectPrototype
-                ))
-                .to_handle()
-                .into()
-            };
-
-            maybe!(initialize_instance_elements(cx, new_object, *self));
-
-            return new_object.into();
-        }
-
-        let this_argument: Option<Handle<ObjectValue>> =
-            if self.constructor_kind == ConstructorKind::Base {
-                let object = maybe!(object_create_from_constructor::<ObjectValue>(
-                    cx,
-                    new_target,
-                    ObjectKind::OrdinaryObject,
-                    Intrinsic::ObjectPrototype
-                ))
-                .to_handle();
-
-                if self.is_default_constructor() {
-                    maybe!(initialize_instance_elements(cx, object, *self));
-                    None
-                } else {
-                    Some(object)
-                }
-            } else {
-                if self.is_default_constructor() {
+        HandleScope::enter(cx, |cx| {
+            // Default constructor is implemented as a special function. Steps follow the default
+            // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
+            if self.is_default_constructor() {
+                let new_object = if self.constructor_kind == ConstructorKind::Derived {
                     let func = must!(self.object().get_prototype_of(cx));
-                    let object = match func {
+                    match func {
                         Some(func) if func.is_constructor() => {
                             maybe!(construct(cx, func, arguments, Some(new_target)))
                         }
                         _ => return type_error_(cx, "super class must be a constructor"),
-                    };
-
-                    maybe!(initialize_instance_elements(cx, object, *self));
-                }
-
-                None
-            };
-
-        let callee_context = self.prepare_for_ordinary_call(cx, Some(new_target));
-        match this_argument {
-            Some(this_argument) => {
-                self.ordinary_call_bind_this(cx, callee_context, this_argument.into());
-                let initialize_result = initialize_instance_elements(cx, this_argument, *self);
-
-                if let EvalResult::Throw(thrown_value) = initialize_result {
-                    cx.pop_execution_context();
-                    return EvalResult::Throw(thrown_value);
-                }
-            }
-            None => {}
-        }
-
-        let constructor_env = callee_context.lexical_env();
-        let result = self.ordinary_call_evaluate_body(cx, &arguments);
-
-        cx.pop_execution_context();
-
-        match result.kind() {
-            CompletionKind::Return => {
-                let value = result.value();
-                if value.is_object() {
-                    return value.as_object().into();
-                }
-
-                match this_argument {
-                    Some(this_argument) => return this_argument.into(),
-                    None => {}
-                }
-
-                if !value.is_undefined() {
-                    return type_error_(
+                    }
+                } else {
+                    maybe!(object_create_from_constructor::<ObjectValue>(
                         cx,
-                        &format!("Constructor must return object or undefined"),
-                    );
+                        new_target,
+                        ObjectKind::OrdinaryObject,
+                        Intrinsic::ObjectPrototype
+                    ))
+                    .to_handle()
+                    .into()
+                };
+
+                maybe!(initialize_instance_elements(cx, new_object, *self));
+
+                return new_object.into();
+            }
+
+            let this_argument: Option<Handle<ObjectValue>> =
+                if self.constructor_kind == ConstructorKind::Base {
+                    let object = maybe!(object_create_from_constructor::<ObjectValue>(
+                        cx,
+                        new_target,
+                        ObjectKind::OrdinaryObject,
+                        Intrinsic::ObjectPrototype
+                    ))
+                    .to_handle();
+
+                    if self.is_default_constructor() {
+                        maybe!(initialize_instance_elements(cx, object, *self));
+                        None
+                    } else {
+                        Some(object)
+                    }
+                } else {
+                    if self.is_default_constructor() {
+                        let func = must!(self.object().get_prototype_of(cx));
+                        let object = match func {
+                            Some(func) if func.is_constructor() => {
+                                maybe!(construct(cx, func, arguments, Some(new_target)))
+                            }
+                            _ => return type_error_(cx, "super class must be a constructor"),
+                        };
+
+                        maybe!(initialize_instance_elements(cx, object, *self));
+                    }
+
+                    None
+                };
+
+            let callee_context = self.prepare_for_ordinary_call(cx, Some(new_target));
+            match this_argument {
+                Some(this_argument) => {
+                    self.ordinary_call_bind_this(cx, callee_context, this_argument.into());
+                    let initialize_result = initialize_instance_elements(cx, this_argument, *self);
+
+                    if let EvalResult::Throw(thrown_value) = initialize_result {
+                        cx.pop_execution_context();
+                        return EvalResult::Throw(thrown_value);
+                    }
+                }
+                None => {}
+            }
+
+            let constructor_env = callee_context.lexical_env();
+            let result = self.ordinary_call_evaluate_body(cx, &arguments);
+
+            cx.pop_execution_context();
+
+            match result.kind() {
+                CompletionKind::Return => {
+                    let value = result.value();
+                    if value.is_object() {
+                        return value.as_object().into();
+                    }
+
+                    match this_argument {
+                        Some(this_argument) => return this_argument.into(),
+                        None => {}
+                    }
+
+                    if !value.is_undefined() {
+                        return type_error_(
+                            cx,
+                            &format!("Constructor must return object or undefined"),
+                        );
+                    }
+                }
+                CompletionKind::Normal => {}
+                CompletionKind::Throw => return EvalResult::Throw(result.value()),
+                CompletionKind::Break | CompletionKind::Continue => {
+                    panic!("Construct completion cannot be Break or Continue")
                 }
             }
-            CompletionKind::Normal => {}
-            CompletionKind::Throw => return EvalResult::Throw(result.value()),
-            CompletionKind::Break | CompletionKind::Continue => {
-                panic!("Construct completion cannot be Break or Continue")
-            }
-        }
 
-        let this_binding = maybe!(constructor_env.get_this_binding(cx));
-        this_binding.as_object().into()
+            let this_binding = maybe!(constructor_env.get_this_binding(cx));
+            this_binding.as_object().into()
+        })
     }
 
     fn is_callable(&self) -> bool {

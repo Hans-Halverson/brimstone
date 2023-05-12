@@ -1,6 +1,7 @@
 use crate::js::parser::ast::LabelId;
 
 use super::{
+    gc::Escapable,
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue, Value},
@@ -175,6 +176,24 @@ impl<T: Into<Completion>> From<EvalResult<T>> for Completion {
         match value {
             EvalResult::Ok(value) => value.into(),
             EvalResult::Throw(value) => Completion::throw(value),
+        }
+    }
+}
+
+impl Escapable for Completion {
+    #[inline]
+    fn escape(&self, cx: &mut Context) -> Self {
+        let value = self.value().to_handle(cx);
+        Completion { kind: self.kind(), label: self.label(), value }
+    }
+}
+
+impl<T: Escapable> Escapable for EvalResult<T> {
+    #[inline]
+    fn escape(&self, cx: &mut Context) -> Self {
+        match self {
+            EvalResult::Ok(ok) => EvalResult::Ok(ok.escape(cx)),
+            EvalResult::Throw(thrown) => EvalResult::Throw(thrown.escape(cx)),
         }
     }
 }

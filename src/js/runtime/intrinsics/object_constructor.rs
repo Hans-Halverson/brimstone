@@ -230,11 +230,8 @@ impl ObjectConstructor {
 
         let mut descriptors = vec![];
 
-        // Shared between iterations
-        let mut key = PropertyKey::uninit().to_handle(cx);
-
         for key_value in keys {
-            key.replace(must!(PropertyKey::from_value(cx, key_value)));
+            let key = must!(PropertyKey::from_value(cx, key_value)).to_handle(cx);
             let prop_desc = maybe!(properties.get_own_property(cx, key));
             if let Some(prop_desc) = prop_desc {
                 if let Some(true) = prop_desc.is_enumerable {

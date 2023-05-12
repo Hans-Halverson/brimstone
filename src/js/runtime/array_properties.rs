@@ -162,7 +162,7 @@ impl ArrayProperties {
         let mut sparse_properties = SparseArrayProperties::new(cx, dense_properties.length);
 
         // Share handle across iterations
-        let mut value_handle = Handle::<Value>::uninit();
+        let mut value_handle = Handle::<Value>::empty(cx);
 
         // Can reference internal pointer to map since loop does not allocate on managed heap
         let sparse_map = &mut sparse_properties.sparse_map;

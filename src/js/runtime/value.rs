@@ -8,7 +8,7 @@ use crate::set_uninit;
 
 use super::{
     context::Context,
-    gc::{Handle, HeapPtr, IsHeapObject},
+    gc::{Handle, HandleContents, HeapPtr, IsHeapObject},
     object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -414,6 +414,11 @@ impl Value {
     #[inline]
     pub const fn uninit() -> Value {
         Value::empty()
+    }
+
+    #[inline]
+    pub const fn to_handle_contents(&self) -> HandleContents {
+        self.as_raw_bits() as usize
     }
 }
 

@@ -4,6 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         error::type_error_,
+        gc::HandleScope,
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
@@ -176,7 +177,10 @@ impl Intrinsics {
 
         macro_rules! register_intrinsic {
             ($intrinsic_name:ident, $struct_name:ident) => {
-                register_existing_intrinsic!($intrinsic_name, $struct_name::new(cx, realm))
+                // Each intrinsic may use many handles during initialization
+                let intrinsic_object = HandleScope::new(cx, |cx| $struct_name::new(cx, realm));
+
+                register_existing_intrinsic!($intrinsic_name, intrinsic_object)
             };
         }
 

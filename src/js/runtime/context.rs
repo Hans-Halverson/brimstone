@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::js::parser::ast;
+use crate::js::{parser::ast, runtime::gc::HandleScope};
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
@@ -60,6 +60,10 @@ pub struct Context {
 impl Context {
     pub fn new() -> Context {
         let mut heap = Heap::new();
+
+        // Context does not yet exist, so handle scope must directly reference heap
+        let handle_scope = HandleScope::enter_with_heap(&mut heap);
+
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
@@ -91,6 +95,9 @@ impl Context {
         cx.init_builtin_names();
         cx.init_builtin_symbols();
         cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
+
+        // Clean up handles from Context creation
+        handle_scope.exit();
 
         cx
     }

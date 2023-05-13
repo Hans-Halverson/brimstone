@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    js::parser::ast::{AstPtr, TemplateLiteral},
+    js::{
+        parser::ast::{AstPtr, TemplateLiteral},
+        runtime::gc::HandleScope,
+    },
     set_uninit,
 };
 
@@ -34,21 +37,23 @@ impl IsHeapObject for Realm {}
 impl Realm {
     // 9.3.1 CreateRealm
     pub fn new(cx: &mut Context) -> Handle<Realm> {
-        // Realm record must be created before setting up intrinsics, as realm must be referenced
-        // during intrinsic creation.
-        let mut realm = cx.heap.alloc_uninit::<Realm>();
+        HandleScope::new(cx, |cx| {
+            // Realm record must be created before setting up intrinsics, as realm must be referenced
+            // during intrinsic creation.
+            let mut realm = cx.heap.alloc_uninit::<Realm>();
 
-        set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
-        set_uninit!(realm.global_env, HeapPtr::uninit());
-        set_uninit!(realm.global_object, HeapPtr::uninit());
-        set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
-        set_uninit!(realm.template_map, HashMap::new());
+            set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
+            set_uninit!(realm.global_env, HeapPtr::uninit());
+            set_uninit!(realm.global_object, HeapPtr::uninit());
+            set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
+            set_uninit!(realm.template_map, HashMap::new());
 
-        let realm = realm.to_handle();
+            let realm = realm.to_handle();
 
-        realm.clone().intrinsics.initialize(cx, realm);
+            realm.clone().intrinsics.initialize(cx, realm);
 
-        realm
+            realm
+        })
     }
 
     #[inline]
@@ -111,22 +116,24 @@ impl Handle<Realm> {
 
 // 9.6 InitializeHostDefinedRealm
 pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
-    let mut realm = Realm::new(cx);
-    let exec_ctx = ExecutionContext::new(
-        cx,
-        /* function */ None,
-        realm,
-        /* script_or_module */ None,
-        /* lexical_env */ cx.uninit_environment,
-        /* variable_env */ cx.uninit_environment,
-        /* private_env */ None,
-        /* is_strict_mode */ false,
-    );
+    HandleScope::new(cx, |cx| {
+        let mut realm = Realm::new(cx);
+        let exec_ctx = ExecutionContext::new(
+            cx,
+            /* function */ None,
+            realm,
+            /* script_or_module */ None,
+            /* lexical_env */ cx.uninit_environment,
+            /* variable_env */ cx.uninit_environment,
+            /* private_env */ None,
+            /* is_strict_mode */ false,
+        );
 
-    cx.push_execution_context(exec_ctx);
+        cx.push_execution_context(exec_ctx);
 
-    realm.set_global_object(cx, None, None);
-    set_default_global_bindings(cx, realm);
+        realm.set_global_object(cx, None, None);
+        set_default_global_bindings(cx, realm);
 
-    realm
+        realm
+    })
 }

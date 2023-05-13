@@ -5,6 +5,7 @@ use crate::{
         console::ConsoleObject,
         eval::eval::perform_eval,
         function::get_argument,
+        gc::HandleScope,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{
@@ -23,104 +24,111 @@ use super::intrinsics::Intrinsic;
 
 // 9.3.4 SetDefaultGlobalBindings
 pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> EvalResult<()> {
-    macro_rules! value_prop {
-        ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
-            maybe!(define_property_or_throw(
-                cx,
-                realm.global_object(),
-                $name,
-                PropertyDescriptor::data($value, $is_writable, $is_enumerable, $is_configurable)
-            ));
-        };
-    }
+    HandleScope::new(cx, |cx| {
+        macro_rules! value_prop {
+            ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
+                maybe!(define_property_or_throw(
+                    cx,
+                    realm.global_object(),
+                    $name,
+                    PropertyDescriptor::data(
+                        $value,
+                        $is_writable,
+                        $is_enumerable,
+                        $is_configurable
+                    )
+                ));
+            };
+        }
 
-    macro_rules! func_prop {
-        ($str_name:expr, $func_name:expr, $length:expr) => {{
-            let func_object = BuiltinFunction::create(
-                cx,
-                $func_name,
-                $length,
-                $str_name,
-                Some(realm),
-                None,
-                None,
-            )
-            .into();
-            value_prop!($str_name, func_object, true, false, true);
-        }};
-    }
+        macro_rules! func_prop {
+            ($str_name:expr, $func_name:expr, $length:expr) => {{
+                let func_object = BuiltinFunction::create(
+                    cx,
+                    $func_name,
+                    $length,
+                    $str_name,
+                    Some(realm),
+                    None,
+                    None,
+                )
+                .into();
+                value_prop!($str_name, func_object, true, false, true);
+            }};
+        }
 
-    macro_rules! intrinsic_prop {
-        ($name:expr, $intrinsic:ident) => {
-            let value = realm.get_intrinsic(Intrinsic::$intrinsic);
-            maybe!(define_property_or_throw(
-                cx,
-                realm.global_object(),
-                $name,
-                PropertyDescriptor::data(value.into(), true, false, true)
-            ));
-        };
-    }
+        macro_rules! intrinsic_prop {
+            ($name:expr, $intrinsic:ident) => {
+                let value = realm.get_intrinsic(Intrinsic::$intrinsic);
+                maybe!(define_property_or_throw(
+                    cx,
+                    realm.global_object(),
+                    $name,
+                    PropertyDescriptor::data(value.into(), true, false, true)
+                ));
+            };
+        }
 
-    // 19.1 Value Properties of the Global Object
-    let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
-    let nan_value = Value::nan().to_handle(cx);
+        // 19.1 Value Properties of the Global Object
+        let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
+        let nan_value = Value::nan().to_handle(cx);
 
-    value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
-    value_prop!(cx.names.infinity(), infinity_value, false, false, false);
-    value_prop!(cx.names.nan(), nan_value, false, false, false);
-    value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
+        value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
+        value_prop!(cx.names.infinity(), infinity_value, false, false, false);
+        value_prop!(cx.names.nan(), nan_value, false, false, false);
+        value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
-    // 19.2 Function Properties of the Global Object
-    intrinsic_prop!(cx.names.eval(), Eval);
-    func_prop!(cx.names.is_nan(), is_nan, 1);
-    func_prop!(cx.names.is_finite(), is_finite, 1);
-    func_prop!(cx.names.parse_float(), parse_float, 1);
-    func_prop!(cx.names.parse_int(), parse_int, 2);
+        // 19.2 Function Properties of the Global Object
+        intrinsic_prop!(cx.names.eval(), Eval);
+        func_prop!(cx.names.is_nan(), is_nan, 1);
+        func_prop!(cx.names.is_finite(), is_finite, 1);
+        func_prop!(cx.names.parse_float(), parse_float, 1);
+        func_prop!(cx.names.parse_int(), parse_int, 2);
 
-    // 19.3 Constructor Properties of the Global Object
-    intrinsic_prop!(cx.names.aggregate_error(), AggregateErrorConstructor);
-    intrinsic_prop!(cx.names.array_buffer(), ArrayBufferConstructor);
-    intrinsic_prop!(cx.names.array(), ArrayConstructor);
-    intrinsic_prop!(cx.names.bigint(), BigIntConstructor);
-    intrinsic_prop!(cx.names.big_int64_array(), BigInt64ArrayConstructor);
-    intrinsic_prop!(cx.names.big_uint64_array(), BigUInt64ArrayConstructor);
-    intrinsic_prop!(cx.names.boolean(), BooleanConstructor);
-    intrinsic_prop!(cx.names.data_view(), DataViewConstructor);
-    intrinsic_prop!(cx.names.error(), ErrorConstructor);
-    intrinsic_prop!(cx.names.eval_error(), EvalErrorConstructor);
-    intrinsic_prop!(cx.names.float32_array(), Float32ArrayConstructor);
-    intrinsic_prop!(cx.names.float64_array(), Float64ArrayConstructor);
-    intrinsic_prop!(cx.names.function(), FunctionConstructor);
-    intrinsic_prop!(cx.names.int8_array(), Int8ArrayConstructor);
-    intrinsic_prop!(cx.names.int16_array(), Int16ArrayConstructor);
-    intrinsic_prop!(cx.names.int32_array(), Int32ArrayConstructor);
-    intrinsic_prop!(cx.names.map(), MapConstructor);
-    intrinsic_prop!(cx.names.number(), NumberConstructor);
-    intrinsic_prop!(cx.names.object(), ObjectConstructor);
-    intrinsic_prop!(cx.names.proxy(), ProxyConstructor);
-    intrinsic_prop!(cx.names.range_error(), RangeErrorConstructor);
-    intrinsic_prop!(cx.names.reference_error(), ReferenceErrorConstructor);
-    intrinsic_prop!(cx.names.set(), SetConstructor);
-    intrinsic_prop!(cx.names.string(), StringConstructor);
-    intrinsic_prop!(cx.names.symbol(), SymbolConstructor);
-    intrinsic_prop!(cx.names.syntax_error(), SyntaxErrorConstructor);
-    intrinsic_prop!(cx.names.type_error(), TypeErrorConstructor);
-    intrinsic_prop!(cx.names.uint8_array(), UInt8ArrayConstructor);
-    intrinsic_prop!(cx.names.uint8_clamped_array(), UInt8ClampedArrayConstructor);
-    intrinsic_prop!(cx.names.uint16_array(), UInt16ArrayConstructor);
-    intrinsic_prop!(cx.names.uint32_array(), UInt32ArrayConstructor);
-    intrinsic_prop!(cx.names.uri_error(), URIErrorConstructor);
+        // 19.3 Constructor Properties of the Global Object
+        intrinsic_prop!(cx.names.aggregate_error(), AggregateErrorConstructor);
+        intrinsic_prop!(cx.names.array_buffer(), ArrayBufferConstructor);
+        intrinsic_prop!(cx.names.array(), ArrayConstructor);
+        intrinsic_prop!(cx.names.bigint(), BigIntConstructor);
+        intrinsic_prop!(cx.names.big_int64_array(), BigInt64ArrayConstructor);
+        intrinsic_prop!(cx.names.big_uint64_array(), BigUInt64ArrayConstructor);
+        intrinsic_prop!(cx.names.boolean(), BooleanConstructor);
+        intrinsic_prop!(cx.names.data_view(), DataViewConstructor);
+        intrinsic_prop!(cx.names.error(), ErrorConstructor);
+        intrinsic_prop!(cx.names.eval_error(), EvalErrorConstructor);
+        intrinsic_prop!(cx.names.float32_array(), Float32ArrayConstructor);
+        intrinsic_prop!(cx.names.float64_array(), Float64ArrayConstructor);
+        intrinsic_prop!(cx.names.function(), FunctionConstructor);
+        intrinsic_prop!(cx.names.int8_array(), Int8ArrayConstructor);
+        intrinsic_prop!(cx.names.int16_array(), Int16ArrayConstructor);
+        intrinsic_prop!(cx.names.int32_array(), Int32ArrayConstructor);
+        intrinsic_prop!(cx.names.map(), MapConstructor);
+        intrinsic_prop!(cx.names.number(), NumberConstructor);
+        intrinsic_prop!(cx.names.object(), ObjectConstructor);
+        intrinsic_prop!(cx.names.proxy(), ProxyConstructor);
+        intrinsic_prop!(cx.names.range_error(), RangeErrorConstructor);
+        intrinsic_prop!(cx.names.reference_error(), ReferenceErrorConstructor);
+        intrinsic_prop!(cx.names.set(), SetConstructor);
+        intrinsic_prop!(cx.names.string(), StringConstructor);
+        intrinsic_prop!(cx.names.symbol(), SymbolConstructor);
+        intrinsic_prop!(cx.names.syntax_error(), SyntaxErrorConstructor);
+        intrinsic_prop!(cx.names.type_error(), TypeErrorConstructor);
+        intrinsic_prop!(cx.names.uint8_array(), UInt8ArrayConstructor);
+        intrinsic_prop!(cx.names.uint8_clamped_array(), UInt8ClampedArrayConstructor);
+        intrinsic_prop!(cx.names.uint16_array(), UInt16ArrayConstructor);
+        intrinsic_prop!(cx.names.uint32_array(), UInt32ArrayConstructor);
+        intrinsic_prop!(cx.names.uri_error(), URIErrorConstructor);
 
-    // 19.4 Other Properties of the Global Object
-    intrinsic_prop!(cx.names.math(), Math);
-    intrinsic_prop!(cx.names.reflect(), Reflect);
+        // 19.4 Other Properties of the Global Object
+        intrinsic_prop!(cx.names.math(), Math);
+        intrinsic_prop!(cx.names.reflect(), Reflect);
 
-    // Non-standard, environment specific properties of global object
-    let console_object = ConsoleObject::new(cx, realm).into();
-    value_prop!(cx.names.console(), console_object, true, false, true);
+        // Non-standard, environment specific properties of global object
+        let console_object = ConsoleObject::new(cx, realm).into();
+        value_prop!(cx.names.console(), console_object, true, false, true);
 
-    ().into()
+        ().into()
+    })
 }
 
 pub fn create_eval(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {

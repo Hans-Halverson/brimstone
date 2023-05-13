@@ -183,7 +183,7 @@ impl<T: Into<Completion>> From<EvalResult<T>> for Completion {
 impl Escapable for Completion {
     #[inline]
     fn escape(&self, cx: &mut Context) -> Self {
-        let value = self.value().to_handle(cx);
+        let value = self.value().escape(cx);
         Completion { kind: self.kind(), label: self.label(), value }
     }
 }
@@ -256,6 +256,21 @@ macro_rules! maybe__ {
         match result {
             EvalResult::Ok(value) => value,
             EvalResult::Throw(value) => return Completion::throw(value),
+        }
+    }};
+}
+
+/// Unwrap an EvalResult, returning an escaped completion if throw
+#[macro_export]
+macro_rules! maybe_escape__ {
+    ($cx:ident, $handle_scope:ident, $a:expr) => {{
+        let result = $a;
+        match result {
+            EvalResult::Ok(value) => value,
+            EvalResult::Throw(value) => {
+                let escaped_value = $handle_scope.escape($cx, value);
+                return Completion::throw(escaped_value);
+            }
         }
     }};
 }

@@ -224,7 +224,7 @@ impl VirtualObject for Handle<Function> {
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        HandleScope::enter(cx, |cx| {
+        HandleScope::new(cx, |cx| {
             let callee_context = self.prepare_for_ordinary_call(cx, None);
 
             if self.is_class_constructor {
@@ -258,7 +258,7 @@ impl VirtualObject for Handle<Function> {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        HandleScope::enter(cx, |cx| {
+        HandleScope::new(cx, |cx| {
             // Default constructor is implemented as a special function. Steps follow the default
             // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
             if self.is_default_constructor() {

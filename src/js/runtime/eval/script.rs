@@ -53,7 +53,7 @@ pub fn eval_script(
     program: Rc<ast::Program>,
     realm: Handle<Realm>,
 ) -> Completion {
-    HandleScope::enter(cx, |cx| {
+    HandleScope::new(cx, |cx| {
         let script = Script::new(cx, program.clone(), realm);
 
         let global_env = realm.global_env();

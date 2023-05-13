@@ -17,13 +17,14 @@ use crate::{
             },
             execution_context::resolve_binding,
             function::instantiate_function_object,
+            gc::HandleScope,
             iterator::iter_iterator_values,
             property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
             Context, Handle, Value,
         },
     },
-    maybe, maybe_, maybe__, must,
+    maybe, maybe_, maybe__, maybe_escape__, must,
 };
 
 use super::{
@@ -324,8 +325,14 @@ fn eval_do_while_statement(
     stmt: &ast::DoWhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = cx.undefined();
+    // Handle will have contents replaced, so cannot use cx.undefined()
+    let mut last_value = Value::undefined().to_handle(cx);
+
     loop {
+        // Enter a new handle scope each iteration. Take care to exit handle scope on each path,
+        // and properly escape last_value shared between iterations.
+        let handle_scope = HandleScope::enter(cx);
+
         let body_result = eval_statement(cx, &stmt.body);
 
         if !loop_continues(&body_result, stmt_label_id) {
@@ -335,23 +342,25 @@ fn eval_do_while_statement(
             if body_result.kind() == CompletionKind::Break {
                 let label = body_result.label();
                 if (label == EMPTY_LABEL) || (label == stmt_label_id) {
-                    return Completion::normal(body_result.value());
+                    return handle_scope.escape(cx, Completion::normal(body_result.value()));
                 } else {
-                    return body_result;
+                    return handle_scope.escape(cx, body_result);
                 }
             }
 
-            return body_result;
+            return handle_scope.escape(cx, body_result);
         }
 
         if !body_result.value().is_empty() {
-            last_value = body_result.value()
+            last_value.replace(body_result.value().get());
         }
 
-        let test_value = maybe__!(eval_expression(cx, &stmt.test));
+        let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, &stmt.test));
         if !to_boolean(test_value.get()) {
-            return last_value.into();
+            return handle_scope.escape(cx, last_value.into());
         }
+
+        handle_scope.exit();
     }
 }
 
@@ -361,11 +370,17 @@ fn eval_while_statement(
     stmt: &ast::WhileStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = cx.undefined();
+    // Handle will have contents replaced, so cannot use cx.undefined()
+    let mut last_value = Value::undefined().to_handle(cx);
+
     loop {
-        let test_value = maybe__!(eval_expression(cx, &stmt.test));
+        // Enter a new handle scope each iteration. Take care to exit handle scope on each path,
+        // and properly escape last_value shared between iterations.
+        let handle_scope = HandleScope::enter(cx);
+
+        let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, &stmt.test));
         if !to_boolean(test_value.get()) {
-            return last_value.into();
+            return handle_scope.escape(cx, last_value.into());
         }
 
         let body_result = eval_statement(cx, &stmt.body);
@@ -377,18 +392,21 @@ fn eval_while_statement(
             if body_result.kind() == CompletionKind::Break {
                 let label = body_result.label();
                 if (label == EMPTY_LABEL) || (label == stmt_label_id) {
-                    return Completion::normal(body_result.value());
+                    return handle_scope.escape(cx, Completion::normal(body_result.value()));
                 } else {
-                    return body_result;
+                    return handle_scope.escape(cx, body_result);
                 }
             }
 
-            return body_result;
+            return handle_scope.escape(cx, body_result);
         }
 
+        // Make sure to preserve last_value between iterations in handle outside current handle scope
         if !body_result.value().is_empty() {
-            last_value = body_result.value()
+            last_value.replace(body_result.value().get());
         }
+
+        handle_scope.exit();
     }
 }
 
@@ -455,17 +473,22 @@ fn for_body_evaluation(
     per_iteration_decl: Option<&ast::VariableDeclaration>,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let mut last_value = cx.undefined();
+    // Handle will have contents replaced, so cannot use cx.undefined()
+    let mut last_value = Value::undefined().to_handle(cx);
 
     if let Some(per_iteration_decl) = per_iteration_decl {
         create_per_iteration_environment(cx, per_iteration_decl);
     }
 
     loop {
+        // Enter a new handle scope each iteration. Take care to exit handle scope on each path,
+        // and properly escape last_value shared between iterations.
+        let handle_scope = HandleScope::enter(cx);
+
         if let Some(test) = stmt.test.as_deref() {
-            let test_value = maybe__!(eval_expression(cx, test));
+            let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, test));
             if !to_boolean(test_value.get()) {
-                return last_value.into();
+                return handle_scope.escape(cx, last_value.into());
             }
         }
 
@@ -478,17 +501,18 @@ fn for_body_evaluation(
             if body_result.kind() == CompletionKind::Break {
                 let label = body_result.label();
                 if (label == EMPTY_LABEL) || (label == stmt_label_id) {
-                    return Completion::normal(body_result.value());
+                    return handle_scope.escape(cx, Completion::normal(body_result.value()));
                 } else {
-                    return body_result;
+                    return handle_scope.escape(cx, body_result);
                 }
             }
 
-            return body_result;
+            return handle_scope.escape(cx, body_result);
         }
 
+        // Make sure to preserve last_value between iterations in handle outside current handle scope
         if !body_result.value().is_empty() {
-            last_value = body_result.value()
+            last_value.replace(body_result.value().get());
         }
 
         if let Some(per_iteration_decl) = per_iteration_decl {
@@ -496,8 +520,10 @@ fn for_body_evaluation(
         }
 
         if let Some(update) = stmt.update.as_deref() {
-            maybe__!(eval_expression(cx, update));
+            maybe_escape__!(cx, handle_scope, eval_expression(cx, update));
         }
+
+        handle_scope.exit();
     }
 }
 

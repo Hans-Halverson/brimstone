@@ -145,7 +145,7 @@ impl VirtualObject for Handle<BuiltinFunction> {
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        HandleScope::enter(cx, |cx| {
+        HandleScope::new(cx, |cx| {
             let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
             let callee_context = ExecutionContext::new(
                 cx,
@@ -177,7 +177,7 @@ impl VirtualObject for Handle<BuiltinFunction> {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        HandleScope::enter(cx, |cx| {
+        HandleScope::new(cx, |cx| {
             let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
             let callee_context = ExecutionContext::new(
                 cx,

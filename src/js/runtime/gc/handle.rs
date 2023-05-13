@@ -12,7 +12,7 @@ use crate::js::runtime::{
     Context, PropertyKey, Value,
 };
 
-use super::{HeapInfo, HeapPtr, IsHeapObject};
+use super::{Heap, HeapInfo, HeapPtr, IsHeapObject};
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
 pub type HandleContents = usize;
@@ -71,52 +71,64 @@ impl<T> Clone for Handle<T> {
 
 impl<T> Copy for Handle<T> {}
 
-/// A saved next_ptr, end_ptr pair that restores the handle stack to the saved position when dropped.
-/// Must only be created on the stack.
-pub struct HandleScope;
-
 /// Saved handle state that allows restoring to the state right before a handle scope was entered.
-struct SavedHandleState {
+/// Must only be created on the stack.
+#[must_use = "HandleScopes must be explicitly exited with a call to exit"]
+pub struct HandleScope {
+    heap_ptr: *mut Heap,
     next_ptr: *mut HandleContents,
     end_ptr: *mut HandleContents,
 }
 
 impl HandleScope {
     #[inline]
-    pub fn enter<F: FnMut(&mut Context) -> R, R: Escapable>(cx: &mut Context, mut f: F) -> R {
-        let saved_state = Self::save_handle_state(cx);
+    pub fn new<F: FnMut(&mut Context) -> R, R: Escapable>(cx: &mut Context, mut f: F) -> R {
+        let handle_scope = Self::enter(cx);
         let result = f(cx);
-        Self::restore_handle_state(cx, saved_state);
-
-        result.escape(cx)
+        handle_scope.escape(cx, result)
     }
 
     #[inline]
-    fn save_handle_state(cx: &mut Context) -> SavedHandleState {
-        let handle_context = cx.heap.info().handle_context();
-        SavedHandleState {
+    pub fn enter(cx: &mut Context) -> HandleScope {
+        Self::enter_with_heap(&mut cx.heap)
+    }
+
+    #[inline]
+    pub fn enter_with_heap(heap: &mut Heap) -> HandleScope {
+        let handle_context = heap.info().handle_context();
+        HandleScope {
+            heap_ptr: heap as *mut Heap,
             next_ptr: handle_context.next_ptr,
             end_ptr: handle_context.end_ptr,
         }
     }
 
+    /// Exit a handle scope and return an item escaped into the parent's handle scope.
     #[inline]
-    fn restore_handle_state(cx: &mut Context, saved_state: SavedHandleState) {
-        let handle_context = cx.heap.info().handle_context();
+    pub fn escape<R: Escapable>(self, cx: &mut Context, result: R) -> R {
+        self.exit();
+        result.escape(cx)
+    }
+
+    /// Exit a handle scope without returning an escaped item.
+    #[inline]
+    pub fn exit(self) {
+        let heap = unsafe { &mut *self.heap_ptr };
+        let handle_context = heap.info().handle_context();
 
         // The saved handle scope was in a previous block. Pop blocks until the current block
         // matches that of the saved handle scope.
-        if saved_state.end_ptr != handle_context.end_ptr {
-            while saved_state.end_ptr != handle_context.pop_block() {}
+        if self.end_ptr != handle_context.end_ptr {
+            while self.end_ptr != handle_context.pop_block() {}
         }
 
-        handle_context.next_ptr = saved_state.next_ptr;
-        handle_context.end_ptr = saved_state.end_ptr;
+        handle_context.next_ptr = self.next_ptr;
+        handle_context.end_ptr = self.end_ptr;
     }
 }
 
-/// Number of handles contained in a single handle block
-const HANDLE_BLOCK_SIZE: usize = 128;
+/// Number of handles contained in a single handle block. Default to 4KB handle blocks.
+const HANDLE_BLOCK_SIZE: usize = 512;
 
 pub struct HandleBlock {
     ptrs: [HandleContents; HANDLE_BLOCK_SIZE],
@@ -227,6 +239,18 @@ impl HandleContext {
         while let Some(next_block) = &current_block.prev_block {
             current_block = next_block;
             total += HANDLE_BLOCK_SIZE;
+        }
+
+        total
+    }
+
+    pub fn num_free_handle_blocks(&self) -> usize {
+        let mut total = 0;
+
+        let mut current_block = &self.free_blocks;
+        while let Some(next_block) = current_block {
+            current_block = &next_block.prev_block;
+            total += 1;
         }
 
         total

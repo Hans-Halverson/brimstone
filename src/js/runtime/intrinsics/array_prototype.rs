@@ -349,12 +349,14 @@ impl ArrayPrototype {
         let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         if from_index < to_index && to_index < from_index + count {
-            from_index = from_index + count - 1;
-            to_index = to_index + count - 1;
+            // Treat as i64 due to potential subtraction below 0. Guaranteed to not need number
+            // out of i64 range since these are array indices.
+            let mut from_index = (from_index + count - 1) as i64;
+            let mut to_index = (to_index + count - 1) as i64;
 
             while count > 0 {
-                from_key.replace(PropertyKey::from_u64(cx, from_index));
-                to_key.replace(PropertyKey::from_u64(cx, to_index));
+                from_key.replace(PropertyKey::from_u64(cx, from_index as u64));
+                to_key.replace(PropertyKey::from_u64(cx, to_index as u64));
 
                 if maybe!(has_property(cx, object, from_key)) {
                     let from_value = maybe!(get(cx, object, from_key));
@@ -1439,7 +1441,7 @@ impl ArrayPrototype {
             u64::min(relative_start as u64, length)
         };
 
-        let insert_count = u64::max(arguments.len() as u64 - 2, 0);
+        let insert_count = (arguments.len() as u64).saturating_sub(2);
 
         let actual_delete_count = if arguments.len() == 0 {
             0

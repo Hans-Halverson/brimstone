@@ -442,6 +442,11 @@ impl StringValue {
         let search_string_len = search_string.len();
         let end_index = usize::min(before + search_string_len, self.len());
 
+        // Search string does not fit before the given index
+        if search_string_len > end_index {
+            return None;
+        }
+
         let mut string_code_units = self.iter_slice_code_units(0, end_index);
         let mut search_string_code_units = search_string.iter_code_units();
 

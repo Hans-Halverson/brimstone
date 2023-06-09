@@ -835,7 +835,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             let element = maybe!(get(cx, object, key));
 
-            if same_value_zero(search_element.get(), element.get()) {
+            if same_value_zero(search_element, element) {
                 return cx.bool(true).into();
             }
         }
@@ -880,7 +880,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
-                if is_strictly_equal(search_element.get(), element.get()) {
+                if is_strictly_equal(search_element, element) {
                     return Value::from(i).to_handle(cx).into();
                 }
             }
@@ -984,7 +984,7 @@ impl ArrayPrototype {
             key.replace(PropertyKey::from_u64(cx, i));
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
-                if is_strictly_equal(search_element.get(), element.get()) {
+                if is_strictly_equal(search_element, element) {
                     return Value::from(i).to_handle(cx).into();
                 }
             }

@@ -58,7 +58,7 @@ impl VirtualObject for Handle<ArrayObject> {
             }
 
             true.into()
-        } else if key.is_string() && key.as_string() == cx.names.length().as_string() {
+        } else if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
             array_set_length(cx, *self, desc)
         } else {
             ordinary_define_own_property(cx, self.object(), key, desc)
@@ -71,7 +71,7 @@ impl VirtualObject for Handle<ArrayObject> {
         cx: &mut Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        if key.is_string() && key.as_string() == cx.names.length().as_string() {
+        if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
             let length_value = Value::from(self.object().array_properties_length()).to_handle(cx);
             return Some(PropertyDescriptor::data(
                 length_value,
@@ -87,7 +87,7 @@ impl VirtualObject for Handle<ArrayObject> {
 
     // Not part of spec, but needed to handle attempts to delete custom length property
     fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-        if key.is_string() && key.as_string() == cx.names.length().as_string() {
+        if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
             return false.into();
         }
 

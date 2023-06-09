@@ -270,7 +270,14 @@ pub fn create_mapped_arguments_object(
     let length_desc = PropertyDescriptor::data(length_value, true, false, true);
     must!(define_property_or_throw(cx, object.into(), cx.names.length(), length_desc));
 
+    // Parameter names must be deduped by placing in a HashSet. Make sure to flatten all strings
+    // before placing them in the HashSet.
     let mut mapped_names = HashSet::new();
+    let parameter_names = parameter_names
+        .iter()
+        .map(|name_string| name_string.flatten())
+        .collect::<Vec<_>>();
+
     for (i, parameter_name) in parameter_names.iter().enumerate().rev() {
         // Only add accessor mapping for last parameter of each name, for which an argument was
         // actually provided.
@@ -278,7 +285,8 @@ pub fn create_mapped_arguments_object(
             continue;
         }
 
-        let arg_accessor_environment = ArgAccessorEnvironment::new(cx, *parameter_name, env);
+        let arg_accessor_environment =
+            ArgAccessorEnvironment::new(cx, parameter_name.as_string(), env);
 
         let mut getter =
             BuiltinFunction::create(cx, arg_getter, 0, cx.names.empty_string(), None, None, None);

@@ -138,12 +138,12 @@ impl SymbolConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let string_key = maybe!(to_string(cx, argument));
+        let string_key = maybe!(to_string(cx, argument)).flatten();
         if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key.get_()) {
             return symbol_value.to_handle().into();
         }
 
-        let new_symbol = SymbolValue::new(cx, Some(string_key));
+        let new_symbol = SymbolValue::new(cx, Some(string_key.as_string()));
         cx.global_symbol_registry
             .insert(string_key.get_(), new_symbol.get_());
 
@@ -165,7 +165,7 @@ impl SymbolConstructor {
 
         for (string, symbol) in &cx.global_symbol_registry {
             if symbol.ptr_eq(&symbol_value) {
-                let string_value: Value = (*string).into();
+                let string_value: Value = string.as_string().into();
                 return string_value.to_handle(cx).into();
             }
         }

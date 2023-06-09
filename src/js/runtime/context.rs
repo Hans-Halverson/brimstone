@@ -14,7 +14,7 @@ use super::{
     object_descriptor::BaseDescriptors,
     object_value::ObjectValue,
     realm::Realm,
-    string_value::StringValue,
+    string_value::{FlatString, StringValue},
     value::SymbolValue,
     Handle, HeapPtr, Value,
 };
@@ -26,7 +26,7 @@ use super::{
 pub struct Context {
     execution_context_stack: Vec<HeapPtr<ExecutionContext>>,
     pub heap: Heap,
-    pub global_symbol_registry: HashMap<HeapPtr<StringValue>, HeapPtr<SymbolValue>>,
+    pub global_symbol_registry: HashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>,
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
     pub base_descriptors: BaseDescriptors,
@@ -166,13 +166,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string_ptr(&mut self, str: String) -> HeapPtr<StringValue> {
-        StringValue::from_utf8(self, str)
+    pub fn alloc_string_ptr(&mut self, str: String) -> HeapPtr<FlatString> {
+        FlatString::from_utf8(self, str)
     }
 
     #[inline]
     pub fn alloc_string(&mut self, str: String) -> Handle<StringValue> {
-        self.alloc_string_ptr(str).to_handle()
+        self.alloc_string_ptr(str).as_string().to_handle()
     }
 
     #[inline]

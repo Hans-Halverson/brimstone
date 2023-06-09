@@ -9,7 +9,7 @@ use crate::{
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
-        string_value::{CodePointIterator, StringValue},
+        string_value::{CodePointIterator, FlatString, StringValue},
         Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
@@ -77,7 +77,8 @@ impl StringIteratorPrototype {
         match string_iterator.code_points_iter.next() {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(next_code_point) => {
-                let code_point_string = StringValue::from_code_point(cx, next_code_point);
+                let code_point_string =
+                    FlatString::from_code_point(cx, next_code_point).as_string();
                 create_iter_result_object(cx, code_point_string.into(), false).into()
             }
         }

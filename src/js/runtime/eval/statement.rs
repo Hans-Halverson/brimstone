@@ -938,7 +938,7 @@ fn is_case_clause_selected(
     discriminant_value: Handle<Value>,
 ) -> EvalResult<bool> {
     let case_selector_value = maybe!(eval_expression(cx, case_selector_value));
-    is_strictly_equal(discriminant_value.get(), case_selector_value.get()).into()
+    is_strictly_equal(discriminant_value, case_selector_value).into()
 }
 
 // 14.12.4 Switch Statement Evaluation

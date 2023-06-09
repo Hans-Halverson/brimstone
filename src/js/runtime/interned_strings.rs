@@ -1,15 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{string_value::StringValue, Context, Handle, HeapPtr};
+use super::{
+    string_value::{FlatString, StringValue},
+    Context, Handle, HeapPtr,
+};
 
 pub struct InternedStrings {
     // Set of canonical interned strings for each code unit sequence. Maintain invariant that only
     // flat one byte and two byte strings with their is_interned flag set are present in this set,
     // and is_interned is not set on any other string values.
-    strings: HashSet<HeapPtr<StringValue>>,
+    strings: HashSet<HeapPtr<FlatString>>,
     // Map from utf8 strs to their canonical interned strings, used for mapping strings from AST
     // to string values on the heap.
-    str_cache: HashMap<String, HeapPtr<StringValue>>,
+    str_cache: HashMap<String, HeapPtr<FlatString>>,
 }
 
 impl InternedStrings {
@@ -17,7 +20,7 @@ impl InternedStrings {
         InternedStrings { strings: HashSet::new(), str_cache: HashMap::new() }
     }
 
-    pub fn get(cx: &mut Context, mut string: HeapPtr<StringValue>) -> HeapPtr<StringValue> {
+    pub fn get(cx: &mut Context, mut string: HeapPtr<FlatString>) -> HeapPtr<FlatString> {
         // Fast path if string is already interned
         if string.is_interned() {
             return string;
@@ -35,7 +38,7 @@ impl InternedStrings {
 
     pub fn get_str(cx: &mut Context, str: &str) -> Handle<StringValue> {
         match cx.interned_strings.str_cache.get(str) {
-            Some(interned_string) => interned_string.to_handle(),
+            Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
                 let string_value = cx.alloc_string_ptr(String::from(str));
                 let interned_string = InternedStrings::get(cx, string_value);
@@ -44,7 +47,7 @@ impl InternedStrings {
                     .str_cache
                     .insert(String::from(str), interned_string);
 
-                interned_string.to_handle()
+                interned_string.as_string().to_handle()
             }
         }
     }

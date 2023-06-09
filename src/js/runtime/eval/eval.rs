@@ -20,7 +20,7 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
-            string_value::StringValue,
+            string_value::FlatString,
             Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
     },
@@ -242,7 +242,7 @@ fn eval_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<Handle<StringValue>> = HashSet::new();
+    let mut declared_var_names: HashSet<Handle<FlatString>> = HashSet::new();
 
     for var_decl in ast.var_decls() {
         if let VarDecl::Var(var_decl) = var_decl {
@@ -260,7 +260,7 @@ fn eval_declaration_instantiation(
                         }
                     }
 
-                    declared_var_names.insert(name_value);
+                    declared_var_names.insert(name_value.flatten());
                 }
 
                 ().into()
@@ -307,6 +307,7 @@ fn eval_declaration_instantiation(
     }
 
     for name in declared_var_names {
+        let name = name.as_string();
         if let Some(mut var_env) = var_env.as_global_environment() {
             maybe!(var_env.create_global_var_binding(cx, name, true));
         } else {

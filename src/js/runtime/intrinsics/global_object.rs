@@ -15,7 +15,7 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{to_int32, to_number},
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
+        Context, EvalResult, Handle, Realm, Value,
     },
     maybe,
 };
@@ -180,13 +180,13 @@ fn parse_float(
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = maybe!(to_string(cx, input_string_arg));
 
-    match parse_float_with_string_lexer(input_string.get_()) {
+    match parse_float_with_string_lexer(input_string) {
         Some(float) => Value::number(float).to_handle(cx).into(),
         None => Value::nan().to_handle(cx).into(),
     }
 }
 
-fn parse_float_with_string_lexer(string: HeapPtr<StringValue>) -> Option<f64> {
+fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
@@ -226,14 +226,14 @@ fn parse_int(
     let radix_arg = get_argument(cx, arguments, 1);
     let radix = maybe!(to_int32(cx, radix_arg));
 
-    match parse_int_impl(input_string.get_(), radix) {
+    match parse_int_impl(input_string, radix) {
         Some(number) => Value::number(number).to_handle(cx).into(),
         None => Value::nan().to_handle(cx).into(),
     }
 }
 
 #[inline]
-fn parse_int_impl(string: HeapPtr<StringValue>, radix: i32) -> Option<f64> {
+fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     // Trim whitespace from start of string

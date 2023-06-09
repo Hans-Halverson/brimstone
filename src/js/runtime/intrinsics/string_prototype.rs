@@ -9,7 +9,7 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
-        string_value::StringValue,
+        string_value::{FlatString, StringValue},
         to_string,
         type_utilities::{
             is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
@@ -145,7 +145,9 @@ impl StringPrototype {
             return cx.undefined().into();
         }
 
-        StringValue::from_code_unit(cx, string.code_unit_at(index as usize)).into()
+        FlatString::from_code_unit(cx, string.code_unit_at(index as usize))
+            .as_string()
+            .into()
     }
 
     // 22.1.3.2 String.prototype.charAt
@@ -165,7 +167,9 @@ impl StringPrototype {
             return cx.names.empty_string().as_string().into();
         }
 
-        StringValue::from_code_unit(cx, string.code_unit_at(position as usize)).into()
+        FlatString::from_code_unit(cx, string.code_unit_at(position as usize))
+            .as_string()
+            .into()
     }
 
     // 22.1.3.3 String.prototype.charCodeAt
@@ -271,7 +275,7 @@ impl StringPrototype {
             None => return cx.bool(false).into(),
         };
 
-        let ends_with_string = string.substring_equals(search_string.get_(), start_index);
+        let ends_with_string = string.substring_equals(search_string, start_index);
 
         cx.bool(ends_with_string).into()
     }
@@ -304,7 +308,7 @@ impl StringPrototype {
             return Value::smi(-1).to_handle(cx).into();
         }
 
-        let found_search_string = string.find(search_string.get_(), pos).is_some();
+        let found_search_string = string.find(search_string, pos).is_some();
         cx.bool(found_search_string).into()
     }
 
@@ -332,7 +336,7 @@ impl StringPrototype {
             return Value::smi(-1).to_handle(cx).into();
         }
 
-        match string.find(search_string.get_(), pos) {
+        match string.find(search_string, pos) {
             None => Value::smi(-1).to_handle(cx).into(),
             Some(index) => Value::from(index).to_handle(cx).into(),
         }
@@ -363,7 +367,7 @@ impl StringPrototype {
             }
         }
 
-        match string.rfind(search_string.get_(), string_end) {
+        match string.rfind(search_string, string_end) {
             None => Value::smi(-1).to_handle(cx).into(),
             Some(index) => Value::from(index).to_handle(cx).into(),
         }
@@ -387,7 +391,7 @@ impl StringPrototype {
             return cx.names.empty_string().as_string().into();
         }
 
-        string.repeat(cx, n as u64).into()
+        string.repeat(cx, n as u64).as_string().into()
     }
 
     // 22.1.3.21 String.prototype.slice
@@ -434,7 +438,9 @@ impl StringPrototype {
             return cx.names.empty_string().as_string().into();
         }
 
-        let substring = string.substring(cx, start_index as usize, end_index as usize);
+        let substring = string
+            .substring(cx, start_index as usize, end_index as usize)
+            .as_string();
 
         substring.into()
     }
@@ -486,7 +492,7 @@ impl StringPrototype {
             let limit = usize::min(limit as usize, string.len());
 
             for code_unit in string.iter_slice_code_units(0, limit) {
-                let code_unit_string = StringValue::from_code_unit(cx, code_unit);
+                let code_unit_string = FlatString::from_code_unit(cx, code_unit).as_string();
                 code_unit_strings.push(code_unit_string.into());
             }
 
@@ -494,7 +500,8 @@ impl StringPrototype {
         }
 
         // If the string is empty then it is the only substring
-        if string.len() == 0 {
+        let string_length = string.len();
+        if string_length == 0 {
             return create_array_from_list(cx, &[string.into()]).into();
         }
 
@@ -502,11 +509,11 @@ impl StringPrototype {
 
         // Find the index of the first separator
         let mut i = 0;
-        let mut next_separator_index_opt = string.find(separator.get_(), i);
+        let mut next_separator_index_opt = string.find(separator, i);
 
         while let Some(next_separator_index) = next_separator_index_opt {
             // Add the substring up until the next separator
-            let substring = string.substring(cx, i, next_separator_index);
+            let substring = string.substring(cx, i, next_separator_index).as_string();
             substrings.push(substring.into());
 
             // If we have reached the limit of substrings then return them
@@ -516,11 +523,18 @@ impl StringPrototype {
 
             // Find and skip the next separator
             i = next_separator_index + separator_length;
-            next_separator_index_opt = string.find(separator.get_(), i);
+
+            // No next index if out of bounds. Make sure to clamp index to string length.
+            if i >= string_length {
+                i = string_length;
+                break;
+            }
+
+            next_separator_index_opt = string.find(separator, i);
         }
 
-        // Now that the last separator has the rest of the string is the last subtring
-        let last_substring = string.substring(cx, i, string.len());
+        // Now that the last separator has the rest of the string is the last substring
+        let last_substring = string.substring(cx, i, string.len()).as_string();
         substrings.push(last_substring.into());
 
         create_array_from_list(cx, &substrings).into()
@@ -569,7 +583,7 @@ impl StringPrototype {
             return cx.bool(false).into();
         }
 
-        let starts_with_string = string.substring_equals(search_string.get_(), start_index);
+        let starts_with_string = string.substring_equals(search_string, start_index);
 
         cx.bool(starts_with_string).into()
     }
@@ -601,7 +615,7 @@ impl StringPrototype {
             std::mem::swap(&mut int_start, &mut int_end);
         }
 
-        let substring = string.substring(cx, int_start, int_end);
+        let substring = string.substring(cx, int_start, int_end).as_string();
 
         substring.into()
     }
@@ -616,7 +630,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_lower_case(cx).into()
+        string.to_lower_case(cx).as_string().into()
     }
 
     // 22.1.3.26 String.prototype.toLocaleUpperCase
@@ -629,7 +643,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_upper_case(cx).into()
+        string.to_upper_case(cx).as_string().into()
     }
 
     // 22.1.3.27 String.prototype.toLowerCase
@@ -642,7 +656,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_lower_case(cx).into()
+        string.to_lower_case(cx).as_string().into()
     }
 
     // 22.1.3.28 String.prototype.toString
@@ -665,7 +679,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_upper_case(cx).into()
+        string.to_upper_case(cx).as_string().into()
     }
 
     // 22.1.3.30 String.prototype.trim

@@ -12,7 +12,7 @@ use super::{
     object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
-    type_utilities::same_value_zero,
+    type_utilities::same_value_zero_non_allocating,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
@@ -677,9 +677,15 @@ impl AccessorValue {
 #[derive(Clone, Copy)]
 pub struct ValueCollectionKey(Value);
 
-impl From<Value> for ValueCollectionKey {
-    fn from(value: Value) -> Self {
-        ValueCollectionKey(value)
+impl ValueCollectionKey {
+    // May allocate due to string flattening so do not implement From<Value> directly.
+    fn from(value: Handle<Value>) -> Self {
+        if value.is_string() {
+            let flat_string = value.as_string().flatten();
+            return ValueCollectionKey(flat_string.as_string().get_().into());
+        }
+
+        ValueCollectionKey(value.get())
     }
 }
 
@@ -691,7 +697,7 @@ impl From<ValueCollectionKey> for Value {
 
 impl PartialEq for ValueCollectionKey {
     fn eq(&self, other: &Self) -> bool {
-        same_value_zero(self.0, other.0)
+        same_value_zero_non_allocating(self.0, other.0)
     }
 }
 
@@ -710,7 +716,14 @@ impl hash::Hash for ValueCollectionKey {
 
         if self.0.is_pointer() {
             return match self.0.as_pointer().descriptor().kind() {
-                ObjectKind::String => self.0.as_string().hash(state),
+                ObjectKind::String => {
+                    // Strings must always be flat before they can be placed into hash tables to
+                    // avoid allocating in the hash function.
+                    let string = self.0.as_string();
+                    debug_assert!(string.is_flat());
+
+                    string.as_flat().hash(state)
+                }
                 ObjectKind::BigInt => self.0.as_bigint().bigint().hash(state),
                 // Otherwise is an object or symbol. Hash code must represent object/symbol
                 // identity, but objects/symbols can be moved by the GC. So use the stable hash code
@@ -740,23 +753,23 @@ impl<T> ValueMap<T> {
         self.map.clear()
     }
 
-    pub fn contains_key(&self, key: Value) -> bool {
+    pub fn contains_key(&self, key: Handle<Value>) -> bool {
         self.map.contains_key(&ValueCollectionKey::from(key))
     }
 
-    pub fn get(&self, key: Value) -> Option<&T> {
+    pub fn get(&self, key: Handle<Value>) -> Option<&T> {
         self.map.get(&ValueCollectionKey::from(key))
     }
 
-    pub fn insert(&mut self, key: Value, value: T) -> Option<T> {
-        self.map.insert(key.into(), value)
+    pub fn insert(&mut self, key: Handle<Value>, value: T) -> Option<T> {
+        self.map.insert(ValueCollectionKey::from(key), value)
     }
 
     pub fn len(&self) -> usize {
         self.map.len()
     }
 
-    pub fn remove(&mut self, key: Value) -> Option<T> {
+    pub fn remove(&mut self, key: Handle<Value>) -> Option<T> {
         self.map.remove(&ValueCollectionKey::from(key))
     }
 
@@ -783,19 +796,19 @@ impl ValueSet {
         self.set.clear()
     }
 
-    pub fn contains(&self, value: Value) -> bool {
+    pub fn contains(&self, value: Handle<Value>) -> bool {
         self.set.contains(&ValueCollectionKey::from(value))
     }
 
-    pub fn insert(&mut self, value: Value) -> bool {
-        self.set.insert(value.into())
+    pub fn insert(&mut self, value: Handle<Value>) -> bool {
+        self.set.insert(ValueCollectionKey::from(value))
     }
 
     pub fn len(&self) -> usize {
         self.set.len()
     }
 
-    pub fn remove(&mut self, value: Value) -> bool {
+    pub fn remove(&mut self, value: Handle<Value>) -> bool {
         self.set.remove(&ValueCollectionKey::from(value))
     }
 

@@ -24,6 +24,8 @@ use crate::{
     maybe, set_uninit,
 };
 
+use super::string_value::FlatString;
+
 // 10.4.3 String Exotic Objects
 extend_object! {
     pub struct StringObject {
@@ -137,7 +139,7 @@ impl StringObject {
         };
 
         let code_unit = {
-            let string = self.string_data;
+            let string = self.string_data();
             if index as usize >= string.len() {
                 return None;
             }
@@ -145,7 +147,7 @@ impl StringObject {
             string.code_unit_at(index as usize)
         };
 
-        let char_string = StringValue::from_code_unit(cx, code_unit);
+        let char_string = FlatString::from_code_unit(cx, code_unit).as_string();
 
         Some(PropertyDescriptor::data(char_string.into(), false, true, false))
     }

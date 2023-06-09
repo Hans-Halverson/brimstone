@@ -457,7 +457,7 @@ fn eval_call_expression(cx: &mut Context, expr: &ast::CallExpression) -> EvalRes
                 let is_non_property_eval_reference = match reference.base() {
                     ReferenceBase::Property { .. } => false,
                     ReferenceBase::Unresolvable { name } | ReferenceBase::Env { name, .. } => {
-                        *name == cx.names.eval().as_string()
+                        name.eq(&cx.names.eval().as_string())
                     }
                 };
 
@@ -1014,13 +1014,13 @@ fn eval_binary_expression(
         ast::BinaryOperator::EqEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            let is_equal = is_strictly_equal(left_value.get(), right_value.get());
+            let is_equal = is_strictly_equal(left_value, right_value);
             cx.bool(is_equal).into()
         }
         ast::BinaryOperator::NotEqEq => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            let is_equal = is_strictly_equal(left_value.get(), right_value.get());
+            let is_equal = is_strictly_equal(left_value, right_value);
             cx.bool(!is_equal).into()
         }
         ast::BinaryOperator::LessThan => {

@@ -305,9 +305,7 @@ pub fn validate_and_apply_property_descriptor(
             }
 
             match desc.value {
-                Some(value) if !same_value(value.get(), current_desc.value.unwrap().get()) => {
-                    return false
-                }
+                Some(value) if !same_value(value, current_desc.value.unwrap()) => return false,
                 _ => {}
             }
 

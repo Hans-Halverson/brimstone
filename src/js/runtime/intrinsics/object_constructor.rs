@@ -441,8 +441,7 @@ impl ObjectConstructor {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let is_same =
-            same_value(get_argument(cx, arguments, 0).get(), get_argument(cx, arguments, 1).get());
+        let is_same = same_value(get_argument(cx, arguments, 0), get_argument(cx, arguments, 1));
         cx.bool(is_same).into()
     }
 

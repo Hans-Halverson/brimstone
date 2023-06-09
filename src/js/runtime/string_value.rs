@@ -5,37 +5,40 @@ use std::{
     convert::TryFrom,
     fmt::{self, Write},
     hash::{self, Hash, Hasher},
+    mem::{align_of, size_of},
     num::NonZeroU32,
+    ptr::copy_nonoverlapping,
 };
 
 use crate::{
+    field_offset,
     js::common::unicode::{
         code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1_char,
         is_latin1_code_point, is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
         try_encode_surrogate_pair, CodePoint, CodeUnit,
     },
-    set_uninit,
+    set_uninit, static_assert,
 };
 
 use super::{
-    gc::{Handle, HeapPtr, IsHeapObject},
+    gc::{Handle, HeapInfo, HeapPtr, IsHeapObject},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     Context,
 };
 
-#[repr(C)]
-pub struct StringValue {
-    descriptor: HeapPtr<ObjectDescriptor>,
-    value: Cell<StringKind>,
-    // Cached hash code for this string's value, computed lazily
-    hash_code: Option<NonZeroU32>,
-}
-
+#[derive(PartialEq)]
 enum StringKind {
-    OneByte(OneByteString),
-    TwoByte(TwoByteString),
-    Concat(ConcatString),
+    /// A string which is the concatenation of a left and right string.
+    Concat,
+    /// A string where every code unit is represented by a u8. Equivalent to the Latin1 encoding.
+    /// Guaranteed to not contain any surrogate code units.
+    OneByte,
+    /// A string where every code unit is represented by a u16. Equivalent to UTF-16, except that
+    /// surrogate code points may appear outside of surrogate pairs.
+    ///
+    /// May only contain code units representable in a OneByte string.
+    TwoByte,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -44,182 +47,19 @@ pub enum StringWidth {
     TwoByte,
 }
 
-/// A string where every code unit is represented by a u8. Equivalent to the Latin1 encoding.
-/// Guaranteed to not contain any surrogate code units.
-struct OneByteString {
-    ptr: *const u8,
+/// Fields common to all strings.
+#[repr(C)]
+pub struct StringValue {
+    descriptor: HeapPtr<ObjectDescriptor>,
+    // Number of code units in the string
     len: usize,
-    // Whether this is the canonical interned string for its code unit sequence
-    is_interned: bool,
+    // Whether this string is a flat string or a concat string
+    kind: StringKind,
 }
 
-/// A string where every code unit is represented by a u16. Equivalent to UTF-16, except that
-/// surrogate code points may appear outside of surrogate pairs.
-///
-/// May only contain code units representable in a OneByteString.
-struct TwoByteString {
-    ptr: *const u16,
-    len: usize,
-    // Whether this is the canonical interned string for its code unit sequence
-    is_interned: bool,
-}
-
-/// A string which is the concatenation of a left and right string. Will be lazily flattened when
-/// an indexing operation is performed. Tracks the total string length, and the widest width seen
-/// in the entire concat tree.
-struct ConcatString {
-    left: HeapPtr<StringValue>,
-    right: HeapPtr<StringValue>,
-    len: usize,
-    width: StringWidth,
-}
+impl IsHeapObject for StringValue {}
 
 impl StringValue {
-    fn new_one_byte(cx: &mut Context, one_byte_string: OneByteString) -> HeapPtr<StringValue> {
-        let mut string = cx.heap.alloc_uninit::<StringValue>();
-
-        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
-        set_uninit!(string.value, Cell::new(StringKind::OneByte(one_byte_string)));
-        set_uninit!(string.hash_code, None);
-
-        string
-    }
-
-    fn new_two_byte(cx: &mut Context, two_byte_string: TwoByteString) -> HeapPtr<StringValue> {
-        let mut string = cx.heap.alloc_uninit::<StringValue>();
-
-        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
-        set_uninit!(string.value, Cell::new(StringKind::TwoByte(two_byte_string)));
-        set_uninit!(string.hash_code, None);
-
-        string
-    }
-
-    fn new_concat(
-        cx: &mut Context,
-        left: Handle<StringValue>,
-        right: Handle<StringValue>,
-        len: usize,
-        width: StringWidth,
-    ) -> Handle<StringValue> {
-        let mut string = cx.heap.alloc_uninit::<StringValue>();
-
-        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
-        set_uninit!(
-            string.value,
-            Cell::new(StringKind::Concat(ConcatString {
-                left: left.get_(),
-                right: right.get_(),
-                len,
-                width,
-            }))
-        );
-        set_uninit!(string.hash_code, None);
-
-        string.to_handle()
-    }
-
-    pub fn from_utf8(cx: &mut Context, str: String) -> HeapPtr<StringValue> {
-        // Scan string to find total number of code units and see if a two-byte string must be used
-        let mut has_two_byte_chars = false;
-        let mut has_non_ascii_one_byte_chars = false;
-        let mut length: usize = 0;
-
-        for char in str.chars() {
-            if !is_ascii(char) {
-                if !is_latin1_char(char) {
-                    has_two_byte_chars = true;
-
-                    // Two code units are needed if this is a surrogate pair
-                    if needs_surrogate_pair(char as CodePoint) {
-                        length += 2;
-                    } else {
-                        length += 1;
-                    }
-                } else {
-                    has_non_ascii_one_byte_chars = true;
-                    length += 1;
-                }
-            } else {
-                length += 1;
-            }
-        }
-
-        if has_two_byte_chars {
-            // Two byte strings are copied into buffer one character at a time, checking if character
-            // must be encoded as a surrogate pair.
-            let mut buf: Vec<u16> = Vec::with_capacity(length);
-            unsafe { buf.set_len(length) };
-
-            let mut index = 0;
-            for char in str.chars() {
-                match try_encode_surrogate_pair(char as CodePoint) {
-                    None => {
-                        buf[index] = char as u16;
-                        index += 1;
-                    }
-                    Some((high, low)) => {
-                        buf[index] = high;
-                        buf[index + 1] = low;
-                        index += 2;
-                    }
-                }
-            }
-
-            StringValue::new_two_byte(cx, TwoByteString::from_vec(buf))
-        } else if !has_non_ascii_one_byte_chars {
-            // If this string is pure ASCII then we can directly copy the UTF-8 string.
-            let str_copy = str.clone();
-            let one_byte_string =
-                OneByteString { ptr: str_copy.as_ptr(), len: length, is_interned: false };
-
-            // Memory is managed by heap, and destructor is called when string is garbage collected.
-            std::mem::forget(str_copy);
-
-            StringValue::new_one_byte(cx, one_byte_string)
-        } else {
-            // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
-            let mut buf: Vec<u8> = Vec::with_capacity(length);
-            unsafe { buf.set_len(length) };
-
-            // Copy each character into the buffer
-            let mut index = 0;
-            for char in str.chars() {
-                buf[index] = char as u8;
-                index += 1;
-            }
-
-            StringValue::new_one_byte(cx, OneByteString::from_vec(buf))
-        }
-    }
-
-    pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<StringValue> {
-        Self::from_code_point_impl(cx, code_unit as CodePoint)
-    }
-
-    pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Handle<StringValue> {
-        Self::from_code_point_impl(cx, code_point)
-    }
-
-    #[inline]
-    fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<StringValue> {
-        if is_latin1_code_point(code_point) {
-            StringValue::new_one_byte(cx, OneByteString::from_vec(vec![code_point as u8]))
-                .to_handle()
-        } else {
-            match try_encode_surrogate_pair(code_point) {
-                None => {
-                    let two_byte_string = TwoByteString::from_vec(vec![code_point as CodeUnit]);
-                    StringValue::new_two_byte(cx, two_byte_string).to_handle()
-                }
-                Some((high, low)) => {
-                    let two_byte_string = TwoByteString::from_vec(vec![high, low]);
-                    StringValue::new_two_byte(cx, two_byte_string).to_handle()
-                }
-            }
-        }
-    }
-
     pub fn concat(
         cx: &mut Context,
         left: Handle<StringValue>,
@@ -233,7 +73,7 @@ impl StringValue {
             StringWidth::OneByte
         };
 
-        StringValue::new_concat(cx, left, right, new_len, width)
+        ConcatString::new(cx, left, right, new_len, width)
     }
 
     pub fn concat_all(cx: &mut Context, strings: &[Handle<StringValue>]) -> Handle<StringValue> {
@@ -248,85 +88,100 @@ impl StringValue {
             concat_string
         }
     }
-}
 
-impl StringValue {
     pub fn is_empty(&self) -> bool {
-        match self.value() {
-            StringKind::OneByte(str) => str.len == 0,
-            StringKind::TwoByte(str) => str.len == 0,
-            StringKind::Concat(str) => str.len == 0,
-        }
+        self.len == 0
     }
 
     pub fn len(&self) -> usize {
-        match self.value() {
-            StringKind::OneByte(str) => str.len,
-            StringKind::TwoByte(str) => str.len,
-            StringKind::Concat(str) => str.len,
-        }
+        self.len
     }
 
-    fn width(&self) -> StringWidth {
-        match self.value() {
-            StringKind::OneByte(_) => StringWidth::OneByte,
-            StringKind::TwoByte(_) => StringWidth::TwoByte,
-            StringKind::Concat(str) => str.width,
+    #[inline]
+    pub fn is_flat(&self) -> bool {
+        self.kind != StringKind::Concat
+    }
+
+    fn cx(&self) -> &mut Context {
+        HeapInfo::from_raw_heap_ptr(self as *const _).cx()
+    }
+}
+
+impl HeapPtr<StringValue> {
+    #[inline]
+    pub fn as_flat(&self) -> HeapPtr<FlatString> {
+        self.cast()
+    }
+
+    #[inline]
+    pub fn as_concat_opt(&self) -> Option<HeapPtr<ConcatString>> {
+        if self.kind == StringKind::Concat {
+            Some(self.cast())
+        } else {
+            None
         }
     }
 
     #[inline]
-    fn value(&self) -> &StringKind {
-        unsafe { &*self.value.as_ptr() }
+    pub fn width(&self) -> StringWidth {
+        if let Some(concat_string) = self.as_concat_opt() {
+            concat_string.width()
+        } else {
+            self.as_flat().width()
+        }
+    }
+}
+
+impl Handle<StringValue> {
+    #[inline]
+    pub fn as_concat_opt(&self) -> Option<Handle<ConcatString>> {
+        if self.kind == StringKind::Concat {
+            Some(self.cast())
+        } else {
+            None
+        }
     }
 
-    pub fn hash_code(&mut self) -> NonZeroU32 {
-        match self.hash_code {
-            Some(hash_code) => hash_code,
-            // Lazily compute and cache hash code
-            None => {
-                let mut hasher = DefaultHasher::new();
+    #[inline]
+    pub fn as_flat(&self) -> Handle<FlatString> {
+        self.cast()
+    }
 
-                for code_unit in self.iter_code_units() {
-                    code_unit.hash(&mut hasher);
+    pub fn eq(&self, other: &Self) -> bool {
+        // Fast path if lengths differ
+        if self.len() != other.len() {
+            return false;
+        }
+
+        // First flatten so that we do not allocate while iterating
+        let flat_string_1 = self.flatten();
+        let flat_string_2 = other.flatten();
+
+        flat_string_1 == flat_string_2
+    }
+
+    pub fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // First flatten so that we do not allocate while iterating
+        let flat_string_1 = self.flatten();
+        let flat_string_2 = other.flatten();
+
+        // Cannot allocate while iterating
+        let mut iter1 = flat_string_1.iter_code_units();
+        let mut iter2 = flat_string_2.iter_code_units();
+
+        loop {
+            match (iter1.next(), iter2.next()) {
+                (None, None) => return Ordering::Equal,
+                (None, Some(_)) => return Ordering::Less,
+                (Some(_), None) => return Ordering::Greater,
+                (Some(code_unit_1), Some(code_unit_2)) => {
+                    if code_unit_1 < code_unit_2 {
+                        return Ordering::Less;
+                    } else if code_unit_1 > code_unit_2 {
+                        return Ordering::Greater;
+                    }
                 }
-
-                // Truncate hash code, making sure it is nonzero
-                let hash_code = hasher.finish() as u32;
-                let hash_code =
-                    NonZeroU32::try_from(hash_code).unwrap_or(NonZeroU32::new(1).unwrap());
-
-                self.hash_code = Some(hash_code);
-
-                hash_code
             }
-        }
-    }
-
-    pub fn is_interned(&self) -> bool {
-        match self.value() {
-            StringKind::Concat(_) => false,
-            StringKind::OneByte(str) => str.is_interned,
-            StringKind::TwoByte(str) => str.is_interned,
-        }
-    }
-
-    pub fn intern(&mut self) {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.intern()
-            }
-            StringKind::OneByte(str) => self.value.set(StringKind::OneByte(OneByteString {
-                ptr: str.ptr,
-                len: str.len,
-                is_interned: true,
-            })),
-            StringKind::TwoByte(str) => self.value.set(StringKind::TwoByte(TwoByteString {
-                ptr: str.ptr,
-                len: str.len,
-                is_interned: true,
-            })),
         }
     }
 
@@ -335,13 +190,11 @@ impl StringValue {
     ///
     /// Does not bounds check, so only call if index is known to be in range.
     pub fn code_unit_at(&self, index: usize) -> CodeUnit {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.code_unit_at(index)
-            }
-            StringKind::OneByte(str) => str.as_slice()[index] as CodeUnit,
-            StringKind::TwoByte(str) => str.as_slice()[index],
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => flat_string.as_one_byte_slice()[index] as CodeUnit,
+            StringWidth::TwoByte => flat_string.as_two_byte_slice()[index],
         }
     }
 
@@ -351,18 +204,16 @@ impl StringValue {
     ///
     /// Does not bounds check, so only call if index is known to be in range.
     pub fn code_point_at(&self, index: usize) -> CodePoint {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.code_point_at(index)
-            }
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
             // Every byte in a one byte string is a code point
-            StringKind::OneByte(str) => str.as_slice()[index] as CodePoint,
+            StringWidth::OneByte => flat_string.as_one_byte_slice()[index] as CodePoint,
             // Must check if this index is the start of a surrogate pair
-            StringKind::TwoByte(str) => {
-                let code_unit = str.as_slice()[index];
-                if is_high_surrogate_code_unit(code_unit) && index + 1 < str.len {
-                    let next_code_unit = str.as_slice()[index + 1];
+            StringWidth::TwoByte => {
+                let code_unit = flat_string.as_two_byte_slice()[index];
+                if is_high_surrogate_code_unit(code_unit) && index + 1 < flat_string.len {
+                    let next_code_unit = flat_string.as_two_byte_slice()[index + 1];
                     if is_low_surrogate_code_unit(code_unit) {
                         code_point_from_surrogate_pair(code_unit, next_code_unit)
                     } else {
@@ -378,19 +229,17 @@ impl StringValue {
     /// Return a substring of this string between the given indices. Indices refer to a half-open
     /// range of code units in the string. This function does not bounds check, so caller must make
     /// sure that 0 <= start <= end < string length.
-    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Handle<StringValue> {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.substring(cx, start, end)
+    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Handle<FlatString> {
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => {
+                let string_slice = &flat_string.as_one_byte_slice()[start..end];
+                FlatString::new_one_byte(cx, string_slice).to_handle()
             }
-            StringKind::OneByte(str) => {
-                let one_byte_string = OneByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new_one_byte(cx, one_byte_string).to_handle()
-            }
-            StringKind::TwoByte(str) => {
-                let two_byte_string = TwoByteString::from_slice(&str.as_slice()[start..end]);
-                StringValue::new_two_byte(cx, two_byte_string).to_handle()
+            StringWidth::TwoByte => {
+                let string_slice = &flat_string.as_two_byte_slice()[start..end];
+                FlatString::new_two_byte(cx, string_slice).to_handle()
             }
         }
     }
@@ -398,7 +247,7 @@ impl StringValue {
     /// Return the index of the first occurrence of the search string in this string, starting after
     /// a given index (inclusive). This function does not bounds check the after index, so caller
     /// must be make sure to only pass an after index that is less than the length of the string.
-    pub fn find(&self, search_string: HeapPtr<StringValue>, after: usize) -> Option<usize> {
+    pub fn find(&self, search_string: Handle<StringValue>, after: usize) -> Option<usize> {
         let mut string_code_units = self.iter_slice_code_units(after, self.len());
         let mut search_string_code_units = search_string.iter_code_units();
 
@@ -437,7 +286,7 @@ impl StringValue {
 
     /// Return the index of the last ocurrence of the search string in this string, starting before
     /// a given index (inclusive), which may be equal to the length of the string.
-    pub fn rfind(&self, search_string: HeapPtr<StringValue>, before: usize) -> Option<usize> {
+    pub fn rfind(&self, search_string: Handle<StringValue>, before: usize) -> Option<usize> {
         // Find the end index (exclusive) of the string range to check
         let search_string_len = search_string.len();
         let end_index = usize::min(before + search_string_len, self.len());
@@ -489,10 +338,18 @@ impl StringValue {
 
     /// If this string is a concat string, flatten it into a single buffer. This modifies the string
     /// value in-place and switches it from a concat string to a sequential string type.
-    fn flatten(&self) {
-        let concat_string = match self.value() {
-            StringKind::Concat(str) => str,
-            _ => return,
+    pub fn flatten(&self) -> Handle<FlatString> {
+        let mut concat_string = if let Some(concat_string) = self.as_concat_opt() {
+            // Is a forwarding concat string when right is None
+            if concat_string.right.is_none() {
+                return concat_string.left.as_flat().to_handle();
+            } else {
+                // Other concat strings need to be flattened
+                concat_string
+            }
+        } else {
+            // Otherwise is already flat
+            return self.as_flat();
         };
 
         let length = concat_string.len;
@@ -502,57 +359,79 @@ impl StringValue {
             let mut buf: Vec<u8> = Vec::with_capacity(length);
             unsafe { buf.set_len(length) };
 
-            let mut stack = vec![HeapPtr::from_ref(self)];
+            let mut stack = vec![concat_string.as_string()];
 
             while let Some(current_string) = stack.pop() {
-                match current_string.value() {
-                    StringKind::Concat(str) => {
-                        stack.push(str.right);
-                        stack.push(str.left);
+                if let Some(str) = current_string.as_concat_opt() {
+                    if let Some(right) = str.right {
+                        stack.push(right);
                     }
-                    StringKind::OneByte(str) => {
-                        for code_unit in CodeUnitIterator::from_one_byte(str) {
-                            buf[index] = code_unit as u8;
-                            index += 1;
+
+                    stack.push(str.left);
+                } else {
+                    let str = current_string.as_flat();
+                    match str.width() {
+                        StringWidth::OneByte => {
+                            for code_unit in CodeUnitIterator::from_one_byte(str) {
+                                buf[index] = code_unit as u8;
+                                index += 1;
+                            }
                         }
-                    }
-                    StringKind::TwoByte(_) => {
-                        unreachable!("Two-byte strings cannot appear in one-byte concat strings",)
+                        StringWidth::TwoByte => {
+                            unreachable!(
+                                "Two-byte strings cannot appear in one-byte concat strings",
+                            )
+                        }
                     }
                 }
             }
 
-            let one_byte_string = OneByteString::from_vec(buf);
-            self.value.set(StringKind::OneByte(one_byte_string))
+            let cx = self.cx();
+            let flat_string = FlatString::new_one_byte(cx, &buf);
+
+            concat_string.left = flat_string.as_string();
+            concat_string.right = None;
+
+            flat_string.to_handle()
         } else {
             let mut buf: Vec<u16> = Vec::with_capacity(length);
             unsafe { buf.set_len(length) };
 
-            let mut stack = vec![HeapPtr::from_ref(self)];
+            let mut stack = vec![concat_string.as_string()];
 
             while let Some(current_string) = stack.pop() {
-                match current_string.value() {
-                    StringKind::Concat(str) => {
-                        stack.push(str.right);
-                        stack.push(str.left);
+                if let Some(str) = current_string.as_concat_opt() {
+                    if let Some(right) = str.right {
+                        stack.push(right);
                     }
-                    StringKind::OneByte(str) => {
-                        for code_unit in CodeUnitIterator::from_one_byte(str) {
-                            buf[index] = code_unit;
-                            index += 1;
+
+                    stack.push(str.left);
+                } else {
+                    let str = current_string.as_flat();
+                    match str.width() {
+                        StringWidth::OneByte => {
+                            for code_unit in CodeUnitIterator::from_one_byte(str) {
+                                buf[index] = code_unit;
+                                index += 1;
+                            }
                         }
-                    }
-                    StringKind::TwoByte(str) => {
-                        for code_unit in CodeUnitIterator::from_two_byte(str) {
-                            buf[index] = code_unit;
-                            index += 1;
+                        StringWidth::TwoByte => {
+                            for code_unit in CodeUnitIterator::from_two_byte(str) {
+                                buf[index] = code_unit;
+                                index += 1;
+                            }
                         }
                     }
                 }
             }
 
-            let two_byte_string = TwoByteString::from_vec(buf);
-            self.value.set(StringKind::TwoByte(two_byte_string))
+            let cx = self.cx();
+            let flat_string = FlatString::new_two_byte(cx, &buf);
+
+            concat_string.left = flat_string.as_string();
+            concat_string.right = None;
+
+            flat_string.to_handle()
         }
     }
 
@@ -596,7 +475,7 @@ impl StringValue {
                     std::slice::from_raw_parts(start_ptr, length as usize)
                 };
 
-                StringValue::new_one_byte(cx, OneByteString::from_slice(slice)).to_handle()
+                FlatString::new_one_byte(cx, slice).as_string().to_handle()
             }
             StringWidth::TwoByte => {
                 let slice = unsafe {
@@ -604,29 +483,27 @@ impl StringValue {
                     std::slice::from_raw_parts(start_ptr as *const u16, length as usize)
                 };
 
-                StringValue::new_two_byte(cx, TwoByteString::from_slice(slice)).to_handle()
+                FlatString::new_two_byte(cx, slice).as_string().to_handle()
             }
         }
     }
 
-    pub fn repeat(&self, cx: &mut Context, n: u64) -> Handle<StringValue> {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.repeat(cx, n)
+    pub fn repeat(&self, cx: &mut Context, n: u64) -> Handle<FlatString> {
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => {
+                let repeated_buf = flat_string.as_one_byte_slice().repeat(n as usize);
+                FlatString::new_one_byte(cx, &repeated_buf).to_handle()
             }
-            StringKind::OneByte(str) => {
-                let repeated_buf = str.as_slice().repeat(n as usize);
-                StringValue::new_one_byte(cx, OneByteString::from_vec(repeated_buf)).to_handle()
-            }
-            StringKind::TwoByte(str) => {
-                let repeated_buf = str.as_slice().repeat(n as usize);
-                StringValue::new_two_byte(cx, TwoByteString::from_vec(repeated_buf)).to_handle()
+            StringWidth::TwoByte => {
+                let repeated_buf = flat_string.as_two_byte_slice().repeat(n as usize);
+                FlatString::new_two_byte(cx, &repeated_buf).to_handle()
             }
         }
     }
 
-    pub fn substring_equals(&self, search: HeapPtr<StringValue>, start_index: usize) -> bool {
+    pub fn substring_equals(&self, search: Handle<StringValue>, start_index: usize) -> bool {
         let mut slice_code_units =
             self.iter_slice_code_units(start_index, start_index + search.len());
         let mut search_code_units = search.iter_code_units();
@@ -634,18 +511,16 @@ impl StringValue {
         slice_code_units.consume_equals(&mut search_code_units)
     }
 
-    pub fn to_lower_case(&self, cx: &mut Context) -> Handle<StringValue> {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.to_lower_case(cx)
-            }
-            StringKind::OneByte(string) => {
+    pub fn to_lower_case(&self, cx: &mut Context) -> Handle<FlatString> {
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => {
                 // One byte fast path. Know the length of the result string in advance, and can
                 // convert to lowercase with bitwise operations.
-                let mut lowercased = Vec::with_capacity(string.len);
+                let mut lowercased = Vec::with_capacity(flat_string.len);
 
-                for latin1_byte in string.as_slice() {
+                for latin1_byte in flat_string.as_one_byte_slice() {
                     let set_lowercase = if *latin1_byte < 0x80 {
                         // ASCII lowercase
                         *latin1_byte >= ('A' as u8) && *latin1_byte <= ('Z' as u8)
@@ -661,14 +536,14 @@ impl StringValue {
                     }
                 }
 
-                StringValue::new_one_byte(cx, OneByteString::from_vec(lowercased)).to_handle()
+                FlatString::new_one_byte(cx, &lowercased).to_handle()
             }
-            StringKind::TwoByte(string) => {
+            StringWidth::TwoByte => {
                 // Two byte slow path. Must convert each code point to lowercase one by one, each of
                 // which can map to multiple code points.
                 let mut lowercased = vec![];
 
-                let code_point_iter = CodePointIterator::from_two_byte(string);
+                let code_point_iter = CodePointIterator::from_two_byte(flat_string.get_());
                 for code_point in code_point_iter {
                     match char::from_u32(code_point) {
                         // Must be an unpaired surrogate, which should be written back to buffer
@@ -690,24 +565,22 @@ impl StringValue {
                     }
                 }
 
-                StringValue::new_two_byte(cx, TwoByteString::from_vec(lowercased)).to_handle()
+                FlatString::new_two_byte(cx, &lowercased).to_handle()
             }
         }
     }
 
-    pub fn to_upper_case(&self, cx: &mut Context) -> Handle<StringValue> {
-        let code_point_iter = match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                return self.to_upper_case(cx);
-            }
-            StringKind::OneByte(string) => {
+    pub fn to_upper_case(&self, cx: &mut Context) -> Handle<FlatString> {
+        let flat_string = self.flatten();
+
+        let code_point_iter = match flat_string.width() {
+            StringWidth::OneByte => {
                 // Fast path for ASCII-only string, as uppercased Latin1 code points may be out of
                 // one byte range or map to multiple code points.
-                if string.is_ascii() {
-                    let mut uppercased = Vec::with_capacity(string.len);
+                if flat_string.is_one_byte_ascii() {
+                    let mut uppercased = Vec::with_capacity(flat_string.len);
 
-                    for ascii_byte in string.as_slice() {
+                    for ascii_byte in flat_string.as_one_byte_slice() {
                         if *ascii_byte >= ('a' as u8) && *ascii_byte <= ('z' as u8) {
                             uppercased.push(*ascii_byte ^ 0x20);
                         } else {
@@ -715,13 +588,12 @@ impl StringValue {
                         }
                     }
 
-                    return StringValue::new_one_byte(cx, OneByteString::from_vec(uppercased))
-                        .to_handle();
+                    return FlatString::new_one_byte(cx, &uppercased).to_handle();
                 }
 
-                CodePointIterator::from_one_byte(string)
+                CodePointIterator::from_one_byte(flat_string.get_())
             }
-            StringKind::TwoByte(string) => CodePointIterator::from_two_byte(string),
+            StringWidth::TwoByte => CodePointIterator::from_two_byte(flat_string.get_()),
         };
 
         // Slow path pessimistically generates two byte strings. Must convert each code point to
@@ -749,48 +621,413 @@ impl StringValue {
             }
         }
 
-        StringValue::new_two_byte(cx, TwoByteString::from_vec(uppercased)).to_handle()
-    }
-
-    pub fn iter_code_units(&self) -> CodeUnitIterator {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.iter_code_units()
-            }
-            StringKind::OneByte(string) => CodeUnitIterator::from_one_byte(string),
-            StringKind::TwoByte(string) => CodeUnitIterator::from_two_byte(string),
-        }
+        FlatString::new_two_byte(cx, &uppercased).to_handle()
     }
 
     /// Return an iterator over the code units of this string between the provided start and end
     /// indices (start index is inclusive, end index is exclusive).
     pub fn iter_slice_code_units(&self, start: usize, end: usize) -> CodeUnitIterator {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.iter_code_units()
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => {
+                CodeUnitIterator::from_one_byte_slice(flat_string.get_(), start, end)
             }
-            StringKind::OneByte(string) => {
-                CodeUnitIterator::from_one_byte_slice(string, start, end)
-            }
-            StringKind::TwoByte(string) => {
-                CodeUnitIterator::from_two_byte_slice(string, start, end)
+            StringWidth::TwoByte => {
+                CodeUnitIterator::from_two_byte_slice(flat_string.get_(), start, end)
             }
         }
     }
 
+    pub fn iter_code_units(&self) -> CodeUnitIterator {
+        let flat_string = self.flatten();
+        flat_string.iter_code_units()
+    }
+
     pub fn iter_code_points(&self) -> CodePointIterator {
-        match self.value() {
-            StringKind::Concat(_) => {
-                self.flatten();
-                self.iter_code_points()
+        let flat_string = self.flatten();
+        flat_string.iter_code_points()
+    }
+}
+
+impl From<Handle<StringValue>> for Handle<ObjectValue> {
+    fn from(value: Handle<StringValue>) -> Self {
+        value.cast()
+    }
+}
+
+impl fmt::Display for HeapPtr<StringValue> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.to_handle().fmt(f)
+    }
+}
+
+impl fmt::Display for Handle<StringValue> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let iter = self.iter_code_points();
+
+        for code_point in iter {
+            let char = char::from_u32(code_point).unwrap_or(char::REPLACEMENT_CHARACTER);
+            f.write_char(char)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[repr(C)]
+pub struct FlatString {
+    // Fields inherited from StringValue
+    descriptor: HeapPtr<ObjectDescriptor>,
+    len: usize,
+    kind: StringKind,
+    // Whether this is the canonical interned string for its code unit sequence
+    is_interned: bool,
+    // Cached hash code for this string's value, computed lazily
+    hash_code: Cell<Option<NonZeroU32>>,
+    // Start of the string's array of code points. Variable sized but struct has a single item
+    // for alignment.
+    data: [u8; 1],
+}
+
+// FlatString with no interior mutability. Keep in sync with FlatString. Needed to inspect layout
+// of FlatString in const context.
+//
+// Can remove once https://github.com/rust-lang/rust/issues/69908 is resolved.
+#[repr(C)]
+struct FlatStringNoInteriorMutability {
+    descriptor: HeapPtr<ObjectDescriptor>,
+    len: usize,
+    kind: StringKind,
+    is_interned: bool,
+    hash_code: Option<NonZeroU32>,
+    data: [u8; 1],
+}
+
+impl IsHeapObject for FlatString {}
+
+impl FlatString {
+    const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
+
+    fn new_one_byte(cx: &mut Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+        let len = one_byte_slice.len();
+        let size = Self::DATA_OFFSET + len * size_of::<u8>();
+
+        let mut string = cx
+            .heap
+            .alloc_uninit_with_size::<FlatString>(size, align_of::<FlatString>());
+
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(string.len, len);
+        set_uninit!(string.kind, StringKind::OneByte);
+        set_uninit!(string.is_interned, false);
+        set_uninit!(string.hash_code, Cell::new(None));
+
+        unsafe {
+            copy_nonoverlapping(one_byte_slice.as_ptr(), string.one_byte_data().cast_mut(), len);
+        }
+
+        string
+    }
+
+    fn new_two_byte(cx: &mut Context, two_byte_slice: &[u16]) -> HeapPtr<FlatString> {
+        let len = two_byte_slice.len();
+        let size = Self::DATA_OFFSET + len * size_of::<u16>();
+
+        let mut string = cx
+            .heap
+            .alloc_uninit_with_size::<FlatString>(size, align_of::<FlatString>());
+
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(string.len, len);
+        set_uninit!(string.kind, StringKind::TwoByte);
+        set_uninit!(string.is_interned, false);
+        set_uninit!(string.hash_code, Cell::new(None));
+
+        unsafe {
+            copy_nonoverlapping(two_byte_slice.as_ptr(), string.two_byte_data().cast_mut(), len);
+        }
+
+        string
+    }
+
+    pub fn from_utf8(cx: &mut Context, str: String) -> HeapPtr<FlatString> {
+        // Scan string to find total number of code units and see if a two-byte string must be used
+        let mut has_two_byte_chars = false;
+        let mut has_non_ascii_one_byte_chars = false;
+        let mut length: usize = 0;
+
+        for char in str.chars() {
+            if !is_ascii(char) {
+                if !is_latin1_char(char) {
+                    has_two_byte_chars = true;
+
+                    // Two code units are needed if this is a surrogate pair
+                    if needs_surrogate_pair(char as CodePoint) {
+                        length += 2;
+                    } else {
+                        length += 1;
+                    }
+                } else {
+                    has_non_ascii_one_byte_chars = true;
+                    length += 1;
+                }
+            } else {
+                length += 1;
             }
-            StringKind::OneByte(string) => CodePointIterator::from_one_byte(string),
-            StringKind::TwoByte(string) => CodePointIterator::from_two_byte(string),
+        }
+
+        if has_two_byte_chars {
+            // Two byte strings are copied into buffer one character at a time, checking if character
+            // must be encoded as a surrogate pair.
+            let mut buf: Vec<u16> = Vec::with_capacity(length);
+            unsafe { buf.set_len(length) };
+
+            let mut index = 0;
+            for char in str.chars() {
+                match try_encode_surrogate_pair(char as CodePoint) {
+                    None => {
+                        buf[index] = char as u16;
+                        index += 1;
+                    }
+                    Some((high, low)) => {
+                        buf[index] = high;
+                        buf[index + 1] = low;
+                        index += 2;
+                    }
+                }
+            }
+
+            FlatString::new_two_byte(cx, &buf)
+        } else if !has_non_ascii_one_byte_chars {
+            // If this string is pure ASCII then we can directly copy the UTF-8 string.
+            FlatString::new_one_byte(cx, str.as_bytes())
+        } else {
+            // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
+            let mut buf: Vec<u8> = Vec::with_capacity(length);
+            unsafe { buf.set_len(length) };
+
+            // Copy each character into the buffer
+            let mut index = 0;
+            for char in str.chars() {
+                buf[index] = char as u8;
+                index += 1;
+            }
+
+            FlatString::new_one_byte(cx, &buf)
+        }
+    }
+
+    pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<FlatString> {
+        Self::from_code_point_impl(cx, code_unit as CodePoint)
+    }
+
+    pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
+        Self::from_code_point_impl(cx, code_point)
+    }
+
+    #[inline]
+    fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
+        if is_latin1_code_point(code_point) {
+            FlatString::new_one_byte(cx, &[code_point as u8]).to_handle()
+        } else {
+            match try_encode_surrogate_pair(code_point) {
+                None => FlatString::new_two_byte(cx, &[code_point as CodeUnit]).to_handle(),
+                Some((high, low)) => FlatString::new_two_byte(cx, &[high, low]).to_handle(),
+            }
+        }
+    }
+
+    #[inline]
+    pub fn width(&self) -> StringWidth {
+        if self.kind == StringKind::OneByte {
+            StringWidth::OneByte
+        } else {
+            StringWidth::TwoByte
+        }
+    }
+
+    pub fn is_interned(&self) -> bool {
+        self.is_interned
+    }
+
+    pub fn intern(&mut self) {
+        self.is_interned = true
+    }
+
+    #[inline]
+    pub const fn one_byte_data(&self) -> *const u8 {
+        self.data.as_ptr()
+    }
+
+    #[inline]
+    pub const fn two_byte_data(&self) -> *const u16 {
+        self.data.as_ptr() as *const u16
+    }
+
+    #[inline]
+    pub const fn as_one_byte_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.one_byte_data(), self.len) }
+    }
+
+    #[inline]
+    pub const fn as_two_byte_slice(&self) -> &[u16] {
+        unsafe { std::slice::from_raw_parts(self.two_byte_data(), self.len) }
+    }
+
+    /// Whether this is a one byte string containing all ASCII characters
+    fn is_one_byte_ascii(&self) -> bool {
+        // TODO: Optimize by checking multiple bytes at a time using multi-byte mask
+        for byte in self.as_one_byte_slice() {
+            if *byte >= 0x80 {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl HeapPtr<FlatString> {
+    #[inline]
+    pub fn as_string(&self) -> HeapPtr<StringValue> {
+        self.cast()
+    }
+
+    pub fn hash_code(&self) -> NonZeroU32 {
+        match self.hash_code.get() {
+            Some(hash_code) => hash_code,
+            // Lazily compute and cache hash code
+            None => {
+                let mut hasher = DefaultHasher::new();
+
+                for code_unit in self.iter_code_units() {
+                    code_unit.hash(&mut hasher);
+                }
+
+                // Truncate hash code, making sure it is nonzero
+                let hash_code = hasher.finish() as u32;
+                let hash_code =
+                    NonZeroU32::try_from(hash_code).unwrap_or(NonZeroU32::new(1).unwrap());
+
+                self.hash_code.set(Some(hash_code));
+
+                hash_code
+            }
+        }
+    }
+
+    pub fn iter_code_units(&self) -> CodeUnitIterator {
+        match self.width() {
+            StringWidth::OneByte => CodeUnitIterator::from_one_byte(*self),
+            StringWidth::TwoByte => CodeUnitIterator::from_two_byte(*self),
+        }
+    }
+
+    pub fn iter_code_points(&self) -> CodePointIterator {
+        match self.width() {
+            StringWidth::OneByte => CodePointIterator::from_one_byte(*self),
+            StringWidth::TwoByte => CodePointIterator::from_two_byte(*self),
         }
     }
 }
+
+impl Handle<FlatString> {
+    #[inline]
+    pub fn as_string(&self) -> Handle<StringValue> {
+        self.cast()
+    }
+}
+
+impl PartialEq for HeapPtr<FlatString> {
+    fn eq(&self, other: &Self) -> bool {
+        // Fast path if lengths differ
+        if self.len != other.len {
+            return false;
+        }
+
+        let mut iter1 = self.iter_code_units();
+        let mut iter2 = other.iter_code_units();
+
+        iter1.consume_equals(&mut iter2)
+    }
+}
+
+impl PartialEq for Handle<FlatString> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_().eq(&other.get_())
+    }
+}
+
+impl Eq for HeapPtr<FlatString> {}
+
+impl Eq for Handle<FlatString> {}
+
+impl hash::Hash for HeapPtr<FlatString> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.hash_code().hash(state)
+    }
+}
+
+impl hash::Hash for Handle<FlatString> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.get_().hash(state)
+    }
+}
+
+/// A string which is the concatenation of a left and right string. Will be lazily flattened when
+/// an indexing operation is performed. Tracks the total string length, and the widest width seen
+/// in the entire concat tree.
+///
+/// When a string is flattened the left side points to the new flat string, while the right is None.
+#[repr(C)]
+pub struct ConcatString {
+    // Fields inherited from StringValue
+    descriptor: HeapPtr<ObjectDescriptor>,
+    len: usize,
+    kind: StringKind,
+    // Width of this concat string
+    width: StringWidth,
+    left: HeapPtr<StringValue>,
+    right: Option<HeapPtr<StringValue>>,
+}
+
+impl IsHeapObject for ConcatString {}
+
+impl ConcatString {
+    fn new(
+        cx: &mut Context,
+        left: Handle<StringValue>,
+        right: Handle<StringValue>,
+        len: usize,
+        width: StringWidth,
+    ) -> Handle<StringValue> {
+        let mut string = cx.heap.alloc_uninit::<ConcatString>();
+
+        set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
+        set_uninit!(string.len, len);
+        set_uninit!(string.kind, StringKind::Concat);
+        set_uninit!(string.width, width);
+        set_uninit!(string.left, left.get_());
+        set_uninit!(string.right, Some(right.get_()));
+
+        string.as_string().to_handle()
+    }
+
+    fn width(&self) -> StringWidth {
+        self.width
+    }
+}
+
+impl HeapPtr<ConcatString> {
+    #[inline]
+    pub fn as_string(&self) -> HeapPtr<StringValue> {
+        self.cast()
+    }
+}
+
+// Ensure that data will be aligned if placed after the rest of the fields
+static_assert!(FlatString::DATA_OFFSET % align_of::<u16>() == 0);
 
 #[derive(Clone)]
 pub struct CodeUnitIterator {
@@ -800,15 +1037,15 @@ pub struct CodeUnitIterator {
 }
 
 impl CodeUnitIterator {
-    fn from_one_byte(string: &OneByteString) -> Self {
-        let ptr = string.ptr;
+    fn from_one_byte(string: HeapPtr<FlatString>) -> Self {
+        let ptr = string.one_byte_data();
         let end = unsafe { ptr.add(string.len) };
 
         CodeUnitIterator { ptr, end, width: StringWidth::OneByte }
     }
 
-    fn from_two_byte(string: &TwoByteString) -> Self {
-        let ptr = string.ptr;
+    fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
+        let ptr = string.two_byte_data();
         let end = unsafe { ptr.add(string.len) };
 
         CodeUnitIterator {
@@ -818,16 +1055,16 @@ impl CodeUnitIterator {
         }
     }
 
-    fn from_one_byte_slice(string: &OneByteString, start: usize, end: usize) -> Self {
-        let ptr = unsafe { string.ptr.add(start) };
-        let end = unsafe { string.ptr.add(end) };
+    fn from_one_byte_slice(string: HeapPtr<FlatString>, start: usize, end: usize) -> Self {
+        let ptr = unsafe { string.one_byte_data().add(start) };
+        let end = unsafe { string.one_byte_data().add(end) };
 
         CodeUnitIterator { ptr, end, width: StringWidth::OneByte }
     }
 
-    fn from_two_byte_slice(string: &TwoByteString, start: usize, end: usize) -> Self {
-        let ptr = unsafe { string.ptr.add(start) };
-        let end = unsafe { string.ptr.add(end) };
+    fn from_two_byte_slice(string: HeapPtr<FlatString>, start: usize, end: usize) -> Self {
+        let ptr = unsafe { string.two_byte_data().add(start) };
+        let end = unsafe { string.two_byte_data().add(end) };
 
         CodeUnitIterator {
             ptr: ptr as *const u8,
@@ -911,7 +1148,7 @@ impl Iterator for CodeUnitIterator {
                     Some(item)
                 } else {
                     let item = (self.ptr as *const u16).read();
-                    self.ptr = self.ptr.add(2);
+                    self.ptr = (self.ptr as *const u16).add(1) as *const u8;
                     Some(item)
                 }
             }
@@ -942,11 +1179,11 @@ pub struct CodePointIterator {
 }
 
 impl CodePointIterator {
-    fn from_one_byte(string: &OneByteString) -> Self {
+    fn from_one_byte(string: HeapPtr<FlatString>) -> Self {
         CodePointIterator { iter: CodeUnitIterator::from_one_byte(string) }
     }
 
-    fn from_two_byte(string: &TwoByteString) -> Self {
+    fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
         CodePointIterator { iter: CodeUnitIterator::from_two_byte(string) }
     }
 
@@ -1018,151 +1255,5 @@ impl DoubleEndedIterator for CodePointIterator {
                 }
             }
         }
-    }
-}
-
-impl IsHeapObject for StringValue {}
-
-impl fmt::Display for HeapPtr<StringValue> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let iter = self.iter_code_points();
-
-        for code_point in iter {
-            let char = char::from_u32(code_point).unwrap_or(char::REPLACEMENT_CHARACTER);
-            f.write_char(char)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl fmt::Display for Handle<StringValue> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.get_().fmt(f)
-    }
-}
-
-impl PartialEq for HeapPtr<StringValue> {
-    fn eq(&self, other: &Self) -> bool {
-        // Fast path if lengths differ
-        if self.len() != other.len() {
-            return false;
-        }
-
-        let mut iter1 = self.iter_code_units();
-        let mut iter2 = other.iter_code_units();
-
-        iter1.consume_equals(&mut iter2)
-    }
-}
-
-impl PartialEq for Handle<StringValue> {
-    fn eq(&self, other: &Self) -> bool {
-        self.get_().eq(&other.get_())
-    }
-}
-
-impl Eq for HeapPtr<StringValue> {}
-
-impl Eq for Handle<StringValue> {}
-
-impl PartialOrd for HeapPtr<StringValue> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let mut iter1 = self.iter_code_units();
-        let mut iter2 = other.iter_code_units();
-
-        loop {
-            match (iter1.next(), iter2.next()) {
-                (None, None) => return Some(Ordering::Equal),
-                (None, Some(_)) => return Some(Ordering::Less),
-                (Some(_), None) => return Some(Ordering::Greater),
-                (Some(code_unit_1), Some(code_unit_2)) => {
-                    if code_unit_1 < code_unit_2 {
-                        return Some(Ordering::Less);
-                    } else if code_unit_1 > code_unit_2 {
-                        return Some(Ordering::Greater);
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl hash::Hash for HeapPtr<StringValue> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.clone().hash_code().hash(state)
-    }
-}
-
-impl hash::Hash for Handle<StringValue> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.get_().hash(state)
-    }
-}
-
-impl From<Handle<StringValue>> for Handle<ObjectValue> {
-    fn from(value: Handle<StringValue>) -> Self {
-        value.cast()
-    }
-}
-
-impl OneByteString {
-    fn from_vec(buf: Vec<u8>) -> Self {
-        let string = OneByteString { ptr: buf.as_ptr(), len: buf.len(), is_interned: false };
-
-        // Memory is managed by heap, and destructor is called when string is garbage collected
-        std::mem::forget(buf);
-
-        string
-    }
-
-    fn from_slice(slice: &[u8]) -> Self {
-        // Copy slice to buffer
-        let mut buf = Vec::with_capacity(slice.len());
-        unsafe { buf.set_len(slice.len()) }
-        buf.copy_from_slice(slice);
-
-        Self::from_vec(buf)
-    }
-
-    #[inline]
-    pub const fn as_slice(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
-    }
-
-    fn is_ascii(&self) -> bool {
-        // TODO: Optimize by checking multiple bytes at a time using multi-byte mask
-        for byte in self.as_slice() {
-            if *byte >= 0x80 {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-impl TwoByteString {
-    fn from_vec(buf: Vec<u16>) -> Self {
-        let string = TwoByteString { ptr: buf.as_ptr(), len: buf.len(), is_interned: false };
-
-        // Memory is managed by heap, and destructor is called when string is garbage collected
-        std::mem::forget(buf);
-
-        string
-    }
-
-    fn from_slice(slice: &[u16]) -> Self {
-        // Copy slice to buffer
-        let mut buf = Vec::with_capacity(slice.len());
-        unsafe { buf.set_len(slice.len()) }
-        buf.copy_from_slice(slice);
-
-        Self::from_vec(buf)
-    }
-
-    #[inline]
-    pub const fn as_slice(&self) -> &[u16] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
     }
 }

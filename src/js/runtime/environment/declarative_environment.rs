@@ -7,7 +7,7 @@ use crate::{
         gc::{Handle, Heap, IsHeapObject},
         object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
-        string_value::StringValue,
+        string_value::{FlatString, StringValue},
         value::Value,
         Context, HeapPtr,
     },
@@ -41,7 +41,7 @@ impl Binding {
 #[repr(C)]
 pub struct DeclarativeEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
-    bindings: HashMap<HeapPtr<StringValue>, Binding>,
+    bindings: HashMap<HeapPtr<FlatString>, Binding>,
     outer: Option<HeapDynEnvironment>,
 }
 
@@ -87,7 +87,7 @@ impl DeclarativeEnvironment {
 impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.1 HasBinding
     fn has_binding(&self, _: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
-        self.bindings.contains_key(&name.get_()).into()
+        self.bindings.contains_key(&name.flatten().get_()).into()
     }
 
     // 9.1.1.1.2 CreateMutableBinding
@@ -98,7 +98,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         can_delete: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(true, false, can_delete);
-        self.bindings.insert(name.get_(), binding);
+        self.bindings.insert(name.flatten().get_(), binding);
         ().into()
     }
 
@@ -110,7 +110,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         is_strict: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(false, is_strict, false);
-        self.bindings.insert(name.get_(), binding);
+        self.bindings.insert(name.flatten().get_(), binding);
         ().into()
     }
 
@@ -121,7 +121,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
-        let binding = self.bindings.get_mut(&name.get_()).unwrap();
+        let binding = self.bindings.get_mut(&name.flatten().get_()).unwrap();
         binding.value = value.get();
         binding.is_initialized = true;
         ().into()
@@ -135,7 +135,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()> {
-        match self.bindings.get_mut(&name.get_()) {
+        match self.bindings.get_mut(&name.flatten().get_()) {
             None if is_strict => err_not_defined_(cx, name),
             None => {
                 self.create_mutable_binding(cx, name, true);
@@ -167,7 +167,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         name: Handle<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
-        let binding = self.bindings.get(&name.get_()).unwrap();
+        let binding = self.bindings.get(&name.flatten().get_()).unwrap();
         if !binding.is_initialized {
             return err_uninitialized_(cx, name);
         }
@@ -177,7 +177,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
 
     // 9.1.1.1.7 DeleteBinding
     fn delete_binding(&mut self, _: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
-        let name = name.get_();
+        let name = name.flatten().get_();
         let binding = self.bindings.get(&name).unwrap();
         if !binding.can_delete {
             return false.into();

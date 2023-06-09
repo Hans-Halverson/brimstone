@@ -10,7 +10,7 @@ use crate::{
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
-        string_value::StringValue,
+        string_value::{FlatString, StringValue},
         Context, HeapPtr, Value,
     },
     set_uninit,
@@ -34,7 +34,7 @@ pub struct GlobalEnvironment {
 
     global_this_value: HeapPtr<ObjectValue>,
 
-    var_names: HashSet<HeapPtr<StringValue>>,
+    var_names: HashSet<HeapPtr<FlatString>>,
 }
 
 impl Handle<GlobalEnvironment> {
@@ -184,7 +184,7 @@ impl Environment for Handle<GlobalEnvironment> {
         if maybe!(has_own_property(cx, object_env.binding_object(), name_key)) {
             let status = maybe!(object_env.delete_binding(cx, name));
             if status {
-                self.var_names.remove(&name.get_());
+                self.var_names.remove(&name.flatten().get_());
             }
 
             return status.into();
@@ -221,7 +221,7 @@ impl Environment for Handle<GlobalEnvironment> {
 impl GlobalEnvironment {
     // 9.1.1.4.12 HasVarDeclaration
     pub fn has_var_declaration(&self, name: Handle<StringValue>) -> bool {
-        self.var_names.contains(&name.get_())
+        self.var_names.contains(&name.flatten().get_())
     }
 
     // 9.1.1.4.14 HasRestrictedGlobalProperty
@@ -315,7 +315,7 @@ impl Handle<GlobalEnvironment> {
             maybe!(object_env.initialize_binding(cx, name, cx.undefined()));
         }
 
-        let name = name.get_();
+        let name = name.flatten().get_();
         if !self.var_names.contains(&name) {
             self.var_names.insert(name);
         }
@@ -350,7 +350,7 @@ impl Handle<GlobalEnvironment> {
         maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
         maybe!(set(cx, global_object, name_key, value, false));
 
-        let name = name.get_();
+        let name = name.flatten().get_();
         if !(self.var_names.contains(&name)) {
             self.var_names.insert(name);
         }

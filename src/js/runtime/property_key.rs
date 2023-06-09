@@ -13,6 +13,8 @@ use super::{
 /// or a smi if key is a valid array index. Note that smis technically have an i32 range but
 /// array indices have a u32 range, but we can cast between signed an unsigned values appropriately.
 ///
+/// Since strings are interned they are also guaranteed to be flat.
+///
 /// Always stored on the stack.
 #[derive(Clone, Copy)]
 pub struct PropertyKey {
@@ -27,7 +29,7 @@ impl PropertyKey {
     #[inline]
     pub fn string(cx: &mut Context, value: Handle<StringValue>) -> PropertyKey {
         // String value may represent an array index
-        match parse_string_to_u32(value.get_()) {
+        match parse_string_to_u32(value) {
             None => PropertyKey::string_not_array_index(cx, value),
             Some(u32::MAX) => PropertyKey::string_not_array_index(cx, value),
             Some(array_index) => PropertyKey::array_index(cx, array_index),
@@ -39,7 +41,9 @@ impl PropertyKey {
     #[inline]
     pub fn string_not_array_index(cx: &mut Context, value: Handle<StringValue>) -> PropertyKey {
         // Enforce that all string property keys are interned
-        PropertyKey { value: InternedStrings::get(cx, value.get_()).into() }
+        let flat_string = value.flatten();
+        let interned_string = InternedStrings::get(cx, flat_string.get_()).as_string();
+        PropertyKey { value: interned_string.into() }
     }
 
     #[inline]
@@ -157,7 +161,12 @@ impl hash::Hash for PropertyKey {
         if self.is_array_index() {
             self.as_array_index().hash(state);
         } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
-            self.as_string().hash(state)
+            // Strings must always be flat before they can be placed into hash tables to
+            // avoid allocating in the hash function.
+            let string = self.as_string();
+            debug_assert!(string.is_flat());
+
+            string.as_flat().hash(state)
         } else {
             self.as_symbol().hash(state)
         }

@@ -10,7 +10,7 @@ use crate::{
             property::Property,
             realm::Realm,
             string_object::StringObject,
-            string_value::StringValue,
+            string_value::{FlatString, StringValue},
             type_utilities::{to_number, to_string, to_uint16},
             Context, Handle, Value,
         },
@@ -91,7 +91,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = maybe!(to_uint16(cx, arguments[0]));
-            return StringValue::from_code_unit(cx, code_unit).into();
+            return FlatString::from_code_unit(cx, code_unit).as_string().into();
         }
 
         // Otherwise concatenate strings together
@@ -99,7 +99,7 @@ impl StringConstructor {
 
         for arg in arguments {
             let code_unit = maybe!(to_uint16(cx, *arg));
-            let code_unit_string = StringValue::from_code_unit(cx, code_unit);
+            let code_unit_string = FlatString::from_code_unit(cx, code_unit).as_string();
             concat_string = StringValue::concat(cx, concat_string, code_unit_string);
         }
 
@@ -139,7 +139,9 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_point = get_code_point!(arguments[0]);
-            return StringValue::from_code_point(cx, code_point).into();
+            return FlatString::from_code_point(cx, code_point)
+                .as_string()
+                .into();
         }
 
         // Otherwise concatenate strings together
@@ -147,7 +149,7 @@ impl StringConstructor {
 
         for arg in arguments {
             let code_point = get_code_point!(*arg);
-            let code_point_string = StringValue::from_code_point(cx, code_point);
+            let code_point_string = FlatString::from_code_point(cx, code_point).as_string();
             concat_string = StringValue::concat(cx, concat_string, code_point_string);
         }
 

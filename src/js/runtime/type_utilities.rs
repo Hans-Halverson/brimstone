@@ -155,7 +155,10 @@ pub fn to_number(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Ha
             to_number(cx, primitive_value)
         } else {
             match value.as_pointer().descriptor().kind() {
-                ObjectKind::String => string_to_number(value.as_string()).to_handle(cx).into(),
+                // May allocate
+                ObjectKind::String => string_to_number(value_handle.as_string())
+                    .to_handle(cx)
+                    .into(),
                 ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to number"),
                 ObjectKind::BigInt => type_error_(cx, "BigInt cannot be converted to number"),
                 _ => unreachable!(),
@@ -178,7 +181,7 @@ pub fn to_number(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Ha
 }
 
 // 7.1.4.1.1 StringToNumber
-fn string_to_number(value: HeapPtr<StringValue>) -> Value {
+fn string_to_number(value: Handle<StringValue>) -> Value {
     match parse_string_to_number(value) {
         None => Value::nan(),
         Some(num) => Value::number(num),
@@ -460,11 +463,12 @@ pub fn to_bigint(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<Bi
         match primitive.as_pointer().descriptor().kind() {
             ObjectKind::BigInt => return primitive_handle.as_bigint().into(),
             ObjectKind::String => {
-                return if let Some(bigint) = string_to_bigint(primitive.as_string()) {
+                // May allocate
+                return if let Some(bigint) = string_to_bigint(primitive_handle.as_string()) {
                     BigIntValue::new(cx, bigint).into()
                 } else {
                     syntax_error_(cx, "string does not represent a BigInt")
-                }
+                };
             }
             _ => {}
         }
@@ -743,7 +747,10 @@ pub fn is_regexp(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
 }
 
 // 7.2.11 SameValue
-pub fn same_value(v1: Value, v2: Value) -> bool {
+pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+    let v1 = v1_handle;
+    let v2 = v2_handle;
+
     // Same as is_strictly_equal, but treats NaN as equal to itself, and does not treat differently
     // signed zeros as equal.
     if v1.is_number() {
@@ -764,11 +771,14 @@ pub fn same_value(v1: Value, v2: Value) -> bool {
         }
     }
 
-    same_value_non_numeric(v1, v2)
+    same_value_non_numeric(v1_handle, v2_handle)
 }
 
 // 7.2.12 SameValueZero
-pub fn same_value_zero(v1: Value, v2: Value) -> bool {
+pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+    let v1 = v1_handle.get();
+    let v2 = v2_handle.get();
+
     // Same as same)value, but treats differently signed zeros as equal
     if v1.is_number() {
         if v2.is_number() {
@@ -782,12 +792,34 @@ pub fn same_value_zero(v1: Value, v2: Value) -> bool {
         }
     }
 
-    same_value_non_numeric(v1, v2)
+    same_value_non_numeric(v1_handle, v2_handle)
+}
+
+// Same as same_value_zero but cannot allocate. Callers must ensure that all string values passed to
+// this function are flat.
+pub fn same_value_zero_non_allocating(v1: Value, v2: Value) -> bool {
+    // Same as same)value, but treats differently signed zeros as equal
+    if v1.is_number() {
+        if v2.is_number() {
+            if v1.is_nan() && v2.is_nan() {
+                return true;
+            }
+
+            return v1.as_number() == v2.as_number();
+        } else {
+            return false;
+        }
+    }
+
+    same_value_non_numeric_non_allocating(v1, v2)
 }
 
 // 7.2.13 SameValueNonNumeric, also includes BigInt handling
 #[inline]
-fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
+fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+    let v1 = v1_handle.get();
+    let v2 = v2_handle.get();
+
     // Fast path, if values have same bits they are always equal
     if v1.as_raw_bits() == v2.as_raw_bits() {
         return true;
@@ -799,7 +831,45 @@ fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
         let kind1 = v1.as_pointer().descriptor().kind();
         if kind1 == v2.as_pointer().descriptor().kind() {
             match kind1 {
-                ObjectKind::String => return v1.as_string() == v2.as_string(),
+                ObjectKind::String => {
+                    // May allocate
+                    return v1_handle.as_string().eq(&v2_handle.as_string());
+                }
+                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
+                _ => {}
+            }
+        }
+    }
+
+    false.into()
+}
+
+// Same as same_value_non_numeric but cannot allocate. Callers must ensure that all string values
+// passed to this function are flat.
+#[inline]
+fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
+    // Fast path, if values have same bits they are always equal
+    if v1.as_raw_bits() == v2.as_raw_bits() {
+        return true;
+    }
+
+    // Only strings and BigInts may have the same value but different bit patterns, since
+    // non-pointer values are all unique, and objects and symbols are identified by their address.
+    if v1.is_pointer() && v2.is_pointer() {
+        let kind1 = v1.as_pointer().descriptor().kind();
+        if kind1 == v2.as_pointer().descriptor().kind() {
+            match kind1 {
+                ObjectKind::String => {
+                    // Must be flat strings to be non allocating
+                    let v1_string = v1.as_string();
+                    let v2_string = v2.as_string();
+
+                    debug_assert!(v1_string.is_flat());
+                    debug_assert!(v2_string.is_flat());
+
+                    // Cannot allocate
+                    return v1_string.as_flat() == v2_string.as_flat();
+                }
                 ObjectKind::BigInt => return v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
                 _ => {}
             }
@@ -810,7 +880,7 @@ fn same_value_non_numeric(v1: Value, v2: Value) -> bool {
 }
 
 // 7.1.14 StringToBigInt
-fn string_to_bigint(value: HeapPtr<StringValue>) -> Option<BigInt> {
+fn string_to_bigint(value: Handle<StringValue>) -> Option<BigInt> {
     parse_string_to_bigint(value)
 }
 
@@ -861,12 +931,14 @@ pub fn is_less_than(
 
         if x_kind == ObjectKind::String {
             if y_kind == ObjectKind::String {
-                return (x.as_string() < y.as_string()).into();
+                // May allocate
+                return (x_handle.as_string().cmp(&y_handle.as_string()).is_lt()).into();
             } else if y_kind == ObjectKind::BigInt {
-                let x_bigint = string_to_bigint(x.as_string());
+                // May allocate
+                let x_bigint = string_to_bigint(x_handle.as_string());
 
                 return if let Some(x_bigint) = x_bigint {
-                    x_bigint.lt(y.as_bigint().bigint()).into()
+                    x_bigint.lt(y_handle.as_bigint().bigint()).into()
                 } else {
                     Value::undefined().into()
                 };
@@ -874,10 +946,11 @@ pub fn is_less_than(
         }
 
         if x_kind == ObjectKind::BigInt && y_kind == ObjectKind::String {
-            let y_bigint = string_to_bigint(y.as_string());
+            // May allocate
+            let y_bigint = string_to_bigint(y_handle.as_string());
 
             return if let Some(y_bigint) = y_bigint {
-                x.as_bigint().bigint().lt(&y_bigint).into()
+                x_handle.as_bigint().bigint().lt(&y_bigint).into()
             } else {
                 Value::undefined().into()
             };
@@ -995,8 +1068,9 @@ pub fn is_loosely_equal(
         return if v2.is_pointer() {
             match v2.as_pointer().descriptor().kind() {
                 ObjectKind::String => {
-                    let number_v2 = string_to_number(v2.as_string());
-                    (v1.as_number() == number_v2.as_number()).into()
+                    // May allocate
+                    let number_v2 = string_to_number(v2_handle.as_string());
+                    (v1_handle.as_number() == number_v2.as_number()).into()
                 }
                 ObjectKind::BigInt => {
                     if v1.is_nan() || v1.is_infinity() {
@@ -1050,7 +1124,10 @@ pub fn is_loosely_equal(
             if kind1 == kind2 {
                 return match kind1 {
                     // Only strings and BigInts may have the same value but different bit patterns
-                    ObjectKind::String => (v1.as_string() == v2.as_string()).into(),
+                    ObjectKind::String => {
+                        // May allocate
+                        v1_handle.as_string().eq(&v2_handle.as_string()).into()
+                    }
                     ObjectKind::BigInt => {
                         v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into()
                     }
@@ -1089,8 +1166,9 @@ pub fn is_loosely_equal(
             let kind = v1.as_pointer().descriptor().kind();
             match kind {
                 ObjectKind::String => {
-                    let v1_number = string_to_number(v1.as_string());
-                    (v1_number.as_number() == v2.as_number()).into()
+                    // May allocate
+                    let v1_number = string_to_number(v1_handle.as_string());
+                    (v1_number.as_number() == v2_handle.as_number()).into()
                 }
                 ObjectKind::BigInt => {
                     if v2.is_nan() || v2.is_infinity() {
@@ -1130,17 +1208,19 @@ pub fn is_loosely_equal(
         // Strings are implicitly converted to BigInts
         match (kind1, kind2) {
             (ObjectKind::String, ObjectKind::BigInt) => {
-                let v1_bigint = string_to_bigint(v1.as_string());
+                // May allocate
+                let v1_bigint = string_to_bigint(v1_handle.as_string());
                 return if let Some(v1_bigint) = v1_bigint {
-                    v1_bigint.eq(v2.as_bigint().bigint()).into()
+                    v1_bigint.eq(v2_handle.as_bigint().bigint()).into()
                 } else {
                     false.into()
                 };
             }
             (ObjectKind::BigInt, ObjectKind::String) => {
-                let v2_bigint = string_to_bigint(v2.as_string());
+                // May allocate
+                let v2_bigint = string_to_bigint(v2_handle.as_string());
                 return if let Some(v2_bigint) = v2_bigint {
-                    v1.as_bigint().bigint().eq(&v2_bigint).into()
+                    v1_handle.as_bigint().bigint().eq(&v2_bigint).into()
                 } else {
                     false.into()
                 };
@@ -1163,7 +1243,10 @@ pub fn is_loosely_equal(
 }
 
 // 7.2.16 IsStrictlyEqual
-pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
+pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+    let v1 = v1_handle.get();
+    let v2 = v2_handle.get();
+
     if v1.is_number() {
         if v2.is_number() {
             return v1.as_number() == v2.as_number();
@@ -1172,7 +1255,7 @@ pub fn is_strictly_equal(v1: Value, v2: Value) -> bool {
         }
     }
 
-    same_value_non_numeric(v1, v2)
+    same_value_non_numeric(v1_handle, v2_handle)
 }
 
 // Specialization of SameValue for objects, checks object identity

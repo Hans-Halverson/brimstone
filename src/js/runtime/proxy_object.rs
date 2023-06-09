@@ -303,7 +303,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
-                        if !same_value(trap_result.get(), target_desc.value.unwrap().get()) {
+                        if !same_value(trap_result, target_desc.value.unwrap()) {
                             return type_error_(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key));
                         }
                     }
@@ -351,7 +351,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
-                        if !same_value(value.get(), target_desc.value.unwrap().get()) {
+                        if !same_value(value, target_desc.value.unwrap()) {
                             return type_error_(cx, &format!("proxy can't successfully set a non-writable, non-configurable property '{}'", key));
                         }
                     }

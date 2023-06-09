@@ -12,7 +12,7 @@ use crate::{
             gc::{Handle, HandleScope, IsHeapObject},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
-            string_value::StringValue,
+            string_value::FlatString,
             Context, HeapPtr,
         },
     },
@@ -151,7 +151,7 @@ fn global_declaration_instantiation(
     }
 
     // Order does not matter for declared var names, despite ordering in spec
-    let mut declared_var_names: HashSet<Handle<StringValue>> = HashSet::new();
+    let mut declared_var_names: HashSet<Handle<FlatString>> = HashSet::new();
 
     for var_decl in script.var_decls() {
         match var_decl {
@@ -167,7 +167,7 @@ fn global_declaration_instantiation(
                             );
                         }
 
-                        declared_var_names.insert(name_value);
+                        declared_var_names.insert(name_value.flatten());
                     }
 
                     ().into()
@@ -201,7 +201,7 @@ fn global_declaration_instantiation(
     }
 
     for var_name in declared_var_names {
-        maybe__!(env.create_global_var_binding(cx, var_name, false));
+        maybe__!(env.create_global_var_binding(cx, var_name.as_string(), false));
     }
 
     Completion::empty(cx)

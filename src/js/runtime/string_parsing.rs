@@ -7,7 +7,7 @@ use crate::js::common::unicode::{
 };
 
 use super::{
-    string_value::{CodeUnitIterator, StringValue, StringWidth},
+    string_value::{CodeUnitIterator, GenericCodeUnitIterator, StringValue, StringWidth},
     Handle,
 };
 

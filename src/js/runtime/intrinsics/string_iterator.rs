@@ -9,8 +9,8 @@ use crate::{
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
-        string_value::{CodePointIterator, FlatString, StringValue},
-        Context, Handle, HeapPtr, Value,
+        string_value::{FlatString, SafeCodePointIterator, StringValue},
+        Context, Handle, Value,
     },
     maybe, set_uninit,
 };
@@ -20,9 +20,7 @@ use super::intrinsics::Intrinsic;
 // 22.1.5 String Iterator Objects
 extend_object! {
     pub struct StringIterator {
-        // String is not used directly, but it held so that it is not GC'd while iterator exists
-        string: HeapPtr<StringValue>,
-        code_points_iter: CodePointIterator,
+        iter: SafeCodePointIterator,
     }
 }
 
@@ -34,8 +32,7 @@ impl StringIterator {
             Intrinsic::StringIteratorPrototype,
         );
 
-        set_uninit!(object.string, string.get_());
-        set_uninit!(object.code_points_iter, string.iter_code_points());
+        set_uninit!(object.iter, string.iter_code_points_safe());
 
         object.to_handle()
     }
@@ -74,7 +71,7 @@ impl StringIteratorPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
-        match string_iterator.code_points_iter.next() {
+        match string_iterator.iter.next() {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(next_code_point) => {
                 let code_point_string =

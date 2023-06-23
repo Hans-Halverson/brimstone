@@ -191,11 +191,7 @@ impl Handle<StringValue> {
     /// Does not bounds check, so only call if index is known to be in range.
     pub fn code_unit_at(&self, index: usize) -> CodeUnit {
         let flat_string = self.flatten();
-
-        match flat_string.width() {
-            StringWidth::OneByte => flat_string.as_one_byte_slice()[index] as CodeUnit,
-            StringWidth::TwoByte => flat_string.as_two_byte_slice()[index],
-        }
+        flat_string.code_unit_at(index)
     }
 
     /// Return the unicode code point that starts with the code unit at the given index. If pointing
@@ -205,25 +201,7 @@ impl Handle<StringValue> {
     /// Does not bounds check, so only call if index is known to be in range.
     pub fn code_point_at(&self, index: usize) -> CodePoint {
         let flat_string = self.flatten();
-
-        match flat_string.width() {
-            // Every byte in a one byte string is a code point
-            StringWidth::OneByte => flat_string.as_one_byte_slice()[index] as CodePoint,
-            // Must check if this index is the start of a surrogate pair
-            StringWidth::TwoByte => {
-                let code_unit = flat_string.as_two_byte_slice()[index];
-                if is_high_surrogate_code_unit(code_unit) && index + 1 < flat_string.len {
-                    let next_code_unit = flat_string.as_two_byte_slice()[index + 1];
-                    if is_low_surrogate_code_unit(code_unit) {
-                        code_point_from_surrogate_pair(code_unit, next_code_unit)
-                    } else {
-                        code_unit as CodePoint
-                    }
-                } else {
-                    code_unit as CodePoint
-                }
-            }
-        }
+        flat_string.code_point_at(index)
     }
 
     /// Return a substring of this string between the given indices. Indices refer to a half-open
@@ -648,6 +626,11 @@ impl Handle<StringValue> {
         let flat_string = self.flatten();
         flat_string.iter_code_points()
     }
+
+    pub fn iter_code_points_safe(&self) -> SafeCodePointIterator {
+        let flat_string = self.flatten();
+        SafeCodePointIterator::from_string(flat_string)
+    }
 }
 
 impl From<Handle<StringValue>> for Handle<ObjectValue> {
@@ -886,6 +869,36 @@ impl FlatString {
 
         true
     }
+
+    #[inline]
+    fn code_unit_at(&self, index: usize) -> CodeUnit {
+        match self.width() {
+            StringWidth::OneByte => self.as_one_byte_slice()[index] as CodeUnit,
+            StringWidth::TwoByte => self.as_two_byte_slice()[index],
+        }
+    }
+
+    #[inline]
+    fn code_point_at(&self, index: usize) -> CodePoint {
+        match self.width() {
+            // Every byte in a one byte string is a code point
+            StringWidth::OneByte => self.as_one_byte_slice()[index] as CodePoint,
+            // Must check if this index is the start of a surrogate pair
+            StringWidth::TwoByte => {
+                let code_unit = self.as_two_byte_slice()[index];
+                if is_high_surrogate_code_unit(code_unit) && index + 1 < self.len {
+                    let next_code_unit = self.as_two_byte_slice()[index + 1];
+                    if is_low_surrogate_code_unit(code_unit) {
+                        code_point_from_surrogate_pair(code_unit, next_code_unit)
+                    } else {
+                        code_unit as CodePoint
+                    }
+                } else {
+                    code_unit as CodePoint
+                }
+            }
+        }
+    }
 }
 
 impl HeapPtr<FlatString> {
@@ -1029,6 +1042,12 @@ impl HeapPtr<ConcatString> {
 // Ensure that data will be aligned if placed after the rest of the fields
 static_assert!(FlatString::DATA_OFFSET % align_of::<u16>() == 0);
 
+/// Methods necessary to treat as a peekable stream of code units.
+pub trait GenericCodeUnitIterator: Iterator<Item = CodeUnit> {
+    fn peek(&self) -> Option<Self::Item>;
+}
+
+/// An iterator over the code units of a string. Is not GC-safe.
 #[derive(Clone)]
 pub struct CodeUnitIterator {
     ptr: *const u8,
@@ -1078,34 +1097,6 @@ impl CodeUnitIterator {
         std::ptr::eq(self.ptr, self.end)
     }
 
-    pub fn peek(&self) -> Option<CodeUnit> {
-        if self.is_end() {
-            None
-        } else {
-            unsafe {
-                if self.width == StringWidth::OneByte {
-                    Some(self.ptr.read() as u16)
-                } else {
-                    Some((self.ptr as *const u16).read())
-                }
-            }
-        }
-    }
-
-    pub fn peek_back(&self) -> Option<CodeUnit> {
-        if self.is_end() {
-            None
-        } else {
-            unsafe {
-                if self.width == StringWidth::OneByte {
-                    Some(self.end.sub(1).read() as u16)
-                } else {
-                    Some((self.end.sub(2) as *const u16).read())
-                }
-            }
-        }
-    }
-
     pub fn ptr(&self) -> *const u8 {
         self.ptr
     }
@@ -1128,6 +1119,20 @@ impl CodeUnitIterator {
                     if code_unit_1 != code_unit_2 {
                         return false;
                     }
+                }
+            }
+        }
+    }
+
+    fn peek_back(&self) -> Option<CodeUnit> {
+        if self.is_end() {
+            None
+        } else {
+            unsafe {
+                if self.width == StringWidth::OneByte {
+                    Some(self.end.sub(1).read() as u16)
+                } else {
+                    Some((self.end.sub(2) as *const u16).read())
                 }
             }
         }
@@ -1174,37 +1179,67 @@ impl DoubleEndedIterator for CodeUnitIterator {
     }
 }
 
-pub struct CodePointIterator {
-    iter: CodeUnitIterator,
-}
-
-impl CodePointIterator {
-    fn from_one_byte(string: HeapPtr<FlatString>) -> Self {
-        CodePointIterator { iter: CodeUnitIterator::from_one_byte(string) }
-    }
-
-    fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
-        CodePointIterator { iter: CodeUnitIterator::from_two_byte(string) }
-    }
-
-    fn is_end(&self) -> bool {
-        self.iter.is_end()
-    }
-
-    fn ptr(&self) -> *const u8 {
-        self.iter.ptr()
-    }
-
-    fn ptr_back(&self) -> *const u8 {
-        self.iter.ptr_back()
-    }
-
-    fn width(&self) -> StringWidth {
-        self.iter.width()
+impl GenericCodeUnitIterator for CodeUnitIterator {
+    fn peek(&self) -> Option<CodeUnit> {
+        if self.is_end() {
+            None
+        } else {
+            unsafe {
+                if self.width == StringWidth::OneByte {
+                    Some(self.ptr.read() as u16)
+                } else {
+                    Some((self.ptr as *const u16).read())
+                }
+            }
+        }
     }
 }
 
-impl Iterator for CodePointIterator {
+/// An iterator over the code units of a string. Is GC-safe.
+#[derive(Clone)]
+pub struct SafeCodeUnitIterator {
+    // String that is being iterated over
+    string: HeapPtr<FlatString>,
+    // Index of the next code unit to return in the string
+    index: usize,
+}
+
+impl SafeCodeUnitIterator {
+    fn from_string(string: Handle<FlatString>) -> Self {
+        SafeCodeUnitIterator { string: string.get_(), index: 0 }
+    }
+}
+
+impl Iterator for SafeCodeUnitIterator {
+    type Item = CodeUnit;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current_index = self.index;
+        if current_index >= self.string.len {
+            None
+        } else {
+            self.index += 1;
+            Some(self.string.code_unit_at(current_index))
+        }
+    }
+}
+
+impl GenericCodeUnitIterator for SafeCodeUnitIterator {
+    fn peek(&self) -> Option<CodeUnit> {
+        let current_index = self.index;
+        if current_index >= self.string.len {
+            None
+        } else {
+            Some(self.string.code_unit_at(current_index))
+        }
+    }
+}
+
+pub struct GenericCodePointIterator<I: GenericCodeUnitIterator> {
+    iter: I,
+}
+
+impl<T: GenericCodeUnitIterator> Iterator for GenericCodePointIterator<T> {
     type Item = CodePoint;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1232,6 +1267,35 @@ impl Iterator for CodePointIterator {
     }
 }
 
+/// An iterator over the code points of a string. Is not GC-safe.
+pub type CodePointIterator = GenericCodePointIterator<CodeUnitIterator>;
+
+impl CodePointIterator {
+    fn from_one_byte(string: HeapPtr<FlatString>) -> Self {
+        CodePointIterator { iter: CodeUnitIterator::from_one_byte(string) }
+    }
+
+    fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
+        CodePointIterator { iter: CodeUnitIterator::from_two_byte(string) }
+    }
+
+    fn is_end(&self) -> bool {
+        self.iter.is_end()
+    }
+
+    fn ptr(&self) -> *const u8 {
+        self.iter.ptr()
+    }
+
+    fn ptr_back(&self) -> *const u8 {
+        self.iter.ptr_back()
+    }
+
+    fn width(&self) -> StringWidth {
+        self.iter.width()
+    }
+}
+
 impl DoubleEndedIterator for CodePointIterator {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.iter.next_back() {
@@ -1255,5 +1319,14 @@ impl DoubleEndedIterator for CodePointIterator {
                 }
             }
         }
+    }
+}
+
+/// An iterator over the code points of a string. Is GC-safe.
+pub type SafeCodePointIterator = GenericCodePointIterator<SafeCodeUnitIterator>;
+
+impl SafeCodePointIterator {
+    fn from_string(string: Handle<FlatString>) -> Self {
+        SafeCodePointIterator { iter: SafeCodeUnitIterator::from_string(string) }
     }
 }

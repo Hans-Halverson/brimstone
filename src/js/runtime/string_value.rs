@@ -668,7 +668,7 @@ pub struct FlatString {
     is_interned: bool,
     // Cached hash code for this string's value, computed lazily
     hash_code: Cell<Option<NonZeroU32>>,
-    // Start of the string's array of code points. Variable sized but struct has a single item
+    // Start of the string's array of code points. Variable sized but array has a single item
     // for alignment.
     data: [u8; 1],
 }
@@ -696,9 +696,7 @@ impl FlatString {
         let len = one_byte_slice.len();
         let size = Self::DATA_OFFSET + len * size_of::<u8>();
 
-        let mut string = cx
-            .heap
-            .alloc_uninit_with_size::<FlatString>(size, align_of::<FlatString>());
+        let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
         set_uninit!(string.len, len);
@@ -717,9 +715,7 @@ impl FlatString {
         let len = two_byte_slice.len();
         let size = Self::DATA_OFFSET + len * size_of::<u16>();
 
-        let mut string = cx
-            .heap
-            .alloc_uninit_with_size::<FlatString>(size, align_of::<FlatString>());
+        let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
         set_uninit!(string.len, len);

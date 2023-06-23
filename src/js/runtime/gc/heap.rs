@@ -50,15 +50,16 @@ impl Heap {
     }
 
     pub fn alloc_uninit<T>(&mut self) -> HeapPtr<T> {
-        self.alloc_uninit_with_size::<T>(size_of::<T>(), align_of::<T>())
+        self.alloc_uninit_with_size::<T>(size_of::<T>())
     }
 
     /// Allocate an object of a given type with the specified size in bytes. When called directly,
     /// is used to allocate dynamically sized objects.
     #[inline]
-    pub fn alloc_uninit_with_size<T>(&mut self, size: usize, align: usize) -> HeapPtr<T> {
+    pub fn alloc_uninit_with_size<T>(&mut self, size: usize) -> HeapPtr<T> {
         unsafe {
             // First align start offset to alignment of type
+            let align = align_of::<T>();
             let start = self.current.add(self.current.align_offset(align));
 
             // Calculate where the current will be after this allocation, checking if there is room

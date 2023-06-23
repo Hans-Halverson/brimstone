@@ -1,10 +1,10 @@
-use std::{hash, num::NonZeroU64};
+use std::{hash, mem::size_of, num::NonZeroU64, ptr::copy_nonoverlapping};
 
 use indexmap::{IndexMap, IndexSet};
-use num_bigint::BigInt;
+use num_bigint::{BigInt, Sign};
 use rand::Rng;
 
-use crate::set_uninit;
+use crate::{field_offset, set_uninit};
 
 use super::{
     context::Context,
@@ -617,25 +617,44 @@ impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
 #[repr(C)]
 pub struct BigIntValue {
     descriptor: HeapPtr<ObjectDescriptor>,
-    value: BigInt,
+    // Number of u32 digits in the BigInt
+    len: usize,
+    // Sign of the BigInt
+    sign: Sign,
+    // Start of the BigInt's array of digits. Variable sized but array has a single item for
+    // alignment.
+    digits: [u32; 1],
 }
 
 impl BigIntValue {
-    pub fn new(cx: &mut Context, value: BigInt) -> Handle<BigIntValue> {
-        let mut bigint = cx.heap.alloc_uninit::<BigIntValue>();
+    const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
 
+    pub fn new(cx: &mut Context, value: BigInt) -> Handle<BigIntValue> {
+        // Extract sign and digits from BigInt
+        let (sign, digits) = value.to_u32_digits();
+
+        // Calculate size of BigIntValue with inlined digits
+        let len = digits.len();
+        let size = Self::DIGITS_OFFSET + len * size_of::<u32>();
+
+        let mut bigint = cx.heap.alloc_uninit_with_size::<BigIntValue>(size);
+
+        // Copy raw parts of BigInt into BigIntValue
         set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
-        set_uninit!(bigint.value, value);
+        set_uninit!(bigint.len, digits.len());
+        set_uninit!(bigint.sign, sign);
+
+        unsafe { copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
 
         bigint.to_handle()
     }
 }
 
 impl BigIntValue {
-    pub fn bigint<'a, 'b>(&'a self) -> &'b BigInt {
-        // Intentionally break lifetime, as BigIntValues are managed by the Gc heap
-        // unsafe { std::mem::transmute(&self.0) }
-        unsafe { std::mem::transmute(&self.value) }
+    pub fn bigint(&self) -> BigInt {
+        // Recreate BigInt from stored raw parts
+        let slice = unsafe { std::slice::from_raw_parts(self.digits.as_ptr(), self.len) };
+        BigInt::from_slice(self.sign, slice)
     }
 }
 

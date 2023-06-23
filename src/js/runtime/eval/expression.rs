@@ -1413,8 +1413,8 @@ fn eval_shift_left(
     if left_is_bigint {
         let result = maybe!(eval_bigint_left_shift(
             cx,
-            left_num.as_bigint().bigint(),
-            right_num.as_bigint().bigint()
+            &left_num.as_bigint().bigint(),
+            &right_num.as_bigint().bigint()
         ));
 
         return BigIntValue::new(cx, result).into();
@@ -1445,7 +1445,7 @@ fn eval_shift_right_arithmetic(
     if left_is_bigint {
         let result = maybe!(eval_bigint_left_shift(
             cx,
-            left_num.as_bigint().bigint(),
+            &left_num.as_bigint().bigint(),
             &-right_num.as_bigint().bigint()
         ));
 

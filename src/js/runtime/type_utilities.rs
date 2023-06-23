@@ -835,7 +835,7 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
                     // May allocate
                     return v1_handle.as_string().eq(&v2_handle.as_string());
                 }
-                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
+                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()),
                 _ => {}
             }
         }
@@ -870,7 +870,7 @@ fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
                     // Cannot allocate
                     return v1_string.as_flat() == v2_string.as_flat();
                 }
-                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(v2.as_bigint().bigint()),
+                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()),
                 _ => {}
             }
         }
@@ -938,7 +938,7 @@ pub fn is_less_than(
                 let x_bigint = string_to_bigint(x_handle.as_string());
 
                 return if let Some(x_bigint) = x_bigint {
-                    x_bigint.lt(y_handle.as_bigint().bigint()).into()
+                    x_bigint.lt(&y_handle.as_bigint().bigint()).into()
                 } else {
                     Value::undefined().into()
                 };
@@ -970,7 +970,7 @@ pub fn is_less_than(
             return num_x
                 .as_bigint()
                 .bigint()
-                .lt(num_y.as_bigint().bigint())
+                .lt(&num_y.as_bigint().bigint())
                 .into();
         } else {
             // Both are numbers
@@ -1028,7 +1028,7 @@ pub fn is_less_than(
         let x_has_fract = x_f64.trunc() != x_f64;
         let x_bigint = x_f64.to_bigint().unwrap();
 
-        match x_bigint.cmp(num_y.as_bigint().bigint()) {
+        match x_bigint.cmp(&num_y.as_bigint().bigint()) {
             Ordering::Less => true.into(),
             Ordering::Equal => {
                 // If x had a fractional part it was truncated towards 0. This means that if x had a
@@ -1088,7 +1088,7 @@ pub fn is_loosely_equal(
                     let v1_bigint = v1_f64.to_bigint().unwrap();
                     let v2_bigint = v2.as_bigint().bigint();
 
-                    (v1_bigint == *v2_bigint).into()
+                    (v1_bigint == v2_bigint).into()
                 }
                 ObjectKind::Symbol => false.into(),
                 // Otherwise must be an object
@@ -1129,7 +1129,7 @@ pub fn is_loosely_equal(
                         v1_handle.as_string().eq(&v2_handle.as_string()).into()
                     }
                     ObjectKind::BigInt => {
-                        v1.as_bigint().bigint().eq(v2.as_bigint().bigint()).into()
+                        v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()).into()
                     }
                     _ => false.into(),
                 };
@@ -1186,7 +1186,7 @@ pub fn is_loosely_equal(
                     let v2_bigint = v2_f64.to_bigint().unwrap();
                     let v1_bigint = v1.as_bigint().bigint();
 
-                    (*v1_bigint == v2_bigint).into()
+                    (v1_bigint == v2_bigint).into()
                 }
                 ObjectKind::Symbol => false.into(),
                 // Otherwise must be an object
@@ -1211,7 +1211,7 @@ pub fn is_loosely_equal(
                 // May allocate
                 let v1_bigint = string_to_bigint(v1_handle.as_string());
                 return if let Some(v1_bigint) = v1_bigint {
-                    v1_bigint.eq(v2_handle.as_bigint().bigint()).into()
+                    v1_bigint.eq(&v2_handle.as_bigint().bigint()).into()
                 } else {
                     false.into()
                 };

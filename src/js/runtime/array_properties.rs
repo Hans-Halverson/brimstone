@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    mem::{align_of, size_of},
-};
+use std::{collections::HashMap, mem::size_of};
 
 use crate::{field_offset, set_uninit};
 
@@ -311,10 +308,7 @@ impl DenseArrayProperties {
     pub fn new(cx: &mut Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
         // Size of a dense array with the given capacity, in bytes
         let size = DENSE_ARRAY_DATA_OFFSET + size_of::<Value>() * (capacity as usize);
-        let align = align_of::<DenseArrayProperties>();
-        let mut object = cx
-            .heap
-            .alloc_uninit_with_size::<DenseArrayProperties>(size, align);
+        let mut object = cx.heap.alloc_uninit_with_size::<DenseArrayProperties>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
         set_uninit!(object.length, 0);

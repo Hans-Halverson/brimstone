@@ -1,8 +1,9 @@
-use std::{collections::HashMap, mem::size_of};
+use std::collections::HashMap;
 
 use crate::{field_offset, set_uninit};
 
 use super::{
+    collections::InlineArray,
     gc::IsHeapObject,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -94,7 +95,7 @@ impl ArrayProperties {
         let old_length = dense_properties.length;
 
         // Only expand if new length doesn't fit in current capacity
-        let old_capacity = dense_properties.capacity;
+        let old_capacity = dense_properties.capacity();
         if new_length <= old_capacity {
             // Fill added range with emptys
             dense_properties.length = new_length;
@@ -112,9 +113,9 @@ impl ArrayProperties {
 
         unsafe {
             // Copy data from old array to new array
-            let new_data_ptr = new_dense_properties.data.as_mut_ptr();
+            let new_data_ptr = new_dense_properties.array.data_mut_ptr();
             std::ptr::copy_nonoverlapping(
-                dense_properties.data.as_ptr(),
+                dense_properties.array.data_ptr(),
                 new_data_ptr,
                 old_length as usize,
             );
@@ -131,7 +132,7 @@ impl ArrayProperties {
         let mut dense_properties = object.array_properties().as_dense();
 
         // Only shrink backing array if it would be less than one half filled
-        if new_length >= (dense_properties.capacity / 2) {
+        if new_length >= (dense_properties.capacity() / 2) {
             dense_properties.length = new_length;
             return;
         }
@@ -144,8 +145,8 @@ impl ArrayProperties {
         unsafe {
             // Copy data from old array to new array
             std::ptr::copy_nonoverlapping(
-                dense_properties.data.as_ptr(),
-                new_dense_properties.data.as_mut_ptr(),
+                dense_properties.array.data_ptr(),
+                new_dense_properties.array.data_mut_ptr(),
                 new_length as usize,
             );
         }
@@ -293,42 +294,44 @@ pub struct DenseArrayProperties {
     descriptor: HeapPtr<ObjectDescriptor>,
     // Number of elements stored in this array so far
     length: u32,
-    // Total number of elements that can be stored in the array, may be larger than the length
-    capacity: u32,
-    // Variable sized array of elements. We must hardcode a constant number of elements, in this
-    // cast 1, to avoid this becoming a DST while keeping correct alignment and offset of fields.
-    data: [Value; 1],
+    // Array of elements, total size is the capacity of the array
+    array: InlineArray<Value>,
 }
 
 impl IsHeapObject for DenseArrayProperties {}
 
-const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, data);
+const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, array);
 
 impl DenseArrayProperties {
     pub fn new(cx: &mut Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
         // Size of a dense array with the given capacity, in bytes
-        let size = DENSE_ARRAY_DATA_OFFSET + size_of::<Value>() * (capacity as usize);
+        let size = DENSE_ARRAY_DATA_OFFSET
+            + InlineArray::<Value>::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.heap.alloc_uninit_with_size::<DenseArrayProperties>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
         set_uninit!(object.length, 0);
-        set_uninit!(object.capacity, capacity);
+        object.array.init(capacity as usize);
 
         object
     }
 
+    fn capacity(&self) -> u32 {
+        self.array.len() as u32
+    }
+
     fn get(&self, index: u32) -> Value {
-        unsafe { (&self.data.as_ptr()).add(index as usize).read() }
+        *(self.array.get_unchecked(index as usize))
     }
 
     fn set(&mut self, index: u32, value: Value) {
-        unsafe { (&self.data.as_mut_ptr()).add(index as usize).write(value) }
+        *(self.array.get_unchecked_mut(index as usize)) = value;
     }
 
     #[inline]
     fn set_empty_range(&mut self, start_index: u32, end_index: u32) {
         unsafe {
-            let mut ptr = self.data.as_mut_ptr().add(start_index as usize);
+            let mut ptr = self.array.data_mut_ptr().add(start_index as usize);
             for _ in 0..(end_index - start_index) {
                 ptr.write(Value::empty());
                 ptr = ptr.add(1);
@@ -340,7 +343,7 @@ impl DenseArrayProperties {
     /// that a GC cannot occur while the iterator is in use.
     #[inline]
     fn iter_gc_unsafe(&self) -> DenseArrayPropertiesGcUnsafeIter {
-        let current = self.data.as_ptr();
+        let current = self.array.data_ptr();
         let end = unsafe { current.add(self.length as usize) };
 
         DenseArrayPropertiesGcUnsafeIter { current, end }

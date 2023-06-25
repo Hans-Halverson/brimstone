@@ -5,6 +5,7 @@ mod array_properties;
 mod bound_function_object;
 mod builtin_function;
 mod builtin_names;
+mod collections;
 pub mod completion;
 mod console;
 mod context;

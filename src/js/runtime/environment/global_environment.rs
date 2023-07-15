@@ -1,8 +1,7 @@
-use std::collections::HashSet;
-
 use crate::{
     js::runtime::{
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
+        collections::{BsHashSet, BsHashSetContainer},
         completion::EvalResult,
         error::type_error_,
         gc::{Handle, IsHeapObject},
@@ -34,8 +33,10 @@ pub struct GlobalEnvironment {
 
     global_this_value: HeapPtr<ObjectValue>,
 
-    var_names: HashSet<HeapPtr<FlatString>>,
+    var_names: HeapPtr<VarNamesSet>,
 }
+
+type VarNamesSet = BsHashSet<HeapPtr<FlatString>>;
 
 impl Handle<GlobalEnvironment> {
     #[inline]
@@ -53,9 +54,10 @@ impl GlobalEnvironment {
         global_object: Handle<ObjectValue>,
         global_this_value: Handle<ObjectValue>,
     ) -> Handle<GlobalEnvironment> {
-        // Allocate and put behind handles before allocating global environment
+        // Allocate and place behind handle before allocating environment
         let object_env = ObjectEnvironment::new(cx, global_object, false, None);
         let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
+        let var_names = Self::new_var_names_set(cx).to_handle();
 
         let mut env = cx.heap.alloc_uninit::<GlobalEnvironment>();
 
@@ -70,9 +72,13 @@ impl GlobalEnvironment {
 
         set_uninit!(env.object_env, object_env.get_());
         set_uninit!(env.global_this_value, global_this_value.get_());
-        set_uninit!(env.var_names, HashSet::new());
+        set_uninit!(env.var_names, var_names.get_());
 
         env.to_handle()
+    }
+
+    pub fn new_var_names_set(cx: &mut Context) -> HeapPtr<VarNamesSet> {
+        Self::new_set(cx)
     }
 
     #[inline]
@@ -320,7 +326,8 @@ impl Handle<GlobalEnvironment> {
 
         let name = name.flatten().get_();
         if !self.var_names.contains(&name) {
-            self.var_names.insert(name);
+            let set_container = self.clone();
+            self.var_names.to_handle().insert(cx, set_container, name);
         }
 
         ().into()
@@ -355,9 +362,18 @@ impl Handle<GlobalEnvironment> {
 
         let name = name.flatten().get_();
         if !(self.var_names.contains(&name)) {
-            self.var_names.insert(name);
+            let set_container = self.clone();
+            self.var_names.to_handle().insert(cx, set_container, name);
         }
 
         ().into()
+    }
+}
+
+impl BsHashSetContainer<HeapPtr<FlatString>> for GlobalEnvironment {
+    const KIND: ObjectKind = ObjectKind::GlobalEnvironmentNameSet;
+
+    fn set_set(&mut self, set: HeapPtr<VarNamesSet>) {
+        self.var_names = set;
     }
 }

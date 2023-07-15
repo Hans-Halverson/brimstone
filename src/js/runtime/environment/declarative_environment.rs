@@ -90,7 +90,7 @@ impl DeclarativeEnvironment {
     }
 
     pub fn new_bindings_map(cx: &mut Context) -> HeapPtr<BindingsMap> {
-        Handle::<Self>::new_map(cx)
+        Self::new_map(cx)
     }
 }
 
@@ -230,7 +230,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     }
 }
 
-impl BsHashMapContainer<HeapPtr<FlatString>, Binding> for Handle<DeclarativeEnvironment> {
+impl BsHashMapContainer<HeapPtr<FlatString>, Binding> for DeclarativeEnvironment {
     const KIND: ObjectKind = ObjectKind::DeclarativeEnvironmentMap;
 
     fn set_map(&mut self, map: HeapPtr<BindingsMap>) {

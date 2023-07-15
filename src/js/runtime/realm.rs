@@ -59,7 +59,7 @@ impl Realm {
     }
 
     fn new_bindings_map(cx: &mut Context) -> HeapPtr<TemplateMap> {
-        Handle::<Self>::new_map(cx)
+        Self::new_map(cx)
     }
 
     #[inline]
@@ -153,7 +153,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
     })
 }
 
-impl BsHashMapContainer<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for Handle<Realm> {
+impl BsHashMapContainer<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for Realm {
     const KIND: ObjectKind = ObjectKind::RealmTemplateMap;
 
     fn set_map(&mut self, map: HeapPtr<TemplateMap>) {

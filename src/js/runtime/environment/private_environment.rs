@@ -51,7 +51,7 @@ impl PrivateEnvironment {
     }
 
     fn new_names_map(cx: &mut Context) -> HeapPtr<PrivateNameMap> {
-        Handle::<Self>::new_map(cx)
+        Self::new_map(cx)
     }
 
     pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
@@ -96,7 +96,7 @@ impl Handle<PrivateEnvironment> {
     }
 }
 
-impl BsHashMapContainer<HeapPtr<FlatString>, HeapPrivateName> for Handle<PrivateEnvironment> {
+impl BsHashMapContainer<HeapPtr<FlatString>, HeapPrivateName> for PrivateEnvironment {
     const KIND: ObjectKind = ObjectKind::PrivateEnvironmentNameMap;
 
     fn set_map(&mut self, map: HeapPtr<PrivateNameMap>) {

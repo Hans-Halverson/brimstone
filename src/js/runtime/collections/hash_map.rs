@@ -41,13 +41,13 @@ struct KVPair<K, V> {
     value: V,
 }
 
-const MIN_CAPACITY: usize = 4;
-
 const ENTRIES_BYTES_OFFSET: usize = field_offset!(BsHashMap<String, String>, entries);
 
 impl<K, V> IsHeapObject for BsHashMap<K, V> {}
 
 impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
+    pub const MIN_CAPACITY: usize = 4;
+
     pub fn new(cx: &mut Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
@@ -65,11 +65,13 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     /// Number of kv pairs inserted in the map.
+    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
-    /// Total number of entries in the backing array/
+    /// Total number of entries in the backing array.
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.entries.len()
     }
@@ -216,11 +218,12 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsHashMap<K, V>> {
     /// Insert the key value pair into this map. If there is already a value associated with the key
     /// then overwrite the value. Return whether the key was already present in the map.
     ///
-    /// Insert must only be called if there is room to insert another entry in the map.
+    /// Insert may grow the map and update container to point to new map if there is no room to
+    /// insert another entry in the map.
     pub fn insert(
         &mut self,
         cx: &mut Context,
-        container: impl BsHashMapContainer<K, V>,
+        container: Handle<impl BsHashMapContainer<K, V>>,
         key: K,
         value: V,
     ) -> bool {
@@ -232,7 +235,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsHashMap<K, V>> {
     fn maybe_grow_for_insertion<C: BsHashMapContainer<K, V>>(
         &self,
         cx: &mut Context,
-        mut container: C,
+        mut container: Handle<C>,
     ) -> HeapPtr<BsHashMap<K, V>> {
         // Keep at least half of the entries empty, otherwise grow
         let new_length = self.len() + 1;
@@ -259,7 +262,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsHashMap<K, V>> {
 
 /// A heap object that holds a BsHashMap as a child. Specifies the exact kind of the map, and
 /// provides the ability to update the pointer to the map.
-pub trait BsHashMapContainer<K: Eq + Hash + Clone, V: Clone> {
+pub trait BsHashMapContainer<K: Eq + Hash + Clone, V: Clone>: IsHeapObject {
     const KIND: ObjectKind;
 
     fn kind() -> ObjectKind {
@@ -267,7 +270,7 @@ pub trait BsHashMapContainer<K: Eq + Hash + Clone, V: Clone> {
     }
 
     fn new_map(cx: &mut Context) -> HeapPtr<BsHashMap<K, V>> {
-        BsHashMap::<K, V>::new(cx, Self::kind(), MIN_CAPACITY)
+        BsHashMap::<K, V>::new(cx, Self::kind(), BsHashMap::<K, V>::MIN_CAPACITY)
     }
 
     fn set_map(&mut self, map: HeapPtr<BsHashMap<K, V>>);

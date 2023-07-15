@@ -118,6 +118,7 @@ pub enum ObjectKind {
     DeclarativeEnvironmentMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
+    GlobalEnvironmentNameSet,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -299,6 +300,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
+        other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
 
         BaseDescriptors { descriptors }
     }

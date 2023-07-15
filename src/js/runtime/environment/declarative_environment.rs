@@ -2,7 +2,7 @@ use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 
 use crate::{
     js::runtime::{
-        collections::{BsHashMap, BsHashMapContainer},
+        collections::{BsHashMap, BsHashMapField},
         completion::EvalResult,
         error::{err_not_defined_, err_uninitialized_, type_error_},
         gc::{Handle, Heap, IsHeapObject},
@@ -53,7 +53,7 @@ impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
     pub fn new(cx: &mut Context, outer: Option<DynEnvironment>) -> Handle<DeclarativeEnvironment> {
         // Allocate and place behind handle before allocating environment
-        let bindings_map = Self::new_bindings_map(cx).to_handle();
+        let bindings_map = Self::new_bindings_map(cx);
 
         let mut env = cx.heap.alloc_uninit::<DeclarativeEnvironment>();
 
@@ -89,8 +89,14 @@ impl DeclarativeEnvironment {
         env.to_handle()
     }
 
-    pub fn new_bindings_map(cx: &mut Context) -> HeapPtr<BindingsMap> {
-        Self::new_map(cx)
+    pub fn new_bindings_map(cx: &mut Context) -> Handle<BindingsMap> {
+        BindingsMapField::new(cx, BindingsMap::MIN_CAPACITY).to_handle()
+    }
+}
+
+impl Handle<DeclarativeEnvironment> {
+    fn bindings_field(&self) -> BindingsMapField {
+        BindingsMapField(*self)
     }
 }
 
@@ -107,12 +113,9 @@ impl Environment for Handle<DeclarativeEnvironment> {
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
-        let map_container = self.clone();
-
         let binding = Binding::new(true, false, can_delete);
-        self.bindings
-            .to_handle()
-            .insert(cx, map_container, name.flatten().get_(), binding);
+        self.bindings_field()
+            .insert(cx, name.flatten().get_(), binding);
         ().into()
     }
 
@@ -123,12 +126,9 @@ impl Environment for Handle<DeclarativeEnvironment> {
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
-        let map_container = self.clone();
-
         let binding = Binding::new(false, is_strict, false);
-        self.bindings
-            .to_handle()
-            .insert(cx, map_container, name.flatten().get_(), binding);
+        self.bindings_field()
+            .insert(cx, name.flatten().get_(), binding);
         ().into()
     }
 
@@ -230,10 +230,18 @@ impl Environment for Handle<DeclarativeEnvironment> {
     }
 }
 
-impl BsHashMapContainer<HeapPtr<FlatString>, Binding> for DeclarativeEnvironment {
-    const KIND: ObjectKind = ObjectKind::DeclarativeEnvironmentMap;
+struct BindingsMapField(Handle<DeclarativeEnvironment>);
 
-    fn set_map(&mut self, map: HeapPtr<BindingsMap>) {
-        self.bindings = map;
+impl BsHashMapField<HeapPtr<FlatString>, Binding> for BindingsMapField {
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BindingsMap> {
+        BindingsMap::new(cx, ObjectKind::DeclarativeEnvironmentBindingsMap, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<BindingsMap> {
+        self.0.bindings
+    }
+
+    fn set(&mut self, map: HeapPtr<BindingsMap>) {
+        self.0.bindings = map;
     }
 }

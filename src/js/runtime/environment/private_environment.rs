@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        collections::{BsHashMap, BsHashMapContainer},
+        collections::{BsHashMap, BsHashMapField},
         gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         string_value::{FlatString, StringValue},
@@ -39,19 +39,15 @@ impl PrivateEnvironment {
         outer: Option<Handle<PrivateEnvironment>>,
     ) -> Handle<PrivateEnvironment> {
         // Allocate and place behind handle before allocating environment
-        let names_map = Self::new_names_map(cx);
+        let names_map = NamesField::new(cx, PrivateNameMap::MIN_CAPACITY).to_handle();
 
         let mut env = cx.heap.alloc_uninit::<PrivateEnvironment>();
 
         set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::PrivateEnvironment));
-        set_uninit!(env.names, names_map);
+        set_uninit!(env.names, names_map.get_());
         set_uninit!(env.outer, outer.map(|p| p.get_()));
 
         env.to_handle()
-    }
-
-    fn new_names_map(cx: &mut Context) -> HeapPtr<PrivateNameMap> {
-        Self::new_map(cx)
     }
 
     pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
@@ -83,23 +79,29 @@ impl PrivateEnvironment {
 }
 
 impl Handle<PrivateEnvironment> {
-    pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
-        let map_container = self.clone();
+    fn names_field(&self) -> NamesField {
+        NamesField(*self)
+    }
 
+    pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
         let symbol_name = SymbolValue::new(cx, None);
-        self.names.to_handle().insert(
-            cx,
-            map_container,
-            description.flatten().get_(),
-            symbol_name.get_(),
-        );
+        self.names_field()
+            .insert(cx, description.flatten().get_(), symbol_name.get_());
     }
 }
 
-impl BsHashMapContainer<HeapPtr<FlatString>, HeapPrivateName> for PrivateEnvironment {
-    const KIND: ObjectKind = ObjectKind::PrivateEnvironmentNameMap;
+struct NamesField(Handle<PrivateEnvironment>);
 
-    fn set_map(&mut self, map: HeapPtr<PrivateNameMap>) {
-        self.names = map;
+impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for NamesField {
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<PrivateNameMap> {
+        PrivateNameMap::new(cx, ObjectKind::PrivateEnvironmentNameMap, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<PrivateNameMap> {
+        self.0.names
+    }
+
+    fn set(&mut self, map: HeapPtr<PrivateNameMap>) {
+        self.0.names = map;
     }
 }

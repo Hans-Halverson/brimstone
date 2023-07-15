@@ -24,7 +24,7 @@ impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
     fn _new(cx: &mut Context, outer: DynEnvironment) -> Handle<ModuleEnvironment> {
         // Allocate and put behind handles before allocating module environment
-        let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
+        let bindings = DeclarativeEnvironment::new_bindings_map(cx);
 
         let mut env = cx.heap.alloc_uninit::<ModuleEnvironment>();
 

@@ -9,7 +9,7 @@ use crate::{
     js::runtime::{
         gc::IsHeapObject,
         object_descriptor::{ObjectDescriptor, ObjectKind},
-        Context, Handle, HeapPtr,
+        Context, HeapPtr,
     },
     set_uninit,
 };
@@ -22,7 +22,8 @@ pub struct BsHashMap<K, V> {
     descriptor: HeapPtr<ObjectDescriptor>,
     // Number of kv pairs inserted in the map
     len: usize,
-    // Inline array of entries which may be empty, occupied, or deleted
+    // Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
+    // a power of 2.
     entries: InlineArray<Entry<K, V>>,
 }
 
@@ -214,45 +215,48 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> Handle<BsHashMap<K, V>> {
+/// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
+/// new map.
+pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
+
+    fn get(&self) -> HeapPtr<BsHashMap<K, V>>;
+
+    fn set(&mut self, map: HeapPtr<BsHashMap<K, V>>);
+
     /// Insert the key value pair into this map. If there is already a value associated with the key
     /// then overwrite the value. Return whether the key was already present in the map.
     ///
     /// Insert may grow the map and update container to point to new map if there is no room to
     /// insert another entry in the map.
-    pub fn insert(
-        &mut self,
-        cx: &mut Context,
-        container: Handle<impl BsHashMapContainer<K, V>>,
-        key: K,
-        value: V,
-    ) -> bool {
-        let mut map = self.maybe_grow_for_insertion(cx, container);
+    fn insert(&mut self, cx: &mut Context, key: K, value: V) -> bool {
+        let mut map = self.maybe_grow_for_insertion(cx);
         map.insert_without_growing(key, value)
     }
 
     #[inline]
-    fn maybe_grow_for_insertion<C: BsHashMapContainer<K, V>>(
-        &self,
-        cx: &mut Context,
-        mut container: Handle<C>,
-    ) -> HeapPtr<BsHashMap<K, V>> {
+    fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsHashMap<K, V>> {
+        let old_map = self.get();
+
         // Keep at least half of the entries empty, otherwise grow
-        let new_length = self.len() + 1;
-        let capacity = self.capacity();
+        let new_length = old_map.len() + 1;
+        let capacity = old_map.capacity();
         if new_length <= capacity / 2 {
-            return self.get_();
+            return old_map;
         }
+
+        // Save old map behind handle before allocating
+        let old_map = old_map.to_handle();
 
         // Double size leaving map 1/4 full after growing
         let new_capacity = capacity * 2;
-        let mut new_map = BsHashMap::<K, V>::new(cx, C::kind(), new_capacity);
+        let mut new_map = Self::new(cx, new_capacity);
 
         // Update parent reference from old child to new child map
-        container.set_map(new_map);
+        self.set(new_map);
 
         // Copy all values into new map. We have already guaranteed that there is enough room in map.
-        for (key, value) in self.iter_gc_unsafe() {
+        for (key, value) in old_map.iter_gc_unsafe() {
             new_map.insert_without_growing(key, value);
         }
 

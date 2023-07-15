@@ -115,7 +115,7 @@ pub enum ObjectKind {
     RevokeProxyClosureEnvironment,
 
     // Hash maps
-    DeclarativeEnvironmentMap,
+    DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
     GlobalEnvironmentNameSet,
@@ -297,7 +297,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
         other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);
 
-        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentMap);
+        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);

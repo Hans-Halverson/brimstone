@@ -52,7 +52,7 @@ impl FunctionEnvironment {
         };
 
         // Allocate and put behind handle before allocating function environment
-        let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
+        let bindings = DeclarativeEnvironment::new_bindings_map(cx);
 
         let mut env = cx.heap.alloc_uninit::<FunctionEnvironment>();
 

@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
-        collections::{BsHashSet, BsHashSetContainer},
+        collections::{BsHashSet, BsHashSetField},
         completion::EvalResult,
         error::type_error_,
         gc::{Handle, IsHeapObject},
@@ -56,7 +56,7 @@ impl GlobalEnvironment {
     ) -> Handle<GlobalEnvironment> {
         // Allocate and place behind handle before allocating environment
         let object_env = ObjectEnvironment::new(cx, global_object, false, None);
-        let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
+        let bindings = DeclarativeEnvironment::new_bindings_map(cx);
         let var_names = Self::new_var_names_set(cx).to_handle();
 
         let mut env = cx.heap.alloc_uninit::<GlobalEnvironment>();
@@ -78,7 +78,7 @@ impl GlobalEnvironment {
     }
 
     pub fn new_var_names_set(cx: &mut Context) -> HeapPtr<VarNamesSet> {
-        Self::new_set(cx)
+        VarNamesField::new(cx, VarNamesSet::MIN_CAPACITY)
     }
 
     #[inline]
@@ -296,6 +296,10 @@ impl GlobalEnvironment {
 }
 
 impl Handle<GlobalEnvironment> {
+    fn var_names_field(&self) -> VarNamesField {
+        VarNamesField(*self)
+    }
+
     // 9.1.1.4.13 HasLexicalDeclaration
     pub fn has_lexical_declaration(
         &self,
@@ -326,8 +330,7 @@ impl Handle<GlobalEnvironment> {
 
         let name = name.flatten().get_();
         if !self.var_names.contains(&name) {
-            let set_container = self.clone();
-            self.var_names.to_handle().insert(cx, set_container, name);
+            self.var_names_field().insert(cx, name);
         }
 
         ().into()
@@ -362,18 +365,26 @@ impl Handle<GlobalEnvironment> {
 
         let name = name.flatten().get_();
         if !(self.var_names.contains(&name)) {
-            let set_container = self.clone();
-            self.var_names.to_handle().insert(cx, set_container, name);
+            self.var_names_field().insert(cx, name);
         }
 
         ().into()
     }
 }
 
-impl BsHashSetContainer<HeapPtr<FlatString>> for GlobalEnvironment {
-    const KIND: ObjectKind = ObjectKind::GlobalEnvironmentNameSet;
+#[derive(Clone)]
+struct VarNamesField(Handle<GlobalEnvironment>);
 
-    fn set_set(&mut self, set: HeapPtr<VarNamesSet>) {
-        self.var_names = set;
+impl BsHashSetField<HeapPtr<FlatString>> for VarNamesField {
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<VarNamesSet> {
+        VarNamesSet::new(cx, ObjectKind::GlobalEnvironmentNameSet, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<VarNamesSet> {
+        self.0.var_names
+    }
+
+    fn set(&mut self, set: HeapPtr<VarNamesSet>) {
+        self.0.var_names = set;
     }
 }

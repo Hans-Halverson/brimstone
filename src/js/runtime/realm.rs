@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    collections::{BsHashMap, BsHashMapContainer},
+    collections::{BsHashMap, BsHashMapField},
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::{Handle, HeapPtr, IsHeapObject},
@@ -58,10 +58,6 @@ impl Realm {
         })
     }
 
-    fn new_bindings_map(cx: &mut Context) -> HeapPtr<TemplateMap> {
-        Self::new_map(cx)
-    }
-
     #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
         self.global_object.to_handle()
@@ -95,20 +91,18 @@ impl Realm {
 }
 
 impl Handle<Realm> {
+    fn template_map_field(&self) -> TemplateMapField {
+        TemplateMapField(*self)
+    }
+
     pub fn add_template_object(
         &mut self,
         cx: &mut Context,
         template_node: AstPtr<TemplateLiteral>,
         template_object: Handle<ObjectValue>,
     ) {
-        let map_container = self.clone();
-
-        self.template_map.to_handle().insert(
-            cx,
-            map_container,
-            template_node,
-            template_object.get_(),
-        );
+        self.template_map_field()
+            .insert(cx, template_node, template_object.get_());
     }
 
     // 9.3.3 SetRealmGlobalObject
@@ -125,7 +119,7 @@ impl Handle<Realm> {
 
         self.global_object = global_object.get_();
         self.global_env = GlobalEnvironment::new(cx, global_object, this_value).get_();
-        self.template_map = Realm::new_bindings_map(cx);
+        self.template_map = TemplateMapField::new(cx, TemplateMap::MIN_CAPACITY);
     }
 }
 
@@ -153,10 +147,18 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
     })
 }
 
-impl BsHashMapContainer<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for Realm {
-    const KIND: ObjectKind = ObjectKind::RealmTemplateMap;
+struct TemplateMapField(Handle<Realm>);
 
-    fn set_map(&mut self, map: HeapPtr<TemplateMap>) {
-        self.template_map = map;
+impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for TemplateMapField {
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<TemplateMap> {
+        TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<TemplateMap> {
+        self.0.template_map
+    }
+
+    fn set(&mut self, map: HeapPtr<TemplateMap>) {
+        self.0.template_map = map;
     }
 }

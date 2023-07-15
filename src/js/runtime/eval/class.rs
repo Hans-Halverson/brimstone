@@ -185,9 +185,9 @@ pub fn class_definition_evaluation(
             | ast::ClassElement::Property(ast::ClassProperty { key, is_private, .. })
                 if *is_private =>
             {
-                let id = key.to_id();
-                if !class_private_env.has_private_name(&id.name) {
-                    class_private_env.add_private_name(cx, id.name.clone())
+                let key_string = id_string_value(cx, key.to_id());
+                if !class_private_env.has_private_name(key_string) {
+                    class_private_env.add_private_name(cx, key_string)
                 }
             }
             _ => {}
@@ -296,7 +296,8 @@ pub fn class_definition_evaluation(
                 let result = (|| {
                     let (property_key, field_def_name) = if prop.is_private {
                         let id = prop.key.to_id();
-                        let private_name = class_private_env.get_private_name(&id.name);
+                        let property_name_string = id_string_value(cx, id);
+                        let private_name = class_private_env.get_private_name(property_name_string);
                         let property_key = private_id_property_key(cx, id);
                         let field_def_name = ClassFieldDefinitionName::Private(private_name);
                         (property_key, field_def_name)
@@ -360,7 +361,8 @@ pub fn class_definition_evaluation(
                 if method.is_private {
                     // Resolve private name to id
                     let id = method.key.to_id();
-                    let private_name = class_private_env.get_private_name(&id.name);
+                    let property_name_string = id_string_value(cx, id);
+                    let private_name = class_private_env.get_private_name(property_name_string);
                     let property_key = private_id_property_key(cx, id);
 
                     let private_property = private_method_definition_evaluation(

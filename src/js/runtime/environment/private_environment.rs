@@ -4,6 +4,7 @@ use crate::{
     js::runtime::{
         gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
+        string_value::{FlatString, StringValue},
         value::SymbolValue,
         Context, HeapPtr,
     },
@@ -24,7 +25,7 @@ pub type HeapPrivateName = HeapPtr<SymbolValue>;
 #[repr(C)]
 pub struct PrivateEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
-    names: HashMap<String, HeapPrivateName>,
+    names: HashMap<HeapPtr<FlatString>, HeapPrivateName>,
     outer: Option<HeapPtr<PrivateEnvironment>>,
 }
 
@@ -50,32 +51,33 @@ impl PrivateEnvironment {
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier
-    pub fn resolve_private_identifier<'a>(&self, name: &str) -> PrivateName {
-        match self.names.get(name) {
+    pub fn resolve_private_identifier<'a>(&self, name: Handle<StringValue>) -> PrivateName {
+        match self.names.get(&name.flatten().get_()) {
             Some(private_name) => private_name.to_handle(),
             None => self.outer.unwrap().resolve_private_identifier(name),
         }
     }
 
-    pub fn has_private_name(&self, name: &str) -> bool {
-        self.names.contains_key(name)
+    pub fn has_private_name(&self, name: Handle<StringValue>) -> bool {
+        self.names.contains_key(&name.flatten().get_())
     }
 
-    pub fn get_private_name(&self, name: &str) -> PrivateName {
-        self.names.get(name).unwrap().to_handle()
+    pub fn get_private_name(&self, name: Handle<StringValue>) -> PrivateName {
+        self.names.get(&name.flatten().get_()).unwrap().to_handle()
     }
 
     #[inline]
-    pub fn iter_names_gc_unsafe<F: FnMut(&String)>(&self, mut f: F) {
+    pub fn iter_names_gc_unsafe<F: FnMut(HeapPtr<FlatString>)>(&self, mut f: F) {
         for name in self.names.keys() {
-            f(name)
+            f(*name)
         }
     }
 }
 
 impl Handle<PrivateEnvironment> {
-    pub fn add_private_name(&mut self, cx: &mut Context, description: String) {
+    pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
         let symbol_name = SymbolValue::new(cx, None);
-        self.names.insert(description, symbol_name.get_());
+        self.names
+            .insert(description.flatten().get_(), symbol_name.get_());
     }
 }

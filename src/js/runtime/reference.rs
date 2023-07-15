@@ -6,7 +6,6 @@ use super::{
     environment::{environment::DynEnvironment, private_environment::PrivateName},
     error::{reference_error_, type_error_},
     gc::Handle,
-    interned_strings::InternedStrings,
     property_key::PropertyKey,
     string_value::StringValue,
     type_utilities::to_object,
@@ -200,16 +199,15 @@ impl Reference {
     pub fn make_private_reference(
         cx: &mut Context,
         base_value: Handle<Value>,
-        private_name_str: &str,
+        private_name_string: Handle<StringValue>,
     ) -> Reference {
         let private_name = cx
             .current_execution_context_ptr()
             .private_env_ptr()
             .unwrap()
-            .resolve_private_identifier(private_name_str);
+            .resolve_private_identifier(private_name_string);
 
-        let private_name_string_value = InternedStrings::get_str(cx, private_name_str);
-        let property_key = PropertyKey::string(cx, private_name_string_value).to_handle(cx);
+        let property_key = PropertyKey::string(cx, private_name_string).to_handle(cx);
 
         Reference {
             base: ReferenceBase::Property {

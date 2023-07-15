@@ -72,7 +72,8 @@ pub fn perform_eval(
         let mut current_private_env_ptr = running_context.private_env_ptr();
         while let Some(private_env_ptr) = current_private_env_ptr {
             private_env_ptr.iter_names_gc_unsafe(|name| {
-                names.insert(name.clone(), PrivateNameUsage::used());
+                let name_string = name.as_string().to_string();
+                names.insert(name_string, PrivateNameUsage::used());
             });
 
             current_private_env_ptr = private_env_ptr.outer_ptr();

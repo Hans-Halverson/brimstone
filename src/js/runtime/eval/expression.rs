@@ -366,8 +366,8 @@ fn eval_member_expression(
             .current_execution_context_ptr()
             .private_env_ptr()
             .unwrap();
-        let private_name = expr.property.to_id().name.as_str();
-        let private_name = private_env.resolve_private_identifier(private_name);
+        let private_name_string = id_string_value(cx, expr.property.to_id());
+        let private_name = private_env.resolve_private_identifier(private_name_string);
 
         private_get(cx, base, private_name)
     } else {
@@ -400,7 +400,7 @@ fn eval_member_expression_to_reference_with_base(
 
         Reference::new_property(base_value, property_key, is_strict).into()
     } else if expr.is_private {
-        let property_name = &expr.property.to_id().name;
+        let property_name = id_string_value(cx, expr.property.to_id());
         Reference::make_private_reference(cx, base_value, property_name).into()
     } else {
         let property_key = id_property_key(cx, expr.property.to_id());
@@ -1568,11 +1568,12 @@ fn eval_private_in_expression(
         return type_error_(cx, "right side of 'in' must be an object");
     }
 
+    let private_name_string = id_string_value(cx, private_property);
     let private_name = cx
         .current_execution_context_ptr()
         .private_env_ptr()
         .unwrap()
-        .resolve_private_identifier(&private_property.name);
+        .resolve_private_identifier(private_name_string);
 
     let has_private_property = right_value.as_object().has_private_element(private_name);
     cx.bool(has_private_property).into()

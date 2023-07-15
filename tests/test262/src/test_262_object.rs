@@ -61,8 +61,8 @@ impl Test262Object {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm
-        let mut realm = Realm::new(cx);
-        realm.set_global_object(cx, None, None);
+        let mut realm = Realm::new_uninit(cx);
+        realm.initialize(cx, None, None);
         set_default_global_bindings(cx, realm);
 
         // Add $262 object to new global object

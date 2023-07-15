@@ -51,12 +51,16 @@ impl FunctionEnvironment {
             ThisBindingStatus::Uninitialized
         };
 
+        // Allocate and put behind handle before allocating function environment
+        let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
+
         let mut env = cx.heap.alloc_uninit::<FunctionEnvironment>();
 
         DeclarativeEnvironment::init_as_base(
             cx,
             &mut env.env,
             ObjectKind::FunctionEnvironment,
+            bindings,
             Some(function_object.environment()),
         );
 

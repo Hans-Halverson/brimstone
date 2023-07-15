@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use crate::{
     js::runtime::{
+        collections::{BsHashMap, BsHashMapContainer},
         gc::{Handle, IsHeapObject},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         string_value::{FlatString, StringValue},
@@ -25,9 +24,11 @@ pub type HeapPrivateName = HeapPtr<SymbolValue>;
 #[repr(C)]
 pub struct PrivateEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
-    names: HashMap<HeapPtr<FlatString>, HeapPrivateName>,
+    names: HeapPtr<PrivateNameMap>,
     outer: Option<HeapPtr<PrivateEnvironment>>,
 }
+
+type PrivateNameMap = BsHashMap<HeapPtr<FlatString>, HeapPrivateName>;
 
 impl IsHeapObject for PrivateEnvironment {}
 
@@ -37,13 +38,20 @@ impl PrivateEnvironment {
         cx: &mut Context,
         outer: Option<Handle<PrivateEnvironment>>,
     ) -> Handle<PrivateEnvironment> {
+        // Allocate and place behind handle before allocating environment
+        let names_map = Self::new_names_map(cx);
+
         let mut env = cx.heap.alloc_uninit::<PrivateEnvironment>();
 
         set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::PrivateEnvironment));
-        set_uninit!(env.names, HashMap::new());
+        set_uninit!(env.names, names_map);
         set_uninit!(env.outer, outer.map(|p| p.get_()));
 
         env.to_handle()
+    }
+
+    fn new_names_map(cx: &mut Context) -> HeapPtr<PrivateNameMap> {
+        Handle::<Self>::new_map(cx)
     }
 
     pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
@@ -68,16 +76,30 @@ impl PrivateEnvironment {
 
     #[inline]
     pub fn iter_names_gc_unsafe<F: FnMut(HeapPtr<FlatString>)>(&self, mut f: F) {
-        for name in self.names.keys() {
-            f(*name)
+        for name in self.names.keys_gc_unsafe() {
+            f(name)
         }
     }
 }
 
 impl Handle<PrivateEnvironment> {
     pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
+        let map_container = self.clone();
+
         let symbol_name = SymbolValue::new(cx, None);
-        self.names
-            .insert(description.flatten().get_(), symbol_name.get_());
+        self.names.to_handle().insert(
+            cx,
+            map_container,
+            description.flatten().get_(),
+            symbol_name.get_(),
+        );
+    }
+}
+
+impl BsHashMapContainer<HeapPtr<FlatString>, HeapPrivateName> for Handle<PrivateEnvironment> {
+    const KIND: ObjectKind = ObjectKind::PrivateEnvironmentNameMap;
+
+    fn set_map(&mut self, map: HeapPtr<PrivateNameMap>) {
+        self.names = map;
     }
 }

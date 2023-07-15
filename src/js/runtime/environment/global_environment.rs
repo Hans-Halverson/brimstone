@@ -53,7 +53,9 @@ impl GlobalEnvironment {
         global_object: Handle<ObjectValue>,
         global_this_value: Handle<ObjectValue>,
     ) -> Handle<GlobalEnvironment> {
+        // Allocate and put behind handles before allocating global environment
         let object_env = ObjectEnvironment::new(cx, global_object, false, None);
+        let bindings = DeclarativeEnvironment::new_bindings_map(cx).to_handle();
 
         let mut env = cx.heap.alloc_uninit::<GlobalEnvironment>();
 
@@ -62,6 +64,7 @@ impl GlobalEnvironment {
             cx,
             &mut env.decl_env,
             ObjectKind::GlobalEnvironment,
+            bindings,
             None,
         );
 

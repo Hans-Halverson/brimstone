@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     js::{
         parser::ast::{AstPtr, TemplateLiteral},
@@ -9,6 +7,7 @@ use crate::{
 };
 
 use super::{
+    collections::{BsHashMap, BsHashMapContainer},
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
     gc::{Handle, HeapPtr, IsHeapObject},
@@ -28,15 +27,18 @@ pub struct Realm {
     descriptor: HeapPtr<ObjectDescriptor>,
     global_env: HeapPtr<GlobalEnvironment>,
     global_object: HeapPtr<ObjectValue>,
-    template_map: HashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>,
+    template_map: HeapPtr<TemplateMap>,
     intrinsics: Intrinsics,
 }
+
+type TemplateMap = BsHashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>;
 
 impl IsHeapObject for Realm {}
 
 impl Realm {
-    // 9.3.1 CreateRealm
-    pub fn new(cx: &mut Context) -> Handle<Realm> {
+    // 9.3.1 CreateRealm. Realm initializes intrinsics but leaves other properties uninitialized.
+    // Must call `initialize` before using.
+    pub fn new_uninit(cx: &mut Context) -> Handle<Realm> {
         HandleScope::new(cx, |cx| {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
             // during intrinsic creation.
@@ -46,7 +48,7 @@ impl Realm {
             set_uninit!(realm.global_env, HeapPtr::uninit());
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
-            set_uninit!(realm.template_map, HashMap::new());
+            set_uninit!(realm.template_map, HeapPtr::uninit());
 
             let realm = realm.to_handle();
 
@@ -54,6 +56,10 @@ impl Realm {
 
             realm
         })
+    }
+
+    fn new_bindings_map(cx: &mut Context) -> HeapPtr<TemplateMap> {
+        Handle::<Self>::new_map(cx)
     }
 
     #[inline]
@@ -86,20 +92,28 @@ impl Realm {
             .get(&template_node)
             .map(|template_object| template_object.to_handle())
     }
-
-    pub fn add_template_object(
-        &mut self,
-        template_node: AstPtr<TemplateLiteral>,
-        template_object: Handle<ObjectValue>,
-    ) {
-        self.template_map
-            .insert(template_node, template_object.get_());
-    }
 }
 
 impl Handle<Realm> {
+    pub fn add_template_object(
+        &mut self,
+        cx: &mut Context,
+        template_node: AstPtr<TemplateLiteral>,
+        template_object: Handle<ObjectValue>,
+    ) {
+        let map_container = self.clone();
+
+        self.template_map.to_handle().insert(
+            cx,
+            map_container,
+            template_node,
+            template_object.get_(),
+        );
+    }
+
     // 9.3.3 SetRealmGlobalObject
-    pub fn set_global_object(
+    // Initializes remaining properties of realm that were not initialized in `new_uninit`.
+    pub fn initialize(
         &mut self,
         cx: &mut Context,
         global_object: Option<Handle<ObjectValue>>,
@@ -111,13 +125,14 @@ impl Handle<Realm> {
 
         self.global_object = global_object.get_();
         self.global_env = GlobalEnvironment::new(cx, global_object, this_value).get_();
+        self.template_map = Realm::new_bindings_map(cx);
     }
 }
 
 // 9.6 InitializeHostDefinedRealm
 pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
     HandleScope::new(cx, |cx| {
-        let mut realm = Realm::new(cx);
+        let mut realm = Realm::new_uninit(cx);
         let exec_ctx = ExecutionContext::new(
             cx,
             /* function */ None,
@@ -131,9 +146,17 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
 
         cx.push_execution_context(exec_ctx);
 
-        realm.set_global_object(cx, None, None);
+        realm.initialize(cx, None, None);
         set_default_global_bindings(cx, realm);
 
         realm
     })
+}
+
+impl BsHashMapContainer<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for Handle<Realm> {
+    const KIND: ObjectKind = ObjectKind::RealmTemplateMap;
+
+    fn set_map(&mut self, map: HeapPtr<TemplateMap>) {
+        self.template_map = map;
+    }
 }

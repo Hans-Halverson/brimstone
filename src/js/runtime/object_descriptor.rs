@@ -114,6 +114,11 @@ pub enum ObjectKind {
     ArgAccessorClosureEnvironment,
     RevokeProxyClosureEnvironment,
 
+    // Hash maps
+    DeclarativeEnvironmentMap,
+    RealmTemplateMap,
+    PrivateEnvironmentNameMap,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -290,6 +295,10 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
         other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);
+
+        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentMap);
+        other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
+        other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
 
         BaseDescriptors { descriptors }
     }

@@ -776,7 +776,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
 
     must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
-    realm.add_template_object(AstPtr::from_ref(lit), template_object);
+    realm.add_template_object(cx, AstPtr::from_ref(lit), template_object);
 
     template_object
 }

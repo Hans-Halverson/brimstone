@@ -1,7 +1,7 @@
 /// Calculate field offset as const.
 #[macro_export]
 macro_rules! field_offset {
-    ($base_type:ident, $field_name:ident) => {{
+    ($base_type:ty, $field_name:ident) => {{
         const FIELD_OFFSET: usize = unsafe {
             let base_uninit = std::mem::MaybeUninit::uninit();
             let base_ptr: *const $base_type = base_uninit.as_ptr();

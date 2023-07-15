@@ -25,6 +25,11 @@ impl<T> InlineArray<T> {
     }
 
     #[inline]
+    pub fn calculate_size_in_bytes(len: usize) -> usize {
+        size_of::<usize>() + len * size_of::<T>()
+    }
+
+    #[inline]
     pub fn data_ptr(&self) -> *const T {
         self.data.as_ptr()
     }
@@ -35,18 +40,13 @@ impl<T> InlineArray<T> {
     }
 
     #[inline]
-    pub fn calculate_size_in_bytes(len: usize) -> usize {
-        size_of::<usize>() + len * size_of::<T>()
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.data_ptr(), self.len()) }
     }
 
     #[inline]
-    fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.data.as_ptr(), self.len()) }
-    }
-
-    #[inline]
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.data.as_mut_ptr(), self.len()) }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.data_mut_ptr(), self.len()) }
     }
 
     #[inline]
@@ -57,5 +57,12 @@ impl<T> InlineArray<T> {
     #[inline]
     pub fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         unsafe { self.as_mut_slice().get_unchecked_mut(index) }
+    }
+
+    #[inline]
+    pub fn set_unchecked(&mut self, index: usize, value: T) {
+        unsafe {
+            *self.as_mut_slice().get_unchecked_mut(index) = value;
+        }
     }
 }

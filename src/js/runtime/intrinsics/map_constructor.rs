@@ -1,5 +1,4 @@
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
@@ -8,49 +7,18 @@ use crate::{
         function::get_argument,
         get,
         iterator::iter_iterator_values,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
-        value::{Value, ValueMap},
+        value::Value,
         Completion, Context, Handle,
     },
     maybe,
 };
 
-use super::intrinsics::Intrinsic;
-
-// 24.1 Map Objects
-extend_object! {
-    pub struct MapObject {
-        map_data: ValueMap<Value>,
-    }
-}
-
-impl MapObject {
-    pub fn new_from_constructor(
-        cx: &mut Context,
-        constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<MapObject>> {
-        let mut object = maybe!(object_create_from_constructor::<MapObject>(
-            cx,
-            constructor,
-            ObjectKind::MapObject,
-            Intrinsic::MapPrototype
-        ));
-
-        object.map_data = ValueMap::new();
-
-        object.to_handle().into()
-    }
-
-    pub fn map_data(&mut self) -> &mut ValueMap<Value> {
-        &mut self.map_data
-    }
-}
+use super::{intrinsics::Intrinsic, map_object::MapObject};
 
 pub struct MapConstructor;
 

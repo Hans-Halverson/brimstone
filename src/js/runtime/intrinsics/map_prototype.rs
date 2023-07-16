@@ -1,17 +1,25 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument,
-        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
-        value::Value, Context, Handle,
+        abstract_operations::call_object,
+        builtin_function::BuiltinFunction,
+        collections::BsIndexMapField,
+        completion::EvalResult,
+        error::type_error_,
+        function::get_argument,
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::is_callable,
+        value::{Value, ValueCollectionKey},
+        Context, Handle,
     },
     maybe,
 };
 
 use super::{
     intrinsics::Intrinsic,
-    map_constructor::MapObject,
     map_iterator::{MapIterator, MapIteratorKind},
+    map_object::MapObject,
 };
 
 pub struct MapPrototype;
@@ -74,7 +82,7 @@ impl MapPrototype {
             return type_error_(cx, "clear method must be called on map");
         };
 
-        map.map_data().clear();
+        map.clear_map_data(cx);
 
         cx.undefined().into()
     }
@@ -86,14 +94,14 @@ impl MapPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "delete method must be called on map");
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = map.map_data().remove(key).is_some();
+        let existed = map.map_data().remove(&ValueCollectionKey::from(key));
 
         cx.bool(existed).into()
     }
@@ -121,7 +129,7 @@ impl MapPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "forEach method must be called on map");
@@ -141,9 +149,10 @@ impl MapPrototype {
 
         // GC safe iteration, since ValueMap's data is off the managed heap so this iterator cannot
         // be invalidated by a GC.
-        for (key, value) in map.map_data().iter() {
-            key_handle.replace((*key).into());
-            value_handle.replace(*value);
+        // TODO: Fix iter_gc_unsafe to use safe iteration
+        for (key, value) in map.map_data().iter_gc_unsafe() {
+            key_handle.replace(key.into());
+            value_handle.replace(value);
 
             let arguments = [value_handle, key_handle, this_value];
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -159,7 +168,7 @@ impl MapPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "get method must be called on map");
@@ -167,7 +176,7 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        match map.map_data().get(key) {
+        match map.map_data().get(&ValueCollectionKey::from(key)) {
             Some(value) => value.to_handle(cx).into(),
             None => cx.undefined().into(),
         }
@@ -180,7 +189,7 @@ impl MapPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "has method must be called on map");
@@ -188,7 +197,8 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        cx.bool(map.map_data().contains_key(key)).into()
+        cx.bool(map.map_data().contains_key(&ValueCollectionKey::from(key)))
+            .into()
     }
 
     // 24.1.3.8 Map.prototype.keys
@@ -214,7 +224,7 @@ impl MapPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "set method must be called on map");
@@ -228,7 +238,8 @@ impl MapPrototype {
             key = Value::number(0.0).to_handle(cx);
         }
 
-        map.map_data().insert(key, value.get());
+        map.map_data_field()
+            .insert(cx, ValueCollectionKey::from(key), value.get());
 
         this_value.into()
     }
@@ -240,13 +251,15 @@ impl MapPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "size accessor must be called on map");
         };
 
-        Value::from(map.map_data().len()).to_handle(cx).into()
+        Value::from(map.map_data().num_entries_occupied())
+            .to_handle(cx)
+            .into()
     }
 
     // 24.1.3.11 Map.prototype.values

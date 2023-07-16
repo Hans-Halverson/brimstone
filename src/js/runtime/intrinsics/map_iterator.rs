@@ -2,6 +2,7 @@ use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         array_object::create_array_from_list,
+        collections::index_map::GcUnsafeEntriesIter,
         completion::EvalResult,
         error::type_error_,
         iterator::create_iter_result_object,
@@ -10,20 +11,20 @@ use crate::{
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
-        value::{Value, ValueMapIter},
+        value::{Value, ValueCollectionKey},
         Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
 
-use super::{intrinsics::Intrinsic, map_constructor::MapObject};
+use super::{intrinsics::Intrinsic, map_object::MapObject};
 
 // 24.1.5 Map Iterator Objects
 extend_object! {
     pub struct MapIterator<'a> {
         // Map is not used directly, but is held so that it is not GC'd while iterator exists
         map: HeapPtr<MapObject>,
-        iter: ValueMapIter<'a, Value>,
+        iter: GcUnsafeEntriesIter<'a, ValueCollectionKey, Value>,
         kind: MapIteratorKind,
     }
 }
@@ -37,7 +38,7 @@ pub enum MapIteratorKind {
 impl<'a> MapIterator<'a> {
     pub fn new(
         cx: &mut Context,
-        mut map: Handle<MapObject>,
+        map: Handle<MapObject>,
         kind: MapIteratorKind,
     ) -> Handle<MapIterator> {
         let mut object = object_create::<MapIterator>(
@@ -47,7 +48,9 @@ impl<'a> MapIterator<'a> {
         );
 
         set_uninit!(object.map, map.get_());
-        set_uninit!(object.iter, map.map_data().iter());
+        // TODO: Fix iter_gc_unsafe to use safe iteration.
+        // TODO: Fix use of transmute here
+        set_uninit!(object.iter, std::mem::transmute(map.map_data().iter_gc_unsafe()));
         set_uninit!(object.kind, kind);
 
         object.to_handle()
@@ -92,7 +95,7 @@ impl MapIteratorPrototype {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
-                    let key_value: Value = (*key).into();
+                    let key_value: Value = key.into();
                     let key_handle = key_value.to_handle(cx);
                     create_iter_result_object(cx, key_handle, false).into()
                 }
@@ -101,7 +104,7 @@ impl MapIteratorPrototype {
                     create_iter_result_object(cx, value_handle, false).into()
                 }
                 MapIteratorKind::KeyAndValue => {
-                    let key_value: Value = (*key).into();
+                    let key_value: Value = key.into();
                     let key_handle = key_value.to_handle(cx);
                     let value_handle = value.to_handle(cx);
                     let result_pair = create_array_from_list(cx, &[key_handle, value_handle]);

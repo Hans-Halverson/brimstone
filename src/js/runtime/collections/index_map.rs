@@ -84,6 +84,12 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         self.num_occupied + self.num_deleted
     }
 
+    #[inline]
+    /// Total number of entries that have been inserted, excluding those that have been deleted.
+    pub fn num_entries_occupied(&self) -> usize {
+        self.num_occupied
+    }
+
     /// Total number of entries that the IndexMap can hold.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -412,7 +418,7 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIter<'a, K, V> {
                 }
                 // Reached the end of the entries slice
                 None => return None,
-                Some(_) => {}
+                Some(Entry::Deleted { .. }) => {}
             }
         }
     }
@@ -433,7 +439,7 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
                 }
                 // Reached the end of the entries array
                 None => return None,
-                Some(_) => {}
+                Some(Entry::Deleted { .. }) => {}
             }
         }
     }

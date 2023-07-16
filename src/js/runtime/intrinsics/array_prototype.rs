@@ -1018,7 +1018,6 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            // println!("{i}");
             index_key.replace(PropertyKey::from_u64(cx, i));
             if maybe!(has_property(cx, object, index_key)) {
                 let value = maybe!(get(cx, object, index_key));

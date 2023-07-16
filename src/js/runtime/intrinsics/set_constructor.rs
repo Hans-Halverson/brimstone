@@ -1,45 +1,15 @@
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, get,
-        iterator::iter_iterator_values, object_descriptor::ObjectKind, object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor, property::Property, realm::Realm,
-        type_utilities::is_callable, value::ValueSet, Completion, Context, Handle, Value,
+        intrinsics::set_object::SetObject, iterator::iter_iterator_values,
+        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
+        Completion, Context, Handle, Value,
     },
     maybe,
 };
 
 use super::intrinsics::Intrinsic;
-
-// 24.2 Set Objects
-extend_object! {
-    pub struct SetObject {
-        set_data: ValueSet,
-    }
-}
-
-impl SetObject {
-    pub fn new_from_constructor(
-        cx: &mut Context,
-        constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<SetObject>> {
-        let mut object = maybe!(object_create_from_constructor::<SetObject>(
-            cx,
-            constructor,
-            ObjectKind::SetObject,
-            Intrinsic::SetPrototype
-        ));
-
-        object.set_data = ValueSet::new();
-
-        object.to_handle().into()
-    }
-
-    pub fn set_data(&mut self) -> &mut ValueSet {
-        &mut self.set_data
-    }
-}
 
 pub struct SetConstructor;
 

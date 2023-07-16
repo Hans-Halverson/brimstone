@@ -536,6 +536,4 @@ pub fn parse_between_ptrs_to_f64(
 
         f64::from_str(&utf8_string).unwrap()
     }
-
-    // println!("The str is {} with len {} and ptrs {:?} {:?}", str, str.len(), start_ptr, end_ptr);
 }

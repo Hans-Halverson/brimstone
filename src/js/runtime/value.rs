@@ -1,6 +1,5 @@
 use std::{hash, mem::size_of, num::NonZeroU64, ptr::copy_nonoverlapping};
 
-use indexmap::{IndexMap, IndexSet};
 use num_bigint::{BigInt, Sign};
 use rand::Rng;
 
@@ -698,7 +697,7 @@ pub struct ValueCollectionKey(Value);
 
 impl ValueCollectionKey {
     // May allocate due to string flattening so do not implement From<Value> directly.
-    fn from(value: Handle<Value>) -> Self {
+    pub fn from(value: Handle<Value>) -> Self {
         if value.is_string() {
             let flat_string = value.as_string().flatten();
             return ValueCollectionKey(flat_string.as_string().get_().into());
@@ -754,87 +753,5 @@ impl hash::Hash for ValueCollectionKey {
 
         // Non-pointer values can be hashed direclty off their bit representation
         self.0.as_raw_bits().hash(state);
-    }
-}
-
-pub struct ValueMap<T> {
-    map: IndexMap<ValueCollectionKey, T>,
-}
-
-pub type ValueMapIter<'a, T> = indexmap::map::Iter<'a, ValueCollectionKey, T>;
-
-impl<T> ValueMap<T> {
-    pub fn new() -> ValueMap<T> {
-        ValueMap { map: IndexMap::new() }
-    }
-
-    pub fn clear(&mut self) {
-        self.map.clear()
-    }
-
-    pub fn contains_key(&self, key: Handle<Value>) -> bool {
-        self.map.contains_key(&ValueCollectionKey::from(key))
-    }
-
-    pub fn get(&self, key: Handle<Value>) -> Option<&T> {
-        self.map.get(&ValueCollectionKey::from(key))
-    }
-
-    pub fn insert(&mut self, key: Handle<Value>, value: T) -> Option<T> {
-        self.map.insert(ValueCollectionKey::from(key), value)
-    }
-
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    pub fn remove(&mut self, key: Handle<Value>) -> Option<T> {
-        self.map.remove(&ValueCollectionKey::from(key))
-    }
-
-    pub fn iter<'a, 'b>(&'a self) -> ValueMapIter<'b, T> {
-        unsafe {
-            // Intentionally break lifetime
-            std::mem::transmute::<ValueMapIter<'a, T>, ValueMapIter<'b, T>>(self.map.iter())
-        }
-    }
-}
-
-pub struct ValueSet {
-    set: IndexSet<ValueCollectionKey>,
-}
-
-pub type ValueSetIter<'a> = indexmap::set::Iter<'a, ValueCollectionKey>;
-
-impl ValueSet {
-    pub fn new() -> ValueSet {
-        ValueSet { set: IndexSet::new() }
-    }
-
-    pub fn clear(&mut self) {
-        self.set.clear()
-    }
-
-    pub fn contains(&self, value: Handle<Value>) -> bool {
-        self.set.contains(&ValueCollectionKey::from(value))
-    }
-
-    pub fn insert(&mut self, value: Handle<Value>) -> bool {
-        self.set.insert(ValueCollectionKey::from(value))
-    }
-
-    pub fn len(&self) -> usize {
-        self.set.len()
-    }
-
-    pub fn remove(&mut self, value: Handle<Value>) -> bool {
-        self.set.remove(&ValueCollectionKey::from(value))
-    }
-
-    pub fn iter<'a, 'b>(&'a self) -> ValueSetIter<'b> {
-        unsafe {
-            // Intentionally break lifetime
-            std::mem::transmute::<ValueSetIter<'a>, ValueSetIter<'b>>(self.set.iter())
-        }
     }
 }

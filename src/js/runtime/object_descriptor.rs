@@ -116,6 +116,8 @@ pub enum ObjectKind {
 
     // Hash maps
     ObjectNamedPropertiesMap,
+    MapObjectValueMap,
+    SetObjectValueSet,
     DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
@@ -299,6 +301,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);
 
         other_heap_object_descriptor!(ObjectKind::ObjectNamedPropertiesMap);
+        other_heap_object_descriptor!(ObjectKind::MapObjectValueMap);
+        other_heap_object_descriptor!(ObjectKind::SetObjectValueSet);
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);

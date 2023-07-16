@@ -1,22 +1,23 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        array_object::create_array_from_list, completion::EvalResult, error::type_error_,
-        iterator::create_iter_result_object, object_descriptor::ObjectKind,
-        object_value::ObjectValue, ordinary_object::object_create, property::Property,
-        realm::Realm, value::ValueSetIter, Context, Handle, HeapPtr, Value,
+        array_object::create_array_from_list, collections::index_map::GcUnsafeKeysIter,
+        completion::EvalResult, error::type_error_, iterator::create_iter_result_object,
+        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
+        property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, HeapPtr,
+        Value,
     },
     maybe, set_uninit,
 };
 
-use super::{intrinsics::Intrinsic, set_constructor::SetObject};
+use super::{intrinsics::Intrinsic, set_object::SetObject};
 
 // 24.2.5 Set Iterator Objects
 extend_object! {
     pub struct SetIterator<'a> {
         // Set is not used directly, but it held so that it is not GC'd while iterator exists
         set: HeapPtr<SetObject>,
-        iter: ValueSetIter<'a>,
+        iter: GcUnsafeKeysIter<'a, ValueCollectionKey, ()>,
         kind: SetIteratorKind,
     }
 }
@@ -39,7 +40,9 @@ impl<'a> SetIterator<'a> {
         );
 
         set_uninit!(object.set, set.get_());
-        set_uninit!(object.iter, set.set_data().iter());
+        // TODO: Fix iter_gc_unsafe to use safe iteration
+        // TODO: Fix use of transmute here
+        set_uninit!(object.iter, std::mem::transmute(set.set_data().iter_gc_unsafe()));
         set_uninit!(object.kind, kind);
 
         object.to_handle()
@@ -83,7 +86,7 @@ impl SetIteratorPrototype {
         match set_iterator.iter.next() {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
             Some(value) => {
-                let value_value: Value = (*value).into();
+                let value_value: Value = value.into();
                 let value_handle = value_value.to_handle(cx);
 
                 match set_iterator.kind {

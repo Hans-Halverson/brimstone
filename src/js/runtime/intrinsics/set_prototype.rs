@@ -1,17 +1,25 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument,
-        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
-        value::Value, Context, Handle,
+        abstract_operations::call_object,
+        builtin_function::BuiltinFunction,
+        collections::BsIndexSetField,
+        completion::EvalResult,
+        error::type_error_,
+        function::get_argument,
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::is_callable,
+        value::{Value, ValueCollectionKey},
+        Context, Handle,
     },
     maybe,
 };
 
 use super::{
     intrinsics::Intrinsic,
-    set_constructor::SetObject,
     set_iterator::{SetIterator, SetIteratorKind},
+    set_object::SetObject,
 };
 
 pub struct SetPrototype;
@@ -67,7 +75,7 @@ impl SetPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "add method must be called on set");
@@ -79,7 +87,8 @@ impl SetPrototype {
             value = Value::smi(0).to_handle(cx);
         }
 
-        set.set_data().insert(value);
+        set.set_data_field()
+            .insert(cx, ValueCollectionKey::from(value));
 
         this_value.into()
     }
@@ -97,7 +106,7 @@ impl SetPrototype {
             return type_error_(cx, "clear method must be called on set");
         };
 
-        set.set_data().clear();
+        set.clear_set_data(cx);
 
         cx.undefined().into()
     }
@@ -116,7 +125,7 @@ impl SetPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = set.set_data().remove(key);
+        let existed = set.set_data().remove(&ValueCollectionKey::from(key));
 
         cx.bool(existed).into()
     }
@@ -163,8 +172,9 @@ impl SetPrototype {
 
         // GC safe iteration, since ValueSet's data is off the managed heap so this iterator cannot
         // be invalidated by a GC.
-        for value in set.set_data().iter() {
-            value_handle.replace((*value).into());
+        // TODO: Fix iter_gc_unsafe to use safe iteration
+        for value in set.set_data().iter_gc_unsafe() {
+            value_handle.replace(value.into());
 
             let arguments = [value_handle, value_handle, this_value];
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
@@ -188,7 +198,8 @@ impl SetPrototype {
 
         let value = get_argument(cx, arguments, 0);
 
-        cx.bool(set.set_data().contains(value)).into()
+        cx.bool(set.set_data().contains(&ValueCollectionKey::from(value)))
+            .into()
     }
 
     // 24.2.3.9 get Set.prototype.size
@@ -204,7 +215,9 @@ impl SetPrototype {
             return type_error_(cx, "size accessor must be called on set");
         };
 
-        Value::from(set.set_data().len()).to_handle(cx).into()
+        Value::from(set.set_data().num_entries_occupied())
+            .to_handle(cx)
+            .into()
     }
 
     // 24.2.3.10 Set.prototype.values

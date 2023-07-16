@@ -118,7 +118,7 @@ impl SetPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "delete method must be called on set");
@@ -153,7 +153,7 @@ impl SetPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "forEach method must be called on set");
@@ -170,10 +170,9 @@ impl SetPrototype {
         // Share handle across iterations
         let mut value_handle = Handle::<Value>::empty(cx);
 
-        // GC safe iteration, since ValueSet's data is off the managed heap so this iterator cannot
-        // be invalidated by a GC.
-        // TODO: Fix iter_gc_unsafe to use safe iteration
-        for value in set.set_data().iter_gc_unsafe() {
+        // Must use gc and invalidation safe iteration since arbitrary code can be executed between
+        // iterations.
+        for (value, _) in set.set_data().to_handle().iter_gc_safe() {
             value_handle.replace(value.into());
 
             let arguments = [value_handle, value_handle, this_value];
@@ -190,7 +189,7 @@ impl SetPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "has method must be called on set");
@@ -209,7 +208,7 @@ impl SetPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "size accessor must be called on set");

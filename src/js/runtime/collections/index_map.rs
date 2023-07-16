@@ -10,7 +10,7 @@ use crate::{
     js::runtime::{
         gc::IsHeapObject,
         object_descriptor::{ObjectDescriptor, ObjectKind},
-        Context, HeapPtr,
+        Context, Handle, HeapPtr,
     },
     set_uninit,
 };
@@ -327,6 +327,14 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     }
 }
 
+impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
+    /// Return iterator through the entries of the map. Iterator is GC-safe so it is safe to live
+    /// across allocations.
+    pub fn iter_gc_safe(&self) -> GcSafeEntriesIter<K, V> {
+        GcSafeEntriesIter::new(*self)
+    }
+}
+
 /// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
 /// new map.
 pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
@@ -442,5 +450,55 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
                 Some(Entry::Deleted { .. }) => {}
             }
         }
+    }
+}
+
+#[repr(C)]
+pub struct GcSafeEntriesIter<K, V> {
+    map: Handle<BsIndexMap<K, V>>,
+    // Index of the next entry to check
+    next_entry_index: usize,
+}
+
+impl<K, V> GcSafeEntriesIter<K, V> {
+    #[inline]
+    pub fn new(map: Handle<BsIndexMap<K, V>>) -> Self {
+        GcSafeEntriesIter { map, next_entry_index: 0 }
+    }
+
+    #[inline]
+    pub fn from_parts(map: Handle<BsIndexMap<K, V>>, next_entry_index: usize) -> Self {
+        GcSafeEntriesIter { map, next_entry_index }
+    }
+
+    #[inline]
+    pub fn to_parts(&self) -> (Handle<BsIndexMap<K, V>>, usize) {
+        (self.map, self.next_entry_index)
+    }
+}
+
+impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
+    type Item = (K, V);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO: Handle when map data is moved to a new map e.g. when growing. Must write info for
+        // switching iterator to point to new map in place of the old map.
+
+        let mut current_entry_index = self.next_entry_index;
+
+        while current_entry_index < self.map.num_entries_used() {
+            match self.map.get_entry_unchecked(current_entry_index) {
+                Entry::Deleted { .. } => {
+                    current_entry_index += 1;
+                }
+                Entry::Occupied(entry) => {
+                    self.next_entry_index = current_entry_index + 1;
+                    return Some((entry.key.clone(), entry.value.clone()));
+                }
+            }
+        }
+
+        None
     }
 }

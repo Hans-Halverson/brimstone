@@ -1,8 +1,13 @@
 use std::hash::Hash;
 
-use crate::js::runtime::{gc::IsHeapObject, object_descriptor::ObjectKind, Context, HeapPtr};
+use crate::js::runtime::{
+    gc::IsHeapObject, object_descriptor::ObjectKind, Context, Handle, HeapPtr,
+};
 
-use super::{index_map::GcUnsafeKeysIter, BsIndexMap, BsIndexMapField};
+use super::{
+    index_map::{GcSafeEntriesIter, GcUnsafeKeysIter},
+    BsIndexMap, BsIndexMapField,
+};
 
 /// Generic flat IndexSet implementation which is a simple wrapper over a IndexMap with unit values.
 #[repr(C)]
@@ -36,6 +41,14 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     /// are no allocations between construction and use.
     pub fn iter_gc_unsafe(&self) -> GcUnsafeKeysIter<T, ()> {
         self.0.keys_gc_unsafe()
+    }
+}
+
+impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
+    /// Return iterator through the entries of the set. Iterator is GC-safe so it is safe to live
+    /// across allocations.
+    pub fn iter_gc_safe(&self) -> GcSafeEntriesIter<T, ()> {
+        GcSafeEntriesIter::new(self.cast())
     }
 }
 

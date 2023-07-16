@@ -19,7 +19,7 @@ extend_object! {
     }
 }
 
-type ValueMap = BsIndexMap<ValueCollectionKey, Value>;
+pub type ValueMap = BsIndexMap<ValueCollectionKey, Value>;
 
 impl MapObject {
     pub fn new_from_constructor(

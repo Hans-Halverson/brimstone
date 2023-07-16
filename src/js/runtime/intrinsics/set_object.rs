@@ -41,7 +41,7 @@ impl SetObject {
         object.to_handle().into()
     }
 
-    pub fn set_data(&mut self) -> HeapPtr<ValueSet> {
+    pub fn set_data(&self) -> HeapPtr<ValueSet> {
         self.set_data
     }
 }

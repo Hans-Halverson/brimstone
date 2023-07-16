@@ -147,10 +147,9 @@ impl MapPrototype {
         let mut key_handle = Handle::<Value>::empty(cx);
         let mut value_handle = Handle::<Value>::empty(cx);
 
-        // GC safe iteration, since ValueMap's data is off the managed heap so this iterator cannot
-        // be invalidated by a GC.
-        // TODO: Fix iter_gc_unsafe to use safe iteration
-        for (key, value) in map.map_data().iter_gc_unsafe() {
+        // Must use gc and invalidation safe iteration since arbitrary code can be executed between
+        // iterations.
+        for (key, value) in map.map_data().to_handle().iter_gc_safe() {
             key_handle.replace(key.into());
             value_handle.replace(value);
 

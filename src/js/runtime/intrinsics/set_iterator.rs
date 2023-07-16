@@ -1,11 +1,18 @@
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        array_object::create_array_from_list, collections::index_map::GcUnsafeKeysIter,
-        completion::EvalResult, error::type_error_, iterator::create_iter_result_object,
-        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
-        property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, HeapPtr,
-        Value,
+        array_object::create_array_from_list,
+        collections::{index_map::GcSafeEntriesIter, BsIndexMap},
+        completion::EvalResult,
+        error::type_error_,
+        iterator::create_iter_result_object,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create,
+        property::Property,
+        realm::Realm,
+        value::ValueCollectionKey,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -14,10 +21,10 @@ use super::{intrinsics::Intrinsic, set_object::SetObject};
 
 // 24.2.5 Set Iterator Objects
 extend_object! {
-    pub struct SetIterator<'a> {
-        // Set is not used directly, but it held so that it is not GC'd while iterator exists
-        set: HeapPtr<SetObject>,
-        iter: GcUnsafeKeysIter<'a, ValueCollectionKey, ()>,
+    pub struct SetIterator {
+        // Component parts of an index_map::GcSafeEntriesIter
+        set: HeapPtr<BsIndexMap<ValueCollectionKey, ()>>,
+        next_entry_index: usize,
         kind: SetIteratorKind,
     }
 }
@@ -27,10 +34,10 @@ pub enum SetIteratorKind {
     KeyAndValue,
 }
 
-impl<'a> SetIterator<'a> {
+impl SetIterator {
     pub fn new(
         cx: &mut Context,
-        mut set: Handle<SetObject>,
+        set: Handle<SetObject>,
         kind: SetIteratorKind,
     ) -> Handle<SetIterator> {
         let mut object = object_create::<SetIterator>(
@@ -39,16 +46,27 @@ impl<'a> SetIterator<'a> {
             Intrinsic::SetIteratorPrototype,
         );
 
-        set_uninit!(object.set, set.get_());
-        // TODO: Fix iter_gc_unsafe to use safe iteration
-        // TODO: Fix use of transmute here
-        set_uninit!(object.iter, std::mem::transmute(set.set_data().iter_gc_unsafe()));
+        set_uninit!(object.set, set.set_data().cast());
+        set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
 
         object.to_handle()
     }
 
-    cast_from_value_fn!(SetIterator<'a>, "Set Iterator");
+    cast_from_value_fn!(SetIterator, "Set Iterator");
+
+    fn get_iter(&self) -> GcSafeEntriesIter<ValueCollectionKey, ()> {
+        GcSafeEntriesIter::<ValueCollectionKey, ()>::from_parts(
+            self.set.to_handle(),
+            self.next_entry_index,
+        )
+    }
+
+    fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, ()>) {
+        let (set, next_entry_index) = iter.to_parts();
+        self.set = set.get_();
+        self.next_entry_index = next_entry_index;
+    }
 }
 
 // 24.2.5.2 The %SetIteratorPrototype% Object
@@ -83,9 +101,14 @@ impl SetIteratorPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
 
-        match set_iterator.iter.next() {
+        // Perform a single iteration, mutating iterator object
+        let mut iter = set_iterator.get_iter();
+        let iter_result = iter.next();
+        set_iterator.store_iter(iter);
+
+        match iter_result {
             None => create_iter_result_object(cx, cx.undefined(), true).into(),
-            Some(value) => {
+            Some((value, _)) => {
                 let value_value: Value = value.into();
                 let value_handle = value_value.to_handle(cx);
 

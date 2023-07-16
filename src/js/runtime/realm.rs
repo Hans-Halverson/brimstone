@@ -119,7 +119,7 @@ impl Handle<Realm> {
 
         self.global_object = global_object.get_();
         self.global_env = GlobalEnvironment::new(cx, global_object, this_value).get_();
-        self.template_map = TemplateMapField::new(cx, TemplateMap::MIN_CAPACITY);
+        self.template_map = TemplateMap::new_initial(cx, ObjectKind::RealmTemplateMap);
     }
 }
 
@@ -150,7 +150,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
 struct TemplateMapField(Handle<Realm>);
 
 impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for TemplateMapField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<TemplateMap> {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<TemplateMap> {
         TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
     }
 

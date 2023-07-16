@@ -142,7 +142,7 @@ impl ObjectValue {
 
     // Array properties methods
     pub fn array_properties_length(&self) -> u32 {
-        self.array_properties.len()
+        self.array_properties.array_length()
     }
 
     // 7.3.27 PrivateElementFind

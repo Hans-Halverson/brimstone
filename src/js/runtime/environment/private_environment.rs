@@ -39,7 +39,8 @@ impl PrivateEnvironment {
         outer: Option<Handle<PrivateEnvironment>>,
     ) -> Handle<PrivateEnvironment> {
         // Allocate and place behind handle before allocating environment
-        let names_map = NamesField::new(cx, PrivateNameMap::MIN_CAPACITY).to_handle();
+        let names_map =
+            PrivateNameMap::new_initial(cx, ObjectKind::PrivateEnvironmentNameMap).to_handle();
 
         let mut env = cx.heap.alloc_uninit::<PrivateEnvironment>();
 
@@ -93,7 +94,7 @@ impl Handle<PrivateEnvironment> {
 struct NamesField(Handle<PrivateEnvironment>);
 
 impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for NamesField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<PrivateNameMap> {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<PrivateNameMap> {
         PrivateNameMap::new(cx, ObjectKind::PrivateEnvironmentNameMap, capacity)
     }
 

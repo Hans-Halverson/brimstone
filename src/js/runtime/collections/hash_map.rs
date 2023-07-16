@@ -54,15 +54,23 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.heap.alloc_uninit_with_size::<BsHashMap<K, V>>(size);
 
-        set_uninit!(hash_map.descriptor, cx.base_descriptors.get(kind));
-        set_uninit!(hash_map.len, 0);
-
-        // Initialize entries array to empty
-        hash_map.entries.init(capacity);
-
-        hash_map.entries.as_mut_slice().fill(Entry::Empty);
+        hash_map.init(cx, kind, capacity);
 
         hash_map
+    }
+
+    pub fn init(&mut self, cx: &mut Context, kind: ObjectKind, capacity: usize) {
+        set_uninit!(self.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(self.len, 0);
+
+        // Initialize entries array to empty
+        self.entries.init(capacity);
+
+        self.entries.as_mut_slice().fill(Entry::Empty);
+    }
+
+    pub fn new_initial(cx: &mut Context, kind: ObjectKind) -> HeapPtr<Self> {
+        Self::new(cx, kind, Self::MIN_CAPACITY)
     }
 
     /// Number of kv pairs inserted in the map.
@@ -80,6 +88,17 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     #[inline]
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
         ENTRIES_BYTES_OFFSET + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)
+    }
+
+    /// Return the minimum capacity needed to fit the given number of elements.
+    #[inline]
+    pub fn min_capacity_needed(num_elements: usize) -> usize {
+        let capacity = num_elements.next_power_of_two();
+        if num_elements > (capacity / 2) {
+            capacity * 2
+        } else {
+            capacity
+        }
     }
 
     /// Returns whether this map contains the given key.
@@ -182,7 +201,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     /// Insert a key value pair into the map if thre is room. Silently fails to insert if map is
     /// already full.
     #[inline]
-    fn insert_without_growing(&mut self, key: K, value: V) -> bool {
+    pub fn insert_without_growing(&mut self, key: K, value: V) -> bool {
         let hash_code = Self::key_hash_code(&key);
         let mut probe_index = self.initial_probe_index(hash_code);
 
@@ -218,7 +237,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 /// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
 /// new map.
 pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
 
     fn get(&self) -> HeapPtr<BsHashMap<K, V>>;
 
@@ -250,7 +269,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
         // Double size leaving map 1/4 full after growing
         let new_capacity = capacity * 2;
-        let mut new_map = Self::new(cx, new_capacity);
+        let mut new_map = self.new(cx, new_capacity);
 
         // Update parent reference from old child to new child map
         self.set(new_map);

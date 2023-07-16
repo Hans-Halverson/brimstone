@@ -61,7 +61,7 @@ pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
 struct HashMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashMapField<S> {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<T, ()>> {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<T, ()>> {
         S::new(cx, capacity).cast()
     }
 

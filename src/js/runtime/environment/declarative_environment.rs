@@ -90,7 +90,7 @@ impl DeclarativeEnvironment {
     }
 
     pub fn new_bindings_map(cx: &mut Context) -> Handle<BindingsMap> {
-        BindingsMapField::new(cx, BindingsMap::MIN_CAPACITY).to_handle()
+        BindingsMap::new_initial(cx, ObjectKind::DeclarativeEnvironmentBindingsMap).to_handle()
     }
 }
 
@@ -233,7 +233,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
 struct BindingsMapField(Handle<DeclarativeEnvironment>);
 
 impl BsHashMapField<HeapPtr<FlatString>, Binding> for BindingsMapField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BindingsMap> {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BindingsMap> {
         BindingsMap::new(cx, ObjectKind::DeclarativeEnvironmentBindingsMap, capacity)
     }
 

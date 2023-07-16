@@ -1,5 +1,3 @@
-use indexmap::IndexMap;
-
 use std::ops::DerefMut;
 
 use crate::{extend_object, maybe, must};
@@ -621,13 +619,13 @@ pub fn object_ordinary_init(
     descriptor: HeapPtr<ObjectDescriptor>,
     proto: Option<HeapPtr<ObjectValue>>,
 ) {
-    // Object initialization does not currentlly allocate so a GC cannot occur. This means it is
+    // Object initialization does not currently allocate so a GC cannot occur. This means it is
     // safe to use a raw reference.
     let object = object.deref_mut();
 
     object.set_descriptor(descriptor);
     object.set_prototype(proto);
-    object.set_named_properties(IndexMap::new());
+    object.set_named_properties(cx.default_named_properties);
     object.set_array_properties(ArrayProperties::initial(cx));
     object.set_is_extensible_field(true);
     object.set_uninit_hash_code();

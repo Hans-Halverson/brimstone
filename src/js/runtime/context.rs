@@ -11,8 +11,8 @@ use super::{
     gc::Heap,
     interned_strings::InternedStrings,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::BaseDescriptors,
-    object_value::ObjectValue,
+    object_descriptor::{BaseDescriptors, ObjectKind},
+    object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
     string_value::{FlatString, StringValue},
     value::SymbolValue,
@@ -43,6 +43,9 @@ pub struct Context {
 
     // Stack of closure environments for all builtin functions currently being evaluated
     pub closure_environments: Vec<Option<HeapPtr<ClosureEnvironment>>>,
+
+    // An empty named properties map to use as the initial value for named properties
+    pub default_named_properties: HeapPtr<NamedPropertiesMap>,
 
     // An empty, dense array properties object to use as the initial value for array properties
     pub default_array_properties: HeapPtr<ArrayProperties>,
@@ -84,6 +87,7 @@ impl Context {
             false_: Value::bool(false),
             interned_strings: InternedStrings::new(),
             closure_environments: vec![],
+            default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             uninit_environment,
             eval_asts: vec![],
@@ -95,6 +99,8 @@ impl Context {
         cx.init_builtin_names();
         cx.init_builtin_symbols();
         cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
+        cx.default_named_properties =
+            NamedPropertiesMap::new(&mut cx, ObjectKind::ObjectNamedPropertiesMap, 0);
 
         // Clean up handles from Context creation
         handle_scope.exit();

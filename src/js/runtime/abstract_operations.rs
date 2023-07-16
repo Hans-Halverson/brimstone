@@ -546,7 +546,7 @@ pub fn private_set(
     };
 
     if property.is_private_field() {
-        object.private_element_set(private_name, value);
+        object.private_element_set(cx, private_name, value);
         ().into()
     } else if property.is_private_method() {
         type_error_(cx, "cannot assign to private method")

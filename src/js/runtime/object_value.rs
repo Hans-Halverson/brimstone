@@ -1,4 +1,3 @@
-use indexmap::IndexMap;
 use rand::Rng;
 
 use std::{
@@ -11,6 +10,7 @@ use crate::set_uninit;
 use super::{
     array_properties::ArrayProperties,
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+    collections::{BsIndexMap, BsIndexMapField},
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::type_error_,
@@ -45,7 +45,7 @@ macro_rules! extend_object_without_conversions {
             prototype: Option<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            named_properties: indexmap::IndexMap<$crate::js::runtime::property_key::PropertyKey, $crate::js::runtime::property::HeapProperty>,
+            named_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::collections::BsIndexMap<$crate::js::runtime::property_key::PropertyKey, $crate::js::runtime::property::HeapProperty>>,
 
             // Array index properties by their property key
             array_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::array_properties::ArrayProperties>,
@@ -132,7 +132,7 @@ impl ObjectValue {
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| p.get_()));
-        set_uninit!(object.named_properties, IndexMap::new());
+        set_uninit!(object.named_properties, cx.default_named_properties);
         set_uninit!(object.array_properties, ArrayProperties::initial(cx));
         set_uninit!(object.is_extensible_field, is_extensible);
         object.set_uninit_hash_code();
@@ -165,51 +165,6 @@ impl ObjectValue {
         self.named_properties.contains_key(&property_key.get())
     }
 
-    pub fn private_element_set(&mut self, private_name: PrivateName, value: Handle<Value>) {
-        let property_key = PropertyKey::symbol(private_name);
-        let property = Property::private_field(value);
-        // Safe since insert does not allocate on managed heap
-        self.named_properties
-            .insert(property_key.get(), property.to_heap());
-    }
-
-    // 7.3.28 PrivateFieldAdd
-    pub fn private_field_add(
-        &mut self,
-        cx: &mut Context,
-        private_name: PrivateName,
-        value: Handle<Value>,
-    ) -> EvalResult<()> {
-        if self.has_private_element(private_name) {
-            type_error_(cx, "private property already defined")
-        } else {
-            let property_key = PropertyKey::symbol(private_name);
-            let property = Property::private_field(value);
-            // Safe since insert does not allocate on managed heap
-            self.named_properties
-                .insert(property_key.get(), property.to_heap());
-            ().into()
-        }
-    }
-
-    // 7.3.29 PrivateMethodOrAccessorAdd
-    pub fn private_method_or_accessor_add(
-        &mut self,
-        cx: &mut Context,
-        private_name: PrivateName,
-        private_method: Property,
-    ) -> EvalResult<()> {
-        if self.has_private_element(private_name) {
-            type_error_(cx, "private property already defined")
-        } else {
-            // Safe since insert does not allocate on managed heap
-            let property_key = PropertyKey::symbol(private_name);
-            self.named_properties
-                .insert(property_key.get(), private_method.to_heap());
-            ().into()
-        }
-    }
-
     // Property accessors and mutators
     pub fn get_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> Option<Property> {
         if key.is_array_index() {
@@ -227,7 +182,7 @@ impl ObjectValue {
     /// that a GC cannot occur while the iterator is in use.
     #[inline]
     pub fn iter_named_property_keys_gc_unsafe<F: FnMut(PropertyKey)>(&self, mut f: F) {
-        for property_key in self.named_properties.keys() {
+        for property_key in self.named_properties.keys_gc_unsafe() {
             f(property_key.clone());
         }
     }
@@ -246,7 +201,7 @@ impl ObjectValue {
     }
 
     #[inline]
-    pub fn set_named_properties(&mut self, properties: IndexMap<PropertyKey, HeapProperty>) {
+    pub fn set_named_properties(&mut self, properties: HeapPtr<NamedPropertiesMap>) {
         self.named_properties = properties;
     }
 
@@ -389,6 +344,10 @@ impl Handle<ObjectValue> {
         }
     }
 
+    fn named_properties_field(&self) -> NamedPropertiesMapField {
+        NamedPropertiesMapField(*self)
+    }
+
     // Type refinement functions
     pub fn as_builtin_function_opt(&self) -> Option<Handle<BuiltinFunction>> {
         if self.descriptor_kind() == ObjectKind::BuiltinFunction {
@@ -408,7 +367,8 @@ impl Handle<ObjectValue> {
         }
 
         // Safe since insert does allocate on managed heap
-        self.named_properties.insert(key.get(), property.to_heap());
+        self.named_properties_field()
+            .insert(cx, key.get(), property.to_heap());
     }
 
     pub fn remove_property(&mut self, key: Handle<PropertyKey>) {
@@ -419,9 +379,58 @@ impl Handle<ObjectValue> {
             return;
         }
 
-        // TODO: Removal is currently O(n) to maintain order, improve if possible
-        // Safe since shift_remove does allocate on managed heap
-        self.named_properties.shift_remove(&key.get());
+        // Removal is O(1) but leaves permanent tombstone
+        self.named_properties.remove(&key.get());
+    }
+
+    pub fn private_element_set(
+        &mut self,
+        cx: &mut Context,
+        private_name: PrivateName,
+        value: Handle<Value>,
+    ) {
+        let property_key = PropertyKey::symbol(private_name);
+        let property = Property::private_field(value);
+        // Safe since insert does not allocate on managed heap
+        self.named_properties_field()
+            .insert(cx, property_key.get(), property.to_heap());
+    }
+
+    // 7.3.28 PrivateFieldAdd
+    pub fn private_field_add(
+        &mut self,
+        cx: &mut Context,
+        private_name: PrivateName,
+        value: Handle<Value>,
+    ) -> EvalResult<()> {
+        if self.has_private_element(private_name) {
+            type_error_(cx, "private property already defined")
+        } else {
+            let property_key = PropertyKey::symbol(private_name);
+            let property = Property::private_field(value);
+            // Safe since insert does not allocate on managed heap
+            self.named_properties_field()
+                .insert(cx, property_key.get(), property.to_heap());
+            ().into()
+        }
+    }
+
+    // 7.3.29 PrivateMethodOrAccessorAdd
+    pub fn private_method_or_accessor_add(
+        &mut self,
+        cx: &mut Context,
+        private_name: PrivateName,
+        private_method: Property,
+    ) -> EvalResult<()> {
+        if self.has_private_element(private_name) {
+            type_error_(cx, "private property already defined")
+        } else {
+            // Safe since insert does not allocate on managed heap
+            let property_key = PropertyKey::symbol(private_name);
+            self.named_properties_field()
+                .insert(cx, property_key.get(), private_method.to_heap());
+            ().into()
+        }
     }
 
     pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {
@@ -714,6 +723,24 @@ pub trait VirtualObject {
 
     fn as_typed_array(&self) -> DynTypedArray {
         unreachable!("as_typed_array can only be called on typed arrays")
+    }
+}
+
+pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
+
+struct NamedPropertiesMapField(Handle<ObjectValue>);
+
+impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
+        NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<NamedPropertiesMap> {
+        self.0.named_properties
+    }
+
+    fn set(&mut self, map: HeapPtr<NamedPropertiesMap>) {
+        self.0.set_named_properties(map);
     }
 }
 

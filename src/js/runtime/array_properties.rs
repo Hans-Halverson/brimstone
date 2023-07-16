@@ -333,7 +333,7 @@ impl DenseArrayProperties {
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
-        object.array.init(capacity as usize);
+        object.array.init_with_uninit(capacity as usize);
 
         object
     }

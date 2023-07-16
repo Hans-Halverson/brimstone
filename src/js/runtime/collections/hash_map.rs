@@ -42,7 +42,7 @@ struct KVPair<K, V> {
     value: V,
 }
 
-const ENTRIES_BYTES_OFFSET: usize = field_offset!(BsHashMap<String, String>, entries);
+const ENTRIES_BYTE_OFFSET: usize = field_offset!(BsHashMap<String, String>, entries);
 
 impl<K, V> IsHeapObject for BsHashMap<K, V> {}
 
@@ -64,9 +64,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         set_uninit!(self.len, 0);
 
         // Initialize entries array to empty
-        self.entries.init(capacity);
-
-        self.entries.as_mut_slice().fill(Entry::Empty);
+        self.entries.init_with(capacity, Entry::Empty);
     }
 
     pub fn new_initial(cx: &mut Context, kind: ObjectKind) -> HeapPtr<Self> {
@@ -87,7 +85,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 
     #[inline]
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
-        ENTRIES_BYTES_OFFSET + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)
+        ENTRIES_BYTE_OFFSET + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)
     }
 
     /// Return the minimum capacity needed to fit the given number of elements.
@@ -281,22 +279,6 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
         new_map
     }
-}
-
-/// A heap object that holds a BsHashMap as a child. Specifies the exact kind of the map, and
-/// provides the ability to update the pointer to the map.
-pub trait BsHashMapContainer<K: Eq + Hash + Clone, V: Clone>: IsHeapObject {
-    const KIND: ObjectKind;
-
-    fn kind() -> ObjectKind {
-        Self::KIND
-    }
-
-    fn new_map(cx: &mut Context) -> HeapPtr<BsHashMap<K, V>> {
-        BsHashMap::<K, V>::new(cx, Self::kind(), BsHashMap::<K, V>::MIN_CAPACITY)
-    }
-
-    fn set_map(&mut self, map: HeapPtr<BsHashMap<K, V>>);
 }
 
 impl<K, V> Entry<K, V> {

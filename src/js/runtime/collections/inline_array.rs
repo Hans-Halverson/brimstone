@@ -15,8 +15,16 @@ pub struct InlineArray<T> {
 
 impl<T> InlineArray<T> {
     /// Initialize an uninitialized InlineArray.
-    pub fn init(&mut self, len: usize) {
+    pub fn init_with_uninit(&mut self, len: usize) {
         set_uninit!(self.len, len);
+    }
+
+    pub fn init_with(&mut self, len: usize, init_value: T)
+    where
+        T: Clone,
+    {
+        set_uninit!(self.len, len);
+        self.as_mut_slice().fill(init_value)
     }
 
     #[inline]

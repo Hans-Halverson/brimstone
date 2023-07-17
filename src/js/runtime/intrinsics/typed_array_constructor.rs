@@ -712,7 +712,7 @@ macro_rules! create_typed_array_constructor {
             fn initialize_typed_array_from_array_buffer(
                 cx: &mut Context,
                 proto: Handle<ObjectValue>,
-                mut array_buffer: Handle<ArrayBufferObject>,
+                array_buffer: Handle<ArrayBufferObject>,
                 byte_offset: Handle<Value>,
                 length: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
@@ -737,7 +737,7 @@ macro_rules! create_typed_array_constructor {
                     return type_error_(cx, "cannot create typed array from detached array buffer");
                 }
 
-                let byte_length = array_buffer.data().len();
+                let byte_length = array_buffer.byte_length();
                 let new_byte_length;
 
                 if length.is_undefined() {

@@ -123,6 +123,11 @@ pub enum ObjectKind {
     PrivateEnvironmentNameMap,
     GlobalEnvironmentNameSet,
 
+    // Arrays
+    ArrayBufferDataArray,
+    FunctionFieldsArray,
+    FunctionPrivateMethodsArray,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -307,6 +312,10 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
+
+        other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
+        other_heap_object_descriptor!(ObjectKind::FunctionFieldsArray);
+        other_heap_object_descriptor!(ObjectKind::FunctionPrivateMethodsArray);
 
         BaseDescriptors { descriptors }
     }

@@ -126,7 +126,7 @@ impl DataViewConstructor {
             return type_error_(cx, "first argument must be an array buffer");
         }
 
-        let mut buffer_object = buffer_object.cast::<ArrayBufferObject>();
+        let buffer_object = buffer_object.cast::<ArrayBufferObject>();
 
         let offset_arg = get_argument(cx, arguments, 1);
         let offset = maybe!(to_index(cx, offset_arg));
@@ -135,7 +135,7 @@ impl DataViewConstructor {
             return type_error_(cx, "array buffer is detached");
         }
 
-        let buffer_byte_length = buffer_object.data().len();
+        let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
             return range_error_(
                 cx,

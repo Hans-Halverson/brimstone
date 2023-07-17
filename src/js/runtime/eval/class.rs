@@ -43,6 +43,7 @@ pub struct ClassFieldDefinition {
 }
 
 // A ClassFieldDefinition that is stored on the heap.
+#[derive(Clone)]
 pub struct HeapClassFieldDefinition {
     name: HeapClassFieldDefinitionName,
     initializer: Option<HeapPtr<Function>>,
@@ -55,6 +56,7 @@ pub enum ClassFieldDefinitionName {
 }
 
 // Stored on the heap.
+#[derive(Clone)]
 pub enum HeapClassFieldDefinitionName {
     Normal(PropertyKey),
     Private(HeapPrivateName),
@@ -435,10 +437,10 @@ pub fn class_definition_evaluation(
         must!(class_env.initialize_binding(cx, class_binding, func.into()));
     }
 
-    func.add_fields(instance_fields);
+    func.add_fields(cx, instance_fields);
 
     // Store templates for private methods on constructor function
-    func.add_private_methods(instance_private_methods);
+    func.add_private_methods(cx, instance_private_methods);
 
     // Define static private methods as private properties of the constructor function
     for (private_name, static_private_method) in static_private_methods {

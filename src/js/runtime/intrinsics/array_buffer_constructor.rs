@@ -2,6 +2,7 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
+        collections::BsArray,
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
@@ -11,9 +12,9 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::to_index,
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
-    maybe,
+    maybe, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -24,8 +25,11 @@ const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
 // 25.1 ArrayBuffer Objects
 extend_object! {
     pub struct ArrayBufferObject {
-        data: Vec<u8>,
-        is_detached: bool,
+        // Byte length of the array buffer. Stored separately from data as data might be detached
+        byte_length: usize,
+        // Data block containing array buffer's binary data. Detached array buffers represented as
+        // a null data pointer.
+        data: Option<HeapPtr<BsArray<u8>>>,
     }
 }
 
@@ -43,10 +47,9 @@ impl ArrayBufferObject {
             Intrinsic::ArrayBufferPrototype
         ));
 
-        object.is_detached = false;
-
         // Temporarily fill default values so object is fully initialized before GC may be triggered
-        object.data = vec![];
+        set_uninit!(object.byte_length, byte_length);
+        set_uninit!(object.data, None);
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
             return range_error_(
@@ -55,23 +58,32 @@ impl ArrayBufferObject {
             );
         }
 
-        object.data = vec![0; byte_length];
+        // Save object pointer behind handle as we are about to allocate
+        let mut object = object.to_handle();
 
-        object.to_handle().into()
+        // Initialize data block to all zeros
+        object.data =
+            Some(BsArray::<u8>::new(cx, ObjectKind::ArrayBufferDataArray, byte_length, 0));
+
+        object.into()
+    }
+
+    pub fn byte_length(&self) -> usize {
+        self.byte_length
     }
 
     pub fn data(&mut self) -> &mut [u8] {
-        &mut self.data
+        self.data.as_mut().unwrap().as_mut_slice()
     }
 
     pub fn is_detached(&self) -> bool {
-        self.is_detached
+        self.data.is_none()
     }
 
     // 25.1.2.3 DetachArrayBuffer
     pub fn detach(&mut self) {
-        self.data = Vec::new();
-        self.is_detached = true;
+        self.data = None;
+        self.byte_length = 0;
     }
 }
 

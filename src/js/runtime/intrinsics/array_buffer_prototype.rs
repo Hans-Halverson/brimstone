@@ -37,9 +37,9 @@ impl ArrayBufferPrototype {
         if this_value.is_object() {
             let this_object = this_value.as_object();
             if this_object.is_array_buffer() {
-                let mut array_buffer = this_object.cast::<ArrayBufferObject>();
+                let array_buffer = this_object.cast::<ArrayBufferObject>();
 
-                return Value::from(array_buffer.data().len()).to_handle(cx).into();
+                return Value::from(array_buffer.byte_length()).to_handle(cx).into();
             } else if this_object.is_shared_array_buffer() {
                 return type_error_(cx, "cannot access byteLength of shared array buffer");
             }

@@ -4,15 +4,13 @@ use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::{
-        parser::ast::{self, AstPtr},
-        runtime::ordinary_object::object_create_from_constructor,
-    },
+    js::parser::ast::{self, AstPtr},
     maybe, maybe_, maybe__, must, set_uninit,
 };
 
 use super::{
     abstract_operations::{construct, define_property_or_throw, initialize_instance_elements},
+    collections::BsArray,
     completion::{Completion, CompletionKind, EvalResult},
     environment::{
         environment::{DynEnvironment, HeapDynEnvironment},
@@ -31,7 +29,9 @@ use super::{
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{object_create_with_proto, ordinary_object_create},
+    ordinary_object::{
+        object_create_from_constructor, object_create_with_proto, ordinary_object_create,
+    },
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -71,8 +71,8 @@ extend_object! {
         func_node: HeapFuncKind,
         environment: HeapDynEnvironment,
         private_environment: Option<HeapPtr<PrivateEnvironment>>,
-        fields: Vec<HeapClassFieldDefinition>,
-        private_methods: Vec<(HeapPrivateName, HeapProperty)>,
+        fields: Option<HeapPtr<BsArray<HeapClassFieldDefinition>>>,
+        private_methods: Option<HeapPtr<BsArray<(HeapPrivateName, HeapProperty)>>>,
     }
 }
 
@@ -127,8 +127,8 @@ impl Function {
         set_uninit!(object.environment, environment.to_heap());
         set_uninit!(object.private_environment, private_environment.map(|p| p.get_()));
         set_uninit!(object.func_node, func_node.to_heap());
-        set_uninit!(object.fields, vec![]);
-        set_uninit!(object.private_methods, vec![]);
+        set_uninit!(object.fields, None);
+        set_uninit!(object.private_methods, None);
 
         object.to_handle()
     }
@@ -197,21 +197,6 @@ impl Function {
 
     pub fn set_constructor_kind(&mut self, kind: ConstructorKind) {
         self.constructor_kind = kind
-    }
-
-    pub fn add_fields(&mut self, fields: Vec<ClassFieldDefinition>) {
-        self.fields.reserve_exact(fields.len());
-        for field in fields {
-            self.fields.push(field.to_heap());
-        }
-    }
-
-    pub fn add_private_methods(&mut self, private_methods: HashMap<PrivateName, Property>) {
-        self.private_methods.reserve_exact(private_methods.len());
-        for (private_name, method_property) in private_methods {
-            self.private_methods
-                .push((private_name.get_(), method_property.to_heap()));
-        }
     }
 }
 
@@ -382,6 +367,37 @@ impl VirtualObject for Handle<Function> {
 }
 
 impl Handle<Function> {
+    pub fn add_fields(&mut self, cx: &mut Context, fields: Vec<ClassFieldDefinition>) {
+        // First collect fields into vec
+        let fields = fields.iter().map(|field| field.to_heap()).collect();
+
+        let fields_array = BsArray::<HeapClassFieldDefinition>::new_from_vec(
+            cx,
+            ObjectKind::FunctionFieldsArray,
+            fields,
+        );
+        self.fields = Some(fields_array)
+    }
+
+    pub fn add_private_methods(
+        &mut self,
+        cx: &mut Context,
+        private_methods: HashMap<PrivateName, Property>,
+    ) {
+        // First collect private methods into vec
+        let private_methods = private_methods
+            .iter()
+            .map(|(private_name, method_property)| (private_name.get_(), method_property.to_heap()))
+            .collect();
+
+        let methods_array = BsArray::<(HeapPrivateName, HeapProperty)>::new_from_vec(
+            cx,
+            ObjectKind::FunctionPrivateMethodsArray,
+            private_methods,
+        );
+        self.private_methods = Some(methods_array);
+    }
+
     // 10.2.1.1 PrepareForOrdinaryCall
     fn prepare_for_ordinary_call(
         &self,
@@ -479,10 +495,14 @@ impl Handle<Function> {
         cx: &mut Context,
         mut f: F,
     ) -> EvalResult<()> {
-        // GC safe iteration over class fields
-        for i in 0..self.fields.len() {
-            let field = ClassFieldDefinition::from_heap(cx, &self.fields[i]);
-            maybe!(f(cx, field));
+        if let Some(fields) = self.fields {
+            let fields = fields.to_handle();
+
+            // GC safe iteration over class fields
+            for i in 0..fields.len() {
+                let field = ClassFieldDefinition::from_heap(cx, &fields.as_slice()[i]);
+                maybe!(f(cx, field));
+            }
         }
 
         ().into()
@@ -494,12 +514,16 @@ impl Handle<Function> {
         cx: &mut Context,
         mut f: F,
     ) -> EvalResult<()> {
-        // GC safe iteration over private methods
-        for i in 0..self.private_methods.len() {
-            let (heap_private_name, heap_private_method) = &self.private_methods[i];
-            let private_name = heap_private_name.to_handle();
-            let private_method = Property::from_heap(cx, heap_private_method);
-            maybe!(f(cx, private_name, private_method));
+        if let Some(private_methods) = self.private_methods {
+            let private_methods = private_methods.to_handle();
+
+            // GC safe iteration over private methods
+            for i in 0..private_methods.len() {
+                let (heap_private_name, heap_private_method) = &private_methods.as_slice()[i];
+                let private_name = heap_private_name.to_handle();
+                let private_method = Property::from_heap(cx, heap_private_method);
+                maybe!(f(cx, private_name, private_method));
+            }
         }
 
         ().into()

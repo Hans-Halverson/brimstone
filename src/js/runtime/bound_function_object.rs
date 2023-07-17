@@ -1,12 +1,13 @@
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object, js::runtime::ordinary_object::object_create_with_optional_proto, maybe,
+    extend_object, field_offset, js::runtime::ordinary_object::object_ordinary_init, maybe,
     set_uninit,
 };
 
 use super::{
     abstract_operations::{call_object, construct},
+    collections::InlineArray,
     completion::EvalResult,
     gc::HeapPtr,
     object_descriptor::ObjectKind,
@@ -23,9 +24,12 @@ extend_object! {
     pub struct BoundFunctionObject {
         bound_target_function: HeapPtr<ObjectValue>,
         bound_this: Value,
-        bound_arguments: Vec<Value>,
+        // Bound arguments stored inline within object
+        bound_arguments: InlineArray<Value>,
     }
 }
+
+const BOUND_ARGUMENTS_BYTE_OFFSET: usize = field_offset!(BoundFunctionObject, bound_arguments);
 
 impl BoundFunctionObject {
     // 10.4.1.3 BoundFunctionCreate
@@ -38,17 +42,32 @@ impl BoundFunctionObject {
         // May allocate, so call before allocating bound function object
         let proto = maybe!(target_function.get_prototype_of(cx));
 
-        let mut object = object_create_with_optional_proto::<BoundFunctionObject>(
-            cx,
-            ObjectKind::BoundFunctionObject,
-            proto,
-        );
+        // Create with variable size since bound arguments are stored inline
+        let byte_size = Self::calculate_size_in_bytes(bound_arguments.len());
+        let mut object = cx
+            .heap
+            .alloc_uninit_with_size::<BoundFunctionObject>(byte_size);
+
+        let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
+        object_ordinary_init(cx, object.into(), descriptor, proto.map(|p| p.get_()));
 
         set_uninit!(object.bound_target_function, target_function.get_());
         set_uninit!(object.bound_this, bound_this.get());
-        set_uninit!(object.bound_arguments, bound_arguments.iter().map(|v| v.get()).collect());
+
+        // Copy bound arguments into inline bound arguments array
+        object
+            .bound_arguments
+            .init_with_uninit(bound_arguments.len());
+        for (i, bound_arg) in bound_arguments.iter().enumerate() {
+            set_uninit!(object.bound_arguments.as_mut_slice()[i], bound_arg.get());
+        }
 
         object.to_handle().into()
+    }
+
+    #[inline]
+    pub fn calculate_size_in_bytes(num_arguments: usize) -> usize {
+        BOUND_ARGUMENTS_BYTE_OFFSET + InlineArray::<Value>::calculate_size_in_bytes(num_arguments)
     }
 
     #[inline]
@@ -64,6 +83,7 @@ impl BoundFunctionObject {
     #[inline]
     fn bound_arguments(&self, cx: &mut Context) -> Vec<Handle<Value>> {
         self.bound_arguments
+            .as_slice()
             .iter()
             .map(|arg| arg.to_handle(cx))
             .collect()
@@ -80,7 +100,7 @@ impl VirtualObject for Handle<BoundFunctionObject> {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let bound_this = self.bound_this(cx);
-        if self.bound_arguments.is_empty() {
+        if self.bound_arguments.as_slice().is_empty() {
             call_object(cx, self.bound_target_function(), bound_this, arguments)
         } else if arguments.is_empty() {
             let bound_arguments = self.bound_arguments(cx);
@@ -105,7 +125,7 @@ impl VirtualObject for Handle<BoundFunctionObject> {
             new_target
         };
 
-        if self.bound_arguments.is_empty() {
+        if self.bound_arguments.as_slice().is_empty() {
             construct(cx, self.bound_target_function(), arguments, Some(new_target))
         } else if arguments.is_empty() {
             let bound_arguments = self.bound_arguments(cx);

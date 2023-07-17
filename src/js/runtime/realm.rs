@@ -1,4 +1,5 @@
 use crate::{
+    field_offset,
     js::{
         parser::ast::{AstPtr, TemplateLiteral},
         runtime::gc::HandleScope,
@@ -35,6 +36,8 @@ type TemplateMap = BsHashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>;
 
 impl IsHeapObject for Realm {}
 
+const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
+
 impl Realm {
     // 9.3.1 CreateRealm. Realm initializes intrinsics but leaves other properties uninitialized.
     // Must call `initialize` before using.
@@ -42,12 +45,12 @@ impl Realm {
         HandleScope::new(cx, |cx| {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
             // during intrinsic creation.
-            let mut realm = cx.heap.alloc_uninit::<Realm>();
+            let size = Self::calculate_size_in_bytes();
+            let mut realm = cx.heap.alloc_uninit_with_size::<Realm>(size);
 
             set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
             set_uninit!(realm.global_env, HeapPtr::uninit());
             set_uninit!(realm.global_object, HeapPtr::uninit());
-            set_uninit!(realm.intrinsics, Intrinsics::new_uninit());
             set_uninit!(realm.template_map, HeapPtr::uninit());
 
             let realm = realm.to_handle();
@@ -56,6 +59,11 @@ impl Realm {
 
             realm
         })
+    }
+
+    #[inline]
+    pub fn calculate_size_in_bytes() -> usize {
+        INTRINSICS_BYTE_OFFSET + Intrinsics::calculate_size_in_bytes()
     }
 
     #[inline]

@@ -2,6 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::define_property_or_throw,
         builtin_function::BuiltinFunction,
+        collections::InlineArray,
         completion::EvalResult,
         error::type_error_,
         gc::HandleScope,
@@ -154,23 +155,20 @@ impl Intrinsic {
     }
 }
 
+#[repr(C)]
 pub struct Intrinsics {
-    intrinsics: Vec<HeapPtr<ObjectValue>>,
+    intrinsics: InlineArray<HeapPtr<ObjectValue>>,
 }
 
 impl Intrinsics {
-    pub fn new_uninit() -> Intrinsics {
-        Intrinsics { intrinsics: Vec::new() }
-    }
-
     // 9.3.2 CreateIntrinsics
     pub fn initialize(&mut self, cx: &mut Context, realm: Handle<Realm>) {
-        self.intrinsics.reserve_exact(Intrinsic::num_intrinsics());
-        unsafe { self.intrinsics.set_len(Intrinsic::num_intrinsics()) };
+        self.intrinsics
+            .init_with_uninit(Intrinsic::num_intrinsics());
 
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
-                self.intrinsics[Intrinsic::$intrinsic_name as usize] =
+                self.intrinsics.as_mut_slice()[Intrinsic::$intrinsic_name as usize] =
                     ($expr).cast::<ObjectValue>().get_();
             };
         }
@@ -293,8 +291,13 @@ impl Intrinsics {
         add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
     }
 
+    #[inline]
+    pub fn calculate_size_in_bytes() -> usize {
+        InlineArray::<HeapPtr<ObjectValue>>::calculate_size_in_bytes(Intrinsic::num_intrinsics())
+    }
+
     pub fn get_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
-        self.intrinsics[intrinsic as usize]
+        self.intrinsics.as_slice()[intrinsic as usize]
     }
 
     pub fn get(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {

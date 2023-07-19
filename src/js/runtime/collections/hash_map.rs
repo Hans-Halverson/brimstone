@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     slice,
@@ -105,9 +106,21 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     /// Returns the value associated with the given key in this map, or None is the key is not present.
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         self.find_index(key)
             .map(|index| &self.entries.get_unchecked(index).as_occupied().value)
+    }
+
+    /// Returns the key value pair associated with the given key in this map, or None is the key is not present.
+    pub fn get_entry(&self, key: &K) -> Option<(&K, &V)> {
+        self.find_index(key).map(|index| {
+            let entry = &self.entries.get_unchecked(index).as_occupied();
+            (&entry.key, &entry.value)
+        })
     }
 
     /// Returns the value associated with the given key in this map, or None is the key is not present.
@@ -161,16 +174,24 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     #[inline]
-    fn key_hash_code(key: &K) -> usize {
+    fn key_hash_code<Q>(key: &Q) -> usize
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
+        key.borrow().hash(&mut hasher);
         hasher.finish() as usize
     }
 
     /// Return the index of the key if the key is present in the map, otherwise return None.
     /// Returns None for empty and deleted entries.
     #[inline]
-    fn find_index(&self, key: &K) -> Option<usize> {
+    fn find_index<Q>(&self, key: &Q) -> Option<usize>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let hash_code = Self::key_hash_code(key);
         let mut probe_index = self.initial_probe_index(hash_code);
 
@@ -182,7 +203,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
                 // Continue probing past deleted entries
                 Entry::Deleted => {}
                 Entry::Occupied(kv_pair) => {
-                    if kv_pair.key == *key {
+                    if kv_pair.key.borrow() == key {
                         return Some(probe_index);
                     }
 
@@ -237,9 +258,9 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
 
-    fn get(&self) -> HeapPtr<BsHashMap<K, V>>;
+    fn get(&self, cx: &mut Context) -> HeapPtr<BsHashMap<K, V>>;
 
-    fn set(&mut self, map: HeapPtr<BsHashMap<K, V>>);
+    fn set(&mut self, cx: &mut Context, map: HeapPtr<BsHashMap<K, V>>);
 
     /// Insert the key value pair into this map. If there is already a value associated with the key
     /// then overwrite the value. Return whether the key was already present in the map.
@@ -253,7 +274,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
     #[inline]
     fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsHashMap<K, V>> {
-        let old_map = self.get();
+        let old_map = self.get(cx);
 
         // Keep at least half of the entries empty, otherwise grow
         let new_length = old_map.len() + 1;
@@ -270,7 +291,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
         let mut new_map = self.new(cx, new_capacity);
 
         // Update parent reference from old child to new child map
-        self.set(new_map);
+        self.set(cx, new_map);
 
         // Copy all values into new map. We have already guaranteed that there is enough room in map.
         for (key, value) in old_map.iter_gc_unsafe() {

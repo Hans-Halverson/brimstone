@@ -380,11 +380,11 @@ impl BsHashSetField<HeapPtr<FlatString>> for VarNamesField {
         VarNamesSet::new(cx, ObjectKind::GlobalEnvironmentNameSet, capacity)
     }
 
-    fn get(&self) -> HeapPtr<VarNamesSet> {
+    fn get(&self, _: &mut Context) -> HeapPtr<VarNamesSet> {
         self.0.var_names
     }
 
-    fn set(&mut self, set: HeapPtr<VarNamesSet>) {
+    fn set(&mut self, _: &mut Context, set: HeapPtr<VarNamesSet>) {
         self.0.var_names = set;
     }
 }

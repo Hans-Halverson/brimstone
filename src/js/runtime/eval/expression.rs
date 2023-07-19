@@ -289,7 +289,7 @@ pub fn eval_property_name<'a>(
         match key {
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
-                let string_value = InternedStrings::get_str(cx, lit.value.as_str());
+                let string_value = InternedStrings::get_str(cx, &lit.value);
                 PropertyKey::string(cx, string_value).to_handle(cx)
             }
             ast::Expression::Number(lit) => {

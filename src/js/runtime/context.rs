@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use crate::js::{parser::ast, runtime::gc::HandleScope};
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
+    collections::{BsHashMap, BsHashMapField},
     environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::Heap,
@@ -26,7 +25,7 @@ use super::{
 pub struct Context {
     execution_context_stack: Vec<HeapPtr<ExecutionContext>>,
     pub heap: Heap,
-    pub global_symbol_registry: HashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>,
+    global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
     pub base_descriptors: BaseDescriptors,
@@ -60,6 +59,8 @@ pub struct Context {
     pub function_constructor_asts: Vec<ast::P<ast::Function>>,
 }
 
+type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
+
 impl Context {
     pub fn new() -> Context {
         let mut heap = Heap::new();
@@ -67,6 +68,7 @@ impl Context {
         // Context does not yet exist, so handle scope must directly reference heap
         let handle_scope = HandleScope::enter_with_heap(&mut heap);
 
+        // Initialize some fields, leave others uninitialized and initialize later
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
@@ -76,7 +78,7 @@ impl Context {
         let mut cx = Context {
             execution_context_stack: vec![],
             heap,
-            global_symbol_registry: HashMap::new(),
+            global_symbol_registry: HeapPtr::uninit(),
             names,
             well_known_symbols,
             base_descriptors,
@@ -85,7 +87,7 @@ impl Context {
             empty: Value::empty(),
             true_: Value::bool(true),
             false_: Value::bool(false),
-            interned_strings: InternedStrings::new(),
+            interned_strings: InternedStrings::uninit(),
             closure_environments: vec![],
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
@@ -96,8 +98,15 @@ impl Context {
 
         cx.heap.info().set_context(&mut cx);
 
+        // Initialize all uninitialized fields
+        InternedStrings::init(&mut cx);
+
         cx.init_builtin_names();
         cx.init_builtin_symbols();
+
+        cx.global_symbol_registry =
+            GlobalSymbolRegistry::new_initial(&mut cx, ObjectKind::GlobalSymbolRegistryMap);
+
         cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
         cx.default_named_properties =
             NamedPropertiesMap::new(&mut cx, ObjectKind::ObjectNamedPropertiesMap, 0);
@@ -158,6 +167,14 @@ impl Context {
             .find_map(|exec_ctx| exec_ctx.script_or_module())
     }
 
+    pub fn global_symbol_registry(&self) -> HeapPtr<GlobalSymbolRegistry> {
+        self.global_symbol_registry
+    }
+
+    pub fn global_symbol_registry_field(&mut self) -> GlobalSymbolRegistryField {
+        GlobalSymbolRegistryField
+    }
+
     pub fn push_closure_environment(&mut self, env: Option<HeapPtr<ClosureEnvironment>>) {
         self.closure_environments.push(env)
     }
@@ -203,5 +220,21 @@ impl Context {
         } else {
             Handle::<Value>::from_fixed_non_heap_ptr(&self.false_)
         }
+    }
+}
+
+pub struct GlobalSymbolRegistryField;
+
+impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
+    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
+        GlobalSymbolRegistry::new(cx, ObjectKind::GlobalSymbolRegistryMap, capacity)
+    }
+
+    fn get(&self, cx: &mut Context) -> HeapPtr<GlobalSymbolRegistry> {
+        cx.global_symbol_registry
+    }
+
+    fn set(&mut self, cx: &mut Context, map: HeapPtr<GlobalSymbolRegistry>) {
+        cx.global_symbol_registry = map;
     }
 }

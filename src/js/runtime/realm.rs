@@ -162,11 +162,11 @@ impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for TemplateM
         TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
     }
 
-    fn get(&self) -> HeapPtr<TemplateMap> {
+    fn get(&self, _: &mut Context) -> HeapPtr<TemplateMap> {
         self.0.template_map
     }
 
-    fn set(&mut self, map: HeapPtr<TemplateMap>) {
+    fn set(&mut self, _: &mut Context, map: HeapPtr<TemplateMap>) {
         self.0.template_map = map;
     }
 }

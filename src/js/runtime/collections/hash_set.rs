@@ -17,6 +17,10 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
         BsHashMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
+    pub fn new_initial(cx: &mut Context, kind: ObjectKind) -> HeapPtr<Self> {
+        BsHashMap::<T, ()>::new_initial(cx, kind).cast()
+    }
+
     /// Number of elements inserted in the map.
     pub fn len(&self) -> usize {
         self.0.len()
@@ -32,6 +36,11 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
         self.0.contains_key(element)
     }
 
+    /// Returns the key equal to the given key that is stored in the set.
+    pub fn get(&self, key: &T) -> Option<&T> {
+        self.0.get_entry(key).map(|(key, _)| key)
+    }
+
     /// Remove an element from this map if the element is present. Return whether an element was removed.
     pub fn remove(&mut self, element: &T) -> bool {
         self.0.remove(element)
@@ -43,9 +52,9 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
     fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsHashSet<T>>;
 
-    fn get(&self) -> HeapPtr<BsHashSet<T>>;
+    fn get(&self, cx: &mut Context) -> HeapPtr<BsHashSet<T>>;
 
-    fn set(&mut self, set: HeapPtr<BsHashSet<T>>);
+    fn set(&mut self, cx: &mut Context, set: HeapPtr<BsHashSet<T>>);
 
     /// Insert an element into this set. Return whether the element was already present in the set.
     ///
@@ -65,11 +74,11 @@ impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashM
         S::new(cx, capacity).cast()
     }
 
-    fn get(&self) -> HeapPtr<BsHashMap<T, ()>> {
-        self.0.get().cast()
+    fn get(&self, cx: &mut Context) -> HeapPtr<BsHashMap<T, ()>> {
+        self.0.get(cx).cast()
     }
 
-    fn set(&mut self, map: HeapPtr<BsHashMap<T, ()>>) {
-        self.0.set(map.cast())
+    fn set(&mut self, cx: &mut Context, map: HeapPtr<BsHashMap<T, ()>>) {
+        self.0.set(cx, map.cast())
     }
 }

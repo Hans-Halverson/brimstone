@@ -38,8 +38,9 @@ impl<T: Clone> BsArray<T> {
 
         // Initialize entries array to empty
         array.array.init_with_uninit(elements.len());
-        for (i, element) in elements.iter().enumerate() {
-            array.array.set_unchecked(i, element.clone());
+
+        for (i, element) in elements.into_iter().enumerate() {
+            array.array.set_unchecked(i, element);
         }
 
         array

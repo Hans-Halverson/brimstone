@@ -121,7 +121,10 @@ pub enum ObjectKind {
     DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
+    GlobalSymbolRegistryMap,
     GlobalEnvironmentNameSet,
+    InternedStringsMap,
+    InternedStringsSet,
 
     // Arrays
     ArrayBufferDataArray,
@@ -311,6 +314,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
+        other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
 
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);

@@ -517,12 +517,12 @@ impl BsHashMapField<u32, HeapProperty> for SparseMapField {
     }
 
     #[inline]
-    fn get(&self) -> HeapPtr<SparseMap> {
+    fn get(&self, _: &mut Context) -> HeapPtr<SparseMap> {
         self.0.array_properties().as_sparse().sparse_map()
     }
 
     #[inline]
-    fn set(&mut self, map: HeapPtr<SparseMap>) {
+    fn set(&mut self, _: &mut Context, map: HeapPtr<SparseMap>) {
         self.0.set_array_properties(map.cast())
     }
 }

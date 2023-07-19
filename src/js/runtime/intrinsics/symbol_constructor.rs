@@ -1,10 +1,10 @@
 use crate::{
     extend_object,
     js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
-        function::get_argument, object_descriptor::ObjectKind, object_value::ObjectValue,
-        ordinary_object::object_create, realm::Realm, type_utilities::to_string,
-        value::SymbolValue, Context, Handle, HeapPtr, Value,
+        builtin_function::BuiltinFunction, collections::BsHashMapField, completion::EvalResult,
+        error::type_error_, function::get_argument, object_descriptor::ObjectKind,
+        object_value::ObjectValue, ordinary_object::object_create, realm::Realm,
+        type_utilities::to_string, value::SymbolValue, Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -139,13 +139,13 @@ impl SymbolConstructor {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let string_key = maybe!(to_string(cx, argument)).flatten();
-        if let Some(symbol_value) = cx.global_symbol_registry.get(&string_key.get_()) {
+        if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key.get_()) {
             return symbol_value.to_handle().into();
         }
 
         let new_symbol = SymbolValue::new(cx, Some(string_key.as_string()));
-        cx.global_symbol_registry
-            .insert(string_key.get_(), new_symbol.get_());
+        cx.global_symbol_registry_field()
+            .insert(cx, string_key.get_(), new_symbol.get_());
 
         new_symbol.into()
     }
@@ -163,7 +163,7 @@ impl SymbolConstructor {
         }
         let symbol_value = symbol_value.as_symbol().get_();
 
-        for (string, symbol) in &cx.global_symbol_registry {
+        for (string, symbol) in cx.global_symbol_registry().iter_gc_unsafe() {
             if symbol.ptr_eq(&symbol_value) {
                 let string_value: Value = string.as_string().into();
                 return string_value.to_handle(cx).into();

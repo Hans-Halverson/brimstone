@@ -237,11 +237,11 @@ impl BsHashMapField<HeapPtr<FlatString>, Binding> for BindingsMapField {
         BindingsMap::new(cx, ObjectKind::DeclarativeEnvironmentBindingsMap, capacity)
     }
 
-    fn get(&self) -> HeapPtr<BindingsMap> {
+    fn get(&self, _: &mut Context) -> HeapPtr<BindingsMap> {
         self.0.bindings
     }
 
-    fn set(&mut self, map: HeapPtr<BindingsMap>) {
+    fn set(&mut self, _: &mut Context, map: HeapPtr<BindingsMap>) {
         self.0.bindings = map;
     }
 }

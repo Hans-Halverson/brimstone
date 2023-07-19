@@ -98,11 +98,11 @@ impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for NamesField {
         PrivateNameMap::new(cx, ObjectKind::PrivateEnvironmentNameMap, capacity)
     }
 
-    fn get(&self) -> HeapPtr<PrivateNameMap> {
+    fn get(&self, _: &mut Context) -> HeapPtr<PrivateNameMap> {
         self.0.names
     }
 
-    fn set(&mut self, map: HeapPtr<PrivateNameMap>) {
+    fn set(&mut self, _: &mut Context, map: HeapPtr<PrivateNameMap>) {
         self.0.names = map;
     }
 }

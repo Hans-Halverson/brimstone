@@ -1,4 +1,4 @@
-use std::{collections::HashSet, rc::Rc};
+use std::{collections::HashSet, mem::size_of, rc::Rc};
 
 use crate::{
     js::{
@@ -9,7 +9,7 @@ use crate::{
             error::{syntax_error_, type_error, type_error_},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
-            gc::{Handle, HandleScope, IsHeapObject},
+            gc::{Handle, HandleScope, HeapObject, HeapVisitor},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::FlatString,
@@ -28,8 +28,6 @@ pub struct Script {
     realm: HeapPtr<Realm>,
     script_node: Rc<ast::Program>,
 }
-
-impl IsHeapObject for Script {}
 
 impl Script {
     pub fn new(
@@ -205,4 +203,15 @@ fn global_declaration_instantiation(
     }
 
     Completion::empty(cx)
+}
+
+impl HeapObject for HeapPtr<Script> {
+    fn byte_size(&self) -> usize {
+        size_of::<Script>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.realm);
+    }
 }

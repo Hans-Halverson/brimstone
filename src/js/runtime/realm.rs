@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     field_offset,
     js::{
@@ -11,7 +13,7 @@ use super::{
     collections::{BsHashMap, BsHashMapField},
     environment::global_environment::GlobalEnvironment,
     execution_context::ExecutionContext,
-    gc::{Handle, HeapPtr, IsHeapObject},
+    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
@@ -33,8 +35,6 @@ pub struct Realm {
 }
 
 type TemplateMap = BsHashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>;
-
-impl IsHeapObject for Realm {}
 
 const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 
@@ -99,8 +99,8 @@ impl Realm {
 }
 
 impl Handle<Realm> {
-    fn template_map_field(&self) -> TemplateMapField {
-        TemplateMapField(*self)
+    fn template_map_field(&self) -> RealmTemplateMapField {
+        RealmTemplateMapField(*self)
     }
 
     pub fn add_template_object(
@@ -151,9 +151,9 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
     })
 }
 
-struct TemplateMapField(Handle<Realm>);
+pub struct RealmTemplateMapField(Handle<Realm>);
 
-impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for TemplateMapField {
+impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for RealmTemplateMapField {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<TemplateMap> {
         TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
     }
@@ -164,5 +164,33 @@ impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for TemplateM
 
     fn set(&mut self, _: &mut Context, map: HeapPtr<TemplateMap>) {
         self.0.template_map = map;
+    }
+}
+
+impl HeapObject for HeapPtr<Realm> {
+    fn byte_size(&self) -> usize {
+        size_of::<Realm>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.global_env);
+        visitor.visit_pointer(&mut self.global_object);
+        visitor.visit_pointer(&mut self.template_map);
+        self.intrinsics.visit_pointers(visitor);
+    }
+}
+
+impl RealmTemplateMapField {
+    pub fn byte_size(map: &HeapPtr<TemplateMap>) -> usize {
+        TemplateMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<TemplateMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (_, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(value);
+        }
     }
 }

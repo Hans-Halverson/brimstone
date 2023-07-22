@@ -9,7 +9,7 @@ use super::{
         declarative_environment::DeclarativeEnvironment, environment::HeapDynEnvironment,
     },
     execution_context::{ExecutionContext, ScriptOrModule},
-    gc::Heap,
+    gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{BaseDescriptors, ObjectKind},
@@ -239,5 +239,20 @@ impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolR
 
     fn set(&mut self, cx: &mut Context, map: HeapPtr<GlobalSymbolRegistry>) {
         cx.global_symbol_registry = map;
+    }
+}
+
+impl GlobalSymbolRegistryField {
+    pub fn byte_size(map: &HeapPtr<GlobalSymbolRegistry>) -> usize {
+        GlobalSymbolRegistry::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<GlobalSymbolRegistry>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(key);
+            visitor.visit_pointer(value);
+        }
     }
 }

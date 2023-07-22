@@ -1,19 +1,19 @@
 use std::hash::Hash;
 
 use crate::js::runtime::{
-    gc::IsHeapObject, object_descriptor::ObjectKind, Context, Handle, HeapPtr,
+    gc::{HeapObject, HeapVisitor},
+    object_descriptor::ObjectKind,
+    Context, Handle, HeapPtr,
 };
 
 use super::{
-    index_map::{GcSafeEntriesIter, GcUnsafeKeysIter},
+    index_map::{GcSafeEntriesIter, GcUnsafeKeysIter, GcUnsafeKeysIterMut},
     BsIndexMap, BsIndexMapField,
 };
 
 /// Generic flat IndexSet implementation which is a simple wrapper over a IndexMap with unit values.
 #[repr(C)]
 pub struct BsIndexSet<T>(BsIndexMap<T, ()>);
-
-impl<T> IsHeapObject for BsIndexSet<T> {}
 
 impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     pub const MIN_CAPACITY: usize = BsIndexMap::<T, ()>::MIN_CAPACITY;
@@ -22,9 +22,18 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
         BsIndexMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
+    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
+        BsIndexMap::<T, ()>::calculate_size_in_bytes(capacity)
+    }
+
     /// Number of elements inserted in the set.
     pub fn num_entries_occupied(&self) -> usize {
         self.0.num_entries_occupied()
+    }
+
+    /// Total number of elements that the IndexSet can hold.
+    pub fn capacity(&self) -> usize {
+        self.0.capacity()
     }
 
     /// Returns whether this set contains the given element.
@@ -41,6 +50,12 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     /// are no allocations between construction and use.
     pub fn iter_gc_unsafe(&self) -> GcUnsafeKeysIter<T, ()> {
         self.0.keys_gc_unsafe()
+    }
+
+    /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<T, ()> {
+        self.0.keys_mut_gc_unsafe()
     }
 
     /// Insert an element into this set. Return whether the element was already present in the set.
@@ -92,5 +107,16 @@ impl<T: Eq + Hash + Clone, S: BsIndexSetField<T>> BsIndexMapField<T, ()> for Ind
 
     fn set(&mut self, map: HeapPtr<BsIndexMap<T, ()>>) {
         self.0.set(map.cast())
+    }
+}
+
+impl<T: Eq + Hash + Clone> HeapObject for HeapPtr<BsIndexSet<T>> {
+    fn byte_size(&self) -> usize {
+        BsIndexSet::<T>::calculate_size_in_bytes(self.capacity())
+    }
+
+    /// Visit pointers intrinsic to all IndexSets. Do not visit entries as they could be of any type.
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast_mut::<BsIndexMap<T, ()>>().visit_pointers(visitor)
     }
 }

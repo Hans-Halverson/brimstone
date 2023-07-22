@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
@@ -6,6 +8,7 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -29,9 +32,11 @@ extend_object! {
         byte_length: usize,
         // Data block containing array buffer's binary data. Detached array buffers represented as
         // a null data pointer.
-        data: Option<HeapPtr<BsArray<u8>>>,
+        data: Option<HeapPtr<DataArray>>,
     }
 }
+
+type DataArray = BsArray<u8>;
 
 impl ArrayBufferObject {
     // 25.1.2.1 AllocateArrayBuffer
@@ -172,4 +177,27 @@ pub fn clone_array_buffer(
     target_buffer.data().copy_from_slice(source_buffer_view);
 
     target_buffer.into()
+}
+
+impl HeapObject for HeapPtr<ArrayBufferObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<ArrayBufferObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer_opt(&mut self.data);
+    }
+}
+
+pub struct ArrayBufferDataField;
+
+impl ArrayBufferDataField {
+    pub fn byte_size(array: &HeapPtr<DataArray>) -> usize {
+        DataArray::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(array: &mut HeapPtr<DataArray>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+    }
 }

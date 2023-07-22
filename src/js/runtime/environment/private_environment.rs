@@ -1,7 +1,9 @@
+use std::mem::size_of;
+
 use crate::{
     js::runtime::{
         collections::{BsHashMap, BsHashMapField},
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         string_value::{FlatString, StringValue},
         value::SymbolValue,
@@ -29,8 +31,6 @@ pub struct PrivateEnvironment {
 }
 
 type PrivateNameMap = BsHashMap<HeapPtr<FlatString>, HeapPrivateName>;
-
-impl IsHeapObject for PrivateEnvironment {}
 
 impl PrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
@@ -80,8 +80,8 @@ impl PrivateEnvironment {
 }
 
 impl Handle<PrivateEnvironment> {
-    fn names_field(&self) -> NamesField {
-        NamesField(*self)
+    fn names_field(&self) -> PrivateEnvironmentNamesField {
+        PrivateEnvironmentNamesField(*self)
     }
 
     pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
@@ -93,9 +93,9 @@ impl Handle<PrivateEnvironment> {
     }
 }
 
-struct NamesField(Handle<PrivateEnvironment>);
+pub struct PrivateEnvironmentNamesField(Handle<PrivateEnvironment>);
 
-impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for NamesField {
+impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for PrivateEnvironmentNamesField {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<PrivateNameMap> {
         PrivateNameMap::new(cx, ObjectKind::PrivateEnvironmentNameMap, capacity)
     }
@@ -106,5 +106,32 @@ impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for NamesField {
 
     fn set(&mut self, _: &mut Context, map: HeapPtr<PrivateNameMap>) {
         self.0.names = map;
+    }
+}
+
+impl HeapObject for HeapPtr<PrivateEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<PrivateEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.names);
+        self.outer.as_mut().map(|o| o.visit_pointers(visitor));
+    }
+}
+
+impl PrivateEnvironmentNamesField {
+    pub fn byte_size(map: &HeapPtr<PrivateNameMap>) -> usize {
+        PrivateNameMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<PrivateNameMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(key);
+            visitor.visit_pointer(value);
+        }
     }
 }

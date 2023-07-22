@@ -1,7 +1,10 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
         collections::{BsIndexMap, BsIndexMapField},
+        gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -70,5 +73,31 @@ impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
 
     fn set(&mut self, map: HeapPtr<ValueMap>) {
         self.0.map_data = map;
+    }
+}
+
+impl HeapObject for HeapPtr<MapObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<MapObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.map_data);
+    }
+}
+
+impl MapObjectMapField {
+    pub fn byte_size(map: &HeapPtr<ValueMap>) -> usize {
+        ValueMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<ValueMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            key.visit_pointers(visitor);
+            visitor.visit_value(value);
+        }
     }
 }

@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 
 use super::{
-    gc::Handle,
+    gc::{Handle, HeapVisitor},
     object_value::ObjectValue,
     value::{AccessorValue, Value},
     Context,
@@ -201,5 +201,9 @@ impl Property {
 impl HeapProperty {
     pub fn is_configurable(&self) -> bool {
         self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_value(&mut self.value);
     }
 }

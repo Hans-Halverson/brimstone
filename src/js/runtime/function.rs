@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, mem::size_of};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
@@ -25,7 +25,7 @@ use super::{
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
     execution_context::{ExecutionContext, HeapScriptOrModule, ScriptOrModule},
-    gc::{HandleScope, HeapPtr},
+    gc::{HandleScope, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -71,10 +71,13 @@ extend_object! {
         func_node: HeapFuncKind,
         environment: HeapDynEnvironment,
         private_environment: Option<HeapPtr<PrivateEnvironment>>,
-        fields: Option<HeapPtr<BsArray<HeapClassFieldDefinition>>>,
-        private_methods: Option<HeapPtr<BsArray<(HeapPrivateName, HeapProperty)>>>,
+        fields: Option<HeapPtr<FieldsArray>>,
+        private_methods: Option<HeapPtr<PrivateMethodsArray>>,
     }
 }
+
+type FieldsArray = BsArray<HeapClassFieldDefinition>;
+type PrivateMethodsArray = BsArray<(HeapPrivateName, HeapProperty)>;
 
 // Function objects may have special kinds, such as executing a class property node instead of a
 // function node, or executing a builtin constructor. Stored on stack.
@@ -749,5 +752,76 @@ pub fn get_argument(cx: &mut Context, arguments: &[Handle<Value>], i: usize) -> 
         arguments[i]
     } else {
         cx.undefined()
+    }
+}
+
+impl HeapObject for HeapPtr<Function> {
+    fn byte_size(&self) -> usize {
+        size_of::<Function>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+
+        visitor.visit_pointer_opt(&mut self.home_object);
+        visitor.visit_pointer(&mut self.realm);
+
+        self.script_or_module
+            .as_mut()
+            .map(|sm| sm.visit_pointers(visitor));
+        self.func_node.visit_pointers(visitor);
+        self.environment.visit_pointers(visitor);
+
+        visitor.visit_pointer_opt(&mut self.private_environment);
+        visitor.visit_pointer_opt(&mut self.fields);
+        visitor.visit_pointer_opt(&mut self.private_methods);
+    }
+}
+
+impl HeapFuncKind {
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        match self {
+            HeapFuncKind::Function(_) => {}
+            HeapFuncKind::ClassProperty(_, property_key) => {
+                visitor.visit_property_key(property_key);
+            }
+            HeapFuncKind::DefaultConstructor => {}
+        }
+    }
+}
+
+pub struct FunctionFieldsArray;
+
+impl FunctionFieldsArray {
+    pub fn byte_size(array: &HeapPtr<FieldsArray>) -> usize {
+        FieldsArray::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(array: &mut HeapPtr<FieldsArray>, visitor: &mut impl HeapVisitor) {
+        array.visit_pointers(visitor);
+
+        for class_field_definition in array.as_mut_slice() {
+            class_field_definition.visit_pointers(visitor);
+        }
+    }
+}
+
+pub struct FunctionPrivateMethodsArray;
+
+impl FunctionPrivateMethodsArray {
+    pub fn byte_size(array: &HeapPtr<PrivateMethodsArray>) -> usize {
+        PrivateMethodsArray::calculate_size_in_bytes(array.len())
+    }
+
+    pub fn visit_pointers(
+        array: &mut HeapPtr<PrivateMethodsArray>,
+        visitor: &mut impl HeapVisitor,
+    ) {
+        array.visit_pointers(visitor);
+
+        for (private_symbol, property) in array.as_mut_slice() {
+            visitor.visit_pointer(private_symbol);
+            property.visit_pointers(visitor);
+        }
     }
 }

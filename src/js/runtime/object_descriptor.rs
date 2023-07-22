@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use bitflags::bitflags;
 
 use crate::{
@@ -11,7 +13,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
-    gc::{Handle, Heap, HeapPtr, IsHeapObject},
+    gc::{Handle, Heap, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::{
         function_prototype::FunctionPrototype,
         typed_array::{
@@ -36,8 +38,6 @@ pub struct ObjectDescriptor {
     // Bitflags for object
     flags: DescFlags,
 }
-
-impl IsHeapObject for ObjectDescriptor {}
 
 /// Type of an object on the heap. May also represent other non-object data stored on the heap,
 /// e.g. descriptors and realms.
@@ -121,8 +121,8 @@ pub enum ObjectKind {
     DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
-    GlobalSymbolRegistryMap,
     GlobalEnvironmentNameSet,
+    GlobalSymbolRegistryMap,
     InternedStringsMap,
     InternedStringsSet,
 
@@ -329,17 +329,12 @@ impl BaseDescriptors {
     }
 }
 
-/// An arbitrary heap item. Only common field between heap items is their descriptor, which can be
-/// used to determine the true type of the heap item.
-#[repr(C)]
-pub struct HeapItem {
-    descriptor: HeapPtr<ObjectDescriptor>,
-}
+impl HeapObject for HeapPtr<ObjectDescriptor> {
+    fn byte_size(&self) -> usize {
+        size_of::<ObjectDescriptor>()
+    }
 
-impl IsHeapObject for HeapItem {}
-
-impl HeapItem {
-    pub fn descriptor(&self) -> HeapPtr<ObjectDescriptor> {
-        self.descriptor
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 }

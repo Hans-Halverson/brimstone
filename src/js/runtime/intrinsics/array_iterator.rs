@@ -1,11 +1,22 @@
+use std::mem::size_of;
+
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        abstract_operations::length_of_array_like, array_object::create_array_from_list,
-        completion::EvalResult, error::type_error_, iterator::create_iter_result_object,
-        object_descriptor::ObjectKind, object_value::ObjectValue, ordinary_object::object_create,
-        property::Property, property_key::PropertyKey, realm::Realm, value::Value, Context, Handle,
-        HeapPtr,
+        abstract_operations::length_of_array_like,
+        array_object::create_array_from_list,
+        completion::EvalResult,
+        error::type_error_,
+        gc::{HeapObject, HeapVisitor},
+        iterator::create_iter_result_object,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create,
+        property::Property,
+        property_key::PropertyKey,
+        realm::Realm,
+        value::Value,
+        Context, Handle, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -138,5 +149,16 @@ impl ArrayIteratorPrototype {
                 create_iter_result_object(cx, result_pair.into(), false).into()
             }
         }
+    }
+}
+
+impl HeapObject for HeapPtr<ArrayIterator> {
+    fn byte_size(&self) -> usize {
+        size_of::<ArrayIterator>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.array);
     }
 }

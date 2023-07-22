@@ -1,10 +1,12 @@
+use std::mem::size_of;
+
 use crate::js::runtime::{
     completion::EvalResult,
-    gc::{Handle, IsHeapObject},
+    gc::{Handle, HeapObject, HeapVisitor},
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     string_value::StringValue,
-    Context, Value,
+    Context, HeapPtr, Value,
 };
 
 use super::{
@@ -16,8 +18,6 @@ use super::{
 pub struct ModuleEnvironment {
     env: DeclarativeEnvironment,
 }
-
-impl IsHeapObject for ModuleEnvironment {}
 
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
@@ -133,5 +133,16 @@ impl ModuleEnvironment {
     // 9.1.1.5.5 CreateImportBinding
     fn _create_import_binding(&self) -> EvalResult<Handle<Value>> {
         unimplemented!()
+    }
+}
+
+impl HeapObject for HeapPtr<ModuleEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<ModuleEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<DeclarativeEnvironment>()
+            .visit_pointers(visitor);
     }
 }

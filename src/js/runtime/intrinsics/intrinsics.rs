@@ -5,7 +5,7 @@ use crate::{
         collections::InlineArray,
         completion::EvalResult,
         error::type_error_,
-        gc::HandleScope,
+        gc::{HandleScope, HeapVisitor},
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
@@ -379,4 +379,12 @@ fn add_restricted_function_properties(
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
     must!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc,));
+}
+
+impl Intrinsics {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        for intrinsic in self.intrinsics.as_mut_slice() {
+            visitor.visit_pointer(intrinsic);
+        }
+    }
 }

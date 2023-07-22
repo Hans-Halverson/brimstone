@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use super::environment::{DynEnvironment, Environment, HeapDynEnvironment};
 
 use crate::{
@@ -5,7 +7,7 @@ use crate::{
         collections::{BsHashMap, BsHashMapField},
         completion::EvalResult,
         error::{err_not_defined_, err_uninitialized_, type_error_},
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         string_value::{FlatString, StringValue},
@@ -46,8 +48,6 @@ pub struct DeclarativeEnvironment {
 }
 
 type BindingsMap = BsHashMap<HeapPtr<FlatString>, Binding>;
-
-impl IsHeapObject for DeclarativeEnvironment {}
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
@@ -92,8 +92,8 @@ impl DeclarativeEnvironment {
 }
 
 impl Handle<DeclarativeEnvironment> {
-    fn bindings_field(&self) -> BindingsMapField {
-        BindingsMapField(*self)
+    fn bindings_field(&self) -> DeclarativeEnvironmentBindingsMapField {
+        DeclarativeEnvironmentBindingsMapField(*self)
     }
 }
 
@@ -231,9 +231,9 @@ impl Environment for Handle<DeclarativeEnvironment> {
     }
 }
 
-struct BindingsMapField(Handle<DeclarativeEnvironment>);
+pub struct DeclarativeEnvironmentBindingsMapField(Handle<DeclarativeEnvironment>);
 
-impl BsHashMapField<HeapPtr<FlatString>, Binding> for BindingsMapField {
+impl BsHashMapField<HeapPtr<FlatString>, Binding> for DeclarativeEnvironmentBindingsMapField {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BindingsMap> {
         BindingsMap::new(cx, ObjectKind::DeclarativeEnvironmentBindingsMap, capacity)
     }
@@ -244,5 +244,32 @@ impl BsHashMapField<HeapPtr<FlatString>, Binding> for BindingsMapField {
 
     fn set(&mut self, _: &mut Context, map: HeapPtr<BindingsMap>) {
         self.0.bindings = map;
+    }
+}
+
+impl HeapObject for HeapPtr<DeclarativeEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<DeclarativeEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.bindings);
+        self.outer.as_mut().map(|o| o.visit_pointers(visitor));
+    }
+}
+
+impl DeclarativeEnvironmentBindingsMapField {
+    pub fn byte_size(map: &HeapPtr<BindingsMap>) -> usize {
+        BindingsMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<BindingsMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(key);
+            visitor.visit_value(&mut value.value);
+        }
     }
 }

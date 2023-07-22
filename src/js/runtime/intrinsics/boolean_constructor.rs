@@ -1,10 +1,12 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Handle,
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{
@@ -13,7 +15,7 @@ use crate::{
         property::Property,
         realm::Realm,
         type_utilities::to_boolean,
-        Context, Value,
+        Context, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -121,5 +123,15 @@ impl BooleanConstructor {
                 maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value)).into()
             }
         }
+    }
+}
+
+impl HeapObject for HeapPtr<BooleanObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<BooleanObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
     }
 }

@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        intrinsics::error_constructor::install_error_cause,
+        intrinsics::error_constructor::{install_error_cause, ErrorObject},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -23,19 +23,21 @@ macro_rules! create_native_error {
 
         impl $native_error {
             #[allow(dead_code)]
-            pub fn new_with_message(cx: &mut Context, message: String) -> Handle<ObjectValue> {
+            pub fn new_with_message(cx: &mut Context, message: String) -> Handle<ErrorObject> {
                 // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(message).into();
 
-                let object = object_create::<ObjectValue>(
+                let object = object_create::<ErrorObject>(
                     cx,
                     ObjectKind::ErrorObject,
                     Intrinsic::$prototype,
                 );
 
-                let mut object = object.to_handle();
+                let object = object.to_handle();
 
-                object.intrinsic_data_prop(cx, cx.names.message(), message_value);
+                object
+                    .object()
+                    .intrinsic_data_prop(cx, cx.names.message(), message_value);
 
                 object
             }
@@ -43,8 +45,8 @@ macro_rules! create_native_error {
             pub fn new_from_constructor(
                 cx: &mut Context,
                 constructor: Handle<ObjectValue>,
-            ) -> EvalResult<Handle<ObjectValue>> {
-                let object = maybe!(object_create_from_constructor::<ObjectValue>(
+            ) -> EvalResult<Handle<ErrorObject>> {
+                let object = maybe!(object_create_from_constructor::<ErrorObject>(
                     cx,
                     constructor,
                     ObjectKind::ErrorObject,
@@ -106,7 +108,7 @@ macro_rules! create_native_error {
                     let message_string = maybe!(to_string(cx, message));
                     create_non_enumerable_data_property_or_throw(
                         cx,
-                        object,
+                        object.into(),
                         cx.names.message(),
                         message_string.into(),
                     );

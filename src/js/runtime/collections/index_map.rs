@@ -8,7 +8,7 @@ use std::{
 use crate::{
     field_offset,
     js::runtime::{
-        gc::IsHeapObject,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         Context, Handle, HeapPtr,
     },
@@ -53,8 +53,6 @@ struct OccupiedEntry<K, V> {
 }
 
 const INDICES_BYTE_OFFSET: usize = field_offset!(BsIndexMap<String, String>, indices);
-
-impl<K, V> IsHeapObject for BsIndexMap<K, V> {}
 
 impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     pub const MIN_CAPACITY: usize = 4;
@@ -137,10 +135,25 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         GcUnsafeEntriesIter(self.entries_as_slice()[..self.num_entries_used()].iter())
     }
 
+    /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<K, V> {
+        // Only iterate through a slice of the entries that have been used
+        let num_entries_used = self.num_entries_used();
+        GcUnsafeEntriesIterMut(self.entries_as_slice_mut()[..num_entries_used].iter_mut())
+    }
+
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<K, V> {
         GcUnsafeKeysIter(self.entries_as_slice()[..self.num_entries_used()].iter())
+    }
+
+    /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<K, V> {
+        let num_entries_used = self.num_entries_used();
+        GcUnsafeKeysIterMut(self.entries_as_slice_mut()[..num_entries_used].iter_mut())
     }
 
     // Indices accessors
@@ -426,6 +439,27 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIter<'a, K, V> {
     }
 }
 
+pub struct GcUnsafeEntriesIterMut<'a, K, V>(slice::IterMut<'a, Entry<K, V>>);
+
+impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIterMut<'a, K, V> {
+    type Item = (&'a mut K, &'a mut V);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.next() {
+                // Found an entry
+                Some(Entry::Occupied(entry)) => {
+                    return Some((&mut entry.key, &mut entry.value));
+                }
+                // Reached the end of the entries slice
+                None => return None,
+                Some(Entry::Deleted { .. }) => {}
+            }
+        }
+    }
+}
+
 pub struct GcUnsafeKeysIter<'a, K, V>(slice::Iter<'a, Entry<K, V>>);
 
 impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
@@ -438,6 +472,27 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
                 // Found an entry
                 Some(Entry::Occupied(entry)) => {
                     return Some(entry.key.clone());
+                }
+                // Reached the end of the entries array
+                None => return None,
+                Some(Entry::Deleted { .. }) => {}
+            }
+        }
+    }
+}
+
+pub struct GcUnsafeKeysIterMut<'a, K, V>(slice::IterMut<'a, Entry<K, V>>);
+
+impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
+    type Item = &'a mut K;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.next() {
+                // Found an entry
+                Some(Entry::Occupied(entry)) => {
+                    return Some(&mut entry.key);
                 }
                 // Reached the end of the entries array
                 None => return None,
@@ -494,5 +549,16 @@ impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
         }
 
         None
+    }
+}
+
+impl<K: Eq + Hash + Clone, V: Clone> HeapObject for HeapPtr<BsIndexMap<K, V>> {
+    fn byte_size(&self) -> usize {
+        BsIndexMap::<K, V>::calculate_size_in_bytes(self.capacity())
+    }
+
+    /// Visit pointers intrinsic to all IndexMaps. Do not visit entries as they could be of any type.
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 }

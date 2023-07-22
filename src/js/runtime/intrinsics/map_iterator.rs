@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
@@ -5,6 +7,7 @@ use crate::{
         collections::index_map::GcSafeEntriesIter,
         completion::EvalResult,
         error::type_error_,
+        gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -134,5 +137,16 @@ impl MapIteratorPrototype {
                 }
             },
         }
+    }
+}
+
+impl HeapObject for HeapPtr<MapIterator> {
+    fn byte_size(&self) -> usize {
+        size_of::<MapIterator>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.map);
     }
 }

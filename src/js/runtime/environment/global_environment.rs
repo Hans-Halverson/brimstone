@@ -1,10 +1,12 @@
+use std::mem::size_of;
+
 use crate::{
     js::runtime::{
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible, set},
         collections::{BsHashSet, BsHashSetField},
         completion::EvalResult,
         error::type_error_,
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -45,8 +47,6 @@ impl Handle<GlobalEnvironment> {
     }
 }
 
-impl IsHeapObject for GlobalEnvironment {}
-
 impl GlobalEnvironment {
     // 9.1.2.5 NewGlobalEnvironment
     pub fn new(
@@ -78,7 +78,7 @@ impl GlobalEnvironment {
     }
 
     pub fn new_var_names_set(cx: &mut Context) -> HeapPtr<VarNamesSet> {
-        VarNamesField::new(cx, VarNamesSet::MIN_CAPACITY)
+        GlobalEnvironmentVarNamesField::new(cx, VarNamesSet::MIN_CAPACITY)
     }
 
     #[inline]
@@ -296,8 +296,8 @@ impl GlobalEnvironment {
 }
 
 impl Handle<GlobalEnvironment> {
-    fn var_names_field(&self) -> VarNamesField {
-        VarNamesField(*self)
+    fn var_names_field(&self) -> GlobalEnvironmentVarNamesField {
+        GlobalEnvironmentVarNamesField(*self)
     }
 
     // 9.1.1.4.13 HasLexicalDeclaration
@@ -377,9 +377,9 @@ impl Handle<GlobalEnvironment> {
 }
 
 #[derive(Clone)]
-struct VarNamesField(Handle<GlobalEnvironment>);
+pub struct GlobalEnvironmentVarNamesField(Handle<GlobalEnvironment>);
 
-impl BsHashSetField<HeapPtr<FlatString>> for VarNamesField {
+impl BsHashSetField<HeapPtr<FlatString>> for GlobalEnvironmentVarNamesField {
     fn new(cx: &mut Context, capacity: usize) -> HeapPtr<VarNamesSet> {
         VarNamesSet::new(cx, ObjectKind::GlobalEnvironmentNameSet, capacity)
     }
@@ -390,5 +390,33 @@ impl BsHashSetField<HeapPtr<FlatString>> for VarNamesField {
 
     fn set(&mut self, _: &mut Context, set: HeapPtr<VarNamesSet>) {
         self.0.var_names = set;
+    }
+}
+
+impl HeapObject for HeapPtr<GlobalEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<GlobalEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<DeclarativeEnvironment>()
+            .visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.object_env);
+        visitor.visit_pointer(&mut self.global_this_value);
+        visitor.visit_pointer(&mut self.var_names);
+    }
+}
+
+impl GlobalEnvironmentVarNamesField {
+    pub fn byte_size(set: &HeapPtr<VarNamesSet>) -> usize {
+        VarNamesSet::calculate_size_in_bytes(set.capacity())
+    }
+
+    pub fn visit_pointers(set: &mut HeapPtr<VarNamesSet>, visitor: &mut impl HeapVisitor) {
+        set.visit_pointers(visitor);
+
+        for element in set.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(element);
+        }
     }
 }

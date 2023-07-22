@@ -1,4 +1,4 @@
-use std::cmp::max;
+use std::{cmp::max, mem::size_of};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
@@ -13,6 +13,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
+        gc::{HeapObject, HeapVisitor},
         get,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
@@ -22,7 +23,7 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity},
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, must,
 };
@@ -213,5 +214,15 @@ impl VirtualObject for Handle<FunctionPrototype> {
 
     fn is_callable(&self) -> bool {
         true
+    }
+}
+
+impl HeapObject for HeapPtr<FunctionPrototype> {
+    fn byte_size(&self) -> usize {
+        size_of::<FunctionPrototype>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
     }
 }

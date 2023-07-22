@@ -1,8 +1,11 @@
+use std::mem::size_of;
+
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         completion::EvalResult,
         error::type_error_,
+        gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -10,7 +13,7 @@ use crate::{
         property::Property,
         realm::Realm,
         string_value::{FlatString, SafeCodePointIterator, StringValue},
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -79,5 +82,16 @@ impl StringIteratorPrototype {
                 create_iter_result_object(cx, code_point_string.into(), false).into()
             }
         }
+    }
+}
+
+impl HeapObject for HeapPtr<StringIterator> {
+    fn byte_size(&self) -> usize {
+        size_of::<StringIterator>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.iter.visit_pointers(visitor);
     }
 }

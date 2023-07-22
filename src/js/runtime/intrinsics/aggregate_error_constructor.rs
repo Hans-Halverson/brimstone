@@ -1,13 +1,13 @@
 use crate::{
     js::runtime::{
         abstract_operations::{
-            create_non_enumerable_data_property_or_throw, define_property_or_throw, get,
-            has_property,
+            create_non_enumerable_data_property_or_throw, define_property_or_throw,
         },
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
+        intrinsics::error_constructor::install_error_cause,
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -21,7 +21,7 @@ use crate::{
     maybe, must,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 
 // 20.5.7 AggregateError Objects
 pub struct AggregateErrorObject;
@@ -30,8 +30,8 @@ impl AggregateErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<ObjectValue>> {
-        let object = maybe!(object_create_from_constructor::<ObjectValue>(
+    ) -> EvalResult<Handle<ErrorObject>> {
+        let object = maybe!(object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
             ObjectKind::ErrorObject,
@@ -93,7 +93,7 @@ impl AggregateErrorConstructor {
             let message_string = maybe!(to_string(cx, message));
             create_non_enumerable_data_property_or_throw(
                 cx,
-                object,
+                object.into(),
                 cx.names.message(),
                 message_string.into(),
             );
@@ -114,25 +114,8 @@ impl AggregateErrorConstructor {
         let errors_array: Handle<ObjectValue> = create_array_from_list(cx, &errors_list).into();
 
         let errors_desc = PropertyDescriptor::data(errors_array.into(), true, false, true);
-        must!(define_property_or_throw(cx, object, cx.names.errors(), errors_desc));
+        must!(define_property_or_throw(cx, object.into(), cx.names.errors(), errors_desc));
 
         object.into()
     }
-}
-
-// 20.5.8.1 InstallErrorCause
-pub fn install_error_cause(
-    cx: &mut Context,
-    object: Handle<ObjectValue>,
-    options: Handle<Value>,
-) -> EvalResult<()> {
-    if options.is_object() {
-        let options = options.as_object();
-        if maybe!(has_property(cx, options, cx.names.cause())) {
-            let cause = maybe!(get(cx, options, cx.names.cause()));
-            create_non_enumerable_data_property_or_throw(cx, object, cx.names.cause(), cause);
-        }
-    }
-
-    ().into()
 }

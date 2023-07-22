@@ -4,7 +4,7 @@ use crate::{field_offset, set_uninit};
 
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
-    gc::IsHeapObject,
+    gc::{HeapObject, HeapVisitor},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     property::{HeapProperty, Property},
@@ -17,8 +17,6 @@ use super::{
 pub struct ArrayProperties {
     descriptor: HeapPtr<ObjectDescriptor>,
 }
-
-impl IsHeapObject for ArrayProperties {}
 
 // Number of indices past the end of an array an access can occur before dense array is converted
 // to a sparse array.
@@ -322,15 +320,12 @@ pub struct DenseArrayProperties {
     array: InlineArray<Value>,
 }
 
-impl IsHeapObject for DenseArrayProperties {}
-
 const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, array);
 
 impl DenseArrayProperties {
     pub fn new(cx: &mut Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
         // Size of a dense array with the given capacity, in bytes
-        let size = DENSE_ARRAY_DATA_OFFSET
-            + InlineArray::<Value>::calculate_size_in_bytes(capacity as usize);
+        let size = Self::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.heap.alloc_uninit_with_size::<DenseArrayProperties>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
@@ -338,6 +333,10 @@ impl DenseArrayProperties {
         object.array.init_with_uninit(capacity as usize);
 
         object
+    }
+
+    fn calculate_size_in_bytes(capacity: usize) -> usize {
+        DENSE_ARRAY_DATA_OFFSET + InlineArray::<Value>::calculate_size_in_bytes(capacity)
     }
 
     #[inline]
@@ -448,8 +447,6 @@ pub struct SparseArrayProperties {
 
 type SparseMap = BsHashMap<u32, HeapProperty>;
 
-impl IsHeapObject for SparseArrayProperties {}
-
 impl SparseArrayProperties {
     fn new(cx: &mut Context, capacity: usize, array_length: u32) -> HeapPtr<SparseArrayProperties> {
         let byte_size = Self::calculate_size_in_bytes(capacity);
@@ -526,5 +523,52 @@ impl BsHashMapField<u32, HeapProperty> for SparseMapField {
     #[inline]
     fn set(&mut self, _: &mut Context, map: HeapPtr<SparseMap>) {
         self.0.set_array_properties(map.cast())
+    }
+}
+
+impl HeapObject for HeapPtr<ArrayProperties> {
+    fn byte_size(&self) -> usize {
+        if let Some(dense_array) = self.as_dense_opt() {
+            dense_array.byte_size()
+        } else {
+            self.as_sparse().byte_size()
+        }
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        if let Some(mut dense_array) = self.as_dense_opt() {
+            dense_array.visit_pointers(visitor)
+        } else {
+            self.as_sparse().visit_pointers(visitor)
+        }
+    }
+}
+
+impl HeapObject for HeapPtr<DenseArrayProperties> {
+    fn byte_size(&self) -> usize {
+        DenseArrayProperties::calculate_size_in_bytes(self.capacity() as usize)
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+
+        let len = self.len() as usize;
+        for value in &mut self.array.as_mut_slice()[..len] {
+            visitor.visit_value(value);
+        }
+    }
+}
+
+impl HeapObject for HeapPtr<SparseArrayProperties> {
+    fn byte_size(&self) -> usize {
+        SparseArrayProperties::calculate_size_in_bytes(self.sparse_map.capacity())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.sparse_map.visit_pointers(visitor);
+
+        for (_, property) in self.sparse_map.iter_mut_gc_unsafe() {
+            property.visit_pointers(visitor);
+        }
     }
 }

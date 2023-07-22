@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     js::runtime::{
-        gc::IsHeapObject,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         Context, HeapPtr,
     },
@@ -14,8 +14,6 @@ pub struct BsArray<T> {
     descriptor: HeapPtr<ObjectDescriptor>,
     array: InlineArray<T>,
 }
-
-impl<T> IsHeapObject for BsArray<T> {}
 
 const ARRAY_BYTE_OFFSITE: usize = field_offset!(BsArray<u8>, array);
 
@@ -64,5 +62,16 @@ impl<T: Clone> BsArray<T> {
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.array.as_mut_slice()
+    }
+}
+
+impl<T: Clone> HeapObject for HeapPtr<BsArray<T>> {
+    fn byte_size(&self) -> usize {
+        BsArray::<T>::calculate_size_in_bytes(self.len())
+    }
+
+    /// Visit pointers intrinsic to all BsArrays. Do not visit elements as they could be of any type.
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 }

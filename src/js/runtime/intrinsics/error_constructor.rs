@@ -1,30 +1,36 @@
+use std::mem::size_of;
+
 use crate::{
+    extend_object,
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         property::Property,
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
     maybe,
 };
 
 use super::intrinsics::Intrinsic;
 
-pub struct ErrorObject;
+extend_object! {
+    pub struct ErrorObject {}
+}
 
 impl ErrorObject {
     fn new_from_constructor(
         cx: &mut Context,
         constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<ObjectValue>> {
-        let object = maybe!(object_create_from_constructor::<ObjectValue>(
+    ) -> EvalResult<Handle<ErrorObject>> {
+        let object = maybe!(object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
             ObjectKind::ErrorObject,
@@ -85,7 +91,7 @@ impl ErrorConstructor {
             let message_string = maybe!(to_string(cx, message));
             create_non_enumerable_data_property_or_throw(
                 cx,
-                object,
+                object.into(),
                 cx.names.message(),
                 message_string.into(),
             );
@@ -101,16 +107,31 @@ impl ErrorConstructor {
 // 20.5.8.1 InstallErrorCause
 pub fn install_error_cause(
     cx: &mut Context,
-    object: Handle<ObjectValue>,
+    object: Handle<ErrorObject>,
     options: Handle<Value>,
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
         if maybe!(has_property(cx, options, cx.names.cause())) {
             let cause = maybe!(get(cx, options, cx.names.cause()));
-            create_non_enumerable_data_property_or_throw(cx, object, cx.names.cause(), cause);
+            create_non_enumerable_data_property_or_throw(
+                cx,
+                object.into(),
+                cx.names.cause(),
+                cause,
+            );
         }
     }
 
     ().into()
+}
+
+impl HeapObject for HeapPtr<ErrorObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<ErrorObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+    }
 }

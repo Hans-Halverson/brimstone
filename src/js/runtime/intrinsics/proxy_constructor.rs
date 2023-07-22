@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     js::runtime::{
         abstract_operations::create_data_property_or_throw,
@@ -5,7 +7,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
@@ -66,7 +68,7 @@ impl ProxyConstructor {
         let handler = get_argument(cx, arguments, 1);
         let proxy = maybe!(proxy_create(cx, target, handler));
 
-        let revoke_environment = RevokeEnvironment::new(cx, Some(proxy));
+        let revoke_environment = RevokeProxyClosureEnvironment::new(cx, Some(proxy));
 
         let mut revoker =
             BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), None, None, None);
@@ -88,7 +90,8 @@ fn revoke(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    let mut closure_environment_ptr = cx.get_closure_environment_ptr::<RevokeEnvironment>();
+    let mut closure_environment_ptr =
+        cx.get_closure_environment_ptr::<RevokeProxyClosureEnvironment>();
     let revocable_proxy_ptr = closure_environment_ptr.revocable_proxy_ptr();
 
     if revocable_proxy_ptr.is_none() {
@@ -102,19 +105,17 @@ fn revoke(
 }
 
 #[repr(C)]
-struct RevokeEnvironment {
+pub struct RevokeProxyClosureEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
     revocable_proxy: Option<HeapPtr<ProxyObject>>,
 }
 
-impl IsHeapObject for RevokeEnvironment {}
-
-impl RevokeEnvironment {
+impl RevokeProxyClosureEnvironment {
     fn new(
         cx: &mut Context,
         revocable_proxy: Option<Handle<ProxyObject>>,
-    ) -> Handle<RevokeEnvironment> {
-        let mut env = cx.heap.alloc_uninit::<RevokeEnvironment>();
+    ) -> Handle<RevokeProxyClosureEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<RevokeProxyClosureEnvironment>();
 
         set_uninit!(
             env.descriptor,
@@ -128,5 +129,16 @@ impl RevokeEnvironment {
 
     fn revocable_proxy_ptr(&self) -> Option<HeapPtr<ProxyObject>> {
         self.revocable_proxy
+    }
+}
+
+impl HeapObject for HeapPtr<RevokeProxyClosureEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<RevokeProxyClosureEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.revocable_proxy);
     }
 }

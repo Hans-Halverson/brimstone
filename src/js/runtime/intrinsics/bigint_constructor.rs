@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
@@ -5,6 +7,7 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -103,5 +106,16 @@ impl BigIntConstructor {
         } else {
             maybe!(to_bigint(cx, value)).into()
         }
+    }
+}
+
+impl HeapObject for HeapPtr<BigIntObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<BigIntObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.bigint_data);
     }
 }

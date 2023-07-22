@@ -8,7 +8,7 @@ use std::{
 use crate::{
     field_offset,
     js::runtime::{
-        gc::IsHeapObject,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         Context, HeapPtr,
     },
@@ -44,8 +44,6 @@ struct KVPair<K, V> {
 }
 
 const ENTRIES_BYTE_OFFSET: usize = field_offset!(BsHashMap<String, String>, entries);
-
-impl<K, V> IsHeapObject for BsHashMap<K, V> {}
 
 impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     pub const MIN_CAPACITY: usize = 4;
@@ -152,10 +150,27 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         GcUnsafeEntriesIter(self.entries.as_slice().iter())
     }
 
+    /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<K, V> {
+        GcUnsafeEntriesIterMut(self.entries.as_mut_slice().iter_mut())
+    }
+
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<K, V> {
         GcUnsafeKeysIter(self.entries.as_slice().iter())
+    }
+
+    /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<K, V> {
+        GcUnsafeKeysIterMut(self.entries.as_mut_slice().iter_mut())
+    }
+
+    /// Visit pointers intrinsic to all HashMaps. Do not visit entries as they could be of any type.
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 
     #[inline]
@@ -335,6 +350,27 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIter<'a, K, V> {
     }
 }
 
+pub struct GcUnsafeEntriesIterMut<'a, K, V>(slice::IterMut<'a, Entry<K, V>>);
+
+impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIterMut<'a, K, V> {
+    type Item = (&'a mut K, &'a mut V);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.next() {
+                // Found an entry
+                Some(Entry::Occupied(entry)) => {
+                    return Some((&mut entry.key, &mut entry.value));
+                }
+                // Reached the end of the entries array
+                None => return None,
+                Some(_) => {}
+            }
+        }
+    }
+}
+
 pub struct GcUnsafeKeysIter<'a, K, V>(slice::Iter<'a, Entry<K, V>>);
 
 impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
@@ -353,5 +389,36 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
                 Some(_) => {}
             }
         }
+    }
+}
+
+pub struct GcUnsafeKeysIterMut<'a, K, V>(slice::IterMut<'a, Entry<K, V>>);
+
+impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
+    type Item = &'a mut K;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.next() {
+                // Found an entry
+                Some(Entry::Occupied(entry)) => {
+                    return Some(&mut entry.key);
+                }
+                // Reached the end of the entries array
+                None => return None,
+                Some(_) => {}
+            }
+        }
+    }
+}
+
+impl<K: Eq + Hash + Clone, V: Clone> HeapObject for HeapPtr<BsHashMap<K, V>> {
+    fn byte_size(&self) -> usize {
+        BsHashMap::<K, V>::calculate_size_in_bytes(self.capacity())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        BsHashMap::<K, V>::visit_pointers(self, visitor)
     }
 }

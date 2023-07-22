@@ -836,5 +836,16 @@ macro_rules! create_typed_array_constructor {
                 typed_array_object.into()
             }
         }
+
+        impl HeapObject for HeapPtr<$typed_array> {
+            fn byte_size(&self) -> usize {
+                size_of::<$typed_array>()
+            }
+
+            fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+                self.cast::<ObjectValue>().visit_pointers(visitor);
+                visitor.visit_pointer(&mut self.viewed_array_buffer);
+            }
+        }
     };
 }

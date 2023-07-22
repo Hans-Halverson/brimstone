@@ -17,6 +17,7 @@ use crate::{
                 ordinary_function_create_special_kind, set_function_name, ConstructorKind,
                 FuncKind, Function,
             },
+            gc::HeapVisitor,
             get,
             intrinsics::intrinsics::Intrinsic,
             object_descriptor::ObjectKind,
@@ -509,5 +510,25 @@ pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult
     } else {
         let value = maybe!(class_definition_evaluation(cx, class, None, cx.names.empty_string()));
         value.into()
+    }
+}
+
+impl HeapClassFieldDefinition {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.name.visit_pointers(visitor);
+        visitor.visit_pointer_opt(&mut self.initializer);
+    }
+}
+
+impl HeapClassFieldDefinitionName {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        match self {
+            HeapClassFieldDefinitionName::Normal(property_key) => {
+                visitor.visit_property_key(property_key)
+            }
+            HeapClassFieldDefinitionName::Private(private_name) => {
+                visitor.visit_pointer(private_name)
+            }
+        }
     }
 }

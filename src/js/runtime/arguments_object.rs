@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem::size_of};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
@@ -20,7 +20,7 @@ use super::{
     },
     environment::environment::{DynEnvironment, HeapDynEnvironment},
     function::{get_argument, Function},
-    gc::{Handle, IsHeapObject},
+    gc::{Handle, HeapObject, HeapVisitor},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
@@ -38,7 +38,9 @@ use super::{
 
 // An unmapped arguments that is identical to an ordinary object, but has an arguments object
 // descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
-pub struct UnmappedArgumentsObject;
+extend_object! {
+    pub struct UnmappedArgumentsObject {}
+}
 
 impl UnmappedArgumentsObject {
     pub fn new(cx: &mut Context) -> Handle<ObjectValue> {
@@ -286,7 +288,7 @@ pub fn create_mapped_arguments_object(
         }
 
         let arg_accessor_environment =
-            ArgAccessorEnvironment::new(cx, parameter_name.as_string(), env);
+            ArgAccessorClosureEnvironment::new(cx, parameter_name.as_string(), env);
 
         let mut getter =
             BuiltinFunction::create(cx, arg_getter, 0, cx.names.empty_string(), None, None, None);
@@ -317,21 +319,19 @@ pub fn create_mapped_arguments_object(
 }
 
 #[repr(C)]
-struct ArgAccessorEnvironment {
+pub struct ArgAccessorClosureEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
     name: HeapPtr<StringValue>,
     env: HeapDynEnvironment,
 }
 
-impl IsHeapObject for ArgAccessorEnvironment {}
-
-impl ArgAccessorEnvironment {
+impl ArgAccessorClosureEnvironment {
     fn new(
         cx: &mut Context,
         name: Handle<StringValue>,
         env: DynEnvironment,
-    ) -> Handle<ArgAccessorEnvironment> {
-        let mut arg_env = cx.heap.alloc_uninit::<ArgAccessorEnvironment>();
+    ) -> Handle<ArgAccessorClosureEnvironment> {
+        let mut arg_env = cx.heap.alloc_uninit::<ArgAccessorClosureEnvironment>();
 
         set_uninit!(
             arg_env.descriptor,
@@ -360,7 +360,7 @@ fn arg_getter(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
+    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorClosureEnvironment>();
     let name = closure_environment_ptr.name();
     let env = closure_environment_ptr.env();
 
@@ -374,7 +374,7 @@ fn arg_setter(
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorEnvironment>();
+    let closure_environment_ptr = cx.get_closure_environment_ptr::<ArgAccessorClosureEnvironment>();
     let name = closure_environment_ptr.name();
     let mut env = closure_environment_ptr.env();
 
@@ -383,4 +383,37 @@ fn arg_setter(
     must!(env.set_mutable_binding(cx, name, value, false));
 
     cx.undefined().into()
+}
+
+impl HeapObject for HeapPtr<MappedArgumentsObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<MappedArgumentsObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.parameter_map);
+    }
+}
+
+impl HeapObject for HeapPtr<UnmappedArgumentsObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<UnmappedArgumentsObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+    }
+}
+
+impl HeapObject for HeapPtr<ArgAccessorClosureEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<ArgAccessorClosureEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.name);
+        self.env.visit_pointers(visitor);
+    }
 }

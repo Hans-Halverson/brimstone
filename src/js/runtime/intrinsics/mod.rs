@@ -28,7 +28,7 @@ pub mod number_constructor;
 mod number_prototype;
 mod object_constructor;
 pub mod object_prototype;
-mod proxy_constructor;
+pub mod proxy_constructor;
 mod reflect_object;
 pub mod set_constructor;
 pub mod set_iterator;

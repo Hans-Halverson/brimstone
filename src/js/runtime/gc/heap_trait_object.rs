@@ -42,6 +42,12 @@ macro_rules! heap_trait_object {
                     vtable: std::ptr::null(),
                 }
             }
+            pub fn visit_pointers(
+                &mut self,
+                visitor: &mut impl $crate::js::runtime::gc::HeapVisitor,
+            ) {
+                visitor.visit_pointer(&mut self.data);
+            }
         }
 
         impl $stack_object {

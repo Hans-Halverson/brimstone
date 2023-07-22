@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
@@ -5,6 +7,7 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -168,5 +171,16 @@ impl DataViewConstructor {
         ));
 
         data_view.into()
+    }
+}
+
+impl HeapObject for HeapPtr<DataViewObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<DataViewObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.viewed_array_buffer);
     }
 }

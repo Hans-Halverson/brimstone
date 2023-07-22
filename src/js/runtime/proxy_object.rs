@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem::size_of};
 
 use crate::{extend_object, maybe, must, set_uninit};
 
@@ -8,7 +8,7 @@ use super::{
     },
     array_object::create_array_from_list,
     error::type_error_,
-    gc::{Handle, HeapPtr},
+    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -757,4 +757,16 @@ pub fn proxy_create(
     let proxy = ProxyObject::new(cx, target_object, handler_object, is_callable, is_constructor);
 
     proxy.into()
+}
+
+impl HeapObject for HeapPtr<ProxyObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<ProxyObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer_opt(&mut self.proxy_handler);
+        visitor.visit_pointer_opt(&mut self.proxy_target);
+    }
 }

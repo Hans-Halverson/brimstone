@@ -1,9 +1,13 @@
+use std::mem::size_of;
+
 use crate::{
+    extend_object,
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         completion::EvalResult,
         error::type_error_,
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
@@ -14,23 +18,27 @@ use crate::{
             is_array, is_callable, require_object_coercible, same_object_value_handles, to_object,
             to_property_key,
         },
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
     maybe,
 };
 
-pub struct ObjectPrototype;
+extend_object! {
+    pub struct ObjectPrototype {}
+}
 
 impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: &mut Context) -> Handle<ObjectValue> {
+    pub fn new_uninit(cx: &mut Context) -> Handle<ObjectPrototype> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
-        ObjectValue::new(cx, None, false)
+        ObjectValue::new(cx, None, false).cast()
     }
 
     // 20.1.3 Properties of the Object Prototype Object
-    pub fn initialize(cx: &mut Context, mut object: Handle<ObjectValue>, realm: Handle<Realm>) {
+    pub fn initialize(cx: &mut Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
+        let mut object = object.object();
+
         let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
         object_ordinary_init(cx, object.get_(), descriptor, None);
 
@@ -348,5 +356,15 @@ impl ObjectPrototype {
                 },
             }
         }
+    }
+}
+
+impl HeapObject for HeapPtr<ObjectPrototype> {
+    fn byte_size(&self) -> usize {
+        size_of::<ObjectPrototype>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
     }
 }

@@ -1,10 +1,21 @@
+use std::mem::size_of;
+
 use crate::{
     extend_object,
     js::runtime::{
-        builtin_function::BuiltinFunction, collections::BsHashMapField, completion::EvalResult,
-        error::type_error_, function::get_argument, object_descriptor::ObjectKind,
-        object_value::ObjectValue, ordinary_object::object_create, realm::Realm,
-        type_utilities::to_string, value::SymbolValue, Context, Handle, HeapPtr, Value,
+        builtin_function::BuiltinFunction,
+        collections::BsHashMapField,
+        completion::EvalResult,
+        error::type_error_,
+        function::get_argument,
+        gc::{HeapObject, HeapVisitor},
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create,
+        realm::Realm,
+        type_utilities::to_string,
+        value::SymbolValue,
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -172,5 +183,16 @@ impl SymbolConstructor {
         }
 
         cx.undefined().into()
+    }
+}
+
+impl HeapObject for HeapPtr<SymbolObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<SymbolObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.symbol_data);
     }
 }

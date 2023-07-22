@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use num_bigint::{BigInt, Sign};
 use wrap_ordinary_object::wrap_ordinary_object;
 
@@ -9,6 +11,7 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
+        gc::{HeapObject, HeapVisitor},
         iterator::iter_iterator_method_values,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},

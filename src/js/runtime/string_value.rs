@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    gc::{Handle, HeapInfo, HeapPtr, IsHeapObject},
+    gc::{Handle, HeapInfo, HeapObject, HeapPtr, HeapVisitor},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     Context,
@@ -56,8 +56,6 @@ pub struct StringValue {
     // Whether this string is a flat string or a concat string
     kind: StringKind,
 }
-
-impl IsHeapObject for StringValue {}
 
 impl StringValue {
     pub fn concat(
@@ -687,15 +685,13 @@ struct FlatStringNoInteriorMutability {
     data: [u8; 1],
 }
 
-impl IsHeapObject for FlatString {}
-
 impl FlatString {
     const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
 
     fn new_one_byte(cx: &mut Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
         let len = one_byte_slice.len();
-        let size = Self::DATA_OFFSET + len * size_of::<u8>();
 
+        let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
         let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
@@ -713,8 +709,8 @@ impl FlatString {
 
     fn new_two_byte(cx: &mut Context, two_byte_slice: &[u16]) -> HeapPtr<FlatString> {
         let len = two_byte_slice.len();
-        let size = Self::DATA_OFFSET + len * size_of::<u16>();
 
+        let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
         let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
@@ -814,6 +810,14 @@ impl FlatString {
                 None => FlatString::new_two_byte(cx, &[code_point as CodeUnit]).to_handle(),
                 Some((high, low)) => FlatString::new_two_byte(cx, &[high, low]).to_handle(),
             }
+        }
+    }
+
+    #[inline]
+    fn calculate_size_in_bytes(length: usize, width: StringWidth) -> usize {
+        match width {
+            StringWidth::OneByte => Self::DATA_OFFSET + length * size_of::<u8>(),
+            StringWidth::TwoByte => Self::DATA_OFFSET + length * size_of::<u16>(),
         }
     }
 
@@ -1000,8 +1004,6 @@ pub struct ConcatString {
     left: HeapPtr<StringValue>,
     right: Option<HeapPtr<StringValue>>,
 }
-
-impl IsHeapObject for ConcatString {}
 
 impl ConcatString {
     fn new(
@@ -1324,5 +1326,49 @@ pub type SafeCodePointIterator = GenericCodePointIterator<SafeCodeUnitIterator>;
 impl SafeCodePointIterator {
     fn from_string(string: Handle<FlatString>) -> Self {
         SafeCodePointIterator { iter: SafeCodeUnitIterator::from_string(string) }
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.iter.string);
+    }
+}
+
+impl HeapObject for HeapPtr<StringValue> {
+    fn byte_size(&self) -> usize {
+        if let Some(concat_string) = self.as_concat_opt() {
+            concat_string.byte_size()
+        } else {
+            self.as_flat().byte_size()
+        }
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        if let Some(mut concat_string) = self.as_concat_opt() {
+            concat_string.visit_pointers(visitor)
+        } else {
+            self.as_flat().visit_pointers(visitor)
+        }
+    }
+}
+
+impl HeapObject for HeapPtr<ConcatString> {
+    fn byte_size(&self) -> usize {
+        size_of::<ConcatString>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.left);
+        visitor.visit_pointer_opt(&mut self.right);
+    }
+}
+
+impl HeapObject for HeapPtr<FlatString> {
+    fn byte_size(&self) -> usize {
+        FlatString::calculate_size_in_bytes(self.len, self.width())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 }

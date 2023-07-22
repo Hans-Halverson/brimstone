@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
@@ -24,7 +26,10 @@ use crate::{
     maybe, set_uninit,
 };
 
-use super::string_value::FlatString;
+use super::{
+    gc::{HeapObject, HeapVisitor},
+    string_value::FlatString,
+};
 
 // 10.4.3 String Exotic Objects
 extend_object! {
@@ -202,5 +207,16 @@ impl VirtualObject for Handle<StringObject> {
         ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
 
         keys.into()
+    }
+}
+
+impl HeapObject for HeapPtr<StringObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<StringObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.string_data);
     }
 }

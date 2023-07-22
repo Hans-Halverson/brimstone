@@ -1,14 +1,16 @@
 use std::hash::Hash;
 
-use crate::js::runtime::{gc::IsHeapObject, object_descriptor::ObjectKind, Context, HeapPtr};
+use crate::js::runtime::{
+    gc::{HeapObject, HeapVisitor},
+    object_descriptor::ObjectKind,
+    Context, HeapPtr,
+};
 
-use super::{BsHashMap, BsHashMapField};
+use super::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField};
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
 #[repr(C)]
 pub struct BsHashSet<T>(BsHashMap<T, ()>);
-
-impl<T> IsHeapObject for BsHashSet<T> {}
 
 impl<T: Eq + Hash + Clone> BsHashSet<T> {
     pub const MIN_CAPACITY: usize = BsHashMap::<T, ()>::MIN_CAPACITY;
@@ -19,6 +21,10 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 
     pub fn new_initial(cx: &mut Context, kind: ObjectKind) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new_initial(cx, kind).cast()
+    }
+
+    pub fn calculate_size_in_bytes(capacity: usize) -> usize {
+        BsHashMap::<T, ()>::calculate_size_in_bytes(capacity)
     }
 
     /// Number of elements inserted in the map.
@@ -52,6 +58,17 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
     /// Assumes there is room to insert the element, silently fails to insert if set is full.
     pub fn insert_without_growing(&mut self, element: T) -> bool {
         self.0.insert_without_growing(element, ())
+    }
+
+    /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there
+    /// are no allocations between construction and use.
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<T, ()> {
+        self.0.keys_mut_gc_unsafe()
+    }
+
+    /// Visit pointers intrinsic to all HashSets. Do not visit entries as they could be of any type.
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.0.visit_pointers(visitor)
     }
 }
 
@@ -87,5 +104,15 @@ impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashM
 
     fn set(&mut self, cx: &mut Context, map: HeapPtr<BsHashMap<T, ()>>) {
         self.0.set(cx, map.cast())
+    }
+}
+
+impl<T: Eq + Hash + Clone> HeapObject for HeapPtr<BsHashSet<T>> {
+    fn byte_size(&self) -> usize {
+        BsHashSet::<T>::calculate_size_in_bytes(self.capacity())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        BsHashSet::<T>::visit_pointers(self, visitor)
     }
 }

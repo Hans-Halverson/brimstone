@@ -38,6 +38,11 @@ impl<T> HeapPtr<T> {
     }
 
     #[inline]
+    pub fn cast_mut<U>(&mut self) -> &mut HeapPtr<U> {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    #[inline]
     pub const fn uninit() -> HeapPtr<T> {
         HeapPtr { ptr: NonNull::dangling() }
     }

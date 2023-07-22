@@ -2,6 +2,7 @@ use crate::set_uninit;
 
 use super::{
     collections::{BsHashMap, BsHashMapField, BsHashSet, BsHashSetField},
+    gc::HeapVisitor,
     object_descriptor::ObjectKind,
     string_value::{FlatString, StringValue},
     Context, Handle, HeapPtr,
@@ -105,6 +106,20 @@ impl BsHashSetField<HeapPtr<FlatString>> for InternedStringsSetField {
     }
 }
 
+impl InternedStringsSetField {
+    pub fn byte_size(set: &HeapPtr<InternedStringsSet>) -> usize {
+        InternedStringsSet::calculate_size_in_bytes(set.capacity())
+    }
+
+    pub fn visit_pointers(set: &mut HeapPtr<InternedStringsSet>, visitor: &mut impl HeapVisitor) {
+        set.visit_pointers(visitor);
+
+        for element in set.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(element);
+        }
+    }
+}
+
 pub struct InternedStringsMapField;
 
 impl BsHashMapField<String, HeapPtr<FlatString>> for InternedStringsMapField {
@@ -118,5 +133,19 @@ impl BsHashMapField<String, HeapPtr<FlatString>> for InternedStringsMapField {
 
     fn set(&mut self, cx: &mut Context, map: HeapPtr<InternedStringsMap>) {
         cx.interned_strings.str_cache = map;
+    }
+}
+
+impl InternedStringsMapField {
+    pub fn byte_size(map: &HeapPtr<InternedStringsMap>) -> usize {
+        InternedStringsMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<InternedStringsMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (_, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer(value);
+        }
     }
 }

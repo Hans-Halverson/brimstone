@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, set_uninit};
@@ -5,6 +7,7 @@ use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, s
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     error::{range_error_, type_error_},
+    gc::{HeapObject, HeapVisitor},
     get,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -16,7 +19,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
-    Context, EvalResult, Handle, Value,
+    Context, EvalResult, Handle, HeapPtr, Value,
 };
 
 // 10.4.2 Array Exotic Objects
@@ -231,4 +234,14 @@ pub fn create_array_from_list(cx: &mut Context, elements: &[Handle<Value>]) -> H
     }
 
     array
+}
+
+impl HeapObject for HeapPtr<ArrayObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<ArrayObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+    }
 }

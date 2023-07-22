@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use std::{
-    mem::{transmute, transmute_copy},
+    mem::{size_of, transmute, transmute_copy},
     num::NonZeroU32,
 };
 
@@ -14,7 +14,7 @@ use super::{
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::type_error_,
-    gc::{Handle, HeapPtr},
+    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
     property::{HeapProperty, Property},
@@ -59,8 +59,6 @@ macro_rules! extend_object_without_conversions {
             // Child fields
             $($field_vis $field_name: $field_type,)*
         }
-
-        impl $(<$($generics),*>)? $crate::js::runtime::gc::IsHeapObject for $name $(<$($generics),*>)? {}
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[inline]
@@ -732,7 +730,7 @@ pub trait VirtualObject {
 
 pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
 
-struct NamedPropertiesMapField(Handle<ObjectValue>);
+pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
 impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
@@ -766,5 +764,33 @@ pub const fn extract_object_vtable<T: VirtualObject>() -> *const () {
             transmute::<*const dyn VirtualObject, ObjectTraitObject>(example_trait_object);
 
         object_trait_object.vtable
+    }
+}
+
+impl HeapObject for HeapPtr<ObjectValue> {
+    fn byte_size(&self) -> usize {
+        size_of::<ObjectValue>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.prototype);
+        visitor.visit_pointer(&mut self.named_properties);
+        visitor.visit_pointer(&mut self.array_properties);
+    }
+}
+
+impl NamedPropertiesMapField {
+    pub fn byte_size(map: &HeapPtr<NamedPropertiesMap>) -> usize {
+        NamedPropertiesMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (property_key, property) in map.iter_mut_gc_unsafe() {
+            visitor.visit_property_key(property_key);
+            property.visit_pointers(visitor);
+        }
     }
 }

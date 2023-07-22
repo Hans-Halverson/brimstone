@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{mem::size_of, str::FromStr};
 
 use crate::{
     extend_object,
@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        gc::Handle,
+        gc::{Handle, HeapObject, HeapVisitor},
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
@@ -19,7 +19,7 @@ use crate::{
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
         value::Value,
-        Context,
+        Context, HeapPtr,
     },
     maybe, set_uninit,
 };
@@ -242,5 +242,15 @@ impl NumberConstructor {
 
         cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64)
             .into()
+    }
+}
+
+impl HeapObject for HeapPtr<NumberObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<NumberObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
     }
 }

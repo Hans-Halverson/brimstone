@@ -9,7 +9,7 @@ use super::{
     abstract_operations::{call_object, construct},
     collections::InlineArray,
     completion::EvalResult,
-    gc::HeapPtr,
+    gc::{HeapObject, HeapPtr, HeapVisitor},
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
@@ -147,5 +147,21 @@ impl VirtualObject for Handle<BoundFunctionObject> {
 
     fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
         self.bound_target_function().get_realm(cx)
+    }
+}
+
+impl HeapObject for HeapPtr<BoundFunctionObject> {
+    fn byte_size(&self) -> usize {
+        BoundFunctionObject::calculate_size_in_bytes(self.bound_arguments.len())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.bound_target_function);
+        visitor.visit_value(&mut self.bound_this);
+
+        for argument in self.bound_arguments.as_mut_slice() {
+            visitor.visit_value(argument);
+        }
     }
 }

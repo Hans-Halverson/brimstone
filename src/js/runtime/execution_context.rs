@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::set_uninit;
 
 use super::{
@@ -7,7 +9,7 @@ use super::{
         private_environment::PrivateEnvironment,
     },
     eval::script::Script,
-    gc::{Handle, IsHeapObject},
+    gc::{Handle, HeapObject, HeapVisitor},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -30,8 +32,6 @@ pub struct ExecutionContext {
     private_env: Option<HeapPtr<PrivateEnvironment>>,
     is_strict_mode: bool,
 }
-
-impl IsHeapObject for ExecutionContext {}
 
 impl ExecutionContext {
     pub fn new(
@@ -207,5 +207,31 @@ impl ScriptOrModule {
         match heap_script_or_module {
             HeapScriptOrModule::Script(script) => ScriptOrModule::Script(script.to_handle()),
         }
+    }
+}
+
+impl HeapScriptOrModule {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        match self {
+            HeapScriptOrModule::Script(script) => visitor.visit_pointer(script),
+        }
+    }
+}
+
+impl HeapObject for HeapPtr<ExecutionContext> {
+    fn byte_size(&self) -> usize {
+        size_of::<ExecutionContext>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.function);
+        visitor.visit_pointer(&mut self.realm);
+        self.script_or_module
+            .as_mut()
+            .map(|sm| sm.visit_pointers(visitor));
+        self.lexical_env.visit_pointers(visitor);
+        self.variable_env.visit_pointers(visitor);
+        self.private_env.as_mut().map(|e| e.visit_pointers(visitor));
     }
 }

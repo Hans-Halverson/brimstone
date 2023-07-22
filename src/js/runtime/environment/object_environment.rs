@@ -1,9 +1,11 @@
+use std::mem::size_of;
+
 use crate::{
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_property, set},
         completion::EvalResult,
         error::err_not_defined_,
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -25,8 +27,6 @@ pub struct ObjectEnvironment {
     outer: Option<HeapDynEnvironment>,
     is_with_environment: bool,
 }
-
-impl IsHeapObject for ObjectEnvironment {}
 
 impl ObjectEnvironment {
     // 9.1.2.3 NewObjectEnvironment
@@ -185,5 +185,17 @@ impl Environment for Handle<ObjectEnvironment> {
 
     fn outer(&self) -> Option<DynEnvironment> {
         self.outer.as_ref().map(DynEnvironment::from_heap)
+    }
+}
+
+impl HeapObject for HeapPtr<ObjectEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<ObjectEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.binding_object);
+        self.outer.as_mut().map(|o| o.visit_pointers(visitor));
     }
 }

@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{extend_object, maybe, set_uninit};
@@ -6,7 +8,7 @@ use super::{
     completion::EvalResult,
     execution_context::ExecutionContext,
     function::{set_function_length, set_function_name},
-    gc::{HandleScope, HeapPtr, IsHeapObject},
+    gc::{HandleScope, HeapObject, HeapPtr, HeapVisitor, IsHeapObject},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
@@ -220,5 +222,18 @@ impl VirtualObject for Handle<BuiltinFunction> {
 impl Into<HeapPtr<()>> for &() {
     fn into(self) -> HeapPtr<()> {
         unimplemented!("")
+    }
+}
+
+impl HeapObject for HeapPtr<BuiltinFunction> {
+    fn byte_size(&self) -> usize {
+        size_of::<BuiltinFunction>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.realm);
+        visitor.visit_pointer_opt(&mut self.initial_name);
+        visitor.visit_pointer_opt(&mut self.closure_environment);
     }
 }

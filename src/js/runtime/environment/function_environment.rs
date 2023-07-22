@@ -1,9 +1,11 @@
+use std::mem::size_of;
+
 use crate::{
     js::runtime::{
         completion::EvalResult,
         error::reference_error_,
         function::Function,
-        gc::{Handle, IsHeapObject},
+        gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         string_value::StringValue,
@@ -27,8 +29,6 @@ pub struct FunctionEnvironment {
     new_target: Option<HeapPtr<ObjectValue>>,
     this_binding_status: ThisBindingStatus,
 }
-
-impl IsHeapObject for FunctionEnvironment {}
 
 #[derive(PartialEq)]
 pub enum ThisBindingStatus {
@@ -212,5 +212,19 @@ impl FunctionEnvironment {
                 }
             }
         }
+    }
+}
+
+impl HeapObject for HeapPtr<FunctionEnvironment> {
+    fn byte_size(&self) -> usize {
+        size_of::<FunctionEnvironment>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<DeclarativeEnvironment>()
+            .visit_pointers(visitor);
+        visitor.visit_value(&mut self.this_value);
+        visitor.visit_pointer(&mut self.function_object);
+        visitor.visit_pointer_opt(&mut self.new_target);
     }
 }

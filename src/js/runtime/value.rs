@@ -7,8 +7,8 @@ use crate::{field_offset, set_uninit};
 
 use super::{
     context::Context,
-    gc::{Handle, HandleContents, HeapPtr, IsHeapObject},
-    object_descriptor::{HeapItem, ObjectDescriptor, ObjectKind},
+    gc::{Handle, HandleContents, HeapItem, HeapObject, HeapPtr, HeapVisitor},
+    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::StringValue,
     type_utilities::same_value_zero_non_allocating,
@@ -605,11 +605,20 @@ impl PartialEq for Handle<SymbolValue> {
 
 impl Eq for Handle<SymbolValue> {}
 
-impl IsHeapObject for SymbolValue {}
-
 impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
     fn from(value: Handle<SymbolValue>) -> Self {
         value.cast()
+    }
+}
+
+impl HeapObject for HeapPtr<SymbolValue> {
+    fn byte_size(&self) -> usize {
+        size_of::<SymbolValue>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.description);
     }
 }
 
@@ -631,11 +640,9 @@ impl BigIntValue {
     pub fn new(cx: &mut Context, value: BigInt) -> Handle<BigIntValue> {
         // Extract sign and digits from BigInt
         let (sign, digits) = value.to_u32_digits();
-
-        // Calculate size of BigIntValue with inlined digits
         let len = digits.len();
-        let size = Self::DIGITS_OFFSET + len * size_of::<u32>();
 
+        let size = Self::calculate_size_in_bytes(len);
         let mut bigint = cx.heap.alloc_uninit_with_size::<BigIntValue>(size);
 
         // Copy raw parts of BigInt into BigIntValue
@@ -647,6 +654,11 @@ impl BigIntValue {
 
         bigint.to_handle()
     }
+
+    pub fn calculate_size_in_bytes(num_u32_digits: usize) -> usize {
+        // Calculate size of BigIntValue with inlined digits
+        Self::DIGITS_OFFSET + num_u32_digits * size_of::<u32>()
+    }
 }
 
 impl BigIntValue {
@@ -657,11 +669,19 @@ impl BigIntValue {
     }
 }
 
-impl IsHeapObject for BigIntValue {}
-
 impl From<Handle<BigIntValue>> for Handle<ObjectValue> {
     fn from(value: Handle<BigIntValue>) -> Self {
         value.cast()
+    }
+}
+
+impl HeapObject for HeapPtr<BigIntValue> {
+    fn byte_size(&self) -> usize {
+        BigIntValue::calculate_size_in_bytes(self.len)
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
     }
 }
 
@@ -671,8 +691,6 @@ pub struct AccessorValue {
     pub get: Option<HeapPtr<ObjectValue>>,
     pub set: Option<HeapPtr<ObjectValue>>,
 }
-
-impl IsHeapObject for AccessorValue {}
 
 impl AccessorValue {
     pub fn new(
@@ -690,6 +708,18 @@ impl AccessorValue {
     }
 }
 
+impl HeapObject for HeapPtr<AccessorValue> {
+    fn byte_size(&self) -> usize {
+        size_of::<AccessorValue>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.get);
+        visitor.visit_pointer_opt(&mut self.set);
+    }
+}
+
 /// A wrapper around values that are used as keys in ValueMap and ValueSet.
 /// Uses the SameValueZero algorithm to check equality, and hash function conforms to SameValueZero.
 #[derive(Clone, Copy)]
@@ -704,6 +734,10 @@ impl ValueCollectionKey {
         }
 
         ValueCollectionKey(value.get())
+    }
+
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_value(&mut self.0)
     }
 }
 

@@ -131,7 +131,7 @@ impl ObjectValue {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| p.get_()));
         set_uninit!(object.named_properties, cx.default_named_properties);
-        set_uninit!(object.array_properties, ArrayProperties::initial(cx));
+        set_uninit!(object.array_properties, cx.default_array_properties);
         set_uninit!(object.is_extensible_field, is_extensible);
         object.set_uninit_hash_code();
 

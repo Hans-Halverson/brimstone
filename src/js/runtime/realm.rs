@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use crate::{
     field_offset,
     js::{
@@ -31,7 +29,7 @@ pub struct Realm {
     global_env: HeapPtr<GlobalEnvironment>,
     global_object: HeapPtr<ObjectValue>,
     template_map: HeapPtr<TemplateMap>,
-    intrinsics: Intrinsics,
+    pub intrinsics: Intrinsics,
 }
 
 type TemplateMap = BsHashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>;
@@ -55,7 +53,7 @@ impl Realm {
 
             let realm = realm.to_handle();
 
-            realm.clone().intrinsics.initialize(cx, realm);
+            Intrinsics::initialize(cx, realm);
 
             realm
         })
@@ -169,7 +167,7 @@ impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for RealmTemp
 
 impl HeapObject for HeapPtr<Realm> {
     fn byte_size(&self) -> usize {
-        size_of::<Realm>()
+        Realm::calculate_size_in_bytes()
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {

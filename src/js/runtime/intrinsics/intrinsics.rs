@@ -162,13 +162,17 @@ pub struct Intrinsics {
 
 impl Intrinsics {
     // 9.3.2 CreateIntrinsics
-    pub fn initialize(&mut self, cx: &mut Context, realm: Handle<Realm>) {
-        self.intrinsics
-            .init_with_uninit(Intrinsic::num_intrinsics());
+    pub fn initialize(cx: &mut Context, mut realm: Handle<Realm>) {
+        // Initialize all pointers to valid pointer outside heap in case a GC is triggered before
+        // they are set to real intrinsic object.
+        realm
+            .intrinsics
+            .intrinsics
+            .init_with(Intrinsic::num_intrinsics(), HeapPtr::uninit());
 
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
-                self.intrinsics.as_mut_slice()[Intrinsic::$intrinsic_name as usize] =
+                realm.intrinsics.intrinsics.as_mut_slice()[Intrinsic::$intrinsic_name as usize] =
                     ($expr).cast::<ObjectValue>().get_();
             };
         }
@@ -186,8 +190,9 @@ impl Intrinsics {
             ($prototype:ident, $constructor:ident) => {
                 register_intrinsic!($prototype, $prototype);
                 register_intrinsic!($constructor, $constructor);
-                self.add_constructor_to_prototype(
+                Self::add_constructor_to_prototype(
                     cx,
+                    realm,
                     Intrinsic::$prototype,
                     Intrinsic::$constructor,
                 );
@@ -195,7 +200,7 @@ impl Intrinsics {
         }
 
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
-        // form depenency cycles, so first create uninitialized and then initialize later.
+        // form dependency cycles, so first create uninitialized and then initialize later.
         let object_prototype = ObjectPrototype::new_uninit(cx);
         let mut function_prototype = FunctionPrototype::new_uninit(cx);
 
@@ -207,15 +212,17 @@ impl Intrinsics {
 
         // Normal intrinsic creation
         register_intrinsic!(ObjectConstructor, ObjectConstructor);
-        self.add_constructor_to_prototype(
+        Self::add_constructor_to_prototype(
             cx,
+            realm,
             Intrinsic::ObjectPrototype,
             Intrinsic::ObjectConstructor,
         );
 
         register_intrinsic!(FunctionConstructor, FunctionConstructor);
-        self.add_constructor_to_prototype(
+        Self::add_constructor_to_prototype(
             cx,
+            realm,
             Intrinsic::FunctionPrototype,
             Intrinsic::FunctionConstructor,
         );
@@ -233,14 +240,14 @@ impl Intrinsics {
         register_intrinsic_pair!(SetPrototype, SetConstructor);
 
         // Properties of basic intrinsics
-        let object_prototype = self.get(Intrinsic::ObjectPrototype);
+        let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
         register_existing_intrinsic!(
             ObjectPrototypeToString,
             object_prototype_to_string.as_object()
         );
 
-        let array_prototype = self.get(Intrinsic::ArrayPrototype);
+        let array_prototype = realm.get_intrinsic(Intrinsic::ArrayPrototype);
         let array_prototype_values = must!(get(cx, array_prototype, cx.names.values()));
         register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
@@ -288,7 +295,11 @@ impl Intrinsics {
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic);
 
-        add_restricted_function_properties(cx, self.get(Intrinsic::FunctionPrototype), realm);
+        add_restricted_function_properties(
+            cx,
+            realm.get_intrinsic(Intrinsic::FunctionPrototype),
+            realm,
+        );
     }
 
     #[inline]
@@ -307,13 +318,13 @@ impl Intrinsics {
     // Intrinsic prototypes are created before their corresponding constructors, so we must add a
     // constructor property after creation.
     fn add_constructor_to_prototype(
-        &self,
         cx: &mut Context,
+        realm: Handle<Realm>,
         prototype: Intrinsic,
         constructor: Intrinsic,
     ) {
-        let mut prototype_object = self.get(prototype);
-        let constructor_object = self.get(constructor);
+        let mut prototype_object = realm.get_intrinsic(prototype);
+        let constructor_object = realm.get_intrinsic(constructor);
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);

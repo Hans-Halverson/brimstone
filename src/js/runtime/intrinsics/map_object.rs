@@ -30,7 +30,8 @@ impl MapObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<MapObject>> {
         // Allocate and place behind handle before allocating environment
-        let map_data = ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY);
+        let map_data =
+            ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY).to_handle();
 
         let mut object = maybe!(object_create_from_constructor::<MapObject>(
             cx,
@@ -39,7 +40,7 @@ impl MapObject {
             Intrinsic::MapPrototype
         ));
 
-        set_uninit!(object.map_data, map_data);
+        set_uninit!(object.map_data, map_data.get_());
 
         object.to_handle().into()
     }

@@ -64,6 +64,10 @@ impl HeapItem {
     pub fn descriptor(&self) -> HeapPtr<ObjectDescriptor> {
         self.descriptor
     }
+
+    pub fn set_descriptor(&mut self, descriptor: HeapPtr<ObjectDescriptor>) {
+        self.descriptor = descriptor;
+    }
 }
 
 impl HeapObject for HeapPtr<HeapItem> {

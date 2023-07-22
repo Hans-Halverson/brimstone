@@ -24,7 +24,11 @@ impl<T> InlineArray<T> {
         T: Clone,
     {
         set_uninit!(self.len, len);
-        self.as_mut_slice().fill(init_value)
+
+        // Set uninitialized memory
+        for i in 0..len {
+            unsafe { self.data_mut_ptr().add(i).write(init_value.clone()) }
+        }
     }
 
     #[inline]

@@ -73,7 +73,6 @@ impl Context {
         // Initialize some fields, leave others uninitialized and initialize later
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
-        let base_descriptors = BaseDescriptors::new(&mut heap);
 
         let mut cx = Context {
             execution_context_stack: vec![],
@@ -81,7 +80,7 @@ impl Context {
             global_symbol_registry: HeapPtr::uninit(),
             names,
             well_known_symbols,
-            base_descriptors,
+            base_descriptors: BaseDescriptors::uninit(),
             undefined: Value::undefined(),
             null: Value::null(),
             empty: Value::empty(),
@@ -99,6 +98,7 @@ impl Context {
         cx.heap.info().set_context(&mut cx);
 
         // Initialize all uninitialized fields
+        cx.base_descriptors = BaseDescriptors::new(&mut cx);
         InternedStrings::init(&mut cx);
 
         cx.init_builtin_names();

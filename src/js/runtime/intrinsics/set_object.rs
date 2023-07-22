@@ -30,7 +30,8 @@ impl SetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<SetObject>> {
         // Allocate and place behind handle before allocating object
-        let set_data = ValueSet::new(cx, ObjectKind::SetObjectValueSet, ValueSet::MIN_CAPACITY);
+        let set_data =
+            ValueSet::new(cx, ObjectKind::SetObjectValueSet, ValueSet::MIN_CAPACITY).to_handle();
 
         let mut object = maybe!(object_create_from_constructor::<SetObject>(
             cx,
@@ -39,7 +40,7 @@ impl SetObject {
             Intrinsic::SetPrototype
         ));
 
-        set_uninit!(object.set_data, set_data);
+        set_uninit!(object.set_data, set_data.get_());
 
         object.to_handle().into()
     }

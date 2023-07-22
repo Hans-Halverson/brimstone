@@ -82,10 +82,6 @@ impl HeapPtr<ArrayProperties> {
 }
 
 impl ArrayProperties {
-    pub fn initial(cx: &mut Context) -> HeapPtr<ArrayProperties> {
-        cx.default_array_properties
-    }
-
     /// Expand an object's dense properties to have at least enough room for the new length.
     #[inline]
     fn grow_dense_properties(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) {

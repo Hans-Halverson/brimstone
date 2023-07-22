@@ -13,7 +13,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
-    gc::{Handle, Heap, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::{
         function_prototype::FunctionPrototype,
         typed_array::{
@@ -24,6 +24,7 @@ use super::{
     object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
     proxy_object::ProxyObject,
     string_object::StringObject,
+    Context,
 };
 
 /// An object's "hidden class".
@@ -41,7 +42,7 @@ pub struct ObjectDescriptor {
 
 /// Type of an object on the heap. May also represent other non-object data stored on the heap,
 /// e.g. descriptors and realms.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum ObjectKind {
     // The descriptor for a descriptor
@@ -151,7 +152,7 @@ bitflags! {
 
 impl ObjectDescriptor {
     pub fn new<T>(
-        heap: &mut Heap,
+        cx: &mut Context,
         descriptor: Handle<ObjectDescriptor>,
         kind: ObjectKind,
         flags: DescFlags,
@@ -159,7 +160,7 @@ impl ObjectDescriptor {
     where
         Handle<T>: VirtualObject,
     {
-        let mut desc = heap.alloc_uninit::<ObjectDescriptor>();
+        let mut desc = cx.heap.alloc_uninit::<ObjectDescriptor>();
 
         set_uninit!(desc.descriptor, descriptor.get_());
         set_uninit!(desc.vtable, extract_object_vtable::<Handle<T>>());
@@ -187,7 +188,11 @@ pub struct BaseDescriptors {
 }
 
 impl BaseDescriptors {
-    pub fn new(heap: &mut Heap) -> BaseDescriptors {
+    pub fn uninit() -> BaseDescriptors {
+        BaseDescriptors { descriptors: vec![] }
+    }
+
+    pub fn new(cx: &mut Context) -> BaseDescriptors {
         let mut descriptors = vec![];
 
         descriptors.reserve_exact(ObjectKind::count());
@@ -200,17 +205,18 @@ impl BaseDescriptors {
         // First set up the singleton descriptor descriptor, using an arbitrary vtable
         // (e.g. OrdinaryObject). Can only set self pointer after object initially created.
         let mut descriptor = ObjectDescriptor::new::<OrdinaryObject>(
-            heap,
+            cx,
             fake_descriptor_handle,
             ObjectKind::Descriptor,
             DescFlags::empty(),
         );
         descriptor.descriptor = descriptor.get_();
+        descriptors[ObjectKind::Descriptor as usize] = descriptor.get_();
 
         macro_rules! register_descriptor {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
                 let desc =
-                    ObjectDescriptor::new::<$object_ty>(heap, descriptor, $object_kind, $flags);
+                    ObjectDescriptor::new::<$object_ty>(cx, descriptor, $object_kind, $flags);
                 descriptors[$object_kind as usize] = desc.get_();
             };
         }
@@ -315,6 +321,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
+        other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
+        other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
 
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);

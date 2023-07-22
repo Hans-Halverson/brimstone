@@ -6,7 +6,7 @@ use super::{HeapItem, HeapPtr};
 
 /// Trait implemented by all objects stored on the heap.
 pub trait HeapObject {
-    /// Size of this heap object in bytes.
+    /// Size of this heap object in bytes. Not guaranteed to be aligned.
     fn byte_size(&self) -> usize;
 
     /// Call the provided visit function on all pointer fields in this object. Pass a mutable

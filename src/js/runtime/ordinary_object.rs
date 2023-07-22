@@ -4,7 +4,6 @@ use crate::{extend_object, maybe, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
-    array_properties::ArrayProperties,
     completion::EvalResult,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
@@ -626,7 +625,7 @@ pub fn object_ordinary_init(
     object.set_descriptor(descriptor);
     object.set_prototype(proto);
     object.set_named_properties(cx.default_named_properties);
-    object.set_array_properties(ArrayProperties::initial(cx));
+    object.set_array_properties(cx.default_array_properties);
     object.set_is_extensible_field(true);
     object.set_uninit_hash_code();
 }

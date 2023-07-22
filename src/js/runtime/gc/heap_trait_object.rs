@@ -67,6 +67,13 @@ macro_rules! heap_trait_object {
                     vtable: heap_object.vtable,
                 }
             }
+
+            pub fn uninit() -> $stack_object {
+                $stack_object {
+                    data: $crate::js::runtime::Handle::dangling(),
+                    vtable: std::ptr::null(),
+                }
+            }
         }
 
         #[repr(C)]

@@ -1,3 +1,4 @@
+mod garbage_collector;
 mod handle;
 mod heap;
 mod heap_item;

@@ -42,6 +42,14 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     pub fn iter_gc_unsafe(&self) -> GcUnsafeKeysIter<T, ()> {
         self.0.keys_gc_unsafe()
     }
+
+    /// Insert an element into this set. Return whether the element was already present in the set.
+    /// then overwrite the value. Return whether the key was already present in the map.
+    ///
+    /// Assumes there is room to insert the element, silently fails to insert if set is full.
+    pub fn insert_without_growing(&mut self, element: T) -> bool {
+        self.0.insert_without_growing(element, ())
+    }
 }
 
 impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
@@ -61,13 +69,12 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
 
     fn set(&mut self, set: HeapPtr<BsIndexSet<T>>);
 
-    /// Insert an element into this set. Return whether the element was already present in the set.
-    ///
-    /// Insert may grow the set and update container to point to new set if there is no room to
-    /// insert another element in the set.
-    fn insert(&mut self, cx: &mut Context, element: T) -> bool {
+    /// Prepare set for insertion of a single element. This will grow the set and update container
+    /// to point to new set if there is no room to insert another entry in the set.
+    #[inline]
+    fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsIndexSet<T>> {
         let mut map_field = IndexMapField(self.clone());
-        map_field.insert(cx, element, ())
+        map_field.maybe_grow_for_insertion(cx).cast()
     }
 }
 

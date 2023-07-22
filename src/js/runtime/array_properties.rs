@@ -306,7 +306,9 @@ impl ArrayProperties {
             }
 
             let mut sparse_map_field = SparseMapField(object);
-            sparse_map_field.insert(cx, array_index, property.to_heap());
+            sparse_map_field
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(array_index, property.to_heap());
         }
     }
 }

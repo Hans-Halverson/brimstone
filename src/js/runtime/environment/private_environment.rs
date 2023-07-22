@@ -86,8 +86,10 @@ impl Handle<PrivateEnvironment> {
 
     pub fn add_private_name(&mut self, cx: &mut Context, description: Handle<StringValue>) {
         let symbol_name = SymbolValue::new(cx, None);
+        let flat_description = description.flatten();
         self.names_field()
-            .insert(cx, description.flatten().get_(), symbol_name.get_());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(flat_description.get_(), symbol_name.get_());
     }
 }
 

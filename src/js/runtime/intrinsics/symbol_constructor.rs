@@ -145,7 +145,8 @@ impl SymbolConstructor {
 
         let new_symbol = SymbolValue::new(cx, Some(string_key.as_string()));
         cx.global_symbol_registry_field()
-            .insert(cx, string_key.get_(), new_symbol.get_());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(string_key.get_(), new_symbol.get_());
 
         new_symbol.into()
     }

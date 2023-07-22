@@ -110,7 +110,8 @@ impl Handle<Realm> {
         template_object: Handle<ObjectValue>,
     ) {
         self.template_map_field()
-            .insert(cx, template_node, template_object.get_());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(template_node, template_object.get_());
     }
 
     // 9.3.3 SetRealmGlobalObject

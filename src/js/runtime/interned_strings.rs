@@ -56,8 +56,16 @@ impl InternedStrings {
             Some(interned_string) => *interned_string,
             None => {
                 string.intern();
-                cx.interned_strings.strings_field().insert(cx, string);
-                string
+
+                // Preserve string before potentially growing set
+                let string = string.to_handle();
+
+                cx.interned_strings
+                    .strings_field()
+                    .maybe_grow_for_insertion(cx)
+                    .insert_without_growing(string.get_());
+
+                string.get_()
             }
         }
     }
@@ -67,15 +75,14 @@ impl InternedStrings {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
                 let string_value = cx.alloc_string_ptr(String::from(str));
-                let interned_string = InternedStrings::get(cx, string_value);
+                let interned_string = InternedStrings::get(cx, string_value).to_handle();
 
-                cx.interned_strings.str_cache_field().insert(
-                    cx,
-                    String::from(str),
-                    interned_string,
-                );
+                cx.interned_strings
+                    .str_cache_field()
+                    .maybe_grow_for_insertion(cx)
+                    .insert_without_growing(String::from(str), interned_string.get_());
 
-                interned_string.as_string().to_handle()
+                interned_string.as_string()
             }
         }
     }

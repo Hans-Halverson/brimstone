@@ -217,8 +217,10 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         None
     }
 
-    /// Insert a key value pair into the map if thre is room. Silently fails to insert if map is
-    /// already full.
+    /// Insert the key value pair into this map. If there is already a value associated with the key
+    /// then overwrite the value. Return whether the key was already present in the map.
+    ///
+    /// Assumes there is room to insert a key value pair, silently fails to insert if map is full.
     #[inline]
     pub fn insert_without_growing(&mut self, key: K, value: V) -> bool {
         let hash_code = Self::key_hash_code(&key);
@@ -262,16 +264,8 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
     fn set(&mut self, cx: &mut Context, map: HeapPtr<BsHashMap<K, V>>);
 
-    /// Insert the key value pair into this map. If there is already a value associated with the key
-    /// then overwrite the value. Return whether the key was already present in the map.
-    ///
-    /// Insert may grow the map and update container to point to new map if there is no room to
-    /// insert another entry in the map.
-    fn insert(&mut self, cx: &mut Context, key: K, value: V) -> bool {
-        let mut map = self.maybe_grow_for_insertion(cx);
-        map.insert_without_growing(key, value)
-    }
-
+    /// Prepare map for insertion of a single entry. This will grow the map and update container to
+    /// point to new map if there is no room to insert another entry in the map.
     #[inline]
     fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsHashMap<K, V>> {
         let old_map = self.get(cx);

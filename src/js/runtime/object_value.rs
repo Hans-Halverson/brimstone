@@ -368,7 +368,8 @@ impl Handle<ObjectValue> {
 
         // Safe since insert does allocate on managed heap
         self.named_properties_field()
-            .insert(cx, key.get(), property.to_heap());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(key.get(), property.to_heap());
     }
 
     pub fn remove_property(&mut self, key: Handle<PropertyKey>) {
@@ -393,7 +394,8 @@ impl Handle<ObjectValue> {
         let property = Property::private_field(value);
         // Safe since insert does not allocate on managed heap
         self.named_properties_field()
-            .insert(cx, property_key.get(), property.to_heap());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(property_key.get(), property.to_heap());
     }
 
     // 7.3.28 PrivateFieldAdd
@@ -410,7 +412,8 @@ impl Handle<ObjectValue> {
             let property = Property::private_field(value);
             // Safe since insert does not allocate on managed heap
             self.named_properties_field()
-                .insert(cx, property_key.get(), property.to_heap());
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(property_key.get(), property.to_heap());
             ().into()
         }
     }
@@ -428,7 +431,8 @@ impl Handle<ObjectValue> {
             // Safe since insert does not allocate on managed heap
             let property_key = PropertyKey::symbol(private_name);
             self.named_properties_field()
-                .insert(cx, property_key.get(), private_method.to_heap());
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(property_key.get(), private_method.to_heap());
             ().into()
         }
     }

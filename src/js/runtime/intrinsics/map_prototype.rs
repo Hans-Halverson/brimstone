@@ -238,7 +238,8 @@ impl MapPrototype {
         }
 
         map.map_data_field()
-            .insert(cx, ValueCollectionKey::from(key), value.get());
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(ValueCollectionKey::from(key), value.get());
 
         this_value.into()
     }

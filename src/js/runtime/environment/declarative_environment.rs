@@ -114,8 +114,10 @@ impl Environment for Handle<DeclarativeEnvironment> {
         can_delete: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(true, false, can_delete);
+        let flat_name = name.flatten();
         self.bindings_field()
-            .insert(cx, name.flatten().get_(), binding);
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(flat_name.get_(), binding);
         ().into()
     }
 
@@ -127,8 +129,10 @@ impl Environment for Handle<DeclarativeEnvironment> {
         is_strict: bool,
     ) -> EvalResult<()> {
         let binding = Binding::new(false, is_strict, false);
+        let flat_name = name.flatten();
         self.bindings_field()
-            .insert(cx, name.flatten().get_(), binding);
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(flat_name.get_(), binding);
         ().into()
     }
 

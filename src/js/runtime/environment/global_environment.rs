@@ -328,9 +328,11 @@ impl Handle<GlobalEnvironment> {
             maybe!(object_env.initialize_binding(cx, name, cx.undefined()));
         }
 
-        let name = name.flatten().get_();
+        let name = name.flatten();
         if !self.var_names.contains(&name) {
-            self.var_names_field().insert(cx, name);
+            self.var_names_field()
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(name.get_());
         }
 
         ().into()
@@ -363,9 +365,11 @@ impl Handle<GlobalEnvironment> {
         maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
         maybe!(set(cx, global_object, name_key, value, false));
 
-        let name = name.flatten().get_();
+        let name = name.flatten();
         if !(self.var_names.contains(&name)) {
-            self.var_names_field().insert(cx, name);
+            self.var_names_field()
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(name.get_());
         }
 
         ().into()

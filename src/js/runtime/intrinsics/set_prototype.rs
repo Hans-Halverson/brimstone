@@ -88,7 +88,8 @@ impl SetPrototype {
         }
 
         set.set_data_field()
-            .insert(cx, ValueCollectionKey::from(value));
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(ValueCollectionKey::from(value));
 
         this_value.into()
     }

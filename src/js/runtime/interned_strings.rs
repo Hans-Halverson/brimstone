@@ -87,6 +87,13 @@ impl InternedStrings {
             }
         }
     }
+
+    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        // TODO: Do not mark interned strings, treat them as weak references that will be GC'd if
+        // nothing else references them.
+        visitor.visit_pointer(&mut self.strings);
+        visitor.visit_pointer(&mut self.str_cache);
+    }
 }
 
 #[derive(Clone)]

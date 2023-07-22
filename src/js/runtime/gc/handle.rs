@@ -12,7 +12,7 @@ use crate::js::runtime::{
     Context, PropertyKey, Value,
 };
 
-use super::{Heap, HeapInfo, HeapPtr, IsHeapObject};
+use super::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapObject};
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
 pub type HandleContents = usize;
@@ -254,6 +254,38 @@ impl HandleContext {
         }
 
         total
+    }
+
+    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        // Only visit values that have been used (aka before the next pointer) in the current block
+        let mut current_block = &self.current_block;
+        Self::visit_roots_between_pointers(current_block.start_ptr, self.next_ptr, visitor);
+
+        // Visit all values in earlier blocks
+        while let Some(prev_block) = &current_block.prev_block {
+            current_block = prev_block;
+            Self::visit_roots_between_pointers(
+                current_block.start_ptr,
+                current_block.end_ptr,
+                visitor,
+            );
+        }
+    }
+
+    fn visit_roots_between_pointers(
+        start_ptr: *const HandleContents,
+        end_ptr: *const HandleContents,
+        visitor: &mut impl HeapVisitor,
+    ) {
+        unsafe {
+            let mut current_ptr = start_ptr;
+            while current_ptr != end_ptr {
+                let value_ref = &mut *(current_ptr.cast_mut() as *mut Value);
+                visitor.visit_value(value_ref);
+
+                current_ptr = current_ptr.add(1)
+            }
+        }
     }
 }
 

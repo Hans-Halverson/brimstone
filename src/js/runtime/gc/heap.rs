@@ -5,7 +5,7 @@ use std::{
 
 use crate::js::runtime::Context;
 
-use super::{handle::HandleContext, HeapPtr};
+use super::{handle::HandleContext, HeapPtr, HeapVisitor};
 
 pub struct Heap {
     /// Pointer to the start of the heap
@@ -71,6 +71,10 @@ impl Heap {
 
             HeapPtr::from_ptr(start)
         }
+    }
+
+    pub fn visit_roots(&self, visitor: &mut impl HeapVisitor) {
+        self.info().handle_context().visit_roots(visitor)
     }
 }
 

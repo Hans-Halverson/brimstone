@@ -224,6 +224,29 @@ impl Context {
             Handle::<Value>::from_fixed_non_heap_ptr(&self.false_)
         }
     }
+
+    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        for execution_context in self.execution_context_stack.iter_mut() {
+            visitor.visit_pointer(execution_context);
+        }
+
+        self.heap.visit_roots(visitor);
+
+        visitor.visit_pointer(&mut self.global_symbol_registry);
+
+        self.names.visit_roots(visitor);
+        self.well_known_symbols.visit_roots(visitor);
+        self.base_descriptors.visit_roots(visitor);
+        self.interned_strings.visit_roots(visitor);
+
+        for closure_environment in self.closure_environments.iter_mut() {
+            visitor.visit_pointer_opt(closure_environment);
+        }
+
+        visitor.visit_pointer(&mut self.default_named_properties);
+        visitor.visit_pointer(&mut self.default_array_properties);
+        self.uninit_environment.visit_pointers(visitor);
+    }
 }
 
 pub struct GlobalSymbolRegistryField;

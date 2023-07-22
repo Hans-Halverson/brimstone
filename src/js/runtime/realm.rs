@@ -137,13 +137,8 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
     HandleScope::new(cx, |cx| {
         let mut realm = Realm::new_uninit(cx);
         let exec_ctx = ExecutionContext::new(
-            cx,
-            /* function */ None,
-            realm,
-            /* script_or_module */ None,
-            /* lexical_env */ cx.uninit_environment,
-            /* variable_env */ cx.uninit_environment,
-            /* private_env */ None,
+            cx, /* function */ None, realm, /* script_or_module */ None,
+            /* lexical_env */ None, /* variable_env */ None, /* private_env */ None,
             /* is_strict_mode */ false,
         );
 

@@ -64,8 +64,8 @@ pub fn eval_script(
             /* function */ None,
             realm,
             Some(ScriptOrModule::Script(script)),
-            /* lexical_env */ global_env_object,
-            /* variable_env */ global_env_object,
+            /* lexical_env */ Some(global_env_object),
+            /* variable_env */ Some(global_env_object),
             /* private_env */ None,
             program.has_use_strict_directive,
         );

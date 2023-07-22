@@ -131,8 +131,8 @@ pub fn perform_eval(
         /* function */ None,
         eval_realm,
         running_context.script_or_module(),
-        lex_env,
-        var_env,
+        Some(lex_env),
+        Some(var_env),
         private_env,
         is_strict_eval,
     );

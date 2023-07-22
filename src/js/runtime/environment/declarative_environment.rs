@@ -5,8 +5,8 @@ use crate::{
         collections::{BsHashMap, BsHashMapField},
         completion::EvalResult,
         error::{err_not_defined_, err_uninitialized_, type_error_},
-        gc::{Handle, Heap, IsHeapObject},
-        object_descriptor::{BaseDescriptors, ObjectDescriptor, ObjectKind},
+        gc::{Handle, IsHeapObject},
+        object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         string_value::{FlatString, StringValue},
         value::Value,
@@ -76,13 +76,10 @@ impl DeclarativeEnvironment {
         set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
     }
 
-    pub fn uninit(
-        heap: &mut Heap,
-        base_descriptors: &BaseDescriptors,
-    ) -> Handle<DeclarativeEnvironment> {
-        let mut env = heap.alloc_uninit::<DeclarativeEnvironment>();
+    pub fn uninit(cx: &mut Context) -> Handle<DeclarativeEnvironment> {
+        let mut env = cx.heap.alloc_uninit::<DeclarativeEnvironment>();
 
-        set_uninit!(env.descriptor, base_descriptors.get(ObjectKind::DeclarativeEnvironment));
+        set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment));
         set_uninit!(env.bindings, HeapPtr::uninit());
         set_uninit!(env.outer, None);
 

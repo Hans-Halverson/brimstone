@@ -152,8 +152,8 @@ impl VirtualObject for Handle<BuiltinFunction> {
                 /* function */ Some(self.object()),
                 self.realm(),
                 /* script_or_module */ None,
-                /* lexical_env */ cx.uninit_environment,
-                /* variable_env */ cx.uninit_environment,
+                /* lexical_env */ None,
+                /* variable_env */ None,
                 /* private_env */ None,
                 is_strict_mode,
             );
@@ -184,8 +184,8 @@ impl VirtualObject for Handle<BuiltinFunction> {
                 /* function */ Some(self.object()),
                 self.realm(),
                 /* script_or_module */ None,
-                /* lexical_env */ cx.uninit_environment,
-                /* variable_env */ cx.uninit_environment,
+                /* lexical_env */ None,
+                /* variable_env */ None,
                 /* private_env */ None,
                 is_strict_mode,
             );

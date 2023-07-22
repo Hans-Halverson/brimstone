@@ -5,7 +5,9 @@ use super::{
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
     collections::{BsHashMap, BsHashMapField},
-    environment::{declarative_environment::DeclarativeEnvironment, environment::DynEnvironment},
+    environment::{
+        declarative_environment::DeclarativeEnvironment, environment::HeapDynEnvironment,
+    },
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::Heap,
     interned_strings::InternedStrings,
@@ -50,7 +52,7 @@ pub struct Context {
     pub default_array_properties: HeapPtr<ArrayProperties>,
 
     // An empty environment to be used as an uninitialized value
-    pub uninit_environment: DynEnvironment,
+    pub uninit_environment: HeapDynEnvironment,
 
     // All ASTs produced by eval and function constructors in this context. Saved here so that they
     // are not freed while the context is still running, as they may be needed e.g. due to functions
@@ -72,8 +74,6 @@ impl Context {
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
         let base_descriptors = BaseDescriptors::new(&mut heap);
-        let uninit_environment =
-            DeclarativeEnvironment::uninit(&mut heap, &base_descriptors).into_dyn_env();
 
         let mut cx = Context {
             execution_context_stack: vec![],
@@ -91,7 +91,7 @@ impl Context {
             closure_environments: vec![],
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
-            uninit_environment,
+            uninit_environment: HeapDynEnvironment::uninit(),
             eval_asts: vec![],
             function_constructor_asts: vec![],
         };
@@ -110,6 +110,9 @@ impl Context {
         cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
         cx.default_named_properties =
             NamedPropertiesMap::new(&mut cx, ObjectKind::ObjectNamedPropertiesMap, 0);
+        cx.uninit_environment = DeclarativeEnvironment::uninit(&mut cx)
+            .into_dyn_env()
+            .to_heap();
 
         // Clean up handles from Context creation
         handle_scope.exit();

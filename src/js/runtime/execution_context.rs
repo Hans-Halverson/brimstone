@@ -39,19 +39,26 @@ impl ExecutionContext {
         function: Option<Handle<ObjectValue>>,
         realm: Handle<Realm>,
         script_or_module: Option<ScriptOrModule>,
-        lexical_env: DynEnvironment,
-        variable_env: DynEnvironment,
+        lexical_env: Option<DynEnvironment>,
+        variable_env: Option<DynEnvironment>,
         private_env: Option<Handle<PrivateEnvironment>>,
         is_strict_mode: bool,
     ) -> Handle<ExecutionContext> {
         let mut exec_context = cx.heap.alloc_uninit::<ExecutionContext>();
 
+        let lex_env = lexical_env
+            .map(|e| e.to_heap())
+            .unwrap_or(cx.uninit_environment);
+        let var_env = variable_env
+            .map(|e| e.to_heap())
+            .unwrap_or(cx.uninit_environment);
+
         set_uninit!(exec_context.descriptor, cx.base_descriptors.get(ObjectKind::ExecutionContext));
         set_uninit!(exec_context.function, function.map(|f| f.get_()));
         set_uninit!(exec_context.realm, realm.get_());
         set_uninit!(exec_context.script_or_module, script_or_module.map(|s| s.to_heap()));
-        set_uninit!(exec_context.lexical_env, lexical_env.to_heap());
-        set_uninit!(exec_context.variable_env, variable_env.to_heap());
+        set_uninit!(exec_context.lexical_env, lex_env);
+        set_uninit!(exec_context.variable_env, var_env);
         set_uninit!(exec_context.private_env, private_env.map(|p| p.get_()));
         set_uninit!(exec_context.is_strict_mode, is_strict_mode);
 

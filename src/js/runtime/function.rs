@@ -410,8 +410,8 @@ impl Handle<Function> {
             /* function */ Some(self.object()),
             self.realm(),
             self.script_or_module(),
-            /* lexical_env */ func_env,
-            /* variable_env */ func_env,
+            /* lexical_env */ Some(func_env),
+            /* variable_env */ Some(func_env),
             self.private_environment(),
             self.is_strict,
         );

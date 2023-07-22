@@ -35,6 +35,15 @@ macro_rules! heap_trait_object {
             }
         }
 
+        impl $heap_object {
+            pub fn uninit() -> $heap_object {
+                $heap_object {
+                    data: $crate::js::runtime::HeapPtr::uninit(),
+                    vtable: std::ptr::null(),
+                }
+            }
+        }
+
         impl $stack_object {
             pub fn ptr_eq(&self, other: &Self) -> bool {
                 self.data.get_().ptr_eq(&other.data.get_())

@@ -138,7 +138,7 @@ fn run_full_test(test: &Test, test262_root: &str) -> TestResult {
 fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> TestResult {
     // Each test is executed in its own realm
     let mut cx = Context::new();
-    let realm = initialize_host_defined_realm(&mut cx);
+    let realm = initialize_host_defined_realm(&mut cx, false);
 
     // Add $262 object to the realm's global object
     let test_262_object = Test262Object::new(&mut cx, realm);

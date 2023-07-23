@@ -2,7 +2,7 @@ use std::ptr::NonNull;
 
 use crate::js::runtime::{
     gc::Heap,
-    intrinsics::weak_ref_constructor::WeakRefObject,
+    intrinsics::{weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     Context, Value,
@@ -26,6 +26,9 @@ pub struct GarbageCollector {
 
     // Chain of pointers to all WeakRefs that have been visited during this gc cycle
     weak_ref_list: Option<HeapPtr<WeakRefObject>>,
+
+    // Chain of pointers to all WeakSets that have been visited during this gc cycle
+    weak_set_list: Option<HeapPtr<WeakSetObject>>,
 }
 
 impl GarbageCollector {
@@ -39,6 +42,7 @@ impl GarbageCollector {
             fix_ptr: to_space_start_ptr,
             alloc_ptr: to_space_start_ptr,
             weak_ref_list: None,
+            weak_set_list: None,
         }
     }
 
@@ -59,8 +63,9 @@ impl GarbageCollector {
             unsafe { gc.fix_ptr = gc.fix_ptr.add(alloc_size) }
         }
 
-        // Fix the weak references, updating targets if they have been garbage collected
+        // Fix the weak objects, handling objects that have been garbage collected
         gc.fix_weak_refs();
+        gc.fix_weak_sets();
 
         cx.heap.swap_heaps(gc.alloc_ptr);
     }
@@ -103,10 +108,16 @@ impl GarbageCollector {
             );
         }
 
-        // Type specific actions for live objects. All WeakRefs must be collected in a list so they
-        // can be traversed later.
-        if new_heap_item.descriptor().kind() == ObjectKind::WeakRefObject {
-            self.add_visited_weak_ref(new_heap_item.cast::<WeakRefObject>());
+        // Type specific actions for live objects. All weak objects must be collected in lists so
+        // they can be traversed later.
+        match new_heap_item.descriptor().kind() {
+            ObjectKind::WeakRefObject => {
+                self.add_visited_weak_ref(new_heap_item.cast::<WeakRefObject>())
+            }
+            ObjectKind::WeakSetObject => {
+                self.add_visited_weak_set(new_heap_item.cast::<WeakSetObject>())
+            }
+            _ => {}
         }
 
         // Overwrite the descriptor inside the old heap object to be a forwarding pointer to
@@ -132,6 +143,15 @@ impl GarbageCollector {
         self.weak_ref_list = Some(weak_ref);
     }
 
+    // Add a weak set to the linked list of weak sets that are live during this garbage collection.
+    fn add_visited_weak_set(&mut self, mut weak_set: HeapPtr<WeakSetObject>) {
+        if let Some(next_weak_set) = self.weak_set_list {
+            weak_set.set_next_weak_set(next_weak_set);
+        }
+
+        self.weak_set_list = Some(weak_set);
+    }
+
     // Visit live weak refs and check if their targets are still live. Should only be called after
     // liveness of all objects have been determined.
     fn fix_weak_refs(&mut self) {
@@ -152,6 +172,33 @@ impl GarbageCollector {
             }
 
             next_weak_ref = weak_ref.next_weak_ref();
+        }
+    }
+
+    // Visit live weak sets and check if their targets are still live. Should only be called after
+    // liveness of all objects have been determined.
+    fn fix_weak_sets(&mut self) {
+        // Walk all live weak sets in the list
+        let mut next_weak_set = self.weak_set_list;
+        while let Some(weak_set) = next_weak_set {
+            for weak_ref in weak_set.weak_set_data().iter_mut_gc_unsafe() {
+                let weak_ref_value = weak_ref.value_mut();
+
+                if weak_ref_value.is_pointer() {
+                    let target_descriptor = weak_ref_value.as_pointer().descriptor();
+
+                    // Target is known to be live if it has already moved (and left a forwarding pointer)
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                        *weak_ref_value = forwarding_ptr.cast::<ObjectValue>().into();
+                    } else {
+                        // Otherwise target was garbage collected so remove target from map.
+                        // It is same to remove during iteration for a BsHashMap.
+                        weak_set.weak_set_data().remove(weak_ref);
+                    }
+                }
+            }
+
+            next_weak_set = weak_set.next_weak_set();
         }
     }
 }

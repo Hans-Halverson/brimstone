@@ -63,7 +63,7 @@ impl Test262Object {
         // Create a new realm
         let mut realm = Realm::new_uninit(cx);
         realm.initialize(cx, None, None);
-        set_default_global_bindings(cx, realm);
+        set_default_global_bindings(cx, realm, false);
 
         // Add $262 object to new global object
         let test_262_object = Test262Object::new(cx, realm);

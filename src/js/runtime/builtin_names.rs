@@ -107,6 +107,7 @@ builtin_names!(
     (uint32_array, "Uint32Array"),
     (uri_error, "URIError"),
     (weak_ref, "WeakRef"),
+    (weak_set, "WeakSet"),
     (abs, "abs"),
     (acos, "acos"),
     (acosh, "acosh"),

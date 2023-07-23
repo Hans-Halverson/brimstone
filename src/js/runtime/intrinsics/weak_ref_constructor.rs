@@ -113,7 +113,7 @@ impl WeakRefConstructor {
 }
 
 // 9.14 CanBeHeldWeakly
-fn can_be_held_weakly(cx: &mut Context, value: Value) -> bool {
+pub fn can_be_held_weakly(cx: &mut Context, value: Value) -> bool {
     if value.is_object() {
         true
     } else if value.is_symbol() {

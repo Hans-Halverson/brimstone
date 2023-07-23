@@ -329,6 +329,10 @@ impl ObjectValue {
     pub fn is_weak_ref_object(&self) -> bool {
         self.descriptor_kind() == ObjectKind::WeakRefObject
     }
+
+    pub fn is_weak_set_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::WeakSetObject
+    }
 }
 
 impl Handle<ObjectValue> {

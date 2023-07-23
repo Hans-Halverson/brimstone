@@ -45,3 +45,6 @@ mod typed_array_prototype;
 mod utils;
 pub mod weak_ref_constructor;
 mod weak_ref_prototype;
+mod weak_set_constructor;
+pub mod weak_set_object;
+mod weak_set_prototype;

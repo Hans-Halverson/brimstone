@@ -736,6 +736,10 @@ impl ValueCollectionKey {
         ValueCollectionKey(value.get())
     }
 
+    pub fn value_mut(&mut self) -> &mut Value {
+        &mut self.0
+    }
+
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_value(&mut self.0)
     }

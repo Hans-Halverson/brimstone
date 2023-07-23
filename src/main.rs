@@ -16,6 +16,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     module: bool,
 
+    /// Expose global gc methods
+    #[arg(long, default_value_t = false)]
+    expose_gc: bool,
+
     file: String,
 }
 
@@ -38,7 +42,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     }
 
     let mut cx = js::runtime::Context::new();
-    let realm = js::runtime::initialize_host_defined_realm(&mut cx);
+    let realm = js::runtime::initialize_host_defined_realm(&mut cx, args.expose_gc);
     js::runtime::evaluate(&mut cx, ast, realm)?;
 
     return Ok(());

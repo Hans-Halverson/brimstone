@@ -15,6 +15,7 @@ pub mod eval;
 mod execution_context;
 pub mod function;
 pub mod gc;
+mod gc_object;
 mod interned_strings;
 pub mod intrinsics;
 mod iterator;

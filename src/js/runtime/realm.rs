@@ -131,7 +131,7 @@ impl Handle<Realm> {
 }
 
 // 9.6 InitializeHostDefinedRealm
-pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
+pub fn initialize_host_defined_realm(cx: &mut Context, expose_gc: bool) -> Handle<Realm> {
     HandleScope::new(cx, |cx| {
         let mut realm = Realm::new_uninit(cx);
         let exec_ctx = ExecutionContext::new(
@@ -143,7 +143,7 @@ pub fn initialize_host_defined_realm(cx: &mut Context) -> Handle<Realm> {
         cx.push_execution_context(exec_ctx);
 
         realm.initialize(cx, None, None);
-        set_default_global_bindings(cx, realm);
+        set_default_global_bindings(cx, realm, expose_gc);
 
         realm
     })

@@ -83,7 +83,7 @@ impl Heap {
             let next_current = start.add(alloc_size);
             if (next_current as usize) > (self.end as usize) {
                 // If there is not room run a gc cycle
-                GarbageCollector::run(self.info().cx());
+                self.run_gc();
 
                 // Make sure there is enough space for allocation after gc, otherwise we are out of
                 // heap memory.
@@ -98,6 +98,10 @@ impl Heap {
 
             HeapPtr::from_ptr(start)
         }
+    }
+
+    pub fn run_gc(&mut self) {
+        GarbageCollector::run(self.info().cx());
     }
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {

@@ -6,6 +6,7 @@ use crate::{
         eval::eval::perform_eval,
         function::get_argument,
         gc::HandleScope,
+        gc_object::GcObject,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{
@@ -23,7 +24,11 @@ use crate::{
 use super::intrinsics::Intrinsic;
 
 // 9.3.4 SetDefaultGlobalBindings
-pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> EvalResult<()> {
+pub fn set_default_global_bindings(
+    cx: &mut Context,
+    realm: Handle<Realm>,
+    expose_gc: bool,
+) -> EvalResult<()> {
     HandleScope::new(cx, |cx| {
         macro_rules! value_prop {
             ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
@@ -126,6 +131,11 @@ pub fn set_default_global_bindings(cx: &mut Context, realm: Handle<Realm>) -> Ev
         // Non-standard, environment specific properties of global object
         let console_object = ConsoleObject::new(cx, realm).into();
         value_prop!(cx.names.console(), console_object, true, false, true);
+
+        if expose_gc {
+            let gc_object = GcObject::new(cx, realm).into();
+            value_prop!(cx.names.gc(), gc_object, true, false, true);
+        }
 
         ().into()
     })

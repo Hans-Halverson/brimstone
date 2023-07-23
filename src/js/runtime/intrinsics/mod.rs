@@ -43,3 +43,5 @@ pub mod typed_array;
 mod typed_array_constructor;
 mod typed_array_prototype;
 mod utils;
+pub mod weak_ref_constructor;
+mod weak_ref_prototype;

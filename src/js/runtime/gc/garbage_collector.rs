@@ -1,6 +1,12 @@
 use std::ptr::NonNull;
 
-use crate::js::runtime::{gc::Heap, object_descriptor::ObjectDescriptor, Context};
+use crate::js::runtime::{
+    gc::Heap,
+    intrinsics::weak_ref_constructor::WeakRefObject,
+    object_descriptor::{ObjectDescriptor, ObjectKind},
+    object_value::ObjectValue,
+    Context, Value,
+};
 
 use super::{HeapItem, HeapObject, HeapPtr, HeapVisitor};
 
@@ -17,6 +23,9 @@ pub struct GarbageCollector {
     // Pointer to the end of the allocated objects in to-space. Is the address of the next allocated
     // object.
     alloc_ptr: *const u8,
+
+    // Chain of pointers to all WeakRefs that have been visited during this gc cycle
+    weak_ref_list: Option<HeapPtr<WeakRefObject>>,
 }
 
 impl GarbageCollector {
@@ -29,6 +38,7 @@ impl GarbageCollector {
             from_space_end_ptr,
             fix_ptr: to_space_start_ptr,
             alloc_ptr: to_space_start_ptr,
+            weak_ref_list: None,
         }
     }
 
@@ -48,6 +58,9 @@ impl GarbageCollector {
             let alloc_size = Heap::alloc_size_for_request_size(new_heap_item.byte_size());
             unsafe { gc.fix_ptr = gc.fix_ptr.add(alloc_size) }
         }
+
+        // Fix the weak references, updating targets if they have been garbage collected
+        gc.fix_weak_refs();
 
         cx.heap.swap_heaps(gc.alloc_ptr);
     }
@@ -90,6 +103,12 @@ impl GarbageCollector {
             );
         }
 
+        // Type specific actions for live objects. All WeakRefs must be collected in a list so they
+        // can be traversed later.
+        if new_heap_item.descriptor().kind() == ObjectKind::WeakRefObject {
+            self.add_visited_weak_ref(new_heap_item.cast::<WeakRefObject>());
+        }
+
         // Overwrite the descriptor inside the old heap object to be a forwarding pointer to
         // new heap object.
         let forwarding_pointer = encode_forwarding_pointer(new_heap_item);
@@ -102,6 +121,38 @@ impl GarbageCollector {
     #[inline]
     fn is_in_from_space(&self, ptr: *const u8) -> bool {
         self.from_space_start_ptr <= ptr && ptr < self.from_space_end_ptr
+    }
+
+    // Add a weak ref to the linked list of weak refs that are live during this garbage collection.
+    fn add_visited_weak_ref(&mut self, mut weak_ref: HeapPtr<WeakRefObject>) {
+        if let Some(next_weak_ref) = self.weak_ref_list {
+            weak_ref.set_next_weak_ref(next_weak_ref);
+        }
+
+        self.weak_ref_list = Some(weak_ref);
+    }
+
+    // Visit live weak refs and check if their targets are still live. Should only be called after
+    // liveness of all objects have been determined.
+    fn fix_weak_refs(&mut self) {
+        // Walk all live weak refs in the list
+        let mut next_weak_ref = self.weak_ref_list;
+        while let Some(mut weak_ref) = next_weak_ref {
+            let target = weak_ref.weak_ref_target();
+            if target.is_pointer() {
+                let target_descriptor = target.as_pointer().descriptor();
+
+                // Target is known to be live if it has already moved (and left a forwarding pointer)
+                if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                    weak_ref.set_weak_ref_target(forwarding_ptr.cast::<ObjectValue>().into());
+                } else {
+                    // Otherwise target was garbage collected so reset target to undefined
+                    weak_ref.set_weak_ref_target(Value::undefined());
+                }
+            }
+
+            next_weak_ref = weak_ref.next_weak_ref();
+        }
     }
 }
 

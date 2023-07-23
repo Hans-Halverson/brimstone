@@ -61,6 +61,7 @@ pub enum ObjectKind {
     ErrorObject,
     SetObject,
     MapObject,
+    WeakRefObject,
 
     Function,
     BuiltinFunction,
@@ -245,6 +246,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::ErrorObject);
         ordinary_object_descriptor!(ObjectKind::SetObject);
         ordinary_object_descriptor!(ObjectKind::MapObject);
+        ordinary_object_descriptor!(ObjectKind::WeakRefObject);
 
         register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);

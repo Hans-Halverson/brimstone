@@ -1,0 +1,56 @@
+use crate::js::runtime::{
+    completion::EvalResult, error::type_error_, object_value::ObjectValue, property::Property,
+    realm::Realm, Context, Handle, Value,
+};
+
+use super::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject};
+
+pub struct WeakRefPrototype;
+
+impl WeakRefPrototype {
+    // 26.1.3 Properties of the WeakRef Prototype Object
+    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut object =
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+
+        // Constructor property is added once WeakRefConstructor has been created
+        object.intrinsic_func(cx, cx.names.deref(), Self::deref, 0, realm);
+
+        // [Symbol.toStringTag] property
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        object.set_property(
+            cx,
+            to_string_tag_key,
+            Property::data(cx.names.weak_ref().as_string().into(), false, false, true),
+        );
+
+        object
+    }
+
+    // 26.1.3.2 WeakRef.prototype.deref
+    fn deref(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
+            weak_ref_object.weak_ref_target().to_handle(cx).into()
+        } else {
+            type_error_(cx, "deref method must be called on WeakRef")
+        }
+    }
+}
+
+fn this_weak_ref_value(value: Handle<Value>) -> Option<Handle<WeakRefObject>> {
+    if !value.is_object() {
+        return None;
+    }
+
+    let object = value.as_object();
+    if !object.is_weak_ref_object() {
+        return None;
+    }
+
+    Some(object.cast::<WeakRefObject>())
+}

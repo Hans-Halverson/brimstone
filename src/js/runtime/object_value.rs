@@ -325,6 +325,10 @@ impl ObjectValue {
     pub fn is_object_prototype(&self) -> bool {
         self.descriptor_kind() == ObjectKind::ObjectPrototype
     }
+
+    pub fn is_weak_ref_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::WeakRefObject
+    }
 }
 
 impl Handle<ObjectValue> {

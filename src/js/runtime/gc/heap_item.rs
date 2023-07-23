@@ -40,6 +40,7 @@ use crate::js::runtime::{
             BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
             Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
         },
+        weak_ref_constructor::WeakRefObject,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
@@ -85,6 +86,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ErrorObject => self.cast::<ErrorObject>().byte_size(),
             ObjectKind::SetObject => self.cast::<SetObject>().byte_size(),
             ObjectKind::MapObject => self.cast::<MapObject>().byte_size(),
+            ObjectKind::WeakRefObject => self.cast::<WeakRefObject>().byte_size(),
             ObjectKind::Function => self.cast::<Function>().byte_size(),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().byte_size(),
             ObjectKind::BoundFunctionObject => self.cast::<BoundFunctionObject>().byte_size(),
@@ -175,6 +177,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ErrorObject => self.cast::<ErrorObject>().visit_pointers(visitor),
             ObjectKind::SetObject => self.cast::<SetObject>().visit_pointers(visitor),
             ObjectKind::MapObject => self.cast::<MapObject>().visit_pointers(visitor),
+            ObjectKind::WeakRefObject => self.cast::<WeakRefObject>().visit_pointers(visitor),
             ObjectKind::Function => self.cast::<Function>().visit_pointers(visitor),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().visit_pointers(visitor),
             ObjectKind::BoundFunctionObject => {

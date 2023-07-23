@@ -123,6 +123,7 @@ pub fn set_default_global_bindings(
         intrinsic_prop!(cx.names.uint16_array(), UInt16ArrayConstructor);
         intrinsic_prop!(cx.names.uint32_array(), UInt32ArrayConstructor);
         intrinsic_prop!(cx.names.uri_error(), URIErrorConstructor);
+        intrinsic_prop!(cx.names.weak_ref(), WeakRefConstructor);
 
         // 19.4 Other Properties of the Global Object
         intrinsic_prop!(cx.names.math(), Math);

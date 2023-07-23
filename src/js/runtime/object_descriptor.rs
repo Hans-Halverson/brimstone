@@ -122,6 +122,8 @@ pub enum ObjectKind {
     ObjectNamedPropertiesMap,
     MapObjectValueMap,
     SetObjectValueSet,
+    WeakSetObjectWeakValueSet,
+    WeakMapObjectWeakValueMap,
     DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
     PrivateEnvironmentNameMap,
@@ -323,6 +325,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ObjectNamedPropertiesMap);
         other_heap_object_descriptor!(ObjectKind::MapObjectValueMap);
         other_heap_object_descriptor!(ObjectKind::SetObjectValueSet);
+        other_heap_object_descriptor!(ObjectKind::WeakMapObjectWeakValueMap);
+        other_heap_object_descriptor!(ObjectKind::WeakSetObjectWeakValueSet);
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
         other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);

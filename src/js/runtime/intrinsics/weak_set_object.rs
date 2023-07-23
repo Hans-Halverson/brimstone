@@ -21,20 +21,23 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct WeakSetObject {
         // Set of weakly held references to values. Can only hold object and symbols.
-        weak_set_data: HeapPtr<ValueSet>,
+        weak_set_data: HeapPtr<WeakValueSet>,
         // Holds the address of the next weak set that has been visited during garbage collection.
         // Unused outside of garbage collection.
         next_weak_set: Option<HeapPtr<WeakSetObject>>,
     }
 }
 
-type ValueSet = BsHashSet<ValueCollectionKey>;
+type WeakValueSet = BsHashSet<ValueCollectionKey>;
 
 impl WeakSetObject {
     pub fn new_from_constructor(
         cx: &mut Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakSetObject>> {
+        let weak_set_data =
+            WeakValueSet::new_initial(cx, ObjectKind::WeakSetObjectWeakValueSet).to_handle();
+
         let mut object = maybe!(object_create_from_constructor::<WeakSetObject>(
             cx,
             constructor,
@@ -42,12 +45,12 @@ impl WeakSetObject {
             Intrinsic::WeakSetPrototype
         ));
 
-        set_uninit!(object.weak_set_data, ValueSet::new_initial(cx, ObjectKind::SetObjectValueSet));
+        set_uninit!(object.weak_set_data, weak_set_data.get_());
 
         object.to_handle().into()
     }
 
-    pub fn weak_set_data(&self) -> HeapPtr<ValueSet> {
+    pub fn weak_set_data(&self) -> HeapPtr<WeakValueSet> {
         self.weak_set_data
     }
 
@@ -70,15 +73,15 @@ impl Handle<WeakSetObject> {
 pub struct WeakSetObjectSetField(Handle<WeakSetObject>);
 
 impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<ValueSet> {
-        ValueSet::new(cx, ObjectKind::SetObjectValueSet, capacity)
+    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<WeakValueSet> {
+        WeakValueSet::new(cx, ObjectKind::WeakSetObjectWeakValueSet, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<ValueSet> {
+    fn get(&self, _: &mut Context) -> HeapPtr<WeakValueSet> {
         self.0.weak_set_data
     }
 
-    fn set(&mut self, _: &mut Context, set: HeapPtr<ValueSet>) {
+    fn set(&mut self, _: &mut Context, set: HeapPtr<WeakValueSet>) {
         self.0.weak_set_data = set;
     }
 }
@@ -91,6 +94,18 @@ impl HeapObject for HeapPtr<WeakSetObject> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
 
-        // Intentionally do not visit weak_set and next_weak_set
+        // Intentionally do not visit next_weak_set
+    }
+}
+
+impl WeakSetObjectSetField {
+    pub fn byte_size(map: &HeapPtr<WeakValueSet>) -> usize {
+        WeakValueSet::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(set: &mut HeapPtr<WeakValueSet>, visitor: &mut impl HeapVisitor) {
+        set.visit_pointers(visitor);
+
+        // Intentionally do not visit elements
     }
 }

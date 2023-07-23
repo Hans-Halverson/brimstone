@@ -40,9 +40,9 @@ use crate::js::runtime::{
             BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
             Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
         },
-        weak_map_object::WeakMapObject,
+        weak_map_object::{WeakMapObject, WeakMapObjectMapField},
         weak_ref_constructor::WeakRefObject,
-        weak_set_object::WeakSetObject,
+        weak_set_object::{WeakSetObject, WeakSetObjectSetField},
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
@@ -143,6 +143,8 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::MapObjectValueMap => MapObjectMapField::byte_size(&self.cast()),
             ObjectKind::SetObjectValueSet => SetObjectSetField::byte_size(&self.cast()),
+            ObjectKind::WeakMapObjectWeakValueMap => WeakMapObjectMapField::byte_size(&self.cast()),
+            ObjectKind::WeakSetObjectWeakValueSet => WeakSetObjectSetField::byte_size(&self.cast()),
             ObjectKind::DeclarativeEnvironmentBindingsMap => {
                 DeclarativeEnvironmentBindingsMapField::byte_size(&self.cast())
             }
@@ -265,6 +267,12 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::SetObjectValueSet => {
                 SetObjectSetField::visit_pointers(self.cast_mut(), visitor)
+            }
+            ObjectKind::WeakMapObjectWeakValueMap => {
+                WeakMapObjectMapField::visit_pointers(self.cast_mut(), visitor)
+            }
+            ObjectKind::WeakSetObjectWeakValueSet => {
+                WeakSetObjectSetField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::DeclarativeEnvironmentBindingsMap => {
                 DeclarativeEnvironmentBindingsMapField::visit_pointers(self.cast_mut(), visitor)

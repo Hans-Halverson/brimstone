@@ -1,8 +1,14 @@
 use crate::{
     js::runtime::{
-        abstract_operations::get, builtin_function::BuiltinFunction, completion::EvalResult,
-        error::type_error_, function::get_argument, object_value::ObjectValue, realm::Realm,
-        type_utilities::is_callable, Context, Handle, Value,
+        abstract_operations::{call_object, get},
+        builtin_function::BuiltinFunction,
+        completion::EvalResult,
+        error::type_error_,
+        function::get_argument,
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::is_callable,
+        Context, Handle, Value,
     },
     maybe,
 };
@@ -62,6 +68,9 @@ impl WeakMapConstructor {
             return type_error_(cx, "WeakMap adder is not callable");
         }
 
-        add_entries_from_iterable(cx, weak_map.into(), iterable, adder.as_object())
+        add_entries_from_iterable(cx, weak_map.into(), iterable, |cx, key, value| {
+            call_object(cx, adder.as_object(), weak_map.into(), &[key, value]);
+            ().into()
+        })
     }
 }

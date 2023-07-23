@@ -177,6 +177,7 @@ builtin_names!(
     (from, "from"),
     (from_char_code, "fromCharCode"),
     (from_code_point, "fromCodePoint"),
+    (from_entries, "fromEntries"),
     (fround, "fround"),
     (gc, "gc"),
     (get, "get"),

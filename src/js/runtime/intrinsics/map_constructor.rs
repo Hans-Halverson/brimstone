@@ -79,7 +79,10 @@ impl MapConstructor {
             return type_error_(cx, "map must contain a set method");
         }
 
-        add_entries_from_iterable(cx, map_object.into(), iterable, adder.as_object())
+        add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {
+            call_object(cx, adder.as_object(), map_object.into(), &[key, value]);
+            ().into()
+        })
     }
 
     // 24.1.2.2 get Map [ @@species ]
@@ -98,7 +101,7 @@ pub fn add_entries_from_iterable(
     cx: &mut Context,
     target: Handle<Value>,
     iterable: Handle<Value>,
-    adder: Handle<ObjectValue>,
+    mut adder: impl FnMut(&mut Context, Handle<Value>, Handle<Value>) -> EvalResult<()>,
 ) -> EvalResult<Handle<Value>> {
     let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
     let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
@@ -125,7 +128,7 @@ pub fn add_entries_from_iterable(
         };
 
         // Add key and value to target
-        let result = call_object(cx, adder, target, &[key, value]);
+        let result = adder(cx, key, value);
         match result {
             EvalResult::Ok(_) => None,
             EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),

@@ -26,7 +26,7 @@ use crate::{
     maybe, must,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, map_constructor::add_entries_from_iterable};
 
 pub struct ObjectConstructor;
 
@@ -59,6 +59,7 @@ impl ObjectConstructor {
         func.intrinsic_func(cx, cx.names.create(), Self::create, 2, realm);
         func.intrinsic_func(cx, cx.names.define_properties(), Self::define_properties, 2, realm);
         func.intrinsic_func(cx, cx.names.define_property(), Self::define_property, 3, realm);
+        func.intrinsic_func(cx, cx.names.from_entries(), Self::from_entries, 1, realm);
         func.intrinsic_func(
             cx,
             cx.names.get_own_property_descriptor(),
@@ -303,6 +304,25 @@ impl ObjectConstructor {
         }
 
         object.into()
+    }
+
+    // 20.1.2.7 Object.fromEntries
+    fn from_entries(
+        cx: &mut Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let iterable_arg = get_argument(cx, arguments, 0);
+        let iterable = maybe!(require_object_coercible(cx, iterable_arg));
+
+        let object = ordinary_object_create(cx);
+
+        add_entries_from_iterable(cx, object.into(), iterable, |cx, key, value| {
+            let property_key = maybe!(to_property_key(cx, key));
+            must!(create_data_property_or_throw(cx, object, property_key, value));
+            ().into()
+        })
     }
 
     // 20.1.2.8 Object.getOwnPropertyDescriptor

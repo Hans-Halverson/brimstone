@@ -64,6 +64,7 @@ pub enum ObjectKind {
     WeakRefObject,
     WeakSetObject,
     WeakMapObject,
+    FinalizationRegistryObject,
 
     Function,
     BuiltinFunction,
@@ -136,6 +137,7 @@ pub enum ObjectKind {
     ArrayBufferDataArray,
     FunctionFieldsArray,
     FunctionPrivateMethodsArray,
+    FinalizationRegistryCells,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -253,6 +255,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::WeakRefObject);
         ordinary_object_descriptor!(ObjectKind::WeakSetObject);
         ordinary_object_descriptor!(ObjectKind::WeakMapObject);
+        ordinary_object_descriptor!(ObjectKind::FinalizationRegistryObject);
 
         register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);
@@ -338,6 +341,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
         other_heap_object_descriptor!(ObjectKind::FunctionFieldsArray);
         other_heap_object_descriptor!(ObjectKind::FunctionPrivateMethodsArray);
+        other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
 
         BaseDescriptors { descriptors }
     }

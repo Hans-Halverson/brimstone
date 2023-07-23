@@ -58,8 +58,8 @@ impl WeakMapObject {
         self.next_weak_map
     }
 
-    pub fn set_next_weak_map(&mut self, next_weak_map: HeapPtr<WeakMapObject>) {
-        self.next_weak_map = Some(next_weak_map);
+    pub fn set_next_weak_map(&mut self, next_weak_map: Option<HeapPtr<WeakMapObject>>) {
+        self.next_weak_map = next_weak_map;
     }
 }
 

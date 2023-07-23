@@ -23,6 +23,8 @@ use crate::{
             data_view_prototype::DataViewPrototype,
             error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype,
+            finalization_registry_constructor::FinalizationRegistryConstructor,
+            finalization_registry_prototype::FinalizationRegistryPrototype,
             function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype,
             global_object::create_eval,
@@ -99,6 +101,8 @@ pub enum Intrinsic {
     Eval,
     EvalErrorConstructor,
     EvalErrorPrototype,
+    FinalizationRegistryConstructor,
+    FinalizationRegistryPrototype,
     Float32ArrayConstructor,
     Float32ArrayPrototype,
     Float64ArrayConstructor,
@@ -253,6 +257,7 @@ impl Intrinsics {
         register_intrinsic_pair!(WeakRefPrototype, WeakRefConstructor);
         register_intrinsic_pair!(WeakSetPrototype, WeakSetConstructor);
         register_intrinsic_pair!(WeakMapPrototype, WeakMapConstructor);
+        register_intrinsic_pair!(FinalizationRegistryPrototype, FinalizationRegistryConstructor);
 
         // Properties of basic intrinsics
         let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);

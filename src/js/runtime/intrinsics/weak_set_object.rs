@@ -58,8 +58,8 @@ impl WeakSetObject {
         self.next_weak_set
     }
 
-    pub fn set_next_weak_set(&mut self, next_weak_set: HeapPtr<WeakSetObject>) {
-        self.next_weak_set = Some(next_weak_set);
+    pub fn set_next_weak_set(&mut self, next_weak_set: Option<HeapPtr<WeakSetObject>>) {
+        self.next_weak_set = next_weak_set;
     }
 }
 

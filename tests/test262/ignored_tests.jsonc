@@ -59,6 +59,7 @@
       "import-assertions",
       "resizable-arraybuffer",
       "Atomics.waitAsync",
+      "FinalizationRegistry.prototype.cleanupSome",
       "Temporal",
       "ShadowRealm"
     ]

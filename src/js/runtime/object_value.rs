@@ -337,6 +337,10 @@ impl ObjectValue {
     pub fn is_weak_map_object(&self) -> bool {
         self.descriptor_kind() == ObjectKind::WeakMapObject
     }
+
+    pub fn is_finalization_registry_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::FinalizationRegistryObject
+    }
 }
 
 impl Handle<ObjectValue> {

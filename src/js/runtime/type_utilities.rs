@@ -798,7 +798,7 @@ pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bo
 // Same as same_value_zero but cannot allocate. Callers must ensure that all string values passed to
 // this function are flat.
 pub fn same_value_zero_non_allocating(v1: Value, v2: Value) -> bool {
-    // Same as same)value, but treats differently signed zeros as equal
+    // Same as same_value, but treats differently signed zeros as equal
     if v1.is_number() {
         if v2.is_number() {
             if v1.is_nan() && v2.is_nan() {
@@ -847,7 +847,7 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
 // Same as same_value_non_numeric but cannot allocate. Callers must ensure that all string values
 // passed to this function are flat.
 #[inline]
-fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
+pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
     // Fast path, if values have same bits they are always equal
     if v1.as_raw_bits() == v2.as_raw_bits() {
         return true;

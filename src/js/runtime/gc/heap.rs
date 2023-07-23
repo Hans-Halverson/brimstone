@@ -101,7 +101,7 @@ impl Heap {
     }
 
     pub fn run_gc(&mut self) {
-        GarbageCollector::run(self.info().cx());
+        GarbageCollector::run(self.info().cx())
     }
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {

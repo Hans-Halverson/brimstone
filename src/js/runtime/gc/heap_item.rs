@@ -26,6 +26,7 @@ use crate::js::runtime::{
         boolean_constructor::BooleanObject,
         data_view_constructor::DataViewObject,
         error_constructor::ErrorObject,
+        finalization_registry_object::{FinalizationRegistryCells, FinalizationRegistryObject},
         function_prototype::FunctionPrototype,
         map_iterator::MapIterator,
         map_object::{MapObject, MapObjectMapField},
@@ -91,6 +92,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::WeakRefObject => self.cast::<WeakRefObject>().byte_size(),
             ObjectKind::WeakSetObject => self.cast::<WeakSetObject>().byte_size(),
             ObjectKind::WeakMapObject => self.cast::<WeakMapObject>().byte_size(),
+            ObjectKind::FinalizationRegistryObject => {
+                self.cast::<FinalizationRegistryObject>().byte_size()
+            }
             ObjectKind::Function => self.cast::<Function>().byte_size(),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().byte_size(),
             ObjectKind::BoundFunctionObject => self.cast::<BoundFunctionObject>().byte_size(),
@@ -165,6 +169,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FunctionPrivateMethodsArray => {
                 FunctionPrivateMethodsArray::byte_size(&self.cast())
             }
+            ObjectKind::FinalizationRegistryCells => {
+                self.cast::<FinalizationRegistryCells>().byte_size()
+            }
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }
@@ -186,6 +193,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::WeakRefObject => self.cast::<WeakRefObject>().visit_pointers(visitor),
             ObjectKind::WeakSetObject => self.cast::<WeakSetObject>().visit_pointers(visitor),
             ObjectKind::WeakMapObject => self.cast::<WeakMapObject>().visit_pointers(visitor),
+            ObjectKind::FinalizationRegistryObject => self
+                .cast::<FinalizationRegistryObject>()
+                .visit_pointers(visitor),
             ObjectKind::Function => self.cast::<Function>().visit_pointers(visitor),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().visit_pointers(visitor),
             ObjectKind::BoundFunctionObject => {
@@ -304,6 +314,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FunctionPrivateMethodsArray => {
                 FunctionPrivateMethodsArray::visit_pointers(self.cast_mut(), visitor)
             }
+            ObjectKind::FinalizationRegistryCells => self
+                .cast::<FinalizationRegistryCells>()
+                .visit_pointers(visitor),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

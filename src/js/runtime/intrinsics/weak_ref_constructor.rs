@@ -60,8 +60,8 @@ impl WeakRefObject {
         self.next_weak_ref
     }
 
-    pub fn set_next_weak_ref(&mut self, next_weak_ref: HeapPtr<WeakRefObject>) {
-        self.next_weak_ref = Some(next_weak_ref);
+    pub fn set_next_weak_ref(&mut self, next_weak_ref: Option<HeapPtr<WeakRefObject>>) {
+        self.next_weak_ref = next_weak_ref;
     }
 }
 

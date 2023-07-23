@@ -3,7 +3,9 @@ use std::ptr::NonNull;
 use crate::js::runtime::{
     gc::Heap,
     intrinsics::{
-        weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+        finalization_registry_object::{FinalizationRegistryObject, FinalizerCallback},
+        weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject,
         weak_set_object::WeakSetObject,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
@@ -39,6 +41,9 @@ pub struct GarbageCollector {
 
     // Chain of pointers to all WeakMaps that have been visited during this gc cycle
     weak_map_list: Option<HeapPtr<WeakMapObject>>,
+
+    // Chain of pointers to all FinalizationRegistries that have been visited during this gc cycle
+    finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 }
 
 impl GarbageCollector {
@@ -56,6 +61,7 @@ impl GarbageCollector {
             weak_ref_list: None,
             weak_set_list: None,
             weak_map_list: None,
+            finalization_registry_list: None,
         }
     }
 
@@ -77,9 +83,9 @@ impl GarbageCollector {
                 unsafe { gc.fix_ptr = gc.fix_ptr.add(alloc_size) }
             }
 
-            // Visit weak map values that are known to be live due to live keys. Keep iterating
+            // Visit ephemeron values that are known to be live due to live keys. Keep iterating
             // until fixpoint where no new live keys are found.
-            if !gc.visit_live_weak_map_entries() {
+            if !gc.visit_live_weak_map_entries() && !gc.visit_live_finalization_registry_cells() {
                 break;
             }
         }
@@ -88,6 +94,9 @@ impl GarbageCollector {
         gc.fix_weak_refs();
         gc.fix_weak_sets();
         gc.fix_weak_maps();
+
+        let finalizer_callbacks = gc.fix_finalization_registries();
+        cx.add_finalizer_callbacks(finalizer_callbacks);
 
         cx.heap.swap_heaps(gc.alloc_ptr);
     }
@@ -142,6 +151,9 @@ impl GarbageCollector {
             ObjectKind::WeakMapObject => {
                 self.add_visited_weak_map(new_heap_item.cast::<WeakMapObject>())
             }
+            ObjectKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
+                new_heap_item.cast::<FinalizationRegistryObject>(),
+            ),
             _ => {}
         }
 
@@ -166,29 +178,30 @@ impl GarbageCollector {
 
     // Add a weak ref to the linked list of weak refs that are live during this garbage collection.
     fn add_visited_weak_ref(&mut self, mut weak_ref: HeapPtr<WeakRefObject>) {
-        if let Some(next_weak_ref) = self.weak_ref_list {
-            weak_ref.set_next_weak_ref(next_weak_ref);
-        }
-
+        weak_ref.set_next_weak_ref(self.weak_ref_list);
         self.weak_ref_list = Some(weak_ref);
     }
 
     // Add a weak set to the linked list of weak sets that are live during this garbage collection.
     fn add_visited_weak_set(&mut self, mut weak_set: HeapPtr<WeakSetObject>) {
-        if let Some(next_weak_set) = self.weak_set_list {
-            weak_set.set_next_weak_set(next_weak_set);
-        }
-
+        weak_set.set_next_weak_set(self.weak_set_list);
         self.weak_set_list = Some(weak_set);
     }
 
     // Add a weak map to the linked list of weak map that are live during this garbage collection.
     fn add_visited_weak_map(&mut self, mut weak_map: HeapPtr<WeakMapObject>) {
-        if let Some(next_weak_map) = self.weak_map_list {
-            weak_map.set_next_weak_map(next_weak_map);
-        }
-
+        weak_map.set_next_weak_map(self.weak_map_list);
         self.weak_map_list = Some(weak_map);
+    }
+
+    // Add a finalization registry to the linked list of finalization registries that are live
+    // during this garbage collection.
+    fn add_visited_finalization_registry(
+        &mut self,
+        mut finalization_registry: HeapPtr<FinalizationRegistryObject>,
+    ) {
+        finalization_registry.set_next_finalization_registry(self.finalization_registry_list);
+        self.finalization_registry_list = Some(finalization_registry);
     }
 
     // Visit live weak refs and check if their targets are still live. Should only be called after
@@ -289,6 +302,75 @@ impl GarbageCollector {
         }
 
         found_new_live_key
+    }
+
+    // Finalization registries are effectively a WeakMap from target value to unregister tokens.
+    // Visit live finalization registries and check if their cells are still live. Visit the
+    // weakly held unregister tokens in each cell where the target is live. Return whether any newly
+    // live unregister tokens were found.
+    fn visit_live_finalization_registry_cells(&mut self) -> bool {
+        // Walk all live weak maps in the list
+        let mut next_finalization_registry = self.finalization_registry_list;
+        let mut found_new_live_unregister_token = false;
+
+        while let Some(finalization_registry) = next_finalization_registry {
+            for cell in finalization_registry.cells().iter_mut_gc_unsafe() {
+                if let Some(cell) = cell {
+                    let target_value = cell.target;
+
+                    // Check if target has already been visited and moved to the to-space
+                    if !self.is_in_to_space(target_value.as_pointer().as_ptr().cast()) {
+                        let target_descriptor = target_value.as_pointer().descriptor();
+
+                        // Target is known to be live if it has already moved and left a forwarding
+                        // pointer. Visit the unregister key associated with the target since we now
+                        // know it is live. Also update target to point to to-space so we can tell it
+                        // is visited.
+                        if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                            cell.target = forwarding_ptr.cast::<ObjectValue>().into();
+
+                            if let Some(ref mut unregister_token) = cell.unregister_token {
+                                found_new_live_unregister_token = true;
+                                self.visit_value(unregister_token);
+                            }
+                        }
+                    }
+                }
+            }
+
+            next_finalization_registry = finalization_registry.next_finalization_registry();
+        }
+
+        found_new_live_unregister_token
+    }
+
+    fn fix_finalization_registries(&mut self) -> Vec<FinalizerCallback> {
+        let mut finalizer_callbacks = vec![];
+
+        // Walk all live finalization registries in the list
+        let mut next_finalization_registry = self.finalization_registry_list;
+        while let Some(finalization_registry) = next_finalization_registry {
+            for cell_opt in finalization_registry.cells().iter_mut_gc_unsafe() {
+                if let Some(cell) = cell_opt {
+                    // Check if target has already been visited and moved to the to-space. If not,
+                    // target should be garbage collected so remove cell from registry.
+                    if !self.is_in_to_space(cell.target.as_pointer().as_ptr().cast()) {
+                        // Save callback and held value to be called later
+                        finalizer_callbacks.push(FinalizerCallback {
+                            cleanup_callback: finalization_registry.cleanup_callback(),
+                            held_value: cell.held_value,
+                        });
+
+                        // Then remove cell from registry
+                        finalization_registry.cells().remove_cell(cell_opt);
+                    }
+                }
+            }
+
+            next_finalization_registry = finalization_registry.next_finalization_registry();
+        }
+
+        finalizer_callbacks
     }
 }
 

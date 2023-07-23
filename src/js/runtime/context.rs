@@ -11,7 +11,7 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
-    intrinsics::intrinsics::Intrinsic,
+    intrinsics::{finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic},
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
@@ -54,6 +54,10 @@ pub struct Context {
     // An empty environment to be used as an uninitialized value
     pub uninit_environment: HeapDynEnvironment,
 
+    // All pending finalizer callbacks for garbage collected values.
+    // TODO: Call finalizer callbacks
+    finalizer_callbacks: Vec<FinalizerCallback>,
+
     // All ASTs produced by eval and function constructors in this context. Saved here so that they
     // are not freed while the context is still running, as they may be needed e.g. due to functions
     // returned from an eval.
@@ -91,6 +95,7 @@ impl Context {
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             uninit_environment: HeapDynEnvironment::uninit(),
+            finalizer_callbacks: vec![],
             eval_asts: vec![],
             function_constructor_asts: vec![],
         };
@@ -191,6 +196,10 @@ impl Context {
         closure_environment.cast::<T>()
     }
 
+    pub fn add_finalizer_callbacks(&mut self, finalizer_callbacks: Vec<FinalizerCallback>) {
+        self.finalizer_callbacks.extend(finalizer_callbacks);
+    }
+
     #[inline]
     pub fn alloc_string_ptr(&mut self, str: String) -> HeapPtr<FlatString> {
         FlatString::from_utf8(self, str)
@@ -246,6 +255,11 @@ impl Context {
         visitor.visit_pointer(&mut self.default_named_properties);
         visitor.visit_pointer(&mut self.default_array_properties);
         self.uninit_environment.visit_pointers(visitor);
+
+        for finalizer_callback in self.finalizer_callbacks.iter_mut() {
+            visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);
+            visitor.visit_value(&mut finalizer_callback.held_value);
+        }
     }
 }
 

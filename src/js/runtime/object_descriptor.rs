@@ -63,6 +63,7 @@ pub enum ObjectKind {
     MapObject,
     WeakRefObject,
     WeakSetObject,
+    WeakMapObject,
 
     Function,
     BuiltinFunction,
@@ -249,6 +250,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::MapObject);
         ordinary_object_descriptor!(ObjectKind::WeakRefObject);
         ordinary_object_descriptor!(ObjectKind::WeakSetObject);
+        ordinary_object_descriptor!(ObjectKind::WeakMapObject);
 
         register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);

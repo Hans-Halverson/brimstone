@@ -333,6 +333,10 @@ impl ObjectValue {
     pub fn is_weak_set_object(&self) -> bool {
         self.descriptor_kind() == ObjectKind::WeakSetObject
     }
+
+    pub fn is_weak_map_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::WeakMapObject
+    }
 }
 
 impl Handle<ObjectValue> {

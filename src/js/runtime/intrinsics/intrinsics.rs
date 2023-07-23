@@ -58,6 +58,8 @@ use crate::{
             },
             typed_array_constructor::TypedArrayConstructor,
             typed_array_prototype::TypedArrayPrototype,
+            weak_map_constructor::WeakMapConstructor,
+            weak_map_prototype::WeakMapPrototype,
             weak_ref_constructor::WeakRefConstructor,
             weak_ref_prototype::WeakRefPrototype,
             weak_set_constructor::WeakSetConstructor,
@@ -150,6 +152,8 @@ pub enum Intrinsic {
     UInt32ArrayPrototype,
     URIErrorConstructor,
     URIErrorPrototype,
+    WeakMapConstructor,
+    WeakMapPrototype,
     WeakRefConstructor,
     WeakRefPrototype,
     WeakSetConstructor,
@@ -248,6 +252,7 @@ impl Intrinsics {
         register_intrinsic_pair!(SetPrototype, SetConstructor);
         register_intrinsic_pair!(WeakRefPrototype, WeakRefConstructor);
         register_intrinsic_pair!(WeakSetPrototype, WeakSetConstructor);
+        register_intrinsic_pair!(WeakMapPrototype, WeakMapConstructor);
 
         // Properties of basic intrinsics
         let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);

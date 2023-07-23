@@ -94,7 +94,7 @@ impl MapConstructor {
 }
 
 // 24.1.1.2 AddEntriesFromIterable
-fn add_entries_from_iterable(
+pub fn add_entries_from_iterable(
     cx: &mut Context,
     target: Handle<Value>,
     iterable: Handle<Value>,

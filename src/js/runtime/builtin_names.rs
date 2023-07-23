@@ -106,6 +106,7 @@ builtin_names!(
     (uint16_array, "Uint16Array"),
     (uint32_array, "Uint32Array"),
     (uri_error, "URIError"),
+    (weak_map, "WeakMap"),
     (weak_ref, "WeakRef"),
     (weak_set, "WeakSet"),
     (abs, "abs"),

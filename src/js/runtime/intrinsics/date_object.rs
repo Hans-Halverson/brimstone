@@ -2,15 +2,18 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::{runtime::{
-        gc::HeapObject,
-        intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
-        type_utilities::to_integer_or_infinity_f64,
-        Context, EvalResult, Handle, HeapPtr,
-    }, common::math::modulo},
+    js::{
+        common::math::modulo,
+        runtime::{
+            gc::HeapObject,
+            intrinsics::intrinsics::Intrinsic,
+            object_descriptor::ObjectKind,
+            object_value::ObjectValue,
+            ordinary_object::{object_create, object_create_from_constructor},
+            type_utilities::to_integer_or_infinity_f64,
+            Context, EvalResult, Handle, HeapPtr,
+        },
+    },
     maybe, set_uninit,
 };
 
@@ -63,9 +66,124 @@ const SECONDS_PER_MINUTE: f64 = 60.0;
 const MINUTES_PER_HOUR: f64 = 60.0;
 const HOURS_PER_DAY: f64 = 24.0;
 
-const MS_PER_MINUTE: f64 = MS_PER_SECOND * SECONDS_PER_MINUTE;
+pub const MS_PER_MINUTE: f64 = MS_PER_SECOND * SECONDS_PER_MINUTE;
 const MS_PER_HOUR: f64 = MS_PER_MINUTE * MINUTES_PER_HOUR;
 const MS_PER_DAY: f64 = MS_PER_HOUR * HOURS_PER_DAY;
+
+// 21.4.1.2 Day Number and Time within Day
+fn day(time: f64) -> f64 {
+    f64::floor(time / MS_PER_DAY)
+}
+
+// 21.4.1.3 Year Number
+fn days_in_year(year: i64) -> f64 {
+    if is_leap_year(year) {
+        366.0
+    } else {
+        365.0
+    }
+}
+
+fn day_from_year(year: f64) -> f64 {
+    (365.0 * (year - 1970.0)) + f64::floor((year - 1969.0) / 4.0)
+        - f64::floor((year - 1901.0) / 100.0)
+        + f64::floor((year - 1601.0) / 400.0)
+}
+
+fn time_from_year(year: f64) -> f64 {
+    MS_PER_DAY * day_from_year(year)
+}
+
+pub fn year_from_time(time: f64) -> f64 {
+    let day = day(time);
+
+    // Approximate year then find closest year within 1 year of approximate year.
+    // Based off the logic in SerenityOS's LibJS.
+    let year = f64::floor(day / 365.2425) + 1970.0;
+
+    let year_time = time_from_year(year);
+    if year_time > time {
+        year - 1.0
+    } else if year_time + days_in_year(year as i64) * MS_PER_DAY <= time {
+        year + 1.0
+    } else {
+        year
+    }
+}
+
+// 21.4.1.4 Month Number
+pub fn month_from_time(time: f64) -> f64 {
+    let year = year_from_time(time);
+    let leap_year = if is_leap_year(year as i64) { 1.0 } else { 0.0 };
+
+    let day_within_year = day_within_year(time);
+
+    if 0.0 <= day_within_year && day_within_year < 31.0 {
+        0.0
+    } else if 31.0 <= day_within_year && day_within_year < 59.0 + leap_year {
+        1.0
+    } else if 59.0 + leap_year <= day_within_year && day_within_year < 90.0 + leap_year {
+        2.0
+    } else if 90.0 + leap_year <= day_within_year && day_within_year < 120.0 + leap_year {
+        3.0
+    } else if 120.0 + leap_year <= day_within_year && day_within_year < 151.0 + leap_year {
+        4.0
+    } else if 151.0 + leap_year <= day_within_year && day_within_year < 181.0 + leap_year {
+        5.0
+    } else if 181.0 + leap_year <= day_within_year && day_within_year < 212.0 + leap_year {
+        6.0
+    } else if 212.0 + leap_year <= day_within_year && day_within_year < 243.0 + leap_year {
+        7.0
+    } else if 243.0 + leap_year <= day_within_year && day_within_year < 273.0 + leap_year {
+        8.0
+    } else if 273.0 + leap_year <= day_within_year && day_within_year < 304.0 + leap_year {
+        9.0
+    } else if 304.0 + leap_year <= day_within_year && day_within_year < 334.0 + leap_year {
+        10.0
+    } else if 334.0 + leap_year <= day_within_year && day_within_year < 365.0 + leap_year {
+        11.0
+    } else {
+        unreachable!("invalid day")
+    }
+}
+
+fn day_within_year(time: f64) -> f64 {
+    day(time) - day_from_year(year_from_time(time))
+}
+
+// 21.4.1.5 Date Number
+pub fn date_from_time(time: f64) -> f64 {
+    let month_from_time = month_from_time(time);
+
+    let year = year_from_time(time);
+    let leap_year_day = if is_leap_year(year as i64) && month_from_time >= 2.0 {
+        1.0
+    } else {
+        0.0
+    };
+
+    const MONTHS_TABLE: [f64; 12] = [
+        -1.0,  // January
+        30.0,  // February
+        58.0,  // March
+        89.0,  // April
+        119.0, // May
+        150.0, // June
+        180.0, // July
+        211.0, // August
+        242.0, // September
+        272.0, // October
+        303.0, // November
+        333.0, // December
+    ];
+
+    day_within_year(time) - MONTHS_TABLE[month_from_time as usize] - leap_year_day
+}
+
+// 21.4.1.6 Week Day
+pub fn week_day(time: f64) -> f64 {
+    modulo(day(time) + 4.0, 7.0)
+}
 
 // 21.4.1.11 LocalTime
 pub fn local_time(time: f64) -> f64 {
@@ -77,6 +195,22 @@ pub fn local_time(time: f64) -> f64 {
 pub fn utc(time: f64) -> f64 {
     // TODO: Handle time zones
     time
+}
+
+pub fn hour_from_time(time: f64) -> f64 {
+    modulo(f64::floor(time / MS_PER_HOUR), HOURS_PER_DAY)
+}
+
+pub fn minute_from_time(time: f64) -> f64 {
+    modulo(f64::floor(time / MS_PER_MINUTE), MINUTES_PER_HOUR)
+}
+
+pub fn second_from_time(time: f64) -> f64 {
+    modulo(f64::floor(time / MS_PER_SECOND), SECONDS_PER_MINUTE)
+}
+
+pub fn millisecond_from_time(time: f64) -> f64 {
+    modulo(time, MS_PER_SECOND)
 }
 
 // 21.4.1.14 MakeTime

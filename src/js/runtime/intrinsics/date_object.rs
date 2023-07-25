@@ -56,6 +56,10 @@ impl DateObject {
     pub fn date_value(&self) -> f64 {
         self.date_value
     }
+
+    pub fn set_date_value(&mut self, date_value: f64) {
+        self.date_value = date_value;
+    }
 }
 
 /// Time values are capped to this value
@@ -71,8 +75,12 @@ const MS_PER_HOUR: f64 = MS_PER_MINUTE * MINUTES_PER_HOUR;
 const MS_PER_DAY: f64 = MS_PER_HOUR * HOURS_PER_DAY;
 
 // 21.4.1.2 Day Number and Time within Day
-fn day(time: f64) -> f64 {
+pub fn day(time: f64) -> f64 {
     f64::floor(time / MS_PER_DAY)
+}
+
+pub fn time_within_day(time: f64) -> f64 {
+    modulo(time, MS_PER_DAY)
 }
 
 // 21.4.1.3 Year Number

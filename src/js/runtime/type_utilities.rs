@@ -193,12 +193,15 @@ pub fn to_integer_or_infinity(cx: &mut Context, value: Handle<Value>) -> EvalRes
     let number_handle = maybe!(to_number(cx, value));
     let number = number_handle.get();
 
-    let number_f64 = number.as_number();
-    if number.is_nan() || number_f64 == 0.0 {
+    to_integer_or_infinity_f64(number.as_number()).into()
+}
+
+pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
+    if number_f64.is_nan() || number_f64 == 0.0 {
         return 0.0.into();
     }
 
-    if number.is_infinity() {
+    if number_f64.is_infinite() {
         return number_f64.into();
     }
 

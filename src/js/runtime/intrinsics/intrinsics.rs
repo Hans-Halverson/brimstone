@@ -21,6 +21,8 @@ use crate::{
             boolean_prototype::BooleanPrototype,
             data_view_constructor::DataViewConstructor,
             data_view_prototype::DataViewPrototype,
+            date_constructor::DateConstructor,
+            date_prototype::DatePrototype,
             error_constructor::ErrorConstructor,
             error_prototype::ErrorPrototype,
             finalization_registry_constructor::FinalizationRegistryConstructor,
@@ -94,6 +96,8 @@ pub enum Intrinsic {
     BigIntPrototype,
     BooleanConstructor,
     BooleanPrototype,
+    DateConstructor,
+    DatePrototype,
     DataViewConstructor,
     DataViewPrototype,
     ErrorConstructor,
@@ -249,6 +253,7 @@ impl Intrinsics {
         register_intrinsic_pair!(StringPrototype, StringConstructor);
         register_intrinsic_pair!(SymbolPrototype, SymbolConstructor);
         register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
+        register_intrinsic_pair!(DatePrototype, DateConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
         register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
         register_intrinsic_pair!(DataViewPrototype, DataViewConstructor);

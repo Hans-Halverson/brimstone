@@ -59,6 +59,7 @@ pub enum ObjectKind {
     BigIntObject,
     ArrayObject,
     ErrorObject,
+    DateObject,
     SetObject,
     MapObject,
     WeakRefObject,
@@ -250,6 +251,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::BigIntObject);
         register_descriptor!(ObjectKind::ArrayObject, ArrayObject, DescFlags::IS_OBJECT);
         ordinary_object_descriptor!(ObjectKind::ErrorObject);
+        ordinary_object_descriptor!(ObjectKind::DateObject);
         ordinary_object_descriptor!(ObjectKind::SetObject);
         ordinary_object_descriptor!(ObjectKind::MapObject);
         ordinary_object_descriptor!(ObjectKind::WeakRefObject);

@@ -78,6 +78,7 @@ builtin_names!(
     (big_uint64_array, "BigUint64Array"),
     (boolean, "Boolean"),
     (data_view, "DataView"),
+    (date, "Date"),
     (error, "Error"),
     (eval_error, "EvalError"),
     (finalization_registry, "FinalizationRegistry"),

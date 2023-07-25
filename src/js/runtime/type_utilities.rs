@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
-use crate::maybe;
+use crate::{js::common::math::modulo, maybe};
 
 use super::{
     abstract_operations::{call_object, get, get_method},
@@ -238,7 +238,7 @@ pub fn to_int32(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i32
 
     // Compute modulus according to spec
     let u32_max = u32::MAX as i64 + 1;
-    i32_number = ((i32_number % u32_max) + u32_max) % u32_max;
+    i32_number = modulo(i32_number, u32_max);
 
     // Then center in i32 range around 0
     if i32_number >= (u32_max >> 1) {
@@ -275,7 +275,7 @@ pub fn to_uint32(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u3
 
     // Compute modulus according to spec
     let u32_max = u32::MAX as i64 + 1;
-    u32_number = ((u32_number % u32_max) + u32_max) % u32_max;
+    u32_number = modulo(u32_number, u32_max);
 
     (u32_number as u32).into()
 }
@@ -304,7 +304,7 @@ pub fn to_int16(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i16
 
     // Compute modulus according to spec
     let u16_max = u16::MAX as i64 + 1;
-    i16_number = ((i16_number % u16_max) + u16_max) % u16_max;
+    i16_number = modulo(i16_number, u16_max);
 
     // Then center in i16 range around 0
     if i16_number > (i16::MAX as i64) {
@@ -341,7 +341,7 @@ pub fn to_uint16(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u1
 
     // Compute modulus according to spec
     let u16_max = u16::MAX as i64 + 1;
-    u16_number = ((u16_number % u16_max) + u16_max) % u16_max;
+    u16_number = modulo(u16_number, u16_max);
 
     (u16_number as u16).into()
 }
@@ -370,7 +370,7 @@ pub fn to_int8(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<i8> 
 
     // Compute modulus according to spec
     let u8_max = u8::MAX as i64 + 1;
-    i8_number = ((i8_number % u8_max) + u8_max) % u8_max;
+    i8_number = modulo(i8_number, u8_max);
 
     // Then center in i8 range around 0
     if i8_number > (i8::MAX as i64) {
@@ -407,7 +407,7 @@ pub fn to_uint8(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u8>
 
     // Compute modulus according to spec
     let u8_max = u8::MAX as i64 + 1;
-    u8_number = ((u8_number % u8_max) + u8_max) % u8_max;
+    u8_number = modulo(u8_number, u8_max);
 
     (u8_number as u8).into()
 }

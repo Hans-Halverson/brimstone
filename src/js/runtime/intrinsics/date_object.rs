@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    js::{runtime::{
         gc::HeapObject,
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
@@ -10,7 +10,7 @@ use crate::{
         ordinary_object::{object_create, object_create_from_constructor},
         type_utilities::to_integer_or_infinity_f64,
         Context, EvalResult, Handle, HeapPtr,
-    },
+    }, common::math::modulo},
     maybe, set_uninit,
 };
 
@@ -98,7 +98,7 @@ fn floor_div(a: i64, b: i64) -> i64 {
     if a >= 0 {
         a / b
     } else {
-       ((a + 1) / b) - 1
+        ((a + 1) / b) - 1
     }
 }
 
@@ -179,7 +179,7 @@ pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
     }
 
     // Separate out the month in the calculated year. Compute modulus according to spec.
-    let calculated_month = (12.0 + (month % 12.0)) % 12.0;
+    let calculated_month = modulo(month, 12.0);
 
     // TODO: Handle lossy casts
     let calculated_year = calculated_year as i64;

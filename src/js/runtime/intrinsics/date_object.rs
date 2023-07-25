@@ -93,19 +93,28 @@ pub fn make_time(hour: f64, minute: f64, second: f64, millisecond: f64) -> f64 {
     hour * MS_PER_HOUR + minute * MS_PER_MINUTE + second * MS_PER_SECOND + millisecond
 }
 
-fn is_leap_year(year: i64) -> bool {
-    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+// Floor division - round towards negative infintiy
+fn floor_div(a: i64, b: i64) -> i64 {
+    if a >= 0 {
+        a / b
+    } else {
+       ((a + 1) / b) - 1
+    }
 }
 
-// Calculate number of leap years in a time period between two years
-fn leap_years_between_years(start_year: i64, end_year: i64) -> i64 {
-    leap_years_before_year(end_year) - leap_years_before_year(start_year)
+fn is_leap_year(year: i64) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 // Calculate number of leap years after year 0 but before the given year
 fn leap_years_before_year(year: i64) -> i64 {
     let year = year - 1;
-    (year / 4) - (year / 100) + (year / 400)
+    floor_div(year, 4) - floor_div(year, 100) + floor_div(year, 400)
+}
+
+// Calculate number of leap years in a time period between two years
+fn leap_years_between_years(start_year: i64, end_year: i64) -> i64 {
+    leap_years_before_year(end_year) - leap_years_before_year(start_year)
 }
 
 fn year_to_days_since_unix_epoch(year: i64) -> i64 {
@@ -124,7 +133,7 @@ fn year_month_day_to_days_since_year_start(year: i64, month: i64, day: i64) -> i
     // Table to lookup one less than the number of days until the start of each month, excluding
     // leap days.
     const DAYS_TO_MONTH_START: [i64; 12] = [
-        0,   // January
+        -1,  // January
         30,  // February
         58,  // March
         89,  // April
@@ -144,7 +153,7 @@ fn year_month_day_to_days_since_year_start(year: i64, month: i64, day: i64) -> i
         0
     };
 
-    DAYS_TO_MONTH_START[month as usize] + day + leap_day
+    DAYS_TO_MONTH_START[month as usize - 1] + day + leap_day
 }
 
 // Year + month + day to the number of days since the Unix epoch. Months and days are 1-indexed.
@@ -169,8 +178,8 @@ pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
         return f64::NAN;
     }
 
-    // Separate out the month in the calculated year
-    let calculated_month = month % 12.0;
+    // Separate out the month in the calculated year. Compute modulus according to spec.
+    let calculated_month = (12.0 + (month % 12.0)) % 12.0;
 
     // TODO: Handle lossy casts
     let calculated_year = calculated_year as i64;

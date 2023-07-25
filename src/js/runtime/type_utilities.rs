@@ -207,7 +207,7 @@ pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
 
     let mut integer_f64 = number_f64.abs().floor();
 
-    if number_f64 < 0.0 {
+    if number_f64 < 0.0 && integer_f64 != 0.0 {
         integer_f64 = -integer_f64;
     }
 

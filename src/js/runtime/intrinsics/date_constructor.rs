@@ -51,6 +51,9 @@ impl DateConstructor {
             ),
         );
 
+        func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm);
+        func.intrinsic_func(cx, cx.names.utc(), Self::utc, 7, realm);
+
         func
     }
 
@@ -68,13 +71,14 @@ impl DateConstructor {
         };
 
         let number_of_args = arguments.len();
-        let date_value;
 
-        if number_of_args == 0 {
-            date_value = get_current_unix_time();
+        let date_value = if number_of_args == 0 {
+            get_current_unix_time()
         } else if number_of_args == 1 {
-            if let Some(date_value_arg) = this_date_value(get_argument(cx, arguments, 0)) {
-                date_value = date_value_arg;
+            let date_value = if let Some(date_value_arg) =
+                this_date_value(get_argument(cx, arguments, 0))
+            {
+                date_value_arg
             } else {
                 let arg = get_argument(cx, arguments, 0);
                 let primitive_value = maybe!(to_primitive(cx, arg, ToPrimitivePreferredType::None));
@@ -82,9 +86,11 @@ impl DateConstructor {
                 if primitive_value.is_string() {
                     unimplemented!("date parsing");
                 } else {
-                    date_value = maybe!(to_number(cx, primitive_value)).as_number();
+                    maybe!(to_number(cx, primitive_value)).as_number()
                 }
-            }
+            };
+
+            time_clip(date_value)
         } else {
             let year_arg = get_argument(cx, arguments, 0);
             let mut year = maybe!(to_number(cx, year_arg)).as_number();
@@ -139,11 +145,90 @@ impl DateConstructor {
             let final_time = make_time(hour, minute, second, millisecond);
             let final_date = make_date(final_day, final_time);
 
-            date_value = time_clip(utc(final_date));
-        }
+            time_clip(utc(final_date))
+        };
 
         maybe!(DateObject::new_from_constructor(cx, new_target, date_value))
             .to_handle()
             .into()
+    }
+
+    // 21.4.3.1 Date.now
+    fn now(
+        cx: &mut Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        Value::from(get_current_unix_time()).to_handle(cx).into()
+    }
+
+    // 21.4.3.4 Date.UTC
+    fn utc(
+        cx: &mut Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let number_of_args = arguments.len();
+
+        let year_arg = get_argument(cx, arguments, 0);
+        let mut year = maybe!(to_number(cx, year_arg)).as_number();
+
+        let month = if number_of_args > 1 {
+            let month_arg = get_argument(cx, arguments, 1);
+            maybe!(to_number(cx, month_arg)).as_number()
+        } else {
+            0.0
+        };
+
+        let day = if number_of_args > 2 {
+            let day_arg = get_argument(cx, arguments, 2);
+            maybe!(to_number(cx, day_arg)).as_number()
+        } else {
+            1.0
+        };
+
+        let hour = if number_of_args > 3 {
+            let hour_arg = get_argument(cx, arguments, 3);
+            maybe!(to_number(cx, hour_arg)).as_number()
+        } else {
+            0.0
+        };
+
+        let minute = if number_of_args > 4 {
+            let minute_arg = get_argument(cx, arguments, 4);
+            maybe!(to_number(cx, minute_arg)).as_number()
+        } else {
+            0.0
+        };
+
+        let second = if number_of_args > 5 {
+            let second_arg = get_argument(cx, arguments, 5);
+            maybe!(to_number(cx, second_arg)).as_number()
+        } else {
+            0.0
+        };
+
+        let millisecond = if number_of_args > 6 {
+            let millisecond_arg = get_argument(cx, arguments, 6);
+            maybe!(to_number(cx, millisecond_arg)).as_number()
+        } else {
+            0.0
+        };
+
+        // Two digit years are treated as 19XX
+        if !year.is_nan() {
+            let year_int = to_integer_or_infinity_f64(year);
+            if 0.0 <= year_int && year_int <= 99.0 {
+                year = 1900.0 + year_int;
+            }
+        }
+
+        let final_day = make_day(year, month, day);
+        let final_time = make_time(hour, minute, second, millisecond);
+        let final_date = make_date(final_day, final_time);
+
+        Value::from(time_clip(final_date)).to_handle(cx).into()
     }
 }

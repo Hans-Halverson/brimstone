@@ -275,7 +275,7 @@ impl ObjectValue {
     }
 
     pub fn is_date_object(&self) -> bool {
-        false
+        self.descriptor_kind() == ObjectKind::DateObject
     }
 
     pub fn is_regexp_object(&self) -> bool {

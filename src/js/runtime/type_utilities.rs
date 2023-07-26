@@ -72,7 +72,7 @@ pub fn to_primitive(
 }
 
 // 7.1.1.1 OrdinaryToPrimitive
-fn ordinary_to_primitive(
+pub fn ordinary_to_primitive(
     cx: &mut Context,
     object: Handle<ObjectValue>,
     preferred_type: ToPrimitivePreferredType,
@@ -407,7 +407,7 @@ pub fn to_uint8(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<u8>
 
     // Compute modulus according to spec
     let u8_max = u8::MAX as i64 + 1;
-    u8_number = modulo(u8_number, u8_max);
+    u8_number = ((u8_number % u8_max) + u8_max) % u8_max;
 
     (u8_number as u8).into()
 }

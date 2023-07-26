@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
-        object_value::ObjectValue, property::Property, property_key::PropertyKey, realm::Realm,
-        string_value::StringValue, value::SymbolValue, Context, Handle, Value,
+        object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
+        value::SymbolValue, Context, Handle, Value,
     },
     maybe,
 };
@@ -24,13 +24,11 @@ impl SymbolPrototype {
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
-        let to_primitive_name = cx.alloc_string(String::from("[Symbol.toPrimitive]"));
-        let to_primitive_name_key = PropertyKey::string(cx, to_primitive_name).to_handle(cx);
         let to_primitive_func = BuiltinFunction::create(
             cx,
             Self::to_primitive,
             1,
-            to_primitive_name_key,
+            cx.names.symbol_to_primitive(),
             Some(realm),
             None,
             None,

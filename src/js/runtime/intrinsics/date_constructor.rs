@@ -8,7 +8,7 @@ use crate::{
             gc::Handle,
             intrinsics::{
                 date_object::{make_date, make_day, make_time, time_clip, utc, DateObject},
-                date_prototype::this_date_value,
+                date_prototype::{this_date_value, to_date_string},
             },
             object_value::ObjectValue,
             property::Property,
@@ -67,7 +67,7 @@ impl DateConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            unimplemented!("ToDateString");
+            return to_date_string(cx, get_current_unix_time()).into();
         };
 
         let number_of_args = arguments.len();

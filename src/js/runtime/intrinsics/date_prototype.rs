@@ -1,10 +1,17 @@
 use crate::{
     js::runtime::{
-        error::type_error_,
+        abstract_operations::invoke,
+        builtin_function::BuiltinFunction,
+        error::{range_error_, type_error_},
         function::get_argument,
+        interned_strings::InternedStrings,
         intrinsics::date_object::{day, make_date, make_time, time_clip},
         object_value::ObjectValue,
-        type_utilities::to_number,
+        property::Property,
+        string_value::StringValue,
+        type_utilities::{
+            ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
+        },
         Context, EvalResult, Handle, Realm, Value,
     },
     maybe,
@@ -79,7 +86,46 @@ impl DatePrototype {
         object.intrinsic_func(cx, cx.names.set_utc_minutes(), Self::set_utc_minutes, 3, realm);
         object.intrinsic_func(cx, cx.names.set_utc_month(), Self::set_utc_month, 2, realm);
         object.intrinsic_func(cx, cx.names.set_utc_seconds(), Self::set_utc_seconds, 2, realm);
+        object.intrinsic_func(cx, cx.names.to_date_string(), Self::to_date_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_iso_string(), Self::to_iso_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_json(), Self::to_json, 1, realm);
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_date_string(),
+            Self::to_locale_date_string,
+            0,
+            realm,
+        );
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_time_string(),
+            Self::to_locale_time_string,
+            0,
+            realm,
+        );
+        object.intrinsic_func(cx, cx.names.to_time_string(), Self::to_time_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_utc_string(), Self::to_utc_string, 0, realm);
         object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+
+        // [Symbol.toPrimitive] property
+        let to_primitive_key = cx.well_known_symbols.to_primitive();
+        let to_primitive_func = BuiltinFunction::create(
+            cx,
+            Self::to_primitive,
+            1,
+            cx.names.symbol_to_primitive(),
+            Some(realm),
+            None,
+            None,
+        )
+        .into();
+        object.set_property(
+            cx,
+            to_primitive_key,
+            Property::data(to_primitive_func, false, false, true),
+        );
 
         object
     }
@@ -1192,6 +1238,243 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
+    // 21.4.4.35 Date.prototype.toDateString
+    fn to_date_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toDateString method must be called on Date object",
+            );
+        };
+
+        Self::to_date_string_shared(cx, date_value)
+    }
+
+    fn to_date_string_shared(cx: &mut Context, date_value: f64) -> EvalResult<Handle<Value>> {
+        if date_value.is_nan() {
+            return InternedStrings::get_str(cx, "Invalid Date").into();
+        }
+
+        let date_value = local_time(date_value);
+
+        let mut string = String::new();
+        date_string(&mut string, date_value);
+
+        cx.alloc_string(string).into()
+    }
+
+    // 21.4.4.36 Date.prototype.toISOString
+    fn to_iso_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toISOString method must be called on Date object",
+            );
+        };
+
+        if !date_value.is_finite() {
+            return range_error_(cx, "Date value is not finite");
+        }
+
+        let year = year_from_time(date_value) as i64;
+        let year_string = if year >= 0 && year <= 9999 {
+            format!("{:4}", year)
+        } else {
+            let year_sign = if year.is_positive() { '+' } else { '-' };
+
+            format!("{}{:6}", year_sign, year)
+        };
+
+        let string = format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
+            year_string,
+            month_from_time(date_value) as i64 + 1, // 1-indexed
+            date_from_time(date_value) as i64,      // 1-indexed
+            hour_from_time(date_value) as i64,
+            minute_from_time(date_value) as i64,
+            second_from_time(date_value) as i64,
+            millisecond_from_time(date_value) as i64
+        );
+
+        cx.alloc_string(string).into()
+    }
+
+    // 21.4.4.37 Date.prototype.toJSON
+    fn to_json(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+
+        let time_value = maybe!(to_primitive(cx, object.into(), ToPrimitivePreferredType::Number));
+
+        if time_value.is_number() && !time_value.as_number().is_finite() {
+            return cx.null().into();
+        }
+
+        invoke(cx, object.into(), cx.names.to_iso_string(), &[])
+    }
+
+    // 21.4.4.38 Date.prototype.toLocaleDateString
+    fn to_locale_date_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toLocaleDateString method must be called on Date object",
+            );
+        };
+
+        Self::to_date_string_shared(cx, date_value)
+    }
+
+    // 21.4.4.39 Date.prototype.toLocaleString
+    fn to_locale_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toLocaleString method must be called on Date object",
+            );
+        };
+
+        to_date_string(cx, date_value).into()
+    }
+
+    // 21.4.4.40 Date.prototype.toLocaleTimeString
+    fn to_locale_time_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toLocaleTimeString method must be called on Date object",
+            );
+        };
+
+        Self::to_time_string_shared(cx, date_value)
+    }
+
+    // 21.4.4.41 Date.prototype.toString
+    fn to_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(cx, "Date.prototype.toString method must be called on Date object");
+        };
+
+        to_date_string(cx, date_value).into()
+    }
+
+    // 21.4.4.42 Date.prototype.toTimeString
+    fn to_time_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toTimeString method must be called on Date object",
+            );
+        };
+
+        Self::to_time_string_shared(cx, date_value)
+    }
+
+    fn to_time_string_shared(cx: &mut Context, date_value: f64) -> EvalResult<Handle<Value>> {
+        if date_value.is_nan() {
+            return InternedStrings::get_str(cx, "Invalid Date").into();
+        }
+
+        let local_date_value = local_time(date_value);
+
+        let mut string = String::new();
+
+        time_string(&mut string, local_date_value);
+        time_zone_string(&mut string, date_value);
+
+        cx.alloc_string(string).into()
+    }
+
+    // 21.4.4.43 Date.prototype.toUTCString
+    fn to_utc_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error_(
+                cx,
+                "Date.prototype.toUTCString method must be called on Date object",
+            );
+        };
+
+        if date_value.is_nan() {
+            return InternedStrings::get_str(cx, "Invalid Date").into();
+        }
+
+        let year = year_from_time(date_value);
+        let year_sign = if year.is_sign_negative() { "-" } else { "" };
+
+        let mut string = format!(
+            "{}, {:02} {} {}{:04} ",
+            week_day_string(date_value),
+            date_from_time(date_value) as i64,
+            month_string(date_value),
+            year_sign,
+            year as i64,
+        );
+
+        time_string(&mut string, date_value);
+
+        cx.alloc_string(string).into()
+    }
+
     // 21.4.4.44 Date.prototype.valueOf
     fn value_of(
         cx: &mut Context,
@@ -1207,6 +1490,125 @@ impl DatePrototype {
 
         Value::from(date_value).to_handle(cx).into()
     }
+
+    // 21.4.4.45 Date.prototype [ @@toPrimitive ]
+    fn to_primitive(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error_(cx, "Date.prototype[@@toPrimitive] must be called on object");
+        }
+
+        let hint = get_argument(cx, arguments, 0);
+        if hint.is_string() {
+            let hint = hint.as_string().flatten();
+            if hint.get_() == cx.names.default.as_string().as_flat()
+                || hint.get_() == cx.names.string_.as_string().as_flat()
+            {
+                return ordinary_to_primitive(
+                    cx,
+                    this_value.as_object(),
+                    ToPrimitivePreferredType::String,
+                );
+            } else if hint.get_() == cx.names.number_.as_string().as_flat() {
+                return ordinary_to_primitive(
+                    cx,
+                    this_value.as_object(),
+                    ToPrimitivePreferredType::Number,
+                );
+            }
+        }
+
+        return type_error_(cx, "Invalid hint to Date.prototype[@@toPrimitive]");
+    }
+}
+
+// 21.4.4.41.1 TimeString
+fn time_string(string: &mut String, time_value: f64) {
+    string.push_str(&format!(
+        "{:02}:{:02}:{:02} GMT",
+        hour_from_time(time_value),
+        minute_from_time(time_value),
+        second_from_time(time_value),
+    ));
+}
+
+// 21.4.4.41.2 DateString
+fn date_string(string: &mut String, time_value: f64) {
+    string.push_str(&format!(
+        "{} {:02} {} {:04}",
+        week_day_string(time_value),
+        date_from_time(time_value) as i64,
+        month_string(time_value),
+        year_from_time(time_value) as i64,
+    ));
+}
+
+fn week_day_string(time_value: f64) -> &'static str {
+    match week_day(time_value) as i64 {
+        0 => "Sun",
+        1 => "Mon",
+        2 => "Tue",
+        3 => "Wed",
+        4 => "Thu",
+        5 => "Fri",
+        6 => "Sat",
+        _ => unreachable!("Invalid week day"),
+    }
+}
+
+fn month_string(time_value: f64) -> &'static str {
+    match month_from_time(time_value) as i64 {
+        0 => "Jan",
+        1 => "Feb",
+        2 => "Mar",
+        3 => "Apr",
+        4 => "May",
+        5 => "Jun",
+        6 => "Jul",
+        7 => "Aug",
+        8 => "Sep",
+        9 => "Oct",
+        10 => "Nov",
+        11 => "Dec",
+        _ => unreachable!("Invalid month"),
+    }
+}
+
+// 21.4.4.41.3 TimeZoneString
+fn time_zone_string(string: &mut String, _time_value: f64) {
+    // TODO: Handle time zones
+    let offset: f64 = 0.0;
+
+    let sign = if offset.is_sign_positive() { '+' } else { '-' };
+    let offset = offset.abs();
+
+    let hour = hour_from_time(offset);
+    let minute = minute_from_time(offset);
+
+    string.push(sign);
+    string.push_str(&format!("{:02}{:02}", hour, minute));
+}
+
+// 21.4.4.41.4 ToDateString
+pub fn to_date_string(cx: &mut Context, time_value: f64) -> Handle<StringValue> {
+    if time_value.is_nan() {
+        return InternedStrings::get_str(cx, "Invalid Date");
+    }
+
+    let local_time_value = local_time(time_value);
+
+    let mut string = String::new();
+
+    date_string(&mut string, local_time_value);
+    string.push(' ');
+    time_string(&mut string, local_time_value);
+    time_zone_string(&mut string, time_value);
+
+    cx.alloc_string(string)
 }
 
 #[inline]

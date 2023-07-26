@@ -160,6 +160,12 @@ impl Value {
         self.as_raw_bits() == CANONICAL_NAN
     }
 
+    /// Whether the number is not NaN or infinity
+    #[inline]
+    pub fn is_finite(&self) -> bool {
+        self.as_double().is_finite()
+    }
+
     /// Whether number is positive or negative infinity
     #[inline]
     pub const fn is_infinity(&self) -> bool {

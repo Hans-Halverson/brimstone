@@ -1292,15 +1292,15 @@ impl DatePrototype {
 
         let year = year_from_time(date_value) as i64;
         let year_string = if year >= 0 && year <= 9999 {
-            format!("{:4}", year)
+            format!("{:04}", year)
         } else {
             let year_sign = if year.is_positive() { '+' } else { '-' };
 
-            format!("{}{:6}", year_sign, year)
+            format!("{}{:06}", year_sign, year.abs())
         };
 
         let string = format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
+            "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
             year_string,
             month_from_time(date_value) as i64 + 1, // 1-indexed
             date_from_time(date_value) as i64,      // 1-indexed
@@ -1467,7 +1467,7 @@ impl DatePrototype {
             date_from_time(date_value) as i64,
             month_string(date_value),
             year_sign,
-            year as i64,
+            year.abs() as i64,
         );
 
         time_string(&mut string, date_value);
@@ -1538,12 +1538,16 @@ fn time_string(string: &mut String, time_value: f64) {
 
 // 21.4.4.41.2 DateString
 fn date_string(string: &mut String, time_value: f64) {
+    let year = year_from_time(time_value);
+    let year_sign = if year.is_sign_negative() { "-" } else { "" };
+
     string.push_str(&format!(
-        "{} {:02} {} {:04}",
+        "{} {} {:02} {}{:04}",
         week_day_string(time_value),
-        date_from_time(time_value) as i64,
         month_string(time_value),
-        year_from_time(time_value) as i64,
+        date_from_time(time_value) as i64,
+        year_sign,
+        year.abs() as i64,
     ));
 }
 

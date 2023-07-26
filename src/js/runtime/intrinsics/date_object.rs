@@ -63,16 +63,16 @@ impl DateObject {
 }
 
 /// Time values are capped to this value
-const MAX_TIME_VALUE: f64 = 8.64e15;
+pub const MAX_TIME_VALUE: f64 = 8.64e15;
 
-const MS_PER_SECOND: f64 = 1000.0;
+pub const MS_PER_SECOND: f64 = 1000.0;
 const SECONDS_PER_MINUTE: f64 = 60.0;
 const MINUTES_PER_HOUR: f64 = 60.0;
 const HOURS_PER_DAY: f64 = 24.0;
 
 pub const MS_PER_MINUTE: f64 = MS_PER_SECOND * SECONDS_PER_MINUTE;
-const MS_PER_HOUR: f64 = MS_PER_MINUTE * MINUTES_PER_HOUR;
-const MS_PER_DAY: f64 = MS_PER_HOUR * HOURS_PER_DAY;
+pub const MS_PER_HOUR: f64 = MS_PER_MINUTE * MINUTES_PER_HOUR;
+pub const MS_PER_DAY: f64 = MS_PER_HOUR * HOURS_PER_DAY;
 
 // 21.4.1.2 Day Number and Time within Day
 pub fn day(time: f64) -> f64 {
@@ -298,9 +298,9 @@ fn year_month_day_to_days_since_year_start(year: i64, month: i64, day: i64) -> i
     DAYS_TO_MONTH_START[month as usize - 1] + day + leap_day
 }
 
-// Year + month + day to the number of days since the Unix epoch. Months and days are 1-indexed.
-// Month must be between 1 and 12, day is not constrained.
-fn year_month_day_to_days_since_unix_epoch(year: i64, month: i64, day: i64) -> i64 {
+/// Year + month + day to the number of days since the Unix epoch. Months and days are 1-indexed.
+/// Month must be between 1 and 12, day is not constrained.
+pub fn year_month_day_to_days_since_unix_epoch(year: i64, month: i64, day: i64) -> i64 {
     year_to_days_since_unix_epoch(year) + year_month_day_to_days_since_year_start(year, month, day)
 }
 

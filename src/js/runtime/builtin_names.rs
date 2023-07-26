@@ -261,6 +261,7 @@ builtin_names!(
     (number_, "number"),
     (of, "of"),
     (own_keys, "ownKeys"),
+    (parse, "parse"),
     (parse_float, "parseFloat"),
     (parse_int, "parseInt"),
     (pop, "pop"),

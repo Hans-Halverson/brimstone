@@ -13,6 +13,8 @@ use crate::{
             object_value::ObjectValue,
             property::Property,
             realm::Realm,
+            string_parsing::parse_string_to_date,
+            to_string,
             type_utilities::{
                 to_integer_or_infinity_f64, to_number, to_primitive, ToPrimitivePreferredType,
             },
@@ -52,6 +54,7 @@ impl DateConstructor {
         );
 
         func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm);
+        func.intrinsic_func(cx, cx.names.parse(), Self::parse, 1, realm);
         func.intrinsic_func(cx, cx.names.utc(), Self::utc, 7, realm);
 
         func
@@ -84,7 +87,8 @@ impl DateConstructor {
                 let primitive_value = maybe!(to_primitive(cx, arg, ToPrimitivePreferredType::None));
 
                 if primitive_value.is_string() {
-                    unimplemented!("date parsing");
+                    let primitive_string = primitive_value.as_string();
+                    parse_string_to_date(primitive_string).unwrap_or(f64::NAN)
                 } else {
                     maybe!(to_number(cx, primitive_value)).as_number()
                 }
@@ -161,6 +165,23 @@ impl DateConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Value::from(get_current_unix_time()).to_handle(cx).into()
+    }
+
+    // 21.4.3.2 Date.parse
+    fn parse(
+        cx: &mut Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let string_arg = get_argument(cx, arguments, 0);
+        let string = maybe!(to_string(cx, string_arg));
+
+        if let Some(date_value) = parse_string_to_date(string) {
+            Value::from(date_value).to_handle(cx).into()
+        } else {
+            Value::nan().to_handle(cx).into()
+        }
     }
 
     // 21.4.3.4 Date.UTC

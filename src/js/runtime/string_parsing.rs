@@ -758,7 +758,7 @@ fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f6
 
     // Order of months and days is swapped between formats
     let month; // 0-indexed
-    let day; // 1-indexed
+    let day;
     if is_utc_format {
         day = parse_decimal_digits(&mut lexer, 2)?;
         lexer.expect(' ')?;
@@ -767,6 +767,11 @@ fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f6
         month = parse_month(&mut lexer)?;
         lexer.expect(' ')?;
         day = parse_decimal_digits(&mut lexer, 2)?;
+    }
+
+    // Validate range of day
+    if day < 1 || day > 31 {
+        return None;
     }
 
     lexer.expect(' ')?;
@@ -783,6 +788,11 @@ fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f6
     let minute = parse_decimal_digits(&mut lexer, 2)?;
     lexer.expect(':')?;
     let second = parse_decimal_digits(&mut lexer, 2)?;
+
+    // Validate range of hour, minute and second
+    if hour > 24 || minute > 59 || second > 59 {
+        return None;
+    }
 
     lexer.expect(' ')?;
     lexer.expect('G')?;
@@ -803,6 +813,11 @@ fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f6
 
         let timezone_hour = parse_decimal_digits(&mut lexer, 2)?;
         let timezone_minute = parse_decimal_digits(&mut lexer, 2)?;
+
+        // Validate range of timezone's hour and minute
+        if timezone_hour > 23 || timezone_minute > 59 {
+            return None;
+        }
 
         // TODO: Parse time zone names
         if !lexer.is_end() {

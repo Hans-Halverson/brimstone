@@ -2121,7 +2121,10 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(p(Expression::BigInt(BigIntLiteral { loc, value })))
             }
-            Token::Divide => Ok(p(Expression::Regexp(self.parse_regexp_literal()?))),
+            // RegExp may be started by "/=" which is treated as a single token
+            Token::Divide | Token::DivideEq => {
+                Ok(p(Expression::Regexp(self.parse_regexp_literal()?)))
+            }
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;

@@ -102,10 +102,15 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
+    fn char_at(&self, index: usize) -> char {
+        self.buf.as_bytes()[index].into()
+    }
+
+    #[inline]
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
-            self.current = self.buf.as_bytes()[self.pos].into();
+            self.current = self.char_at(self.pos);
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
@@ -132,7 +137,7 @@ impl<'a> Lexer<'a> {
     fn peek_n(&self, n: usize) -> char {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
-            self.buf.as_bytes()[next_pos].into()
+            self.char_at(next_pos)
         } else {
             EOF_CHAR
         }
@@ -1081,9 +1086,14 @@ impl<'a> Lexer<'a> {
         self.emit(Token::StringLiteral(value), start_pos)
     }
 
-    // Lex a regexp literal. Must be called when the previously lexed token was a '/'.
+    // Lex a regexp literal. Must be called when the previously lexed token was either a '/' or '/='
     pub fn next_regexp_literal(&mut self) -> LexResult {
-        let start_pos = self.pos - 1;
+        let start_pos = if self.char_at(self.pos - 1) == '/' {
+            self.pos - 1
+        } else {
+            self.pos - 2
+        };
+
         let pattern_start_pos = self.pos;
 
         // RegularExpressionFirstChar

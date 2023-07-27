@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-9:9",
+  loc: "1:0-11:6",
   body: [
     {
       type: "ExpressionStatement",
@@ -31,14 +31,14 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "2:0-2:6",
+      loc: "2:0-2:7",
       kind: {
         type: "Literal",
-        loc: "2:0-2:5",
-        raw: "/a/sm",
+        loc: "2:0-2:6",
+        raw: "/a/bcd",
         value: {
           pattern: "a",
-          flags: "sm",
+          flags: "bcd",
         },
         regexp: {
           type: "RegExp",
@@ -58,13 +58,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "4:0-4:13",
+      loc: "5:0-5:7",
       kind: {
         type: "Literal",
-        loc: "4:0-4:12",
-        raw: "/[asdf]asdf/",
+        loc: "5:0-5:6",
+        raw: "/=abc/",
         value: {
-          pattern: "[asdf]asdf",
+          pattern: "=abc",
           flags: "",
         },
         regexp: {
@@ -75,7 +75,7 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "[asdf]asdf",
+                  value: "=abc",
                 },
               ],
             },
@@ -85,13 +85,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:12",
+      loc: "8:0-8:6",
       kind: {
         type: "Literal",
-        loc: "5:0-5:11",
-        raw: "/[asdf[f]]/",
+        loc: "8:0-8:5",
+        raw: "/a|b/",
         value: {
-          pattern: "[asdf[f]]",
+          pattern: "a|b",
           flags: "",
         },
         regexp: {
@@ -102,7 +102,16 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "[asdf[f]]",
+                  value: "a",
+                },
+              ],
+            },
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Literal",
+                  value: "b",
                 },
               ],
             },
@@ -112,13 +121,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "7:0-7:9",
+      loc: "9:0-9:11",
       kind: {
         type: "Literal",
-        loc: "7:0-7:8",
-        raw: "/\[asdf/",
+        loc: "9:0-9:10",
+        raw: "/ab|ba|cd/",
         value: {
-          pattern: "\[asdf",
+          pattern: "ab|ba|cd",
           flags: "",
         },
         regexp: {
@@ -129,7 +138,25 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "\[asdf",
+                  value: "ab",
+                },
+              ],
+            },
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Literal",
+                  value: "ba",
+                },
+              ],
+            },
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Literal",
+                  value: "cd",
                 },
               ],
             },
@@ -139,13 +166,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "8:0-8:5",
+      loc: "10:0-10:6",
       kind: {
         type: "Literal",
-        loc: "8:0-8:4",
-        raw: "/\//",
+        loc: "10:0-10:5",
+        raw: "/|a|/",
         value: {
-          pattern: "\/",
+          pattern: "|a|",
           flags: "",
         },
         regexp: {
@@ -153,12 +180,20 @@
           alternatives: [
             {
               type: "Alternative",
+              terms: [],
+            },
+            {
+              type: "Alternative",
               terms: [
                 {
                   type: "Literal",
-                  value: "\/",
+                  value: "a",
                 },
               ],
+            },
+            {
+              type: "Alternative",
+              terms: [],
             },
           ],
         },
@@ -166,13 +201,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:9",
+      loc: "11:0-11:6",
       kind: {
         type: "Literal",
-        loc: "9:0-9:8",
-        raw: "/\a\b\c/",
+        loc: "11:0-11:5",
+        raw: "/|||/",
         value: {
-          pattern: "\a\b\c",
+          pattern: "|||",
           flags: "",
         },
         regexp: {
@@ -180,12 +215,19 @@
           alternatives: [
             {
               type: "Alternative",
-              terms: [
-                {
-                  type: "Literal",
-                  value: "\a\b\c",
-                },
-              ],
+              terms: [],
+            },
+            {
+              type: "Alternative",
+              terms: [],
+            },
+            {
+              type: "Alternative",
+              terms: [],
+            },
+            {
+              type: "Alternative",
+              terms: [],
             },
           ],
         },

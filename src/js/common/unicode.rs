@@ -153,3 +153,68 @@ pub fn get_hex_value(char: char) -> Option<u32> {
         _ => None,
     }
 }
+
+/// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
+/// current byte is in-bounds and is not ASCII meaning it is the start of a UTF-8 byte sequence.
+///
+/// Returns the codepoint as well as its length in bytes. If no valid codepoint could be parsed,
+/// return an error with the length of the invalid bytes.
+pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
+    let b1 = buf[0];
+
+    if (b1 & 0xE0) == 0xC0 && buf.len() >= 2 {
+        // Two byte sequence
+        let b2 = buf[1];
+
+        if !is_continuation_byte(b2) {
+            // return Err((self.pos() - 2, self.pos()));
+            return Err(2);
+        }
+
+        let mut codepoint = (b1 as u32 & 0x1F) << 6;
+        codepoint |= b2 as u32 & 0x3F;
+
+        Ok((unsafe { char::from_u32_unchecked(codepoint) }, 2))
+    } else if (b1 & 0xF0) == 0xE0 && buf.len() >= 3 {
+        // Three byte sequence
+        let b2 = buf[1];
+        let b3 = buf[2];
+
+        if !is_continuation_byte(b2) || !is_continuation_byte(b3) {
+            return Err(3);
+        }
+
+        let mut codepoint = (b1 as u32 & 0x0F) << 12;
+        codepoint |= (b2 as u32 & 0x3F) << 6;
+        codepoint |= b3 as u32 & 0x3F;
+
+        // Char could be in the surrogate pair range, 0xD800 - 0xDFFF, which is not considered
+        // a valid code point.
+        return match char::from_u32(codepoint) {
+            None => Err(3),
+            Some(char) => Ok((char, 3)),
+        };
+    } else if (b1 & 0xF8) == 0xF0 && buf.len() >= 4 {
+        // Four byte sequence
+        let b2 = buf[1];
+        let b3 = buf[2];
+        let b4 = buf[3];
+
+        if !is_continuation_byte(b2) || !is_continuation_byte(b3) || !is_continuation_byte(b4) {
+            return Err(4);
+        }
+
+        let mut codepoint = (b1 as u32 & 0x07) << 18;
+        codepoint |= (b2 as u32 & 0x3F) << 12;
+        codepoint |= (b3 as u32 & 0x3F) << 6;
+        codepoint |= b4 as u32 & 0x3F;
+
+        // Char could be above the code point max, 0x10FFFF
+        return match char::from_u32(codepoint) {
+            None => Err(4),
+            Some(char) => Ok((char, 4)),
+        };
+    } else {
+        return Err(1);
+    }
+}

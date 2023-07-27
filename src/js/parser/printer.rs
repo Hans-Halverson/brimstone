@@ -1,5 +1,9 @@
 use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
+use super::regexp::{
+    Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
+    ClassRange, Disjunction, Lookaround, Quantifier, RegExp, Term,
+};
 use super::source::Source;
 
 struct Printer<'a> {
@@ -53,7 +57,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_f64(&mut self, value: f64) {
+    fn print_number(&mut self, value: impl ToString) {
         self.string(&value.to_string())
     }
 
@@ -79,6 +83,13 @@ impl<'a> Printer<'a> {
         // Write loc as string in concise format
         self.indent();
         self.string(&format!("loc: \"{}:{}-{}:{}\",\n", start_line, start_col, end_line, end_col));
+    }
+
+    fn start_regexp_node(&mut self, name: &str) {
+        self.string("{\n");
+        self.inc_indent();
+
+        self.property("type", name, Printer::print_str);
     }
 
     fn end_node(&mut self) {
@@ -488,7 +499,7 @@ impl<'a> Printer<'a> {
             Expression::Number(lit) => self.print_number_literal(lit),
             Expression::String(lit) => self.print_string_literal(lit),
             Expression::BigInt(lit) => self.print_bigint_literal(lit),
-            Expression::Regexp(lit) => self.print_regexp_literal(lit),
+            Expression::RegExp(lit) => self.print_regexp_literal(lit),
             Expression::Unary(unary) => self.print_unary_expression(unary),
             Expression::Binary(binary) => self.print_binary_expression(binary),
             Expression::Logical(logical) => self.print_logical_expression(logical),
@@ -531,7 +542,7 @@ impl<'a> Printer<'a> {
 
     fn print_number_literal(&mut self, lit: &NumberLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("value", lit.value, Printer::print_f64);
+        self.property("value", lit.value, Printer::print_number);
         self.end_node();
     }
 
@@ -548,14 +559,15 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_regexp_literal(&mut self, lit: &RegexpLiteral) {
+    fn print_regexp_literal(&mut self, lit: &RegExpLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("raw", &lit.raw, Printer::print_string);
         self.property("value", lit, Printer::print_regex_value);
+        self.property("regexp", &lit.regexp, Printer::print_regexp);
         self.end_node();
     }
 
-    fn print_regex_value(&mut self, lit: &RegexpLiteral) {
+    fn print_regex_value(&mut self, lit: &RegExpLiteral) {
         self.string("{\n");
         self.inc_indent();
 
@@ -1130,11 +1142,134 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn print_optional_number(&mut self, number: Option<impl ToString>) {
+        match number {
+            None => self.print_null(),
+            Some(number) => self.print_number(number),
+        }
+    }
+
     fn print_optional_module_name(&mut self, module_name: Option<&P<ModuleName>>) {
         match module_name {
             None => self.print_null(),
             Some(module_name) => self.print_module_name(module_name),
         }
+    }
+
+    fn print_regexp(&mut self, regexp: &RegExp) {
+        self.start_regexp_node("RegExp");
+        self.print_disjunction(&regexp.disjunction);
+        self.end_node();
+    }
+
+    fn print_disjunction(&mut self, disjunction: &Disjunction) {
+        self.array_property("alternatives", &disjunction.alternatives, Printer::print_alternative);
+    }
+
+    fn print_alternative(&mut self, alternative: &Alternative) {
+        self.start_regexp_node("Alternative");
+        self.array_property("terms", &alternative.terms, Printer::print_term);
+        self.end_node();
+    }
+
+    fn print_term(&mut self, term: &Term) {
+        match term {
+            Term::Literal(literal) => self.print_regexp_literal_pattern(literal),
+            Term::Wildcard => self.print_regexp_wildcard(),
+            Term::Quantifier(quantifier) => self.print_regexp_quantifier(quantifier),
+            Term::Assertion(assertion) => self.print_regexp_assertion(assertion),
+            Term::Lookaround(lookaround) => self.print_regexp_lookaround(lookaround),
+            Term::CaptureGroup(group) => self.print_regexp_capture_group(group),
+            Term::AnonymousGroup(group) => self.print_regexp_anonymous_group(group),
+            Term::CharacterClass(class) => self.print_regexp_character_class(class),
+            Term::Backreference(backreference) => self.print_regexp_backreference(backreference),
+        }
+    }
+
+    fn print_regexp_literal_pattern(&mut self, literal: &String) {
+        self.start_regexp_node("Literal");
+        self.property("value", literal, Printer::print_string);
+        self.end_node();
+    }
+
+    fn print_regexp_wildcard(&mut self) {
+        self.start_regexp_node("Wildcard");
+        self.end_node();
+    }
+
+    fn print_regexp_quantifier(&mut self, quantifier: &Quantifier) {
+        self.start_regexp_node("Quantifier");
+        self.property("term", quantifier.term.as_ref(), Printer::print_term);
+        self.property("min", quantifier.min, Printer::print_number);
+        self.property("max", quantifier.max, Printer::print_optional_number);
+        self.property("is_greedy", quantifier.is_greedy, Printer::print_bool);
+        self.end_node();
+    }
+
+    fn print_regexp_assertion_kind(&mut self, kind: &Assertion) {
+        let str = match kind {
+            Assertion::Start => "^",
+            Assertion::End => "$",
+            Assertion::WordBoundary => "\\b",
+            Assertion::NotWordBoundary => "\\B",
+        };
+        self.print_str(str);
+    }
+
+    fn print_regexp_assertion(&mut self, assertion: &Assertion) {
+        self.start_regexp_node("Assertion");
+        self.property("kind", assertion, Printer::print_regexp_assertion_kind);
+        self.end_node();
+    }
+
+    fn print_regexp_lookaround(&mut self, lookaround: &Lookaround) {
+        self.start_regexp_node("Lookaround");
+        self.property("is_ahead", lookaround.is_ahead, Printer::print_bool);
+        self.property("is_positive", lookaround.is_positive, Printer::print_bool);
+        self.print_disjunction(&lookaround.disjunction);
+        self.end_node();
+    }
+
+    fn print_regexp_capture_group(&mut self, group: &CaptureGroup) {
+        self.start_regexp_node("CaptureGroup");
+        self.property("name", group.name.as_ref(), Printer::print_optional_identifier);
+        self.print_disjunction(&group.disjunction);
+        self.end_node();
+    }
+
+    fn print_regexp_anonymous_group(&mut self, group: &AnonymousGroup) {
+        self.start_regexp_node("AnonymousGroup");
+        self.print_disjunction(&group.disjunction);
+        self.end_node();
+    }
+
+    fn print_regexp_character_class_range(&mut self, range: &ClassRange) {
+        match range {
+            ClassRange::Single(single) => self.print_string(&format!("Single({})", single)),
+            ClassRange::Range(start, end) => {
+                self.print_string(&format!("Range({}, {})", start, end))
+            }
+            ClassRange::Digit => self.print_str("\\d"),
+            ClassRange::NotDigit => self.print_str("\\D"),
+            ClassRange::Word => self.print_str("\\w"),
+            ClassRange::NotWord => self.print_str("\\W"),
+            ClassRange::Whitespace => self.print_str("\\s"),
+            ClassRange::NotWhitespace => self.print_str("\\S"),
+        }
+    }
+
+    fn print_regexp_character_class(&mut self, class: &CharacterClass) {
+        self.start_regexp_node("CharacterClass");
+        self.property("is_inverted", class.is_inverted, Printer::print_bool);
+        self.array_property("ranges", &class.ranges, Printer::print_regexp_character_class_range);
+        self.end_node();
+    }
+
+    fn print_regexp_backreference(&mut self, backreference: &Backreference) {
+        self.start_regexp_node("Backreference");
+        self.property("name", backreference.name.as_ref(), Printer::print_optional_identifier);
+        self.property("index", backreference.index, Printer::print_number);
+        self.end_node();
     }
 }
 

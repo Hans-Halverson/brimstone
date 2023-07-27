@@ -4,6 +4,7 @@ use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
+use super::regexp_parser::RegExpParser;
 use super::source::Source;
 use super::token::Token;
 
@@ -2123,7 +2124,7 @@ impl<'a> Parser<'a> {
             }
             // RegExp may be started by "/=" which is treated as a single token
             Token::Divide | Token::DivideEq => {
-                Ok(p(Expression::Regexp(self.parse_regexp_literal()?)))
+                Ok(p(Expression::RegExp(self.parse_regexp_literal()?)))
             }
             Token::This => {
                 let loc = self.loc;
@@ -2366,20 +2367,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_regexp_literal(&mut self) -> ParseResult<RegexpLiteral> {
+    fn parse_regexp_literal(&mut self) -> ParseResult<RegExpLiteral> {
         let start_pos = self.current_start_pos();
 
         self.advance_regexp_literal()?;
 
-        if let Token::RegexpLiteral { raw, pattern, flags } = &self.token {
+        if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
             let raw = raw.clone();
             let pattern = pattern.clone();
             let flags = flags.clone();
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);
+            let source = self.lexer.source.clone();
 
-            Ok(RegexpLiteral { loc, raw, pattern, flags })
+            let regexp = RegExpParser::parse_regexp(loc, source, &pattern, &flags)?;
+
+            Ok(RegExpLiteral { loc, raw, pattern, flags, regexp })
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }

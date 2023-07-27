@@ -4,7 +4,7 @@ use num_bigint::BigInt;
 
 use crate::{js::runtime::completion::EvalResult, maybe};
 
-use super::loc::Loc;
+use super::{loc::Loc, regexp::RegExp};
 
 pub type P<T> = Box<T>;
 
@@ -575,7 +575,7 @@ pub enum Expression {
     Number(NumberLiteral),
     String(StringLiteral),
     BigInt(BigIntLiteral),
-    Regexp(RegexpLiteral),
+    RegExp(RegExpLiteral),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
     Logical(LogicalExpression),
@@ -639,11 +639,12 @@ pub struct BigIntLiteral {
     pub value: BigInt,
 }
 
-pub struct RegexpLiteral {
+pub struct RegExpLiteral {
     pub loc: Loc,
     pub raw: String,
     pub pattern: String,
     pub flags: String,
+    pub regexp: RegExp,
 }
 
 #[derive(PartialEq)]

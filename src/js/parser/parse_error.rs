@@ -17,7 +17,7 @@ pub enum ParseError {
     ExpectedToken(Token, Token),
     InvalidUnicode,
     UnterminatedStringLiteral,
-    UnterminatedRegexpLiteral,
+    UnterminatedRegExpLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
     BigIntLeadingZero,
@@ -99,7 +99,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
-            ParseError::UnterminatedRegexpLiteral => write!(f, "Unterminated regexp literal"),
+            ParseError::UnterminatedRegExpLiteral => {
+                write!(f, "Unterminated regular expression literal")
+            }
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
             ParseError::BigIntLeadingZero => write!(f, "BigInt cannot have a leading zero"),

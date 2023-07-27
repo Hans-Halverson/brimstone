@@ -4,8 +4,8 @@ use std::str::FromStr;
 use num_bigint::BigInt;
 
 use crate::js::common::unicode::{
-    get_binary_value, get_hex_value, get_octal_value, is_ascii, is_ascii_newline,
-    is_ascii_whitespace, is_continuation_byte, is_decimal_digit, is_newline, is_unicode_newline,
+    decode_utf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
+    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_newline, is_unicode_newline,
     is_unicode_whitespace,
 };
 
@@ -144,15 +144,15 @@ impl<'a> Lexer<'a> {
     }
 
     fn peek(&mut self) -> char {
-        self.peek_n(1)
+        Lexer::peek_n(self, 1)
     }
 
     fn peek2(&mut self) -> char {
-        self.peek_n(2)
+        Lexer::peek_n(self, 2)
     }
 
     fn peek3(&mut self) -> char {
-        self.peek_n(3)
+        Lexer::peek_n(self, 3)
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
@@ -163,9 +163,13 @@ impl<'a> Lexer<'a> {
         Ok((token, self.mark_loc(start_pos)))
     }
 
-    fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
+    fn localized_parse_error(&self, loc: Loc, error: ParseError) -> LocalizedParseError {
         let source = (*self.source).clone();
-        Err(LocalizedParseError { error, source_loc: Some((loc, source)) })
+        LocalizedParseError { error, source_loc: Some((loc, source)) }
+    }
+
+    fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
+        Err(self.localized_parse_error(loc, error))
     }
 
     pub fn next(&mut self) -> LexResult {
@@ -625,76 +629,6 @@ impl<'a> Lexer<'a> {
         Ok(())
     }
 
-    fn error_invalid_unicode(&mut self, start_pos: Pos) -> ParseResult<char> {
-        let loc = self.mark_loc(start_pos);
-        return self.error(loc, ParseError::InvalidUnicode);
-    }
-
-    // Lex a non-ascii unicode codepoint encoded as utf-8
-    fn lex_utf8_codepoint(&mut self) -> ParseResult<char> {
-        let bytes = self.buf[self.pos..].as_bytes();
-        let b1 = bytes[0];
-
-        if (b1 & 0xE0) == 0xC0 && self.pos + 1 < self.buf.len() {
-            // Two byte sequence
-            self.advance2();
-
-            let b2 = bytes[1];
-            if !is_continuation_byte(b2) {
-                return self.error_invalid_unicode(self.pos - 2);
-            }
-
-            let mut codepoint = (b1 as u32 & 0x1F) << 6;
-            codepoint |= b2 as u32 & 0x3F;
-
-            Ok(unsafe { char::from_u32_unchecked(codepoint) })
-        } else if (b1 & 0xF0) == 0xE0 && self.pos + 2 < self.buf.len() {
-            // Three byte sequence
-            self.advance3();
-
-            let b2 = bytes[1];
-            let b3 = bytes[2];
-            if !is_continuation_byte(b2) || !is_continuation_byte(b3) {
-                return self.error_invalid_unicode(self.pos - 3);
-            }
-
-            let mut codepoint = (b1 as u32 & 0x0F) << 12;
-            codepoint |= (b2 as u32 & 0x3F) << 6;
-            codepoint |= b3 as u32 & 0x3F;
-
-            // Char could be in the surrogate pair range, 0xD800 - 0xDFFF, which is not considered
-            // a valid code point.
-            return match char::from_u32(codepoint) {
-                None => self.error_invalid_unicode(self.pos - 3),
-                Some(char) => Ok(char),
-            };
-        } else if (b1 & 0xF8) == 0xF0 && self.pos + 3 < self.buf.len() {
-            // Four byte sequence
-            self.advance4();
-
-            let b2 = bytes[1];
-            let b3 = bytes[2];
-            let b4 = bytes[3];
-            if !is_continuation_byte(b2) || !is_continuation_byte(b3) || !is_continuation_byte(b4) {
-                return self.error_invalid_unicode(self.pos - 4);
-            }
-
-            let mut codepoint = (b1 as u32 & 0x07) << 18;
-            codepoint |= (b2 as u32 & 0x3F) << 12;
-            codepoint |= (b3 as u32 & 0x3F) << 6;
-            codepoint |= b4 as u32 & 0x3F;
-
-            // Char could be above the code point max, 0x10FFFF
-            return match char::from_u32(codepoint) {
-                None => self.error_invalid_unicode(self.pos - 4),
-                Some(char) => Ok(char),
-            };
-        } else {
-            self.advance();
-            return self.error_invalid_unicode(self.pos);
-        }
-    }
-
     /// Skip a series of decimal digits, possibly separated by numeric separators. Numeric separators
     /// must be adjacent to a numeric digit on both sides.
     ///
@@ -1094,7 +1028,7 @@ impl<'a> Lexer<'a> {
             self.pos - 2
         };
 
-        let pattern_start_pos = self.pos;
+        let pattern_start_pos = start_pos + 1;
 
         // RegularExpressionFirstChar
         self.lex_regex_character(false)?;
@@ -1141,7 +1075,7 @@ impl<'a> Lexer<'a> {
         let flags = String::from(&self.buf[flags_start_pos..self.pos]);
         let raw = String::from(&self.buf[start_pos..self.pos]);
 
-        self.emit(Token::RegexpLiteral { raw, pattern, flags }, start_pos)
+        self.emit(Token::RegExpLiteral { raw, pattern, flags }, start_pos)
     }
 
     fn lex_regex_character(&mut self, in_class: bool) -> ParseResult<()> {
@@ -1152,7 +1086,7 @@ impl<'a> Lexer<'a> {
             }
             EOF_CHAR => {
                 let loc = self.mark_loc(self.pos);
-                return self.error(loc, ParseError::UnterminatedRegexpLiteral);
+                return self.error(loc, ParseError::UnterminatedRegExpLiteral);
             }
             '[' if !in_class => {
                 self.advance();
@@ -1176,7 +1110,7 @@ impl<'a> Lexer<'a> {
 
         if is_newline(char) {
             let loc = self.mark_loc(self.pos);
-            self.error(loc, ParseError::UnterminatedRegexpLiteral)
+            self.error(loc, ParseError::UnterminatedRegExpLiteral)
         } else {
             Ok(())
         }
@@ -1370,6 +1304,7 @@ impl<'a> Lexer<'a> {
         return self.emit(Token::TemplatePart { raw, cooked, is_head, is_tail }, start_pos);
     }
 
+    /// Lex any valid codepoint whether it is ASCII or unicode
     #[inline]
     fn lex_ascii_or_unicode_character(&mut self) -> ParseResult<char> {
         if is_ascii(self.current) {
@@ -1379,6 +1314,22 @@ impl<'a> Lexer<'a> {
         } else {
             let code_point = self.lex_utf8_codepoint()?;
             Ok(code_point)
+        }
+    }
+
+    #[inline]
+    fn lex_utf8_codepoint(&mut self) -> ParseResult<char> {
+        let buf = &self.buf.as_bytes()[self.pos..];
+        match decode_utf8_codepoint(buf) {
+            Ok((code_point, byte_length)) => {
+                self.advance_n(byte_length);
+                Ok(code_point)
+            }
+            Err(byte_length) => {
+                self.advance_n(byte_length);
+                let loc = self.mark_loc(self.pos - byte_length);
+                self.error(loc, ParseError::InvalidUnicode)
+            }
         }
     }
 

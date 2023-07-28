@@ -8,6 +8,10 @@ use super::{loc::Loc, regexp::RegExp};
 
 pub type P<T> = Box<T>;
 
+pub fn p<T>(node: T) -> P<T> {
+    Box::new(node)
+}
+
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
 pub struct AstPtr<T: ?Sized> {
     ptr: *const T,

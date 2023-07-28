@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use super::ast::{Identifier, P};
+use super::ast::P;
 
 pub struct RegExp {
     pub disjunction: Disjunction,
@@ -86,7 +86,7 @@ pub enum Assertion {
 
 pub struct CaptureGroup {
     /// Optional name for the capture group
-    pub name: Option<P<Identifier>>,
+    pub name: Option<P<String>>,
     pub disjunction: Disjunction,
 }
 
@@ -130,7 +130,7 @@ pub struct Lookaround {
 
 pub struct Backreference {
     /// Optional name for the capture group, otherwise uses index
-    pub name: Option<P<Identifier>>,
+    pub name: Option<P<String>>,
     /// All backrefrences have a unique index even if they also have a name
     pub index: u32,
 }

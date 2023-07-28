@@ -1,3 +1,5 @@
+use super::unicode_tables::{ID_CONTINUE, ID_START};
+
 /// A single unicode code unit. Value may be in the surrogate pair range.
 pub type CodeUnit = u16;
 
@@ -152,6 +154,48 @@ pub fn get_hex_value(char: char) -> Option<u32> {
         'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
         _ => None,
     }
+}
+
+/// Can this character appear as the first character of an identifier.
+pub fn is_id_start_ascii(char: char) -> bool {
+    match char {
+        'a'..='z' | 'A'..='Z' | '_' | '$' => true,
+        _ => false,
+    }
+}
+
+/// Can this character appear in an identifier (after the first character).
+pub fn is_id_part_ascii(char: char) -> bool {
+    match char {
+        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
+        _ => false,
+    }
+}
+
+#[inline]
+pub fn is_id_start_unicode(char: char) -> bool {
+    ID_START.contains_char(char)
+}
+
+#[inline]
+fn is_id_continue_unicode(char: char) -> bool {
+    ID_CONTINUE.contains_char(char)
+}
+
+#[inline]
+pub fn is_id_part_unicode(char: char) -> bool {
+    // Either part of the unicode ID_Continue, ZWNJ, or ZWJ
+    is_id_continue_unicode(char) || char == '\u{200C}' || char == '\u{200D}'
+}
+
+#[inline]
+pub fn is_id_start(char: char) -> bool {
+    is_id_start_ascii(char) || is_id_start_unicode(char)
+}
+
+#[inline]
+pub fn is_id_part(char: char) -> bool {
+    is_id_part_ascii(char) || is_id_part_unicode(char)
 }
 
 /// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the

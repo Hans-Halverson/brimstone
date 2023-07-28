@@ -1,0 +1,107 @@
+{
+  type: "Program",
+  loc: "1:0-3:27",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:12",
+      kind: {
+        type: "Literal",
+        loc: "1:0-1:11",
+        raw: "/(?<name>)/",
+        value: {
+          pattern: "(?<name>)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  name: "name",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:22",
+      kind: {
+        type: "Literal",
+        loc: "2:0-2:21",
+        raw: "/(?<\u0061\u0062ab>)/",
+        value: {
+          pattern: "(?<\u0061\u0062ab>)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  name: "abab",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:27",
+      kind: {
+        type: "Literal",
+        loc: "3:0-3:26",
+        raw: "/(?<\u{0061}\u{0062}ab>)/u",
+        value: {
+          pattern: "(?<\u{0061}\u{0062}ab>)",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  name: "abab",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

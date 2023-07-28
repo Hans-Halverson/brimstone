@@ -75,7 +75,7 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "[asdf]asdf",
+                  value: "[asdf",
                 },
               ],
             },
@@ -102,7 +102,7 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "[asdf[f]]",
+                  value: "[asdf[f",
                 },
               ],
             },

@@ -54,10 +54,6 @@ struct PropertyNameResult {
     is_private: bool,
 }
 
-fn p<T>(node: T) -> P<T> {
-    Box::new(node)
-}
-
 struct Parser<'a> {
     lexer: Lexer<'a>,
     token: Token,

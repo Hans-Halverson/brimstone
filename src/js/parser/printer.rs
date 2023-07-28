@@ -1232,7 +1232,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_capture_group(&mut self, group: &CaptureGroup) {
         self.start_regexp_node("CaptureGroup");
-        self.property("name", group.name.as_ref(), Printer::print_optional_identifier);
+        self.property("name", group.name.as_deref(), Printer::print_optional_string);
         self.print_disjunction(&group.disjunction);
         self.end_node();
     }
@@ -1267,7 +1267,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_backreference(&mut self, backreference: &Backreference) {
         self.start_regexp_node("Backreference");
-        self.property("name", backreference.name.as_ref(), Printer::print_optional_identifier);
+        self.property("name", backreference.name.as_deref(), Printer::print_optional_string);
         self.property("index", backreference.index, Printer::print_number);
         self.end_node();
     }

@@ -5,15 +5,15 @@ use num_bigint::BigInt;
 
 use crate::js::common::unicode::{
     decode_utf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
-    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_newline, is_unicode_newline,
-    is_unicode_whitespace,
+    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_id_part, is_id_part_ascii,
+    is_id_part_unicode, is_id_start, is_id_start_ascii, is_id_start_unicode, is_newline,
+    is_unicode_newline, is_unicode_whitespace,
 };
 
 use super::loc::{Loc, Pos};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
 use super::token::Token;
-use super::unicode_tables::{ID_CONTINUE, ID_START};
 
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,
@@ -35,38 +35,6 @@ type LexResult = ParseResult<(Token, Loc)>;
 
 /// Character that marks an EOF. Not a valid unicode character.
 const EOF_CHAR: char = '\u{ffff}';
-
-/// Can this character appear as the first character of an identifier.
-fn is_id_start_ascii(char: char) -> bool {
-    match char {
-        'a'..='z' | 'A'..='Z' | '_' | '$' => true,
-        _ => false,
-    }
-}
-
-/// Can this character appear in an identifier (after the first character).
-fn is_id_part_ascii(char: char) -> bool {
-    match char {
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
-        _ => false,
-    }
-}
-
-#[inline]
-fn is_id_start_unicode(char: char) -> bool {
-    ID_START.contains_char(char)
-}
-
-#[inline]
-fn is_id_continue_unicode(char: char) -> bool {
-    ID_CONTINUE.contains_char(char)
-}
-
-#[inline]
-fn is_id_part_unicode(char: char) -> bool {
-    // Either part of the unicode ID_Continue, ZWNJ, or ZWJ
-    is_id_continue_unicode(char) || char == '\u{200C}' || char == '\u{200D}'
-}
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
@@ -534,7 +502,7 @@ impl<'a> Lexer<'a> {
                 // Escape sequence at the start of an identifier
                 '\\' => {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                    if !is_id_start_ascii(code_point) && !is_id_start_unicode(code_point) {
+                    if !is_id_start(code_point) {
                         let loc = self.mark_loc(start_pos);
                         return self
                             .error(loc, ParseError::UnknownToken((code_point as char).into()));
@@ -1457,7 +1425,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                 } else if self.current == '\\' {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                    if !is_id_part_ascii(code_point) && !is_id_part_unicode(code_point) {
+                    if !is_id_part(code_point) {
                         let loc = self.mark_loc(self.pos);
                         return self.error(loc, ParseError::UnknownToken(code_point.into()));
                     }

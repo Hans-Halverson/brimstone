@@ -1,5 +1,5 @@
 /a/;
-/a/bcd;
+/a/img;
 
 // Can use `=` at start of regexp
 /=abc/;

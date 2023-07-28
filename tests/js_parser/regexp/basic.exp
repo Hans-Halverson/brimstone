@@ -35,10 +35,10 @@
       kind: {
         type: "Literal",
         loc: "2:0-2:6",
-        raw: "/a/bcd",
+        raw: "/a/img",
         value: {
           pattern: "a",
-          flags: "bcd",
+          flags: "img",
         },
         regexp: {
           type: "RegExp",

@@ -4,7 +4,7 @@ use crate::js::common::unicode::{decode_utf8_codepoint, is_ascii};
 
 use super::{
     loc::{Loc, Pos},
-    regexp::{Alternative, Disjunction, RegExp, Term},
+    regexp::{Alternative, Disjunction, RegExp, RegExpFlags, Term},
     source::Source,
     LocalizedParseError, ParseError, ParseResult,
 };
@@ -14,12 +14,12 @@ use super::{
 pub struct RegExpParser<'a> {
     /// Buffer of bytes for pattern that is being parsed
     buf: &'a str,
-    /// Buffer of bytes for flags that is being parsed
-    flags: &'a str,
     /// Location of the current byte in the buffer
     pos: Pos,
     /// Current byte or EOF_CHAR
     current: char,
+    /// Flags for this regexp
+    flags: RegExpFlags,
     /// Loc of the RegExpLiteral AST node
     loc: Loc,
     /// Source of the RegExprLiteral we are parsing
@@ -30,7 +30,7 @@ pub struct RegExpParser<'a> {
 const EOF_CHAR: char = '\u{ffff}';
 
 impl<'a> RegExpParser<'a> {
-    fn new(loc: Loc, source: Rc<Source>, pattern: &'a str, flags: &'a str) -> Self {
+    fn new(loc: Loc, source: Rc<Source>, pattern: &'a str) -> Self {
         let buf = pattern;
         let current = if buf.len() == 0 {
             EOF_CHAR
@@ -38,7 +38,14 @@ impl<'a> RegExpParser<'a> {
             buf.as_bytes()[0].into()
         };
 
-        RegExpParser { buf, flags, pos: 0, current, loc, source }
+        RegExpParser {
+            buf,
+            pos: 0,
+            current,
+            loc,
+            source,
+            flags: RegExpFlags::empty(),
+        }
     }
 
     #[inline]
@@ -100,11 +107,55 @@ impl<'a> RegExpParser<'a> {
         pattern: &'a str,
         flags: &'a str,
     ) -> ParseResult<RegExp> {
-        let mut parser = Self::new(loc, source, pattern, flags);
+        let mut parser = Self::new(loc, source, pattern);
+        parser.parse_flags(flags)?;
 
         let disjunction = parser.parse_disjunction()?;
 
-        Ok(RegExp { disjunction })
+        Ok(RegExp { disjunction, flags: parser.flags })
+    }
+
+    fn parse_flags(&mut self, flags_buf: &str) -> ParseResult<()> {
+        macro_rules! add_flag {
+            ($i:expr, $flag:expr) => {
+                if !self.flags.contains($flag) {
+                    self.flags |= $flag;
+                } else {
+                    return error(
+                        self.loc,
+                        self.source.clone(),
+                        $i,
+                        ParseError::DuplicateRegExpFlag,
+                    );
+                }
+            };
+        }
+
+        #[inline]
+        fn error(
+            loc: Loc,
+            source: Rc<Source>,
+            offset: usize,
+            error: ParseError,
+        ) -> ParseResult<()> {
+            let loc = Loc { start: loc.start + offset, end: loc.start + offset + 1 };
+            Err(LocalizedParseError { error, source_loc: Some((loc, source.clone())) })
+        }
+
+        for (i, byte) in flags_buf.as_bytes().iter().enumerate() {
+            match byte {
+                b'd' => add_flag!(i, RegExpFlags::HAS_INDICES),
+                b'g' => add_flag!(i, RegExpFlags::GLOBAL),
+                b'i' => add_flag!(i, RegExpFlags::IGNORE_CASE),
+                b'm' => add_flag!(i, RegExpFlags::MULTILINE),
+                b's' => add_flag!(i, RegExpFlags::DOT_ALL),
+                b'u' => add_flag!(i, RegExpFlags::UNICODE_AWARE),
+                b'y' => add_flag!(i, RegExpFlags::STICKY),
+                _ => return error(self.loc, self.source.clone(), i, ParseError::InvalidRegExpFlag),
+            }
+        }
+
+        Ok(())
     }
 
     fn parse_disjunction(&mut self) -> ParseResult<Disjunction> {
@@ -112,7 +163,7 @@ impl<'a> RegExpParser<'a> {
 
         // There is always at least one alternative, even if the alternative is empty
         loop {
-            alternatives.push( self.parse_alternative()?);
+            alternatives.push(self.parse_alternative()?);
 
             if !self.eat('|') {
                 break;

@@ -1,7 +1,33 @@
+use bitflags::bitflags;
+
 use super::ast::{Identifier, P};
 
 pub struct RegExp {
     pub disjunction: Disjunction,
+    pub flags: RegExpFlags,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    pub struct RegExpFlags: u8 {
+        /// Whether to generate indices for substring matches: `d`
+        const HAS_INDICES = 1 << 0;
+        /// Global search. Find all matches in the string instead of just the first one: `g`
+        const GLOBAL = 1 << 1;
+        /// Whether to ignore case when matching: `i`
+        const IGNORE_CASE = 1 << 2;
+        /// Whether to allow `^` and `$` to match newlines: `m`
+        const MULTILINE = 1 << 3;
+        /// Whether to allow '.' to match newlines: `s`
+        const DOT_ALL = 1 << 4;
+        /// Unicode aware mode which enables various unicode features like escapes. Treat inputs as
+        /// a sequence of UTF-16 encoded code points, as opposed to default mode which treats every
+        /// 16-bit sequence as a literal (non-encoded) code point value: `u`
+        const UNICODE_AWARE = 1 << 5;
+        /// Sticky search. Remembers its position and only matches at the current position in the
+        /// target string: `y`
+        const STICKY = 1 << 6;
+    }
 }
 
 pub struct Disjunction {

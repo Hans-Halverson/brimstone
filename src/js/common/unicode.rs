@@ -167,7 +167,6 @@ pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
         let b2 = buf[1];
 
         if !is_continuation_byte(b2) {
-            // return Err((self.pos() - 2, self.pos()));
             return Err(2);
         }
 

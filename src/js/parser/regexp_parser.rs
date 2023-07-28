@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use crate::js::common::unicode::{decode_utf8_codepoint, is_ascii};
+use crate::js::common::unicode::{decode_utf8_codepoint, is_ascii, is_decimal_digit};
 
 use super::{
     loc::{Loc, Pos},
-    regexp::{Alternative, Disjunction, RegExp, RegExpFlags, Term},
+    regexp::{Alternative, Disjunction, Quantifier, RegExp, RegExpFlags, Term},
     source::Source,
     LocalizedParseError, ParseError, ParseResult,
 };
@@ -99,6 +99,10 @@ impl<'a> RegExpParser<'a> {
 
     fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
         Err(self.localized_parse_error(loc, error))
+    }
+
+    fn error_unexpected_token<T>(&self, loc: Loc) -> ParseResult<T> {
+        self.error(loc, ParseError::UnexpectedRegExpToken)
     }
 
     pub fn parse_regexp(
@@ -203,21 +207,69 @@ impl<'a> RegExpParser<'a> {
     }
 
     fn parse_term(&mut self) -> ParseResult<Term> {
-        match self.current {
+        // Parse a single atomic term
+        let atom = match self.current {
             '.' => {
                 self.advance();
-                Ok(Term::Wildcard)
+                Term::Wildcard
             }
             other => {
                 if is_ascii(other) {
                     let ascii_char = self.current;
                     self.advance();
-                    Ok(Term::Literal(ascii_char.to_string()))
+                    Term::Literal(ascii_char.to_string())
                 } else {
                     let code_point = self.parse_utf8_codepoint()?;
-                    Ok(Term::Literal(code_point.to_string()))
+                    Term::Literal(code_point.to_string())
                 }
             }
+        };
+
+        // Term may be postfixed with a quantifier
+        self.parse_quantifier(atom)
+    }
+
+    fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
+        let bounds_opt = match self.current {
+            '*' => {
+                self.advance();
+                Some((0, None))
+            }
+            '+' => {
+                self.advance();
+                Some((1, None))
+            }
+            '?' => {
+                self.advance();
+                Some((0, Some(1)))
+            }
+            '{' => {
+                self.advance();
+
+                let lower_bound = self.parse_decimal_digits()?;
+                let upper_bound = if self.eat(',') {
+                    if self.current == '}' {
+                        None
+                    } else {
+                        Some(self.parse_decimal_digits()?)
+                    }
+                } else {
+                    Some(lower_bound)
+                };
+
+                self.eat('}');
+
+                Some((lower_bound, upper_bound))
+            }
+            _ => None,
+        };
+
+        if let Some((min, max)) = bounds_opt {
+            // Every quantifier can be postfixed with a `?` to make it lazy
+            let is_greedy = !self.eat('?');
+            Ok(Term::Quantifier(Quantifier { term: Box::new(term), min, max, is_greedy }))
+        } else {
+            Ok(term)
         }
     }
 
@@ -235,5 +287,25 @@ impl<'a> RegExpParser<'a> {
                 self.error(loc, ParseError::InvalidUnicode)
             }
         }
+    }
+
+    fn parse_decimal_digits(&mut self) -> ParseResult<u32> {
+        // Sequence of decimal digits must be nonempty
+        if !is_decimal_digit(self.current) {
+            self.advance();
+            let loc = self.mark_loc(self.pos - 1);
+
+            return self.error_unexpected_token(loc);
+        }
+
+        let mut value = 0;
+
+        while is_decimal_digit(self.current) {
+            value *= 10;
+            value += (self.current as u32) - ('0' as u32);
+            self.advance();
+        }
+
+        Ok(value)
     }
 }

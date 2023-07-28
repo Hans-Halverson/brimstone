@@ -75,6 +75,8 @@ pub enum ParseError {
     LetNameInLexicalDeclaration,
     GetterWrongNumberOfParams,
     SetterWrongNumberOfParams,
+    // RegExpr parsing errors
+    UnexpectedRegExpToken,
     InvalidRegExpFlag,
     DuplicateRegExpFlag,
 }
@@ -282,6 +284,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::SetterWrongNumberOfParams => {
                 write!(f, "Setter functions must exactly one parameter")
+            }
+            ParseError::UnexpectedRegExpToken => {
+                write!(f, "Unexpected token")
             }
             ParseError::InvalidRegExpFlag => {
                 write!(f, "Invalid regular expression flag")

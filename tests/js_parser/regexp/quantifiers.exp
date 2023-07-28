@@ -1,0 +1,404 @@
+{
+  type: "Program",
+  loc: "1:0-14:10",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:0-1:5",
+      kind: {
+        type: "Literal",
+        loc: "1:0-1:4",
+        raw: "/a*/",
+        value: {
+          pattern: "a*",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 0,
+                  max: null,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:5",
+      kind: {
+        type: "Literal",
+        loc: "2:0-2:4",
+        raw: "/a+/",
+        value: {
+          pattern: "a+",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: null,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:5",
+      kind: {
+        type: "Literal",
+        loc: "3:0-3:4",
+        raw: "/a?/",
+        value: {
+          pattern: "a?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 0,
+                  max: 1,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:0-4:7",
+      kind: {
+        type: "Literal",
+        loc: "4:0-4:6",
+        raw: "/a{1}/",
+        value: {
+          pattern: "a{1}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: 1,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:10",
+      kind: {
+        type: "Literal",
+        loc: "5:0-5:9",
+        raw: "/a{123,}/",
+        value: {
+          pattern: "a{123,}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 123,
+                  max: null,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:0-6:9",
+      kind: {
+        type: "Literal",
+        loc: "6:0-6:8",
+        raw: "/a{1,2}/",
+        value: {
+          pattern: "a{1,2}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: 2,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:6",
+      kind: {
+        type: "Literal",
+        loc: "9:0-9:5",
+        raw: "/a*?/",
+        value: {
+          pattern: "a*?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 0,
+                  max: null,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:0-10:6",
+      kind: {
+        type: "Literal",
+        loc: "10:0-10:5",
+        raw: "/a+?/",
+        value: {
+          pattern: "a+?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: null,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:6",
+      kind: {
+        type: "Literal",
+        loc: "11:0-11:5",
+        raw: "/a??/",
+        value: {
+          pattern: "a??",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 0,
+                  max: 1,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "12:0-12:8",
+      kind: {
+        type: "Literal",
+        loc: "12:0-12:7",
+        raw: "/a{1}?/",
+        value: {
+          pattern: "a{1}?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: 1,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:0-13:9",
+      kind: {
+        type: "Literal",
+        loc: "13:0-13:8",
+        raw: "/a{1,}?/",
+        value: {
+          pattern: "a{1,}?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: null,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:0-14:10",
+      kind: {
+        type: "Literal",
+        loc: "14:0-14:9",
+        raw: "/a{1,2}?/",
+        value: {
+          pattern: "a{1,2}?",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: 2,
+                  is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

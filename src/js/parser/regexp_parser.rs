@@ -1,90 +1,76 @@
-use std::rc::Rc;
-
 use crate::js::common::unicode::{
-    decode_utf8_codepoint, get_hex_value, is_ascii, is_ascii_alphabetic, is_decimal_digit,
-    is_id_continue_unicode, is_id_part, is_id_part_ascii, is_id_part_unicode, is_id_start,
-    is_id_start_ascii, is_id_start_unicode,
+    get_hex_value, is_ascii_alphabetic, is_decimal_digit, is_id_continue_unicode, is_id_part,
+    is_id_start,
 };
 
 use super::{
     ast::p,
-    loc::{Loc, Pos},
+    lexer_stream::{LexerStream, SavedLexerStreamState},
+    loc::Pos,
     regexp::{
         Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
-    source::Source,
-    LocalizedParseError, ParseError, ParseResult,
+    ParseError, ParseResult,
 };
 
 /// 22.2.1 Patterns
 /// Parser of the full RegExp grammar and static semantics
-pub struct RegExpParser<'a> {
-    /// Buffer of bytes for pattern that is being parsed
-    buf: &'a str,
-    /// Location of the current byte in the buffer
-    pos: Pos,
-    /// Current byte or EOF_CHAR
-    current: char,
+pub struct RegExpParser<T: LexerStream> {
+    /// The stream of code points to parse
+    lexer_stream: T,
     /// Flags for this regexp
     flags: RegExpFlags,
-    /// Loc of the RegExpLiteral AST node
-    loc: Loc,
-    /// Source of the RegExprLiteral we are parsing
-    source: Rc<Source>,
 }
 
-/// Character that marks an EOF. Not a valid unicode character.
-const EOF_CHAR: char = '\u{ffff}';
-
-/// A save point for the parser, can be used to restore the parser to a particular position.
-struct SavedRegExpParserState {
-    current: char,
-    pos: Pos,
-}
-
-impl<'a> RegExpParser<'a> {
-    fn new(loc: Loc, source: Rc<Source>, pattern: &'a str) -> Self {
-        let buf = pattern;
-        let current = if buf.len() == 0 {
-            EOF_CHAR
-        } else {
-            buf.as_bytes()[0].into()
-        };
-
-        RegExpParser {
-            buf,
-            pos: 0,
-            current,
-            loc,
-            source,
-            flags: RegExpFlags::empty(),
-        }
-    }
-
-    fn save(&self) -> SavedRegExpParserState {
-        SavedRegExpParserState { current: self.current, pos: self.pos }
-    }
-
-    fn restore(&mut self, save_state: &SavedRegExpParserState) {
-        self.current = save_state.current;
-        self.pos = save_state.pos;
+impl<T: LexerStream> RegExpParser<T> {
+    fn new(lexer_stream: T, flags: RegExpFlags) -> Self {
+        RegExpParser { lexer_stream, flags }
     }
 
     #[inline]
-    fn char_at(&self, index: usize) -> char {
-        self.buf.as_bytes()[index].into()
+    fn pos(&self) -> Pos {
+        self.lexer_stream.pos()
+    }
+
+    #[inline]
+    fn current(&self) -> char {
+        self.lexer_stream.current()
     }
 
     #[inline]
     fn advance_n(&mut self, n: usize) {
-        self.pos += n;
-        if self.pos < self.buf.len() {
-            self.current = self.char_at(self.pos);
-        } else {
-            self.current = EOF_CHAR;
-            self.pos = self.buf.len();
-        }
+        self.lexer_stream.advance_n(n);
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> char {
+        self.lexer_stream.peek_n(n)
+    }
+
+    #[inline]
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<char> {
+        self.lexer_stream.parse_unicode_codepoint()
+    }
+
+    #[inline]
+    fn error<E>(&self, start_pos: Pos, error: ParseError) -> ParseResult<E> {
+        self.lexer_stream.error(start_pos, error)
+    }
+
+    #[inline]
+    fn save(&self) -> SavedLexerStreamState {
+        self.lexer_stream.save()
+    }
+
+    #[inline]
+    fn restore(&mut self, save_state: &SavedLexerStreamState) {
+        self.lexer_stream.restore(save_state);
+    }
+
+    #[inline]
+    fn is_end(&self) -> bool {
+        self.lexer_stream.is_end()
     }
 
     #[inline]
@@ -102,16 +88,6 @@ impl<'a> RegExpParser<'a> {
         self.advance_n(3);
     }
 
-    #[inline]
-    fn peek_n(&self, n: usize) -> char {
-        let next_pos = self.pos + n;
-        if next_pos < self.buf.len() {
-            self.char_at(next_pos)
-        } else {
-            EOF_CHAR
-        }
-    }
-
     fn peek(&mut self) -> char {
         self.peek_n(1)
     }
@@ -121,9 +97,8 @@ impl<'a> RegExpParser<'a> {
     }
 
     fn expect(&mut self, byte: char) -> ParseResult<()> {
-        if self.current != byte {
-            let loc = self.mark_loc(self.pos);
-            return self.error_unexpected_token(loc);
+        if self.current() != byte {
+            return self.error_unexpected_token(self.pos());
         }
 
         self.advance();
@@ -132,7 +107,7 @@ impl<'a> RegExpParser<'a> {
 
     #[inline]
     fn eat(&mut self, char: char) -> bool {
-        if self.current == char {
+        if self.current() == char {
             self.advance();
             true
         } else {
@@ -141,91 +116,51 @@ impl<'a> RegExpParser<'a> {
     }
 
     #[inline]
-    fn is_end(&self) -> bool {
-        self.current == EOF_CHAR
-    }
-
-    #[inline]
     fn is_unicode_aware(&self) -> bool {
         self.flags.contains(RegExpFlags::UNICODE_AWARE)
     }
 
-    fn mark_loc(&self, start_pos: Pos) -> Loc {
-        // Positions are indexes into a RegExp's pattern section, so their absolute location is
-        // the start of the RegExp plus the index plus one extra for the leading `/`.
-        let start = self.loc.start + start_pos + 1;
-        let end = self.loc.start + self.pos + 1;
-        Loc { start, end }
+    fn error_unexpected_token<E>(&self, start_pos: Pos) -> ParseResult<E> {
+        self.error(start_pos, ParseError::UnexpectedRegExpToken)
     }
 
-    fn localized_parse_error(&self, loc: Loc, error: ParseError) -> LocalizedParseError {
-        let source = self.source.clone();
-        LocalizedParseError { error, source_loc: Some((loc, source)) }
-    }
-
-    fn error<T>(&self, loc: Loc, error: ParseError) -> ParseResult<T> {
-        Err(self.localized_parse_error(loc, error))
-    }
-
-    fn error_unexpected_token<T>(&self, loc: Loc) -> ParseResult<T> {
-        self.error(loc, ParseError::UnexpectedRegExpToken)
-    }
-
-    pub fn parse_regexp(
-        loc: Loc,
-        source: Rc<Source>,
-        pattern: &'a str,
-        flags: &'a str,
-    ) -> ParseResult<RegExp> {
-        let mut parser = Self::new(loc, source, pattern);
-        parser.parse_flags(flags)?;
+    pub fn parse_regexp(lexer_stream: T, flags: RegExpFlags) -> ParseResult<RegExp> {
+        let mut parser = Self::new(lexer_stream, flags);
 
         let disjunction = parser.parse_disjunction()?;
 
-        Ok(RegExp { disjunction, flags: parser.flags })
+        Ok(RegExp { disjunction, flags })
     }
 
-    fn parse_flags(&mut self, flags_buf: &str) -> ParseResult<()> {
+    // On failure return the error along with the offset into the input buffer
+    pub fn parse_flags(mut lexer_stream: T) -> ParseResult<RegExpFlags> {
+        let mut flags = RegExpFlags::empty();
+
         macro_rules! add_flag {
-            ($i:expr, $flag:expr) => {
-                if !self.flags.contains($flag) {
-                    self.flags |= $flag;
+            ($flag:expr) => {{
+                if !flags.contains($flag) {
+                    flags |= $flag;
+                    lexer_stream.advance_n(1);
                 } else {
-                    return error(
-                        self.loc,
-                        self.source.clone(),
-                        $i,
-                        ParseError::DuplicateRegExpFlag,
-                    );
+                    return lexer_stream.error(lexer_stream.pos(), ParseError::DuplicateRegExpFlag);
                 }
-            };
+            }};
         }
 
-        #[inline]
-        fn error(
-            loc: Loc,
-            source: Rc<Source>,
-            offset: usize,
-            error: ParseError,
-        ) -> ParseResult<()> {
-            let loc = Loc { start: loc.start + offset, end: loc.start + offset + 1 };
-            Err(LocalizedParseError { error, source_loc: Some((loc, source.clone())) })
-        }
-
-        for (i, byte) in flags_buf.as_bytes().iter().enumerate() {
-            match byte {
-                b'd' => add_flag!(i, RegExpFlags::HAS_INDICES),
-                b'g' => add_flag!(i, RegExpFlags::GLOBAL),
-                b'i' => add_flag!(i, RegExpFlags::IGNORE_CASE),
-                b'm' => add_flag!(i, RegExpFlags::MULTILINE),
-                b's' => add_flag!(i, RegExpFlags::DOT_ALL),
-                b'u' => add_flag!(i, RegExpFlags::UNICODE_AWARE),
-                b'y' => add_flag!(i, RegExpFlags::STICKY),
-                _ => return error(self.loc, self.source.clone(), i, ParseError::InvalidRegExpFlag),
+        while !lexer_stream.is_end() {
+            match lexer_stream.current() {
+                'd' => add_flag!(RegExpFlags::HAS_INDICES),
+                'g' => add_flag!(RegExpFlags::GLOBAL),
+                'i' => add_flag!(RegExpFlags::IGNORE_CASE),
+                'm' => add_flag!(RegExpFlags::MULTILINE),
+                's' => add_flag!(RegExpFlags::DOT_ALL),
+                'u' => add_flag!(RegExpFlags::UNICODE_AWARE),
+                'y' => add_flag!(RegExpFlags::STICKY),
+                _ => return lexer_stream.error(lexer_stream.pos(), ParseError::InvalidRegExpFlag),
             }
         }
 
-        Ok(())
+        Ok(flags)
     }
 
     fn parse_disjunction(&mut self) -> ParseResult<Disjunction> {
@@ -254,15 +189,11 @@ impl<'a> RegExpParser<'a> {
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
-            match self.current {
+            match self.current() {
                 '*' | '+' | '?' | '{' => {
-                    let loc = self.mark_loc(self.pos);
-                    return self.error(loc, ParseError::UnexpectedRegExpQuantifier);
+                    return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                '}' | ']' => {
-                    let loc = self.mark_loc(self.pos);
-                    return self.error_unexpected_token(loc);
-                }
+                '}' | ']' => return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative
                 ')' | '|' => break,
                 // Otherwise must be the start of a term
@@ -285,7 +216,7 @@ impl<'a> RegExpParser<'a> {
 
     fn parse_term(&mut self) -> ParseResult<Term> {
         // Parse a single atomic term
-        let atom = match self.current {
+        let atom = match self.current() {
             '.' => {
                 self.advance();
                 Term::Wildcard
@@ -373,7 +304,7 @@ impl<'a> RegExpParser<'a> {
             }
             // Otherwise this must be a literal term
             _ => {
-                let code_point = self.parse_ascii_or_utf8_codepoint()?;
+                let code_point = self.parse_unicode_codepoint()?;
                 Term::Literal(code_point.to_string())
             }
         };
@@ -383,7 +314,7 @@ impl<'a> RegExpParser<'a> {
     }
 
     fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
-        let bounds_opt = match self.current {
+        let bounds_opt = match self.current() {
             '*' => {
                 self.advance();
                 Some((0, None))
@@ -401,7 +332,7 @@ impl<'a> RegExpParser<'a> {
 
                 let lower_bound = self.parse_decimal_digits()?;
                 let upper_bound = if self.eat(',') {
-                    if self.current == '}' {
+                    if self.current() == '}' {
                         None
                     } else {
                         Some(self.parse_decimal_digits()?)
@@ -428,16 +359,15 @@ impl<'a> RegExpParser<'a> {
 
     fn parse_decimal_digits(&mut self) -> ParseResult<u32> {
         // Sequence of decimal digits must be nonempty
-        if !is_decimal_digit(self.current) {
-            let loc = self.mark_loc(self.pos);
-            return self.error_unexpected_token(loc);
+        if !is_decimal_digit(self.current()) {
+            return self.error_unexpected_token(self.pos());
         }
 
         let mut value = 0;
 
-        while is_decimal_digit(self.current) {
+        while is_decimal_digit(self.current()) {
             value *= 10;
-            value += (self.current as u32) - ('0' as u32);
+            value += (self.current() as u32) - ('0' as u32);
             self.advance();
         }
 
@@ -448,7 +378,7 @@ impl<'a> RegExpParser<'a> {
         self.advance();
 
         if self.eat('?') {
-            match self.current {
+            match self.current() {
                 ':' => {
                     self.advance();
                     let disjunction = self.parse_disjunction()?;
@@ -481,7 +411,7 @@ impl<'a> RegExpParser<'a> {
                 '<' => {
                     self.advance();
 
-                    match self.current {
+                    match self.current() {
                         '=' => {
                             self.advance();
                             let disjunction = self.parse_disjunction()?;
@@ -517,10 +447,7 @@ impl<'a> RegExpParser<'a> {
                         }
                     }
                 }
-                _ => {
-                    let loc = self.mark_loc(self.pos);
-                    self.error_unexpected_token(loc)
-                }
+                _ => self.error_unexpected_token(self.pos()),
             }
         } else {
             let disjunction = self.parse_disjunction()?;
@@ -571,66 +498,60 @@ impl<'a> RegExpParser<'a> {
             | ClassRange::NotDigit
             | ClassRange::Whitespace
             | ClassRange::NotWhitespace => {
-                let loc = self.mark_loc(self.pos);
-                self.error(loc, ParseError::RegExpCharacterClassInRange)
+                self.error(self.pos(), ParseError::RegExpCharacterClassInRange)
             }
             ClassRange::Range(..) => unreachable!("Ranges are not returned by parse_class_atom"),
         }
     }
 
     fn parse_class_atom(&mut self) -> ParseResult<ClassRange> {
-        if is_ascii(self.current) {
-            // Could be the start of an escape sequence
-            if self.current == '\\' {
-                match self.peek() {
-                    // Standard character class shorthands
-                    'w' => {
-                        self.advance2();
-                        Ok(ClassRange::Word)
-                    }
-                    'W' => {
-                        self.advance2();
-                        Ok(ClassRange::NotWord)
-                    }
-                    'd' => {
-                        self.advance2();
-                        Ok(ClassRange::Digit)
-                    }
-                    'D' => {
-                        self.advance2();
-                        Ok(ClassRange::NotDigit)
-                    }
-                    's' => {
-                        self.advance2();
-                        Ok(ClassRange::Whitespace)
-                    }
-                    'S' => {
-                        self.advance2();
-                        Ok(ClassRange::NotWhitespace)
-                    }
-                    // Backspace escape
-                    'b' => {
-                        self.advance2();
-                        Ok(ClassRange::Single('\u{0008}'))
-                    }
-                    // Minus is only escaped in unicode aware mode
-                    '-' if self.is_unicode_aware() => {
-                        self.advance2();
-                        Ok(ClassRange::Single('-'))
-                    }
-                    // After checking class-specific escape sequences, must be a regular regexp
-                    // escape sequence.
-                    _ => Ok(ClassRange::Single(self.parse_regexp_escape_sequence()?)),
+        // Could be the start of an escape sequence
+        if self.current() == '\\' {
+            return match self.peek() {
+                // Standard character class shorthands
+                'w' => {
+                    self.advance2();
+                    Ok(ClassRange::Word)
                 }
-            } else {
-                let code_point = self.current;
-                self.advance();
-                Ok(ClassRange::Single(code_point))
-            }
-        } else {
-            let code_point = self.parse_utf8_codepoint()?;
-            Ok(ClassRange::Single(code_point))
+                'W' => {
+                    self.advance2();
+                    Ok(ClassRange::NotWord)
+                }
+                'd' => {
+                    self.advance2();
+                    Ok(ClassRange::Digit)
+                }
+                'D' => {
+                    self.advance2();
+                    Ok(ClassRange::NotDigit)
+                }
+                's' => {
+                    self.advance2();
+                    Ok(ClassRange::Whitespace)
+                }
+                'S' => {
+                    self.advance2();
+                    Ok(ClassRange::NotWhitespace)
+                }
+                // Backspace escape
+                'b' => {
+                    self.advance2();
+                    Ok(ClassRange::Single('\u{0008}'))
+                }
+                // Minus is only escaped in unicode aware mode
+                '-' if self.is_unicode_aware() => {
+                    self.advance2();
+                    Ok(ClassRange::Single('-'))
+                }
+                // After checking class-specific escape sequences, must be a regular regexp
+                // escape sequence.
+                _ => Ok(ClassRange::Single(self.parse_regexp_escape_sequence()?)),
+            };
         }
+
+        let code_point = self.parse_unicode_codepoint()?;
+
+        Ok(ClassRange::Single(code_point))
     }
 
     fn parse_regexp_escape_sequence(&mut self) -> ParseResult<char> {
@@ -668,7 +589,7 @@ impl<'a> RegExpParser<'a> {
             }
             // ASCII hex escape sequence
             'x' => {
-                let start_pos = self.pos;
+                let start_pos = self.pos();
                 self.advance2();
                 let code_point = self.parse_hex2_digits(start_pos)?;
 
@@ -681,122 +602,69 @@ impl<'a> RegExpParser<'a> {
                 Ok('\0')
             }
             _ => {
-                let start_pos = self.pos;
+                let start_pos = self.pos();
                 self.advance();
 
                 // In unicode-aware mode only regexp special characters can be escaped
                 if self.is_unicode_aware() {
                     if let '/' | '\\' | '^' | '$' | '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']'
-                    | '{' | '}' | '|' = self.current
+                    | '{' | '}' | '|' = self.current()
                     {
-                        let code_point = self.current;
+                        let code_point = self.current();
                         self.advance();
                         Ok(code_point)
                     } else {
-                        let loc = self.mark_loc(start_pos);
-                        self.error(loc, ParseError::MalformedEscapeSeqence)
+                        self.error(start_pos, ParseError::MalformedEscapeSeqence)
                     }
                 } else {
                     // Otherwise all non id_continue characters can be escaped
-                    let code_point = self.parse_ascii_or_utf8_codepoint()?;
+                    let code_point = self.parse_unicode_codepoint()?;
                     if !is_id_continue_unicode(code_point) {
                         Ok(code_point)
                     } else {
-                        let loc = self.mark_loc(start_pos);
-                        self.error(loc, ParseError::MalformedEscapeSeqence)
+                        self.error(start_pos, ParseError::MalformedEscapeSeqence)
                     }
                 }
             }
-        }
-    }
-
-    #[inline]
-    fn parse_utf8_codepoint(&mut self) -> ParseResult<char> {
-        // Must check if we are at end of pattern as decode_utf8_codepoint assumes we are not
-        if self.is_end() {
-            let loc = self.mark_loc(self.pos);
-            return self.error(loc, ParseError::UnexpectedRegExpEnd);
-        }
-
-        let buf = &self.buf.as_bytes()[self.pos..];
-        match decode_utf8_codepoint(buf) {
-            Ok((code_point, byte_length)) => {
-                self.advance_n(byte_length);
-                Ok(code_point)
-            }
-            Err(byte_length) => {
-                self.advance_n(byte_length);
-                let loc = self.mark_loc(self.pos - byte_length);
-                self.error(loc, ParseError::InvalidUnicode)
-            }
-        }
-    }
-
-    #[inline]
-    fn parse_ascii_or_utf8_codepoint(&mut self) -> ParseResult<char> {
-        let current = self.current;
-        if is_ascii(current) {
-            self.advance();
-            Ok(current)
-        } else {
-            self.parse_utf8_codepoint()
         }
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {
         let mut string_builder = String::new();
 
-        // First character must be an id start
-        if is_ascii(self.current) {
-            if is_id_start_ascii(self.current) {
-                string_builder.push(self.current);
-                self.advance();
-            } else if self.current == '\\' {
-                let code_point = self.parse_regex_unicode_escape_sequence()?;
-                if !is_id_start(code_point) {
-                    let loc = self.mark_loc(self.pos);
-                    return self.error_unexpected_token(loc);
-                }
-
-                string_builder.push(code_point);
-            } else {
-                let loc = self.mark_loc(self.pos);
-                return self.error_unexpected_token(loc);
+        // First character must be an id start, which can be an escape sequence
+        if self.current() == '\\' {
+            let code_point = self.parse_regex_unicode_escape_sequence()?;
+            if !is_id_start(code_point) {
+                return self.error_unexpected_token(self.pos());
             }
+
+            string_builder.push(code_point);
         } else {
-            // Otherwise must be a utf-8 encoded codepoint
-            let code_point = self.parse_utf8_codepoint()?;
-            if is_id_start_unicode(code_point) {
+            // Otherwise must be a unicode codepoint
+            let code_point = self.parse_unicode_codepoint()?;
+            if is_id_start(code_point) {
                 string_builder.push(code_point);
             } else {
-                let loc = self.mark_loc(self.pos);
-                return self.error_unexpected_token(loc);
+                return self.error_unexpected_token(self.pos());
             }
         }
 
         // All following characters must be id parts
         loop {
-            // Check if ASCII
-            if is_ascii(self.current) {
-                if is_id_part_ascii(self.current) {
-                    string_builder.push(self.current);
-                    self.advance();
-                } else if self.current == '\\' {
-                    let code_point = self.parse_regex_unicode_escape_sequence()?;
-                    if !is_id_part(code_point) {
-                        let loc = self.mark_loc(self.pos);
-                        return self.error_unexpected_token(loc);
-                    }
-
-                    string_builder.push(code_point);
-                } else {
-                    break;
+            // Can be an escape sequence
+            if self.current() == '\\' {
+                let code_point = self.parse_regex_unicode_escape_sequence()?;
+                if !is_id_part(code_point) {
+                    return self.error_unexpected_token(self.pos());
                 }
+
+                string_builder.push(code_point);
             } else {
-                // Otherwise must be a utf-8 encoded codepoint
+                // Otherwise must be a unicode codepoint
                 let save_state = self.save();
-                let code_point = self.parse_utf8_codepoint()?;
-                if is_id_part_unicode(code_point) {
+                let code_point = self.parse_unicode_codepoint()?;
+                if is_id_part(code_point) {
                     string_builder.push(code_point);
                 } else {
                     // Restore to before codepoint if not part of the id
@@ -810,7 +678,7 @@ impl<'a> RegExpParser<'a> {
     }
 
     fn parse_regex_unicode_escape_sequence(&mut self) -> ParseResult<char> {
-        let start_pos = self.pos;
+        let start_pos = self.pos();
 
         // Unicode escape sequences always start with `\u`
         self.advance();
@@ -819,28 +687,25 @@ impl<'a> RegExpParser<'a> {
         // In unicode aware mode the escape sequence \u{digits} is allowed
         if self.is_unicode_aware() && self.eat('{') {
             // Cannot be empty
-            if self.current == '}' {
+            if self.current() == '}' {
                 self.advance();
-                let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
             }
 
             // collect all hex digits until closing brace
             let mut value = 0;
-            while self.current != '}' {
-                if let Some(hex_value) = get_hex_value(self.current) {
+            while self.current() != '}' {
+                if let Some(hex_value) = get_hex_value(self.current()) {
                     self.advance();
                     value <<= 4;
                     value += hex_value;
                 } else {
-                    let loc = self.mark_loc(start_pos);
-                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                    return self.error(start_pos, ParseError::MalformedEscapeSeqence);
                 }
 
                 // Check if number is out of range
                 if value > 0x10FFFF {
-                    let loc = self.mark_loc(start_pos);
-                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                    return self.error(start_pos, ParseError::MalformedEscapeSeqence);
                 }
             }
 
@@ -857,13 +722,12 @@ impl<'a> RegExpParser<'a> {
     fn parse_hex2_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {
         let mut value = 0;
         for _ in 0..2 {
-            if let Some(hex_value) = get_hex_value(self.current) {
+            if let Some(hex_value) = get_hex_value(self.current()) {
                 self.advance();
                 value <<= 4;
                 value += hex_value;
             } else {
-                let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
             }
         }
 
@@ -873,13 +737,12 @@ impl<'a> RegExpParser<'a> {
     fn parse_hex4_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {
         let mut value = 0;
         for _ in 0..4 {
-            if let Some(hex_value) = get_hex_value(self.current) {
+            if let Some(hex_value) = get_hex_value(self.current()) {
                 self.advance();
                 value <<= 4;
                 value += hex_value;
             } else {
-                let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
             }
         }
 

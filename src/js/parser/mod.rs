@@ -2,6 +2,7 @@ pub mod analyze;
 pub mod ast;
 mod ast_visitor;
 mod lexer;
+pub mod lexer_stream;
 pub mod loc;
 mod parse_error;
 pub mod parser;

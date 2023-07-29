@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
+use super::lexer_stream::Utf8LexerStream;
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
@@ -2371,15 +2372,23 @@ impl<'a> Parser<'a> {
         if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
             let raw = raw.clone();
             let pattern = pattern.clone();
-            let flags = flags.clone();
+            let flags_string = flags.clone();
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);
             let source = self.lexer.source.clone();
 
-            let regexp = RegExpParser::parse_regexp(loc, source, &pattern, &flags)?;
+            // Start position of flags is offset by two `/` characters and the entire pattern
+            let flags_start_pos = start_pos + 2 + pattern.len();
+            let lexer_stream = Utf8LexerStream::new(flags_start_pos, source.clone(), &flags_string);
+            let flags = RegExpParser::parse_flags(lexer_stream)?;
 
-            Ok(RegExpLiteral { loc, raw, pattern, flags, regexp })
+            // Start position of pattern is offset by one to account for the leading `/`
+            let pattern_start_pos = start_pos + 1;
+            let lexer_stream = Utf8LexerStream::new(pattern_start_pos, source, &pattern);
+            let regexp = RegExpParser::parse_regexp(lexer_stream, flags)?;
+
+            Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }

@@ -132,6 +132,14 @@ pub fn is_newline(char: char) -> bool {
     is_ascii_newline(char) || is_unicode_newline(char)
 }
 
+#[inline]
+pub fn is_ascii_alphabetic(char: char) -> bool {
+    match char {
+        'a'..='z' | 'A'..='Z' => true,
+        _ => false,
+    }
+}
+
 pub fn get_binary_value(char: char) -> Option<u32> {
     match char {
         '0' => Some(0),
@@ -178,7 +186,7 @@ pub fn is_id_start_unicode(char: char) -> bool {
 }
 
 #[inline]
-fn is_id_continue_unicode(char: char) -> bool {
+pub fn is_id_continue_unicode(char: char) -> bool {
     ID_CONTINUE.contains_char(char)
 }
 

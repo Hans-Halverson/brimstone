@@ -1,16 +1,17 @@
 use std::rc::Rc;
 
 use crate::js::common::unicode::{
-    decode_utf8_codepoint, get_hex_value, is_ascii, is_decimal_digit, is_id_part, is_id_part_ascii,
-    is_id_part_unicode, is_id_start, is_id_start_ascii, is_id_start_unicode,
+    decode_utf8_codepoint, get_hex_value, is_ascii, is_ascii_alphabetic, is_decimal_digit,
+    is_id_continue_unicode, is_id_part, is_id_part_ascii, is_id_part_unicode, is_id_start,
+    is_id_start_ascii, is_id_start_unicode,
 };
 
 use super::{
     ast::p,
     loc::{Loc, Pos},
     regexp::{
-        Alternative, AnonymousGroup, CaptureGroup, Disjunction, Lookaround, Quantifier, RegExp,
-        RegExpFlags, Term,
+        Alternative, AnonymousGroup, CaptureGroup, CharacterClass, ClassRange, Disjunction,
+        Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
     source::Source,
     LocalizedParseError, ParseError, ParseResult,
@@ -91,10 +92,38 @@ impl<'a> RegExpParser<'a> {
         self.advance_n(1);
     }
 
+    #[inline]
+    fn advance2(&mut self) {
+        self.advance_n(2);
+    }
+
+    #[inline]
+    fn advance3(&mut self) {
+        self.advance_n(3);
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> char {
+        let next_pos = self.pos + n;
+        if next_pos < self.buf.len() {
+            self.char_at(next_pos)
+        } else {
+            EOF_CHAR
+        }
+    }
+
+    fn peek(&mut self) -> char {
+        self.peek_n(1)
+    }
+
+    fn peek2(&mut self) -> char {
+        self.peek_n(2)
+    }
+
     fn expect(&mut self, byte: char) -> ParseResult<()> {
         if self.current != byte {
             let loc = self.mark_loc(self.pos);
-            return self.error(loc, ParseError::UnexpectedRegExpToken);
+            return self.error_unexpected_token(loc);
         }
 
         self.advance();
@@ -114,6 +143,11 @@ impl<'a> RegExpParser<'a> {
     #[inline]
     fn is_end(&self) -> bool {
         self.current == EOF_CHAR
+    }
+
+    #[inline]
+    fn is_unicode_aware(&self) -> bool {
+        self.flags.contains(RegExpFlags::UNICODE_AWARE)
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
@@ -220,8 +254,19 @@ impl<'a> RegExpParser<'a> {
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
-            if let '*' | '+' | '?' | '{' | '}' | ')' | ']' | '|' = self.current {
-                break;
+            match self.current {
+                '*' | '+' | '?' | '{' => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnexpectedRegExpQuantifier);
+                }
+                '}' | ']' => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error_unexpected_token(loc);
+                }
+                // Valid ends to an alternative
+                ')' | '|' => break,
+                // Otherwise must be the start of a term
+                _ => {}
             }
 
             let term = self.parse_term()?;
@@ -246,36 +291,15 @@ impl<'a> RegExpParser<'a> {
                 Term::Wildcard
             }
             '(' => self.parse_group()?,
-            other => {
-                if is_ascii(other) {
-                    let ascii_char = self.current;
-                    self.advance();
-                    Term::Literal(ascii_char.to_string())
-                } else {
-                    let code_point = self.parse_utf8_codepoint()?;
-                    Term::Literal(code_point.to_string())
-                }
+            '[' => self.parse_character_class()?,
+            _ => {
+                let code_point = self.parse_ascii_or_utf8_codepoint()?;
+                Term::Literal(code_point.to_string())
             }
         };
 
         // Term may be postfixed with a quantifier
         self.parse_quantifier(atom)
-    }
-
-    #[inline]
-    fn parse_utf8_codepoint(&mut self) -> ParseResult<char> {
-        let buf = &self.buf.as_bytes()[self.pos..];
-        match decode_utf8_codepoint(buf) {
-            Ok((code_point, byte_length)) => {
-                self.advance_n(byte_length);
-                Ok(code_point)
-            }
-            Err(byte_length) => {
-                self.advance_n(byte_length);
-                let loc = self.mark_loc(self.pos - byte_length);
-                self.error(loc, ParseError::InvalidUnicode)
-            }
-        }
     }
 
     fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
@@ -426,6 +450,205 @@ impl<'a> RegExpParser<'a> {
         }
     }
 
+    fn parse_character_class(&mut self) -> ParseResult<Term> {
+        self.advance();
+
+        let is_inverted = self.eat('^');
+
+        let mut ranges = vec![];
+        while !self.eat(']') {
+            let atom = self.parse_class_atom()?;
+
+            if self.eat('-') {
+                // Trailing `-` at the end of the character class
+                if self.eat(']') {
+                    ranges.push(atom);
+                    ranges.push(ClassRange::Single('-'));
+                    break;
+                }
+
+                // Otherwise this must be a range
+                let end_atom = self.parse_class_atom()?;
+
+                let start = self.class_atom_to_range_bound(atom)?;
+                let end = self.class_atom_to_range_bound(end_atom)?;
+
+                ranges.push(ClassRange::Range(start, end));
+            } else {
+                ranges.push(atom);
+            }
+        }
+
+        Ok(Term::CharacterClass(CharacterClass { is_inverted, ranges }))
+    }
+
+    fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<char> {
+        match atom {
+            ClassRange::Single(code_point) => Ok(code_point),
+            ClassRange::Word
+            | ClassRange::NotWord
+            | ClassRange::Digit
+            | ClassRange::NotDigit
+            | ClassRange::Whitespace
+            | ClassRange::NotWhitespace => {
+                let loc = self.mark_loc(self.pos);
+                self.error(loc, ParseError::RegExpCharacterClassInRange)
+            }
+            ClassRange::Range(..) => unreachable!("Ranges are not returned by parse_class_atom"),
+        }
+    }
+
+    fn parse_class_atom(&mut self) -> ParseResult<ClassRange> {
+        if is_ascii(self.current) {
+            // Could be the start of an escape sequence
+            if self.current == '\\' {
+                match self.peek() {
+                    // Standard character class shorthands
+                    'w' => {
+                        self.advance2();
+                        Ok(ClassRange::Word)
+                    }
+                    'W' => {
+                        self.advance2();
+                        Ok(ClassRange::NotWord)
+                    }
+                    'd' => {
+                        self.advance2();
+                        Ok(ClassRange::Digit)
+                    }
+                    'D' => {
+                        self.advance2();
+                        Ok(ClassRange::NotDigit)
+                    }
+                    's' => {
+                        self.advance2();
+                        Ok(ClassRange::Whitespace)
+                    }
+                    'S' => {
+                        self.advance2();
+                        Ok(ClassRange::NotWhitespace)
+                    }
+                    // Backspace escape
+                    'b' => {
+                        self.advance2();
+                        Ok(ClassRange::Single('\u{0008}'))
+                    }
+                    // Minus is only escaped in unicode aware mode
+                    '-' if self.is_unicode_aware() => {
+                        self.advance2();
+                        Ok(ClassRange::Single('-'))
+                    }
+                    // After checking class-specific escape sequences, must be a regular regexp
+                    // escape sequence.
+                    _ => Ok(ClassRange::Single(self.parse_regexp_escape_sequence()?)),
+                }
+            } else {
+                let code_point = self.current;
+                self.advance();
+                Ok(ClassRange::Single(code_point))
+            }
+        } else {
+            let code_point = self.parse_utf8_codepoint()?;
+            Ok(ClassRange::Single(code_point))
+        }
+    }
+
+    fn parse_regexp_escape_sequence(&mut self) -> ParseResult<char> {
+        match self.peek() {
+            // Unicode escape sequence
+            'u' => self.parse_regex_unicode_escape_sequence(),
+            // Standard control characters
+            'f' => {
+                self.advance2();
+                Ok('\u{000c}')
+            }
+            'n' => {
+                self.advance2();
+                Ok('\n')
+            }
+            'r' => {
+                self.advance2();
+                Ok('\r')
+            }
+            't' => {
+                self.advance2();
+                Ok('\t')
+            }
+            'v' => {
+                self.advance2();
+                Ok('\u{000b}')
+            }
+            // Any escaped ASCII letter - converted to letter value mod 32
+            'c' if is_ascii_alphabetic(self.peek2()) => {
+                let code_point = self.peek2() as u32 % 32;
+                self.advance3();
+
+                // Safe since code point is guaranteed to be in range [0, 32)
+                Ok(unsafe { char::from_u32_unchecked(code_point) })
+            }
+            _ => {
+                let start_pos = self.pos;
+                self.advance();
+
+                // In unicode-aware mode only regexp special characters can be escaped
+                if self.is_unicode_aware() {
+                    if let '/' | '\\' | '^' | '$' | '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']'
+                    | '{' | '}' | '|' = self.current
+                    {
+                        let code_point = self.current;
+                        self.advance();
+                        Ok(code_point)
+                    } else {
+                        let loc = self.mark_loc(start_pos);
+                        self.error(loc, ParseError::MalformedEscapeSeqence)
+                    }
+                } else {
+                    // Otherwise all non id_continue characters can be escaped
+                    let code_point = self.parse_ascii_or_utf8_codepoint()?;
+                    if !is_id_continue_unicode(code_point) {
+                        Ok(code_point)
+                    } else {
+                        let loc = self.mark_loc(start_pos);
+                        self.error(loc, ParseError::MalformedEscapeSeqence)
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline]
+    fn parse_utf8_codepoint(&mut self) -> ParseResult<char> {
+        // Must check if we are at end of pattern as decode_utf8_codepoint assumes we are not
+        if self.is_end() {
+            let loc = self.mark_loc(self.pos);
+            return self.error(loc, ParseError::UnexpectedRegExpEnd);
+        }
+
+        let buf = &self.buf.as_bytes()[self.pos..];
+        match decode_utf8_codepoint(buf) {
+            Ok((code_point, byte_length)) => {
+                self.advance_n(byte_length);
+                Ok(code_point)
+            }
+            Err(byte_length) => {
+                self.advance_n(byte_length);
+                let loc = self.mark_loc(self.pos - byte_length);
+                self.error(loc, ParseError::InvalidUnicode)
+            }
+        }
+    }
+
+    #[inline]
+    fn parse_ascii_or_utf8_codepoint(&mut self) -> ParseResult<char> {
+        let current = self.current;
+        if is_ascii(current) {
+            self.advance();
+            Ok(current)
+        } else {
+            self.parse_utf8_codepoint()
+        }
+    }
+
     fn parse_identifier(&mut self) -> ParseResult<String> {
         let mut string_builder = String::new();
 
@@ -438,13 +661,13 @@ impl<'a> RegExpParser<'a> {
                 let code_point = self.parse_regex_unicode_escape_sequence()?;
                 if !is_id_start(code_point) {
                     let loc = self.mark_loc(self.pos);
-                    return self.error(loc, ParseError::UnexpectedRegExpToken);
+                    return self.error_unexpected_token(loc);
                 }
 
                 string_builder.push(code_point);
             } else {
                 let loc = self.mark_loc(self.pos);
-                return self.error(loc, ParseError::UnexpectedRegExpToken);
+                return self.error_unexpected_token(loc);
             }
         } else {
             // Otherwise must be a utf-8 encoded codepoint
@@ -453,7 +676,7 @@ impl<'a> RegExpParser<'a> {
                 string_builder.push(code_point);
             } else {
                 let loc = self.mark_loc(self.pos);
-                return self.error(loc, ParseError::UnexpectedRegExpToken);
+                return self.error_unexpected_token(loc);
             }
         }
 
@@ -468,7 +691,7 @@ impl<'a> RegExpParser<'a> {
                     let code_point = self.parse_regex_unicode_escape_sequence()?;
                     if !is_id_part(code_point) {
                         let loc = self.mark_loc(self.pos);
-                        return self.error(loc, ParseError::UnexpectedRegExpToken);
+                        return self.error_unexpected_token(loc);
                     }
 
                     string_builder.push(code_point);
@@ -500,7 +723,7 @@ impl<'a> RegExpParser<'a> {
         self.expect('u')?;
 
         // In unicode aware mode the escape sequence \u{digits} is allowed
-        if self.flags.contains(RegExpFlags::UNICODE_AWARE) && self.eat('{') {
+        if self.is_unicode_aware() && self.eat('{') {
             // Cannot be empty
             if self.current == '}' {
                 self.advance();

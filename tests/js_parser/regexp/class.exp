@@ -1,0 +1,688 @@
+{
+  type: "Program",
+  loc: "1:0-28:36",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:5",
+      kind: {
+        type: "Literal",
+        loc: "2:0-2:4",
+        raw: "/[]/",
+        value: {
+          pattern: "[]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:8",
+      kind: {
+        type: "Literal",
+        loc: "3:0-3:7",
+        raw: "/[abc]/",
+        value: {
+          pattern: "[abc]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(c)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:0-4:8",
+      kind: {
+        type: "Literal",
+        loc: "4:0-4:7",
+        raw: "/[a-z]/",
+        value: {
+          pattern: "[a-z]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(a, z)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:0-5:15",
+      kind: {
+        type: "Literal",
+        loc: "5:0-5:14",
+        raw: "/[a-zA-ZqR-Z]/",
+        value: {
+          pattern: "[a-zA-ZqR-Z]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(a, z)",
+                    "Range(A, Z)",
+                    "Single(q)",
+                    "Range(R, Z)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:0-6:17",
+      kind: {
+        type: "Literal",
+        loc: "6:0-6:16",
+        raw: "/[\w\W\s\S\d\D]/",
+        value: {
+          pattern: "[\w\W\s\S\d\D]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\W",
+                    "\s",
+                    "\S",
+                    "\d",
+                    "\D",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:0-9:6",
+      kind: {
+        type: "Literal",
+        loc: "9:0-9:5",
+        raw: "/[^]/",
+        value: {
+          pattern: "[^]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:0-10:9",
+      kind: {
+        type: "Literal",
+        loc: "10:0-10:8",
+        raw: "/[^abc]/",
+        value: {
+          pattern: "[^abc]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(c)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:0-11:8",
+      kind: {
+        type: "Literal",
+        loc: "11:0-11:7",
+        raw: "/[^^^]/",
+        value: {
+          pattern: "[^^^]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "Single(^)",
+                    "Single(^)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:0-14:6",
+      kind: {
+        type: "Literal",
+        loc: "14:0-14:5",
+        raw: "/[-]/",
+        value: {
+          pattern: "[-]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(-)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:7",
+      kind: {
+        type: "Literal",
+        loc: "15:0-15:6",
+        raw: "/[--]/",
+        value: {
+          pattern: "[--]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(-)",
+                    "Single(-)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "16:0-16:8",
+      kind: {
+        type: "Literal",
+        loc: "16:0-16:7",
+        raw: "/[---]/",
+        value: {
+          pattern: "[---]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(-, -)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:7",
+      kind: {
+        type: "Literal",
+        loc: "17:0-17:6",
+        raw: "/[a-]/",
+        value: {
+          pattern: "[a-]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(-)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "18:0-18:8",
+      kind: {
+        type: "Literal",
+        loc: "18:0-18:7",
+        raw: "/[a--]/",
+        value: {
+          pattern: "[a--]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(a, -)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:7",
+      kind: {
+        type: "Literal",
+        loc: "19:0-19:6",
+        raw: "/[-a]/",
+        value: {
+          pattern: "[-a]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(-)",
+                    "Single(a)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:0-20:8",
+      kind: {
+        type: "Literal",
+        loc: "20:0-20:7",
+        raw: "/[--a]/",
+        value: {
+          pattern: "[--a]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(-, a)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:0-23:15",
+      kind: {
+        type: "Literal",
+        loc: "23:0-23:14",
+        raw: "/[\r\n\f\v\t]/",
+        value: {
+          pattern: "[\r\n\f\v\t]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single()",
+                    "Single(
+)",
+                    "Single()",
+                    "Single()",
+                    "Single(	)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "24:0-24:17",
+      kind: {
+        type: "Literal",
+        loc: "24:0-24:16",
+        raw: "/[\u0061\u0062]/",
+        value: {
+          pattern: "[\u0061\u0062]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "25:0-25:20",
+      kind: {
+        type: "Literal",
+        loc: "25:0-25:19",
+        raw: "/[\u{61}\u{0062}]/u",
+        value: {
+          pattern: "[\u{61}\u{0062}]",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "26:0-26:8",
+      kind: {
+        type: "Literal",
+        loc: "26:0-26:7",
+        raw: "/[\cI]/",
+        value: {
+          pattern: "[\cI]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(	)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "27:0-27:41",
+      kind: {
+        type: "Literal",
+        loc: "27:0-27:40",
+        raw: "/[\\\/\^\$\.\*\+\?\(\)\[\]\{\}\|\:\;\"]/",
+        value: {
+          pattern: "[\\\/\^\$\.\*\+\?\(\)\[\]\{\}\|\:\;\"]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(\)",
+                    "Single(/)",
+                    "Single(^)",
+                    "Single($)",
+                    "Single(.)",
+                    "Single(*)",
+                    "Single(+)",
+                    "Single(?)",
+                    "Single(()",
+                    "Single())",
+                    "Single([)",
+                    "Single(])",
+                    "Single({)",
+                    "Single(})",
+                    "Single(|)",
+                    "Single(:)",
+                    "Single(;)",
+                    "Single(")",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "28:0-28:36",
+      kind: {
+        type: "Literal",
+        loc: "28:0-28:35",
+        raw: "/[\\\/\^\$\.\*\+\?\(\)\[\]\{\}\|]/u",
+        value: {
+          pattern: "[\\\/\^\$\.\*\+\?\(\)\[\]\{\}\|]",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(\)",
+                    "Single(/)",
+                    "Single(^)",
+                    "Single($)",
+                    "Single(.)",
+                    "Single(*)",
+                    "Single(+)",
+                    "Single(?)",
+                    "Single(()",
+                    "Single())",
+                    "Single([)",
+                    "Single(])",
+                    "Single({)",
+                    "Single(})",
+                    "Single(|)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

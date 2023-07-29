@@ -79,6 +79,9 @@ pub enum ParseError {
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
     DuplicateRegExpFlag,
+    UnexpectedRegExpQuantifier,
+    UnexpectedRegExpEnd,
+    RegExpCharacterClassInRange,
 }
 
 #[derive(Debug)]
@@ -293,6 +296,15 @@ impl fmt::Display for ParseError {
             }
             ParseError::DuplicateRegExpFlag => {
                 write!(f, "Duplicate regular expression flag")
+            }
+            ParseError::UnexpectedRegExpQuantifier => {
+                write!(f, "Unexpected regular expression quantifier")
+            }
+            ParseError::UnexpectedRegExpEnd => {
+                write!(f, "Unexpected end of regular expression")
+            }
+            ParseError::RegExpCharacterClassInRange => {
+                write!(f, "Character class cannot be a bound in a character range")
             }
         }
     }

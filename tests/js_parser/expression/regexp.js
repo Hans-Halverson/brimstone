@@ -2,8 +2,7 @@
 /a/sm;
 
 /[asdf]asdf/;
-/[asdf[f]]/;
+/[asdf\[f\]]/;
 
-/\[asdf/;
 /\//;
 /\a\b\c/;

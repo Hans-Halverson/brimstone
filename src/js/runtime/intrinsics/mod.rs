@@ -36,6 +36,8 @@ mod object_constructor;
 pub mod object_prototype;
 pub mod proxy_constructor;
 mod reflect_object;
+pub mod regexp_constructor;
+mod regexp_prototype;
 pub mod set_constructor;
 pub mod set_iterator;
 pub mod set_object;

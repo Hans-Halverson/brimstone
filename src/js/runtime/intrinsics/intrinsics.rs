@@ -42,6 +42,8 @@ use crate::{
             object_prototype::ObjectPrototype,
             proxy_constructor::ProxyConstructor,
             reflect_object::ReflectObject,
+            regexp_constructor::RegExpConstructor,
+            regexp_prototype::RegExpPrototype,
             set_constructor::SetConstructor,
             set_iterator::SetIteratorPrototype,
             set_prototype::SetPrototype,
@@ -135,6 +137,8 @@ pub enum Intrinsic {
     ReferenceErrorConstructor,
     ReferenceErrorPrototype,
     Reflect,
+    RegExpConstructor,
+    RegExpPrototype,
     SetConstructor,
     SetIteratorPrototype,
     SetPrototype,
@@ -255,6 +259,7 @@ impl Intrinsics {
         register_intrinsic_pair!(BigIntPrototype, BigIntConstructor);
         register_intrinsic_pair!(DatePrototype, DateConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
+        register_intrinsic_pair!(RegExpPrototype, RegExpConstructor);
         register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
         register_intrinsic_pair!(DataViewPrototype, DataViewConstructor);
         register_intrinsic_pair!(MapPrototype, MapConstructor);

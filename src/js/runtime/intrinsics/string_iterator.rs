@@ -55,7 +55,7 @@ impl StringIteratorPrototype {
 
         // 22.1.5.1.2 %StringIteratorPrototype% [ @@toStringTag ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string(String::from("String Iterator")).into();
+        let to_string_tag_value = cx.alloc_string("String Iterator").into();
         object.set_property(
             cx,
             to_string_tag_key,

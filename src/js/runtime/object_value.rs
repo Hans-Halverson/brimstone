@@ -279,7 +279,7 @@ impl ObjectValue {
     }
 
     pub fn is_regexp_object(&self) -> bool {
-        false
+        self.descriptor_kind() == ObjectKind::RegExpObject
     }
 
     pub fn is_map_object(&self) -> bool {
@@ -471,7 +471,7 @@ impl Handle<ObjectValue> {
     }
 
     pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
-        let name_value = cx.alloc_string(name.to_owned()).into();
+        let name_value = cx.alloc_string(name).into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 

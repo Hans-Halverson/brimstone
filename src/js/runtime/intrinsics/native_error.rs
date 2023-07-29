@@ -25,7 +25,7 @@ macro_rules! create_native_error {
             #[allow(dead_code)]
             pub fn new_with_message(cx: &mut Context, message: String) -> Handle<ErrorObject> {
                 // Be sure to allocate before creating object
-                let message_value = cx.alloc_string(message).into();
+                let message_value = cx.alloc_string(&message).into();
 
                 let object = object_create::<ErrorObject>(
                     cx,

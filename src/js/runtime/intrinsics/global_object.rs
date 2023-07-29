@@ -115,6 +115,7 @@ pub fn set_default_global_bindings(
         intrinsic_prop!(cx.names.proxy(), ProxyConstructor);
         intrinsic_prop!(cx.names.range_error(), RangeErrorConstructor);
         intrinsic_prop!(cx.names.reference_error(), ReferenceErrorConstructor);
+        intrinsic_prop!(cx.names.regexp(), RegExpConstructor);
         intrinsic_prop!(cx.names.set(), SetConstructor);
         intrinsic_prop!(cx.names.string(), StringConstructor);
         intrinsic_prop!(cx.names.symbol(), SymbolConstructor);

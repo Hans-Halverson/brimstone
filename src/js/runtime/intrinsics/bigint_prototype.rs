@@ -59,7 +59,7 @@ impl BigIntPrototype {
             radix_int as u32
         };
 
-        cx.alloc_string(bigint_value.bigint().to_str_radix(radix))
+        cx.alloc_string(&bigint_value.bigint().to_str_radix(radix))
             .into()
     }
 

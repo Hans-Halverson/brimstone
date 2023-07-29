@@ -515,7 +515,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
         for (index, value) in dense_properties.iter().enumerate() {
             if filter(index) {
                 if !value.is_empty() {
-                    let index_string = cx.alloc_string(index.to_string());
+                    let index_string = cx.alloc_string(&index.to_string());
                     keys.push(index_string.into());
                 }
             }
@@ -525,7 +525,7 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 
         for index in sparse_properties.ordered_keys() {
             if filter(index as usize) {
-                let index_string = cx.alloc_string(index.to_string());
+                let index_string = cx.alloc_string(&index.to_string());
                 keys.push(index_string.into());
             }
         }

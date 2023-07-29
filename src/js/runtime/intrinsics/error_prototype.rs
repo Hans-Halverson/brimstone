@@ -61,7 +61,7 @@ impl ErrorPrototype {
         } else if message_string.is_empty() {
             name_string.into()
         } else {
-            let separator = cx.alloc_string(String::from(": "));
+            let separator = cx.alloc_string(": ");
             StringValue::concat_all(cx, &[name_string, separator, message_string]).into()
         }
     }

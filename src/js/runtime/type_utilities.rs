@@ -52,7 +52,7 @@ pub fn to_primitive(
                 ToPrimitivePreferredType::Number => "number",
                 ToPrimitivePreferredType::String => "string",
             };
-            let hint_value: Handle<Value> = cx.alloc_string(hint_str.to_owned()).into();
+            let hint_value: Handle<Value> = cx.alloc_string(hint_str).into();
 
             let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
@@ -532,7 +532,7 @@ pub fn to_string(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Ha
             match value.as_pointer().descriptor().kind() {
                 ObjectKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
-                    cx.alloc_string(bigint_string).into()
+                    cx.alloc_string(&bigint_string).into()
                 }
                 ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
@@ -540,20 +540,20 @@ pub fn to_string(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Ha
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => cx.alloc_string("null".to_owned()).into(),
-            UNDEFINED_TAG => cx.alloc_string("undefined".to_owned()).into(),
+            NULL_TAG => cx.alloc_string("null").into(),
+            UNDEFINED_TAG => cx.alloc_string("undefined").into(),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
-                cx.alloc_string(str.to_owned()).into()
+                cx.alloc_string(str).into()
             }
             SMI_TAG => {
                 let smi_string = value.as_smi().to_string();
-                cx.alloc_string(smi_string).into()
+                cx.alloc_string(&smi_string).into()
             }
             // Otherwise must be double
             _ => {
                 let double_string = number_to_string(value.as_double());
-                cx.alloc_string(double_string).into()
+                cx.alloc_string(&double_string).into()
             }
         }
     }

@@ -196,7 +196,7 @@ impl VirtualObject for Handle<StringObject> {
 
         let length = self.string_data.len();
         for i in 0..length {
-            let index_string = cx.alloc_string(i.to_string());
+            let index_string = cx.alloc_string(&i.to_string());
             keys.push(index_string.into());
         }
 

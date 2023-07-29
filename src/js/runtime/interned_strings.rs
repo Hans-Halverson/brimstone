@@ -75,7 +75,7 @@ impl InternedStrings {
         match cx.interned_strings.str_cache.get(str) {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
-                let string_value = cx.alloc_string_ptr(String::from(str));
+                let string_value = cx.alloc_string_ptr(str);
                 let interned_string = InternedStrings::get(cx, string_value).to_handle();
 
                 cx.interned_strings

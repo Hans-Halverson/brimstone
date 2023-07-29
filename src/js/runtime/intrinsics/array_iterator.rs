@@ -99,7 +99,7 @@ impl ArrayIteratorPrototype {
 
         // 23.1.5.2.2 %ArrayIteratorPrototype% [ @@toStringTag ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string(String::from("Array Iterator")).into();
+        let to_string_tag_value = cx.alloc_string("Array Iterator").into();
         object.set_property(
             cx,
             to_string_tag_key,

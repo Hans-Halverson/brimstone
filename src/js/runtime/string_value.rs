@@ -726,7 +726,7 @@ impl FlatString {
         string
     }
 
-    pub fn from_utf8(cx: &mut Context, str: String) -> HeapPtr<FlatString> {
+    pub fn from_utf8(cx: &mut Context, str: &str) -> HeapPtr<FlatString> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;

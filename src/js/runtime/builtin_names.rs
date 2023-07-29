@@ -38,7 +38,7 @@ macro_rules! builtin_names {
             pub fn init_builtin_names(&mut self) {
                 $(
                     self.names.$rust_name = {
-                        let string_value = self.alloc_string(String::from($js_name));
+                        let string_value = self.alloc_string($js_name);
                         PropertyKey::string_not_array_index(self, string_value)
                     };
                 )*
@@ -98,6 +98,7 @@ builtin_names!(
     (range_error, "RangeError"),
     (reference_error, "ReferenceError"),
     (reflect, "Reflect"),
+    (regexp, "RegExp"),
     (set, "Set"),
     (string, "String"),
     (symbol, "Symbol"),
@@ -160,6 +161,7 @@ builtin_names!(
     (deref, "deref"),
     (description, "description"),
     (done, "done"),
+    (dot_all, "dotAll"),
     (ends_with, "endsWith"),
     (entries, "entries"),
     (enumerable, "enumerable"),
@@ -172,6 +174,7 @@ builtin_names!(
     (filter, "filter"),
     (find, "find"),
     (find_index, "findIndex"),
+    (flags, "flags"),
     (flat, "flat"),
     (flat_map, "flatMap"),
     (floor, "floor"),
@@ -218,12 +221,15 @@ builtin_names!(
     (get_utc_minutes, "getUTCMinutes"),
     (get_utc_month, "getUTCMonth"),
     (get_utc_seconds, "getUTCSeconds"),
+    (global, "global"),
     (global_this, "globalThis"),
     (has, "has"),
+    (has_indices, "hasIndices"),
     (has_instance, "hasInstance"),
     (has_own, "hasOwn"),
     (has_own_property, "hasOwnProperty"),
     (hypot, "hypot"),
+    (ignore_case, "ignoreCase"),
     (imul, "imul"),
     (includes, "includes"),
     (index_of, "indexOf"),
@@ -254,6 +260,7 @@ builtin_names!(
     (max, "max"),
     (message, "message"),
     (min, "min"),
+    (multiline, "multiline"),
     (name, "name"),
     (nan, "NaN"),
     (next, "next"),
@@ -320,11 +327,13 @@ builtin_names!(
     (size, "size"),
     (slice, "slice"),
     (some, "some"),
+    (source, "source"),
     (species, "species"),
     (split, "split"),
     (splice, "splice"),
     (sqrt, "sqrt"),
     (starts_with, "startsWith"),
+    (sticky, "sticky"),
     (string_, "string"),
     (subarray, "subarray"),
     (substring, "substring"),
@@ -351,6 +360,7 @@ builtin_names!(
     (trim_start, "trimStart"),
     (trunc, "trunc"),
     (undefined, "undefined"),
+    (unicode, "unicode"),
     (unregister, "unregister"),
     (unscopables, "unscopables"),
     (unshift, "unshift"),
@@ -396,7 +406,7 @@ macro_rules! builtin_symbols {
             pub fn init_builtin_symbols(&mut self) {
                 $(
                     self.well_known_symbols.$rust_name = {
-                        let description = self.alloc_string(String::from($description));
+                        let description = self.alloc_string($description);
                         PropertyKey::symbol(SymbolValue::new(self, Some(description))).get()
                     };
                 )*

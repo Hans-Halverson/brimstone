@@ -1267,7 +1267,7 @@ impl DatePrototype {
         let mut string = String::new();
         date_string(&mut string, date_value);
 
-        cx.alloc_string(string).into()
+        cx.alloc_string(&string).into()
     }
 
     // 21.4.4.36 Date.prototype.toISOString
@@ -1310,7 +1310,7 @@ impl DatePrototype {
             millisecond_from_time(date_value) as i64
         );
 
-        cx.alloc_string(string).into()
+        cx.alloc_string(&string).into()
     }
 
     // 21.4.4.37 Date.prototype.toJSON
@@ -1435,7 +1435,7 @@ impl DatePrototype {
         time_string(&mut string, local_date_value);
         time_zone_string(&mut string, date_value);
 
-        cx.alloc_string(string).into()
+        cx.alloc_string(&string).into()
     }
 
     // 21.4.4.43 Date.prototype.toUTCString
@@ -1472,7 +1472,7 @@ impl DatePrototype {
 
         time_string(&mut string, date_value);
 
-        cx.alloc_string(string).into()
+        cx.alloc_string(&string).into()
     }
 
     // 21.4.4.44 Date.prototype.valueOf
@@ -1612,7 +1612,7 @@ pub fn to_date_string(cx: &mut Context, time_value: f64) -> Handle<StringValue> 
     time_string(&mut string, local_time_value);
     time_zone_string(&mut string, time_value);
 
-    cx.alloc_string(string)
+    cx.alloc_string(&string)
 }
 
 #[inline]

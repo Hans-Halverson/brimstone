@@ -201,12 +201,12 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string_ptr(&mut self, str: String) -> HeapPtr<FlatString> {
+    pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
         FlatString::from_utf8(self, str)
     }
 
     #[inline]
-    pub fn alloc_string(&mut self, str: String) -> Handle<StringValue> {
+    pub fn alloc_string(&mut self, str: &str) -> Handle<StringValue> {
         self.alloc_string_ptr(str).as_string().to_handle()
     }
 

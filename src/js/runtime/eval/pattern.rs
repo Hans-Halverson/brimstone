@@ -455,7 +455,7 @@ pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> Handle<Propert
 
 #[inline]
 pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> Handle<PropertyKey> {
-    let private_string_value = cx.alloc_string(format!("#{}", id.name));
+    let private_string_value = cx.alloc_string(&format!("#{}", id.name));
     PropertyKey::string(cx, private_string_value).to_handle(cx)
 }
 

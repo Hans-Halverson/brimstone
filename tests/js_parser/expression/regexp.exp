@@ -148,7 +148,7 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "\/",
+                  value: "/",
                 },
               ],
             },
@@ -162,9 +162,9 @@
       kind: {
         type: "Literal",
         loc: "8:0-8:8",
-        raw: "/\a\b\c/",
+        raw: "/\:\b\@/",
         value: {
-          pattern: "\a\b\c",
+          pattern: "\:\b\@",
           flags: "",
         },
         regexp: {
@@ -175,7 +175,15 @@
               terms: [
                 {
                   type: "Literal",
-                  value: "\a\b\c",
+                  value: ":",
+                },
+                {
+                  type: "Assertion",
+                  kind: "\b",
+                },
+                {
+                  type: "Literal",
+                  value: "@",
                 },
               ],
             },

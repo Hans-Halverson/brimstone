@@ -10,8 +10,8 @@ use super::{
     ast::p,
     loc::{Loc, Pos},
     regexp::{
-        Alternative, AnonymousGroup, CaptureGroup, CharacterClass, ClassRange, Disjunction,
-        Lookaround, Quantifier, RegExp, RegExpFlags, Term,
+        Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
+        ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
     source::Source,
     LocalizedParseError, ParseError, ParseResult,
@@ -292,6 +292,86 @@ impl<'a> RegExpParser<'a> {
             }
             '(' => self.parse_group()?,
             '[' => self.parse_character_class()?,
+            // Might be an escape code
+            '\\' => {
+                match self.peek() {
+                    // Standard character class shorthands
+                    'w' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: false,
+                            ranges: vec![ClassRange::Word],
+                        })
+                    }
+                    'W' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: true,
+                            ranges: vec![ClassRange::NotWord],
+                        })
+                    }
+                    'd' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: false,
+                            ranges: vec![ClassRange::Digit],
+                        })
+                    }
+                    'D' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: true,
+                            ranges: vec![ClassRange::NotDigit],
+                        })
+                    }
+                    's' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: false,
+                            ranges: vec![ClassRange::Whitespace],
+                        })
+                    }
+                    'S' => {
+                        self.advance2();
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: true,
+                            ranges: vec![ClassRange::NotWhitespace],
+                        })
+                    }
+                    // Word boundary assertions
+                    'b' => {
+                        self.advance2();
+                        Term::Assertion(Assertion::WordBoundary)
+                    }
+                    'B' => {
+                        self.advance2();
+                        Term::Assertion(Assertion::NotWordBoundary)
+                    }
+                    // Indexed backreferences
+                    '1'..='9' => {
+                        // Skip the `\` but start at the first digit
+                        self.advance();
+                        let index = self.parse_decimal_digits()?;
+                        Term::Backreference(Backreference::Index(index))
+                    }
+                    // Named backreferences
+                    'k' => {
+                        self.advance2();
+
+                        self.expect('<')?;
+                        let name = self.parse_identifier()?;
+                        self.expect('>')?;
+
+                        Term::Backreference(Backreference::Name(p(name)))
+                    }
+                    // Otherwise must be a regular regexp escape sequence
+                    _ => {
+                        let code_point = self.parse_regexp_escape_sequence()?;
+                        Term::Literal(code_point.to_string())
+                    }
+                }
+            }
+            // Otherwise this must be a literal term
             _ => {
                 let code_point = self.parse_ascii_or_utf8_codepoint()?;
                 Term::Literal(code_point.to_string())
@@ -586,6 +666,20 @@ impl<'a> RegExpParser<'a> {
                 // Safe since code point is guaranteed to be in range [0, 32)
                 Ok(unsafe { char::from_u32_unchecked(code_point) })
             }
+            // ASCII hex escape sequence
+            'x' => {
+                let start_pos = self.pos;
+                self.advance2();
+                let code_point = self.parse_hex2_digits(start_pos)?;
+
+                // Safe since code point is guaranteed to be in the range [0, 255)
+                Ok(unsafe { char::from_u32_unchecked(code_point) })
+            }
+            // The null byte
+            '0' if !is_decimal_digit(self.peek2()) => {
+                self.advance2();
+                Ok('\0')
+            }
             _ => {
                 let start_pos = self.pos;
                 self.advance();
@@ -758,6 +852,22 @@ impl<'a> RegExpParser<'a> {
             let code_point = self.parse_hex4_digits(start_pos)?;
             Ok(char::from_u32(code_point).unwrap())
         }
+    }
+
+    fn parse_hex2_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {
+        let mut value = 0;
+        for _ in 0..2 {
+            if let Some(hex_value) = get_hex_value(self.current) {
+                self.advance();
+                value <<= 4;
+                value += hex_value;
+            } else {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::MalformedEscapeSeqence);
+            }
+        }
+
+        Ok(value)
     }
 
     fn parse_hex4_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {

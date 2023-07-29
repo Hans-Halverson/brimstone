@@ -128,9 +128,9 @@ pub struct Lookaround {
     pub disjunction: Disjunction,
 }
 
-pub struct Backreference {
-    /// Optional name for the capture group, otherwise uses index
-    pub name: Option<P<String>>,
-    /// All backrefrences have a unique index even if they also have a name
-    pub index: u32,
+pub enum Backreference {
+    /// Index of the capture group to reference
+    Index(u32),
+    /// Name of the capture group to reference
+    Name(P<String>),
 }

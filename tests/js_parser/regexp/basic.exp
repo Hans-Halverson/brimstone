@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-11:6",
+  loc: "1:0-19:20",
   body: [
     {
       type: "ExpressionStatement",
@@ -228,6 +228,196 @@
             {
               type: "Alternative",
               terms: [],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:0-14:7",
+      kind: {
+        type: "Literal",
+        loc: "14:0-14:6",
+        raw: "/\b\B/",
+        value: {
+          pattern: "\b\B",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Assertion",
+                  kind: "\b",
+                },
+                {
+                  type: "Assertion",
+                  kind: "\B",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:0-15:15",
+      kind: {
+        type: "Literal",
+        loc: "15:0-15:14",
+        raw: "/\w\W\s\S\d\D/",
+        value: {
+          pattern: "\w\W\s\S\d\D",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                  ],
+                },
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "\W",
+                  ],
+                },
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "\s",
+                  ],
+                },
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "\S",
+                  ],
+                },
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "\d",
+                  ],
+                },
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "\D",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "18:0-18:27",
+      kind: {
+        type: "Literal",
+        loc: "18:0-18:26",
+        raw: "/\1\2\3\4\5\6\7\8\9\10023/",
+        value: {
+          pattern: "\1\2\3\4\5\6\7\8\9\10023",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Backreference",
+                  index: 1,
+                },
+                {
+                  type: "Backreference",
+                  index: 2,
+                },
+                {
+                  type: "Backreference",
+                  index: 3,
+                },
+                {
+                  type: "Backreference",
+                  index: 4,
+                },
+                {
+                  type: "Backreference",
+                  index: 5,
+                },
+                {
+                  type: "Backreference",
+                  index: 6,
+                },
+                {
+                  type: "Backreference",
+                  index: 7,
+                },
+                {
+                  type: "Backreference",
+                  index: 8,
+                },
+                {
+                  type: "Backreference",
+                  index: 9,
+                },
+                {
+                  type: "Backreference",
+                  index: 10023,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "19:0-19:20",
+      kind: {
+        type: "Literal",
+        loc: "19:0-19:19",
+        raw: "/\k<foo>\k<\u0061>/",
+        value: {
+          pattern: "\k<foo>\k<\u0061>",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Backreference",
+                  name: "foo",
+                },
+                {
+                  type: "Backreference",
+                  name: "a",
+                },
+              ],
             },
           ],
         },

@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-28:36",
+  loc: "1:0-29:19",
   body: [
     {
       type: "ExpressionStatement",
@@ -466,13 +466,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "23:0-23:15",
+      loc: "23:0-23:17",
       kind: {
         type: "Literal",
-        loc: "23:0-23:14",
-        raw: "/[\r\n\f\v\t]/",
+        loc: "23:0-23:16",
+        raw: "/[\r\n\f\v\t\b]/",
         value: {
-          pattern: "[\r\n\f\v\t]",
+          pattern: "[\r\n\f\v\t\b]",
           flags: "",
         },
         regexp: {
@@ -491,6 +491,7 @@
                     "Single()",
                     "Single()",
                     "Single(	)",
+                    "Single()",
                   ],
                 },
               ],
@@ -674,6 +675,39 @@
                     "Single({)",
                     "Single(})",
                     "Single(|)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "29:0-29:19",
+      kind: {
+        type: "Literal",
+        loc: "29:0-29:18",
+        raw: "/[\0\x61\x62\xFF]/",
+        value: {
+          pattern: "[\0\x61\x62\xFF]",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single( )",
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(ÿ)",
                   ],
                 },
               ],

@@ -9,3 +9,11 @@
 /ab|ba|cd/;
 /|a|/;
 /|||/;
+
+// Assertions and character classes
+/\b\B/;
+/\w\W\s\S\d\D/;
+
+// Backreferences
+/\1\2\3\4\5\6\7\8\9\10023/;
+/\k<foo>\k<\u0061>/;

@@ -1267,8 +1267,16 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_backreference(&mut self, backreference: &Backreference) {
         self.start_regexp_node("Backreference");
-        self.property("name", backreference.name.as_deref(), Printer::print_optional_string);
-        self.property("index", backreference.index, Printer::print_number);
+
+        match backreference {
+            Backreference::Index(index) => {
+                self.property("index", index, Printer::print_number);
+            }
+            Backreference::Name(name) => {
+                self.property("name", name.as_ref(), Printer::print_string);
+            }
+        }
+
         self.end_node();
     }
 }

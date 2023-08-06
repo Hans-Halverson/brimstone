@@ -1,5 +1,7 @@
 use bitflags::bitflags;
 
+use crate::js::common::wtf_8::Wtf8String;
+
 use super::ast::P;
 
 pub struct RegExp {
@@ -43,7 +45,7 @@ pub struct Alternative {
 
 pub enum Term {
     /// A literal string of characters with escape codes decoded into code points
-    Literal(String),
+    Literal(Wtf8String),
     /// The wildcard which matches any single character: `.`
     Wildcard,
     /// A repition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.
@@ -95,10 +97,10 @@ pub struct AnonymousGroup {
 }
 
 pub enum ClassRange {
-    /// A single character: `a`
-    Single(char),
-    /// A range of characters: `a-z`
-    Range(char, char),
+    /// A single code point: `a`
+    Single(u32),
+    /// A range of code points: `a-z`
+    Range(u32, u32),
     /// All digits: `\d`
     Digit,
     /// All non-digits: `\D`

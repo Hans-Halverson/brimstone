@@ -1,14 +1,17 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
+use match_u32::match_u32;
 use num_bigint::BigInt;
 
 use crate::js::common::unicode::{
+    as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
     decode_utf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
-    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_id_part, is_id_part_ascii,
-    is_id_part_unicode, is_id_start, is_id_start_ascii, is_id_start_unicode, is_newline,
-    is_unicode_newline, is_unicode_whitespace,
+    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_id_part_ascii, is_id_part_unicode,
+    is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
+    is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
 };
+use crate::js::common::wtf_8::Wtf8String;
 
 use super::loc::{Loc, Pos};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
@@ -18,7 +21,7 @@ use super::token::Token;
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,
     buf: &'a str,
-    current: char,
+    current: u32,
     pos: Pos,
     is_new_line_before_current: bool,
     pub in_strict_mode: bool,
@@ -27,14 +30,14 @@ pub struct Lexer<'a> {
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
 pub struct SavedLexerState {
-    current: char,
+    current: u32,
     pos: Pos,
 }
 
 type LexResult = ParseResult<(Token, Loc)>;
 
 /// Character that marks an EOF. Not a valid unicode character.
-const EOF_CHAR: char = '\u{ffff}';
+const EOF_CHAR: u32 = 0x110000;
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
@@ -70,7 +73,7 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn char_at(&self, index: usize) -> char {
+    fn code_point_at(&self, index: usize) -> u32 {
         self.buf.as_bytes()[index].into()
     }
 
@@ -78,7 +81,7 @@ impl<'a> Lexer<'a> {
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
-            self.current = self.char_at(self.pos);
+            self.current = self.code_point_at(self.pos);
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
@@ -102,25 +105,35 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn peek_n(&self, n: usize) -> char {
+    fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
-            self.char_at(next_pos)
+            self.code_point_at(next_pos)
         } else {
             EOF_CHAR
         }
     }
 
-    fn peek(&mut self) -> char {
+    fn peek(&mut self) -> u32 {
         Lexer::peek_n(self, 1)
     }
 
-    fn peek2(&mut self) -> char {
+    fn peek2(&mut self) -> u32 {
         Lexer::peek_n(self, 2)
     }
 
-    fn peek3(&mut self) -> char {
+    fn peek3(&mut self) -> u32 {
         Lexer::peek_n(self, 3)
+    }
+
+    #[inline]
+    fn eat(&mut self, char: char) -> bool {
+        if self.current == char as u32 {
+            self.advance();
+            true
+        } else {
+            false
+        }
     }
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
@@ -161,8 +174,8 @@ impl<'a> Lexer<'a> {
 
             let start_pos = self.pos;
 
-            return match self.current {
-                '+' => match self.peek() {
+            return match_u32!(match self.current {
+                '+' => match_u32!(match self.peek() {
                     '+' => {
                         self.advance2();
                         self.emit(Token::Increment, start_pos)
@@ -175,8 +188,8 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Plus, start_pos)
                     }
-                },
-                '-' => match self.peek() {
+                }),
+                '-' => match_u32!(match self.peek() {
                     '-' => {
                         self.advance2();
                         self.emit(Token::Decrement, start_pos)
@@ -189,9 +202,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Minus, start_pos)
                     }
-                },
-                '*' => match self.peek() {
-                    '*' => match self.peek2() {
+                }),
+                '*' => match_u32!(match self.peek() {
+                    '*' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::ExponentEq, start_pos)
@@ -200,7 +213,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::Exponent, start_pos)
                         }
-                    },
+                    }),
                     '=' => {
                         self.advance2();
                         self.emit(Token::MultiplyEq, start_pos)
@@ -209,8 +222,8 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Multiply, start_pos)
                     }
-                },
-                '/' => match self.peek() {
+                }),
+                '/' => match_u32!(match self.peek() {
                     '/' => {
                         self.advance2();
                         self.skip_line_comment()?;
@@ -229,8 +242,8 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Divide, start_pos)
                     }
-                },
-                '%' => match self.peek() {
+                }),
+                '%' => match_u32!(match self.peek() {
                     '=' => {
                         self.advance2();
                         self.emit(Token::RemainderEq, start_pos)
@@ -239,9 +252,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Remainder, start_pos)
                     }
-                },
-                '&' => match self.peek() {
-                    '&' => match self.peek2() {
+                }),
+                '&' => match_u32!(match self.peek() {
+                    '&' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::LogicalAndEq, start_pos)
@@ -250,7 +263,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::LogicalAnd, start_pos)
                         }
-                    },
+                    }),
                     '=' => {
                         self.advance2();
                         self.emit(Token::AndEq, start_pos)
@@ -259,9 +272,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::BitwiseAnd, start_pos)
                     }
-                },
-                '|' => match self.peek() {
-                    '|' => match self.peek2() {
+                }),
+                '|' => match_u32!(match self.peek() {
+                    '|' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::LogicalOrEq, start_pos)
@@ -270,7 +283,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::LogicalOr, start_pos)
                         }
-                    },
+                    }),
                     '=' => {
                         self.advance2();
                         self.emit(Token::OrEq, start_pos)
@@ -279,9 +292,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::BitwiseOr, start_pos)
                     }
-                },
-                '?' => match self.peek() {
-                    '?' => match self.peek2() {
+                }),
+                '?' => match_u32!(match self.peek() {
+                    '?' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::NullishCoalesceEq, start_pos)
@@ -290,7 +303,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::NullishCoalesce, start_pos)
                         }
-                    },
+                    }),
                     // ?.d is parsed as a question mark followed by a decimal literal
                     '.' if !is_decimal_digit(self.peek2()) => {
                         self.advance2();
@@ -300,8 +313,8 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Question, start_pos)
                     }
-                },
-                '^' => match self.peek() {
+                }),
+                '^' => match_u32!(match self.peek() {
                     '=' => {
                         self.advance2();
                         self.emit(Token::XorEq, start_pos)
@@ -310,10 +323,10 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::BitwiseXor, start_pos)
                     }
-                },
-                '>' => match self.peek() {
-                    '>' => match self.peek2() {
-                        '>' => match self.peek3() {
+                }),
+                '>' => match_u32!(match self.peek() {
+                    '>' => match_u32!(match self.peek2() {
+                        '>' => match_u32!(match self.peek3() {
                             '=' => {
                                 self.advance4();
                                 self.emit(Token::ShiftRightLogicalEq, start_pos)
@@ -322,7 +335,7 @@ impl<'a> Lexer<'a> {
                                 self.advance3();
                                 self.emit(Token::ShiftRightLogical, start_pos)
                             }
-                        },
+                        }),
                         '=' => {
                             self.advance3();
                             self.emit(Token::ShiftRightArithmeticEq, start_pos)
@@ -331,7 +344,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::ShiftRightArithmetic, start_pos)
                         }
-                    },
+                    }),
                     '=' => {
                         self.advance2();
                         self.emit(Token::GreaterThanOrEqual, start_pos)
@@ -340,9 +353,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::GreaterThan, start_pos)
                     }
-                },
-                '<' => match self.peek() {
-                    '<' => match self.peek2() {
+                }),
+                '<' => match_u32!(match self.peek() {
+                    '<' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::ShiftLeftEq, start_pos)
@@ -351,7 +364,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::ShiftLeft, start_pos)
                         }
-                    },
+                    }),
                     '=' => {
                         self.advance2();
                         self.emit(Token::LessThanOrEqual, start_pos)
@@ -360,13 +373,13 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::LessThan, start_pos)
                     }
-                },
+                }),
                 '~' => {
                     self.advance();
                     self.emit(Token::BitwiseNot, start_pos)
                 }
-                '=' => match self.peek() {
-                    '=' => match self.peek2() {
+                '=' => match_u32!(match self.peek() {
+                    '=' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::EqEqEq, start_pos)
@@ -375,7 +388,7 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::EqEq, start_pos)
                         }
-                    },
+                    }),
                     '>' => {
                         self.advance2();
                         self.emit(Token::Arrow, start_pos)
@@ -384,9 +397,9 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         self.emit(Token::Equals, start_pos)
                     }
-                },
-                '!' => match self.peek() {
-                    '=' => match self.peek2() {
+                }),
+                '!' => match_u32!(match self.peek() {
+                    '=' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();
                             self.emit(Token::NotEqEq, start_pos)
@@ -395,12 +408,12 @@ impl<'a> Lexer<'a> {
                             self.advance2();
                             self.emit(Token::NotEq, start_pos)
                         }
-                    },
+                    }),
                     _ => {
                         self.advance();
                         self.emit(Token::LogicalNot, start_pos)
                     }
-                },
+                }),
                 '(' => {
                     self.advance();
                     self.emit(Token::LeftParen, start_pos)
@@ -435,7 +448,7 @@ impl<'a> Lexer<'a> {
                 }
                 '.' => {
                     let next_char = self.peek();
-                    if next_char == '.' && self.peek2() == '.' {
+                    if next_char == '.' as u32 && self.peek2() == '.' as u32 {
                         self.advance3();
                         self.emit(Token::Spread, start_pos)
                     } else if is_decimal_digit(next_char) {
@@ -453,7 +466,7 @@ impl<'a> Lexer<'a> {
                 }
                 '#' => {
                     // Parse hashbang comment if it starts at the first byte in the file
-                    if self.pos == 0 && self.peek() == '!' && self.allow_hashbang_comment {
+                    if self.pos == 0 && self.peek() == '!' as u32 && self.allow_hashbang_comment {
                         self.advance2();
                         self.skip_line_comment()?;
                         continue;
@@ -463,7 +476,7 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::Hash, start_pos)
                 }
                 '0' => {
-                    let token = match self.peek() {
+                    let token = match_u32!(match self.peek() {
                         'b' | 'B' => self.lex_binary_literal()?,
                         'o' | 'O' => self.lex_octal_literal()?,
                         'x' | 'X' => self.lex_hex_literal()?,
@@ -481,7 +494,7 @@ impl<'a> Lexer<'a> {
                             }
                         }
                         _ => self.lex_decimal_literal()?,
-                    };
+                    });
 
                     self.error_if_cannot_follow_numeric_literal()?;
                     Ok(token)
@@ -502,13 +515,15 @@ impl<'a> Lexer<'a> {
                 // Escape sequence at the start of an identifier
                 '\\' => {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                    if !is_id_start(code_point) {
-                        let loc = self.mark_loc(start_pos);
-                        return self
-                            .error(loc, ParseError::UnknownToken((code_point as char).into()));
-                    }
 
-                    self.lex_identifier_non_ascii(start_pos, code_point.into())
+                    if let Some(char) = as_id_start(code_point) {
+                        let string = String::from(char);
+                        self.lex_identifier_non_ascii(start_pos, string)
+                    } else {
+                        let loc = self.mark_loc(start_pos);
+                        let code_point_string = to_string_or_unicode_escape_sequence(code_point);
+                        return self.error(loc, ParseError::UnknownToken(code_point_string));
+                    }
                 }
                 other => {
                     if is_ascii(other) {
@@ -517,8 +532,9 @@ impl<'a> Lexer<'a> {
                         self.error(loc, ParseError::UnknownToken(((other as u8) as char).into()))
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
-                        if is_id_start_unicode(code_point) {
-                            self.lex_identifier_non_ascii(start_pos, code_point.into())
+                        if let Some(char) = as_id_start_unicode(code_point) {
+                            let string = String::from(char);
+                            self.lex_identifier_non_ascii(start_pos, string)
                         } else if is_unicode_whitespace(code_point) {
                             continue;
                         } else if is_unicode_newline(code_point) {
@@ -526,17 +542,19 @@ impl<'a> Lexer<'a> {
                             continue;
                         } else {
                             let loc = self.mark_loc(start_pos);
-                            self.error(loc, ParseError::UnknownToken((code_point as char).into()))
+                            let code_point_string =
+                                to_string_or_unicode_escape_sequence(code_point);
+                            self.error(loc, ParseError::UnknownToken(code_point_string))
                         }
                     }
                 }
-            };
+            });
         }
     }
 
     fn skip_line_comment(&mut self) -> ParseResult<()> {
         loop {
-            match self.current {
+            match_u32!(match self.current {
                 '\n' | '\r' => {
                     self.advance();
                     self.is_new_line_before_current = true;
@@ -554,14 +572,14 @@ impl<'a> Lexer<'a> {
                         }
                     }
                 }
-            }
+            })
         }
     }
 
     fn skip_block_comment(&mut self) -> ParseResult<()> {
         loop {
-            match self.current {
-                '*' => match self.peek() {
+            match_u32!(match self.current {
+                '*' => match_u32!(match self.peek() {
                     '/' => {
                         self.advance2();
                         break;
@@ -572,7 +590,7 @@ impl<'a> Lexer<'a> {
                             .error(loc, ParseError::ExpectedToken(Token::Eof, Token::Divide));
                     }
                     _ => self.advance(),
-                },
+                }),
                 '\n' | '\r' => {
                     self.advance();
                     self.is_new_line_before_current = true;
@@ -591,7 +609,7 @@ impl<'a> Lexer<'a> {
                         }
                     }
                 }
-            }
+            })
         }
 
         Ok(())
@@ -616,7 +634,7 @@ impl<'a> Lexer<'a> {
         loop {
             is_last_char_numeric_separator = if is_decimal_digit(self.current) {
                 false
-            } else if self.current == '_' && allow_numeric_separator {
+            } else if self.current == '_' as u32 && allow_numeric_separator {
                 if is_last_char_numeric_separator {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::AdjacentNumericSeparators);
@@ -645,14 +663,14 @@ impl<'a> Lexer<'a> {
         let start_pos = self.pos;
         let mut has_numeric_separator = false;
 
-        let has_leading_zero = self.current == '0';
+        let has_leading_zero = self.current == '0' as u32;
         let allow_numeric_separator = !has_leading_zero;
 
         // Read optional digits before the decimal point
         has_numeric_separator |= self.skip_decimal_digits(allow_numeric_separator)?;
 
         // This is a bigint literal
-        if self.current == 'n' {
+        if self.current == 'n' as u32 {
             let digits_slice = &self.buf[start_pos..self.pos];
             let value = BigInt::parse_bytes(digits_slice.as_bytes(), 10).unwrap();
             self.advance();
@@ -667,17 +685,17 @@ impl<'a> Lexer<'a> {
         }
 
         // Read optional decimal point with its optional following digits
-        if self.current == '.' {
+        if self.current == '.' as u32 {
             self.advance();
             has_numeric_separator |= self.skip_decimal_digits(allow_numeric_separator)?;
         }
 
         // Read optional exponent
-        if self.current == 'e' || self.current == 'E' {
+        if self.current == 'e' as u32 || self.current == 'E' as u32 {
             self.advance();
 
             // Exponent has optional sign
-            if self.current == '-' || self.current == '+' {
+            if self.current == '-' as u32 || self.current == '+' as u32 {
                 self.advance();
             }
 
@@ -706,7 +724,7 @@ impl<'a> Lexer<'a> {
         &mut self,
         base: u32,
         shift: u32,
-        char_to_digit: fn(char) -> Option<u32>,
+        char_to_digit: fn(u32) -> Option<u32>,
     ) -> LexResult {
         let start_pos = self.pos;
         self.advance2();
@@ -730,7 +748,7 @@ impl<'a> Lexer<'a> {
                 value += digit as u64;
 
                 false
-            } else if self.current == '_' {
+            } else if self.current == '_' as u32 {
                 if is_last_char_numeric_separator {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::AdjacentNumericSeparators);
@@ -750,7 +768,7 @@ impl<'a> Lexer<'a> {
             return self.error(loc, ParseError::TrailingNumericSeparator);
         }
 
-        if self.current == 'n' {
+        if self.current == 'n' as u32 {
             let digits_slice = &self.buf[(start_pos + 2)..self.pos];
             let value = BigInt::parse_bytes(digits_slice.as_bytes(), base).unwrap();
             self.advance();
@@ -786,7 +804,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Reparse as decimal literal if we encounter a digit outside hex range
-        if self.current == '8' || self.current == '9' {
+        if self.current == '8' as u32 || self.current == '9' as u32 {
             self.restore(&save_state);
             return None;
         }
@@ -831,52 +849,52 @@ impl<'a> Lexer<'a> {
         let start_pos = self.pos;
         self.advance();
 
-        let mut value = String::new();
+        let mut value = Wtf8String::new();
 
         while self.current != quote_char {
-            match self.current {
+            match_u32!(match self.current {
                 // Escape sequences
-                '\\' => match self.peek() {
+                '\\' => match_u32!(match self.peek() {
                     // Single character escapes
                     'n' => {
-                        value.push('\n');
+                        value.push_char('\n');
                         self.advance2()
                     }
                     '\\' => {
-                        value.push('\\');
+                        value.push_char('\\');
                         self.advance2()
                     }
                     '\'' => {
-                        value.push('\'');
+                        value.push_char('\'');
                         self.advance2()
                     }
                     '"' => {
-                        value.push('"');
+                        value.push_char('"');
                         self.advance2()
                     }
                     't' => {
-                        value.push('\t');
+                        value.push_char('\t');
                         self.advance2()
                     }
                     'r' => {
-                        value.push('\r');
+                        value.push_char('\r');
                         self.advance2()
                     }
                     'b' => {
-                        value.push('\x08');
+                        value.push_char('\x08');
                         self.advance2()
                     }
                     'v' => {
-                        value.push('\x0B');
+                        value.push_char('\x0B');
                         self.advance2()
                     }
                     'f' => {
-                        value.push('\x0C');
+                        value.push_char('\x0C');
                         self.advance2()
                     }
                     // Null character escape
                     '0' if !is_decimal_digit(self.peek2()) => {
-                        value.push('\x00');
+                        value.push_char('\x00');
                         self.advance2()
                     }
                     // Legacy octal escape
@@ -893,7 +911,7 @@ impl<'a> Lexer<'a> {
                             self.advance();
                         }
 
-                        if first_digit <= '3' {
+                        if first_digit <= '3' as u32 {
                             if let Some(next_digit) = get_octal_value(self.current) {
                                 octal_value *= 8;
                                 octal_value += next_digit;
@@ -907,11 +925,10 @@ impl<'a> Lexer<'a> {
                                 .error(loc, ParseError::LegacyOctalEscapeSequenceInStrictMode);
                         }
 
-                        let char_value = unsafe { char::from_u32_unchecked(octal_value) };
-                        value.push(char_value)
+                        value.push(octal_value)
                     }
                     // Legacy non-octal escape
-                    char @ ('8' | '9') => {
+                    code_point @ ('8' | '9') => {
                         self.advance2();
 
                         if self.in_strict_mode {
@@ -920,7 +937,7 @@ impl<'a> Lexer<'a> {
                                 .error(loc, ParseError::LegacyNonOctalEscapeSequenceInStrictMode);
                         }
 
-                        value.push(char)
+                        value.push(code_point)
                     }
                     // Hex escape sequence
                     'x' => {
@@ -928,8 +945,10 @@ impl<'a> Lexer<'a> {
 
                         if let Some(x1) = get_hex_value(self.current) {
                             if let Some(x2) = get_hex_value(self.peek()) {
-                                let escaped_char = std::char::from_u32(x1 * 16 + x2).unwrap();
-                                value.push(escaped_char);
+                                // Safe to use without checking if in code point range since we
+                                // know there are only two hex digits.
+                                let escaped_code_point = x1 * 16 + x2;
+                                value.push(escaped_code_point);
                                 self.advance2();
                             } else {
                                 let loc = self.mark_loc(self.pos);
@@ -953,9 +972,7 @@ impl<'a> Lexer<'a> {
                     '\r' => {
                         self.advance2();
 
-                        if self.current == '\n' {
-                            self.advance()
-                        }
+                        self.eat('\n');
                     }
                     // Non-escape character, use character directly
                     other => {
@@ -972,7 +989,7 @@ impl<'a> Lexer<'a> {
                             }
                         }
                     }
-                },
+                }),
                 // Unterminated string literal
                 '\n' | '\r' | EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
@@ -980,7 +997,7 @@ impl<'a> Lexer<'a> {
                 }
                 quote if quote == quote_char => break,
                 _ => value.push(self.lex_ascii_or_unicode_character()?),
-            }
+            })
         }
 
         self.advance();
@@ -990,7 +1007,7 @@ impl<'a> Lexer<'a> {
 
     // Lex a regexp literal. Must be called when the previously lexed token was either a '/' or '/='
     pub fn next_regexp_literal(&mut self) -> LexResult {
-        let start_pos = if self.char_at(self.pos - 1) == '/' {
+        let start_pos = if self.code_point_at(self.pos - 1) == '/' as u32 {
             self.pos - 1
         } else {
             self.pos - 2
@@ -1002,7 +1019,7 @@ impl<'a> Lexer<'a> {
         self.lex_regex_character(false)?;
 
         // RegularExpressionChars
-        while self.current != '/' {
+        while self.current != '/' as u32 {
             self.lex_regex_character(false)?;
         }
 
@@ -1047,7 +1064,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_regex_character(&mut self, in_class: bool) -> ParseResult<()> {
-        match self.current {
+        match_u32!(match self.current {
             '\\' => {
                 self.advance();
                 self.lex_regexp_character_non_line_terminator()?;
@@ -1059,7 +1076,7 @@ impl<'a> Lexer<'a> {
             '[' if !in_class => {
                 self.advance();
 
-                while self.current != ']' {
+                while self.current != ']' as u32 {
                     self.lex_regex_character(true)?;
                 }
 
@@ -1068,7 +1085,7 @@ impl<'a> Lexer<'a> {
             _ => {
                 self.lex_regexp_character_non_line_terminator()?;
             }
-        }
+        });
 
         Ok(())
     }
@@ -1092,7 +1109,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult {
-        let mut value = String::new();
+        let mut value = Wtf8String::new();
 
         let is_tail;
         let raw_start_pos = self.pos;
@@ -1102,53 +1119,53 @@ impl<'a> Lexer<'a> {
         let mut malformed_error_loc = None;
 
         loop {
-            match self.current {
+            match_u32!(match self.current {
                 // Escape sequences
-                '\\' => match self.peek() {
+                '\\' => match_u32!(match self.peek() {
                     // Single character escapes
                     'n' => {
-                        value.push('\n');
+                        value.push_char('\n');
                         self.advance2()
                     }
                     '\\' => {
-                        value.push('\\');
+                        value.push_char('\\');
                         self.advance2()
                     }
                     '\'' => {
-                        value.push('\'');
+                        value.push_char('\'');
                         self.advance2()
                     }
                     '"' => {
-                        value.push('"');
+                        value.push_char('"');
                         self.advance2()
                     }
                     '`' => {
-                        value.push('`');
+                        value.push_char('`');
                         self.advance2()
                     }
                     't' => {
-                        value.push('\t');
+                        value.push_char('\t');
                         self.advance2()
                     }
                     'r' => {
-                        value.push('\r');
+                        value.push_char('\r');
                         self.advance2()
                     }
                     'b' => {
-                        value.push('\x08');
+                        value.push_char('\x08');
                         self.advance2()
                     }
                     'v' => {
-                        value.push('\x0B');
+                        value.push_char('\x0B');
                         self.advance2()
                     }
                     'f' => {
-                        value.push('\x0C');
+                        value.push_char('\x0C');
                         self.advance2()
                     }
                     '0' => {
-                        if self.peek2() < '0' || self.peek2() > '9' {
-                            value.push('\x00');
+                        if self.peek2() < '0' as u32 || self.peek2() > '9' as u32 {
+                            value.push_char('\x00');
                             self.advance2()
                         } else {
                             malformed_error_loc = Some(self.mark_loc(self.pos));
@@ -1166,7 +1183,7 @@ impl<'a> Lexer<'a> {
 
                         if let Some(x1) = get_hex_value(self.current) {
                             if let Some(x2) = get_hex_value(self.peek()) {
-                                let escaped_char = std::char::from_u32(x1 * 16 + x2).unwrap();
+                                let escaped_char = x1 * 16 + x2;
                                 value.push(escaped_char);
                                 self.advance2();
                             } else {
@@ -1195,9 +1212,7 @@ impl<'a> Lexer<'a> {
 
                         has_cr = true;
 
-                        if self.current == '\n' {
-                            self.advance()
-                        }
+                        self.eat('\n');
                     }
                     // Non-escape character, use character directly
                     other => {
@@ -1214,8 +1229,8 @@ impl<'a> Lexer<'a> {
                             }
                         }
                     }
-                },
-                '$' => match self.peek() {
+                }),
+                '$' => match_u32!(match self.peek() {
                     // Start of an expression in the template literal
                     '{' => {
                         raw_end_pos = self.pos;
@@ -1227,10 +1242,10 @@ impl<'a> Lexer<'a> {
                     }
                     // Not an escape sequence, use '$' directly
                     _ => {
-                        value.push('$');
+                        value.push_char('$');
                         self.advance()
                     }
-                },
+                }),
                 // End of the entire template literal
                 '`' => {
                     raw_end_pos = self.pos;
@@ -1245,14 +1260,12 @@ impl<'a> Lexer<'a> {
                     self.advance();
 
                     has_cr = true;
-                    value.push('\n');
+                    value.push_char('\n');
 
-                    if self.current == '\n' {
-                        self.advance()
-                    }
+                    self.eat('\n');
                 }
                 _ => value.push(self.lex_ascii_or_unicode_character()?),
-            }
+            })
         }
 
         let mut raw = String::from(&self.buf[raw_start_pos..raw_end_pos]);
@@ -1274,7 +1287,7 @@ impl<'a> Lexer<'a> {
 
     /// Lex any valid codepoint whether it is ASCII or unicode
     #[inline]
-    fn lex_ascii_or_unicode_character(&mut self) -> ParseResult<char> {
+    fn lex_ascii_or_unicode_character(&mut self) -> ParseResult<CodePoint> {
         if is_ascii(self.current) {
             let ascii_char = self.current;
             self.advance();
@@ -1286,12 +1299,12 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn lex_utf8_codepoint(&mut self) -> ParseResult<char> {
+    fn lex_utf8_codepoint(&mut self) -> ParseResult<CodePoint> {
         let buf = &self.buf.as_bytes()[self.pos..];
         match decode_utf8_codepoint(buf) {
             Ok((code_point, byte_length)) => {
                 self.advance_n(byte_length);
-                Ok(code_point)
+                Ok(code_point as u32)
             }
             Err(byte_length) => {
                 self.advance_n(byte_length);
@@ -1302,12 +1315,10 @@ impl<'a> Lexer<'a> {
     }
 
     // Lex a single unicode escape sequence, called after the '\u' prefix has already been processed
-    fn lex_unicode_escape_sequence(&mut self, start_pos: Pos) -> ParseResult<char> {
+    fn lex_unicode_escape_sequence(&mut self, start_pos: Pos) -> ParseResult<CodePoint> {
         // Escape sequence has form \u{HEX_DIGITS}, with at most 6 hex digits
-        if self.current == '{' {
-            self.advance();
-
-            if self.current == '}' {
+        if self.eat('{') {
+            if self.eat('}') {
                 let loc = self.mark_loc(start_pos);
                 return self.error(loc, ParseError::MalformedEscapeSeqence);
             }
@@ -1318,7 +1329,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     value <<= 4;
                     value += hex_value;
-                } else if self.current == '}' {
+                } else if self.current == '}' as u32 {
                     break;
                 } else {
                     let loc = self.mark_loc(start_pos);
@@ -1326,7 +1337,7 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            if self.current != '}' {
+            if self.current != '}' as u32 {
                 let loc = self.mark_loc(start_pos);
                 return self.error(loc, ParseError::MalformedEscapeSeqence);
             }
@@ -1334,8 +1345,8 @@ impl<'a> Lexer<'a> {
             self.advance();
 
             // Check that value is not out of range (greater than \u10FFFF)
-            if let Some(code_point) = std::char::from_u32(value) {
-                return Ok(code_point);
+            if is_in_unicode_range(value) {
+                return Ok(value);
             } else {
                 let loc = self.mark_loc(start_pos);
                 return self.error(loc, ParseError::MalformedEscapeSeqence);
@@ -1355,8 +1366,8 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let code_point = unsafe { std::char::from_u32_unchecked(value) };
-        Ok(code_point)
+        // Guaranteed to already be in range since there are four hex digits
+        Ok(value)
     }
 
     // Fast path for lexing a purely ASCII identifier
@@ -1368,7 +1379,7 @@ impl<'a> Lexer<'a> {
             if is_id_part_ascii(self.current) {
                 self.advance();
                 continue;
-            } else if is_ascii(self.current) && self.current != '\\' {
+            } else if is_ascii(self.current) && self.current != '\\' as u32 {
                 // The only remaining allowed ASCII character is the start of an escape sequence,
                 // handled below.
                 break;
@@ -1380,24 +1391,24 @@ impl<'a> Lexer<'a> {
                 let save_state = self.save();
                 let ascii_end_pos = self.pos;
 
-                let code_point = if self.current == '\\' {
+                let code_point = if self.current == '\\' as u32 {
                     self.lex_identifier_unicode_escape_sequence()?
                 } else {
                     self.lex_utf8_codepoint()?
                 };
 
-                // If not an id part then this is a pure ASCII identifier
-                if !is_id_part_ascii(code_point) && !is_id_part_unicode(code_point) {
+                if let Some(char) = as_id_part(code_point) {
+                    // Non-ASCII character is part of the identifier so bail to slow path, copying
+                    // over ASCII string and code point that has been created so far.
+                    let mut string_builder = String::from(&self.buf[start_pos..ascii_end_pos]);
+                    string_builder.push(char);
+
+                    return self.lex_identifier_non_ascii(start_pos, string_builder);
+                } else {
+                    // If not an id part then this is a pure ASCII identifier
                     self.restore(&save_state);
                     break;
                 }
-
-                // Otherwise the non-ASCII character is part of the identifier so bail to slow path,
-                // copying over ASCII string and code point that has been created so far.
-                let mut string_builder = String::from(&self.buf[start_pos..ascii_end_pos]);
-                string_builder.push(code_point);
-
-                return self.lex_identifier_non_ascii(start_pos, string_builder);
             }
         }
 
@@ -1420,17 +1431,19 @@ impl<'a> Lexer<'a> {
         loop {
             // Check if ASCII
             if is_ascii(self.current) {
-                if is_id_part_ascii(self.current) {
-                    string_builder.push(self.current);
+                if let Some(char) = as_id_part_ascii(self.current) {
+                    string_builder.push(char);
                     self.advance();
-                } else if self.current == '\\' {
+                } else if self.current == '\\' as u32 {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
-                    if !is_id_part(code_point) {
-                        let loc = self.mark_loc(self.pos);
-                        return self.error(loc, ParseError::UnknownToken(code_point.into()));
-                    }
 
-                    string_builder.push(code_point);
+                    if let Some(char) = as_id_part(code_point) {
+                        string_builder.push(char);
+                    } else {
+                        let loc = self.mark_loc(self.pos);
+                        let code_point_string = to_string_or_unicode_escape_sequence(code_point);
+                        return self.error(loc, ParseError::UnknownToken(code_point_string));
+                    }
                 } else {
                     break;
                 }
@@ -1438,8 +1451,9 @@ impl<'a> Lexer<'a> {
                 // Otherwise must be a utf-8 encoded codepoint
                 let save_state = self.save();
                 let code_point = self.lex_utf8_codepoint()?;
-                if is_id_part_unicode(code_point) {
-                    string_builder.push(code_point);
+
+                if let Some(char) = as_id_part_unicode(code_point) {
+                    string_builder.push(char);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);
@@ -1451,11 +1465,11 @@ impl<'a> Lexer<'a> {
         self.emit(Token::Identifier(string_builder), start_pos)
     }
 
-    fn lex_identifier_unicode_escape_sequence(&mut self) -> ParseResult<char> {
+    fn lex_identifier_unicode_escape_sequence(&mut self) -> ParseResult<CodePoint> {
         let escape_start_pos = self.pos;
         self.advance();
 
-        if self.current == 'u' {
+        if self.current == 'u' as u32 {
             self.advance();
 
             let code_point = self.lex_unicode_escape_sequence(escape_start_pos)?;

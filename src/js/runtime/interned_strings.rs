@@ -1,4 +1,4 @@
-use crate::set_uninit;
+use crate::{js::common::wtf_8::Wtf8String, set_uninit};
 
 use super::{
     collections::{BsHashMap, BsHashMapField, BsHashSet, BsHashSetField},
@@ -12,16 +12,16 @@ pub struct InternedStrings {
     // Set of canonical interned strings for each code unit sequence. Maintain invariant that only
     // flat one byte and two byte strings with their is_interned flag set are present in this set,
     // and is_interned is not set on any other string values.
-    strings: HeapPtr<BsHashSet<HeapPtr<FlatString>>>,
-    // Map from utf8 strs to their canonical interned strings, used for mapping strings from AST
+    strings: HeapPtr<InternedStringsSet>,
+    // Map from wtf8 strs to their canonical interned strings, used for mapping strings from AST
     // to string values on the heap.
     // TODO: Drop Strings whose values are garbage collected so we don't leak memory
-    str_cache: HeapPtr<BsHashMap<String, HeapPtr<FlatString>>>,
+    str_cache: HeapPtr<InternedStringsMap>,
 }
 
 type InternedStringsSet = BsHashSet<HeapPtr<FlatString>>;
 
-type InternedStringsMap = BsHashMap<String, HeapPtr<FlatString>>;
+type InternedStringsMap = BsHashMap<Wtf8String, HeapPtr<FlatString>>;
 
 impl InternedStrings {
     pub fn init(cx: &mut Context) {
@@ -72,7 +72,7 @@ impl InternedStrings {
     }
 
     pub fn get_str(cx: &mut Context, str: &str) -> Handle<StringValue> {
-        match cx.interned_strings.str_cache.get(str) {
+        match cx.interned_strings.str_cache.get(str.as_bytes()) {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
                 let string_value = cx.alloc_string_ptr(str);
@@ -81,7 +81,24 @@ impl InternedStrings {
                 cx.interned_strings
                     .str_cache_field()
                     .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(String::from(str), interned_string.get_());
+                    .insert_without_growing(Wtf8String::from_str(str), interned_string.get_());
+
+                interned_string.as_string()
+            }
+        }
+    }
+
+    pub fn get_wtf8_str(cx: &mut Context, str: &Wtf8String) -> Handle<StringValue> {
+        match cx.interned_strings.str_cache.get(str) {
+            Some(interned_string) => interned_string.as_string().to_handle(),
+            None => {
+                let string_value = cx.alloc_wtf8_string_ptr(str);
+                let interned_string = InternedStrings::get(cx, string_value).to_handle();
+
+                cx.interned_strings
+                    .str_cache_field()
+                    .maybe_grow_for_insertion(cx)
+                    .insert_without_growing(str.clone(), interned_string.get_());
 
                 interned_string.as_string()
             }
@@ -129,7 +146,7 @@ impl InternedStringsSetField {
 
 pub struct InternedStringsMapField;
 
-impl BsHashMapField<String, HeapPtr<FlatString>> for InternedStringsMapField {
+impl BsHashMapField<Wtf8String, HeapPtr<FlatString>> for InternedStringsMapField {
     fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<InternedStringsMap> {
         InternedStringsMap::new(cx, ObjectKind::InternedStringsMap, capacity)
     }

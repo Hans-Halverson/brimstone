@@ -1,6 +1,11 @@
-use crate::js::common::unicode::{
-    get_hex_value, is_ascii_alphabetic, is_decimal_digit, is_id_continue_unicode, is_id_part,
-    is_id_start,
+use match_u32::match_u32;
+
+use crate::js::common::{
+    unicode::{
+        as_id_part, as_id_start, get_hex_value, is_ascii_alphabetic, is_decimal_digit,
+        is_id_continue_unicode,
+    },
+    wtf_8::Wtf8String,
 };
 
 use super::{
@@ -34,7 +39,7 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     #[inline]
-    fn current(&self) -> char {
+    fn current(&self) -> u32 {
         self.lexer_stream.current()
     }
 
@@ -44,12 +49,12 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     #[inline]
-    fn peek_n(&self, n: usize) -> char {
+    fn peek_n(&self, n: usize) -> u32 {
         self.lexer_stream.peek_n(n)
     }
 
     #[inline]
-    fn parse_unicode_codepoint(&mut self) -> ParseResult<char> {
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
         self.lexer_stream.parse_unicode_codepoint()
     }
 
@@ -88,16 +93,16 @@ impl<T: LexerStream> RegExpParser<T> {
         self.advance_n(3);
     }
 
-    fn peek(&mut self) -> char {
+    fn peek(&mut self) -> u32 {
         self.peek_n(1)
     }
 
-    fn peek2(&mut self) -> char {
+    fn peek2(&mut self) -> u32 {
         self.peek_n(2)
     }
 
-    fn expect(&mut self, byte: char) -> ParseResult<()> {
-        if self.current() != byte {
+    fn expect(&mut self, char: char) -> ParseResult<()> {
+        if self.current() != char as u32 {
             return self.error_unexpected_token(self.pos());
         }
 
@@ -107,7 +112,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
     #[inline]
     fn eat(&mut self, char: char) -> bool {
-        if self.current() == char {
+        if self.current() == char as u32 {
             self.advance();
             true
         } else {
@@ -148,7 +153,7 @@ impl<T: LexerStream> RegExpParser<T> {
         }
 
         while !lexer_stream.is_end() {
-            match lexer_stream.current() {
+            match_u32!(match lexer_stream.current() {
                 'd' => add_flag!(RegExpFlags::HAS_INDICES),
                 'g' => add_flag!(RegExpFlags::GLOBAL),
                 'i' => add_flag!(RegExpFlags::IGNORE_CASE),
@@ -157,7 +162,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 'u' => add_flag!(RegExpFlags::UNICODE_AWARE),
                 'y' => add_flag!(RegExpFlags::STICKY),
                 _ => return lexer_stream.error(lexer_stream.pos(), ParseError::InvalidRegExpFlag),
-            }
+            })
         }
 
         Ok(flags)
@@ -189,7 +194,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
-            match self.current() {
+            match_u32!(match self.current() {
                 '*' | '+' | '?' | '{' => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
@@ -198,14 +203,14 @@ impl<T: LexerStream> RegExpParser<T> {
                 ')' | '|' => break,
                 // Otherwise must be the start of a term
                 _ => {}
-            }
+            });
 
             let term = self.parse_term()?;
 
             match (&term, terms.last_mut()) {
                 // Coalesce adjacent string literals
                 (Term::Literal(new_string), Some(Term::Literal(prev_string))) => {
-                    prev_string.push_str(&new_string);
+                    prev_string.push_wtf8_str(&new_string);
                 }
                 _ => terms.push(term),
             }
@@ -216,7 +221,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn parse_term(&mut self) -> ParseResult<Term> {
         // Parse a single atomic term
-        let atom = match self.current() {
+        let atom = match_u32!(match self.current() {
             '.' => {
                 self.advance();
                 Term::Wildcard
@@ -225,7 +230,7 @@ impl<T: LexerStream> RegExpParser<T> {
             '[' => self.parse_character_class()?,
             // Might be an escape code
             '\\' => {
-                match self.peek() {
+                match_u32!(match self.peek() {
                     // Standard character class shorthands
                     'w' => {
                         self.advance2();
@@ -298,23 +303,23 @@ impl<T: LexerStream> RegExpParser<T> {
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
                         let code_point = self.parse_regexp_escape_sequence()?;
-                        Term::Literal(code_point.to_string())
+                        Term::Literal(Wtf8String::from_code_point(code_point))
                     }
-                }
+                })
             }
             // Otherwise this must be a literal term
             _ => {
                 let code_point = self.parse_unicode_codepoint()?;
-                Term::Literal(code_point.to_string())
+                Term::Literal(Wtf8String::from_code_point(code_point))
             }
-        };
+        });
 
         // Term may be postfixed with a quantifier
         self.parse_quantifier(atom)
     }
 
     fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
-        let bounds_opt = match self.current() {
+        let bounds_opt = match_u32!(match self.current() {
             '*' => {
                 self.advance();
                 Some((0, None))
@@ -332,7 +337,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
                 let lower_bound = self.parse_decimal_digits()?;
                 let upper_bound = if self.eat(',') {
-                    if self.current() == '}' {
+                    if self.current() == '}' as u32 {
                         None
                     } else {
                         Some(self.parse_decimal_digits()?)
@@ -346,7 +351,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 Some((lower_bound, upper_bound))
             }
             _ => None,
-        };
+        });
 
         if let Some((min, max)) = bounds_opt {
             // Every quantifier can be postfixed with a `?` to make it lazy
@@ -378,7 +383,7 @@ impl<T: LexerStream> RegExpParser<T> {
         self.advance();
 
         if self.eat('?') {
-            match self.current() {
+            match_u32!(match self.current() {
                 ':' => {
                     self.advance();
                     let disjunction = self.parse_disjunction()?;
@@ -411,7 +416,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 '<' => {
                     self.advance();
 
-                    match self.current() {
+                    match_u32!(match self.current() {
                         '=' => {
                             self.advance();
                             let disjunction = self.parse_disjunction()?;
@@ -445,10 +450,10 @@ impl<T: LexerStream> RegExpParser<T> {
                                 disjunction,
                             }))
                         }
-                    }
+                    })
                 }
                 _ => self.error_unexpected_token(self.pos()),
-            }
+            })
         } else {
             let disjunction = self.parse_disjunction()?;
             self.expect(')')?;
@@ -470,7 +475,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 // Trailing `-` at the end of the character class
                 if self.eat(']') {
                     ranges.push(atom);
-                    ranges.push(ClassRange::Single('-'));
+                    ranges.push(ClassRange::Single('-' as u32));
                     break;
                 }
 
@@ -489,7 +494,7 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(Term::CharacterClass(CharacterClass { is_inverted, ranges }))
     }
 
-    fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<char> {
+    fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<u32> {
         match atom {
             ClassRange::Single(code_point) => Ok(code_point),
             ClassRange::Word
@@ -506,8 +511,8 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn parse_class_atom(&mut self) -> ParseResult<ClassRange> {
         // Could be the start of an escape sequence
-        if self.current() == '\\' {
-            return match self.peek() {
+        if self.current() == '\\' as u32 {
+            return match_u32!(match self.peek() {
                 // Standard character class shorthands
                 'w' => {
                     self.advance2();
@@ -536,17 +541,17 @@ impl<T: LexerStream> RegExpParser<T> {
                 // Backspace escape
                 'b' => {
                     self.advance2();
-                    Ok(ClassRange::Single('\u{0008}'))
+                    Ok(ClassRange::Single('\u{0008}' as u32))
                 }
                 // Minus is only escaped in unicode aware mode
                 '-' if self.is_unicode_aware() => {
                     self.advance2();
-                    Ok(ClassRange::Single('-'))
+                    Ok(ClassRange::Single('-' as u32))
                 }
                 // After checking class-specific escape sequences, must be a regular regexp
                 // escape sequence.
                 _ => Ok(ClassRange::Single(self.parse_regexp_escape_sequence()?)),
-            };
+            });
         }
 
         let code_point = self.parse_unicode_codepoint()?;
@@ -554,38 +559,38 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(ClassRange::Single(code_point))
     }
 
-    fn parse_regexp_escape_sequence(&mut self) -> ParseResult<char> {
-        match self.peek() {
+    fn parse_regexp_escape_sequence(&mut self) -> ParseResult<u32> {
+        match_u32!(match self.peek() {
             // Unicode escape sequence
             'u' => self.parse_regex_unicode_escape_sequence(),
             // Standard control characters
             'f' => {
                 self.advance2();
-                Ok('\u{000c}')
+                Ok('\u{000c}' as u32)
             }
             'n' => {
                 self.advance2();
-                Ok('\n')
+                Ok('\n' as u32)
             }
             'r' => {
                 self.advance2();
-                Ok('\r')
+                Ok('\r' as u32)
             }
             't' => {
                 self.advance2();
-                Ok('\t')
+                Ok('\t' as u32)
             }
             'v' => {
                 self.advance2();
-                Ok('\u{000b}')
+                Ok('\u{000b}' as u32)
             }
             // Any escaped ASCII letter - converted to letter value mod 32
             'c' if is_ascii_alphabetic(self.peek2()) => {
-                let code_point = self.peek2() as u32 % 32;
+                let code_point = self.peek2() % 32;
                 self.advance3();
 
                 // Safe since code point is guaranteed to be in range [0, 32)
-                Ok(unsafe { char::from_u32_unchecked(code_point) })
+                Ok(code_point)
             }
             // ASCII hex escape sequence
             'x' => {
@@ -594,12 +599,12 @@ impl<T: LexerStream> RegExpParser<T> {
                 let code_point = self.parse_hex2_digits(start_pos)?;
 
                 // Safe since code point is guaranteed to be in the range [0, 255)
-                Ok(unsafe { char::from_u32_unchecked(code_point) })
+                Ok(code_point)
             }
             // The null byte
             '0' if !is_decimal_digit(self.peek2()) => {
                 self.advance2();
-                Ok('\0')
+                Ok(0)
             }
             _ => {
                 let start_pos = self.pos();
@@ -607,15 +612,15 @@ impl<T: LexerStream> RegExpParser<T> {
 
                 // In unicode-aware mode only regexp special characters can be escaped
                 if self.is_unicode_aware() {
-                    if let '/' | '\\' | '^' | '$' | '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']'
-                    | '{' | '}' | '|' = self.current()
-                    {
-                        let code_point = self.current();
-                        self.advance();
-                        Ok(code_point)
-                    } else {
-                        self.error(start_pos, ParseError::MalformedEscapeSeqence)
-                    }
+                    match_u32!(match self.current() {
+                        '/' | '\\' | '^' | '$' | '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']'
+                        | '{' | '}' | '|' => {
+                            let code_point = self.current();
+                            self.advance();
+                            Ok(code_point)
+                        }
+                        _ => self.error(start_pos, ParseError::MalformedEscapeSeqence),
+                    })
                 } else {
                     // Otherwise all non id_continue characters can be escaped
                     let code_point = self.parse_unicode_codepoint()?;
@@ -626,46 +631,44 @@ impl<T: LexerStream> RegExpParser<T> {
                     }
                 }
             }
-        }
+        })
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {
         let mut string_builder = String::new();
 
         // First character must be an id start, which can be an escape sequence
-        if self.current() == '\\' {
-            let code_point = self.parse_regex_unicode_escape_sequence()?;
-            if !is_id_start(code_point) {
-                return self.error_unexpected_token(self.pos());
-            }
-
-            string_builder.push(code_point);
+        let code_point = if self.current() == '\\' as u32 {
+            self.parse_regex_unicode_escape_sequence()?
         } else {
             // Otherwise must be a unicode codepoint
-            let code_point = self.parse_unicode_codepoint()?;
-            if is_id_start(code_point) {
-                string_builder.push(code_point);
-            } else {
-                return self.error_unexpected_token(self.pos());
-            }
+            self.parse_unicode_codepoint()?
+        };
+
+        if let Some(char) = as_id_start(code_point) {
+            string_builder.push(char);
+        } else {
+            return self.error_unexpected_token(self.pos());
         }
 
         // All following characters must be id parts
         loop {
             // Can be an escape sequence
-            if self.current() == '\\' {
+            if self.current() == '\\' as u32 {
                 let code_point = self.parse_regex_unicode_escape_sequence()?;
-                if !is_id_part(code_point) {
+
+                if let Some(char) = as_id_part(code_point) {
+                    string_builder.push(char);
+                } else {
                     return self.error_unexpected_token(self.pos());
                 }
-
-                string_builder.push(code_point);
             } else {
                 // Otherwise must be a unicode codepoint
                 let save_state = self.save();
                 let code_point = self.parse_unicode_codepoint()?;
-                if is_id_part(code_point) {
-                    string_builder.push(code_point);
+
+                if let Some(char) = as_id_part(code_point) {
+                    string_builder.push(char);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);
@@ -677,7 +680,7 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(string_builder)
     }
 
-    fn parse_regex_unicode_escape_sequence(&mut self) -> ParseResult<char> {
+    fn parse_regex_unicode_escape_sequence(&mut self) -> ParseResult<u32> {
         let start_pos = self.pos();
 
         // Unicode escape sequences always start with `\u`
@@ -687,14 +690,13 @@ impl<T: LexerStream> RegExpParser<T> {
         // In unicode aware mode the escape sequence \u{digits} is allowed
         if self.is_unicode_aware() && self.eat('{') {
             // Cannot be empty
-            if self.current() == '}' {
-                self.advance();
+            if self.eat('}') {
                 return self.error(start_pos, ParseError::MalformedEscapeSeqence);
             }
 
             // collect all hex digits until closing brace
             let mut value = 0;
-            while self.current() != '}' {
+            while self.current() != '}' as u32 {
                 if let Some(hex_value) = get_hex_value(self.current()) {
                     self.advance();
                     value <<= 4;
@@ -711,11 +713,10 @@ impl<T: LexerStream> RegExpParser<T> {
 
             self.expect('}')?;
 
-            // TODO: Handle invalid utf-8 here and in else case
-            Ok(char::from_u32(value).unwrap())
+            Ok(value)
         } else {
             let code_point = self.parse_hex4_digits(start_pos)?;
-            Ok(char::from_u32(code_point).unwrap())
+            Ok(code_point)
         }
     }
 

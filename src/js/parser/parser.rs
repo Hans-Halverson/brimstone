@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use crate::js::common::wtf_8::Wtf8String;
+
 use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
 use super::lexer_stream::Utf8LexerStream;
@@ -2397,7 +2399,7 @@ impl<'a> Parser<'a> {
     fn parse_template_literal(
         &mut self,
         raw: String,
-        cooked: Option<String>,
+        cooked: Option<Wtf8String>,
         is_single_quasi: bool,
         is_tagged: bool,
     ) -> ParseResult<TemplateLiteral> {
@@ -2611,7 +2613,7 @@ impl<'a> Parser<'a> {
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
                 let name =
-                    p(Expression::Id(Identifier { loc: async_loc, name: "async".to_owned() }));
+                    p(Expression::Id(Identifier { loc: async_loc, name: String::from("async") }));
                 return self.parse_method_property(
                     name,
                     start_pos,
@@ -2628,7 +2630,7 @@ impl<'a> Parser<'a> {
                 || self.is_pattern_initializer_in_object(prop_context);
             if is_init_property || self.is_property_end(prop_context) {
                 let name =
-                    p(Expression::Id(Identifier { loc: async_loc, name: "async".to_owned() }));
+                    p(Expression::Id(Identifier { loc: async_loc, name: String::from("async") }));
                 return self.parse_init_property(
                     name,
                     start_pos,
@@ -3005,7 +3007,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
                 let name =
-                    p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
+                    p(Expression::Id(Identifier { loc: static_loc, name: String::from("static") }));
 
                 let (property, is_private) = self.parse_method_property(
                     name,
@@ -3027,7 +3029,7 @@ impl<'a> Parser<'a> {
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
                 let name =
-                    p(Expression::Id(Identifier { loc: static_loc, name: "static".to_owned() }));
+                    p(Expression::Id(Identifier { loc: static_loc, name: String::from("static") }));
 
                 let (property, is_private) = self.parse_init_property(
                     name,

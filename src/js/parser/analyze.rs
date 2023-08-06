@@ -957,12 +957,12 @@ impl Analyzer {
     }
 
     fn visit_class_method(&mut self, method: &mut ClassMethod) {
-        let key_name = if method.is_computed {
+        let key_name_bytes = if method.is_computed {
             None
         } else {
             match method.key.as_ref() {
-                Expression::String(name) => Some(&name.value),
-                Expression::Id(id) => Some(&id.name),
+                Expression::String(name) => Some(name.value.as_bytes()),
+                Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
             }
         };
@@ -972,7 +972,7 @@ impl Analyzer {
         let is_bad_constructor = match method.kind {
             ClassMethodKind::Constructor => method.value.is_async || method.value.is_generator,
             ClassMethodKind::Get | ClassMethodKind::Set if !method.is_static => {
-                key_name.map_or(false, |name| name == "constructor")
+                key_name_bytes.map_or(false, |name| name == "constructor".as_bytes())
             }
             _ => false,
         };
@@ -983,7 +983,7 @@ impl Analyzer {
 
         if method.is_static
             && !method.is_private
-            && key_name.map_or(false, |name| name == "prototype")
+            && key_name_bytes.map_or(false, |name| name == "prototype".as_bytes())
         {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }
@@ -1003,19 +1003,21 @@ impl Analyzer {
     }
 
     fn visit_class_property(&mut self, prop: &mut ClassProperty) {
-        let key_name = if prop.is_computed {
+        let key_name_bytes = if prop.is_computed {
             None
         } else {
             match prop.key.as_ref() {
-                Expression::String(name) => Some(name.value.as_str()),
-                Expression::Id(id) => Some(id.name.as_str()),
+                Expression::String(name) => Some(name.value.as_bytes()),
+                Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
             }
         };
 
-        match key_name {
-            Some("constructor") => self.emit_error(prop.loc, ParseError::NonSimpleConstructor),
-            Some("prototype") if prop.is_static => {
+        match key_name_bytes {
+            Some(name) if name == "constructor".as_bytes() => {
+                self.emit_error(prop.loc, ParseError::NonSimpleConstructor)
+            }
+            Some(name) if name == "prototype".as_bytes() && prop.is_static => {
                 self.emit_error(prop.loc, ParseError::ClassStaticPrototype)
             }
             _ => {}

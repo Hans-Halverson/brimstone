@@ -16,23 +16,29 @@ impl CharRewriter {
     fn new() -> Self {
         Self { char_const_decls: HashMap::new() }
     }
+
+    fn add_char_constant(&mut self, lit_char: &syn::LitChar) -> syn::Ident {
+        let char = lit_char.value();
+        let const_ident = format_ident!("CONST_{}", char as u32);
+
+        // Create a constant declaration if one doesn't already exist
+        if !self.char_const_decls.contains_key(&char) {
+            let const_decl: syn::ItemConst = syn::parse2(quote! {
+                const #const_ident: u32 = #char as u32;
+            })
+            .unwrap();
+            self.char_const_decls.insert(char, const_decl);
+        }
+
+        const_ident
+    }
 }
 
 impl VisitMut for CharRewriter {
     fn visit_pat_mut(&mut self, pat: &mut Pat) {
-        if let Pat::Lit(lit) = &pat {
+        if let Pat::Lit(lit) = pat {
             if let syn::Lit::Char(lit_char) = &lit.lit {
-                let char = lit_char.value();
-                let const_ident = format_ident!("CONST___{}", char as u32);
-
-                // Pull a constant declaration if one doesn't already exist
-                if !self.char_const_decls.contains_key(&char) {
-                    let const_decl: syn::ItemConst = syn::parse2(quote! {
-                        const #const_ident: u32 = #lit_char as u32;
-                    })
-                    .unwrap();
-                    self.char_const_decls.insert(char, const_decl);
-                }
+                let const_ident = self.add_char_constant(lit_char);
 
                 // Replace the char lit pattern with a reference to the constant
                 let pat_ident = PatIdent {
@@ -48,6 +54,19 @@ impl VisitMut for CharRewriter {
         }
 
         visit_mut::visit_pat_mut(self, pat);
+    }
+
+    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
+        if let syn::Expr::Lit(expr_lit) = expr {
+            if let syn::Lit::Char(lit_char) = &expr_lit.lit {
+                let const_ident = self.add_char_constant(lit_char);
+
+                // Replace the char lit expression with a reference to the constant
+                *expr = syn::parse2(quote! { #const_ident }).unwrap();
+            }
+        }
+
+        visit_mut::visit_expr_mut(self, expr);
     }
 }
 

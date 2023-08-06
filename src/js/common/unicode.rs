@@ -1,4 +1,8 @@
+use core::panic;
+
 use super::unicode_tables::{ID_CONTINUE, ID_START};
+
+use match_u32::match_u32;
 
 /// A single unicode code unit. Value may be in the surrogate pair range.
 pub type CodeUnit = u16;
@@ -6,6 +10,9 @@ pub type CodeUnit = u16;
 /// A single unicode code point. Value may be in the surrogate pair range, but is guaranteed to
 /// be within the full unicode range [0x0-0x10FFFF].
 pub type CodePoint = u32;
+
+/// Highest unicode code point
+const MAX_CODE_POINT: CodePoint = 0x10FFFF;
 
 // Start of high surrogate range, inclusive
 const HIGH_SURROGATE_START: CodeUnit = 0xD800;
@@ -18,6 +25,11 @@ const LOW_SURROGATE_START: CodeUnit = 0xDC00;
 const LOW_SURROGATE_END: CodeUnit = 0xDFFF;
 
 #[inline]
+pub fn is_in_unicode_range(code_point: u32) -> bool {
+    code_point <= MAX_CODE_POINT
+}
+
+#[inline]
 pub fn is_high_surrogate_code_unit(code_unit: CodeUnit) -> bool {
     code_unit >= HIGH_SURROGATE_START && code_unit <= HIGH_SURROGATE_END
 }
@@ -27,19 +39,19 @@ pub fn is_low_surrogate_code_unit(code_unit: CodeUnit) -> bool {
     code_unit >= LOW_SURROGATE_START && code_unit <= LOW_SURROGATE_END
 }
 
-pub fn needs_surrogate_pair(char: CodePoint) -> bool {
-    char >= '\u{10000}' as u32
+pub fn needs_surrogate_pair(code_point: CodePoint) -> bool {
+    code_point >= '\u{10000}' as u32
 }
 
-pub fn try_encode_surrogate_pair(char: CodePoint) -> Option<(CodeUnit, CodeUnit)> {
-    if !needs_surrogate_pair(char) {
+pub fn try_encode_surrogate_pair(code_point: CodePoint) -> Option<(CodeUnit, CodeUnit)> {
+    if !needs_surrogate_pair(code_point) {
         return None;
     }
 
-    let offset_char = char as u32 - 0x10000;
+    let offset_code_point = code_point as u32 - 0x10000;
 
-    let high_bits = ((offset_char as u32) >> 10) as u16;
-    let low_bits = (offset_char as u32 & 0x3FF) as u16;
+    let high_bits = ((offset_code_point as u32) >> 10) as u16;
+    let low_bits = (offset_code_point as u32 & 0x3FF) as u16;
 
     Some((high_bits + HIGH_SURROGATE_START, low_bits + LOW_SURROGATE_START))
 }
@@ -60,28 +72,23 @@ pub fn is_continuation_byte(byte: u8) -> bool {
 }
 
 #[inline]
-pub fn is_ascii(char: char) -> bool {
-    (char as u32) < 0x80
+pub fn is_ascii(code_point: CodePoint) -> bool {
+    code_point < 0x80
 }
 
 #[inline]
-pub fn is_latin1_char(char: char) -> bool {
-    is_latin1_code_point(char as CodePoint)
-}
-
-#[inline]
-pub fn is_latin1_code_point(code_point: CodePoint) -> bool {
+pub fn is_latin1(code_point: CodePoint) -> bool {
     code_point <= 0xFF
 }
 
 #[inline]
-pub fn is_decimal_digit(char: char) -> bool {
-    '0' <= char && char <= '9'
+pub fn is_decimal_digit(code_point: CodePoint) -> bool {
+    '0' as u32 <= code_point && code_point <= '9' as u32
 }
 
 #[inline]
-pub fn is_ascii_whitespace(char: char) -> bool {
-    match char {
+pub fn is_ascii_whitespace(code_point: CodePoint) -> bool {
+    match_u32!(match code_point {
          ' '
         | '\t'
         // Vertical tab
@@ -89,12 +96,12 @@ pub fn is_ascii_whitespace(char: char) -> bool {
         // Form feed
         | '\u{000C}' => true,
         _ => false,
-    }
+    })
 }
 
 #[inline]
-pub fn is_unicode_whitespace(char: char) -> bool {
-    match char {
+pub fn is_unicode_whitespace(code_point: CodePoint) -> bool {
+    match_u32!(match code_point {
     // All non-ascii characters in the unicode Space_Separator category
         '\u{00A0}'
         | '\u{1680}'
@@ -106,104 +113,187 @@ pub fn is_unicode_whitespace(char: char) -> bool {
         | '\u{FEFF}'
         => true,
         _ => false,
-    }
+    })
 }
 
 #[inline]
-pub fn is_whitespace(char: char) -> bool {
-    is_ascii_whitespace(char) || is_unicode_whitespace(char)
+pub fn is_whitespace(code_point: CodePoint) -> bool {
+    is_ascii_whitespace(code_point) || is_unicode_whitespace(code_point)
 }
 
 #[inline]
-pub fn is_unicode_newline(char: char) -> bool {
-    char == '\u{2028}' || char == '\u{2029}'
+pub fn is_unicode_newline(code_point: CodePoint) -> bool {
+    code_point == '\u{2028}' as u32 || code_point == '\u{2029}' as u32
 }
 
 #[inline]
-pub fn is_ascii_newline(char: char) -> bool {
-    match char {
+pub fn is_ascii_newline(code_point: CodePoint) -> bool {
+    match_u32!(match code_point {
         '\n' | '\r' => true,
         _ => false,
-    }
+    })
 }
 
 #[inline]
-pub fn is_newline(char: char) -> bool {
-    is_ascii_newline(char) || is_unicode_newline(char)
+pub fn is_newline(code_point: CodePoint) -> bool {
+    is_ascii_newline(code_point) || is_unicode_newline(code_point)
 }
 
 #[inline]
-pub fn is_ascii_alphabetic(char: char) -> bool {
-    match char {
+pub fn is_ascii_alphabetic(code_point: CodePoint) -> bool {
+    match_u32!(match code_point {
         'a'..='z' | 'A'..='Z' => true,
         _ => false,
-    }
+    })
 }
 
-pub fn get_binary_value(char: char) -> Option<u32> {
-    match char {
+pub fn get_binary_value(code_point: CodePoint) -> Option<u32> {
+    match_u32!(match code_point {
         '0' => Some(0),
         '1' => Some(1),
         _ => None,
-    }
+    })
 }
 
-pub fn get_octal_value(char: char) -> Option<u32> {
-    match char {
-        '0'..='7' => Some(char as u32 - '0' as u32),
+pub fn get_octal_value(code_point: CodePoint) -> Option<u32> {
+    match_u32!(match code_point {
+        '0'..='7' => Some(code_point - '0' as u32),
         _ => None,
-    }
+    })
 }
 
-pub fn get_hex_value(char: char) -> Option<u32> {
-    match char {
-        '0'..='9' => Some(char as u32 - '0' as u32),
-        'a'..='f' => Some(char as u32 - 'a' as u32 + 10),
-        'A'..='F' => Some(char as u32 - 'A' as u32 + 10),
+pub fn get_hex_value(code_point: CodePoint) -> Option<u32> {
+    match_u32!(match code_point {
+        '0'..='9' => Some(code_point - '0' as u32),
+        'a'..='f' => Some(code_point - 'a' as u32 + 10),
+        'A'..='F' => Some(code_point - 'A' as u32 + 10),
         _ => None,
-    }
+    })
 }
 
-/// Can this character appear as the first character of an identifier.
-pub fn is_id_start_ascii(char: char) -> bool {
-    match char {
-        'a'..='z' | 'A'..='Z' | '_' | '$' => true,
-        _ => false,
-    }
+/// Can this code point appear as the first code point of an identifier.
+pub fn is_id_start_ascii(code_point: CodePoint) -> bool {
+    is_ascii_alphabetic(code_point) || code_point == '_' as u32 || code_point == '$' as u32
 }
 
-/// Can this character appear in an identifier (after the first character).
-pub fn is_id_part_ascii(char: char) -> bool {
-    match char {
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => true,
-        _ => false,
-    }
+/// Can this code point appear in an identifier (after the first character).
+pub fn is_id_part_ascii(code_point: CodePoint) -> bool {
+    is_ascii_alphabetic(code_point)
+        || is_decimal_digit(code_point)
+        || code_point == '_' as u32
+        || code_point == '$' as u32
 }
 
 #[inline]
-pub fn is_id_start_unicode(char: char) -> bool {
-    ID_START.contains_char(char)
+pub fn is_id_start_unicode(code_point: CodePoint) -> bool {
+    ID_START.contains_u32(code_point)
 }
 
 #[inline]
-pub fn is_id_continue_unicode(char: char) -> bool {
-    ID_CONTINUE.contains_char(char)
+pub fn is_id_continue_unicode(code_point: CodePoint) -> bool {
+    ID_CONTINUE.contains_u32(code_point)
 }
 
 #[inline]
-pub fn is_id_part_unicode(char: char) -> bool {
+pub fn is_id_part_unicode(code_point: CodePoint) -> bool {
     // Either part of the unicode ID_Continue, ZWNJ, or ZWJ
-    is_id_continue_unicode(char) || char == '\u{200C}' || char == '\u{200D}'
+    is_id_continue_unicode(code_point)
+        || code_point == ('\u{200C}' as u32)
+        || code_point == ('\u{200D}' as u32)
 }
 
 #[inline]
-pub fn is_id_start(char: char) -> bool {
-    is_id_start_ascii(char) || is_id_start_unicode(char)
+pub fn is_id_start(code_point: CodePoint) -> bool {
+    is_id_start_ascii(code_point) || is_id_start_unicode(code_point)
 }
 
 #[inline]
-pub fn is_id_part(char: char) -> bool {
-    is_id_part_ascii(char) || is_id_part_unicode(char)
+pub fn is_id_part(code_point: CodePoint) -> bool {
+    is_id_part_ascii(code_point) || is_id_part_unicode(code_point)
+}
+
+#[inline]
+pub fn as_id_start(code_point: CodePoint) -> Option<char> {
+    if is_id_start(code_point) {
+        // Safe as all ID start code points are valid unicode code points
+        let char = unsafe { char::from_u32_unchecked(code_point) };
+        Some(char)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn as_id_part(code_point: CodePoint) -> Option<char> {
+    if is_id_part(code_point) {
+        // Safe as all ID part code points are valid unicode code points
+        let char = unsafe { char::from_u32_unchecked(code_point) };
+        Some(char)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn as_id_start_unicode(code_point: CodePoint) -> Option<char> {
+    if is_id_start_unicode(code_point) {
+        // Safe as all ID start code points are valid unicode code points
+        let char = unsafe { char::from_u32_unchecked(code_point) };
+        Some(char)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn as_id_part_ascii(code_point: CodePoint) -> Option<char> {
+    if is_id_part_ascii(code_point) {
+        // Safe as all ID part code points are valid unicode code points
+        let char = unsafe { char::from_u32_unchecked(code_point) };
+        Some(char)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn as_id_part_unicode(code_point: CodePoint) -> Option<char> {
+    if is_id_part_unicode(code_point) {
+        // Safe as all ID part code points are valid unicode code points
+        let char = unsafe { char::from_u32_unchecked(code_point) };
+        Some(char)
+    } else {
+        None
+    }
+}
+
+/// Encode a code point (including surrogate pairs) as UTF-8 into the given buffer. Must only be
+/// called on code points that are in the valid unicode range [0x0-0x10FFFF]. Must only be called
+/// when the buffer has room for the encoded code point.
+///
+/// Return the number of bytes for the encoded code point.
+pub fn encode_utf8_codepoint(buf: &mut [u8], code_point: CodePoint) -> usize {
+    if code_point < 0x80 && buf.len() >= 1 {
+        buf[0] = code_point as u8;
+        1
+    } else if code_point <= 0x7FF && buf.len() >= 2 {
+        buf[0] = 0xC0 | (code_point >> 6) as u8;
+        buf[1] = 0x80 | (code_point & 0x3F) as u8;
+        2
+    } else if code_point <= 0xFFFF && buf.len() >= 3 {
+        buf[0] = 0xE0 | (code_point >> 12) as u8;
+        buf[1] = 0x80 | ((code_point >> 6) & 0x3F) as u8;
+        buf[2] = 0x80 | (code_point & 0x3F) as u8;
+        3
+    } else if code_point <= 0x10FFFF && buf.len() >= 4 {
+        buf[0] = 0xF0 | (code_point >> 18) as u8;
+        buf[1] = 0x80 | ((code_point >> 12) & 0x3F) as u8;
+        buf[2] = 0x80 | ((code_point >> 6) & 0x3F) as u8;
+        buf[3] = 0x80 | (code_point & 0x3F) as u8;
+        4
+    } else {
+        panic!("Code point out of range")
+    }
 }
 
 /// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
@@ -211,7 +301,7 @@ pub fn is_id_part(char: char) -> bool {
 ///
 /// Returns the codepoint as well as its length in bytes. If no valid codepoint could be parsed,
 /// return an error with the length of the invalid bytes.
-pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
+pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
     let b1 = buf[0];
 
     if (b1 & 0xE0) == 0xC0 && buf.len() >= 2 {
@@ -225,7 +315,7 @@ pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
         let mut codepoint = (b1 as u32 & 0x1F) << 6;
         codepoint |= b2 as u32 & 0x3F;
 
-        Ok((unsafe { char::from_u32_unchecked(codepoint) }, 2))
+        Ok((codepoint, 2))
     } else if (b1 & 0xF0) == 0xE0 && buf.len() >= 3 {
         // Three byte sequence
         let b2 = buf[1];
@@ -239,12 +329,7 @@ pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
         codepoint |= (b2 as u32 & 0x3F) << 6;
         codepoint |= b3 as u32 & 0x3F;
 
-        // Char could be in the surrogate pair range, 0xD800 - 0xDFFF, which is not considered
-        // a valid code point.
-        return match char::from_u32(codepoint) {
-            None => Err(3),
-            Some(char) => Ok((char, 3)),
-        };
+        Ok((codepoint, 3))
     } else if (b1 & 0xF8) == 0xF0 && buf.len() >= 4 {
         // Four byte sequence
         let b2 = buf[1];
@@ -260,12 +345,30 @@ pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
         codepoint |= (b3 as u32 & 0x3F) << 6;
         codepoint |= b4 as u32 & 0x3F;
 
-        // Char could be above the code point max, 0x10FFFF
-        return match char::from_u32(codepoint) {
-            None => Err(4),
-            Some(char) => Ok((char, 4)),
-        };
+        Ok((codepoint, 4))
     } else {
-        return Err(1);
+        Err(1)
     }
+}
+
+/// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
+/// current byte is in-bounds and is not ASCII meaning it is the start of a UTF-8 byte sequence.
+///
+/// Returns the codepoint as well as its length in bytes. If no valid codepoint could be parsed,
+/// return an error with the length of the invalid bytes.
+pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
+    let (code_point, byte_length) = decode_wtf8_codepoint(buf)?;
+    match char::from_u32(code_point) {
+        Some(char) => Ok((char, byte_length)),
+        None => Err(byte_length),
+    }
+}
+
+pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {
+    if let Some(char) = char::from_u32(code_point) {
+        return String::from(char);
+    }
+
+    // Code points in the surrogate pair range are encoded as a \uXXXX unicode escape sequence
+    format!("\\u{:X}", code_point)
 }

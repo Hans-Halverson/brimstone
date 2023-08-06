@@ -2,7 +2,10 @@ use std::hash;
 
 use num_bigint::BigInt;
 
-use crate::{js::runtime::completion::EvalResult, maybe};
+use crate::{
+    js::{common::wtf_8::Wtf8String, runtime::completion::EvalResult},
+    maybe,
+};
 
 use super::{loc::Loc, regexp::RegExp};
 
@@ -635,7 +638,7 @@ pub struct NumberLiteral {
 
 pub struct StringLiteral {
     pub loc: Loc,
-    pub value: String,
+    pub value: Wtf8String,
 }
 
 pub struct BigIntLiteral {
@@ -884,7 +887,7 @@ pub struct TemplateLiteral {
 pub struct TemplateElement {
     pub loc: Loc,
     pub raw: String,
-    pub cooked: Option<String>,
+    pub cooked: Option<Wtf8String>,
 }
 
 pub struct TaggedTemplateExpression {

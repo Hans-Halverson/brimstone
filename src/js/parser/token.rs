@@ -2,13 +2,15 @@ use std::fmt;
 
 use num_bigint::BigInt;
 
+use crate::js::common::wtf_8::Wtf8String;
+
 use super::loc::Loc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Identifier(String),
     NumberLiteral(f64),
-    StringLiteral(String),
+    StringLiteral(Wtf8String),
     BigIntLiteral(BigInt),
     RegExpLiteral {
         raw: String,
@@ -18,7 +20,7 @@ pub enum Token {
     TemplatePart {
         raw: String,
         // Either a successful string, or a malformed escape sequence error at the given loc
-        cooked: Result<String, Loc>,
+        cooked: Result<Wtf8String, Loc>,
         is_head: bool,
         is_tail: bool,
     },
@@ -141,7 +143,7 @@ impl fmt::Display for Token {
         let str = match self {
             Token::Identifier(name) => name,
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
-            Token::StringLiteral(lit) => lit,
+            Token::StringLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::BigIntLiteral(lit) => return write!(f, "{}n", lit.to_string()),
             Token::RegExpLiteral { raw, .. } => return write!(f, "{}", raw),
             Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {

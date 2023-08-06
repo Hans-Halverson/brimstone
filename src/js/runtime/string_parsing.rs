@@ -99,14 +99,14 @@ impl StringLexer {
         match self.current {
             // ASCII fast path
             Some(current) if current < 0x80 => {
-                let char = current as u8 as char;
-                is_ascii_whitespace(char) || is_ascii_newline(char)
+                let code_point = current as u32;
+                is_ascii_whitespace(code_point) || is_ascii_newline(code_point)
             }
             // Slow non-ascii path for full unicode coverage
-            Some(current) => match char::from_u32(current as u32) {
-                None => false,
-                Some(char) => is_unicode_whitespace(char) || is_unicode_newline(char),
-            },
+            Some(current) => {
+                let code_point = current as u32;
+                is_unicode_whitespace(code_point) || is_unicode_newline(code_point)
+            }
             None => false,
         }
     }
@@ -225,19 +225,16 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
     }
 
     // Parse optional leading sign
-    let is_negative = if lexer.current_equals('-') {
-        lexer.advance();
+    let is_negative = if lexer.eat('-') {
         true
-    } else if lexer.current_equals('+') {
-        lexer.advance();
+    } else if lexer.eat('+') {
         false
     } else {
         false
     };
 
     // Parse 'Infinity', one character at a time
-    if lexer.current_equals('I') {
-        lexer.advance();
+    if lexer.eat('I') {
         lexer.expect('n')?;
         lexer.expect('f')?;
         lexer.expect('i')?;

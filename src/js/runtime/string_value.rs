@@ -12,10 +12,13 @@ use std::{
 
 use crate::{
     field_offset,
-    js::common::unicode::{
-        code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1_char,
-        is_latin1_code_point, is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
-        try_encode_surrogate_pair, CodePoint, CodeUnit,
+    js::common::{
+        unicode::{
+            code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1,
+            is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
+            try_encode_surrogate_pair, CodePoint, CodeUnit,
+        },
+        wtf_8::Wtf8CodePointsIterator,
     },
     set_uninit, static_assert,
 };
@@ -418,8 +421,7 @@ impl Handle<StringValue> {
 
         if trim_start {
             while let Some(code_point) = code_points_iter.next() {
-                let char = unsafe { char::from_u32_unchecked(code_point) };
-                if !is_whitespace(char) {
+                if !is_whitespace(code_point) {
                     break;
                 }
 
@@ -431,8 +433,7 @@ impl Handle<StringValue> {
 
         if trim_end {
             while let Some(code_point) = code_points_iter.next_back() {
-                let char = unsafe { char::from_u32_unchecked(code_point) };
-                if !is_whitespace(char) {
+                if !is_whitespace(code_point) {
                     break;
                 }
 
@@ -726,19 +727,19 @@ impl FlatString {
         string
     }
 
-    pub fn from_utf8(cx: &mut Context, str: &str) -> HeapPtr<FlatString> {
+    pub fn from_wtf8(cx: &mut Context, bytes: &[u8]) -> HeapPtr<FlatString> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
         let mut length: usize = 0;
 
-        for char in str.chars() {
-            if !is_ascii(char) {
-                if !is_latin1_char(char) {
+        for code_point in Wtf8CodePointsIterator::new(bytes) {
+            if !is_ascii(code_point) {
+                if !is_latin1(code_point) {
                     has_two_byte_chars = true;
 
                     // Two code units are needed if this is a surrogate pair
-                    if needs_surrogate_pair(char as CodePoint) {
+                    if needs_surrogate_pair(code_point) {
                         length += 2;
                     } else {
                         length += 1;
@@ -759,10 +760,10 @@ impl FlatString {
             unsafe { buf.set_len(length) };
 
             let mut index = 0;
-            for char in str.chars() {
-                match try_encode_surrogate_pair(char as CodePoint) {
+            for code_point in Wtf8CodePointsIterator::new(bytes) {
+                match try_encode_surrogate_pair(code_point) {
                     None => {
-                        buf[index] = char as u16;
+                        buf[index] = code_point as u16;
                         index += 1;
                     }
                     Some((high, low)) => {
@@ -776,7 +777,7 @@ impl FlatString {
             FlatString::new_two_byte(cx, &buf)
         } else if !has_non_ascii_one_byte_chars {
             // If this string is pure ASCII then we can directly copy the UTF-8 string.
-            FlatString::new_one_byte(cx, str.as_bytes())
+            FlatString::new_one_byte(cx, bytes)
         } else {
             // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
             let mut buf: Vec<u8> = Vec::with_capacity(length);
@@ -784,8 +785,8 @@ impl FlatString {
 
             // Copy each character into the buffer
             let mut index = 0;
-            for char in str.chars() {
-                buf[index] = char as u8;
+            for code_point in Wtf8CodePointsIterator::new(bytes) {
+                buf[index] = code_point as u8;
                 index += 1;
             }
 
@@ -803,7 +804,7 @@ impl FlatString {
 
     #[inline]
     fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
-        if is_latin1_code_point(code_point) {
+        if is_latin1(code_point) {
             FlatString::new_one_byte(cx, &[code_point as u8]).to_handle()
         } else {
             match try_encode_surrogate_pair(code_point) {
@@ -1233,6 +1234,7 @@ impl GenericCodeUnitIterator for SafeCodeUnitIterator {
     }
 }
 
+#[derive(Clone)]
 pub struct GenericCodePointIterator<I: GenericCodeUnitIterator> {
     iter: I,
 }
@@ -1299,7 +1301,7 @@ impl DoubleEndedIterator for CodePointIterator {
         match self.iter.next_back() {
             None => None,
             Some(code_unit) => {
-                // Low surrogate may followa high surrogate, in which case the surrogate pair
+                // Low surrogate may follow a high surrogate, in which case the surrogate pair
                 // encodes the full code point.
                 if is_low_surrogate_code_unit(code_unit) {
                     match self.iter.peek_back() {

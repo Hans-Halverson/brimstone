@@ -9,11 +9,11 @@ use super::{
 };
 
 /// Character that marks an EOF. Not a valid unicode character.
-pub const EOF_CHAR: char = '\u{ffff}';
+pub const EOF_CHAR: u32 = 0x110000;
 
 /// A save point for the lexer stream, can be used to restore the stream to a particular position.
 pub struct SavedLexerStreamState {
-    current: char,
+    current: u32,
     pos: Pos,
 }
 
@@ -23,17 +23,17 @@ pub trait LexerStream {
 
     /// The current byte or EOF_CHAR in the input stream. Output can have any range, but will only
     /// be compared against bytes or EOF_CHAR.
-    fn current(&self) -> char;
+    fn current(&self) -> u32;
 
     /// Move forward N units in the input stream
     fn advance_n(&mut self, n: usize);
 
     /// Return the byte or EOF_CHAR that is N units forwards in the input stream. Output can have
     /// any range, but will only be compared against bytes or EOF_CHAR.
-    fn peek_n(&self, n: usize) -> char;
+    fn peek_n(&self, n: usize) -> u32;
 
     /// Parse and move forward one code point in the input stream
-    fn parse_unicode_codepoint(&mut self) -> ParseResult<char>;
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32>;
 
     /// Return an error with location between start_pos and the current position
     fn error<T>(&self, start_pos: Pos, error: ParseError) -> ParseResult<T>;
@@ -53,12 +53,12 @@ pub trait LexerStream {
 
 /// An input stream over a valid UTF-8 string.
 pub struct Utf8LexerStream<'a> {
-    /// Buffer of bytes for pattern that is being parsed
+    /// Buffer of bytes that are being parsed
     buf: &'a str,
     /// Location of the current byte in the buffer
     pos: Pos,
     /// Current byte or EOF_CHAR
-    current: char,
+    current: u32,
     /// Pos of the start of the buffer that is being parsed
     buf_start_pos: Pos,
     /// Source of the buffer we are parsing
@@ -66,8 +66,7 @@ pub struct Utf8LexerStream<'a> {
 }
 
 impl<'a> Utf8LexerStream<'a> {
-    pub fn new(buf_start_pos: Pos, source: Rc<Source>, pattern: &'a str) -> Self {
-        let buf = pattern;
+    pub fn new(buf_start_pos: Pos, source: Rc<Source>, buf: &'a str) -> Self {
         let current = if buf.len() == 0 {
             EOF_CHAR
         } else {
@@ -78,7 +77,7 @@ impl<'a> Utf8LexerStream<'a> {
     }
 
     #[inline]
-    fn char_at(&self, index: usize) -> char {
+    fn code_point_at(&self, index: usize) -> u32 {
         self.buf.as_bytes()[index].into()
     }
 
@@ -96,7 +95,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
     }
 
     #[inline]
-    fn current(&self) -> char {
+    fn current(&self) -> u32 {
         self.current
     }
 
@@ -104,7 +103,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
-            self.current = self.char_at(self.pos);
+            self.current = self.code_point_at(self.pos);
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
@@ -112,18 +111,18 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
     }
 
     #[inline]
-    fn peek_n(&self, n: usize) -> char {
+    fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
-            self.char_at(next_pos)
+            self.code_point_at(next_pos)
         } else {
             EOF_CHAR
         }
     }
 
     #[inline]
-    fn parse_unicode_codepoint(&mut self) -> ParseResult<char> {
-        // Must check if we are at end of pattern as decode_utf8_codepoint assumes we are not
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
+        // Must check if we are at end of buffer as decode_utf8_codepoint assumes we are not
         if self.current == EOF_CHAR {
             return self.error(self.pos(), ParseError::UnexpectedRegExpEnd);
         }
@@ -137,7 +136,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
             match decode_utf8_codepoint(buf) {
                 Ok((code_point, byte_length)) => {
                     self.advance_n(byte_length);
-                    Ok(code_point)
+                    Ok(code_point as u32)
                 }
                 Err(byte_length) => {
                     let start_pos = self.pos;

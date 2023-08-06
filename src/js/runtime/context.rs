@@ -1,4 +1,4 @@
-use crate::js::{parser::ast, runtime::gc::HandleScope};
+use crate::js::{common::wtf_8::Wtf8String, parser::ast, runtime::gc::HandleScope};
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
@@ -202,7 +202,12 @@ impl Context {
 
     #[inline]
     pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
-        FlatString::from_utf8(self, str)
+        FlatString::from_wtf8(self, str.as_bytes())
+    }
+
+    #[inline]
+    pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> HeapPtr<FlatString> {
+        FlatString::from_wtf8(self, str.as_bytes())
     }
 
     #[inline]

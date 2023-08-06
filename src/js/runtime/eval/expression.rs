@@ -143,7 +143,7 @@ fn eval_number_literal(cx: &mut Context, lit: &ast::NumberLiteral) -> EvalResult
 }
 
 fn eval_string_literal(cx: &mut Context, lit: &ast::StringLiteral) -> EvalResult<Handle<Value>> {
-    let interned_value = InternedStrings::get_str(cx, &lit.value);
+    let interned_value = InternedStrings::get_wtf8_str(cx, &lit.value);
     interned_value.into()
 }
 
@@ -289,7 +289,7 @@ pub fn eval_property_name<'a>(
         match key {
             ast::Expression::Id(id) => id_property_key(cx, id),
             ast::Expression::String(lit) => {
-                let string_value = InternedStrings::get_str(cx, &lit.value);
+                let string_value = InternedStrings::get_wtf8_str(cx, &lit.value);
                 PropertyKey::string(cx, string_value).to_handle(cx)
             }
             ast::Expression::Number(lit) => {
@@ -324,7 +324,8 @@ fn eval_template_literal(
 ) -> EvalResult<Handle<Value>> {
     let mut string_parts = Vec::with_capacity(lit.quasis.len() * 2 - 1);
 
-    let first_quasi_part = InternedStrings::get_str(cx, &lit.quasis[0].cooked.as_deref().unwrap());
+    let first_quasi_part =
+        InternedStrings::get_wtf8_str(cx, &lit.quasis[0].cooked.as_ref().unwrap());
     string_parts.push(first_quasi_part);
 
     for i in 1..lit.quasis.len() {
@@ -333,7 +334,7 @@ fn eval_template_literal(
 
         string_parts.push(expr_string);
 
-        let quasi_part = InternedStrings::get_str(cx, &lit.quasis[i].cooked.as_deref().unwrap());
+        let quasi_part = InternedStrings::get_wtf8_str(cx, &lit.quasis[i].cooked.as_ref().unwrap());
         string_parts.push(quasi_part);
     }
 
@@ -759,7 +760,7 @@ fn get_template_object(cx: &mut Context, lit: &ast::TemplateLiteral) -> Handle<O
 
         let cooked_value = match &quasi.cooked {
             None => cx.undefined(),
-            Some(cooked) => InternedStrings::get_str(cx, cooked).into(),
+            Some(cooked) => InternedStrings::get_wtf8_str(cx, cooked).into(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));

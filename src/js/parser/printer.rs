@@ -1,3 +1,5 @@
+use crate::js::common::wtf_8::Wtf8String;
+
 use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
 use super::regexp::{
@@ -40,6 +42,12 @@ impl<'a> Printer<'a> {
     fn print_string(&mut self, string: &String) {
         self.buf.push('\"');
         self.buf.push_str(string);
+        self.buf.push('\"');
+    }
+
+    fn print_wtf8_string(&mut self, string: &Wtf8String) {
+        self.buf.push('\"');
+        self.buf.push_str(&string.to_string());
         self.buf.push('\"');
     }
 
@@ -548,7 +556,7 @@ impl<'a> Printer<'a> {
 
     fn print_string_literal(&mut self, lit: &StringLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("value", &lit.value, Printer::print_string);
+        self.property("value", &lit.value, Printer::print_wtf8_string);
         self.end_node();
     }
 
@@ -889,7 +897,7 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_string);
+        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_string);
         self.property("raw", &element.raw, Printer::print_string);
 
         self.dec_indent();
@@ -1142,6 +1150,13 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn print_optional_wtf8_string(&mut self, string: Option<&Wtf8String>) {
+        match string {
+            None => self.print_null(),
+            Some(string) => self.print_wtf8_string(string),
+        }
+    }
+
     fn print_optional_number(&mut self, number: Option<impl ToString>) {
         match number {
             None => self.print_null(),
@@ -1186,9 +1201,9 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_regexp_literal_pattern(&mut self, literal: &String) {
+    fn print_regexp_literal_pattern(&mut self, literal: &Wtf8String) {
         self.start_regexp_node("Literal");
-        self.property("value", literal, Printer::print_string);
+        self.property("value", literal, Printer::print_wtf8_string);
         self.end_node();
     }
 

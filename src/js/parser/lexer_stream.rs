@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::js::common::unicode::{decode_utf8_codepoint, is_ascii};
+use crate::js::common::unicode::{
+    code_point_from_surrogate_pair, decode_utf8_codepoint, is_ascii, is_high_surrogate_code_unit,
+    is_low_surrogate_code_unit, CodeUnit,
+};
 
 use super::{
     loc::{Loc, Pos},
@@ -151,6 +154,279 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
         let loc = self.loc_from_start_pos(start_pos);
         let source = self.source.clone();
         Err(LocalizedParseError { error, source_loc: Some((loc, source)) })
+    }
+
+    fn save(&self) -> SavedLexerStreamState {
+        SavedLexerStreamState { current: self.current, pos: self.pos }
+    }
+
+    fn restore(&mut self, save_state: &SavedLexerStreamState) {
+        self.current = save_state.current;
+        self.pos = save_state.pos;
+    }
+}
+
+/// An input stream over the bytes of a heap allocated OneByte string.
+pub struct HeapOneByteLexerStream<'a> {
+    /// Buffer of bytes that are being parsed
+    buf: &'a [u8],
+    /// Location of the current byte in the buffer
+    pos: Pos,
+    /// Current byte or EOF_CHAR
+    current: u32,
+}
+
+impl<'a> HeapOneByteLexerStream<'a> {
+    pub fn new(buf: &'a [u8]) -> Self {
+        let current = if buf.len() == 0 {
+            EOF_CHAR
+        } else {
+            buf[0].into()
+        };
+
+        HeapOneByteLexerStream { buf, pos: 0, current }
+    }
+
+    #[inline]
+    fn code_point_at(&self, index: usize) -> u32 {
+        self.buf[index].into()
+    }
+}
+
+impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
+    #[inline]
+    fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    fn advance_n(&mut self, n: usize) {
+        self.pos += n;
+        if self.pos < self.buf.len() {
+            self.current = self.code_point_at(self.pos);
+        } else {
+            self.current = EOF_CHAR;
+            self.pos = self.buf.len();
+        }
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> u32 {
+        let next_pos = self.pos + n;
+        if next_pos < self.buf.len() {
+            self.code_point_at(next_pos)
+        } else {
+            EOF_CHAR
+        }
+    }
+
+    #[inline]
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
+        // There is no code point if we are at the end of the buffer
+        if self.current == EOF_CHAR {
+            return self.error(self.pos(), ParseError::UnexpectedRegExpEnd);
+        }
+
+        let code_point = self.current();
+        self.advance_n(1);
+
+        Ok(code_point)
+    }
+
+    fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
+        Err(LocalizedParseError { error, source_loc: None })
+    }
+
+    fn save(&self) -> SavedLexerStreamState {
+        SavedLexerStreamState { current: self.current, pos: self.pos }
+    }
+
+    fn restore(&mut self, save_state: &SavedLexerStreamState) {
+        self.current = save_state.current;
+        self.pos = save_state.pos;
+    }
+}
+
+/// An input stream over the code units of a heap allocated TwoByte string. This lexer stream is not
+/// unicode aware, meaning that it will not decode surrogate pairs into code points and will instead
+/// treat every 16-bit code unit as its own code point in the Basic Multilingual Plane.
+pub struct HeapTwoByteCodeUnitLexerStream<'a> {
+    /// Buffer of two byte code units that are being parsed
+    buf: &'a [u16],
+    /// Location of the current code unit in the buffer
+    pos: Pos,
+    /// Current code unit or EOF_CHAR
+    current: u32,
+}
+
+impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
+    pub fn new(buf: &'a [u16]) -> Self {
+        let current = if buf.len() == 0 {
+            EOF_CHAR
+        } else {
+            buf[0] as u32
+        };
+
+        HeapTwoByteCodeUnitLexerStream { buf, pos: 0, current }
+    }
+
+    #[inline]
+    fn code_point_at(&self, index: usize) -> u32 {
+        self.buf[index] as u32
+    }
+}
+
+impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
+    #[inline]
+    fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    fn advance_n(&mut self, n: usize) {
+        self.pos += n;
+        if self.pos < self.buf.len() {
+            self.current = self.code_point_at(self.pos);
+        } else {
+            self.current = EOF_CHAR;
+            self.pos = self.buf.len();
+        }
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> u32 {
+        let next_pos = self.pos + n;
+        if next_pos < self.buf.len() {
+            self.code_point_at(next_pos)
+        } else {
+            EOF_CHAR
+        }
+    }
+
+    #[inline]
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
+        // There is no code point if we are at the end of the buffer
+        if self.current == EOF_CHAR {
+            return self.error(self.pos(), ParseError::UnexpectedRegExpEnd);
+        }
+
+        let code_point = self.current();
+        self.advance_n(1);
+
+        Ok(code_point)
+    }
+
+    fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
+        Err(LocalizedParseError { error, source_loc: None })
+    }
+
+    fn save(&self) -> SavedLexerStreamState {
+        SavedLexerStreamState { current: self.current, pos: self.pos }
+    }
+
+    fn restore(&mut self, save_state: &SavedLexerStreamState) {
+        self.current = save_state.current;
+        self.pos = save_state.pos;
+    }
+}
+
+/// An input stream over the code points of a heap allocated TwoByte string. This lexer stream is
+/// unicode aware, meaning that it will decode paired surrogate into code points.
+pub struct HeapTwoByteCodePointLexerStream<'a> {
+    /// Buffer of two byte code units that are being parsed
+    buf: &'a [u16],
+    /// Location of the current code unit in the buffer
+    pos: Pos,
+    /// Current code unit or EOF_CHAR
+    current: u32,
+}
+
+impl<'a> HeapTwoByteCodePointLexerStream<'a> {
+    pub fn new(buf: &'a [u16]) -> Self {
+        let current = if buf.len() == 0 {
+            EOF_CHAR
+        } else {
+            buf[0] as u32
+        };
+
+        HeapTwoByteCodePointLexerStream { buf, pos: 0, current }
+    }
+
+    // Return a code point and the number of code units that make up that code point.
+    #[inline]
+    fn code_point_at(&self, index: usize) -> (u32, usize) {
+        let code_unit = self.buf[index] as CodeUnit;
+        if is_high_surrogate_code_unit(code_unit) {
+            let next_code_unit = self.buf[index + 1] as CodeUnit;
+            if is_low_surrogate_code_unit(next_code_unit) {
+                let code_point = code_point_from_surrogate_pair(code_unit, next_code_unit);
+                return (code_point, 2);
+            }
+        }
+
+        (code_unit as u32, 1)
+    }
+}
+
+impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
+    #[inline]
+    fn pos(&self) -> Pos {
+        self.pos
+    }
+
+    #[inline]
+    fn current(&self) -> u32 {
+        self.current
+    }
+
+    #[inline]
+    fn advance_n(&mut self, n: usize) {
+        self.pos += n;
+        if self.pos < self.buf.len() {
+            let (code_point, _) = self.code_point_at(self.pos);
+            self.current = code_point;
+        } else {
+            self.current = EOF_CHAR;
+            self.pos = self.buf.len();
+        }
+    }
+
+    #[inline]
+    fn peek_n(&self, n: usize) -> u32 {
+        let next_pos = self.pos + n;
+        if next_pos < self.buf.len() {
+            let (code_point, _) = self.code_point_at(self.pos);
+            code_point
+        } else {
+            EOF_CHAR
+        }
+    }
+
+    #[inline]
+    fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
+        // There is no code point if we are at the end of the buffer
+        if self.current == EOF_CHAR {
+            return self.error(self.pos(), ParseError::UnexpectedRegExpEnd);
+        }
+
+        let (code_point, num_code_units) = self.code_point_at(self.pos);
+        self.advance_n(num_code_units);
+
+        Ok(code_point)
+    }
+
+    fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
+        Err(LocalizedParseError { error, source_loc: None })
     }
 
     fn save(&self) -> SavedLexerStreamState {

@@ -248,6 +248,7 @@ builtin_names!(
     (join, "join"),
     (keys, "keys"),
     (key_for, "keyFor"),
+    (last_index, "lastIndex"),
     (last_index_of, "lastIndexOf"),
     (length, "length"),
     (log, "log"),

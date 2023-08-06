@@ -8,7 +8,7 @@ mod parse_error;
 pub mod parser;
 mod printer;
 pub mod regexp;
-mod regexp_parser;
+pub mod regexp_parser;
 mod scope;
 pub mod source;
 mod token;

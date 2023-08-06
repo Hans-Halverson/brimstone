@@ -4,6 +4,7 @@ use crate::{
     extend_object,
     js::{
         parser::{
+            ast,
             lexer_stream::{
                 HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
                 HeapTwoByteCodeUnitLexerStream, LexerStream,
@@ -19,6 +20,7 @@ use crate::{
             function::get_argument,
             gc::{Handle, HeapObject, HeapVisitor},
             get,
+            interned_strings::InternedStrings,
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_from_constructor,
@@ -69,6 +71,19 @@ impl RegExpObject {
         ));
 
         object.into()
+    }
+
+    pub fn new_from_literal(cx: &mut Context, lit: &ast::RegExpLiteral) -> Handle<RegExpObject> {
+        // Can use source directly as "escaped" pattern source since
+        let source = InternedStrings::get_str(cx, &lit.raw);
+
+        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
+        let mut regexp_object = must!(RegExpObject::new_from_constructor(cx, regexp_constructor));
+
+        set_uninit!(regexp_object.flags, lit.regexp.flags);
+        set_uninit!(regexp_object.escaped_pattern_source, source.get_());
+
+        regexp_object.into()
     }
 
     pub fn flags(&self) -> RegExpFlags {

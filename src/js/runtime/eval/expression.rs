@@ -23,7 +23,7 @@ use crate::{
                 get_new_target, get_this_environment, resolve_binding, resolve_this_binding,
             },
             interned_strings::InternedStrings,
-            intrinsics::intrinsics::Intrinsic,
+            intrinsics::{intrinsics::Intrinsic, regexp_constructor::RegExpObject},
             iterator::iter_iterator_values,
             numeric_operations::number_exponentiate,
             object_descriptor::ObjectKind,
@@ -66,7 +66,7 @@ pub fn eval_expression(cx: &mut Context, expr: &ast::Expression) -> EvalResult<H
         ast::Expression::Number(lit) => eval_number_literal(cx, lit),
         ast::Expression::String(lit) => eval_string_literal(cx, lit),
         ast::Expression::BigInt(lit) => eval_bigint_literal(cx, lit),
-        ast::Expression::RegExp(_) => unimplemented!("regexp literal"),
+        ast::Expression::RegExp(lit) => eval_regexp_literal(cx, lit),
         ast::Expression::Unary(expr) => match expr.operator {
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
@@ -315,6 +315,11 @@ pub fn eval_property_name<'a>(
     };
 
     property_key.into()
+}
+
+// 13.2.7.3 RegExp Literal Evaluation
+fn eval_regexp_literal(cx: &mut Context, lit: &ast::RegExpLiteral) -> EvalResult<Handle<Value>> {
+    RegExpObject::new_from_literal(cx, lit).into()
 }
 
 // 13.2.8.5 Template Literal Evaluation

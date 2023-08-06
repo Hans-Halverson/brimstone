@@ -1,3 +1,4 @@
+use crate::js::common::unicode::to_string_or_unicode_escape_sequence;
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
@@ -1260,9 +1261,14 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_character_class_range(&mut self, range: &ClassRange) {
         match range {
-            ClassRange::Single(single) => self.print_string(&format!("Single({})", single)),
+            ClassRange::Single(single) => self.print_string(&format!(
+                "Single({})",
+                to_string_or_unicode_escape_sequence(*single)
+            )),
             ClassRange::Range(start, end) => {
-                self.print_string(&format!("Range({}, {})", start, end))
+                let start_string = to_string_or_unicode_escape_sequence(*start);
+                let end_string = to_string_or_unicode_escape_sequence(*end);
+                self.print_string(&format!("Range({}, {})", start_string, end_string))
             }
             ClassRange::Digit => self.print_str("\\d"),
             ClassRange::NotDigit => self.print_str("\\D"),

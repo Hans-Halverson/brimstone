@@ -7,6 +7,7 @@ use super::ast::P;
 pub struct RegExp {
     pub disjunction: Disjunction,
     pub flags: RegExpFlags,
+    pub num_capture_groups: u32,
 }
 
 bitflags! {
@@ -62,7 +63,7 @@ pub enum Term {
     /// Matches any characters in a set e.g. [a-b]
     CharacterClass(CharacterClass),
     /// References to a capture group: `\1` or `\k<name>`
-    Backreference(Backreference),
+    Backreference(P<Backreference>),
 }
 
 pub struct Quantifier {
@@ -86,9 +87,12 @@ pub enum Assertion {
     NotWordBoundary,
 }
 
+/// Capture group indices are 1-indexed to match their syntax in RegExp literals.
+pub type CaptureGroupIndex = u32;
+
 pub struct CaptureGroup {
-    /// Optional name for the capture group
-    pub name: Option<P<String>>,
+    // Index of the capture group in the RegExp
+    pub index: CaptureGroupIndex,
     pub disjunction: Disjunction,
 }
 
@@ -130,9 +134,7 @@ pub struct Lookaround {
     pub disjunction: Disjunction,
 }
 
-pub enum Backreference {
+pub struct Backreference {
     /// Index of the capture group to reference
-    Index(u32),
-    /// Name of the capture group to reference
-    Name(P<String>),
+    pub index: CaptureGroupIndex,
 }

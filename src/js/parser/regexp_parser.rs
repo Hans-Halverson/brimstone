@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use match_u32::match_u32;
 
 use crate::js::common::{
@@ -9,12 +11,12 @@ use crate::js::common::{
 };
 
 use super::{
-    ast::p,
+    ast::{p, AstPtr},
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
         Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
-        ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
+        ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term, CaptureGroupIndex,
     },
     ParseError, ParseResult,
 };
@@ -26,11 +28,27 @@ pub struct RegExpParser<T: LexerStream> {
     lexer_stream: T,
     /// Flags for this regexp
     flags: RegExpFlags,
+    // Number of capture groups seen so far
+    num_capture_groups: u32,
+    // Map of capture group names that have been encountered so far to their capture group index
+    capture_group_names: HashMap<String, CaptureGroupIndex>,
+    // All named backreferences encountered. Saves the name, source position, and a reference to the
+    // backreference node itself.
+    named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
+    // All indexed backreferences encountered. Saves the index and source position.
+    indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
 }
 
 impl<T: LexerStream> RegExpParser<T> {
     fn new(lexer_stream: T, flags: RegExpFlags) -> Self {
-        RegExpParser { lexer_stream, flags }
+        RegExpParser {
+            lexer_stream,
+            flags,
+            num_capture_groups: 0,
+            capture_group_names: HashMap::new(),
+            named_backreferences: vec![],
+            indexed_backreferences: vec![],
+        }
     }
 
     #[inline]
@@ -129,12 +147,31 @@ impl<T: LexerStream> RegExpParser<T> {
         self.error(start_pos, ParseError::UnexpectedRegExpToken)
     }
 
+    fn next_capture_group_index(&mut self, error_pos: Pos) -> ParseResult<u32> {
+        // Capture group indices are 1-indexed
+        let index = self.num_capture_groups + 1;
+        self.num_capture_groups += 1;
+
+        if index == u32::MAX {
+            return self.error(error_pos, ParseError::TooManyCaptureGroups);
+        }
+
+        Ok(index)
+    }
+
     pub fn parse_regexp(lexer_stream: T, flags: RegExpFlags) -> ParseResult<RegExp> {
         let mut parser = Self::new(lexer_stream, flags);
 
         let disjunction = parser.parse_disjunction()?;
+        let regexp = RegExp {
+            disjunction,
+            flags,
+            num_capture_groups: parser.num_capture_groups,
+        };
 
-        Ok(RegExp { disjunction, flags })
+        parser.resolve_backreferences()?;
+
+        Ok(regexp)
     }
 
     // On failure return the error along with the offset into the input buffer
@@ -230,6 +267,8 @@ impl<T: LexerStream> RegExpParser<T> {
             '[' => self.parse_character_class()?,
             // Might be an escape code
             '\\' => {
+                let start_pos = self.pos();
+
                 match_u32!(match self.peek() {
                     // Standard character class shorthands
                     'w' => {
@@ -288,7 +327,11 @@ impl<T: LexerStream> RegExpParser<T> {
                         // Skip the `\` but start at the first digit
                         self.advance();
                         let index = self.parse_decimal_digits()?;
-                        Term::Backreference(Backreference::Index(index))
+
+                        // Save indexed backreference to be analyzed after parsing
+                        self.indexed_backreferences.push((index, start_pos));
+
+                        Term::Backreference(p(Backreference { index }))
                     }
                     // Named backreferences
                     'k' => {
@@ -298,7 +341,17 @@ impl<T: LexerStream> RegExpParser<T> {
                         let name = self.parse_identifier()?;
                         self.expect('>')?;
 
-                        Term::Backreference(Backreference::Name(p(name)))
+                        // Initialize backreference with a fake index that will be resolved later
+                        let backreference = p(Backreference { index: 0 });
+
+                        // Save named backreference to be analyzed and resolved after parsing
+                        self.named_backreferences.push((
+                            name,
+                            start_pos,
+                            AstPtr::from_ref(backreference.as_ref()),
+                        ));
+
+                        Term::Backreference(backreference)
                     }
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
@@ -382,6 +435,8 @@ impl<T: LexerStream> RegExpParser<T> {
     fn parse_group(&mut self) -> ParseResult<Term> {
         self.advance();
 
+        let left_paren_pos = self.pos();
+
         if self.eat('?') {
             match_u32!(match self.current() {
                 ':' => {
@@ -440,15 +495,21 @@ impl<T: LexerStream> RegExpParser<T> {
                             }))
                         }
                         _ => {
+                            let name_start_pos = self.pos();
                             let name = self.parse_identifier()?;
                             self.expect('>')?;
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
 
-                            Ok(Term::CaptureGroup(CaptureGroup {
-                                name: Some(p(name)),
-                                disjunction,
-                            }))
+                            let index = self.next_capture_group_index(left_paren_pos)?;
+
+                            // Check for duplicate capture group names
+                            if self.capture_group_names.insert(name, index).is_some() {
+                                return self
+                                    .error(name_start_pos, ParseError::DuplicateCaptureGroupName);
+                            }
+
+                            Ok(Term::CaptureGroup(CaptureGroup { index, disjunction }))
                         }
                     })
                 }
@@ -458,7 +519,9 @@ impl<T: LexerStream> RegExpParser<T> {
             let disjunction = self.parse_disjunction()?;
             self.expect(')')?;
 
-            Ok(Term::CaptureGroup(CaptureGroup { name: None, disjunction }))
+            let index = self.next_capture_group_index(left_paren_pos)?;
+
+            Ok(Term::CaptureGroup(CaptureGroup { index, disjunction }))
         }
     }
 
@@ -748,5 +811,44 @@ impl<T: LexerStream> RegExpParser<T> {
         }
 
         Ok(value)
+    }
+
+    /// Analyze and resolve all backreferences in the pattern regexp. Backreferences may have been
+    /// parsed before the associated capture group was found, so error on unresolved backreferences
+    /// and fill in correct indices for named backreferences.
+    fn resolve_backreferences(&self) -> ParseResult<()> {
+        // Keep track of the first error that appears in the input
+        let mut first_error = None;
+
+        let mut update_first_error = |pos, error| {
+            if let Some((first_error_pos, _)) = &first_error {
+                if pos < *first_error_pos {
+                    first_error = Some((pos, error));
+                }
+            } else {
+                first_error = Some((pos, error));
+            }
+        };
+
+        // Check for any indexed backreferences that are out of range
+        for (index, error_pos) in &self.indexed_backreferences {
+            if *index > self.num_capture_groups {
+                update_first_error(error_pos, ParseError::InvalidBackreferenceIndex);
+            }
+        }
+
+        // Resolve named backreferences, erroring if the name cannot be resolved
+        for (name, error_pos, backreference_ptr) in &self.named_backreferences {
+            if let Some(index) = self.capture_group_names.get(name) {
+                backreference_ptr.as_mut().index = *index;
+            } else {
+                update_first_error(error_pos, ParseError::InvalidBackreferenceName);
+            }
+        }
+
+        match first_error {
+            None => Ok(()),
+            Some((pos, error)) => self.error(*pos, error),
+        }
     }
 }

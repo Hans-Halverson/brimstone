@@ -1144,13 +1144,6 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_string(&mut self, string: Option<&String>) {
-        match string {
-            None => self.print_null(),
-            Some(string) => self.print_string(string),
-        }
-    }
-
     fn print_optional_wtf8_string(&mut self, string: Option<&Wtf8String>) {
         match string {
             None => self.print_null(),
@@ -1198,7 +1191,9 @@ impl<'a> Printer<'a> {
             Term::CaptureGroup(group) => self.print_regexp_capture_group(group),
             Term::AnonymousGroup(group) => self.print_regexp_anonymous_group(group),
             Term::CharacterClass(class) => self.print_regexp_character_class(class),
-            Term::Backreference(backreference) => self.print_regexp_backreference(backreference),
+            Term::Backreference(backreference) => {
+                self.print_regexp_backreference(backreference.as_ref())
+            }
         }
     }
 
@@ -1248,7 +1243,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_capture_group(&mut self, group: &CaptureGroup) {
         self.start_regexp_node("CaptureGroup");
-        self.property("name", group.name.as_deref(), Printer::print_optional_string);
+        self.property("index", group.index, Printer::print_number);
         self.print_disjunction(&group.disjunction);
         self.end_node();
     }
@@ -1288,16 +1283,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_backreference(&mut self, backreference: &Backreference) {
         self.start_regexp_node("Backreference");
-
-        match backreference {
-            Backreference::Index(index) => {
-                self.property("index", index, Printer::print_number);
-            }
-            Backreference::Name(name) => {
-                self.property("name", name.as_ref(), Printer::print_string);
-            }
-        }
-
+        self.property("index", backreference.index, Printer::print_number);
         self.end_node();
     }
 }

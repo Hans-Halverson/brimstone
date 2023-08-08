@@ -21,7 +21,7 @@
               terms: [
                 {
                   type: "CaptureGroup",
-                  name: null,
+                  index: 1,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -59,7 +59,7 @@
               terms: [
                 {
                   type: "CaptureGroup",
-                  name: null,
+                  index: 1,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -299,7 +299,7 @@
               terms: [
                 {
                   type: "CaptureGroup",
-                  name: "name",
+                  index: 1,
                   alternatives: [
                     {
                       type: "Alternative",

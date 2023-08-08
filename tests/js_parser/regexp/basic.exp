@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-19:20",
+  loc: "1:0-19:34",
   body: [
     {
       type: "ExpressionStatement",
@@ -331,13 +331,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "18:0-18:27",
+      loc: "18:0-18:44",
       kind: {
         type: "Literal",
-        loc: "18:0-18:26",
-        raw: "/\1\2\3\4\5\6\7\8\9\10023/",
+        loc: "18:0-18:43",
+        raw: "/()()()()()()()()()()\1\2\3\4\5\6\7\8\9\10/",
         value: {
-          pattern: "\1\2\3\4\5\6\7\8\9\10023",
+          pattern: "()()()()()()()()()()\1\2\3\4\5\6\7\8\9\10",
           flags: "",
         },
         regexp: {
@@ -346,6 +346,106 @@
             {
               type: "Alternative",
               terms: [
+                {
+                  type: "CaptureGroup",
+                  index: 1,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 2,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 3,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 4,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 5,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 6,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 7,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 8,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 9,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 10,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
                 {
                   type: "Backreference",
                   index: 1,
@@ -384,7 +484,7 @@
                 },
                 {
                   type: "Backreference",
-                  index: 10023,
+                  index: 10,
                 },
               ],
             },
@@ -394,13 +494,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "19:0-19:20",
+      loc: "19:0-19:34",
       kind: {
         type: "Literal",
-        loc: "19:0-19:19",
-        raw: "/\k<foo>\k<\u0061>/",
+        loc: "19:0-19:33",
+        raw: "/(?<foo>)(?<a>)\k<foo>\k<\u0061>/",
         value: {
-          pattern: "\k<foo>\k<\u0061>",
+          pattern: "(?<foo>)(?<a>)\k<foo>\k<\u0061>",
           flags: "",
         },
         regexp: {
@@ -410,12 +510,32 @@
               type: "Alternative",
               terms: [
                 {
-                  type: "Backreference",
-                  name: "foo",
+                  type: "CaptureGroup",
+                  index: 1,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+                {
+                  type: "CaptureGroup",
+                  index: 2,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
                 },
                 {
                   type: "Backreference",
-                  name: "a",
+                  index: 1,
+                },
+                {
+                  type: "Backreference",
+                  index: 2,
                 },
               ],
             },

@@ -82,6 +82,10 @@ pub enum ParseError {
     UnexpectedRegExpQuantifier,
     UnexpectedRegExpEnd,
     RegExpCharacterClassInRange,
+    TooManyCaptureGroups,
+    DuplicateCaptureGroupName,
+    InvalidBackreferenceIndex,
+    InvalidBackreferenceName,
 }
 
 #[derive(Debug)]
@@ -305,6 +309,18 @@ impl fmt::Display for ParseError {
             }
             ParseError::RegExpCharacterClassInRange => {
                 write!(f, "Character class cannot be a bound in a character range")
+            }
+            ParseError::TooManyCaptureGroups => {
+                write!(f, "Too many capture groups in regular expression")
+            }
+            ParseError::DuplicateCaptureGroupName => {
+                write!(f, "Duplicate capture group name in regular expression")
+            }
+            ParseError::InvalidBackreferenceIndex => {
+                write!(f, "No capture group with index found")
+            }
+            ParseError::InvalidBackreferenceName => {
+                write!(f, "No capture group with name found")
             }
         }
     }

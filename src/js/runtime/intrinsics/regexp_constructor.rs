@@ -45,6 +45,8 @@ extend_object! {
         // The pattern component of the original regexp as a string. Escaped so that it can be
         // parsed into exactly the same pattern again.
         escaped_pattern_source: HeapPtr<StringValue>,
+        // Lazily generated flags string
+        flags_string: Option<HeapPtr<StringValue>>,
     }
 }
 
@@ -53,12 +55,14 @@ impl RegExpObject {
         cx: &mut Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        let object = maybe!(object_create_from_constructor::<RegExpObject>(
+        let mut object = maybe!(object_create_from_constructor::<RegExpObject>(
             cx,
             constructor,
             ObjectKind::RegExpObject,
             Intrinsic::RegExpPrototype
         ));
+
+        set_uninit!(object.flags_string, None);
 
         let object = object.to_handle();
 
@@ -82,12 +86,21 @@ impl RegExpObject {
 
         set_uninit!(regexp_object.flags, lit.regexp.flags);
         set_uninit!(regexp_object.escaped_pattern_source, source.get_());
+        set_uninit!(regexp_object.flags_string, None);
 
         regexp_object.into()
     }
 
     pub fn flags(&self) -> RegExpFlags {
         self.flags
+    }
+
+    pub fn flags_string(&self) -> Option<Handle<StringValue>> {
+        self.flags_string.map(|f| f.to_handle())
+    }
+
+    pub fn set_flags_string(&mut self, flags_string: Handle<StringValue>) {
+        self.flags_string = Some(flags_string.get_());
     }
 
     pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
@@ -187,128 +200,12 @@ impl RegExpConstructor {
             };
             flags_source = FlagsSource::Value(flags_value);
         } else {
-            // Construction from string pattern and flags arguments arguments
+            // Construction from string pattern and flags arguments
             pattern_source = PatternSourceValue::Value(pattern_arg);
             flags_source = FlagsSource::Value(flags_arg);
         }
 
-        let mut regexp_object = maybe!(RegExpObject::new_from_constructor(cx, new_target));
-
-        // Make sure to call ToString on pattern before flags, following order in spec
-        let pattern_source = match pattern_source {
-            PatternSourceValue::Known(old_pattern_source) => {
-                PatternSourceString::Known(old_pattern_source)
-            }
-            PatternSourceValue::Value(pattern_value) => {
-                let pattern = Self::value_or_empty_string(cx, pattern_value);
-                let pattern_string = maybe!(to_string(cx, pattern));
-
-                PatternSourceString::String(pattern_string)
-            }
-        };
-
-        // Parse flags if they need to be parsed, and initialize on regexp object
-        let flags = match flags_source {
-            FlagsSource::Known(flags) => flags,
-            FlagsSource::Value(flags_value) => {
-                let flags = Self::value_or_empty_string(cx, flags_value);
-                let flags_string = maybe!(to_string(cx, flags));
-
-                maybe!(Self::parse_flags(cx, flags_string))
-            }
-        };
-
-        set_uninit!(regexp_object.flags, flags);
-
-        // Parse pattern if it needs to be parsed, and initialize on regexp object
-        let escaped_pattern_source = match pattern_source {
-            PatternSourceString::Known(old_pattern_source) => old_pattern_source,
-            PatternSourceString::String(pattern_string) => {
-                maybe!(Self::parse_pattern(cx, pattern_string, flags));
-
-                // TODO: Escape pattern source
-                pattern_string
-            }
-        };
-
-        set_uninit!(regexp_object.escaped_pattern_source, escaped_pattern_source.get_());
-
-        // Initialize last index property
-        let zero_value = Value::from(0).to_handle(cx);
-        maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
-
-        regexp_object.into()
-    }
-
-    fn value_or_empty_string(cx: &mut Context, value: Handle<Value>) -> Handle<Value> {
-        if value.is_undefined() {
-            cx.names.empty_string().as_string().into()
-        } else {
-            value
-        }
-    }
-
-    fn parse_flags(cx: &mut Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
-        fn parse_lexer_stream(
-            cx: &mut Context,
-            lexer_stream: impl LexerStream,
-        ) -> EvalResult<RegExpFlags> {
-            match RegExpParser::parse_flags(lexer_stream) {
-                Ok(flags) => flags.into(),
-                Err(error) => syntax_error_(cx, &error.to_string()),
-            }
-        }
-
-        let flat_string = flags_string.flatten();
-        match flat_string.width() {
-            StringWidth::OneByte => {
-                let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-                parse_lexer_stream(cx, lexer_stream)
-            }
-            // Non-ASCII code points are not allowed in flags, so always safe to use unicode-unware
-            // code unit lexer.
-            StringWidth::TwoByte => {
-                let lexer_stream =
-                    HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
-                parse_lexer_stream(cx, lexer_stream)
-            }
-        }
-    }
-
-    fn parse_pattern(
-        cx: &mut Context,
-        pattern_string: Handle<StringValue>,
-        flags: RegExpFlags,
-    ) -> EvalResult<()> {
-        fn parse_lexer_stream(
-            cx: &mut Context,
-            lexer_stream: impl LexerStream,
-            flags: RegExpFlags,
-        ) -> EvalResult<()> {
-            match RegExpParser::parse_regexp(lexer_stream, flags) {
-                Ok(_) => ().into(),
-                Err(error) => syntax_error_(cx, &error.to_string()),
-            }
-        }
-
-        let flat_string = pattern_string.flatten();
-        match flat_string.width() {
-            StringWidth::OneByte => {
-                let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-                parse_lexer_stream(cx, lexer_stream, flags)
-            }
-            StringWidth::TwoByte => {
-                if flags.contains(RegExpFlags::UNICODE_AWARE) {
-                    let lexer_stream =
-                        HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                    parse_lexer_stream(cx, lexer_stream, flags)
-                } else {
-                    let lexer_stream =
-                        HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
-                    parse_lexer_stream(cx, lexer_stream, flags)
-                }
-            }
-        }
+        regexp_create(cx, pattern_source, flags_source, new_target)
     }
 
     // 22.2.5.2 get RegExp [ @@species ]
@@ -323,7 +220,7 @@ impl RegExpConstructor {
 }
 
 // Internal enum used in RegExp constructor
-enum PatternSourceValue {
+pub enum PatternSourceValue {
     // Old escaped pattern source
     Known(Handle<StringValue>),
     Value(Handle<Value>),
@@ -337,9 +234,134 @@ enum PatternSourceString {
 }
 
 // Internal enum used in RegExp constructor
-enum FlagsSource {
+pub enum FlagsSource {
     Known(RegExpFlags),
     Value(Handle<Value>),
+}
+
+// 22.2.3.1 RegExpCreate
+pub fn regexp_create(
+    cx: &mut Context,
+    pattern_source: PatternSourceValue,
+    flags_source: FlagsSource,
+    constructor: Handle<ObjectValue>,
+) -> EvalResult<Handle<Value>> {
+    let mut regexp_object = maybe!(RegExpObject::new_from_constructor(cx, constructor));
+
+    // Make sure to call ToString on pattern before flags, following order in spec
+    let pattern_source = match pattern_source {
+        PatternSourceValue::Known(old_pattern_source) => {
+            PatternSourceString::Known(old_pattern_source)
+        }
+        PatternSourceValue::Value(pattern_value) => {
+            let pattern = value_or_empty_string(cx, pattern_value);
+            let pattern_string = maybe!(to_string(cx, pattern));
+
+            PatternSourceString::String(pattern_string)
+        }
+    };
+
+    // Parse flags if they need to be parsed, and initialize on regexp object
+    let flags = match flags_source {
+        FlagsSource::Known(flags) => flags,
+        FlagsSource::Value(flags_value) => {
+            let flags = value_or_empty_string(cx, flags_value);
+            let flags_string = maybe!(to_string(cx, flags));
+
+            maybe!(parse_flags(cx, flags_string))
+        }
+    };
+
+    set_uninit!(regexp_object.flags, flags);
+
+    // Parse pattern if it needs to be parsed, and initialize on regexp object
+    let escaped_pattern_source = match pattern_source {
+        PatternSourceString::Known(old_pattern_source) => old_pattern_source,
+        PatternSourceString::String(pattern_string) => {
+            maybe!(parse_pattern(cx, pattern_string, flags));
+
+            // TODO: Escape pattern source
+            pattern_string
+        }
+    };
+
+    set_uninit!(regexp_object.escaped_pattern_source, escaped_pattern_source.get_());
+
+    // Initialize last index property
+    let zero_value = Value::from(0).to_handle(cx);
+    maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+
+    regexp_object.into()
+}
+
+fn value_or_empty_string(cx: &mut Context, value: Handle<Value>) -> Handle<Value> {
+    if value.is_undefined() {
+        cx.names.empty_string().as_string().into()
+    } else {
+        value
+    }
+}
+
+fn parse_flags(cx: &mut Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
+    fn parse_lexer_stream(
+        cx: &mut Context,
+        lexer_stream: impl LexerStream,
+    ) -> EvalResult<RegExpFlags> {
+        match RegExpParser::parse_flags(lexer_stream) {
+            Ok(flags) => flags.into(),
+            Err(error) => syntax_error_(cx, &error.to_string()),
+        }
+    }
+
+    let flat_string = flags_string.flatten();
+    match flat_string.width() {
+        StringWidth::OneByte => {
+            let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
+            parse_lexer_stream(cx, lexer_stream)
+        }
+        // Non-ASCII code points are not allowed in flags, so always safe to use unicode-unware
+        // code unit lexer.
+        StringWidth::TwoByte => {
+            let lexer_stream = HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+            parse_lexer_stream(cx, lexer_stream)
+        }
+    }
+}
+
+fn parse_pattern(
+    cx: &mut Context,
+    pattern_string: Handle<StringValue>,
+    flags: RegExpFlags,
+) -> EvalResult<()> {
+    fn parse_lexer_stream(
+        cx: &mut Context,
+        lexer_stream: impl LexerStream,
+        flags: RegExpFlags,
+    ) -> EvalResult<()> {
+        match RegExpParser::parse_regexp(lexer_stream, flags) {
+            Ok(_) => ().into(),
+            Err(error) => syntax_error_(cx, &error.to_string()),
+        }
+    }
+
+    let flat_string = pattern_string.flatten();
+    match flat_string.width() {
+        StringWidth::OneByte => {
+            let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
+            parse_lexer_stream(cx, lexer_stream, flags)
+        }
+        StringWidth::TwoByte => {
+            if flags.contains(RegExpFlags::UNICODE_AWARE) {
+                let lexer_stream =
+                    HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
+                parse_lexer_stream(cx, lexer_stream, flags)
+            } else {
+                let lexer_stream =
+                    HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+                parse_lexer_stream(cx, lexer_stream, flags)
+            }
+        }
+    }
 }
 
 impl HeapObject for HeapPtr<RegExpObject> {

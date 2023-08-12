@@ -15,8 +15,8 @@ use super::{
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
-        Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
-        ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term, CaptureGroupIndex,
+        Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
+        CharacterClass, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
     ParseError, ParseResult,
 };

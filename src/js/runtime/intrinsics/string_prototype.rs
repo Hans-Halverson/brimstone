@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{call_object, get_method},
+        abstract_operations::{call_object, get_method, invoke},
         array_object::{array_create, create_array_from_list},
         completion::EvalResult,
         error::{range_error_, type_error_},
@@ -20,6 +20,8 @@ use crate::{
     maybe,
 };
 
+use super::regexp_constructor::{regexp_create, FlagsSource, PatternSourceValue};
+
 pub struct StringPrototype;
 
 impl StringPrototype {
@@ -27,92 +29,50 @@ impl StringPrototype {
     pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let object = StringObject::new_with_proto(cx, object_proto, empty_string);
+        let mut object: Handle<ObjectValue> =
+            StringObject::new_with_proto(cx, object_proto, empty_string).into();
 
         // Constructor property is added once StringConstructor has been created
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.char_at(), Self::char_at, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.char_code_at(), Self::char_code_at, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.code_point_at(), Self::code_point_at, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.object().intrinsic_func(
+        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
+        object.intrinsic_func(cx, cx.names.char_at(), Self::char_at, 1, realm);
+        object.intrinsic_func(cx, cx.names.char_code_at(), Self::char_code_at, 1, realm);
+        object.intrinsic_func(cx, cx.names.code_point_at(), Self::code_point_at, 1, realm);
+        object.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
+        object.intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm);
+        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
+        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
+        object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
+        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
+        object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
+        object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm);
+        object.intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(
             cx,
             cx.names.to_locale_lower_case(),
             Self::to_locale_lower_case,
             0,
             realm,
         );
-        object.object().intrinsic_func(
+        object.intrinsic_func(
             cx,
             cx.names.to_locale_upper_case(),
             Self::to_locale_upper_case,
             0,
             realm,
         );
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
+        object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm);
+        object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm);
+        object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         // 22.1.3.34 String.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
-        object
-            .object()
-            .intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
+        object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
         object.into()
     }
@@ -371,6 +331,35 @@ impl StringPrototype {
             None => Value::smi(-1).to_handle(cx).into(),
             Some(index) => Value::from(index).to_handle(cx).into(),
         }
+    }
+
+    // 22.1.3.12 String.prototype.match
+    fn match_(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let this_object = maybe!(require_object_coercible(cx, this_value));
+
+        let regexp_arg = get_argument(cx, arguments, 0);
+        if !regexp_arg.is_nullish() {
+            let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_()));
+            if let Some(matcher) = matcher {
+                return call_object(cx, matcher, regexp_arg, &[this_object.into()]);
+            }
+        }
+
+        let this_string = maybe!(to_string(cx, this_object));
+
+        let pattern_source = PatternSourceValue::Value(regexp_arg);
+        let flags_source = FlagsSource::Value(cx.undefined());
+
+        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
+        let regexp_object =
+            maybe!(regexp_create(cx, pattern_source, flags_source, regexp_constructor));
+
+        invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
     }
 
     // 22.1.3.17 String.prototype.repeat

@@ -8,6 +8,7 @@ pub struct RegExp {
     pub disjunction: Disjunction,
     pub flags: RegExpFlags,
     pub num_capture_groups: u32,
+    pub has_named_capture_groups: bool,
 }
 
 bitflags! {
@@ -91,6 +92,8 @@ pub enum Assertion {
 pub type CaptureGroupIndex = u32;
 
 pub struct CaptureGroup {
+    // Optional capture group name
+    pub name: Option<String>,
     // Index of the capture group in the RegExp
     pub index: CaptureGroupIndex,
     pub disjunction: Disjunction,

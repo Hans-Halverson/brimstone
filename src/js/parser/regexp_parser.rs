@@ -167,6 +167,7 @@ impl<T: LexerStream> RegExpParser<T> {
             disjunction,
             flags,
             num_capture_groups: parser.num_capture_groups,
+            has_named_capture_groups: !parser.capture_group_names.is_empty(),
         };
 
         parser.resolve_backreferences()?;
@@ -393,7 +394,12 @@ impl<T: LexerStream> RegExpParser<T> {
                     if self.current() == '}' as u32 {
                         None
                     } else {
-                        Some(self.parse_decimal_digits()?)
+                        let upper_bound = self.parse_decimal_digits()?;
+                        if lower_bound > upper_bound {
+                            return self.error(self.pos(), ParseError::InvalidQuantifierBounds);
+                        }
+
+                        Some(upper_bound)
                     }
                 } else {
                     Some(lower_bound)
@@ -504,12 +510,20 @@ impl<T: LexerStream> RegExpParser<T> {
                             let index = self.next_capture_group_index(left_paren_pos)?;
 
                             // Check for duplicate capture group names
-                            if self.capture_group_names.insert(name, index).is_some() {
+                            if self
+                                .capture_group_names
+                                .insert(name.clone(), index)
+                                .is_some()
+                            {
                                 return self
                                     .error(name_start_pos, ParseError::DuplicateCaptureGroupName);
                             }
 
-                            Ok(Term::CaptureGroup(CaptureGroup { index, disjunction }))
+                            Ok(Term::CaptureGroup(CaptureGroup {
+                                name: Some(name),
+                                index,
+                                disjunction,
+                            }))
                         }
                     })
                 }
@@ -521,7 +535,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
             let index = self.next_capture_group_index(left_paren_pos)?;
 
-            Ok(Term::CaptureGroup(CaptureGroup { index, disjunction }))
+            Ok(Term::CaptureGroup(CaptureGroup { name: None, index, disjunction }))
         }
     }
 

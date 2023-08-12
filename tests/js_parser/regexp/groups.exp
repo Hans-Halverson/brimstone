@@ -22,6 +22,7 @@
                 {
                   type: "CaptureGroup",
                   index: 1,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -60,6 +61,7 @@
                 {
                   type: "CaptureGroup",
                   index: 1,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -300,6 +302,7 @@
                 {
                   type: "CaptureGroup",
                   index: 1,
+                  name: "name",
                   alternatives: [
                     {
                       type: "Alternative",

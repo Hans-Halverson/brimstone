@@ -1144,6 +1144,13 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn print_optional_string(&mut self, string: Option<&String>) {
+        match string {
+            None => self.print_null(),
+            Some(string) => self.print_string(string),
+        }
+    }
+
     fn print_optional_wtf8_string(&mut self, string: Option<&Wtf8String>) {
         match string {
             None => self.print_null(),
@@ -1244,6 +1251,7 @@ impl<'a> Printer<'a> {
     fn print_regexp_capture_group(&mut self, group: &CaptureGroup) {
         self.start_regexp_node("CaptureGroup");
         self.property("index", group.index, Printer::print_number);
+        self.property("name", group.name.as_ref(), Printer::print_optional_string);
         self.print_disjunction(&group.disjunction);
         self.end_node();
     }

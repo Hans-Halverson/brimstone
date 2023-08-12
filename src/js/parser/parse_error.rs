@@ -86,6 +86,7 @@ pub enum ParseError {
     DuplicateCaptureGroupName,
     InvalidBackreferenceIndex,
     InvalidBackreferenceName,
+    InvalidQuantifierBounds,
 }
 
 #[derive(Debug)]
@@ -321,6 +322,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidBackreferenceName => {
                 write!(f, "No capture group with name found")
+            }
+            ParseError::InvalidQuantifierBounds => {
+                write!(f, "Invalid quantifier bounds in regular expression")
             }
         }
     }

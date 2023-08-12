@@ -349,6 +349,7 @@
                 {
                   type: "CaptureGroup",
                   index: 1,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -359,6 +360,7 @@
                 {
                   type: "CaptureGroup",
                   index: 2,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -369,6 +371,7 @@
                 {
                   type: "CaptureGroup",
                   index: 3,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -379,6 +382,7 @@
                 {
                   type: "CaptureGroup",
                   index: 4,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -389,6 +393,7 @@
                 {
                   type: "CaptureGroup",
                   index: 5,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -399,6 +404,7 @@
                 {
                   type: "CaptureGroup",
                   index: 6,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -409,6 +415,7 @@
                 {
                   type: "CaptureGroup",
                   index: 7,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -419,6 +426,7 @@
                 {
                   type: "CaptureGroup",
                   index: 8,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -429,6 +437,7 @@
                 {
                   type: "CaptureGroup",
                   index: 9,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -439,6 +448,7 @@
                 {
                   type: "CaptureGroup",
                   index: 10,
+                  name: null,
                   alternatives: [
                     {
                       type: "Alternative",
@@ -512,6 +522,7 @@
                 {
                   type: "CaptureGroup",
                   index: 1,
+                  name: "foo",
                   alternatives: [
                     {
                       type: "Alternative",
@@ -522,6 +533,7 @@
                 {
                   type: "CaptureGroup",
                   index: 2,
+                  name: "a",
                   alternatives: [
                     {
                       type: "Alternative",

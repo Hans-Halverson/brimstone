@@ -60,6 +60,10 @@ pub enum Instruction {
     AssertStartOrNewline,
     /// Assert end of the input or a newline ($ with multiline flag)
     AssertEndOrNewline,
+    /// Assert a word boundary (\b)
+    AssertWordBoundary,
+    /// Assert not a word boundary (\B)
+    AssertNotWordBoundary,
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -185,6 +189,8 @@ impl Instruction {
             Instruction::AssertEnd => String::from("AssertEnd"),
             Instruction::AssertStartOrNewline => String::from("AssertStartOrNewline"),
             Instruction::AssertEndOrNewline => String::from("AssertEndOrNewline"),
+            Instruction::AssertWordBoundary => String::from("AssertWordBoundary"),
+            Instruction::AssertNotWordBoundary => String::from("AssertNotWordBoundary"),
         }
     }
 }

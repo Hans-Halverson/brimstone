@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::js::{
-    common::unicode::is_newline,
+    common::unicode::{is_ascii_alphabetic, is_decimal_digit, is_newline, CodePoint},
     parser::{
         lexer_stream::{
             HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -195,8 +195,29 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.backtrack()?;
                     }
                 }
+                Instruction::AssertWordBoundary => {
+                    if self.is_at_word_boundary() {
+                        self.advance_instruction()
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
+                Instruction::AssertNotWordBoundary => {
+                    if self.is_at_word_boundary() {
+                        self.backtrack()?;
+                    } else {
+                        self.advance_instruction()
+                    }
+                }
             }
         }
+    }
+
+    fn is_at_word_boundary(&self) -> bool {
+        let is_current_word = is_word_code_point(self.string_lexer.current());
+        let is_prev_word = is_word_code_point(self.string_lexer.peek_prev_code_point());
+
+        is_current_word != is_prev_word
     }
 
     fn build_match(&self) -> Match {
@@ -268,4 +289,9 @@ pub fn run_matcher(
             }
         }
     }
+}
+
+/// Whether a code point is a word character as defined by \w or \b
+fn is_word_code_point(code_point: CodePoint) -> bool {
+    is_ascii_alphabetic(code_point) || is_decimal_digit(code_point) || code_point == '_' as u32
 }

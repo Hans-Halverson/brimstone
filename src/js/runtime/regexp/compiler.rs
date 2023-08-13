@@ -185,7 +185,9 @@ impl CompiledRegExpBuilder {
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
-            _ => unimplemented!(),
+            Term::Lookaround(_) => unimplemented!("RegExp lookaround"),
+            Term::CharacterClass(_) => unimplemented!("RegExp character class"),
+            Term::Backreference(_) => unimplemented!("RegExp backreference"),
         }
     }
 
@@ -215,8 +217,8 @@ impl CompiledRegExpBuilder {
                     self.emit_instruction(Instruction::AssertEnd)
                 }
             }
-            Assertion::WordBoundary => unimplemented!("Assertion::WordBoundary"),
-            Assertion::NotWordBoundary => unimplemented!("Assertion::NonWordBoundary"),
+            Assertion::WordBoundary => self.emit_instruction(Instruction::AssertWordBoundary),
+            Assertion::NotWordBoundary => self.emit_instruction(Instruction::AssertNotWordBoundary),
         }
     }
 

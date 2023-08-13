@@ -70,14 +70,17 @@ impl RegExpObject {
 
         let object = object.to_handle();
 
-        Self::init_last_index_property(cx, object);
+        Self::define_last_index_property(cx, object);
 
         object.into()
     }
 
-    pub fn new_from_literal(cx: &mut Context, lit: &ast::RegExpLiteral) -> Handle<RegExpObject> {
+    pub fn new_from_literal(
+        cx: &mut Context,
+        lit: &ast::RegExpLiteral,
+    ) -> EvalResult<Handle<RegExpObject>> {
         // Can use source directly as "escaped" pattern source since
-        let source = InternedStrings::get_str(cx, &lit.raw);
+        let source = InternedStrings::get_str(cx, &lit.pattern);
         let compiled_regexp = compile_regexp(cx, &lit.regexp);
 
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
@@ -94,12 +97,16 @@ impl RegExpObject {
 
         let object = object.to_handle();
 
-        Self::init_last_index_property(cx, object);
+        Self::define_last_index_property(cx, object);
 
-        object
+        // Initialize last index property
+        let zero_value = Value::from(0).to_handle(cx);
+        maybe!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
+
+        object.into()
     }
 
-    fn init_last_index_property(cx: &mut Context, regexp_object: Handle<RegExpObject>) {
+    fn define_last_index_property(cx: &mut Context, regexp_object: Handle<RegExpObject>) {
         let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
         must!(define_property_or_throw(
             cx,

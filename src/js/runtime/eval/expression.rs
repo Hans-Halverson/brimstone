@@ -319,7 +319,7 @@ pub fn eval_property_name<'a>(
 
 // 13.2.7.3 RegExp Literal Evaluation
 fn eval_regexp_literal(cx: &mut Context, lit: &ast::RegExpLiteral) -> EvalResult<Handle<Value>> {
-    RegExpObject::new_from_literal(cx, lit).into()
+    maybe!(RegExpObject::new_from_literal(cx, lit)).into()
 }
 
 // 13.2.8.5 Template Literal Evaluation

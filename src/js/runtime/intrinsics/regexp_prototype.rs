@@ -46,7 +46,7 @@ impl RegExpPrototype {
         object.intrinsic_getter(cx, cx.names.source(), Self::source, realm);
         object.intrinsic_getter(cx, cx.names.sticky(), Self::sticky, realm);
         object.intrinsic_func(cx, cx.names.test(), Self::test, 1, realm);
-        object.intrinsic_getter(cx, cx.names.to_string(), Self::to_string, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
         object.intrinsic_getter(cx, cx.names.unicode(), Self::unicode, realm);
 
         object

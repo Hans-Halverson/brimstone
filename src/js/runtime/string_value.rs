@@ -823,6 +823,11 @@ impl FlatString {
     }
 
     #[inline]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[inline]
     pub fn width(&self) -> StringWidth {
         if self.kind == StringKind::OneByte {
             StringWidth::OneByte

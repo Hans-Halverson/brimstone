@@ -28,8 +28,8 @@ pub struct RegExpParser<T: LexerStream> {
     lexer_stream: T,
     /// Flags for this regexp
     flags: RegExpFlags,
-    // Number of capture groups seen so far
-    num_capture_groups: u32,
+    // All capture groups seen so far, with name if a name was specified
+    capture_groups: Vec<Option<String>>,
     // Map of capture group names that have been encountered so far to their capture group index
     capture_group_names: HashMap<String, CaptureGroupIndex>,
     // All named backreferences encountered. Saves the name, source position, and a reference to the
@@ -44,7 +44,7 @@ impl<T: LexerStream> RegExpParser<T> {
         RegExpParser {
             lexer_stream,
             flags,
-            num_capture_groups: 0,
+            capture_groups: vec![],
             capture_group_names: HashMap::new(),
             named_backreferences: vec![],
             indexed_backreferences: vec![],
@@ -149,14 +149,14 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn next_capture_group_index(&mut self, error_pos: Pos) -> ParseResult<u32> {
         // Capture group indices are 1-indexed
-        let index = self.num_capture_groups + 1;
-        self.num_capture_groups += 1;
+        let index = self.capture_groups.len() + 1;
 
-        if index == u32::MAX {
+        // Deviation from spec - only allows up to 2^31 - 1 capture groups instead of 2^32 - 1
+        if index >= (u32::MAX as usize / 2) {
             return self.error(error_pos, ParseError::TooManyCaptureGroups);
         }
 
-        Ok(index)
+        Ok(index as u32)
     }
 
     pub fn parse_regexp(lexer_stream: T, flags: RegExpFlags) -> ParseResult<RegExp> {
@@ -166,8 +166,7 @@ impl<T: LexerStream> RegExpParser<T> {
         let regexp = RegExp {
             disjunction,
             flags,
-            num_capture_groups: parser.num_capture_groups,
-            has_named_capture_groups: !parser.capture_group_names.is_empty(),
+            capture_groups: parser.capture_groups.clone(),
         };
 
         parser.resolve_backreferences()?;
@@ -509,6 +508,9 @@ impl<T: LexerStream> RegExpParser<T> {
 
                             let index = self.next_capture_group_index(left_paren_pos)?;
 
+                            // Add to list of all capture groups with name
+                            self.capture_groups.push(Some(name.clone()));
+
                             // Check for duplicate capture group names
                             if self
                                 .capture_group_names
@@ -534,6 +536,9 @@ impl<T: LexerStream> RegExpParser<T> {
             self.expect(')')?;
 
             let index = self.next_capture_group_index(left_paren_pos)?;
+
+            // Add to list of all capture groups without name
+            self.capture_groups.push(None);
 
             Ok(Term::CaptureGroup(CaptureGroup { name: None, index, disjunction }))
         }
@@ -846,7 +851,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
         // Check for any indexed backreferences that are out of range
         for (index, error_pos) in &self.indexed_backreferences {
-            if *index > self.num_capture_groups {
+            if (*index) as usize > self.capture_groups.len() {
                 update_first_error(error_pos, ParseError::InvalidBackreferenceIndex);
             }
         }

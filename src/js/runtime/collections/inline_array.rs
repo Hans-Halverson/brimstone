@@ -31,6 +31,18 @@ impl<T> InlineArray<T> {
         }
     }
 
+    pub fn init_from_vec(&mut self, vec: Vec<T>)
+    where
+        T: Clone,
+    {
+        set_uninit!(self.len, vec.len());
+
+        // Set uninitialized memory
+        for (i, value) in vec.into_iter().enumerate() {
+            unsafe { self.data_mut_ptr().add(i).write(value) }
+        }
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.len

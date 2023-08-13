@@ -4,14 +4,17 @@ use crate::{
         parser::regexp::RegExpFlags,
         runtime::{
             abstract_operations::{call, create_data_property_or_throw, set},
-            array_object::array_create,
+            array_object::{array_create, create_array_from_list},
             completion::EvalResult,
             error::type_error_,
             function::get_argument,
             get,
             interned_strings::InternedStrings,
+            object_descriptor::ObjectKind,
             object_value::ObjectValue,
+            ordinary_object::object_create_with_optional_proto,
             realm::Realm,
+            regexp::matcher::run_matcher,
             string_value::StringValue,
             to_string,
             type_utilities::{is_callable, same_object_value, to_boolean, to_length},
@@ -415,11 +418,184 @@ fn regexp_exec(
 
 // 22.2.7.2 RegExpBuiltinExec
 fn regexp_builtin_exec(
-    _cx: &mut Context,
-    _regexp_object: Handle<RegExpObject>,
-    _string_value: Handle<StringValue>,
+    cx: &mut Context,
+    regexp_object: Handle<RegExpObject>,
+    string_value: Handle<StringValue>,
 ) -> EvalResult<Handle<Value>> {
-    unimplemented!("RegExpBuiltinExec")
+    let compiled_regexp = regexp_object.compiled_regexp();
+    let string_length = string_value.len();
+
+    let last_index = maybe!(get(cx, regexp_object.into(), cx.names.last_index()));
+    let mut last_index = maybe!(to_length(cx, last_index)) as usize;
+
+    let flags = regexp_object.flags();
+    let is_global = flags.contains(RegExpFlags::GLOBAL);
+    let is_sticky = flags.contains(RegExpFlags::STICKY);
+    let has_indices = flags.contains(RegExpFlags::HAS_INDICES);
+
+    if !is_global && !is_sticky {
+        last_index = 0;
+    }
+
+    // Check if last index is already out of range meaning the match will always fail, resetting
+    // last index under certain flags.
+    if last_index > string_length {
+        if is_global || is_sticky {
+            let zero_value = Value::from(0).to_handle(cx);
+            maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+        }
+
+        return cx.null().into();
+    }
+
+    // Run the matching engine on the regexp and input string
+    let match_ = run_matcher(compiled_regexp.get_(), string_value, last_index);
+
+    // Handle match failure, resetting last index under sticy flag
+    if match_.is_none() {
+        if is_sticky {
+            let zero_value = Value::from(0).to_handle(cx);
+            maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+        }
+
+        return cx.null().into();
+    }
+
+    let capture_groups = &match_.unwrap().capture_groups;
+
+    // 0'th capture which matches entire pattern is guaranteed to exist
+    let full_capture = capture_groups[0].as_ref().unwrap();
+
+    // Update last index to point past end of capture
+    if is_global || is_sticky {
+        let last_index_value = Value::from(full_capture.end).to_handle(cx);
+        maybe!(set(cx, regexp_object.into(), cx.names.last_index(), last_index_value, true));
+    }
+
+    // Build result array of matches
+    let result_array: Handle<ObjectValue> =
+        must!(array_create(cx, capture_groups.len() as u64, None)).into();
+
+    // Mark the start of the full match
+    let index_value = Value::from(full_capture.start).to_handle(cx);
+    must!(create_data_property_or_throw(cx, result_array, cx.names.index(), index_value));
+
+    // Include the input string in the result
+    must!(create_data_property_or_throw(
+        cx,
+        result_array,
+        cx.names.input(),
+        string_value.into()
+    ));
+
+    // Add the groups object to the result, or undefined if there are no named capture groups
+    let named_groups_object = if compiled_regexp.has_named_capture_groups {
+        object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+            .to_handle()
+            .into()
+    } else {
+        cx.undefined()
+    };
+    must!(create_data_property_or_throw(
+        cx,
+        result_array,
+        cx.names.groups(),
+        named_groups_object
+    ));
+
+    // Set up indices array to collect capture group indices, if flag is set
+    let indices_result = if has_indices {
+        let indices_array: Handle<ObjectValue> =
+            must!(array_create(cx, capture_groups.len() as u64, None)).into();
+
+        // Indices array contains named capture groups object if there are any named groups
+        let named_groups_object = if compiled_regexp.has_named_capture_groups {
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+                .to_handle()
+                .into()
+        } else {
+            cx.undefined()
+        };
+        must!(create_data_property_or_throw(
+            cx,
+            indices_array,
+            cx.names.groups(),
+            named_groups_object
+        ));
+
+        Some((indices_array, named_groups_object))
+    } else {
+        None
+    };
+
+    // Add all capture groups to the result, including implicit 0'th capture group
+    for (i, capture) in capture_groups.iter().enumerate() {
+        let captured_value = if let Some(capture) = capture {
+            string_value
+                .substring(cx, capture.start, capture.end)
+                .as_string()
+                .into()
+        } else {
+            cx.undefined()
+        };
+
+        let index_key = PropertyKey::from_u64(cx, i as u64).to_handle(cx);
+        must!(create_data_property_or_throw(cx, result_array, index_key, captured_value));
+
+        // Add capture indices to indices array if present
+        let match_index_pair = if let Some((indices_array, indices_groups)) = indices_result {
+            let match_index_pair = if let Some(capture) = capture {
+                let start_index = Value::from(capture.start).to_handle(cx);
+                let end_index = Value::from(capture.end).to_handle(cx);
+                create_array_from_list(cx, &[start_index, end_index]).into()
+            } else {
+                cx.undefined()
+            };
+
+            must!(create_data_property_or_throw(cx, indices_array, index_key, match_index_pair));
+            Some((match_index_pair, indices_groups))
+        } else {
+            None
+        };
+
+        // Add group name to groups object if group was named
+        if i != 0 {
+            if let Some(group_name) = compiled_regexp.capture_groups_as_slice()[i - 1] {
+                let group_name = group_name.to_handle();
+                let group_name_key = PropertyKey::string(cx, group_name).to_handle(cx);
+
+                // Group names object is guaranteed to be an object value
+                let groups = named_groups_object.as_object();
+
+                must!(create_data_property_or_throw(cx, groups, group_name_key, captured_value));
+
+                // Add capture indices to the group names object in the indices array if necessary
+                if let Some((match_index_pair, indices_groups)) = match_index_pair {
+                    // Group names object is guaranteed to be an object value
+                    let groups = indices_groups.as_object();
+
+                    must!(create_data_property_or_throw(
+                        cx,
+                        groups,
+                        group_name_key,
+                        match_index_pair
+                    ));
+                }
+            }
+        }
+    }
+
+    // Add indices to result if necessary
+    if let Some((indices_array, _)) = indices_result {
+        must!(create_data_property_or_throw(
+            cx,
+            result_array,
+            cx.names.indices(),
+            indices_array.into()
+        ));
+    }
+
+    result_array.into()
 }
 
 // 22.2.7.3 AdvanceStringIndex

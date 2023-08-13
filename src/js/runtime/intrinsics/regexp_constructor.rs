@@ -9,7 +9,7 @@ use crate::{
                 HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
                 HeapTwoByteCodeUnitLexerStream, LexerStream,
             },
-            regexp::RegExpFlags,
+            regexp::{RegExp, RegExpFlags},
             regexp_parser::RegExpParser,
         },
         runtime::{
@@ -26,6 +26,7 @@ use crate::{
             ordinary_object::object_create_from_constructor,
             property::Property,
             realm::Realm,
+            regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
             string_value::{StringValue, StringWidth},
             to_string,
             type_utilities::{is_regexp, same_value},
@@ -40,8 +41,7 @@ use super::intrinsics::Intrinsic;
 // 22.2 RegExp (Regular Expression) Objects
 extend_object! {
     pub struct RegExpObject {
-        // Flags of the regexp object
-        flags: RegExpFlags,
+        compiled_regexp: HeapPtr<CompiledRegExpObject>,
         // The pattern component of the original regexp as a string. Escaped so that it can be
         // parsed into exactly the same pattern again.
         escaped_pattern_source: HeapPtr<StringValue>,
@@ -62,17 +62,15 @@ impl RegExpObject {
             Intrinsic::RegExpPrototype
         ));
 
+        // Initialize with default values as allocation may occur before real values are set, so
+        // we must ensure the RegExpObject is in a valid state.
+        set_uninit!(object.compiled_regexp, HeapPtr::uninit());
+        set_uninit!(object.escaped_pattern_source, HeapPtr::uninit());
         set_uninit!(object.flags_string, None);
 
         let object = object.to_handle();
 
-        let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
-        must!(define_property_or_throw(
-            cx,
-            object.into(),
-            cx.names.last_index(),
-            last_index_desc
-        ));
+        Self::init_last_index_property(cx, object);
 
         object.into()
     }
@@ -80,29 +78,58 @@ impl RegExpObject {
     pub fn new_from_literal(cx: &mut Context, lit: &ast::RegExpLiteral) -> Handle<RegExpObject> {
         // Can use source directly as "escaped" pattern source since
         let source = InternedStrings::get_str(cx, &lit.raw);
+        let compiled_regexp = compile_regexp(cx, &lit.regexp);
 
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let mut regexp_object = must!(RegExpObject::new_from_constructor(cx, regexp_constructor));
+        let mut object = must!(object_create_from_constructor::<RegExpObject>(
+            cx,
+            regexp_constructor,
+            ObjectKind::RegExpObject,
+            Intrinsic::RegExpPrototype
+        ));
 
-        set_uninit!(regexp_object.flags, lit.regexp.flags);
-        set_uninit!(regexp_object.escaped_pattern_source, source.get_());
-        set_uninit!(regexp_object.flags_string, None);
+        set_uninit!(object.compiled_regexp, compiled_regexp.get_());
+        set_uninit!(object.escaped_pattern_source, source.get_());
+        set_uninit!(object.flags_string, None);
 
-        regexp_object.into()
+        let object = object.to_handle();
+
+        Self::init_last_index_property(cx, object);
+
+        object
     }
 
+    fn init_last_index_property(cx: &mut Context, regexp_object: Handle<RegExpObject>) {
+        let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
+        must!(define_property_or_throw(
+            cx,
+            regexp_object.into(),
+            cx.names.last_index(),
+            last_index_desc
+        ));
+    }
+
+    #[inline]
+    pub fn compiled_regexp(&self) -> Handle<CompiledRegExpObject> {
+        self.compiled_regexp.to_handle()
+    }
+
+    #[inline]
     pub fn flags(&self) -> RegExpFlags {
-        self.flags
+        self.compiled_regexp.flags
     }
 
+    #[inline]
     pub fn flags_string(&self) -> Option<Handle<StringValue>> {
         self.flags_string.map(|f| f.to_handle())
     }
 
+    #[inline]
     pub fn set_flags_string(&mut self, flags_string: Handle<StringValue>) {
         self.flags_string = Some(flags_string.get_());
     }
 
+    #[inline]
     pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
         self.escaped_pattern_source.to_handle()
     }
@@ -172,25 +199,22 @@ impl RegExpConstructor {
             Some(new_target) => new_target,
         };
 
-        let pattern_source;
-        let flags_source;
-
-        if pattern_arg.is_object() && pattern_arg.as_object().is_regexp_object() {
+        let regexp_source = if pattern_arg.is_object() && pattern_arg.as_object().is_regexp_object()
+        {
             // Construction from a regexp object
             let pattern_regexp_object = pattern_arg.as_object().cast::<RegExpObject>();
 
-            pattern_source =
-                PatternSourceValue::Known(pattern_regexp_object.escaped_pattern_source());
-
             if flags_arg.is_undefined() {
-                flags_source = FlagsSource::Known(pattern_regexp_object.flags());
+                RegExpSource::RegExpObject(pattern_regexp_object)
             } else {
-                flags_source = FlagsSource::Value(flags_arg);
+                // If flags are provided we must reparse pattern instead of using compiled regexp
+                // directly, since different flags may result in a different regexp.
+                let pattern_value = pattern_regexp_object.escaped_pattern_source().into();
+                RegExpSource::PatternAndFlags(pattern_value, flags_arg)
             }
         } else if pattern_is_regexp {
             // Construction from a pattern object that has a [Symbol.match] property
             let pattern = maybe!(get(cx, pattern_arg.as_object(), cx.names.source()));
-            pattern_source = PatternSourceValue::Value(pattern);
 
             // Use flags argument if one is provided, otherwise default to pattern's flags property
             let flags_value = if flags_arg.is_undefined() {
@@ -198,14 +222,14 @@ impl RegExpConstructor {
             } else {
                 flags_arg
             };
-            flags_source = FlagsSource::Value(flags_value);
+
+            RegExpSource::PatternAndFlags(pattern, flags_value)
         } else {
             // Construction from string pattern and flags arguments
-            pattern_source = PatternSourceValue::Value(pattern_arg);
-            flags_source = FlagsSource::Value(flags_arg);
-        }
+            RegExpSource::PatternAndFlags(pattern_arg, flags_arg)
+        };
 
-        regexp_create(cx, pattern_source, flags_source, new_target)
+        regexp_create(cx, regexp_source, new_target)
     }
 
     // 22.2.5.2 get RegExp [ @@species ]
@@ -219,73 +243,46 @@ impl RegExpConstructor {
     }
 }
 
-// Internal enum used in RegExp constructor
-pub enum PatternSourceValue {
-    // Old escaped pattern source
-    Known(Handle<StringValue>),
-    Value(Handle<Value>),
-}
-
-// Internal enum used in RegExp constructor
-enum PatternSourceString {
-    // Old escaped pattern source
-    Known(Handle<StringValue>),
-    String(Handle<StringValue>),
-}
-
-// Internal enum used in RegExp constructor
-pub enum FlagsSource {
-    Known(RegExpFlags),
-    Value(Handle<Value>),
+// Source used to construct a RegExp
+pub enum RegExpSource {
+    // Construct from a pre-existing RegExpObject
+    RegExpObject(Handle<RegExpObject>),
+    // Construct from a pair of pattern and flags values
+    PatternAndFlags(Handle<Value>, Handle<Value>),
 }
 
 // 22.2.3.1 RegExpCreate
 pub fn regexp_create(
     cx: &mut Context,
-    pattern_source: PatternSourceValue,
-    flags_source: FlagsSource,
+    regexp_source: RegExpSource,
     constructor: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Value>> {
     let mut regexp_object = maybe!(RegExpObject::new_from_constructor(cx, constructor));
 
-    // Make sure to call ToString on pattern before flags, following order in spec
-    let pattern_source = match pattern_source {
-        PatternSourceValue::Known(old_pattern_source) => {
-            PatternSourceString::Known(old_pattern_source)
+    match regexp_source {
+        RegExpSource::RegExpObject(old_regexp_object) => {
+            regexp_object.compiled_regexp = old_regexp_object.compiled_regexp;
+            regexp_object.escaped_pattern_source = old_regexp_object.escaped_pattern_source;
+            regexp_object.flags_string = old_regexp_object.flags_string;
         }
-        PatternSourceValue::Value(pattern_value) => {
+        RegExpSource::PatternAndFlags(pattern_value, flags_value) => {
+            // Make sure to call ToString on pattern before flags, following order in spec
             let pattern = value_or_empty_string(cx, pattern_value);
             let pattern_string = maybe!(to_string(cx, pattern));
 
-            PatternSourceString::String(pattern_string)
-        }
-    };
+            let flags_value = value_or_empty_string(cx, flags_value);
+            let flags_string = maybe!(to_string(cx, flags_value));
 
-    // Parse flags if they need to be parsed, and initialize on regexp object
-    let flags = match flags_source {
-        FlagsSource::Known(flags) => flags,
-        FlagsSource::Value(flags_value) => {
-            let flags = value_or_empty_string(cx, flags_value);
-            let flags_string = maybe!(to_string(cx, flags));
+            let flags = maybe!(parse_flags(cx, flags_string));
+            let regexp = maybe!(parse_pattern(cx, pattern_string, flags));
 
-            maybe!(parse_flags(cx, flags_string))
-        }
-    };
-
-    set_uninit!(regexp_object.flags, flags);
-
-    // Parse pattern if it needs to be parsed, and initialize on regexp object
-    let escaped_pattern_source = match pattern_source {
-        PatternSourceString::Known(old_pattern_source) => old_pattern_source,
-        PatternSourceString::String(pattern_string) => {
-            maybe!(parse_pattern(cx, pattern_string, flags));
+            let compiled_regexp = compile_regexp(cx, &regexp);
 
             // TODO: Escape pattern source
-            pattern_string
+            regexp_object.compiled_regexp = compiled_regexp.get_();
+            regexp_object.escaped_pattern_source = pattern_string.get_();
         }
-    };
-
-    set_uninit!(regexp_object.escaped_pattern_source, escaped_pattern_source.get_());
+    }
 
     // Initialize last index property
     let zero_value = Value::from(0).to_handle(cx);
@@ -332,14 +329,14 @@ fn parse_pattern(
     cx: &mut Context,
     pattern_string: Handle<StringValue>,
     flags: RegExpFlags,
-) -> EvalResult<()> {
+) -> EvalResult<RegExp> {
     fn parse_lexer_stream(
         cx: &mut Context,
         lexer_stream: impl LexerStream,
         flags: RegExpFlags,
-    ) -> EvalResult<()> {
+    ) -> EvalResult<RegExp> {
         match RegExpParser::parse_regexp(lexer_stream, flags) {
-            Ok(_) => ().into(),
+            Ok(regexp) => regexp.into(),
             Err(error) => syntax_error_(cx, &error.to_string()),
         }
     }

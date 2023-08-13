@@ -5,7 +5,11 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
-        intrinsics::{intrinsics::Intrinsic, string_iterator::StringIterator},
+        intrinsics::{
+            intrinsics::Intrinsic,
+            regexp_constructor::{regexp_create, RegExpSource},
+            string_iterator::StringIterator,
+        },
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
@@ -19,8 +23,6 @@ use crate::{
     },
     maybe,
 };
-
-use super::regexp_constructor::{regexp_create, FlagsSource, PatternSourceValue};
 
 pub struct StringPrototype;
 
@@ -352,12 +354,10 @@ impl StringPrototype {
 
         let this_string = maybe!(to_string(cx, this_object));
 
-        let pattern_source = PatternSourceValue::Value(regexp_arg);
-        let flags_source = FlagsSource::Value(cx.undefined());
+        let regexp_source = RegExpSource::PatternAndFlags(regexp_arg, cx.undefined());
 
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let regexp_object =
-            maybe!(regexp_create(cx, pattern_source, flags_source, regexp_constructor));
+        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
     }

@@ -51,6 +51,7 @@ use crate::js::runtime::{
     object_value::{NamedPropertiesMapField, ObjectValue},
     proxy_object::ProxyObject,
     realm::RealmTemplateMapField,
+    regexp::compiled_regexp::CompiledRegExpObject,
     string_object::StringObject,
     string_value::StringValue,
     value::{AccessorValue, BigIntValue, SymbolValue},
@@ -140,6 +141,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::PrivateEnvironment => self.cast::<PrivateEnvironment>().byte_size(),
             ObjectKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             ObjectKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
+            ObjectKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
             ObjectKind::ArgAccessorClosureEnvironment => {
                 self.cast::<ArgAccessorClosureEnvironment>().byte_size()
             }
@@ -268,6 +270,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::SparseArrayProperties => {
                 self.cast::<SparseArrayProperties>().visit_pointers(visitor)
+            }
+            ObjectKind::CompiledRegExpObject => {
+                self.cast::<CompiledRegExpObject>().visit_pointers(visitor)
             }
             ObjectKind::ArgAccessorClosureEnvironment => self
                 .cast::<ArgAccessorClosureEnvironment>()

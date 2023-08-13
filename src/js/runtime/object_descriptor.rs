@@ -118,6 +118,8 @@ pub enum ObjectKind {
     DenseArrayProperties,
     SparseArrayProperties,
 
+    CompiledRegExpObject,
+
     ArgAccessorClosureEnvironment,
     RevokeProxyClosureEnvironment,
 
@@ -325,6 +327,8 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);
+
+        other_heap_object_descriptor!(ObjectKind::CompiledRegExpObject);
 
         other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
         other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);

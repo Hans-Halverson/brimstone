@@ -7,8 +7,8 @@ use super::ast::P;
 pub struct RegExp {
     pub disjunction: Disjunction,
     pub flags: RegExpFlags,
-    pub num_capture_groups: u32,
-    pub has_named_capture_groups: bool,
+    // All capture groups with their names if one was provided
+    pub capture_groups: Vec<Option<String>>,
 }
 
 bitflags! {
@@ -46,7 +46,7 @@ pub struct Alternative {
 }
 
 pub enum Term {
-    /// A literal string of characters with escape codes decoded into code points
+    /// A literal string of characters with escape codes decoded into code points. Must be nonempty.
     Literal(Wtf8String),
     /// The wildcard which matches any single character: `.`
     Wildcard,

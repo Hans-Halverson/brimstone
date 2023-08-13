@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::js::common::unicode::{
     code_point_from_surrogate_pair, decode_utf8_codepoint, is_ascii, is_high_surrogate_code_unit,
-    is_low_surrogate_code_unit, CodeUnit,
+    is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
 };
 
 use super::{
@@ -30,6 +30,9 @@ pub trait LexerStream {
 
     /// Move forward N units in the input stream
     fn advance_n(&mut self, n: usize);
+
+    /// Move forward one code point in the input stream
+    fn advance_code_point(&mut self);
 
     /// Return the byte or EOF_CHAR that is N units forwards in the input stream. Output can have
     /// any range, but will only be compared against bytes or EOF_CHAR.
@@ -111,6 +114,11 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
         }
+    }
+
+    #[inline]
+    fn advance_code_point(&mut self) {
+        unimplemented!("Utf8LexerStream::advance_code_point")
     }
 
     #[inline]
@@ -216,6 +224,11 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
     }
 
     #[inline]
+    fn advance_code_point(&mut self) {
+        self.advance_n(1);
+    }
+
+    #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
@@ -301,6 +314,11 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
         }
+    }
+
+    #[inline]
+    fn advance_code_point(&mut self) {
+        self.advance_n(1)
     }
 
     #[inline]
@@ -398,6 +416,19 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
+        }
+    }
+
+    #[inline]
+    fn advance_code_point(&mut self) {
+        if self.is_end() {
+            return;
+        }
+
+        if needs_surrogate_pair(self.current) {
+            self.advance_n(2);
+        } else {
+            self.advance_n(1);
         }
     }
 

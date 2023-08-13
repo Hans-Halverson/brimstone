@@ -372,6 +372,8 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
+        let quantifier_pos = self.pos();
+
         let bounds_opt = match_u32!(match self.current() {
             '*' => {
                 self.advance();
@@ -414,6 +416,17 @@ impl<T: LexerStream> RegExpParser<T> {
         if let Some((min, max)) = bounds_opt {
             // Every quantifier can be postfixed with a `?` to make it lazy
             let is_greedy = !self.eat('?');
+
+            // Check if term is a a non-quantifiable assertion. Only lookaheads are allowed as
+            // quantifiable assertions in Annex B (but all engines appear to support quantifiable
+            // lookaheads in non-Annex B mode).
+            match term {
+                Term::Assertion(_) | Term::Lookaround(Lookaround { is_ahead: false, .. }) => {
+                    return self.error(quantifier_pos, ParseError::NonQuantifiableAssertion);
+                }
+                _ => {}
+            }
+
             Ok(Term::Quantifier(Quantifier { term: p(term), min, max, is_greedy }))
         } else {
             Ok(term)

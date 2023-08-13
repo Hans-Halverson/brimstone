@@ -87,6 +87,7 @@ pub enum ParseError {
     InvalidBackreferenceIndex,
     InvalidBackreferenceName,
     InvalidQuantifierBounds,
+    NonQuantifiableAssertion,
 }
 
 #[derive(Debug)]
@@ -325,6 +326,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidQuantifierBounds => {
                 write!(f, "Invalid quantifier bounds in regular expression")
+            }
+            ParseError::NonQuantifiableAssertion => {
+                write!(f, "Quantifier on non-quantifiable assertion in regular expression")
             }
         }
     }

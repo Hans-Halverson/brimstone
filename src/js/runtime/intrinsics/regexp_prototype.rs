@@ -327,7 +327,9 @@ impl RegExpPrototype {
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = maybe!(to_string(cx, string_arg));
 
-        regexp_exec(cx, regexp_object, string_value)
+        let exec_result = maybe!(regexp_exec(cx, regexp_object, string_value));
+
+        cx.bool(!exec_result.is_null()).into()
     }
 
     // 22.2.6.17 RegExp.prototype.toString

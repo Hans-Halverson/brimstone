@@ -235,13 +235,13 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "14:0-14:7",
+      loc: "14:0-14:9",
       kind: {
         type: "Literal",
-        loc: "14:0-14:6",
-        raw: "/\b\B/",
+        loc: "14:0-14:8",
+        raw: "/^\b\B$/",
         value: {
-          pattern: "\b\B",
+          pattern: "^\b\B$",
           flags: "",
         },
         regexp: {
@@ -252,11 +252,19 @@
               terms: [
                 {
                   type: "Assertion",
+                  kind: "^",
+                },
+                {
+                  type: "Assertion",
                   kind: "\b",
                 },
                 {
                   type: "Assertion",
                   kind: "\B",
+                },
+                {
+                  type: "Assertion",
+                  kind: "$",
                 },
               ],
             },

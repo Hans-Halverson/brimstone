@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::js::{
+    common::unicode::is_newline,
     parser::{
         lexer_stream::{
             HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -159,6 +160,36 @@ impl<T: LexerStream> MatchEngine<T> {
                 Instruction::Progress(progress_index) => {
                     let string_index = self.string_lexer.pos();
                     if self.progress_points[progress_index as usize].insert(string_index) {
+                        self.advance_instruction();
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
+                Instruction::AssertStart => {
+                    if self.string_lexer.pos() == 0 {
+                        self.advance_instruction();
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
+                Instruction::AssertEnd => {
+                    if self.string_lexer.is_end() {
+                        self.advance_instruction();
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
+                Instruction::AssertStartOrNewline => {
+                    if self.string_lexer.pos() == 0
+                        || is_newline(self.string_lexer.peek_prev_code_point())
+                    {
+                        self.advance_instruction();
+                    } else {
+                        self.backtrack()?;
+                    }
+                }
+                Instruction::AssertEndOrNewline => {
+                    if self.string_lexer.is_end() || is_newline(self.string_lexer.current()) {
                         self.advance_instruction();
                     } else {
                         self.backtrack()?;

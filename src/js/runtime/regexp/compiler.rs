@@ -1,7 +1,8 @@
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::regexp::{
-        Alternative, AnonymousGroup, CaptureGroup, Disjunction, Quantifier, RegExp, Term,
+        Alternative, AnonymousGroup, Assertion, CaptureGroup, Disjunction, Quantifier, RegExp,
+        RegExpFlags, Term,
     },
     runtime::{Context, Handle},
 };
@@ -12,13 +13,19 @@ type BlockId = usize;
 
 struct CompiledRegExpBuilder {
     blocks: Vec<Vec<Instruction>>,
+    flags: RegExpFlags,
     current_block_id: BlockId,
     num_progress_points: u32,
 }
 
 impl CompiledRegExpBuilder {
-    fn new() -> Self {
-        Self { blocks: vec![], current_block_id: 0, num_progress_points: 0 }
+    fn new(regexp: &RegExp) -> Self {
+        Self {
+            blocks: vec![],
+            flags: regexp.flags,
+            current_block_id: 0,
+            num_progress_points: 0,
+        }
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -170,6 +177,12 @@ impl CompiledRegExpBuilder {
                 true
             }
             Term::Quantifier(quantifier) => self.emit_quantifier(quantifier),
+            Term::Assertion(assertion) => {
+                self.emit_assertion(assertion);
+
+                // Assertions never consume a character
+                false
+            }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
             _ => unimplemented!(),
@@ -184,6 +197,27 @@ impl CompiledRegExpBuilder {
 
     fn emit_wildcard(&mut self) {
         self.emit_instruction(Instruction::Wildcard)
+    }
+
+    fn emit_assertion(&mut self, assertion: &Assertion) {
+        match assertion {
+            Assertion::Start => {
+                if self.flags.contains(RegExpFlags::MULTILINE) {
+                    self.emit_instruction(Instruction::AssertStartOrNewline)
+                } else {
+                    self.emit_instruction(Instruction::AssertStart)
+                }
+            }
+            Assertion::End => {
+                if self.flags.contains(RegExpFlags::MULTILINE) {
+                    self.emit_instruction(Instruction::AssertEndOrNewline)
+                } else {
+                    self.emit_instruction(Instruction::AssertEnd)
+                }
+            }
+            Assertion::WordBoundary => unimplemented!("Assertion::WordBoundary"),
+            Assertion::NotWordBoundary => unimplemented!("Assertion::NonWordBoundary"),
+        }
     }
 
     /// Emit a quantifier, returning whether a character was guaranteed to be consumed on all paths
@@ -318,6 +352,6 @@ impl CompiledRegExpBuilder {
 }
 
 pub fn compile_regexp(cx: &mut Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
-    let mut builder = CompiledRegExpBuilder::new();
+    let mut builder = CompiledRegExpBuilder::new(regexp);
     builder.compile(cx, regexp)
 }

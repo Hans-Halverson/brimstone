@@ -52,6 +52,14 @@ pub enum Instruction {
     /// fail if this string location has already been visited for the progress index. This is used
     /// to avoid epsilon loops.
     Progress(u32),
+    /// Assert the start of the input (^)
+    AssertStart,
+    /// Assert the end of the input ($)
+    AssertEnd,
+    /// Assert start of the input or a newline (^ with multiline flag)
+    AssertStartOrNewline,
+    /// Assert end of the input or a newline ($ with multiline flag)
+    AssertEndOrNewline,
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -173,6 +181,10 @@ impl Instruction {
             Instruction::Accept => String::from("Accept"),
             Instruction::MarkCapturePoint(index) => format!("MarkCapture({})", index),
             Instruction::Progress(index) => format!("Progress({})", index),
+            Instruction::AssertStart => String::from("AssertStart"),
+            Instruction::AssertEnd => String::from("AssertEnd"),
+            Instruction::AssertStartOrNewline => String::from("AssertStartOrNewline"),
+            Instruction::AssertEndOrNewline => String::from("AssertEndOrNewline"),
         }
     }
 }

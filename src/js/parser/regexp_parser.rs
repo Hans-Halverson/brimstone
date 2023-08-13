@@ -265,6 +265,14 @@ impl<T: LexerStream> RegExpParser<T> {
             }
             '(' => self.parse_group()?,
             '[' => self.parse_character_class()?,
+            '^' => {
+                self.advance();
+                Term::Assertion(Assertion::Start)
+            }
+            '$' => {
+                self.advance();
+                Term::Assertion(Assertion::End)
+            }
             // Might be an escape code
             '\\' => {
                 let start_pos = self.pos();

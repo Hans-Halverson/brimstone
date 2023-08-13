@@ -11,7 +11,7 @@
 /|||/;
 
 // Assertions and character classes
-/\b\B/;
+/^\b\B$/;
 /\w\W\s\S\d\D/;
 
 // Backreferences

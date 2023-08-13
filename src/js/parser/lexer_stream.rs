@@ -34,6 +34,10 @@ pub trait LexerStream {
     /// Move forward one code point in the input stream
     fn advance_code_point(&mut self);
 
+    /// Return the code point that immediately precedes the current position, or EOF_CHAR if at the
+    /// start of the stream.
+    fn peek_prev_code_point(&self) -> u32;
+
     /// Return the byte or EOF_CHAR that is N units forwards in the input stream. Output can have
     /// any range, but will only be compared against bytes or EOF_CHAR.
     fn peek_n(&self, n: usize) -> u32;
@@ -118,7 +122,12 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
 
     #[inline]
     fn advance_code_point(&mut self) {
-        unimplemented!("Utf8LexerStream::advance_code_point")
+        panic!("Utf8LexerStream::advance_code_point not implemented")
+    }
+
+    #[inline]
+    fn peek_prev_code_point(&self) -> u32 {
+        panic!("Utf8LexerStream::peek_prev_code_point not implemented")
     }
 
     #[inline]
@@ -229,6 +238,15 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
     }
 
     #[inline]
+    fn peek_prev_code_point(&self) -> u32 {
+        if self.pos == 0 {
+            EOF_CHAR
+        } else {
+            self.code_point_at(self.pos - 1)
+        }
+    }
+
+    #[inline]
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
@@ -319,6 +337,15 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
     #[inline]
     fn advance_code_point(&mut self) {
         self.advance_n(1)
+    }
+
+    #[inline]
+    fn peek_prev_code_point(&self) -> u32 {
+        if self.pos == 0 {
+            EOF_CHAR
+        } else {
+            self.code_point_at(self.pos - 1)
+        }
     }
 
     #[inline]
@@ -430,6 +457,23 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         } else {
             self.advance_n(1);
         }
+    }
+
+    #[inline]
+    fn peek_prev_code_point(&self) -> u32 {
+        if self.pos == 0 {
+            return EOF_CHAR;
+        }
+
+        let prev_code_unit = self.buf[self.pos - 1];
+        if is_low_surrogate_code_unit(prev_code_unit) && self.pos >= 2 {
+            let prev_prev_code_unit = self.buf[self.pos - 2];
+            if is_high_surrogate_code_unit(prev_prev_code_unit) {
+                return code_point_from_surrogate_pair(prev_prev_code_unit, prev_code_unit);
+            }
+        }
+
+        prev_code_unit as u32
     }
 
     #[inline]

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::js::{
-    common::unicode::{is_ascii_alphabetic, is_decimal_digit, is_newline, CodePoint},
+    common::unicode::{is_ascii_alphabetic, is_decimal_digit, is_newline, CodePoint, is_whitespace},
     parser::{
         lexer_stream::{
             HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -30,6 +30,8 @@ pub struct MatchEngine<T: LexerStream> {
     capture_stack: Vec<CapturePoint>,
     // A saved string index for each progress instruction
     progress_points: Vec<HashSet<usize>>,
+    // An accumulator register for building multi-part comparisons
+    compare_register: bool,
 }
 
 struct BacktrackRestoreState {
@@ -73,6 +75,7 @@ impl<T: LexerStream> MatchEngine<T> {
             backtrack_stack: Vec::new(),
             capture_stack: Vec::new(),
             progress_points,
+            compare_register: false,
         }
     }
 
@@ -226,6 +229,85 @@ impl<T: LexerStream> MatchEngine<T> {
                             }
                         }
                     }
+                }
+                Instruction::ConsumeIfTrue => {
+                    if !self.compare_register || self.string_lexer.is_end() {
+                        self.backtrack()?;
+                    } else {
+                        self.string_lexer.advance_code_point();
+                        self.advance_instruction();
+                    }
+
+                    self.compare_register = false;
+                }
+                Instruction::ConsumeIfFalse => {
+                    if self.compare_register || self.string_lexer.is_end() {
+                        self.backtrack()?;
+                    } else {
+                        self.string_lexer.advance_code_point();
+                        self.advance_instruction();
+                    }
+
+                    self.compare_register = false;
+                }
+                Instruction::CompareEquals(code_point) => {
+                    if code_point == self.string_lexer.current() {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareBetween(lower, upper) => {
+                    let current = self.string_lexer.current();
+                    if current >= lower && current < upper {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsDigit => {
+                    if is_decimal_digit(self.string_lexer.current()) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsNotDigit => {
+                    if !is_decimal_digit(self.string_lexer.current()) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsWord => {
+                    if is_word_code_point(self.string_lexer.current()) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsNotWord => {
+                    if is_word_code_point(self.string_lexer.current()) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsWhitespace => {
+                    let current = self.string_lexer.current();
+                    if is_whitespace(current) || is_newline(current) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsNotWhitespace => {
+                    let current = self.string_lexer.current();
+                    if !is_whitespace(current) && !is_newline(current) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
                 }
             }
         }

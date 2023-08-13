@@ -67,6 +67,37 @@ pub enum Instruction {
     /// Consume the same code points as a previously captured group, failing if the previously
     /// captured group cannot be matched.
     Backreference(u32),
+
+    /// Comparisons work by setting a boolean accumulator register for the current multi-part
+    /// comparison. Comparison instructions OR the compare register with the result of a new
+    /// calculation, allowing you to build up multi-part comparisons.
+    ///
+    /// At the end of a sequence of comparisons, use ConsumeIfTrue or ConsumeIfFalse to
+    /// conditionally perform an action, resetting the accumulator register.
+    ///
+    /// Consume a single point if the compare accumulater is true, fail otherwise. Resets the compare
+    /// register to false.
+    ConsumeIfTrue,
+    /// Consume a single point if the compare accumulater is false, fail otherwise. Resets the compare
+    /// register to false,
+    ConsumeIfFalse,
+    /// Set the compare register to true if the current code point is equal to the given code point.
+    CompareEquals(u32),
+    /// Set the compare register to true if the current code point is between the given code points.
+    /// Start is inclusive, end is exclusive.
+    CompareBetween(u32, u32),
+    /// Set the compare register to true if the current code point is a digit (\d)
+    CompareIsDigit,
+    /// Set the compare register to true if the current code point is not a digit (\d)
+    CompareIsNotDigit,
+    /// Set the compare register to true if the current code point is a word (\w)
+    CompareIsWord,
+    /// Set the compare register to true if the current code point is not a word (\W)
+    CompareIsNotWord,
+    /// Set the compare register to true if the current code point is a whitespace (\S)
+    CompareIsWhitespace,
+    /// Set the compare register to true if the current code point is not a whitespace (\S)
+    CompareIsNotWhitespace,
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -195,6 +226,25 @@ impl Instruction {
             Instruction::AssertWordBoundary => String::from("AssertWordBoundary"),
             Instruction::AssertNotWordBoundary => String::from("AssertNotWordBoundary"),
             Instruction::Backreference(index) => format!("Backreference({})", index),
+            Instruction::ConsumeIfTrue => String::from("ConsumeIfTrue"),
+            Instruction::ConsumeIfFalse => String::from("ConsumeIfFalse"),
+            Instruction::CompareEquals(code_point) => {
+                let code_point_string = to_string_or_unicode_escape_sequence(*code_point);
+                format!("CompareEquals({})", code_point_string)
+            }
+            Instruction::CompareBetween(first_code_point, second_code_point) => {
+                let first_code_point_string =
+                    to_string_or_unicode_escape_sequence(*first_code_point);
+                let second_code_point_string =
+                    to_string_or_unicode_escape_sequence(*second_code_point);
+                format!("CompareBetween({}, {})", first_code_point_string, second_code_point_string)
+            }
+            Instruction::CompareIsDigit => String::from("CompareIsDigit"),
+            Instruction::CompareIsNotDigit => String::from("CompareIsNotDigit"),
+            Instruction::CompareIsWord => String::from("CompareIsWord"),
+            Instruction::CompareIsNotWord => String::from("CompareIsNotWord"),
+            Instruction::CompareIsWhitespace => String::from("CompareIsWhitespace"),
+            Instruction::CompareIsNotWhitespace => String::from("CompareIsNotWhitespace"),
         }
     }
 }

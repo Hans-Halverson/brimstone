@@ -1,8 +1,8 @@
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::regexp::{
-        Alternative, AnonymousGroup, Assertion, CaptureGroup, Disjunction, Quantifier, RegExp,
-        RegExpFlags, Term,
+        Alternative, AnonymousGroup, Assertion, CaptureGroup, CharacterClass, ClassRange,
+        Disjunction, Quantifier, RegExp, RegExpFlags, Term,
     },
     runtime::{Context, Handle},
 };
@@ -185,7 +185,12 @@ impl CompiledRegExpBuilder {
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
-            Term::CharacterClass(_) => unimplemented!("RegExp character class"),
+            Term::CharacterClass(character_class) => {
+                self.emit_character_class(character_class);
+
+                // Character classes always consume a character
+                true
+            }
             Term::Lookaround(_) => unimplemented!("RegExp lookaround"),
             Term::Backreference(backreference) => {
                 self.emit_instruction(Instruction::Backreference(backreference.index));
@@ -322,6 +327,73 @@ impl CompiledRegExpBuilder {
 
     fn emit_anonymous_group(&mut self, group: &AnonymousGroup) -> bool {
         self.emit_disjunction(&group.disjunction)
+    }
+
+    fn emit_character_class(&mut self, character_class: &CharacterClass) {
+        let mut all_char_ranges = vec![];
+        for class_range in &character_class.ranges {
+            match class_range {
+                // Accumalate single and range char ranges
+                ClassRange::Single(code_point) => {
+                    all_char_ranges.push((*code_point, *code_point + 1));
+                }
+                ClassRange::Range(start, end) => {
+                    all_char_ranges.push((*start, *end));
+                }
+                // Shorthand char ranges have own instructions
+                ClassRange::Digit => self.emit_instruction(Instruction::CompareIsDigit),
+                ClassRange::NotDigit => self.emit_instruction(Instruction::CompareIsNotDigit),
+                ClassRange::Word => self.emit_instruction(Instruction::CompareIsWord),
+                ClassRange::NotWord => self.emit_instruction(Instruction::CompareIsNotWord),
+                ClassRange::Whitespace => self.emit_instruction(Instruction::CompareIsWhitespace),
+                ClassRange::NotWhitespace => {
+                    self.emit_instruction(Instruction::CompareIsNotWhitespace)
+                }
+            }
+        }
+
+        // Order char ranges by starting index, then ending index
+        all_char_ranges.sort_by(|(start_1, end_1), (start_2, end_2)| {
+            start_1.cmp(start_2).then_with(|| end_1.cmp(end_2))
+        });
+
+        // Merge adjacent char ranges
+        if !all_char_ranges.is_empty() {
+            let mut merged_char_ranges = vec![];
+            let mut current_char_range = all_char_ranges[0];
+
+            for (start, end) in &all_char_ranges[1..] {
+                // If next range overlaps current range then merge them
+                if *start <= current_char_range.1 {
+                    current_char_range.1 = u32::max(current_char_range.1, *end);
+                } else {
+                    // Otherwise next range doesn't overlap so emit disjoint ranges
+                    merged_char_ranges.push(current_char_range);
+                    current_char_range = (*start, *end);
+                }
+            }
+
+            // Emit the last range
+            merged_char_ranges.push(current_char_range);
+
+            all_char_ranges = merged_char_ranges
+        }
+
+        // Emit merged char ranges
+        for range in all_char_ranges {
+            if range.0 + 1 == range.1 {
+                self.emit_instruction(Instruction::CompareEquals(range.0));
+            } else {
+                self.emit_instruction(Instruction::CompareBetween(range.0, range.1));
+            }
+        }
+
+        // Emit the final consume instruction, noting whether to invert
+        if character_class.is_inverted {
+            self.emit_instruction(Instruction::ConsumeIfFalse);
+        } else {
+            self.emit_instruction(Instruction::ConsumeIfTrue);
+        }
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions

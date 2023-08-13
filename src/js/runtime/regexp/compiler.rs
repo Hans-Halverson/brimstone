@@ -2,7 +2,7 @@ use crate::js::{
     common::wtf_8::Wtf8String,
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CharacterClass, ClassRange,
-        Disjunction, Quantifier, RegExp, RegExpFlags, Term,
+        Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
     runtime::{Context, Handle},
 };
@@ -191,7 +191,12 @@ impl CompiledRegExpBuilder {
                 // Character classes always consume a character
                 true
             }
-            Term::Lookaround(_) => unimplemented!("RegExp lookaround"),
+            Term::Lookaround(lookaround) => {
+                self.emit_lookaround(lookaround);
+
+                // Lookaround never consumes any characters
+                false
+            }
             Term::Backreference(backreference) => {
                 self.emit_instruction(Instruction::Backreference(backreference.index));
 
@@ -394,6 +399,18 @@ impl CompiledRegExpBuilder {
         } else {
             self.emit_instruction(Instruction::ConsumeIfTrue);
         }
+    }
+
+    fn emit_lookaround(&mut self, lookaround: &Lookaround) {
+        self.emit_instruction(Instruction::Lookaround(lookaround.is_positive));
+
+        if !lookaround.is_ahead {
+            unimplemented!("RegExp lookbehind");
+        }
+
+        // Emit the body of the lookaround instruction, ending with an accept
+        self.emit_disjunction(&lookaround.disjunction);
+        self.emit_instruction(Instruction::Accept);
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions

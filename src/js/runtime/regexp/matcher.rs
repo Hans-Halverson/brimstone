@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use crate::js::{
-    common::unicode::{is_ascii_alphabetic, is_decimal_digit, is_newline, CodePoint, is_whitespace},
+    common::unicode::{
+        is_ascii_alphabetic, is_decimal_digit, is_newline, is_whitespace, CodePoint,
+    },
     parser::{
         lexer_stream::{
             HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -308,6 +310,21 @@ impl<T: LexerStream> MatchEngine<T> {
                     }
 
                     self.advance_instruction();
+                }
+                Instruction::Lookaround(is_positive) => {
+                    // Save lexer state for starting lookaround
+                    let saved_string_state = self.string_lexer.save();
+
+                    // Execute the lookaround as a sub-execution within engine
+                    self.advance_instruction();
+                    let is_match = self.execute_bytecode().is_ok();
+
+                    // Check if lookaround succeeded and either restore or backtrack
+                    if is_match == is_positive {
+                        self.string_lexer.restore(&saved_string_state);
+                    } else {
+                        self.backtrack()?;
+                    }
                 }
             }
         }

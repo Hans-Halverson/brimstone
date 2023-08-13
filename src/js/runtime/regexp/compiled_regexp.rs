@@ -98,6 +98,8 @@ pub enum Instruction {
     CompareIsWhitespace,
     /// Set the compare register to true if the current code point is not a whitespace (\S)
     CompareIsNotWhitespace,
+    /// Start a lookahead with operand `is_positive`
+    Lookaround(bool),
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -245,6 +247,7 @@ impl Instruction {
             Instruction::CompareIsNotWord => String::from("CompareIsNotWord"),
             Instruction::CompareIsWhitespace => String::from("CompareIsWhitespace"),
             Instruction::CompareIsNotWhitespace => String::from("CompareIsNotWhitespace"),
+            Instruction::Lookaround(is_positive) => format!("Lookaround({})", is_positive),
         }
     }
 }

@@ -209,6 +209,24 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.advance_instruction()
                     }
                 }
+                Instruction::Backreference(capture_group_index) => {
+                    match self.find_backreference_capture_bounds(capture_group_index) {
+                        None => self.advance_instruction(),
+                        Some((start_index, end_index)) => {
+                            let captured_slice = self.string_lexer.slice(start_index, end_index);
+
+                            if self
+                                .string_lexer
+                                .slice_equals(self.string_lexer.pos(), captured_slice)
+                            {
+                                self.string_lexer.advance_n(captured_slice.len());
+                                self.advance_instruction();
+                            } else {
+                                self.backtrack()?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -218,6 +236,34 @@ impl<T: LexerStream> MatchEngine<T> {
         let is_prev_word = is_word_code_point(self.string_lexer.peek_prev_code_point());
 
         is_current_word != is_prev_word
+    }
+
+    /// Return the bounds of most recent match of the given capture group
+    fn find_backreference_capture_bounds(
+        &self,
+        capture_group_index: u32,
+    ) -> Option<(usize, usize)> {
+        // Precalculate the start and end capture point indices to search for
+        let start_capture_point_index = capture_group_index * 2;
+        let end_capture_point_index = start_capture_point_index + 1;
+
+        let mut end_string_index = None;
+
+        // Find the last (start_index, end_index) pair in the capture stack
+        for capture_point in self.capture_stack.iter().rev() {
+            if capture_point.capture_point_index == end_capture_point_index {
+                end_string_index = Some(capture_point.string_index);
+            } else if capture_point.capture_point_index == start_capture_point_index {
+                // If we find the start point and have already found the end point, return the
+                // full capture. Otherwise we may have encountered the start point but not yet
+                // encountered a corresponding end point.
+                if let Some(end_string_index) = end_string_index {
+                    return Some((capture_point.string_index, end_string_index));
+                }
+            }
+        }
+
+        None
     }
 
     fn build_match(&self) -> Match {

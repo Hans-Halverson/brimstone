@@ -45,6 +45,15 @@ pub trait LexerStream {
     /// Parse and move forward one code point in the input stream
     fn parse_unicode_codepoint(&mut self) -> ParseResult<u32>;
 
+    /// Return a slice of the underlying buffer between two indices. Note that the underlying buffer
+    /// may not be a buffer of bytes but the return type is always a byte slice.
+    fn slice(&self, start: Pos, end: Pos) -> &[u8];
+
+    /// Return whether the slice of the underlying buffer starting at the provided index is equal to
+    /// a byte slice returned from `slice`. Note that the underlying buffer may not be a buffer of
+    /// bytes but we always take in a byte slice.
+    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
+
     /// Return an error with location between start_pos and the current position
     fn error<T>(&self, start_pos: Pos, error: ParseError) -> ParseResult<T>;
 
@@ -167,6 +176,14 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
         }
     }
 
+    fn slice(&self, _: Pos, _: Pos) -> &[u8] {
+        panic!("Utf8LexerStream::slice not implemented")
+    }
+
+    fn slice_equals(&self, _: Pos, _: &[u8]) -> bool {
+        panic!("Utf8LexerStream::slice_equals not implemented")
+    }
+
     fn error<T>(&self, start_pos: Pos, error: ParseError) -> ParseResult<T> {
         let loc = self.loc_from_start_pos(start_pos);
         let source = self.source.clone();
@@ -269,6 +286,19 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
         Ok(code_point)
     }
 
+    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+        &self.buf[start..end]
+    }
+
+    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+        let end = start + slice.len();
+        if end > self.buf.len() {
+            return false;
+        }
+
+        &self.buf[start..end] == slice
+    }
+
     fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
         Err(LocalizedParseError { error, source_loc: None })
     }
@@ -369,6 +399,23 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         self.advance_n(1);
 
         Ok(code_point)
+    }
+
+    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+        let u16_slice = &self.buf[start..end];
+        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
+    }
+
+    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+        let slice =
+            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
+
+        let end = start + slice.len();
+        if end > self.buf.len() {
+            return false;
+        }
+
+        &self.buf[start..end] == slice
     }
 
     fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
@@ -498,6 +545,23 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         self.advance_n(num_code_units);
 
         Ok(code_point)
+    }
+
+    fn slice(&self, start: Pos, end: Pos) -> &[u8] {
+        let u16_slice = &self.buf[start..end];
+        unsafe { std::slice::from_raw_parts(u16_slice.as_ptr() as *const u8, u16_slice.len() * 2) }
+    }
+
+    fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+        let slice =
+            unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
+
+        let end = start + slice.len();
+        if end > self.buf.len() {
+            return false;
+        }
+
+        &self.buf[start..end] == slice
     }
 
     fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {

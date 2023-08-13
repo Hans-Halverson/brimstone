@@ -64,6 +64,9 @@ pub enum Instruction {
     AssertWordBoundary,
     /// Assert not a word boundary (\B)
     AssertNotWordBoundary,
+    /// Consume the same code points as a previously captured group, failing if the previously
+    /// captured group cannot be matched.
+    Backreference(u32),
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -191,6 +194,7 @@ impl Instruction {
             Instruction::AssertEndOrNewline => String::from("AssertEndOrNewline"),
             Instruction::AssertWordBoundary => String::from("AssertWordBoundary"),
             Instruction::AssertNotWordBoundary => String::from("AssertNotWordBoundary"),
+            Instruction::Backreference(index) => format!("Backreference({})", index),
         }
     }
 }

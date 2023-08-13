@@ -185,9 +185,14 @@ impl CompiledRegExpBuilder {
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
-            Term::Lookaround(_) => unimplemented!("RegExp lookaround"),
             Term::CharacterClass(_) => unimplemented!("RegExp character class"),
-            Term::Backreference(_) => unimplemented!("RegExp backreference"),
+            Term::Lookaround(_) => unimplemented!("RegExp lookaround"),
+            Term::Backreference(backreference) => {
+                self.emit_instruction(Instruction::Backreference(backreference.index));
+
+                // Backreferences may be empty depending on what was captured
+                false
+            }
         }
     }
 

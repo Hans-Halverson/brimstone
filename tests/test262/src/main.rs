@@ -54,6 +54,10 @@ struct Args {
     #[arg(long)]
     save_result_files: Option<String>,
 
+    /// Optional path to write test runtime statistics file to
+    #[arg(long)]
+    save_time_files: Option<String>,
+
     /// Only run tests that match this feature
     #[arg(long)]
     feature: Option<String>,
@@ -95,6 +99,10 @@ fn main_impl() -> GenericResult {
 
     if let Some(result_files_path) = args.save_result_files {
         results.save_to_result_files(result_files_path)?;
+    }
+
+    if let Some(time_files_path) = args.save_time_files {
+        results.save_to_time_files(time_files_path)?;
     }
 
     if !results.is_successful() {

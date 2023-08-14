@@ -1,7 +1,13 @@
-use serde_json;
+use serde_json::{self, json};
 use threadpool::ThreadPool;
 
-use std::{fs, panic, path::Path, rc::Rc, sync::mpsc::channel};
+use std::{
+    fs, panic,
+    path::Path,
+    rc::Rc,
+    sync::mpsc::channel,
+    time::{Duration, SystemTime},
+};
 
 use crate::{
     ignored::IgnoredIndex,
@@ -49,6 +55,8 @@ impl TestRunner {
         let mut num_jobs = 0;
         let mut num_skipped = 0;
 
+        let all_tests_start_timestamp = SystemTime::now();
+
         for test in self.index.tests.values() {
             if !self.should_run_test(test) {
                 num_skipped += 1;
@@ -63,13 +71,17 @@ impl TestRunner {
             num_jobs += 1;
 
             self.thread_pool.execute(move || {
+                let start_timestamp = SystemTime::now();
+
                 let panic_result = panic::catch_unwind(|| {
                     if verbose {
                         println!("{}", test.path);
                     }
 
-                    run_full_test(&test, &test262_root)
+                    run_full_test(&test, &test262_root, start_timestamp)
                 });
+
+                let duration = start_timestamp.elapsed().unwrap();
 
                 match panic_result {
                     Ok(result) => sender.send(result).unwrap(),
@@ -86,7 +98,11 @@ impl TestRunner {
                         {
                             TestResult::skipped(&test)
                         } else {
-                            TestResult::failure(&test, format!("Thread panicked:\n{}", message))
+                            TestResult::failure(
+                                &test,
+                                format!("Thread panicked:\n{}", message),
+                                duration,
+                            )
                         };
 
                         sender.send(result).unwrap()
@@ -97,7 +113,7 @@ impl TestRunner {
 
         let results: Vec<TestResult> = receiver.iter().take(num_jobs).collect();
 
-        TestResults::collate(results, num_skipped)
+        TestResults::collate(results, num_skipped, all_tests_start_timestamp.elapsed().unwrap())
     }
 
     fn should_run_test(&self, test: &Test) -> bool {
@@ -117,17 +133,17 @@ impl TestRunner {
     }
 }
 
-fn run_full_test(test: &Test, test262_root: &str) -> TestResult {
+fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -> TestResult {
     match test.mode {
-        TestMode::StrictScript => run_single_test(test, test262_root, true),
+        TestMode::StrictScript => run_single_test(test, test262_root, true, start_timestamp),
         TestMode::NonStrictScript | TestMode::Module | TestMode::Raw => {
-            run_single_test(test, test262_root, false)
+            run_single_test(test, test262_root, false, start_timestamp)
         }
         // Run in both strict and non strict mode, both must pass for this test to be successful
         TestMode::Script => {
-            let non_strict_result = run_single_test(test, test262_root, false);
+            let non_strict_result = run_single_test(test, test262_root, false, start_timestamp);
             if let TestResultCompletion::Success = non_strict_result.result {
-                run_single_test(test, test262_root, true)
+                run_single_test(test, test262_root, true, start_timestamp)
             } else {
                 non_strict_result
             }
@@ -135,7 +151,12 @@ fn run_full_test(test: &Test, test262_root: &str) -> TestResult {
     }
 }
 
-fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> TestResult {
+fn run_single_test(
+    test: &Test,
+    test262_root: &str,
+    force_strict_mode: bool,
+    start_timestamp: SystemTime,
+) -> TestResult {
     // Each test is executed in its own realm
     let mut cx = Context::new();
     let realm = initialize_host_defined_realm(&mut cx, false);
@@ -168,13 +189,16 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
                 _ => true,
             };
 
+            let duration = start_timestamp.elapsed().unwrap();
+
             return match test.expected_result {
                 ExpectedResult::Negative { phase: TestPhase::Parse, .. } if is_parse_error => {
-                    TestResult::success(test)
+                    TestResult::success(test, duration)
                 }
                 _ => TestResult::failure(
                     test,
                     format!("Unexpected error during parsing:\n{}", err.to_string()),
+                    duration,
                 ),
             };
         }
@@ -187,13 +211,16 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         // An error during analysis may be a success or failure depending on the expected result of
         // the test.
         Err(err) => {
+            let duration = start_timestamp.elapsed().unwrap();
+
             return match test.expected_result {
                 ExpectedResult::Negative { phase: TestPhase::Parse, .. } => {
-                    TestResult::success(test)
+                    TestResult::success(test, duration)
                 }
                 _ => TestResult::failure(
                     test,
                     format!("Unexpected error during analysis:\n{}", err.to_string()),
+                    duration,
                 ),
             };
         }
@@ -205,7 +232,9 @@ fn run_single_test(test: &Test, test262_root: &str, force_strict_mode: bool) -> 
         eval_script(&mut cx, Rc::new(ast_and_source.0), realm)
     };
 
-    check_expected_completion(&mut cx, test, completion)
+    let duration = start_timestamp.elapsed().unwrap();
+
+    check_expected_completion(&mut cx, test, completion, duration)
 }
 
 fn parse_file(
@@ -261,14 +290,20 @@ fn load_harness_test_file(cx: &mut Context, realm: Handle<Realm>, test262_root: 
 
 /// Determine whether the evaluation completion for a test corresponds to that test passing or
 /// failing, depending on the expected result of the test.
-fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completion) -> TestResult {
+fn check_expected_completion(
+    cx: &mut Context,
+    test: &Test,
+    completion: Completion,
+    duration: Duration,
+) -> TestResult {
     match completion.kind() {
         // A normal completion is a success only if the test was expected to not throw
         CompletionKind::Normal => match &test.expected_result {
-            ExpectedResult::Positive => TestResult::success(test),
+            ExpectedResult::Positive => TestResult::success(test, duration),
             other => TestResult::failure(
                 test,
                 format!("Test completed without throwing, but expected {}", other.to_string()),
+                duration,
             ),
         },
         // Throw completions are a success if the expected result is negative, expected during
@@ -304,7 +339,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                 };
 
                 if is_expected_error {
-                    TestResult::success(test)
+                    TestResult::success(test, duration)
                 } else {
                     let thrown_string = to_console_string_test262(cx, thrown_value);
                     TestResult::failure(
@@ -314,6 +349,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                             test.expected_result.to_string(),
                             thrown_string,
                         ),
+                        duration,
                     )
                 }
             }
@@ -326,6 +362,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
                         other.to_string(),
                         thrown_string,
                     ),
+                    duration,
                 )
             }
         },
@@ -333,6 +370,7 @@ fn check_expected_completion(cx: &mut Context, test: &Test, completion: Completi
         _ => TestResult::failure(
             test,
             String::from("Unexpected abnormal completion when evaluating file"),
+            duration,
         ),
     }
 }
@@ -357,8 +395,11 @@ fn to_console_string_test262(cx: &mut Context, value: Handle<Value>) -> String {
 struct TestResult {
     path: String,
     result: TestResultCompletion,
+    // Total time this test took to run
+    time: Duration,
 }
 
+#[derive(PartialEq)]
 enum TestResultCompletion {
     Success,
     Failure(String),
@@ -366,17 +407,19 @@ enum TestResultCompletion {
 }
 
 impl TestResult {
-    fn success(test: &Test) -> TestResult {
+    fn success(test: &Test, time: Duration) -> TestResult {
         TestResult {
             path: test.path.clone(),
             result: TestResultCompletion::Success,
+            time,
         }
     }
 
-    fn failure(test: &Test, message: String) -> TestResult {
+    fn failure(test: &Test, message: String, time: Duration) -> TestResult {
         TestResult {
             path: test.path.clone(),
             result: TestResultCompletion::Failure(message),
+            time,
         }
     }
 
@@ -384,6 +427,7 @@ impl TestResult {
         TestResult {
             path: test.path.clone(),
             result: TestResultCompletion::Skipped,
+            time: Duration::ZERO,
         }
     }
 }
@@ -392,6 +436,8 @@ pub struct TestResults {
     succeeded: Vec<TestResult>,
     failed: Vec<TestResult>,
     num_skipped: u64,
+    // Total duration of the entire test run
+    total_duration: Duration,
 }
 
 // ANSII codes for pretty printing
@@ -403,8 +449,17 @@ const BOLD: &str = "\x1b[1m";
 const DIM: &str = "\x1b[2m";
 
 impl TestResults {
-    fn collate(results: Vec<TestResult>, num_skipped: u64) -> TestResults {
-        let mut collated = TestResults { failed: vec![], succeeded: vec![], num_skipped };
+    fn collate(
+        results: Vec<TestResult>,
+        num_skipped: u64,
+        total_duration: Duration,
+    ) -> TestResults {
+        let mut collated = TestResults {
+            failed: vec![],
+            succeeded: vec![],
+            num_skipped,
+            total_duration,
+        };
 
         for result in results {
             match result.result {
@@ -444,7 +499,9 @@ impl TestResults {
         }
 
         println!(
-            "{}{}Succeeded: {}\n{}Failed: {}\n{}{}Skipped: {}{}",
+            "{}Tests completed in {:.2} seconds\n\n{}{}Succeeded: {}\n{}Failed: {}\n{}{}Skipped: {}{}",
+            BOLD,
+            self.total_duration.as_secs_f64(),
             BOLD,
             GREEN,
             self.succeeded.len(),
@@ -470,6 +527,31 @@ impl TestResults {
 
         fs::write(succeeded_file_path, &succeeded_string)?;
         fs::write(failed_file_path, &failed_string)?;
+
+        Ok(())
+    }
+
+    pub fn save_to_time_files(&self, tile_file_path: String) -> GenericResult {
+        let mut all_test_results = vec![];
+        all_test_results.extend(self.succeeded.iter());
+        all_test_results.extend(self.failed.iter());
+
+        all_test_results.sort_by(|a, b| a.time.cmp(&b.time).reverse());
+
+        let mut test_result_jsons = vec![];
+        for test_result in all_test_results {
+            let test_result_json = json!({
+                "path": test_result.path,
+                "time": test_result.time.as_secs_f64(),
+                "succeeded": test_result.result == TestResultCompletion::Success,
+            });
+
+            test_result_jsons.push(test_result_json);
+        }
+
+        let time_files_string = serde_json::to_string_pretty(&test_result_jsons).unwrap();
+
+        fs::write(tile_file_path, &time_files_string)?;
 
         Ok(())
     }

@@ -69,7 +69,7 @@ impl WeakMapConstructor {
         }
 
         add_entries_from_iterable(cx, weak_map.into(), iterable, |cx, key, value| {
-            call_object(cx, adder.as_object(), weak_map.into(), &[key, value]);
+            maybe!(call_object(cx, adder.as_object(), weak_map.into(), &[key, value]));
             ().into()
         })
     }

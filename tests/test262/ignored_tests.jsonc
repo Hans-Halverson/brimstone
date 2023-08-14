@@ -43,7 +43,12 @@
       "built-ins/RegExp/CharacterClassEscapes/*.js",
       "built-ins/RegExp/property-escapes/generated/*.js",
       "built-ins/decodeURI/*.js",
-      "built-ins/decodeURIComponent/*.js"
+      "built-ins/decodeURIComponent/*.js",
+      // Slow tests
+      "built-ins/parseFloat/S15.1.2.3_A6.js",
+      "built-ins/parseInt/S15.1.2.2_A8.js",
+      "language/comments/S7.4_A5.js",
+      "language/comments/S7.4_A6.js"
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow

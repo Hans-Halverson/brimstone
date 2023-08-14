@@ -80,7 +80,7 @@ impl MapConstructor {
         }
 
         add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {
-            call_object(cx, adder.as_object(), map_object.into(), &[key, value]);
+            maybe!(call_object(cx, adder.as_object(), map_object.into(), &[key, value]));
             ().into()
         })
     }

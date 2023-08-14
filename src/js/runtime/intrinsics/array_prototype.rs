@@ -1495,7 +1495,7 @@ impl ArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, i));
                 maybe!(delete_property_or_throw(cx, object, from_key));
             }
-        } else {
+        } else if insert_count > actual_delete_count {
             for i in (start_index..(length - actual_delete_count)).rev() {
                 from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count));
                 to_key.replace(PropertyKey::from_u64(cx, i + insert_count));

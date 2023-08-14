@@ -1,28 +1,35 @@
 use crate::{
-    js::runtime::{
-        abstract_operations::{call_object, get_method, invoke},
-        array_object::{array_create, create_array_from_list},
-        completion::EvalResult,
-        error::{range_error_, type_error_},
-        function::get_argument,
-        intrinsics::{
-            intrinsics::Intrinsic,
-            regexp_constructor::{regexp_create, RegExpSource},
-            string_iterator::StringIterator,
+    js::{
+        parser::regexp::RegExpFlags,
+        runtime::{
+            abstract_operations::{call_object, get_method, invoke},
+            array_object::{array_create, create_array_from_list},
+            completion::EvalResult,
+            error::{range_error_, type_error_},
+            function::get_argument,
+            get,
+            intrinsics::{
+                intrinsics::Intrinsic,
+                regexp_constructor::{regexp_create, RegExpSource},
+                regexp_prototype::flags_string_contains,
+                string_iterator::StringIterator,
+            },
+            object_value::ObjectValue,
+            realm::Realm,
+            string_object::StringObject,
+            string_value::{FlatString, StringValue},
+            to_string,
+            type_utilities::{
+                is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
+            },
+            value::Value,
+            Context, Handle,
         },
-        object_value::ObjectValue,
-        realm::Realm,
-        string_object::StringObject,
-        string_value::{FlatString, StringValue},
-        to_string,
-        type_utilities::{
-            is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
-        },
-        value::Value,
-        Context, Handle,
     },
     maybe,
 };
+
+use super::regexp_constructor::{FlagsSource, RegExpObject};
 
 pub struct StringPrototype;
 
@@ -45,6 +52,7 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
         object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
+        object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
         object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
@@ -354,12 +362,66 @@ impl StringPrototype {
 
         let this_string = maybe!(to_string(cx, this_object));
 
-        let regexp_source = RegExpSource::PatternAndFlags(regexp_arg, cx.undefined());
-
+        let regexp_source = RegExpSource::PatternAndFlags(
+            regexp_arg,
+            FlagsSource::RegExpFlags(RegExpFlags::empty()),
+        );
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
+    }
+
+    // 22.1.3.13 String.prototype.matchAll
+    fn match_all(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let this_object = maybe!(require_object_coercible(cx, this_value));
+
+        let regexp_arg = get_argument(cx, arguments, 0);
+        if !regexp_arg.is_nullish() {
+            if maybe!(is_regexp(cx, regexp_arg)) {
+                let regexp_object = regexp_arg.as_object();
+                let has_global_flag = if regexp_object.is_regexp_object() {
+                    regexp_object
+                        .cast::<RegExpObject>()
+                        .flags()
+                        .contains(RegExpFlags::GLOBAL)
+                } else {
+                    let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
+                    maybe!(require_object_coercible(cx, flags_string));
+                    let flags_string = maybe!(to_string(cx, flags_string));
+
+                    flags_string_contains(flags_string, 'g' as u32)
+                };
+
+                if !has_global_flag {
+                    return type_error_(
+                        cx,
+                        "String.prototype.matchAll expects RegExp with global flag",
+                    );
+                }
+            }
+
+            let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_all()));
+            if let Some(matcher) = matcher {
+                return call_object(cx, matcher, regexp_arg, &[this_object.into()]);
+            }
+        }
+
+        let this_string = maybe!(to_string(cx, this_object));
+
+        let regexp_source = RegExpSource::PatternAndFlags(
+            regexp_arg,
+            FlagsSource::RegExpFlags(RegExpFlags::GLOBAL),
+        );
+        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
+        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
+
+        invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
     }
 
     // 22.1.3.17 String.prototype.repeat

@@ -3,13 +3,16 @@ use crate::{
         common::unicode::{needs_surrogate_pair, CodePoint},
         parser::regexp::RegExpFlags,
         runtime::{
-            abstract_operations::{call, create_data_property_or_throw, set},
+            abstract_operations::{
+                call, construct, create_data_property_or_throw, set, species_constructor,
+            },
             array_object::{array_create, create_array_from_list},
             completion::EvalResult,
             error::type_error_,
             function::get_argument,
             get,
             interned_strings::InternedStrings,
+            intrinsics::regexp_string_iterator::RegExpStringIterator,
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_with_optional_proto,
@@ -42,6 +45,7 @@ impl RegExpPrototype {
         object.intrinsic_getter(cx, cx.names.has_indices(), Self::has_indices, realm);
         object.intrinsic_getter(cx, cx.names.ignore_case(), Self::ignore_case, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.match_(), Self::match_, 1, realm);
+        object.intrinsic_func(cx, cx.well_known_symbols.match_all(), Self::match_all, 1, realm);
         object.intrinsic_getter(cx, cx.names.multiline(), Self::multiline, realm);
         object.intrinsic_getter(cx, cx.names.source(), Self::source, realm);
         object.intrinsic_getter(cx, cx.names.sticky(), Self::sticky, realm);
@@ -266,6 +270,43 @@ impl RegExpPrototype {
         }
     }
 
+    // 22.2.6.9 RegExp.prototype [ @@matchAll ]
+    fn match_all(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error_(cx, "RegExpr.prototype[@@matchAll] must be called on object");
+        }
+
+        let regexp_object = this_value.as_object();
+
+        let string_arg = get_argument(cx, arguments, 0);
+        let string_value = maybe!(to_string(cx, string_arg));
+
+        let constructor =
+            maybe!(species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor));
+
+        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
+        let flags_string = maybe!(to_string(cx, flags_string));
+
+        let matcher =
+            maybe!(construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None));
+
+        let last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+        let last_index = maybe!(to_length(cx, last_index));
+        let last_index_value = Value::from(last_index).to_handle(cx);
+
+        maybe!(set(cx, matcher, cx.names.last_index(), last_index_value, true));
+
+        let is_global = flags_string_contains(flags_string, 'g' as u32);
+        let is_unicode = flags_string_contains(flags_string, 'u' as u32);
+
+        RegExpStringIterator::new(cx, regexp_object, string_value, is_global, is_unicode).into()
+    }
+
     // 22.2.6.10 get RegExp.prototype.multiline
     fn multiline(
         cx: &mut Context,
@@ -390,12 +431,12 @@ fn regexp_has_flag(
     type_error_(cx, "Expected a regular expression")
 }
 
-fn flags_string_contains(flags_string: Handle<StringValue>, flag: CodePoint) -> bool {
+pub fn flags_string_contains(flags_string: Handle<StringValue>, flag: CodePoint) -> bool {
     flags_string.iter_code_points().any(|c| c == flag)
 }
 
 // 22.2.7.1 RegExpExec
-fn regexp_exec(
+pub fn regexp_exec(
     cx: &mut Context,
     regexp_object: Handle<ObjectValue>,
     string_value: Handle<StringValue>,
@@ -602,7 +643,7 @@ fn regexp_builtin_exec(
 
 // 22.2.7.3 AdvanceStringIndex
 // Increments the index by one if not unicode-aware, and by the size of the current code point if unicode-aware.
-fn advance_string_index(
+pub fn advance_string_index(
     string_value: Handle<StringValue>,
     prev_index: u64,
     is_unicode: bool,

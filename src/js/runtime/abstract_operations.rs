@@ -11,6 +11,7 @@ use super::{
     eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
     gc::{Handle, HeapPtr},
+    intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -390,12 +391,12 @@ pub fn ordinary_has_instance(
 pub fn species_constructor(
     cx: &mut Context,
     object: Handle<ObjectValue>,
-    default_constructor: Handle<ObjectValue>,
+    default_constructor: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {
     let constructor = maybe!(get(cx, object, cx.names.constructor()));
 
     if constructor.is_undefined() {
-        return default_constructor.into();
+        return cx.get_intrinsic(default_constructor).into();
     }
 
     if !constructor.is_object() {
@@ -406,7 +407,7 @@ pub fn species_constructor(
     let species = maybe!(get(cx, constructor.as_object(), species_key));
 
     if species.is_nullish() {
-        return default_constructor.into();
+        return cx.get_intrinsic(default_constructor).into();
     }
 
     if is_constructor(species) {

@@ -35,6 +35,7 @@ use crate::js::runtime::{
         object_prototype::ObjectPrototype,
         proxy_constructor::RevokeProxyClosureEnvironment,
         regexp_constructor::RegExpObject,
+        regexp_string_iterator::RegExpStringIterator,
         set_iterator::SetIterator,
         set_object::{SetObject, SetObjectSetField},
         string_iterator::StringIterator,
@@ -124,6 +125,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::StringIterator => self.cast::<StringIterator>().byte_size(),
             ObjectKind::SetIterator => self.cast::<SetIterator>().byte_size(),
             ObjectKind::MapIterator => self.cast::<MapIterator>().byte_size(),
+            ObjectKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
             ObjectKind::FunctionPrototype => self.cast::<FunctionPrototype>().byte_size(),
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
@@ -236,6 +238,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::StringIterator => self.cast::<StringIterator>().visit_pointers(visitor),
             ObjectKind::SetIterator => self.cast::<SetIterator>().visit_pointers(visitor),
             ObjectKind::MapIterator => self.cast::<MapIterator>().visit_pointers(visitor),
+            ObjectKind::RegExpStringIterator => {
+                self.cast::<RegExpStringIterator>().visit_pointers(visitor)
+            }
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
             ObjectKind::FunctionPrototype => {
                 self.cast::<FunctionPrototype>().visit_pointers(visitor)

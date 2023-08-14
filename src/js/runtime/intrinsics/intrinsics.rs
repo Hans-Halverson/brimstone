@@ -44,6 +44,7 @@ use crate::{
             reflect_object::ReflectObject,
             regexp_constructor::RegExpConstructor,
             regexp_prototype::RegExpPrototype,
+            regexp_string_iterator::RegExpStringIteratorPrototype,
             set_constructor::SetConstructor,
             set_iterator::SetIteratorPrototype,
             set_prototype::SetPrototype,
@@ -139,6 +140,7 @@ pub enum Intrinsic {
     Reflect,
     RegExpConstructor,
     RegExpPrototype,
+    RegExpStringIteratorPrototype,
     SetConstructor,
     SetIteratorPrototype,
     SetPrototype,
@@ -313,6 +315,7 @@ impl Intrinsics {
         register_intrinsic!(StringIteratorPrototype, StringIteratorPrototype);
         register_intrinsic!(MapIteratorPrototype, MapIteratorPrototype);
         register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
+        register_intrinsic!(RegExpStringIteratorPrototype, RegExpStringIteratorPrototype);
 
         // Builtin objects
         register_intrinsic!(Math, MathObject);

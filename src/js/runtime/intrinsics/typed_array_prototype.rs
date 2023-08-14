@@ -1287,9 +1287,7 @@ fn typed_array_species_create(
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };
 
-    let default_constructor = cx.get_intrinsic(intrinsic);
-    let constructor =
-        maybe!(species_constructor(cx, exemplar.into_object_value(), default_constructor));
+    let constructor = maybe!(species_constructor(cx, exemplar.into_object_value(), intrinsic));
 
     let result = maybe!(typed_array_create(cx, constructor, arguments, length));
 

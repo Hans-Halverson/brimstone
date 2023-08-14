@@ -733,6 +733,7 @@ pub fn is_integral_number(value: Value) -> bool {
 }
 
 // 7.2.8 IsRegExp
+// If this returns true the value must be an object.
 pub fn is_regexp(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
     if !value.is_object() {
         return false.into();

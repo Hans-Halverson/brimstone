@@ -217,7 +217,7 @@ impl RegExpConstructor {
                 // If flags are provided we must reparse pattern instead of using compiled regexp
                 // directly, since different flags may result in a different regexp.
                 let pattern_value = pattern_regexp_object.escaped_pattern_source().into();
-                RegExpSource::PatternAndFlags(pattern_value, flags_arg)
+                RegExpSource::PatternAndFlags(pattern_value, FlagsSource::Value(flags_arg))
             }
         } else if pattern_is_regexp {
             // Construction from a pattern object that has a [Symbol.match] property
@@ -230,10 +230,10 @@ impl RegExpConstructor {
                 flags_arg
             };
 
-            RegExpSource::PatternAndFlags(pattern, flags_value)
+            RegExpSource::PatternAndFlags(pattern, FlagsSource::Value(flags_value))
         } else {
             // Construction from string pattern and flags arguments
-            RegExpSource::PatternAndFlags(pattern_arg, flags_arg)
+            RegExpSource::PatternAndFlags(pattern_arg, FlagsSource::Value(flags_arg))
         };
 
         regexp_create(cx, regexp_source, new_target)
@@ -254,8 +254,15 @@ impl RegExpConstructor {
 pub enum RegExpSource {
     // Construct from a pre-existing RegExpObject
     RegExpObject(Handle<RegExpObject>),
-    // Construct from a pair of pattern and flags values
-    PatternAndFlags(Handle<Value>, Handle<Value>),
+    // Construct from a pair of pattern value and flags
+    PatternAndFlags(Handle<Value>, FlagsSource),
+}
+
+pub enum FlagsSource {
+    // Construct from pre-existing RegExpFloags
+    RegExpFlags(RegExpFlags),
+    // Construct from flags value
+    Value(Handle<Value>),
 }
 
 // 22.2.3.1 RegExpCreate
@@ -272,15 +279,21 @@ pub fn regexp_create(
             regexp_object.escaped_pattern_source = old_regexp_object.escaped_pattern_source;
             regexp_object.flags_string = old_regexp_object.flags_string;
         }
-        RegExpSource::PatternAndFlags(pattern_value, flags_value) => {
+        RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
             let pattern = value_or_empty_string(cx, pattern_value);
             let pattern_string = maybe!(to_string(cx, pattern));
 
-            let flags_value = value_or_empty_string(cx, flags_value);
-            let flags_string = maybe!(to_string(cx, flags_value));
+            let flags = match flags_source {
+                FlagsSource::RegExpFlags(flags) => flags,
+                FlagsSource::Value(flags_value) => {
+                    let flags_value = value_or_empty_string(cx, flags_value);
+                    let flags_string = maybe!(to_string(cx, flags_value));
 
-            let flags = maybe!(parse_flags(cx, flags_string));
+                    maybe!(parse_flags(cx, flags_string))
+                }
+            };
+
             let regexp = maybe!(parse_pattern(cx, pattern_string, flags));
 
             let compiled_regexp = compile_regexp(cx, &regexp);

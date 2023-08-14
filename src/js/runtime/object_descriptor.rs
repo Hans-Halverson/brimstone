@@ -94,6 +94,7 @@ pub enum ObjectKind {
     StringIterator,
     SetIterator,
     MapIterator,
+    RegExpStringIterator,
 
     ObjectPrototype,
     FunctionPrototype,
@@ -301,6 +302,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::StringIterator);
         ordinary_object_descriptor!(ObjectKind::SetIterator);
         ordinary_object_descriptor!(ObjectKind::MapIterator);
+        ordinary_object_descriptor!(ObjectKind::RegExpStringIterator);
 
         ordinary_object_descriptor!(ObjectKind::ObjectPrototype);
         register_descriptor!(

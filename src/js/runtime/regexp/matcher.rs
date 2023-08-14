@@ -147,6 +147,14 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.advance_instruction();
                     }
                 }
+                Instruction::WildcardNoNewline => {
+                    if self.string_lexer.is_end() || is_newline(self.string_lexer.current()) {
+                        self.backtrack()?;
+                    } else {
+                        self.string_lexer.advance_code_point();
+                        self.advance_instruction();
+                    }
+                }
                 Instruction::Jump(next_instruction_index) => {
                     self.set_next_instruction(next_instruction_index);
                 }

@@ -87,7 +87,7 @@ impl CompiledRegExpBuilder {
 
         // Repeat wildcard block
         self.set_current_block(wildcard_block);
-        self.emit_wildcard();
+        self.emit_instruction(Instruction::Wildcard);
         self.emit_branch_instruction(join_block, wildcard_block);
 
         // Resume at the join block where pattern will start being emitted
@@ -213,7 +213,11 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_wildcard(&mut self) {
-        self.emit_instruction(Instruction::Wildcard)
+        if self.flags.contains(RegExpFlags::DOT_ALL) {
+            self.emit_instruction(Instruction::Wildcard)
+        } else {
+            self.emit_instruction(Instruction::WildcardNoNewline)
+        }
     }
 
     fn emit_assertion(&mut self, assertion: &Assertion) {

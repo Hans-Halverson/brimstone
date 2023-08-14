@@ -37,8 +37,12 @@ pub enum Instruction {
     /// Consume a single code points, failing if code point does not match literal or there is no
     /// code point to consume.
     Literal(CodePoint),
-    /// Consume a single code point, failing if there is no code point to consume
+    /// Consume a single code point, failing if there is no code point to consume. This is the
+    /// behavior of the wildcard with the `s` flag.
     Wildcard,
+    /// Consume a single code point, failing if the code point is a newline or there is no code
+    /// point to consume. This is the default behavior of the wildcard `.`.
+    WildcardNoNewline,
     /// Continue execution at the instruction with the given index
     Jump(u32),
     /// Branch between two instructions given their indicies, following first then second branch
@@ -214,6 +218,7 @@ impl Instruction {
                 format!("Literal({})", code_point_string)
             }
             Instruction::Wildcard => String::from("Wildcard"),
+            Instruction::WildcardNoNewline => String::from("WildcardNoNewline"),
             Instruction::Jump(index) => format!("Jump({})", index),
             Instruction::Branch(first_index, second_index) => {
                 format!("Branch({}, {})", first_index, second_index)

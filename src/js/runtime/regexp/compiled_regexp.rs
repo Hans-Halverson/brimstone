@@ -102,8 +102,9 @@ pub enum Instruction {
     CompareIsWhitespace,
     /// Set the compare register to true if the current code point is not a whitespace (\S)
     CompareIsNotWhitespace,
-    /// Start a lookahead with operand `is_positive`
-    Lookaround(bool),
+    /// Start a lookahead with operands `is_ahead`, `is_positive`, and `instruction_index`
+    /// which is the instruction that starts the lookaround body.
+    Lookaround(bool, bool, u32),
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -252,7 +253,9 @@ impl Instruction {
             Instruction::CompareIsNotWord => String::from("CompareIsNotWord"),
             Instruction::CompareIsWhitespace => String::from("CompareIsWhitespace"),
             Instruction::CompareIsNotWhitespace => String::from("CompareIsNotWhitespace"),
-            Instruction::Lookaround(is_positive) => format!("Lookaround({})", is_positive),
+            Instruction::Lookaround(is_ahead, is_positive, instruction_index) => {
+                format!("Lookaround({}, {}, {})", is_ahead, is_positive, instruction_index)
+            }
         }
     }
 }

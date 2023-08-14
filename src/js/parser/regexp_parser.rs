@@ -28,6 +28,8 @@ pub struct RegExpParser<T: LexerStream> {
     lexer_stream: T,
     /// Flags for this regexp
     flags: RegExpFlags,
+    // Number of capture groups seen so far
+    num_capture_groups: usize,
     // All capture groups seen so far, with name if a name was specified
     capture_groups: Vec<Option<String>>,
     // Map of capture group names that have been encountered so far to their capture group index
@@ -44,6 +46,7 @@ impl<T: LexerStream> RegExpParser<T> {
         RegExpParser {
             lexer_stream,
             flags,
+            num_capture_groups: 0,
             capture_groups: vec![],
             capture_group_names: HashMap::new(),
             named_backreferences: vec![],
@@ -149,12 +152,14 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn next_capture_group_index(&mut self, error_pos: Pos) -> ParseResult<u32> {
         // Capture group indices are 1-indexed
-        let index = self.capture_groups.len() + 1;
+        let index = self.num_capture_groups + 1;
 
         // Deviation from spec - only allows up to 2^31 - 1 capture groups instead of 2^32 - 1
         if index >= (u32::MAX as usize / 2) {
             return self.error(error_pos, ParseError::TooManyCaptureGroups);
         }
+
+        self.num_capture_groups += 1;
 
         Ok(index as u32)
     }
@@ -289,7 +294,7 @@ impl<T: LexerStream> RegExpParser<T> {
                     'W' => {
                         self.advance2();
                         Term::CharacterClass(CharacterClass {
-                            is_inverted: true,
+                            is_inverted: false,
                             ranges: vec![ClassRange::NotWord],
                         })
                     }
@@ -303,7 +308,7 @@ impl<T: LexerStream> RegExpParser<T> {
                     'D' => {
                         self.advance2();
                         Term::CharacterClass(CharacterClass {
-                            is_inverted: true,
+                            is_inverted: false,
                             ranges: vec![ClassRange::NotDigit],
                         })
                     }
@@ -317,7 +322,7 @@ impl<T: LexerStream> RegExpParser<T> {
                     'S' => {
                         self.advance2();
                         Term::CharacterClass(CharacterClass {
-                            is_inverted: true,
+                            is_inverted: false,
                             ranges: vec![ClassRange::NotWhitespace],
                         })
                     }
@@ -521,13 +526,13 @@ impl<T: LexerStream> RegExpParser<T> {
                             }))
                         }
                         _ => {
+                            let index = self.next_capture_group_index(left_paren_pos)?;
+
                             let name_start_pos = self.pos();
                             let name = self.parse_identifier()?;
                             self.expect('>')?;
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
-
-                            let index = self.next_capture_group_index(left_paren_pos)?;
 
                             // Add to list of all capture groups with name
                             self.capture_groups.push(Some(name.clone()));
@@ -553,10 +558,10 @@ impl<T: LexerStream> RegExpParser<T> {
                 _ => self.error_unexpected_token(self.pos()),
             })
         } else {
+            let index = self.next_capture_group_index(left_paren_pos)?;
+
             let disjunction = self.parse_disjunction()?;
             self.expect(')')?;
-
-            let index = self.next_capture_group_index(left_paren_pos)?;
 
             // Add to list of all capture groups without name
             self.capture_groups.push(None);

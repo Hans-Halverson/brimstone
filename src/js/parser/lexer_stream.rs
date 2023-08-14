@@ -14,6 +14,15 @@ use super::{
 /// Character that marks an EOF. Not a valid unicode character.
 pub const EOF_CHAR: u32 = 0x110000;
 
+// Forward vs backwards lexer streams.
+//
+// If the most recent advance call was forward, the pos is immediately before the start of the
+// current code point. If the most recent advance call was backwards, the pos is immediately after
+// the end of the current code point.
+//
+// In both types of lexer stream pos == 0 is the start of the input and pos == len is the end of
+// the input. In both of these cases current will be the EOF_CHAR.
+
 /// A save point for the lexer stream, can be used to restore the stream to a particular position.
 pub struct SavedLexerStreamState {
     current: u32,
@@ -28,15 +37,28 @@ pub trait LexerStream {
     /// be compared against bytes or EOF_CHAR.
     fn current(&self) -> u32;
 
+    /// Length of the underlying stream in units
+    fn len(&self) -> usize;
+
     /// Move forward N units in the input stream
     fn advance_n(&mut self, n: usize);
+
+    /// Move backward N units in the input stream
+    fn advance_backwards_n(&mut self, n: usize);
 
     /// Move forward one code point in the input stream
     fn advance_code_point(&mut self);
 
+    /// Move backwards one code point in the input stream
+    fn advance_backwards_code_point(&mut self);
+
     /// Return the code point that immediately precedes the current position, or EOF_CHAR if at the
     /// start of the stream.
     fn peek_prev_code_point(&self) -> u32;
+
+    /// Return the code point that immediately succeeds the current position, or EOF_CHAR if at the
+    /// end of the stream.
+    fn peek_next_code_point(&self) -> u32;
 
     /// Return the byte or EOF_CHAR that is N units forwards in the input stream. Output can have
     /// any range, but will only be compared against bytes or EOF_CHAR.
@@ -63,10 +85,23 @@ pub trait LexerStream {
     /// Restore to a saved state
     fn restore(&mut self, save_state: &SavedLexerStreamState);
 
-    /// Whether the stream is at the end
+    /// Whether the stream is at the start of the input
+    #[inline]
+    fn is_start(&self) -> bool {
+        self.pos() == 0
+    }
+
+    /// Whether the stream is at the end of the input
     #[inline]
     fn is_end(&self) -> bool {
-        self.current() == EOF_CHAR
+        self.pos() == self.len()
+    }
+
+    /// Whether the stream has a current code point. A stream does not have an current code point if
+    /// it is at the end of a forward stream, or the start of a backwards stream.
+    #[inline]
+    fn has_current(&self) -> bool {
+        self.current() != EOF_CHAR
     }
 }
 
@@ -119,6 +154,11 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
     }
 
     #[inline]
+    fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
@@ -129,14 +169,24 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
         }
     }
 
-    #[inline]
+    fn advance_backwards_n(&mut self, _: usize) {
+        panic!("Utf8LexerStream::advance_backward_n not implemented")
+    }
+
     fn advance_code_point(&mut self) {
         panic!("Utf8LexerStream::advance_code_point not implemented")
     }
 
-    #[inline]
+    fn advance_backwards_code_point(&mut self) {
+        panic!("Utf8LexerStream::advance_backwards_code_point not implemented")
+    }
+
     fn peek_prev_code_point(&self) -> u32 {
         panic!("Utf8LexerStream::peek_prev_code_point not implemented")
+    }
+
+    fn peek_next_code_point(&self) -> u32 {
+        panic!("Utf8LexerStream::peek_next_code_point not implemented")
     }
 
     #[inline]
@@ -225,6 +275,11 @@ impl<'a> HeapOneByteLexerStream<'a> {
     fn code_point_at(&self, index: usize) -> u32 {
         self.buf[index].into()
     }
+
+    #[inline]
+    fn code_point_before(&self, index: usize) -> u32 {
+        self.buf[index - 1].into()
+    }
 }
 
 impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
@@ -239,6 +294,11 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
     }
 
     #[inline]
+    fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
@@ -250,16 +310,44 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
     }
 
     #[inline]
+    fn advance_backwards_n(&mut self, n: usize) {
+        match self.pos.checked_sub(n) {
+            Some(new_pos) if new_pos > 0 => {
+                self.pos = new_pos;
+                self.current = self.code_point_before(new_pos);
+            }
+            _ => {
+                self.pos = 0;
+                self.current = EOF_CHAR;
+            }
+        }
+    }
+
+    #[inline]
     fn advance_code_point(&mut self) {
         self.advance_n(1);
     }
 
     #[inline]
+    fn advance_backwards_code_point(&mut self) {
+        self.advance_backwards_n(1);
+    }
+
+    #[inline]
     fn peek_prev_code_point(&self) -> u32 {
-        if self.pos == 0 {
+        if self.is_start() {
             EOF_CHAR
         } else {
-            self.code_point_at(self.pos - 1)
+            self.code_point_before(self.pos)
+        }
+    }
+
+    #[inline]
+    fn peek_next_code_point(&self) -> u32 {
+        if self.is_end() {
+            EOF_CHAR
+        } else {
+            self.code_point_at(self.pos)
         }
     }
 
@@ -340,6 +428,11 @@ impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
     fn code_point_at(&self, index: usize) -> u32 {
         self.buf[index] as u32
     }
+
+    #[inline]
+    fn code_point_before(&self, index: usize) -> u32 {
+        self.buf[index - 1] as u32
+    }
 }
 
 impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
@@ -354,6 +447,11 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
     }
 
     #[inline]
+    fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
@@ -365,16 +463,44 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
     }
 
     #[inline]
+    fn advance_backwards_n(&mut self, n: usize) {
+        match self.pos.checked_sub(n) {
+            Some(new_pos) if new_pos > 0 => {
+                self.pos = new_pos;
+                self.current = self.code_point_before(new_pos);
+            }
+            _ => {
+                self.pos = 0;
+                self.current = EOF_CHAR;
+            }
+        }
+    }
+
+    #[inline]
     fn advance_code_point(&mut self) {
         self.advance_n(1)
     }
 
     #[inline]
+    fn advance_backwards_code_point(&mut self) {
+        self.advance_backwards_n(1);
+    }
+
+    #[inline]
     fn peek_prev_code_point(&self) -> u32 {
-        if self.pos == 0 {
+        if self.is_start() {
             EOF_CHAR
         } else {
-            self.code_point_at(self.pos - 1)
+            self.code_point_before(self.pos)
+        }
+    }
+
+    #[inline]
+    fn peek_next_code_point(&self) -> u32 {
+        if self.is_end() {
+            EOF_CHAR
+        } else {
+            self.code_point_at(self.pos)
         }
     }
 
@@ -458,10 +584,26 @@ impl<'a> HeapTwoByteCodePointLexerStream<'a> {
     #[inline]
     fn code_point_at(&self, index: usize) -> (u32, usize) {
         let code_unit = self.buf[index] as CodeUnit;
-        if is_high_surrogate_code_unit(code_unit) {
+        if is_high_surrogate_code_unit(code_unit) && index + 1 < self.buf.len() {
             let next_code_unit = self.buf[index + 1] as CodeUnit;
             if is_low_surrogate_code_unit(next_code_unit) {
                 let code_point = code_point_from_surrogate_pair(code_unit, next_code_unit);
+                return (code_point, 2);
+            }
+        }
+
+        (code_unit as u32, 1)
+    }
+
+    // Return a code point ending at the given position, along with the number of code units that
+    // make up that code point.
+    #[inline]
+    fn code_point_before(&self, index: usize) -> (u32, usize) {
+        let code_unit = self.buf[index - 1];
+        if is_low_surrogate_code_unit(code_unit) && index >= 2 {
+            let prev_code_unit = self.buf[index - 2];
+            if is_high_surrogate_code_unit(prev_code_unit) {
+                let code_point = code_point_from_surrogate_pair(prev_code_unit, code_unit);
                 return (code_point, 2);
             }
         }
@@ -482,6 +624,11 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
     }
 
     #[inline]
+    fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
     fn advance_n(&mut self, n: usize) {
         self.pos += n;
         if self.pos < self.buf.len() {
@@ -490,6 +637,21 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         } else {
             self.current = EOF_CHAR;
             self.pos = self.buf.len();
+        }
+    }
+
+    #[inline]
+    fn advance_backwards_n(&mut self, n: usize) {
+        match self.pos.checked_sub(n) {
+            Some(new_pos) if new_pos > 0 => {
+                self.pos = new_pos;
+                let (code_point, _) = self.code_point_before(new_pos);
+                self.current = code_point;
+            }
+            _ => {
+                self.pos = 0;
+                self.current = EOF_CHAR;
+            }
         }
     }
 
@@ -507,20 +669,47 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
     }
 
     #[inline]
-    fn peek_prev_code_point(&self) -> u32 {
-        if self.pos == 0 {
-            return EOF_CHAR;
+    fn advance_backwards_code_point(&mut self) {
+        if self.is_start() {
+            return;
+        }
+
+        if needs_surrogate_pair(self.current) {
+            self.advance_backwards_n(2);
+        } else {
+            self.advance_backwards_n(1);
         }
 
         let prev_code_unit = self.buf[self.pos - 1];
         if is_low_surrogate_code_unit(prev_code_unit) && self.pos >= 2 {
             let prev_prev_code_unit = self.buf[self.pos - 2];
             if is_high_surrogate_code_unit(prev_prev_code_unit) {
-                return code_point_from_surrogate_pair(prev_prev_code_unit, prev_code_unit);
+                self.pos -= 2;
+                self.current = code_point_from_surrogate_pair(prev_prev_code_unit, prev_code_unit);
+                return;
             }
         }
 
-        prev_code_unit as u32
+        self.pos -= 1;
+        self.current = prev_code_unit as u32;
+    }
+
+    #[inline]
+    fn peek_prev_code_point(&self) -> u32 {
+        if self.is_start() {
+            EOF_CHAR
+        } else {
+            self.code_point_before(self.pos).0
+        }
+    }
+
+    #[inline]
+    fn peek_next_code_point(&self) -> u32 {
+        if self.is_end() {
+            EOF_CHAR
+        } else {
+            self.code_point_at(self.pos).0
+        }
     }
 
     #[inline]

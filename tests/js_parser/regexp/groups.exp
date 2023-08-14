@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-14:15",
+  loc: "1:0-17:19",
   body: [
     {
       type: "ExpressionStatement",
@@ -310,6 +310,77 @@
                         {
                           type: "Literal",
                           value: "abc",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:0-17:19",
+      kind: {
+        type: "Literal",
+        loc: "17:0-17:18",
+        raw: "/(a(?<name>b(c)))/",
+        value: {
+          pattern: "(a(?<name>b(c)))",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  index: 1,
+                  name: null,
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                        {
+                          type: "CaptureGroup",
+                          index: 2,
+                          name: "name",
+                          alternatives: [
+                            {
+                              type: "Alternative",
+                              terms: [
+                                {
+                                  type: "Literal",
+                                  value: "b",
+                                },
+                                {
+                                  type: "CaptureGroup",
+                                  index: 3,
+                                  name: null,
+                                  alternatives: [
+                                    {
+                                      type: "Alternative",
+                                      terms: [
+                                        {
+                                          type: "Literal",
+                                          value: "c",
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                          ],
                         },
                       ],
                     },

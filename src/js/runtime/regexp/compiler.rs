@@ -16,6 +16,15 @@ struct CompiledRegExpBuilder {
     flags: RegExpFlags,
     current_block_id: BlockId,
     num_progress_points: u32,
+    // Nonempty stack of directions denoting the set of possibly nested direction contexts created
+    // by lookaround. The top of the stack is the current direction.
+    direction_stack: Vec<Direction>,
+}
+
+#[derive(PartialEq)]
+enum Direction {
+    Forward,
+    Backward,
 }
 
 impl CompiledRegExpBuilder {
@@ -25,6 +34,7 @@ impl CompiledRegExpBuilder {
             flags: regexp.flags,
             current_block_id: 0,
             num_progress_points: 0,
+            direction_stack: vec![Direction::Forward],
         }
     }
 
@@ -36,6 +46,18 @@ impl CompiledRegExpBuilder {
 
     fn set_current_block(&mut self, block_id: BlockId) {
         self.current_block_id = block_id;
+    }
+
+    fn enter_direction_context(&mut self, direction: Direction) {
+        self.direction_stack.push(direction)
+    }
+
+    fn exit_direction_context(&mut self) {
+        self.direction_stack.pop();
+    }
+
+    fn is_forwards(&self) -> bool {
+        *self.direction_stack.last().unwrap() == Direction::Forward
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
@@ -151,11 +173,18 @@ impl CompiledRegExpBuilder {
 
     /// Emit an alternative, returning whether a character was guaranteed to be consumed on all paths
     fn emit_alternative(&mut self, alternative: &Alternative) -> bool {
+        // If any term always consumes then the alternative always consumes
         let mut always_consumes = false;
 
-        // If any term always consumes then the alternative always consumes
-        for term in &alternative.terms {
-            always_consumes |= self.emit_term(term);
+        if self.is_forwards() {
+            for term in &alternative.terms {
+                always_consumes |= self.emit_term(term);
+            }
+        } else {
+            // When emitting backwards, emit concatenation of terms in reverse order
+            for term in alternative.terms.iter().rev() {
+                always_consumes |= self.emit_term(term);
+            }
         }
 
         always_consumes
@@ -207,8 +236,16 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_literal(&mut self, string: &Wtf8String) {
-        for code_point in string.iter_code_points() {
-            self.emit_instruction(Instruction::Literal(code_point))
+        if self.is_forwards() {
+            for code_point in string.iter_code_points() {
+                self.emit_instruction(Instruction::Literal(code_point))
+            }
+        } else {
+            // When emitting backwards, emit concatenation of literals in reverse order
+            let code_points = string.iter_code_points().collect::<Vec<_>>();
+            for code_point in code_points.iter().rev() {
+                self.emit_instruction(Instruction::Literal(*code_point))
+            }
         }
     }
 
@@ -324,8 +361,13 @@ impl CompiledRegExpBuilder {
 
     fn emit_capture_group(&mut self, group: &CaptureGroup) -> bool {
         // Calculate capture point indices from capture group
-        let capture_start_index = group.index * 2;
-        let capture_end_index = capture_start_index + 1;
+        let mut capture_start_index = group.index * 2;
+        let mut capture_end_index = capture_start_index + 1;
+
+        // Reverse order of capture indices when emitting backwards
+        if !self.is_forwards() {
+            std::mem::swap(&mut capture_start_index, &mut capture_end_index);
+        }
 
         self.emit_instruction(Instruction::MarkCapturePoint(capture_start_index));
         let always_consumes = self.emit_disjunction(&group.disjunction);
@@ -342,12 +384,12 @@ impl CompiledRegExpBuilder {
         let mut all_char_ranges = vec![];
         for class_range in &character_class.ranges {
             match class_range {
-                // Accumalate single and range char ranges
+                // Accumulate single and range char ranges
                 ClassRange::Single(code_point) => {
                     all_char_ranges.push((*code_point, *code_point + 1));
                 }
                 ClassRange::Range(start, end) => {
-                    all_char_ranges.push((*start, *end));
+                    all_char_ranges.push((*start, *end + 1));
                 }
                 // Shorthand char ranges have own instructions
                 ClassRange::Digit => self.emit_instruction(Instruction::CompareIsDigit),
@@ -406,15 +448,32 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_lookaround(&mut self, lookaround: &Lookaround) {
-        self.emit_instruction(Instruction::Lookaround(lookaround.is_positive));
+        let body_block_id = self.new_block();
+        self.emit_instruction(Instruction::Lookaround(
+            lookaround.is_ahead,
+            lookaround.is_positive,
+            body_block_id as u32,
+        ));
 
-        if !lookaround.is_ahead {
-            unimplemented!("RegExp lookbehind");
-        }
+        // The body of the lookaround is generated in a new direction context to allow for emitting
+        // backwards matches.
+        let lookaround_direction = if lookaround.is_ahead {
+            Direction::Forward
+        } else {
+            Direction::Backward
+        };
+        self.enter_direction_context(lookaround_direction);
 
         // Emit the body of the lookaround instruction, ending with an accept
+        let current_block_id = self.current_block_id;
+        self.set_current_block(body_block_id);
+
         self.emit_disjunction(&lookaround.disjunction);
         self.emit_instruction(Instruction::Accept);
+
+        self.exit_direction_context();
+
+        self.set_current_block(current_block_id);
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions
@@ -440,7 +499,7 @@ impl CompiledRegExpBuilder {
                     *block_id_1 = id_map[(*block_id_1) as usize] as u32;
                     *block_id_2 = id_map[(*block_id_2) as usize] as u32;
                 }
-                Instruction::Jump(block_id) => {
+                Instruction::Jump(block_id) | Instruction::Lookaround(_, _, block_id) => {
                     *block_id = id_map[(*block_id) as usize] as u32;
                 }
                 _ => {}

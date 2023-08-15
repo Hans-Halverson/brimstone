@@ -494,9 +494,9 @@ fn regexp_builtin_exec(
     // Run the matching engine on the regexp and input string
     let match_ = run_matcher(compiled_regexp.get_(), string_value, last_index);
 
-    // Handle match failure, resetting last index under sticy flag
+    // Handle match failure, resetting last index under sticky flag
     if match_.is_none() {
-        if is_sticky {
+        if is_global || is_sticky {
             let zero_value = Value::from(0).to_handle(cx);
             maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
         }

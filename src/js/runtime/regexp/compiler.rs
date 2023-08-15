@@ -84,7 +84,9 @@ impl CompiledRegExpBuilder {
         self.new_block();
 
         // Emit preamble allowing match to start at any point in the string
-        self.emit_preamble();
+        if !self.flags.contains(RegExpFlags::STICKY) {
+            self.emit_preamble();
+        }
 
         // Wrap the entire pattern in the 0'th capture group
         self.emit_instruction(Instruction::MarkCapturePoint(0));
@@ -121,9 +123,10 @@ impl CompiledRegExpBuilder {
         if disjunction.alternatives.len() == 1 {
             self.emit_alternative(&disjunction.alternatives[0])
         } else {
-            // Set up blocks for the branch instructions between alternatives
-            let mut branch_block_ids = vec![];
-            for _ in 0..disjunction.alternatives.len() - 1 {
+            // Set up blocks for the branch instructions between alternatives. First branch can
+            // always occur in the current block.
+            let mut branch_block_ids = vec![self.current_block_id];
+            for _ in 0..disjunction.alternatives.len() - 2 {
                 branch_block_ids.push(self.new_block())
             }
 

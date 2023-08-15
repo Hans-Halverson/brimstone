@@ -2,6 +2,8 @@
   // Tests which are always ignored
   "always": {
     "tests": [
+      // ECMA-402 Internationalization API is not implemented
+      "intl402/*",
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
       "language/expressions/assignment/target-member-computed-reference-null.js",
@@ -38,35 +40,54 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T1.js",
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
-      "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
-      // Slow tests - quadratic performance due to inefficient string concatenation
-      "built-ins/RegExp/CharacterClassEscapes/*.js",
-      "built-ins/RegExp/property-escapes/generated/*.js",
-      "built-ins/decodeURI/*.js",
-      "built-ins/decodeURIComponent/*.js",
-      // Slow tests
-      "built-ins/parseFloat/S15.1.2.3_A6.js",
-      "built-ins/parseInt/S15.1.2.2_A8.js",
-      "language/comments/S7.4_A5.js",
-      "language/comments/S7.4_A6.js"
+      "language/expressions/prefix-increment/S11.4.4_A6_T2.js"
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow
       "tail-call-optimization",
       // Non-standard extension
       "caller",
-      // Expected in ES2023
-      "array-find-from-last",
-      "change-array-by-copy",
       // Stage < 4 proposals
       "array-grouping",
+      "arraybuffer-transfer",
       "decorators",
       "import-assertions",
+      "iterator-helpers",
+      "json-modules",
+      "json-parse-with-source",
+      "legacy-regexp",
+      "regexp-duplicate-named-groups",
       "resizable-arraybuffer",
-      "Atomics.waitAsync",
       "FinalizationRegistry.prototype.cleanupSome",
+      "Intl.DurationFormat",
+      "Intl.Locale-info",
+      "Intl.NumberFormat-v3",
       "Temporal",
       "ShadowRealm"
+    ]
+  },
+  // Slow tests which are ignored in normal runs but can be run with the --all flag
+  "slow": {
+    "tests": [
+      "built-ins/RegExp/CharacterClassEscapes/*.js",
+      "built-ins/RegExp/property-escapes/generated/*.js",
+      "built-ins/decodeURI/*.js",
+      "built-ins/decodeURIComponent/*.js",
+      "built-ins/parseFloat/S15.1.2.3_A6.js",
+      "built-ins/parseInt/S15.1.2.2_A8.js",
+      "language/comments/S7.4_A5.js",
+      "language/comments/S7.4_A6.js",
+      // Slow array tests - could be improved by special casing sparse Array objects
+      "built-ins/Array/prototype/every/15.4.4.16-7-c-ii-2.js",
+      "built-ins/Array/prototype/filter/15.4.4.20-9-c-ii-1.js",
+      "built-ins/Array/prototype/forEach/15.4.4.18-7-c-ii-1.js",
+      "built-ins/Array/prototype/indexOf/15.4.4.14-10-1.js",
+      "built-ins/Array/prototype/lastIndexOf/15.4.4.15-9-1.js",
+      "built-ins/Array/prototype/map/15.4.4.19-8-c-ii-1.js",
+      "built-ins/Array/prototype/some/15.4.4.17-7-c-ii-2.js",
+      "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached.js",
+      "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached-prototype.js",
+      "built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached.js"
     ]
   }
 }

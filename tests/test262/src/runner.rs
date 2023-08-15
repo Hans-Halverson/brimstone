@@ -531,7 +531,7 @@ impl TestResults {
         Ok(())
     }
 
-    pub fn save_to_time_files(&self, tile_file_path: String) -> GenericResult {
+    pub fn save_to_time_file(&self, tile_file_path: String) -> GenericResult {
         let mut all_test_results = vec![];
         all_test_results.extend(self.succeeded.iter());
         all_test_results.extend(self.failed.iter());
@@ -549,9 +549,9 @@ impl TestResults {
             test_result_jsons.push(test_result_json);
         }
 
-        let time_files_string = serde_json::to_string_pretty(&test_result_jsons).unwrap();
+        let time_file_string = serde_json::to_string_pretty(&test_result_jsons).unwrap();
 
-        fs::write(tile_file_path, &time_files_string)?;
+        fs::write(tile_file_path, &time_file_string)?;
 
         Ok(())
     }

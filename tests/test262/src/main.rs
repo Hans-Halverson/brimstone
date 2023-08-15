@@ -9,6 +9,10 @@ use brimstone_test262::{
 #[derive(Parser)]
 #[command(about)]
 struct Args {
+    /// Run all tests, including slow tests
+    #[arg(long, default_value_t = false)]
+    all: bool,
+
     /// Path to the test262 repo
     #[arg(long, default_value_t = String::from("test262"))]
     test262_path: String,
@@ -56,7 +60,7 @@ struct Args {
 
     /// Optional path to write test runtime statistics file to
     #[arg(long)]
-    save_time_files: Option<String>,
+    save_time_file: Option<String>,
 
     /// Only run tests that match this feature
     #[arg(long)]
@@ -86,6 +90,7 @@ fn main_impl() -> GenericResult {
     let index = TestIndex::load_from_file(index_path)?;
     let ignored = IgnoredIndex::load_from_file(
         ignored_path,
+        args.all,
         args.ignore_async_generator,
         args.ignore_module,
         args.ignore_regexp,
@@ -101,8 +106,8 @@ fn main_impl() -> GenericResult {
         results.save_to_result_files(result_files_path)?;
     }
 
-    if let Some(time_files_path) = args.save_time_files {
-        results.save_to_time_files(time_files_path)?;
+    if let Some(time_file_path) = args.save_time_file {
+        results.save_to_time_file(time_file_path)?;
     }
 
     if !results.is_successful() {

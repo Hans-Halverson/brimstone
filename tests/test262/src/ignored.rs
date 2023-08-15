@@ -17,6 +17,7 @@ pub struct IgnoredIndex {
 impl IgnoredIndex {
     pub fn load_from_file(
         ignored_path: &Path,
+        run_all_tests: bool,
         ignore_async_generator: bool,
         ignore_module: bool,
         ignore_regexp: bool,
@@ -30,11 +31,40 @@ impl IgnoredIndex {
 
         let ignored_json: serde_json::Value = serde_json::from_str(&ignored_string_no_comments)?;
 
-        let always_ignored = &ignored_json["always"];
-
         // Create ignored tests regex
         let mut ignored_tests_strings = vec![];
-        for test in always_ignored["tests"].as_array().unwrap() {
+        let mut ignored_features = HashSet::new();
+
+        let always_ignored = &ignored_json["always"];
+        Self::add_ignored_config(always_ignored, &mut ignored_tests_strings, &mut ignored_features);
+
+        if !run_all_tests {
+            let slow_ignored = &ignored_json["slow"];
+            Self::add_ignored_config(
+                slow_ignored,
+                &mut ignored_tests_strings,
+                &mut ignored_features,
+            );
+        }
+
+        let ignored_tests_regex = Regex::new(&format!("^({})$", ignored_tests_strings.join("|")))?;
+
+        Ok(IgnoredIndex {
+            ignored_tests_regex,
+            ignored_features,
+            ignore_async_generator,
+            ignore_module,
+            ignore_regexp,
+            ignore_annex_b,
+        })
+    }
+
+    fn add_ignored_config(
+        ignored_config: &serde_json::Value,
+        ignored_tests_strings: &mut Vec<String>,
+        ignored_features: &mut HashSet<String>,
+    ) {
+        for test in ignored_config["tests"].as_array().unwrap() {
             // Convert from glob pattern to regex
             let ignored_test_string = String::from(test.as_str().unwrap())
                 // Escape period characters
@@ -45,21 +75,13 @@ impl IgnoredIndex {
             ignored_tests_strings.push(ignored_test_string);
         }
 
-        let ignored_tests_regex = Regex::new(&format!("^({})$", ignored_tests_strings.join("|")))?;
+        let features = ignored_config["features"].as_array();
 
-        let mut ignored_features = HashSet::new();
-        for feature in always_ignored["features"].as_array().unwrap() {
-            ignored_features.insert(String::from(feature.as_str().unwrap()));
+        if let Some(features) = features {
+            for feature in features {
+                ignored_features.insert(String::from(feature.as_str().unwrap()));
+            }
         }
-
-        Ok(IgnoredIndex {
-            ignored_tests_regex,
-            ignored_features,
-            ignore_async_generator,
-            ignore_module,
-            ignore_regexp,
-            ignore_annex_b,
-        })
     }
 
     pub fn should_ignore(&self, test: &Test) -> bool {

@@ -52,6 +52,19 @@ struct CapturePoint {
     string_index: usize,
 }
 
+impl CapturePoint {
+    /// Special clear marker to mark a cleared capture group. This is denoted by a usize::MAX string
+    /// index, which would not normally be possible due to string length limits. In this form the
+    /// capture group index field instead represents the 1-indexed capture group that was cleared.
+    fn clear_marker(capture_index: u32) -> Self {
+        CapturePoint { capture_point_index: capture_index, string_index: usize::MAX }
+    }
+
+    fn is_clear_marker(&self) -> bool {
+        self.string_index == usize::MAX
+    }
+}
+
 #[derive(Debug)]
 pub struct Match {
     /// Includes the implicit 0'th capture group for the entire match
@@ -170,6 +183,12 @@ impl<T: LexerStream> MatchEngine<T> {
                     let capture_point = CapturePoint { capture_point_index, string_index };
 
                     self.capture_stack.push(capture_point);
+
+                    self.advance_instruction();
+                }
+                Instruction::ClearCapture(capture_group_index) => {
+                    let clear_marker = CapturePoint::clear_marker(capture_group_index);
+                    self.capture_stack.push(clear_marker);
 
                     self.advance_instruction();
                 }
@@ -448,6 +467,15 @@ impl<T: LexerStream> MatchEngine<T> {
         // Find the last (start_index, end_index) pair in the capture stack. Note that either the
         // start or end could appear first, since we may have matched forwards or backwards.
         for capture_point in self.capture_stack.iter().rev() {
+            // If we see a clear marker before completing a (start, end) match there is no capture
+            if capture_point.is_clear_marker() {
+                if capture_point.capture_point_index == capture_group_index {
+                    return None;
+                } else {
+                    continue;
+                }
+            }
+
             if capture_point.capture_point_index == start_capture_point_index {
                 if let Some(end_string_index) = end_string_index {
                     return Some((capture_point.string_index, end_string_index));
@@ -467,29 +495,56 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 
     fn build_match(&self) -> Match {
-        let mut latest_capture_points: Vec<(Option<usize>, Option<usize>)> =
-            vec![(None, None); self.regexp.num_capture_groups as usize + 1];
+        #[derive(Clone)]
+        struct LatestCapture {
+            start: Option<usize>,
+            end: Option<usize>,
+            is_cleared: bool,
+        }
+
+        let mut latest_captures: Vec<LatestCapture> =
+            vec![
+                LatestCapture { start: None, end: None, is_cleared: false };
+                self.regexp.num_capture_groups as usize + 1
+            ];
 
         // Collect the latest start and end capture points for each capture group
         for capture_point in self.capture_stack.iter().rev() {
+            // If we see a clear marker without finishing the capture points for that group yet,
+            // then mark the group as cleared.
+            if capture_point.is_clear_marker() {
+                let latest_capture =
+                    &mut latest_captures[capture_point.capture_point_index as usize];
+                if latest_capture.start.is_none() || latest_capture.end.is_none() {
+                    latest_capture.is_cleared = true;
+                }
+
+                continue;
+            }
+
             let capture_group_index = capture_point.capture_point_index as usize / 2;
             let is_start_point = capture_point.capture_point_index % 2 == 0;
+
+            let latest_capture = &mut latest_captures[capture_group_index];
+
             if is_start_point {
-                if latest_capture_points[capture_group_index].0.is_none() {
-                    latest_capture_points[capture_group_index].0 = Some(capture_point.string_index);
+                if latest_capture.start.is_none() {
+                    latest_capture.start = Some(capture_point.string_index);
                 }
             } else {
-                if latest_capture_points[capture_group_index].1.is_none() {
-                    latest_capture_points[capture_group_index].1 = Some(capture_point.string_index);
+                if latest_capture.end.is_none() {
+                    latest_capture.end = Some(capture_point.string_index);
                 }
             }
         }
 
         // If a start and end capture point appear then form a complete capture
-        let capture_groups = latest_capture_points
+        let capture_groups = latest_captures
             .into_iter()
-            .map(|(start_index, end_index)| match (start_index, end_index) {
-                (Some(start), Some(end)) => Some(Capture { start, end }),
+            .map(|latest_capture| match latest_capture {
+                LatestCapture { start: Some(start), end: Some(end), is_cleared: false } => {
+                    Some(Capture { start, end })
+                }
                 _ => None,
             })
             .collect();

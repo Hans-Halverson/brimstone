@@ -52,6 +52,11 @@ pub enum Instruction {
     /// Mark the current location in the string on the capture stack. Takes a capture point index,
     /// which may be the beginning or end of a capture group.
     MarkCapturePoint(u32),
+    /// Mark that a particular capture group has not been matched. This allows us to clear capture
+    /// groups that were previously matched but are no longer matched e.g. due another pass over
+    /// a quantifier that does not match a previously matched group. Operand is the index of the
+    /// capture group (1-indexed).
+    ClearCapture(u32),
     /// Mark the current location in the string in the progress array at the given progress index,
     /// fail if this string location has already been visited for the progress index. This is used
     /// to avoid epsilon loops.
@@ -226,6 +231,7 @@ impl Instruction {
             }
             Instruction::Accept => String::from("Accept"),
             Instruction::MarkCapturePoint(index) => format!("MarkCapture({})", index),
+            Instruction::ClearCapture(index) => format!("ClearCapture({})", index),
             Instruction::Progress(index) => format!("Progress({})", index),
             Instruction::AssertStart => String::from("AssertStart"),
             Instruction::AssertEnd => String::from("AssertEnd"),

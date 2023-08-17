@@ -1,6 +1,6 @@
 use core::panic;
 
-use super::unicode_tables::{ID_CONTINUE, ID_START};
+use super::icu::ICU;
 
 use match_u32::match_u32;
 
@@ -186,12 +186,12 @@ pub fn is_id_part_ascii(code_point: CodePoint) -> bool {
 
 #[inline]
 pub fn is_id_start_unicode(code_point: CodePoint) -> bool {
-    ID_START.contains_u32(code_point)
+    ICU.id_start.contains32(code_point)
 }
 
 #[inline]
 pub fn is_id_continue_unicode(code_point: CodePoint) -> bool {
-    ID_CONTINUE.contains_u32(code_point)
+    ICU.id_continue.contains32(code_point)
 }
 
 #[inline]

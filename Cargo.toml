@@ -9,7 +9,13 @@ bitflags = "2.1.0"
 clap = { version = "4.0.29", features = ["derive"] }
 match_u32 = { path = "src/js/parser/match_u32" }
 num-bigint = "0.4.3"
+once_cell = "1.18.0"
 rand = "0.8.5"
 ryu-js = "0.2.2"
-ucd-trie = { version = "0.1.5", default-features = false }
 wrap_ordinary_object = { path = "src/js/runtime/wrap_ordinary_object" }
+
+# ICU4X crates must all be the same version
+icu_collections = "1.2.0"
+icu_properties = "1.2.0"
+icu_provider = { version = "1.2.0", features = ["sync"] }
+zerovec = "0.9.4"

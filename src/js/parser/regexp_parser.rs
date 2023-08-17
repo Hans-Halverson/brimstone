@@ -456,7 +456,9 @@ impl<T: LexerStream> RegExpParser<T> {
 
         while is_decimal_digit(self.current()) {
             value = value.checked_mul(10).unwrap();
-            value = value.checked_add((self.current() as u32) - ('0' as u32)).unwrap();
+            value = value
+                .checked_add((self.current() as u32) - ('0' as u32))
+                .unwrap();
             self.advance();
         }
 

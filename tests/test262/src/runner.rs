@@ -87,9 +87,9 @@ impl TestRunner {
                     Ok(result) => sender.send(result).unwrap(),
                     Err(err) => {
                         // Attempt to extract string message from panic
-                        let message = err.downcast_ref::<String>();
+                        let message = err.downcast_ref::<&str>();
                         let message = match message {
-                            Some(message) => message.clone(),
+                            Some(message) => message.to_string(),
                             None => String::from("<panic message not found>"),
                         };
 

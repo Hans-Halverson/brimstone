@@ -68,7 +68,7 @@ pub struct Context {
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
 
 impl Context {
-    pub fn new() -> Context {
+    pub fn new() -> Box<Context> {
         let mut heap = Heap::new();
 
         // Context does not yet exist, so handle scope must directly reference heap
@@ -78,7 +78,7 @@ impl Context {
         let names = BuiltinNames::uninit();
         let well_known_symbols = BuiltinSymbols::uninit();
 
-        let mut cx = Context {
+        let mut cx = Box::new(Context {
             execution_context_stack: vec![],
             heap,
             global_symbol_registry: HeapPtr::uninit(),
@@ -98,7 +98,7 @@ impl Context {
             finalizer_callbacks: vec![],
             eval_asts: vec![],
             function_constructor_asts: vec![],
-        };
+        });
 
         cx.heap.info().set_context(&mut cx);
 

@@ -140,7 +140,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
-        let mut binding = self.bindings.get_mut(&name.flatten().get_()).unwrap();
+        let binding = self.bindings.get_mut(&name.flatten().get_()).unwrap();
         binding.value = value.get();
         binding.is_initialized = true;
         ().into()
@@ -161,7 +161,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
                 self.initialize_binding(cx, name, value);
                 ().into()
             }
-            Some(mut binding) => {
+            Some(binding) => {
                 let s = if binding.is_strict { true } else { is_strict };
 
                 if !binding.is_initialized {

@@ -452,11 +452,11 @@ impl<T: LexerStream> RegExpParser<T> {
             return self.error_unexpected_token(self.pos());
         }
 
-        let mut value = 0;
+        let mut value: u32 = 0;
 
         while is_decimal_digit(self.current()) {
-            value *= 10;
-            value += (self.current() as u32) - ('0' as u32);
+            value = value.checked_mul(10).unwrap();
+            value = value.checked_add((self.current() as u32) - ('0' as u32)).unwrap();
             self.advance();
         }
 

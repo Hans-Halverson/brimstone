@@ -279,6 +279,8 @@ builtin_names!(
     (number_, "number"),
     (of, "of"),
     (own_keys, "ownKeys"),
+    (pad_end, "padEnd"),
+    (pad_start, "padStart"),
     (parse, "parse"),
     (parse_float, "parseFloat"),
     (parse_int, "parseInt"),

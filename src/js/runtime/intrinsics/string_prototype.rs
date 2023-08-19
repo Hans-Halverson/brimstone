@@ -13,6 +13,7 @@ use crate::{
             error::{range_error_, type_error_},
             function::get_argument,
             get,
+            interned_strings::InternedStrings,
             intrinsics::{
                 intrinsics::Intrinsic,
                 regexp_constructor::{regexp_create, RegExpSource},
@@ -25,7 +26,8 @@ use crate::{
             string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
             to_string,
             type_utilities::{
-                is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
+                is_regexp, require_object_coercible, to_integer_or_infinity, to_length, to_number,
+                to_uint32,
             },
             value::Value,
             Context, Handle, HeapPtr,
@@ -59,6 +61,8 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
         object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm);
+        object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm);
+        object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm);
         object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
@@ -477,6 +481,84 @@ impl StringPrototype {
         };
 
         normalized_string.into()
+    }
+
+    // 22.1.3.15 String.prototype.padEnd
+    fn pad_end(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let max_length_arg = get_argument(cx, arguments, 0);
+        let fill_string_arg = get_argument(cx, arguments, 1);
+
+        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false)
+    }
+
+    // 22.1.3.16 String.prototype.padStart
+    fn pad_start(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let max_length_arg = get_argument(cx, arguments, 0);
+        let fill_string_arg = get_argument(cx, arguments, 1);
+
+        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true)
+    }
+
+    fn pad_string(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        max_length_arg: Handle<Value>,
+        fill_string_arg: Handle<Value>,
+        is_start: bool,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let int_max_length = maybe!(to_length(cx, max_length_arg));
+        let string_length = string.len() as u64;
+
+        // No need to pad as string already has max length
+        if int_max_length <= string_length {
+            return string.into();
+        }
+
+        let fill_string = if fill_string_arg.is_undefined() {
+            InternedStrings::get_str(cx, " ")
+        } else {
+            maybe!(to_string(cx, fill_string_arg))
+        };
+
+        let fill_length = int_max_length - string_length;
+        let fill_string_length = fill_string.len() as u64;
+
+        // Check for an empty padding string which would have no effect
+        if fill_string_length == 0 {
+            return string.into();
+        }
+
+        // Find the number of whole pad strings we can fit into the padding length
+        let num_whole_repitions = fill_length / fill_string_length;
+        let mut pad_string = fill_string.repeat(cx, num_whole_repitions).as_string();
+
+        // Add a partial pad string if the pad strings did not evenly divide the padding length
+        let partial_length = fill_length - (num_whole_repitions * fill_string_length);
+        if partial_length != 0 {
+            let partial_string = fill_string
+                .substring(cx, 0, partial_length as usize)
+                .as_string();
+            pad_string = StringValue::concat(cx, pad_string, partial_string);
+        }
+
+        if is_start {
+            StringValue::concat(cx, pad_string, string).into()
+        } else {
+            StringValue::concat(cx, string, pad_string).into()
+        }
     }
 
     // 22.1.3.17 String.prototype.repeat

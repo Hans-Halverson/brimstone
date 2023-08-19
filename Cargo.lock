@@ -27,6 +27,7 @@ dependencies = [
  "bitflags 2.1.0",
  "clap",
  "icu_collections",
+ "icu_normalizer",
  "icu_properties",
  "icu_provider",
  "match_u32",
@@ -167,6 +168,23 @@ dependencies = [
  "litemap",
  "tinystr",
  "writeable",
+]
+
+[[package]]
+name = "icu_normalizer"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "652869735c9fb9f5a64ba180ee16f2c848390469c116deef517ecc53f4343598"
+dependencies = [
+ "displaydoc",
+ "icu_collections",
+ "icu_properties",
+ "icu_provider",
+ "smallvec",
+ "utf16_iter",
+ "utf8_iter",
+ "write16",
+ "zerovec",
 ]
 
 [[package]]
@@ -404,6 +422,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32ac8da02677876d532745a130fc9d8e6edfa81a269b107c5b00829b91d8eb3c"
 
 [[package]]
+name = "smallvec"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -479,6 +503,18 @@ name = "unicode-xid"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
+
+[[package]]
+name = "utf16_iter"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52df8b7fb78e7910d776fccf2e42ceaf3604d55e8e7eb2dbd183cb1441d8a692"
+
+[[package]]
+name = "utf8_iter"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64a8922555b9500e3d865caed19330172cd67cbf82203f1a3311d8c305cc9f33"
 
 [[package]]
 name = "version_check"
@@ -587,6 +623,12 @@ dependencies = [
  "quote",
  "syn 1.0.106",
 ]
+
+[[package]]
+name = "write16"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1890f4022759daae28ed4fe62859b1236caebfc61ede2f63ed4e695f3f6d936"
 
 [[package]]
 name = "writeable"

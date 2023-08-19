@@ -1,5 +1,10 @@
 use crate::{
     js::{
+        common::{
+            icu::ICU,
+            unicode::{is_high_surrogate_code_unit, is_low_surrogate_code_unit, CodePoint},
+            wtf_8::Wtf8String,
+        },
         parser::regexp::RegExpFlags,
         runtime::{
             abstract_operations::{call_object, get_method, invoke},
@@ -17,13 +22,13 @@ use crate::{
             object_value::ObjectValue,
             realm::Realm,
             string_object::StringObject,
-            string_value::{FlatString, StringValue},
+            string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
             to_string,
             type_utilities::{
                 is_regexp, require_object_coercible, to_integer_or_infinity, to_number, to_uint32,
             },
             value::Value,
-            Context, Handle,
+            Context, Handle, HeapPtr,
         },
     },
     maybe,
@@ -53,6 +58,7 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
+        object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm);
         object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
@@ -422,6 +428,55 @@ impl StringPrototype {
         let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
+    }
+
+    // 22.1.3.14 String.prototype.normalize
+    fn normalize(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let form_arg = get_argument(cx, arguments, 0);
+        let form = if form_arg.is_undefined() {
+            NormalizationForm::NFC
+        } else {
+            let form_string = maybe!(to_string(cx, form_arg)).flatten().get_();
+            if form_string == cx.names.nfc.as_string().as_flat() {
+                NormalizationForm::NFC
+            } else if form_string == cx.names.nfd.as_string().as_flat() {
+                NormalizationForm::NFD
+            } else if form_string == cx.names.nfkc.as_string().as_flat() {
+                NormalizationForm::NFKC
+            } else if form_string == cx.names.nfkd.as_string().as_flat() {
+                NormalizationForm::NFKD
+            } else {
+                return range_error_(
+                    cx,
+                    "String.prototype.normalize normalization form must be 'NFC', 'NFD', 'NFKC', or 'NFKD'",
+                );
+            }
+        };
+
+        let normalized_string = match form {
+            NormalizationForm::NFC => {
+                normalize_string(cx, string, |iter| ICU.nfc_normalizer.normalize_iter(iter))
+            }
+            NormalizationForm::NFD => {
+                normalize_string(cx, string, |iter| ICU.nfd_normalizer.normalize_iter(iter))
+            }
+            NormalizationForm::NFKC => {
+                normalize_string(cx, string, |iter| ICU.nfkc_normalizer.normalize_iter(iter))
+            }
+            NormalizationForm::NFKD => {
+                normalize_string(cx, string, |iter| ICU.nfkd_normalizer.normalize_iter(iter))
+            }
+        };
+
+        normalized_string.into()
     }
 
     // 22.1.3.17 String.prototype.repeat
@@ -809,4 +864,119 @@ fn this_string_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handl
     }
 
     type_error_(cx, "value cannot be converted to string")
+}
+
+enum NormalizationForm {
+    NFC,
+    NFD,
+    NFKC,
+    NFKD,
+}
+
+enum StringPart {
+    // A valid range of code points between the two indices [start, end)
+    ValidRange(usize, usize),
+    UnpairedSurrogate(u16),
+}
+
+/// Break up string into sequences of valid code points and individual unpaired surrogates
+fn to_valid_string_parts(string: HeapPtr<FlatString>) -> Vec<StringPart> {
+    match string.width() {
+        StringWidth::OneByte => vec![StringPart::ValidRange(0, string.len())],
+        StringWidth::TwoByte => {
+            let mut parts = vec![];
+            let mut start = 0;
+
+            let code_units = string.as_two_byte_slice();
+            let mut i = 0;
+
+            while i < code_units.len() {
+                let code_unit = code_units[i];
+                if is_high_surrogate_code_unit(code_unit) {
+                    // Valid surrogate pair
+                    if i + 1 < code_units.len() && is_low_surrogate_code_unit(code_units[i + 1]) {
+                        i += 2;
+                        continue;
+                    }
+
+                    // Otherwise an unpaired high surrogate falls through
+                } else if !is_low_surrogate_code_unit(code_unit) {
+                    i += 1;
+                    continue;
+                }
+
+                // Handle an unpaired high or low surrogate
+
+                // First flush the valid range up until this unpaired surrogate, if there was such
+                // a range.
+                if i != start {
+                    parts.push(StringPart::ValidRange(start, i));
+                }
+
+                parts.push(StringPart::UnpairedSurrogate(code_unit));
+
+                i += 1;
+                start = i;
+            }
+
+            // Flush the final valid range if one exists
+            if i != start {
+                parts.push(StringPart::ValidRange(start, code_units.len()));
+            }
+
+            parts
+        }
+    }
+}
+
+/// Wrapper around CodePointIterator that returns chars. Must only be created for CodePointIterators
+/// over valid unicode code points.
+struct CharIterator {
+    iter: CodePointIterator,
+}
+
+impl CharIterator {
+    pub fn new(iter: CodePointIterator) -> Self {
+        Self { iter }
+    }
+}
+
+impl Iterator for CharIterator {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next()
+            .map(|code_point| unsafe { char::from_u32_unchecked(code_point) })
+    }
+}
+
+/// Normalize the given string using a function that returns the ICU4X normalization iterator for
+/// an iterator over valid code points.
+fn normalize_string<I: Iterator<Item = char>>(
+    cx: &mut Context,
+    string: Handle<StringValue>,
+    f: impl Fn(CharIterator) -> I,
+) -> Handle<StringValue> {
+    let parts = to_valid_string_parts(string.flatten().get_());
+
+    let mut normalized_string = Wtf8String::new();
+
+    for part in parts {
+        match part {
+            StringPart::ValidRange(start, end) => {
+                let iter = CharIterator::new(string.iter_slice_code_points(start, end));
+                for code_point in f(iter) {
+                    normalized_string.push(code_point as CodePoint);
+                }
+            }
+            StringPart::UnpairedSurrogate(code_unit) => {
+                normalized_string.push(code_unit as CodePoint);
+            }
+        }
+    }
+
+    FlatString::from_wtf8(cx, normalized_string.as_bytes())
+        .as_string()
+        .to_handle()
 }

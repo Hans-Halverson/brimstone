@@ -1,2 +1,7 @@
+normalizer/comp@1
+normalizer/nfd@1
+normalizer/nfdex@1
+normalizer/nfkd@1
+normalizer/nfkdex@1
 props/IDS@1
 props/IDC@1

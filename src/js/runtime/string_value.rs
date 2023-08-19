@@ -616,6 +616,21 @@ impl Handle<StringValue> {
         }
     }
 
+    /// Return an iterator over the code points of this string between the provided start and end
+    /// indices (start index is inclusive, end index is exclusive).
+    pub fn iter_slice_code_points(&self, start: usize, end: usize) -> CodePointIterator {
+        let flat_string = self.flatten();
+
+        match flat_string.width() {
+            StringWidth::OneByte => {
+                CodePointIterator::from_one_byte_slice(flat_string.get_(), start, end)
+            }
+            StringWidth::TwoByte => {
+                CodePointIterator::from_two_byte_slice(flat_string.get_(), start, end)
+            }
+        }
+    }
+
     pub fn iter_code_units(&self) -> CodeUnitIterator {
         let flat_string = self.flatten();
         flat_string.iter_code_units()
@@ -1282,6 +1297,18 @@ impl CodePointIterator {
 
     fn from_two_byte(string: HeapPtr<FlatString>) -> Self {
         CodePointIterator { iter: CodeUnitIterator::from_two_byte(string) }
+    }
+
+    fn from_one_byte_slice(string: HeapPtr<FlatString>, start: usize, end: usize) -> Self {
+        CodePointIterator {
+            iter: CodeUnitIterator::from_one_byte_slice(string, start, end),
+        }
+    }
+
+    fn from_two_byte_slice(string: HeapPtr<FlatString>, start: usize, end: usize) -> Self {
+        CodePointIterator {
+            iter: CodeUnitIterator::from_two_byte_slice(string, start, end),
+        }
     }
 
     fn is_end(&self) -> bool {

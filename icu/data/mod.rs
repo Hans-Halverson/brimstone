@@ -1,4 +1,5 @@
 // @generated
+mod normalizer;
 mod props;
 use ::icu_provider::prelude::*;
 /// Implement [`DataProvider<M>`] on the given struct using the data
@@ -16,6 +17,64 @@ use ::icu_provider::prelude::*;
 #[allow(unused_macros)]
 macro_rules! impl_data_provider {
     ($ provider : path) => {
+        impl DataProvider<::icu_normalizer::provider::CanonicalCompositionsV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_normalizer::provider::CanonicalCompositionsV1Marker>, DataError> {
+                normalizer::comp_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_normalizer::provider::CanonicalCompositionsV1Marker::KEY, req))
+            }
+        }
+        impl DataProvider<::icu_normalizer::provider::CanonicalDecompositionDataV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_normalizer::provider::CanonicalDecompositionDataV1Marker>, DataError> {
+                normalizer::nfd_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_normalizer::provider::CanonicalDecompositionDataV1Marker::KEY, req))
+            }
+        }
+        impl DataProvider<::icu_normalizer::provider::CanonicalDecompositionTablesV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_normalizer::provider::CanonicalDecompositionTablesV1Marker>, DataError> {
+                normalizer::nfdex_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_normalizer::provider::CanonicalDecompositionTablesV1Marker::KEY, req))
+            }
+        }
+        impl DataProvider<::icu_normalizer::provider::CompatibilityDecompositionSupplementV1Marker> for $provider {
+            fn load(
+                &self,
+                req: DataRequest,
+            ) -> Result<DataResponse<::icu_normalizer::provider::CompatibilityDecompositionSupplementV1Marker>, DataError> {
+                normalizer::nfkd_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| {
+                        DataErrorKind::MissingLocale.with_req(
+                            ::icu_normalizer::provider::CompatibilityDecompositionSupplementV1Marker::KEY,
+                            req,
+                        )
+                    })
+            }
+        }
+        impl DataProvider<::icu_normalizer::provider::CompatibilityDecompositionTablesV1Marker> for $provider {
+            fn load(
+                &self,
+                req: DataRequest,
+            ) -> Result<DataResponse<::icu_normalizer::provider::CompatibilityDecompositionTablesV1Marker>, DataError> {
+                normalizer::nfkdex_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| {
+                        DataErrorKind::MissingLocale.with_req(::icu_normalizer::provider::CompatibilityDecompositionTablesV1Marker::KEY, req)
+                    })
+            }
+        }
         impl DataProvider<::icu_properties::provider::IdContinueV1Marker> for $provider {
             fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::IdContinueV1Marker>, DataError> {
                 props::idc_v1::lookup(&req.locale)
@@ -53,9 +112,24 @@ macro_rules! impl_any_provider {
     ($ provider : path) => {
         impl AnyProvider for $provider {
             fn load_any(&self, key: DataKey, req: DataRequest) -> Result<AnyResponse, DataError> {
+                const CANONICALCOMPOSITIONSV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_normalizer::provider::CanonicalCompositionsV1Marker::KEY.hashed();
+                const CANONICALDECOMPOSITIONDATAV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_normalizer::provider::CanonicalDecompositionDataV1Marker::KEY.hashed();
+                const CANONICALDECOMPOSITIONTABLESV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_normalizer::provider::CanonicalDecompositionTablesV1Marker::KEY.hashed();
+                const COMPATIBILITYDECOMPOSITIONSUPPLEMENTV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_normalizer::provider::CompatibilityDecompositionSupplementV1Marker::KEY.hashed();
+                const COMPATIBILITYDECOMPOSITIONTABLESV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_normalizer::provider::CompatibilityDecompositionTablesV1Marker::KEY.hashed();
                 const IDCONTINUEV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::IdContinueV1Marker::KEY.hashed();
                 const IDSTARTV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::IdStartV1Marker::KEY.hashed();
                 match key.hashed() {
+                    CANONICALCOMPOSITIONSV1MARKER => normalizer::comp_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    CANONICALDECOMPOSITIONDATAV1MARKER => normalizer::nfd_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    CANONICALDECOMPOSITIONTABLESV1MARKER => normalizer::nfdex_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    COMPATIBILITYDECOMPOSITIONSUPPLEMENTV1MARKER => normalizer::nfkd_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    COMPATIBILITYDECOMPOSITIONTABLESV1MARKER => normalizer::nfkdex_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     IDCONTINUEV1MARKER => props::idc_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     IDSTARTV1MARKER => props::ids_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     _ => return Err(DataErrorKind::MissingDataKey.with_req(key, req)),

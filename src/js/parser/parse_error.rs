@@ -88,6 +88,7 @@ pub enum ParseError {
     InvalidBackreferenceName,
     InvalidQuantifierBounds,
     NonQuantifiableAssertion,
+    InvalidUnicodeProperty,
 }
 
 #[derive(Debug)]
@@ -329,6 +330,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::NonQuantifiableAssertion => {
                 write!(f, "Quantifier on non-quantifiable assertion in regular expression")
+            }
+            ParseError::InvalidUnicodeProperty => {
+                write!(f, "Invalid unicode property in regular expression")
             }
         }
     }

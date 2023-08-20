@@ -467,16 +467,16 @@ impl StringPrototype {
 
         let normalized_string = match form {
             NormalizationForm::NFC => {
-                normalize_string(cx, string, |iter| ICU.nfc_normalizer.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfc.normalize_iter(iter))
             }
             NormalizationForm::NFD => {
-                normalize_string(cx, string, |iter| ICU.nfd_normalizer.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfd.normalize_iter(iter))
             }
             NormalizationForm::NFKC => {
-                normalize_string(cx, string, |iter| ICU.nfkc_normalizer.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfkc.normalize_iter(iter))
             }
             NormalizationForm::NFKD => {
-                normalize_string(cx, string, |iter| ICU.nfkd_normalizer.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfkd.normalize_iter(iter))
             }
         };
 

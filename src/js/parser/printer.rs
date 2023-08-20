@@ -1279,6 +1279,12 @@ impl<'a> Printer<'a> {
             ClassRange::NotWord => self.print_str("\\W"),
             ClassRange::Whitespace => self.print_str("\\s"),
             ClassRange::NotWhitespace => self.print_str("\\S"),
+            ClassRange::UnicodeProperty(property) => {
+                self.print_string(&format!("UnicodeProperty({:?})", property))
+            }
+            ClassRange::NotUnicodeProperty(property) => {
+                self.print_string(&format!("NotUnicodeProperty({:?})", property))
+            }
         }
     }
 

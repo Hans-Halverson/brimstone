@@ -7,6 +7,7 @@ use crate::js::common::{
         as_id_part, as_id_start, get_hex_value, is_ascii_alphabetic, is_decimal_digit,
         is_id_continue_unicode,
     },
+    unicode_property::{BinaryUnicodeProperty, UnicodeProperty},
     wtf_8::Wtf8String,
 };
 
@@ -366,6 +367,33 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         Term::Backreference(backreference)
                     }
+                    // Unicode properties
+                    'p' if self.is_unicode_aware() => {
+                        self.advance2();
+                        self.expect('{')?;
+
+                        let property = self.parse_unicode_property()?;
+
+                        self.expect('}')?;
+
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: false,
+                            ranges: vec![ClassRange::UnicodeProperty(property)],
+                        })
+                    }
+                    'P' if self.is_unicode_aware() => {
+                        self.advance2();
+                        self.expect('{')?;
+
+                        let property = self.parse_unicode_property()?;
+
+                        self.expect('}')?;
+
+                        Term::CharacterClass(CharacterClass {
+                            is_inverted: false,
+                            ranges: vec![ClassRange::NotUnicodeProperty(property)],
+                        })
+                    }
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
                         let code_point = self.parse_regexp_escape_sequence()?;
@@ -612,7 +640,9 @@ impl<T: LexerStream> RegExpParser<T> {
             | ClassRange::Digit
             | ClassRange::NotDigit
             | ClassRange::Whitespace
-            | ClassRange::NotWhitespace => {
+            | ClassRange::NotWhitespace
+            | ClassRange::UnicodeProperty(_)
+            | ClassRange::NotUnicodeProperty(_) => {
                 self.error(self.pos(), ParseError::RegExpCharacterClassInRange)
             }
             ClassRange::Range(..) => unreachable!("Ranges are not returned by parse_class_atom"),
@@ -657,6 +687,27 @@ impl<T: LexerStream> RegExpParser<T> {
                 '-' if self.is_unicode_aware() => {
                     self.advance2();
                     Ok(ClassRange::Single('-' as u32))
+                }
+                // Unicode properties
+                'p' if self.is_unicode_aware() => {
+                    self.advance2();
+                    self.expect('{')?;
+
+                    let property = self.parse_unicode_property()?;
+
+                    self.expect('}')?;
+
+                    Ok(ClassRange::UnicodeProperty(property))
+                }
+                'P' if self.is_unicode_aware() => {
+                    self.advance2();
+                    self.expect('{')?;
+
+                    let property = self.parse_unicode_property()?;
+
+                    self.expect('}')?;
+
+                    Ok(ClassRange::NotUnicodeProperty(property))
                 }
                 // After checking class-specific escape sequences, must be a regular regexp
                 // escape sequence.
@@ -742,6 +793,25 @@ impl<T: LexerStream> RegExpParser<T> {
                 }
             }
         })
+    }
+
+    fn parse_unicode_property(&mut self) -> ParseResult<UnicodeProperty> {
+        let start_pos = self.pos();
+        let mut string_builder = String::new();
+
+        while is_ascii_alphabetic(self.current())
+            || is_decimal_digit(self.current())
+            || self.current() == '_' as u32
+        {
+            string_builder.push(self.current() as u8 as char);
+            self.advance();
+        }
+
+        if let Some(binary_property) = BinaryUnicodeProperty::parse(&string_builder) {
+            Ok(UnicodeProperty::Binary(binary_property))
+        } else {
+            self.error(start_pos, ParseError::InvalidUnicodeProperty)
+        }
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {

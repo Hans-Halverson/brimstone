@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-29:19",
+  loc: "1:0-33:25",
   body: [
     {
       type: "ExpressionStatement",
@@ -708,6 +708,66 @@
                     "Single(a)",
                     "Single(b)",
                     "Single(ÿ)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "32:0-32:15",
+      kind: {
+        type: "Literal",
+        loc: "32:0-32:14",
+        raw: "/[\p{ASCII}]/u",
+        value: {
+          pattern: "[\p{ASCII}]",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "UnicodeProperty(Binary(ASCII))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "33:0-33:25",
+      kind: {
+        type: "Literal",
+        loc: "33:0-33:24",
+        raw: "/[\P{ASCII_Hex_Digit}]/u",
+        value: {
+          pattern: "[\P{ASCII_Hex_Digit}]",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "NotUnicodeProperty(Binary(ASCIIHexDigit))",
                   ],
                 },
               ],

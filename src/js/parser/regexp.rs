@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use crate::js::common::wtf_8::Wtf8String;
+use crate::js::common::{unicode_property::UnicodeProperty, wtf_8::Wtf8String};
 
 use super::ast::P;
 
@@ -120,6 +120,10 @@ pub enum ClassRange {
     Whitespace,
     /// All non-whitespace characters: `\S`
     NotWhitespace,
+    /// All code points matching a unicode property `\p{UnicodeProperty}`
+    UnicodeProperty(UnicodeProperty),
+    /// All code points that do not match a unicode property `\P{UnicodeProperty}`
+    NotUnicodeProperty(UnicodeProperty),
 }
 
 pub struct CharacterClass {

@@ -186,12 +186,12 @@ pub fn is_id_part_ascii(code_point: CodePoint) -> bool {
 
 #[inline]
 pub fn is_id_start_unicode(code_point: CodePoint) -> bool {
-    ICU.id_start.contains32(code_point)
+    ICU.properties.id_start.contains32(code_point)
 }
 
 #[inline]
 pub fn is_id_continue_unicode(code_point: CodePoint) -> bool {
-    ICU.id_continue.contains32(code_point)
+    ICU.properties.id_continue.contains32(code_point)
 }
 
 #[inline]

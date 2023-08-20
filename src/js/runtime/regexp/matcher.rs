@@ -328,6 +328,22 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     self.advance_instruction();
                 }
+                Instruction::CompareIsUnicodeProperty(property) => {
+                    let current = self.string_lexer.current();
+                    if property.is_match(current) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
+                Instruction::CompareIsNotUnicodeProperty(property) => {
+                    let current = self.string_lexer.current();
+                    if !property.is_match(current) {
+                        self.compare_register = true;
+                    }
+
+                    self.advance_instruction();
+                }
                 Instruction::Lookaround(is_ahead, is_positive, lookaround_instruction_index) => {
                     // Save lexer state for starting lookaround
                     let saved_string_state = self.string_lexer.save();

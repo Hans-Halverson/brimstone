@@ -3,7 +3,10 @@ use std::mem::size_of;
 use crate::{
     field_offset,
     js::{
-        common::unicode::{to_string_or_unicode_escape_sequence, CodePoint},
+        common::{
+            unicode::{to_string_or_unicode_escape_sequence, CodePoint},
+            unicode_property::UnicodeProperty,
+        },
         parser::regexp::{RegExp, RegExpFlags},
         runtime::{
             collections::InlineArray,
@@ -107,6 +110,10 @@ pub enum Instruction {
     CompareIsWhitespace,
     /// Set the compare register to true if the current code point is not a whitespace (\S)
     CompareIsNotWhitespace,
+    /// Set the compare register to true if the current code point matches a unicode property
+    CompareIsUnicodeProperty(UnicodeProperty),
+    /// Set the compare register to true if the current code point does not match a unicode property
+    CompareIsNotUnicodeProperty(UnicodeProperty),
     /// Start a lookahead with operands `is_ahead`, `is_positive`, and `instruction_index`
     /// which is the instruction that starts the lookaround body.
     Lookaround(bool, bool, u32),
@@ -140,7 +147,7 @@ impl CompiledRegExpObject {
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
         let mut object = cx.heap.alloc_uninit_with_size::<CompiledRegExpObject>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::CompiledRegExpObject));
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
         set_uninit!(object.num_capture_groups, num_capture_groups);
@@ -259,6 +266,12 @@ impl Instruction {
             Instruction::CompareIsNotWord => String::from("CompareIsNotWord"),
             Instruction::CompareIsWhitespace => String::from("CompareIsWhitespace"),
             Instruction::CompareIsNotWhitespace => String::from("CompareIsNotWhitespace"),
+            Instruction::CompareIsUnicodeProperty(property) => {
+                format!("CompareIsUnicodeProperty({:?})", property)
+            }
+            Instruction::CompareIsNotUnicodeProperty(property) => {
+                format!("CompareIsNotUnicodeProperty({:?})", property)
+            }
             Instruction::Lookaround(is_ahead, is_positive, instruction_index) => {
                 format!("Lookaround({}, {}, {})", is_ahead, is_positive, instruction_index)
             }

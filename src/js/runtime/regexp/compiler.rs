@@ -613,6 +613,12 @@ impl CompiledRegExpBuilder {
                 ClassRange::NotWhitespace => {
                     self.emit_instruction(Instruction::CompareIsNotWhitespace)
                 }
+                ClassRange::UnicodeProperty(property) => {
+                    self.emit_instruction(Instruction::CompareIsUnicodeProperty(*property))
+                }
+                ClassRange::NotUnicodeProperty(property) => {
+                    self.emit_instruction(Instruction::CompareIsNotUnicodeProperty(*property))
+                }
             }
         }
 

@@ -7,7 +7,7 @@ use crate::js::common::{
         as_id_part, as_id_start, get_hex_value, is_ascii_alphabetic, is_decimal_digit,
         is_id_continue_unicode,
     },
-    unicode_property::{BinaryUnicodeProperty, UnicodeProperty},
+    unicode_property::{BinaryUnicodeProperty, GeneralCategoryProperty, UnicodeProperty},
     wtf_8::Wtf8String,
 };
 
@@ -797,6 +797,31 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn parse_unicode_property(&mut self) -> ParseResult<UnicodeProperty> {
         let start_pos = self.pos();
+        let property_name = self.parse_unicode_property_name();
+
+        if self.eat('=') {
+            let property_value = self.parse_unicode_property_name();
+
+            if matches!(property_name.as_str(), "General_Category" | "gc") {
+                if let Some(general_category) = GeneralCategoryProperty::parse(&property_value) {
+                    return Ok(UnicodeProperty::GeneralCategory(general_category));
+                }
+            }
+
+            return self.error(start_pos, ParseError::InvalidUnicodeProperty);
+        }
+
+        // Otherwise must be a binary unicode property or general category property
+        if let Some(binary_property) = BinaryUnicodeProperty::parse(&property_name) {
+            Ok(UnicodeProperty::Binary(binary_property))
+        } else if let Some(general_category) = GeneralCategoryProperty::parse(&property_name) {
+            Ok(UnicodeProperty::GeneralCategory(general_category))
+        } else {
+            self.error(start_pos, ParseError::InvalidUnicodeProperty)
+        }
+    }
+
+    fn parse_unicode_property_name(&mut self) -> String {
         let mut string_builder = String::new();
 
         while is_ascii_alphabetic(self.current())
@@ -807,11 +832,7 @@ impl<T: LexerStream> RegExpParser<T> {
             self.advance();
         }
 
-        if let Some(binary_property) = BinaryUnicodeProperty::parse(&string_builder) {
-            Ok(UnicodeProperty::Binary(binary_property))
-        } else {
-            self.error(start_pos, ParseError::InvalidUnicodeProperty)
-        }
+        string_builder
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {

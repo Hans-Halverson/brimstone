@@ -3,6 +3,7 @@ normalizer/nfd@1
 normalizer/nfdex@1
 normalizer/nfkd@1
 normalizer/nfkdex@1
+props/gc@1
 props/AHex@1
 props/Alpha@1
 props/Bidi_C@1

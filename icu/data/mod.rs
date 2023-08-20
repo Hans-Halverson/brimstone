@@ -282,6 +282,15 @@ macro_rules! impl_data_provider {
                     .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_properties::provider::ExtenderV1Marker::KEY, req))
             }
         }
+        impl DataProvider<::icu_properties::provider::GeneralCategoryV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::GeneralCategoryV1Marker>, DataError> {
+                props::gc_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_properties::provider::GeneralCategoryV1Marker::KEY, req))
+            }
+        }
         impl DataProvider<::icu_properties::provider::GraphemeBaseV1Marker> for $provider {
             fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::GraphemeBaseV1Marker>, DataError> {
                 props::gr_base_v1::lookup(&req.locale)
@@ -585,6 +594,7 @@ macro_rules! impl_any_provider {
                 const EXTENDEDPICTOGRAPHICV1MARKER: ::icu_provider::DataKeyHash =
                     ::icu_properties::provider::ExtendedPictographicV1Marker::KEY.hashed();
                 const EXTENDERV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::ExtenderV1Marker::KEY.hashed();
+                const GENERALCATEGORYV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::GeneralCategoryV1Marker::KEY.hashed();
                 const GRAPHEMEBASEV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::GraphemeBaseV1Marker::KEY.hashed();
                 const GRAPHEMEEXTENDV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::GraphemeExtendV1Marker::KEY.hashed();
                 const HEXDIGITV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::HexDigitV1Marker::KEY.hashed();
@@ -644,6 +654,7 @@ macro_rules! impl_any_provider {
                     EMOJIV1MARKER => props::emoji_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     EXTENDEDPICTOGRAPHICV1MARKER => props::extpict_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     EXTENDERV1MARKER => props::ext_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    GENERALCATEGORYV1MARKER => props::gc_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     GRAPHEMEBASEV1MARKER => props::gr_base_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     GRAPHEMEEXTENDV1MARKER => props::gr_ext_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     HEXDIGITV1MARKER => props::hex_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),

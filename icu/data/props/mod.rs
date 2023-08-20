@@ -22,6 +22,7 @@ pub mod emoji_v1;
 pub mod epres_v1;
 pub mod ext_v1;
 pub mod extpict_v1;
+pub mod gc_v1;
 pub mod gr_base_v1;
 pub mod gr_ext_v1;
 pub mod hex_v1;

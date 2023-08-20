@@ -1,12 +1,95 @@
 use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
-use icu_properties::sets::{self, CodePointSetData, CodePointSetDataBorrowed};
+use icu_properties::{
+    sets::{self, CodePointSetData, CodePointSetDataBorrowed},
+    GeneralCategoryGroup,
+};
 use once_cell::sync::Lazy;
 
 include!("../../../icu/data/mod.rs");
 
 pub struct ICU {
+    pub general_categories: GeneralCategories,
     pub properties: Properties,
     pub normalizers: Normalizers,
+}
+
+pub struct GeneralCategories {
+    /// The C general category
+    pub other: CodePointSetDataBorrowed<'static>,
+    /// The Cc general category
+    pub control: CodePointSetDataBorrowed<'static>,
+    /// The Cf general category
+    pub format: CodePointSetDataBorrowed<'static>,
+    /// The Cn general category
+    pub unassigned: CodePointSetDataBorrowed<'static>,
+    /// The Co general category
+    pub private_use: CodePointSetDataBorrowed<'static>,
+    /// The Cs general category
+    pub surrogate: CodePointSetDataBorrowed<'static>,
+    /// The L general category
+    pub letter: CodePointSetDataBorrowed<'static>,
+    /// The LC general category
+    pub cased_letter: CodePointSetDataBorrowed<'static>,
+    /// The Ll general category
+    pub lowercase_letter: CodePointSetDataBorrowed<'static>,
+    /// The Lm general category
+    pub modifier_letter: CodePointSetDataBorrowed<'static>,
+    /// The Lo general category
+    pub other_letter: CodePointSetDataBorrowed<'static>,
+    /// The Lt general category
+    pub titlecase_letter: CodePointSetDataBorrowed<'static>,
+    /// The Lu general category
+    pub uppercase_letter: CodePointSetDataBorrowed<'static>,
+    /// The M general category
+    pub mark: CodePointSetDataBorrowed<'static>,
+    /// The Mc general category
+    pub spacing_mark: CodePointSetDataBorrowed<'static>,
+    /// The Me general category
+    pub enclosing_mark: CodePointSetDataBorrowed<'static>,
+    /// The Mn general category
+    pub nonspacing_mark: CodePointSetDataBorrowed<'static>,
+    /// The N general category
+    pub number: CodePointSetDataBorrowed<'static>,
+    /// The Nd general category
+    pub decimal_number: CodePointSetDataBorrowed<'static>,
+    /// The Nl general category
+    pub letter_number: CodePointSetDataBorrowed<'static>,
+    /// The No general category
+    pub other_number: CodePointSetDataBorrowed<'static>,
+    /// The P general category
+    pub punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Pc general category
+    pub connector_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Pd general category
+    pub dash_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Pe general category
+    pub close_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Pf general category
+    pub final_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Pi general category
+    pub initial_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Po general category
+    pub other_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The Ps general category
+    pub open_punctuation: CodePointSetDataBorrowed<'static>,
+    /// The S general category
+    pub symbol: CodePointSetDataBorrowed<'static>,
+    /// The Sc general category
+    pub currency_symbol: CodePointSetDataBorrowed<'static>,
+    /// The Sk general category
+    pub modifier_symbol: CodePointSetDataBorrowed<'static>,
+    /// The Sm general category
+    pub math_symbol: CodePointSetDataBorrowed<'static>,
+    /// The So general category
+    pub other_symbol: CodePointSetDataBorrowed<'static>,
+    /// The Z general category
+    pub separator: CodePointSetDataBorrowed<'static>,
+    /// The Zl general category
+    pub line_separator: CodePointSetDataBorrowed<'static>,
+    /// The Zp general category
+    pub paragraph_separator: CodePointSetDataBorrowed<'static>,
+    /// The Zs general category
+    pub space_separator: CodePointSetDataBorrowed<'static>,
 }
 
 pub struct Properties {
@@ -124,108 +207,158 @@ pub struct Normalizers {
 }
 
 pub static ICU: Lazy<ICU> = Lazy::new(|| {
-    static ASCII_HEX_DIGIT_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_ascii_hex_digit(&BakedDataProvider).unwrap());
-    static ALPHABETIC_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_alphabetic(&BakedDataProvider).unwrap());
-    static BIDI_CONTROL_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_bidi_control(&BakedDataProvider).unwrap());
-    static BIDI_MIRRORED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_bidi_mirrored(&BakedDataProvider).unwrap());
-    static CASE_IGNORABLE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_case_ignorable(&BakedDataProvider).unwrap());
-    static CASED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_cased(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_CASEFOLDED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_casefolded(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_CASEMAPPED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_casemapped(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_LOWERCASED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_lowercased(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_NFKC_CASEFOLDED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_nfkc_casefolded(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_TITLECASED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_titlecased(&BakedDataProvider).unwrap());
-    static CHANGES_WHEN_UPPERCASED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_changes_when_uppercased(&BakedDataProvider).unwrap());
-    static DASH_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_dash(&BakedDataProvider).unwrap());
-    static DEFAULT_IGNORABLE_CODE_POINT_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_default_ignorable_code_point(&BakedDataProvider).unwrap());
-    static DEPRECATED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_deprecated(&BakedDataProvider).unwrap());
-    static DIACRITIC_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_diacritic(&BakedDataProvider).unwrap());
-    static EMOJI_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_emoji(&BakedDataProvider).unwrap());
-    static EMOJI_COMPONENT_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_emoji_component(&BakedDataProvider).unwrap());
-    static EMOJI_MODIFIER_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_emoji_modifier(&BakedDataProvider).unwrap());
-    static EMOJI_MODIFIER_BASE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_emoji_modifier_base(&BakedDataProvider).unwrap());
-    static EMOJI_PRESENTATION_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_emoji_presentation(&BakedDataProvider).unwrap());
-    static EXTENDED_PICTOGRAPHIC_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_extended_pictographic(&BakedDataProvider).unwrap());
-    static EXTENDER_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_extender(&BakedDataProvider).unwrap());
-    static GRAPHEME_BASE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_grapheme_base(&BakedDataProvider).unwrap());
-    static GRAPHEME_EXTEND_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_grapheme_extend(&BakedDataProvider).unwrap());
-    static HEX_DIGIT_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_hex_digit(&BakedDataProvider).unwrap());
-    static IDS_BINARY_OPERATOR_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_ids_binary_operator(&BakedDataProvider).unwrap());
-    static IDS_TRINARY_OPERATOR_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_ids_trinary_operator(&BakedDataProvider).unwrap());
-    static ID_START_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_id_start(&BakedDataProvider).unwrap());
-    static ID_CONTINUE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_id_continue(&BakedDataProvider).unwrap());
-    static IDEOGRAPHIC_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_ideographic(&BakedDataProvider).unwrap());
-    static JOIN_CONTROL_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_join_control(&BakedDataProvider).unwrap());
-    static LOGICAL_ORDER_EXCEPTION_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_logical_order_exception(&BakedDataProvider).unwrap());
-    static LOWERCASE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_lowercase(&BakedDataProvider).unwrap());
-    static MATH_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_math(&BakedDataProvider).unwrap());
-    static NONCHARACTER_CODE_POINT_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_noncharacter_code_point(&BakedDataProvider).unwrap());
-    static PATTERN_SYNTAX_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_pattern_syntax(&BakedDataProvider).unwrap());
-    static PATTERN_WHITE_SPACE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_pattern_white_space(&BakedDataProvider).unwrap());
-    static QUOTATION_MARK_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_quotation_mark(&BakedDataProvider).unwrap());
-    static RADICAL_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_radical(&BakedDataProvider).unwrap());
-    static REGIONAL_INDICATOR_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_regional_indicator(&BakedDataProvider).unwrap());
-    static SENTENCE_TERMINAL_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_sentence_terminal(&BakedDataProvider).unwrap());
-    static SOFT_DOTTED_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_soft_dotted(&BakedDataProvider).unwrap());
-    static TERMINAL_PUNCTUATION_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_terminal_punctuation(&BakedDataProvider).unwrap());
-    static UNIFIED_IDEOGRAPH_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_unified_ideograph(&BakedDataProvider).unwrap());
-    static UPPERCASE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_uppercase(&BakedDataProvider).unwrap());
-    static VARIATION_SELECTOR_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_variation_selector(&BakedDataProvider).unwrap());
-    static WHITE_SPACE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_white_space(&BakedDataProvider).unwrap());
-    static XID_CONTINUE_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_xid_continue(&BakedDataProvider).unwrap());
-    static XID_START_SET: Lazy<CodePointSetData> =
-        Lazy::new(|| sets::load_xid_start(&BakedDataProvider).unwrap());
+    // General category sets
+    macro_rules! general_category_static {
+        ($static_name:ident, $category_name:ident) => {
+            static $static_name: Lazy<CodePointSetData> = Lazy::new(|| {
+                sets::load_for_general_category_group(
+                    &BakedDataProvider,
+                    GeneralCategoryGroup::$category_name,
+                )
+                .unwrap()
+            });
+        };
+    }
+
+    general_category_static!(OTHER_SET, Other);
+    general_category_static!(CONTROL_SET, Control);
+    general_category_static!(FORMAT_SET, Format);
+    general_category_static!(UNASSIGNED_SET, Unassigned);
+    general_category_static!(PRIVATE_USE_SET, PrivateUse);
+    general_category_static!(SURROGATE_SET, Surrogate);
+    general_category_static!(LETTER_SET, Letter);
+    general_category_static!(CASED_LETTER_SET, CasedLetter);
+    general_category_static!(LOWERCASE_LETTER_SET, LowercaseLetter);
+    general_category_static!(MODIFIER_LETTER_SET, ModifierLetter);
+    general_category_static!(OTHER_LETTER_SET, OtherLetter);
+    general_category_static!(TITLECASE_LETTER_SET, TitlecaseLetter);
+    general_category_static!(UPPERCASE_LETTER_SET, UppercaseLetter);
+    general_category_static!(MARK_SET, Mark);
+    general_category_static!(SPACING_MARK_SET, SpacingMark);
+    general_category_static!(ENCLOSING_MARK_SET, EnclosingMark);
+    general_category_static!(NONSPACING_MARK_SET, NonspacingMark);
+    general_category_static!(NUMBER_SET, Number);
+    general_category_static!(DECIMAL_NUMBER_SET, DecimalNumber);
+    general_category_static!(LETTER_NUMBER_SET, LetterNumber);
+    general_category_static!(OTHER_NUMBER_SET, OtherNumber);
+    general_category_static!(PUNCTUATION_SET, Punctuation);
+    general_category_static!(CONNECTOR_PUNCTUATION_SET, ConnectorPunctuation);
+    general_category_static!(DASH_PUNCTUATION_SET, DashPunctuation);
+    general_category_static!(CLOSE_PUNCTUATION_SET, ClosePunctuation);
+    general_category_static!(FINAL_PUNCTUATION_SET, FinalPunctuation);
+    general_category_static!(INITIAL_PUNCTUATION_SET, InitialPunctuation);
+    general_category_static!(OTHER_PUNCTUATION_SET, OtherPunctuation);
+    general_category_static!(OPEN_PUNCTUATION_SET, OpenPunctuation);
+    general_category_static!(SYMBOL_SET, Symbol);
+    general_category_static!(CURRENCY_SYMBOL_SET, CurrencySymbol);
+    general_category_static!(MODIFIER_SYMBOL_SET, ModifierSymbol);
+    general_category_static!(MATH_SYMBOL_SET, MathSymbol);
+    general_category_static!(OTHER_SYMBOL_SET, OtherSymbol);
+    general_category_static!(SEPARATOR_SET, Separator);
+    general_category_static!(LINE_SEPARATOR_SET, LineSeparator);
+    general_category_static!(PARAGRAPH_SEPARATOR_SET, ParagraphSeparator);
+    general_category_static!(SPACE_SEPARATOR_SET, SpaceSeparator);
+
+    // Binary property sets
+    macro_rules! binary_property_static {
+        ($static_name:ident, $load_fn:ident) => {
+            static $static_name: Lazy<CodePointSetData> =
+                Lazy::new(|| sets::$load_fn(&BakedDataProvider).unwrap());
+        };
+    }
+
+    binary_property_static!(ASCII_HEX_DIGIT_SET, load_ascii_hex_digit);
+    binary_property_static!(ALPHABETIC_SET, load_alphabetic);
+    binary_property_static!(BIDI_CONTROL_SET, load_bidi_control);
+    binary_property_static!(BIDI_MIRRORED_SET, load_bidi_mirrored);
+    binary_property_static!(CASE_IGNORABLE_SET, load_case_ignorable);
+    binary_property_static!(CASED_SET, load_cased);
+    binary_property_static!(CHANGES_WHEN_CASEFOLDED_SET, load_changes_when_casefolded);
+    binary_property_static!(CHANGES_WHEN_CASEMAPPED_SET, load_changes_when_casemapped);
+    binary_property_static!(CHANGES_WHEN_LOWERCASED_SET, load_changes_when_lowercased);
+    binary_property_static!(CHANGES_WHEN_NFKC_CASEFOLDED_SET, load_changes_when_nfkc_casefolded);
+    binary_property_static!(CHANGES_WHEN_TITLECASED_SET, load_changes_when_titlecased);
+    binary_property_static!(CHANGES_WHEN_UPPERCASED_SET, load_changes_when_uppercased);
+    binary_property_static!(DASH_SET, load_dash);
+    binary_property_static!(DEFAULT_IGNORABLE_CODE_POINT_SET, load_default_ignorable_code_point);
+    binary_property_static!(DEPRECATED_SET, load_deprecated);
+    binary_property_static!(DIACRITIC_SET, load_diacritic);
+    binary_property_static!(EMOJI_SET, load_emoji);
+    binary_property_static!(EMOJI_COMPONENT_SET, load_emoji_component);
+    binary_property_static!(EMOJI_MODIFIER_SET, load_emoji_modifier);
+    binary_property_static!(EMOJI_MODIFIER_BASE_SET, load_emoji_modifier_base);
+    binary_property_static!(EMOJI_PRESENTATION_SET, load_emoji_presentation);
+    binary_property_static!(EXTENDED_PICTOGRAPHIC_SET, load_extended_pictographic);
+    binary_property_static!(EXTENDER_SET, load_extender);
+    binary_property_static!(GRAPHEME_BASE_SET, load_grapheme_base);
+    binary_property_static!(GRAPHEME_EXTEND_SET, load_grapheme_extend);
+    binary_property_static!(HEX_DIGIT_SET, load_hex_digit);
+    binary_property_static!(IDS_BINARY_OPERATOR_SET, load_ids_binary_operator);
+    binary_property_static!(IDS_TRINARY_OPERATOR_SET, load_ids_trinary_operator);
+    binary_property_static!(ID_START_SET, load_id_start);
+    binary_property_static!(ID_CONTINUE_SET, load_id_continue);
+    binary_property_static!(IDEOGRAPHIC_SET, load_ideographic);
+    binary_property_static!(JOIN_CONTROL_SET, load_join_control);
+    binary_property_static!(LOGICAL_ORDER_EXCEPTION_SET, load_logical_order_exception);
+    binary_property_static!(LOWERCASE_SET, load_lowercase);
+    binary_property_static!(MATH_SET, load_math);
+    binary_property_static!(NONCHARACTER_CODE_POINT_SET, load_noncharacter_code_point);
+    binary_property_static!(PATTERN_SYNTAX_SET, load_pattern_syntax);
+    binary_property_static!(PATTERN_WHITE_SPACE_SET, load_pattern_white_space);
+    binary_property_static!(QUOTATION_MARK_SET, load_quotation_mark);
+    binary_property_static!(RADICAL_SET, load_radical);
+    binary_property_static!(REGIONAL_INDICATOR_SET, load_regional_indicator);
+    binary_property_static!(SENTENCE_TERMINAL_SET, load_sentence_terminal);
+    binary_property_static!(SOFT_DOTTED_SET, load_soft_dotted);
+    binary_property_static!(TERMINAL_PUNCTUATION_SET, load_terminal_punctuation);
+    binary_property_static!(UNIFIED_IDEOGRAPH_SET, load_unified_ideograph);
+    binary_property_static!(UPPERCASE_SET, load_uppercase);
+    binary_property_static!(VARIATION_SELECTOR_SET, load_variation_selector);
+    binary_property_static!(WHITE_SPACE_SET, load_white_space);
+    binary_property_static!(XID_CONTINUE_SET, load_xid_continue);
+    binary_property_static!(XID_START_SET, load_xid_start);
 
     ICU {
+        general_categories: GeneralCategories {
+            other: OTHER_SET.as_borrowed(),
+            control: CONTROL_SET.as_borrowed(),
+            format: FORMAT_SET.as_borrowed(),
+            unassigned: UNASSIGNED_SET.as_borrowed(),
+            private_use: PRIVATE_USE_SET.as_borrowed(),
+            surrogate: SURROGATE_SET.as_borrowed(),
+            letter: LETTER_SET.as_borrowed(),
+            cased_letter: CASED_LETTER_SET.as_borrowed(),
+            lowercase_letter: LOWERCASE_LETTER_SET.as_borrowed(),
+            modifier_letter: MODIFIER_LETTER_SET.as_borrowed(),
+            other_letter: OTHER_LETTER_SET.as_borrowed(),
+            titlecase_letter: TITLECASE_LETTER_SET.as_borrowed(),
+            uppercase_letter: UPPERCASE_LETTER_SET.as_borrowed(),
+            mark: MARK_SET.as_borrowed(),
+            spacing_mark: SPACING_MARK_SET.as_borrowed(),
+            enclosing_mark: ENCLOSING_MARK_SET.as_borrowed(),
+            nonspacing_mark: NONSPACING_MARK_SET.as_borrowed(),
+            number: NUMBER_SET.as_borrowed(),
+            decimal_number: DECIMAL_NUMBER_SET.as_borrowed(),
+            letter_number: LETTER_NUMBER_SET.as_borrowed(),
+            other_number: OTHER_NUMBER_SET.as_borrowed(),
+            punctuation: PUNCTUATION_SET.as_borrowed(),
+            connector_punctuation: CONNECTOR_PUNCTUATION_SET.as_borrowed(),
+            dash_punctuation: DASH_PUNCTUATION_SET.as_borrowed(),
+            close_punctuation: CLOSE_PUNCTUATION_SET.as_borrowed(),
+            final_punctuation: FINAL_PUNCTUATION_SET.as_borrowed(),
+            initial_punctuation: INITIAL_PUNCTUATION_SET.as_borrowed(),
+            other_punctuation: OTHER_PUNCTUATION_SET.as_borrowed(),
+            open_punctuation: OPEN_PUNCTUATION_SET.as_borrowed(),
+            symbol: SYMBOL_SET.as_borrowed(),
+            currency_symbol: CURRENCY_SYMBOL_SET.as_borrowed(),
+            modifier_symbol: MODIFIER_SYMBOL_SET.as_borrowed(),
+            math_symbol: MATH_SYMBOL_SET.as_borrowed(),
+            other_symbol: OTHER_SYMBOL_SET.as_borrowed(),
+            separator: SEPARATOR_SET.as_borrowed(),
+            line_separator: LINE_SEPARATOR_SET.as_borrowed(),
+            paragraph_separator: PARAGRAPH_SEPARATOR_SET.as_borrowed(),
+            space_separator: SPACE_SEPARATOR_SET.as_borrowed(),
+        },
         properties: Properties {
             ascii_hex_digit: ASCII_HEX_DIGIT_SET.as_borrowed(),
             alphabetic: ALPHABETIC_SET.as_borrowed(),

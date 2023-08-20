@@ -10,7 +10,7 @@ use crate::{
             property::Property,
             realm::Realm,
             string_object::StringObject,
-            string_value::{FlatString, StringValue},
+            string_value::FlatString,
             type_utilities::{to_number, to_string, to_uint16},
             Context, Handle, Value,
         },
@@ -94,16 +94,15 @@ impl StringConstructor {
             return FlatString::from_code_unit(cx, code_unit).as_string().into();
         }
 
-        // Otherwise concatenate strings together
-        let mut concat_string = cx.names.empty_string().as_string();
-
+        let mut code_points = vec![];
         for arg in arguments {
             let code_unit = maybe!(to_uint16(cx, *arg));
-            let code_unit_string = FlatString::from_code_unit(cx, code_unit).as_string();
-            concat_string = StringValue::concat(cx, concat_string, code_unit_string);
+            code_points.push(code_unit as u32);
         }
 
-        concat_string.into()
+        FlatString::from_code_points(cx, &code_points)
+            .as_string()
+            .into()
     }
 
     // 22.1.2.2 String.fromCodePoint
@@ -144,15 +143,13 @@ impl StringConstructor {
                 .into();
         }
 
-        // Otherwise concatenate strings together
-        let mut concat_string = cx.names.empty_string().as_string();
-
+        let mut code_points = vec![];
         for arg in arguments {
-            let code_point = get_code_point!(*arg);
-            let code_point_string = FlatString::from_code_point(cx, code_point).as_string();
-            concat_string = StringValue::concat(cx, concat_string, code_point_string);
+            code_points.push(get_code_point!(*arg));
         }
 
-        concat_string.into()
+        FlatString::from_code_points(cx, &code_points)
+            .as_string()
+            .into()
     }
 }

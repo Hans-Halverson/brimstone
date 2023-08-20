@@ -810,22 +810,36 @@ impl FlatString {
     }
 
     pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<FlatString> {
-        Self::from_code_point_impl(cx, code_unit as CodePoint)
+        Self::from_code_points(cx, &[code_unit as CodePoint])
     }
 
     pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
-        Self::from_code_point_impl(cx, code_point)
+        Self::from_code_points(cx, &[code_point])
     }
 
     #[inline]
-    fn from_code_point_impl(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
-        if is_latin1(code_point) {
-            FlatString::new_one_byte(cx, &[code_point as u8]).to_handle()
+    pub fn from_code_points(cx: &mut Context, code_points: &[CodePoint]) -> Handle<FlatString> {
+        let is_one_byte = code_points.iter().all(|code_point| is_latin1(*code_point));
+
+        if is_one_byte {
+            let one_byte_buf = code_points
+                .iter()
+                .map(|code_point| *code_point as u8)
+                .collect::<Vec<_>>();
+            FlatString::new_one_byte(cx, &one_byte_buf).to_handle()
         } else {
-            match try_encode_surrogate_pair(code_point) {
-                None => FlatString::new_two_byte(cx, &[code_point as CodeUnit]).to_handle(),
-                Some((high, low)) => FlatString::new_two_byte(cx, &[high, low]).to_handle(),
+            let mut two_byte_buf = vec![];
+            for code_point in code_points {
+                match try_encode_surrogate_pair(*code_point) {
+                    None => two_byte_buf.push(*code_point as CodeUnit),
+                    Some((high, low)) => {
+                        two_byte_buf.push(high);
+                        two_byte_buf.push(low);
+                    }
+                }
             }
+
+            FlatString::new_two_byte(cx, &two_byte_buf).to_handle()
         }
     }
 

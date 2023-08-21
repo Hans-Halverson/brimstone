@@ -3,8 +3,10 @@ use crate::{
         completion::EvalResult,
         error::{range_error_, type_error_},
         function::get_argument,
+        interned_strings::InternedStrings,
         object_value::ObjectValue,
         realm::Realm,
+        string_value::FlatString,
         type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,
         Context, Handle,
@@ -113,8 +115,8 @@ impl NumberPrototype {
 
         let radix = get_argument(cx, arguments, 0);
 
-        let is_radix_10 = if radix.is_undefined() {
-            true
+        let radix = if radix.is_undefined() {
+            10
         } else {
             if radix.is_smi() {
                 let radix = radix.as_smi();
@@ -123,7 +125,7 @@ impl NumberPrototype {
                     return range_error_(cx, "radix must be between 2 and 36");
                 }
 
-                radix == 10
+                radix
             } else {
                 let radix = maybe!(to_integer_or_infinity(cx, radix));
 
@@ -131,21 +133,82 @@ impl NumberPrototype {
                     return range_error_(cx, "radix must be between 2 and 36");
                 }
 
-                radix == 10.0
+                radix as i32
             }
         };
 
-        if is_radix_10 {
+        if number_value.is_nan() {
+            return cx.names.nan.as_string().to_handle().into();
+        } else if number_value.is_zero() {
+            return InternedStrings::get_str(cx, "0").into();
+        } else if number_value.is_infinity() {
+            return if number_value.as_number() == f64::INFINITY {
+                cx.names.infinity.as_string().to_handle().into()
+            } else {
+                InternedStrings::get_str(cx, "-Infinity").into()
+            };
+        }
+
+        if radix == 10 {
             let str = if number_value.is_smi() {
                 number_value.as_smi().to_string()
             } else {
                 number_value.as_double().to_string()
             };
 
-            cx.alloc_string(&str).into()
-        } else {
-            unimplemented!("Number.prototype.toString with radix != 10")
+            return cx.alloc_string(&str).into();
         }
+
+        // Float to string conversion based on SerenityOS's LibJS
+        let mut number = number_value.as_number();
+
+        let is_negative = number.is_sign_negative();
+        if is_negative {
+            number = -number;
+        }
+
+        let mut int_part = number.floor();
+        let mut dec_part = number - int_part;
+
+        // Calculate int part characters in reverse order
+        let mut result_int_part_bytes_rev = vec![];
+
+        if int_part == 0.0 {
+            result_int_part_bytes_rev.push('0' as u8);
+        } else {
+            while int_part > 0.0 {
+                let digit = (int_part % radix as f64).floor() as usize;
+                result_int_part_bytes_rev.push(DIGITS_OR_LETTERS[digit]);
+                int_part = (int_part / radix as f64).floor();
+            }
+        }
+
+        // Start result string with a sign followed by int part
+        let mut result_bytes = vec![];
+
+        if is_negative {
+            result_bytes.push('-' as u8);
+        }
+
+        result_bytes.extend(result_int_part_bytes_rev.into_iter().rev());
+
+        // Add decimal point and decimal part
+        if dec_part != 0.0 {
+            result_bytes.push('.' as u8);
+
+            // Only calculate decimal digits up to precision
+            for _ in 0..RADIX_TO_PRECISION[radix as usize] {
+                dec_part *= radix as f64;
+                let digit = dec_part.floor() as usize;
+                result_bytes.push(DIGITS_OR_LETTERS[digit]);
+                dec_part -= digit as f64;
+            }
+        }
+
+        FlatString::from_one_byte_slice(cx, &result_bytes)
+            .as_string()
+            .to_handle()
+            .into()
     }
 
     // 21.1.3.7 Number.prototype.valueOf
@@ -159,6 +222,15 @@ impl NumberPrototype {
         number_value.to_handle(cx).into()
     }
 }
+
+/// Character values that are used for each digit. May be a digit or letter e.g. `1` or `a`.
+const DIGITS_OR_LETTERS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+
+/// Precision for each radix. Used with the range 2 to 36 (0 and 1 are unused).
+const RADIX_TO_PRECISION: [u8; 37] = [
+    0, 0, 52, 32, 26, 22, 20, 18, 17, 16, 15, 15, 14, 14, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11,
+    11, 11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+];
 
 fn this_number_value(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Value> {
     let value = value_handle.get();

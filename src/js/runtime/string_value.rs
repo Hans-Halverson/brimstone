@@ -809,6 +809,11 @@ impl FlatString {
         }
     }
 
+    /// Create a new one byte string from a slice of Latin1 bytes
+    pub fn from_one_byte_slice(cx: &mut Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+        FlatString::new_one_byte(cx, one_byte_slice)
+    }
+
     pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<FlatString> {
         Self::from_code_points(cx, &[code_unit as CodePoint])
     }

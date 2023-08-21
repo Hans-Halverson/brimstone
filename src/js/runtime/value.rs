@@ -186,6 +186,13 @@ impl Value {
     }
 
     #[inline]
+    pub fn is_zero(&self) -> bool {
+        // Set sign bit to check positive and negative zero at the same time. Note that setting
+        // sign bit will convert zero to positive zero because doubles are bitwise negated.
+        self.as_raw_bits() | (1 << 63) == DOUBLE_POSITIVE_ZERO
+    }
+
+    #[inline]
     pub fn is_true(&self) -> bool {
         self.as_raw_bits() == TRUE
     }

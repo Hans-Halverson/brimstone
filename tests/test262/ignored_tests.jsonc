@@ -69,15 +69,19 @@
   // Slow tests which are ignored in normal runs but can be run with the --all flag
   "slow": {
     "tests": [
-      "built-ins/RegExp/CharacterClassEscapes/*.js",
-      "built-ins/RegExp/property-escapes/generated/*.js",
-      "built-ins/decodeURI/*.js",
-      "built-ins/decodeURIComponent/*.js",
+      // Passing but ignored
       "built-ins/parseFloat/S15.1.2.3_A6.js",
       "built-ins/parseInt/S15.1.2.2_A8.js",
       "language/comments/S7.4_A5.js",
       "language/comments/S7.4_A6.js",
-      // Slow array tests - could be improved by special casing sparse Array objects
+      // All passing except for built-ins/RegExp/property-escapes/generated/strings/*
+      "built-ins/RegExp/property-escapes/generated/*.js",
+      // Some failing
+      "built-ins/RegExp/CharacterClassEscapes/*.js",
+      // Not yet passing
+      "built-ins/decodeURI/*.js",
+      "built-ins/decodeURIComponent/*.js",
+      // Slow array tests - all passing but could be improved by special casing sparse Array objects
       "built-ins/Array/prototype/every/15.4.4.16-7-c-ii-2.js",
       "built-ins/Array/prototype/filter/15.4.4.20-9-c-ii-1.js",
       "built-ins/Array/prototype/forEach/15.4.4.18-7-c-ii-1.js",

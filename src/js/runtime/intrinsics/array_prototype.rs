@@ -1376,7 +1376,7 @@ impl ArrayPrototype {
                 let mut to_key = from_key;
                 to_key.replace(PropertyKey::from_u64(cx, to_index));
 
-                maybe!(create_data_property_or_throw(cx, object, to_key, value));
+                maybe!(create_data_property_or_throw(cx, array, to_key, value));
             }
 
             to_index += 1;

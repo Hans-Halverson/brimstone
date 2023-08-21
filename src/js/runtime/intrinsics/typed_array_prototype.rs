@@ -1,3 +1,7 @@
+use std::cmp::Ordering;
+
+use num_bigint::{BigUint, Sign};
+
 use crate::{
     js::runtime::{
         abstract_operations::{
@@ -23,6 +27,7 @@ use crate::{
 };
 
 use super::{
+    array_prototype::{sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY},
     intrinsics::Intrinsic,
     typed_array::{ContentType, DynTypedArray, TypedArrayKind},
 };
@@ -73,8 +78,10 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
+        object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
         object.intrinsic_func(cx, cx.names.subarray(), Self::subarray, 2, realm);
         object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
             cx,
@@ -85,11 +92,11 @@ impl TypedArrayPrototype {
         );
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
-        // 23.2.3.32 %TypedArray%.prototype [ @@iterator ]
+        // 23.2.3.37 %TypedArray%.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
-        // 23.2.3.33 get %TypedArray%.prototype [ @@toStringTag ]
+        // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm);
 
@@ -526,7 +533,7 @@ impl TypedArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.2.3.13 %TypedArray%.prototype.forEach
+    // 23.2.3.15 %TypedArray%.prototype.forEach
     fn for_each(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -562,7 +569,7 @@ impl TypedArrayPrototype {
         cx.undefined().into()
     }
 
-    // 23.2.3.14 %TypedArray%.prototype.includes
+    // 23.2.3.16 %TypedArray%.prototype.includes
     fn includes(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -608,7 +615,7 @@ impl TypedArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.2.3.15 %TypedArray%.prototype.indexOf
+    // 23.2.3.17 %TypedArray%.prototype.indexOf
     fn index_of(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -655,7 +662,7 @@ impl TypedArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.2.3.16 %TypedArray%.prototype.join
+    // 23.2.3.18 %TypedArray%.prototype.join
     fn join(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -695,7 +702,7 @@ impl TypedArrayPrototype {
         joined.into()
     }
 
-    // 23.2.3.17 %TypedArray%.prototype.keys
+    // 23.2.3.19 %TypedArray%.prototype.keys
     fn keys(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -706,7 +713,7 @@ impl TypedArrayPrototype {
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Key).into()
     }
 
-    // 23.2.3.18 %TypedArray%.prototype.lastIndexOf
+    // 23.2.3.20 %TypedArray%.prototype.lastIndexOf
     fn last_index_of(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -761,7 +768,7 @@ impl TypedArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.2.3.19 get %TypedArray%.prototype.length
+    // 23.2.3.21 get %TypedArray%.prototype.length
     fn length(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -777,7 +784,7 @@ impl TypedArrayPrototype {
         Value::from(typed_array.array_length()).to_handle(cx).into()
     }
 
-    // 23.2.3.20 %TypedArray%.prototype.map
+    // 23.2.3.22 %TypedArray%.prototype.map
     fn map(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -822,7 +829,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.21 %TypedArray%.prototype.reduce
+    // 23.2.3.23 %TypedArray%.prototype.reduce
     fn reduce(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -868,7 +875,7 @@ impl TypedArrayPrototype {
         accumulator.into()
     }
 
-    // 23.2.3.22 %TypedArray%.prototype.reduceRight
+    // 23.2.3.24 %TypedArray%.prototype.reduceRight
     fn reduce_right(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -914,7 +921,7 @@ impl TypedArrayPrototype {
         accumulator.into()
     }
 
-    // 23.2.3.23 %TypedArray%.prototype.reverse
+    // 23.2.3.25 %TypedArray%.prototype.reverse
     fn reverse(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -951,7 +958,7 @@ impl TypedArrayPrototype {
         object.into()
     }
 
-    // 23.2.3.25 %TypedArray%.prototype.slice
+    // 23.2.3.27 %TypedArray%.prototype.slice
     fn slice(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1053,7 +1060,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.26 %TypedArray%.prototype.some
+    // 23.2.3.28 %TypedArray%.prototype.some
     fn some(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1092,7 +1099,43 @@ impl TypedArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.2.3.28 %TypedArray%.prototype.subarray
+    // 23.2.3.29 %TypedArray%.prototype.sort
+    fn sort(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let compare_function_arg = get_argument(cx, arguments, 0);
+        if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
+            return type_error_(cx, "Sort comparator must be a function");
+        };
+
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = this_value.as_object();
+
+        let length = typed_array.array_length() as u64;
+
+        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
+            cx,
+            object,
+            length,
+            compare_function_arg
+        ));
+
+        // Reuse handle between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+        // Copy sorted values into array
+        for (i, value) in sorted_values.iter().enumerate() {
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            maybe!(set(cx, object, index_key, *value, true));
+        }
+
+        object.into()
+    }
+
+    // 23.2.3.30 %TypedArray%.prototype.subarray
     fn subarray(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1150,7 +1193,7 @@ impl TypedArrayPrototype {
         subarray.into()
     }
 
-    // 23.2.3.29 %TypedArray%.prototype.toLocaleString
+    // 23.2.3.31 %TypedArray%.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1183,7 +1226,45 @@ impl TypedArrayPrototype {
         result.into()
     }
 
-    // 23.2.3.31 %TypedArray%.prototype.values
+    // 23.2.3.33 %TypedArray%.prototype.toSorted
+    fn to_sorted(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let compare_function_arg = get_argument(cx, arguments, 0);
+        if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
+            return type_error_(cx, "Sort comparator must be a function");
+        };
+
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = this_value.as_object();
+
+        let length = typed_array.array_length() as u64;
+
+        let sorted_array = maybe!(typed_array_create_same_type(cx, typed_array, length));
+
+        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
+            cx,
+            object,
+            length,
+            compare_function_arg
+        ));
+
+        // Reuse handle between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+        // Copy sorted values into array
+        for (i, value) in sorted_values.iter().enumerate() {
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            maybe!(set(cx, sorted_array.into(), index_key, *value, true));
+        }
+
+        sorted_array.into()
+    }
+
+    // 23.2.3.35 %TypedArray%.prototype.values
     fn values(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1194,7 +1275,7 @@ impl TypedArrayPrototype {
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Value).into()
     }
 
-    // 23.2.3.33 get %TypedArray%.prototype [ @@toStringTag ]
+    // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]
     pub fn get_to_string_tag(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1328,7 +1409,33 @@ pub fn typed_array_create(
     new_typed_array.into()
 }
 
-// 23.2.4.3 ValidateTypedArray
+// 23.2.4.3 TypedArrayCreateSameType
+fn typed_array_create_same_type(
+    cx: &mut Context,
+    exemplar: DynTypedArray,
+    length: u64,
+) -> EvalResult<Handle<ObjectValue>> {
+    let constructor_instrinsic = match exemplar.kind() {
+        TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
+        TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
+        TypedArrayKind::UInt8ClampedArray => Intrinsic::UInt8ClampedArrayConstructor,
+        TypedArrayKind::Int16Array => Intrinsic::Int16ArrayConstructor,
+        TypedArrayKind::UInt16Array => Intrinsic::UInt16ArrayConstructor,
+        TypedArrayKind::Int32Array => Intrinsic::Int32ArrayConstructor,
+        TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
+        TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
+        TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
+        TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
+    };
+
+    let constructor = cx.get_intrinsic(constructor_instrinsic);
+    let length_value = Value::from(length).to_handle(cx);
+
+    typed_array_create_object(cx, constructor, &[length_value], Some(length as usize))
+}
+
+// 23.2.4.4 ValidateTypedArray
 #[inline]
 fn validate_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
     let typed_array = maybe!(require_typed_array(cx, value));
@@ -1338,4 +1445,91 @@ fn validate_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<Dy
     }
 
     typed_array.into()
+}
+
+// 23.2.4.7 CompareTypedArrayElements
+//
+// Will only be called on numbers and BigInts.
+pub fn compare_typed_array_elements(
+    cx: &mut Context,
+    v1: Handle<Value>,
+    v2: Handle<Value>,
+    compare_function: Handle<Value>,
+) -> EvalResult<Ordering> {
+    // Use the compare function if provided
+    if !compare_function.is_undefined() {
+        let result_value =
+            maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
+        if result_value.is_nan() {
+            return Ordering::Equal.into();
+        }
+
+        let result_number = maybe!(to_number(cx, result_value));
+        let result_number = result_number.as_number();
+
+        // Covert from positive/negative/equal number result to Ordering
+        return if result_number == 0.0 {
+            Ordering::Equal.into()
+        } else if result_number < 0.0 {
+            Ordering::Less.into()
+        } else {
+            Ordering::Greater.into()
+        };
+    }
+
+    // Treat NaN as the lowest value
+    let v1_is_nan = v1.is_nan();
+    let v2_is_nan = v2.is_nan();
+    if v1_is_nan && v2_is_nan {
+        return Ordering::Equal.into();
+    } else if v1_is_nan {
+        return Ordering::Greater.into();
+    } else if v2_is_nan {
+        return Ordering::Less.into();
+    }
+
+    // Both values must have the same type - number or BigInt
+    if v1.is_bigint() {
+        debug_assert!(v2.is_bigint());
+
+        let v1_bigint = v1.as_bigint().bigint();
+        let v2_bigint = v2.as_bigint().bigint();
+
+        if v1_bigint < v2_bigint {
+            return Ordering::Less.into();
+        } else if v1_bigint > v2_bigint {
+            return Ordering::Greater.into();
+        }
+
+        if v1_bigint.magnitude().eq(&BigUint::default())
+            && v2_bigint.magnitude().eq(&BigUint::default())
+        {
+            if v1_bigint.sign() == Sign::Minus && v2_bigint.sign() == Sign::Plus {
+                return Ordering::Less.into();
+            } else if v1_bigint.sign() == Sign::Plus && v2_bigint.sign() == Sign::Minus {
+                return Ordering::Greater.into();
+            }
+        }
+    } else {
+        debug_assert!(v1.is_number() && v2.is_number());
+
+        let v1_number = v1.as_number();
+        let v2_number = v2.as_number();
+
+        if v1_number < v2_number {
+            return Ordering::Less.into();
+        } else if v1_number > v2_number {
+            return Ordering::Greater.into();
+        }
+
+        if v1_number == 0.0 && v2_number == 0.0 {
+            if v1_number.is_sign_negative() && v2_number.is_sign_negative() {
+                return Ordering::Less.into();
+            } else if v1_number.is_sign_positive() && v2_number.is_sign_negative() {
+                return Ordering::Greater.into();
+            }
+        }
+    }
+
+    Ordering::Equal.into()
 }

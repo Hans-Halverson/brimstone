@@ -1,10 +1,12 @@
+use std::cmp::Ordering;
+
 use crate::{
     js::runtime::{
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
         },
-        array_object::{array_species_create, ArrayObject},
+        array_object::{array_create, array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
         error::type_error_,
         function::get_argument,
@@ -20,8 +22,8 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{
-            is_array, is_callable, is_strictly_equal, same_value_zero, to_boolean,
-            to_integer_or_infinity, to_object,
+            is_array, is_callable, is_less_than, is_strictly_equal, same_value_zero, to_boolean,
+            to_integer_or_infinity, to_number, to_object,
         },
         Context, EvalResult, Handle, Value,
     },
@@ -31,6 +33,7 @@ use crate::{
 use super::{
     array_iterator::{ArrayIterator, ArrayIteratorKind},
     intrinsics::Intrinsic,
+    typed_array_prototype::compare_typed_array_elements,
 };
 
 pub struct ArrayPrototype;
@@ -134,6 +137,9 @@ impl ArrayPrototype {
             .intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
         array
             .object()
+            .intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
+        array
+            .object()
             .intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm);
         array.object().intrinsic_func(
             cx,
@@ -144,6 +150,9 @@ impl ArrayPrototype {
         );
         array
             .object()
+            .intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
+        array
+            .object()
             .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         array
             .object()
@@ -152,7 +161,7 @@ impl ArrayPrototype {
             .object()
             .intrinsic_data_prop(cx, cx.names.values(), values_function);
 
-        // 23.1.3.34 Array.prototype [ @@iterator ]
+        // 23.1.3.40 Array.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
         array.object().set_property(
             cx,
@@ -160,7 +169,7 @@ impl ArrayPrototype {
             Property::data(values_function, true, false, true),
         );
 
-        // 23.1.3.35 Array.prototype [ @@unscopables ]
+        // 23.1.3.41 Array.prototype [ @@unscopables ]
         let unscopables_key = cx.well_known_symbols.unscopables();
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
         array
@@ -624,7 +633,7 @@ impl ArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.1.3.11 Array.prototype.flat
+    // 23.1.3.13 Array.prototype.flat
     fn flat(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -658,7 +667,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.11.1 FlattenIntoArray
+    // 23.1.3.13.1 FlattenIntoArray
     fn flatten_into_array(
         cx: &mut Context,
         target: Handle<ObjectValue>,
@@ -728,7 +737,7 @@ impl ArrayPrototype {
         target_index.into()
     }
 
-    // 23.1.3.12 Array.prototype.flatMap
+    // 23.1.3.14 Array.prototype.flatMap
     fn flat_map(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -761,7 +770,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.13 Array.prototype.forEach
+    // 23.1.3.15 Array.prototype.forEach
     fn for_each(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -798,7 +807,7 @@ impl ArrayPrototype {
         cx.undefined().into()
     }
 
-    // 23.1.3.14 Array.prototype.includes
+    // 23.1.3.16 Array.prototype.includes
     fn includes(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -843,7 +852,7 @@ impl ArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.1.3.15 Array.prototype.indexOf
+    // 23.1.3.17 Array.prototype.indexOf
     fn index_of(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -889,7 +898,7 @@ impl ArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.1.3.16 Array.prototype.join
+    // 23.1.3.18 Array.prototype.join
     fn join(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -928,7 +937,7 @@ impl ArrayPrototype {
         joined.into()
     }
 
-    // 23.1.3.17 Array.prototype.keys
+    // 23.1.3.19 Array.prototype.keys
     fn keys(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -939,7 +948,7 @@ impl ArrayPrototype {
         ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
     }
 
-    // 23.1.3.18 Array.prototype.lastIndexOf
+    // 23.1.3.20 Array.prototype.lastIndexOf
     fn last_index_of(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -993,7 +1002,7 @@ impl ArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.1.3.19 Array.prototype.map
+    // 23.1.3.21 Array.prototype.map
     fn map(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1033,7 +1042,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.20 Array.prototype.pop
+    // 23.1.3.22 Array.prototype.pop
     fn pop(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1061,7 +1070,7 @@ impl ArrayPrototype {
         element.into()
     }
 
-    // 23.1.3.21 Array.prototype.push
+    // 23.1.3.23 Array.prototype.push
     fn push(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1090,7 +1099,7 @@ impl ArrayPrototype {
         new_length_value.into()
     }
 
-    // 23.1.3.22 Array.prototype.reduce
+    // 23.1.3.24 Array.prototype.reduce
     fn reduce(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1151,7 +1160,7 @@ impl ArrayPrototype {
         accumulator.into()
     }
 
-    // 23.1.3.23 Array.prototype.reduceRight
+    // 23.1.3.25 Array.prototype.reduceRight
     fn reduce_right(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1211,7 +1220,7 @@ impl ArrayPrototype {
         accumulator.into()
     }
 
-    // 23.1.3.24 Array.prototype.reverse
+    // 23.1.3.26 Array.prototype.reverse
     fn reverse(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1267,7 +1276,7 @@ impl ArrayPrototype {
         object.into()
     }
 
-    // 23.1.3.25 Array.prototype.shift
+    // 23.1.3.27 Array.prototype.shift
     fn shift(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1311,7 +1320,7 @@ impl ArrayPrototype {
         first.into()
     }
 
-    // 23.1.3.26 Array.prototype.slice
+    // 23.1.3.28 Array.prototype.slice
     fn slice(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1379,7 +1388,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.27 Array.prototype.some
+    // 23.1.3.29 Array.prototype.some
     fn some(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1419,7 +1428,47 @@ impl ArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.1.3.29 Array.prototype.splice
+    // 23.1.3.30 Array.prototype.sort
+    fn sort(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let compare_function_arg = get_argument(cx, arguments, 0);
+        if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
+            return type_error_(cx, "Array.prototype.sort expects a function");
+        };
+
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let sorted_values = maybe!(sort_indexed_properties::<IGNORE_HOLES, REGULAR_ARRAY>(
+            cx,
+            object,
+            length,
+            compare_function_arg
+        ));
+
+        // Reuse handle between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+        // Copy sorted values into start of array
+        for (i, value) in sorted_values.iter().enumerate() {
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            maybe!(set(cx, object, index_key, *value, true));
+        }
+
+        // If there were holes then delete that number of holes from the end of the array
+        for i in (sorted_values.len() as u64)..length {
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            maybe!(delete_property_or_throw(cx, object, index_key));
+        }
+
+        object.into()
+    }
+
+    // 23.1.3.31 Array.prototype.splice
     fn splice(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1523,7 +1572,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.30 Array.prototype.toLocaleString
+    // 23.1.3.32 Array.prototype.toLocaleString
     fn to_locale_string(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1559,7 +1608,43 @@ impl ArrayPrototype {
         result.into()
     }
 
-    // 23.1.3.31 Array.prototype.toString
+    // 23.1.3.34 Array.prototype.toSorted
+    fn to_sorted(
+        cx: &mut Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let compare_function_arg = get_argument(cx, arguments, 0);
+        if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
+            return type_error_(cx, "Array.prototype.toSorted expects a function");
+        };
+
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let sorted_array = maybe!(array_create(cx, length, None));
+
+        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, REGULAR_ARRAY>(
+            cx,
+            object,
+            length,
+            compare_function_arg
+        ));
+
+        // Reuse handle between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+        // Copy sorted values into array
+        for (i, value) in sorted_values.iter().enumerate() {
+            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            maybe!(create_data_property_or_throw(cx, sorted_array.into(), index_key, *value));
+        }
+
+        sorted_array.into()
+    }
+
+    // 23.1.3.36 Array.prototype.toString
     fn to_string(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1578,7 +1663,7 @@ impl ArrayPrototype {
         call_object(cx, func, array.into(), &[])
     }
 
-    // 23.1.3.32 Array.prototype.unshift
+    // 23.1.3.37 Array.prototype.unshift
     fn unshift(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1622,7 +1707,7 @@ impl ArrayPrototype {
         new_length.into()
     }
 
-    // 23.1.3.33 Array.prototype.values
+    // 23.1.3.38 Array.prototype.values
     fn values(
         cx: &mut Context,
         this_value: Handle<Value>,
@@ -1633,7 +1718,7 @@ impl ArrayPrototype {
         ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
     }
 
-    // 23.1.3.35 Array.prototype [ @@unscopables ]
+    // 23.1.3.41 Array.prototype [ @@unscopables ]
     fn create_unscopables(cx: &mut Context) -> Handle<ObjectValue> {
         let list =
             object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
@@ -1655,4 +1740,146 @@ impl ArrayPrototype {
 
         list
     }
+}
+
+// Whether to exclude holes from the sorted output or not
+pub const IGNORE_HOLES: bool = true;
+pub const INCLUDE_HOLES: bool = false;
+
+// Whether the object is a typed array or not
+pub const TYPED_ARRAY: bool = true;
+pub const REGULAR_ARRAY: bool = false;
+
+// 23.1.3.30.1 SortIndexedProperties
+pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: bool>(
+    cx: &mut Context,
+    object: Handle<ObjectValue>,
+    length: u64,
+    compare_function: Handle<Value>,
+) -> EvalResult<Vec<Handle<Value>>> {
+    // Reuse handle between iterations
+    let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+    // Gather all non-empty values
+    let mut values = vec![];
+
+    for i in 0..length {
+        index_key.replace(PropertyKey::from_u64(cx, i));
+        if !IGNORE_HOLES || maybe!(has_property(cx, object, index_key)) {
+            let value = maybe!(get(cx, object, index_key));
+            values.push(value);
+        }
+    }
+
+    merge_sort(cx, &values, &mut |cx, v1, v2| {
+        if IS_TYPED_ARRAY {
+            compare_typed_array_elements(cx, v1, v2, compare_function)
+        } else {
+            compare_array_elements(cx, v1, v2, compare_function)
+        }
+    })
+}
+
+// 23.1.3.30.2 CompareArrayElements
+fn compare_array_elements(
+    cx: &mut Context,
+    v1: Handle<Value>,
+    v2: Handle<Value>,
+    compare_function: Handle<Value>,
+) -> EvalResult<Ordering> {
+    let v1_is_undefined = v1.is_undefined();
+    let v2_is_undefined = v2.is_undefined();
+    if v1_is_undefined && v2_is_undefined {
+        return Ordering::Equal.into();
+    } else if v1_is_undefined {
+        return Ordering::Greater.into();
+    } else if v2_is_undefined {
+        return Ordering::Less.into();
+    }
+
+    // Use the compare function if provided
+    if !compare_function.is_undefined() {
+        let result_value =
+            maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
+        if result_value.is_nan() {
+            return Ordering::Equal.into();
+        }
+
+        let result_number = maybe!(to_number(cx, result_value));
+        let result_number = result_number.as_number();
+
+        // Covert from positive/negative/equal number result to Ordering
+        return if result_number == 0.0 {
+            Ordering::Equal.into()
+        } else if result_number < 0.0 {
+            Ordering::Less.into()
+        } else {
+            Ordering::Greater.into()
+        };
+    }
+
+    // Otherwise convert to strings and compare
+    let v1_string = maybe!(to_string(cx, v1));
+    let v2_string = maybe!(to_string(cx, v2));
+
+    if must!(is_less_than(cx, v1_string.into(), v2_string.into())).is_true() {
+        Ordering::Less.into()
+    } else if must!(is_less_than(cx, v2_string.into(), v1_string.into())).is_true() {
+        Ordering::Greater.into()
+    } else {
+        Ordering::Equal.into()
+    }
+}
+
+/// Naive merge sort where comparator function may have an abrupt completion.
+///
+/// Much room for optimization.
+fn merge_sort<F>(
+    cx: &mut Context,
+    items: &[Handle<Value>],
+    f: &mut F,
+) -> EvalResult<Vec<Handle<Value>>>
+where
+    F: FnMut(&mut Context, Handle<Value>, Handle<Value>) -> EvalResult<Ordering>,
+{
+    if items.len() <= 1 {
+        return items.to_vec().into();
+    }
+
+    let (first_half, second_half) = items.split_at(items.len() / 2);
+    let merged_first_half = maybe!(merge_sort(cx, first_half, f));
+    let merged_second_half = maybe!(merge_sort(cx, second_half, f));
+
+    let mut result = vec![];
+    result.reserve_exact(merged_first_half.len() + merged_second_half.len());
+
+    let mut i = 0;
+    let mut j = 0;
+
+    while i < merged_first_half.len() && j < merged_second_half.len() {
+        let v1 = merged_first_half[i];
+        let v2 = merged_second_half[j];
+
+        let ordering = maybe!(f(cx, v1, v2));
+
+        if ordering.is_gt() {
+            result.push(v2);
+            j += 1;
+        } else {
+            result.push(v1);
+            i += 1;
+        }
+    }
+
+    while i < merged_first_half.len() {
+        result.push(merged_first_half[i]);
+        i += 1;
+    }
+
+    while j < merged_second_half.len() {
+        result.push(merged_second_half[j]);
+        j += 1;
+    }
+
+    result.into()
 }

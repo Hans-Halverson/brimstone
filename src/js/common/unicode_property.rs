@@ -1,3 +1,5 @@
+use icu_properties::Script;
+
 use super::{
     icu::ICU,
     unicode::{is_ascii, CodePoint},
@@ -7,6 +9,7 @@ use super::{
 pub enum UnicodeProperty {
     Binary(BinaryUnicodeProperty),
     GeneralCategory(GeneralCategoryProperty),
+    Script(ScriptProperty),
 }
 
 impl UnicodeProperty {
@@ -14,6 +17,7 @@ impl UnicodeProperty {
         match self {
             Self::Binary(property) => property.is_match(code_point),
             Self::GeneralCategory(property) => property.is_match(code_point),
+            Self::Script(property) => property.is_match(code_point),
         }
     }
 }
@@ -233,7 +237,7 @@ impl BinaryUnicodeProperty {
     }
 }
 
-/// All General_Category properties spec
+/// All General_Category properties listed in the spec
 #[derive(Clone, Copy, Debug)]
 pub enum GeneralCategoryProperty {
     /// The C general category
@@ -449,6 +453,31 @@ impl GeneralCategoryProperty {
                 .general_categories
                 .space_separator
                 .contains32(code_point),
+        }
+    }
+}
+
+/// A script property with or without extensions
+#[derive(Clone, Copy, Debug)]
+pub struct ScriptProperty {
+    script: Script,
+    /// Whether this is a Script_Extensions property or a regular Script property
+    with_extensions: bool,
+}
+
+impl ScriptProperty {
+    pub fn parse(str: &str, with_extensions: bool) -> Option<ScriptProperty> {
+        ICU.scripts
+            .names
+            .get_strict(str)
+            .map(|script| ScriptProperty { script, with_extensions })
+    }
+
+    pub fn is_match(&self, code_point: CodePoint) -> bool {
+        if self.with_extensions {
+            ICU.scripts.classifier.has_script(code_point, self.script)
+        } else {
+            ICU.scripts.classifier.get_script_val(code_point) == self.script
         }
     }
 }

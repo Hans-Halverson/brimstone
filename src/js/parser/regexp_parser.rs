@@ -7,7 +7,9 @@ use crate::js::common::{
         as_id_part, as_id_start, get_hex_value, is_ascii_alphabetic, is_decimal_digit,
         is_id_continue_unicode,
     },
-    unicode_property::{BinaryUnicodeProperty, GeneralCategoryProperty, UnicodeProperty},
+    unicode_property::{
+        BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
+    },
     wtf_8::Wtf8String,
 };
 
@@ -805,6 +807,18 @@ impl<T: LexerStream> RegExpParser<T> {
             if matches!(property_name.as_str(), "General_Category" | "gc") {
                 if let Some(general_category) = GeneralCategoryProperty::parse(&property_value) {
                     return Ok(UnicodeProperty::GeneralCategory(general_category));
+                }
+            }
+
+            if matches!(property_name.as_str(), "Script" | "sc") {
+                if let Some(script_property) = ScriptProperty::parse(&property_value, false) {
+                    return Ok(UnicodeProperty::Script(script_property));
+                }
+            }
+
+            if matches!(property_name.as_str(), "Script_Extensions" | "scx") {
+                if let Some(script_property) = ScriptProperty::parse(&property_value, true) {
+                    return Ok(UnicodeProperty::Script(script_property));
                 }
             }
 

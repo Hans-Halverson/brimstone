@@ -1,5 +1,6 @@
 // @generated
 mod normalizer;
+mod propnames;
 mod props;
 use ::icu_provider::prelude::*;
 /// Implement [`DataProvider<M>`] on the given struct using the data
@@ -453,6 +454,24 @@ macro_rules! impl_data_provider {
                     .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_properties::provider::RegionalIndicatorV1Marker::KEY, req))
             }
         }
+        impl DataProvider<::icu_properties::provider::ScriptNameToValueV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::ScriptNameToValueV1Marker>, DataError> {
+                propnames::from::sc_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_properties::provider::ScriptNameToValueV1Marker::KEY, req))
+            }
+        }
+        impl DataProvider<::icu_properties::provider::ScriptWithExtensionsPropertyV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::ScriptWithExtensionsPropertyV1Marker>, DataError> {
+                props::scx_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_properties::provider::ScriptWithExtensionsPropertyV1Marker::KEY, req))
+            }
+        }
         impl DataProvider<::icu_properties::provider::SentenceTerminalV1Marker> for $provider {
             fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_properties::provider::SentenceTerminalV1Marker>, DataError> {
                 props::sterm_v1::lookup(&req.locale)
@@ -615,6 +634,9 @@ macro_rules! impl_any_provider {
                 const QUOTATIONMARKV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::QuotationMarkV1Marker::KEY.hashed();
                 const RADICALV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::RadicalV1Marker::KEY.hashed();
                 const REGIONALINDICATORV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::RegionalIndicatorV1Marker::KEY.hashed();
+                const SCRIPTNAMETOVALUEV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::ScriptNameToValueV1Marker::KEY.hashed();
+                const SCRIPTWITHEXTENSIONSPROPERTYV1MARKER: ::icu_provider::DataKeyHash =
+                    ::icu_properties::provider::ScriptWithExtensionsPropertyV1Marker::KEY.hashed();
                 const SENTENCETERMINALV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::SentenceTerminalV1Marker::KEY.hashed();
                 const SOFTDOTTEDV1MARKER: ::icu_provider::DataKeyHash = ::icu_properties::provider::SoftDottedV1Marker::KEY.hashed();
                 const TERMINALPUNCTUATIONV1MARKER: ::icu_provider::DataKeyHash =
@@ -673,6 +695,8 @@ macro_rules! impl_any_provider {
                     QUOTATIONMARKV1MARKER => props::qmark_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     RADICALV1MARKER => props::radical_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     REGIONALINDICATORV1MARKER => props::ri_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    SCRIPTNAMETOVALUEV1MARKER => propnames::from::sc_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
+                    SCRIPTWITHEXTENSIONSPROPERTYV1MARKER => props::scx_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     SENTENCETERMINALV1MARKER => props::sterm_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     SOFTDOTTEDV1MARKER => props::sd_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     TERMINALPUNCTUATIONV1MARKER => props::term_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),

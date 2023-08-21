@@ -41,6 +41,7 @@ pub mod pat_ws_v1;
 pub mod qmark_v1;
 pub mod radical_v1;
 pub mod ri_v1;
+pub mod scx_v1;
 pub mod sd_v1;
 pub mod sterm_v1;
 pub mod term_v1;

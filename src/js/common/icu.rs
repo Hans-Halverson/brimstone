@@ -1,7 +1,10 @@
 use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
 use icu_properties::{
+    names::{PropertyValueNameToEnumMapper, PropertyValueNameToEnumMapperBorrowed},
+    script::ScriptWithExtensionsBorrowed,
+    script::{self, ScriptWithExtensions},
     sets::{self, CodePointSetData, CodePointSetDataBorrowed},
-    GeneralCategoryGroup,
+    GeneralCategoryGroup, Script,
 };
 use once_cell::sync::Lazy;
 
@@ -9,6 +12,7 @@ include!("../../../icu/data/mod.rs");
 
 pub struct ICU {
     pub general_categories: GeneralCategories,
+    pub scripts: Scripts,
     pub properties: Properties,
     pub normalizers: Normalizers,
 }
@@ -90,6 +94,13 @@ pub struct GeneralCategories {
     pub paragraph_separator: CodePointSetDataBorrowed<'static>,
     /// The Zs general category
     pub space_separator: CodePointSetDataBorrowed<'static>,
+}
+
+pub struct Scripts {
+    /// Classifier which maps code points to scripts or sets of scripts
+    pub classifier: ScriptWithExtensionsBorrowed<'static>,
+    /// Mapper which maps script name to script enum
+    pub names: PropertyValueNameToEnumMapperBorrowed<'static, Script>,
 }
 
 pub struct Properties {
@@ -318,6 +329,12 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
     binary_property_static!(XID_CONTINUE_SET, load_xid_continue);
     binary_property_static!(XID_START_SET, load_xid_start);
 
+    // Scripts
+    static SCRIPT_CLASSIFIER: Lazy<ScriptWithExtensions> =
+        Lazy::new(|| script::load_script_with_extensions_unstable(&BakedDataProvider).unwrap());
+    static SCRIPT_NAMES: Lazy<PropertyValueNameToEnumMapper<Script>> =
+        Lazy::new(|| Script::get_name_to_enum_mapper(&BakedDataProvider).unwrap());
+
     ICU {
         general_categories: GeneralCategories {
             other: OTHER_SET.as_borrowed(),
@@ -358,6 +375,10 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
             line_separator: LINE_SEPARATOR_SET.as_borrowed(),
             paragraph_separator: PARAGRAPH_SEPARATOR_SET.as_borrowed(),
             space_separator: SPACE_SEPARATOR_SET.as_borrowed(),
+        },
+        scripts: Scripts {
+            classifier: SCRIPT_CLASSIFIER.as_borrowed(),
+            names: SCRIPT_NAMES.as_borrowed(),
         },
         properties: Properties {
             ascii_hex_digit: ASCII_HEX_DIGIT_SET.as_borrowed(),

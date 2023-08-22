@@ -18,6 +18,9 @@ pub struct Heap {
     // Pointer to the end of the next heap
     next_heap_end: *const u8,
     layout: Layout,
+
+    #[cfg(feature = "gc_stress_test")]
+    pub gc_stress_test: bool,
 }
 
 /// Default size of the heap, in bytes
@@ -55,6 +58,9 @@ impl Heap {
                 next_heap_start,
                 next_heap_end,
                 layout,
+
+                #[cfg(feature = "gc_stress_test")]
+                gc_stress_test: false,
             }
         }
     }
@@ -75,6 +81,12 @@ impl Heap {
     #[inline]
     pub fn alloc_uninit_with_size<T>(&mut self, size: usize) -> HeapPtr<T> {
         let alloc_size = Self::alloc_size_for_request_size(size);
+
+        // Run a GC on every allocation in stress test mode
+        #[cfg(feature = "gc_stress_test")]
+        if self.gc_stress_test {
+            self.run_gc();
+        }
 
         unsafe {
             let start = self.current;

@@ -266,6 +266,11 @@ impl Context {
             visitor.visit_value(&mut finalizer_callback.held_value);
         }
     }
+
+    #[cfg(feature = "gc_stress_test")]
+    pub fn enable_gc_stress_test(&mut self) {
+        self.heap.gc_stress_test = true;
+    }
 }
 
 pub struct GlobalSymbolRegistryField;

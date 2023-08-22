@@ -165,6 +165,9 @@ fn run_single_test(
     let test_262_object = Test262Object::new(&mut cx, realm);
     Test262Object::install(&mut cx, realm, test_262_object);
 
+    #[cfg(feature = "gc_stress_test")]
+    cx.enable_gc_stress_test();
+
     // Default harness files are loaded unless running in raw mode
     if test.mode != TestMode::Raw {
         load_harness_test_file(&mut cx, realm, test262_root, "assert.js");

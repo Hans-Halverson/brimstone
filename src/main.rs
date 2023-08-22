@@ -43,6 +43,10 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     let mut cx = js::runtime::Context::new();
     let realm = js::runtime::initialize_host_defined_realm(&mut cx, args.expose_gc);
+
+    #[cfg(feature = "gc_stress_test")]
+    cx.enable_gc_stress_test();
+
     js::runtime::evaluate(&mut cx, ast, realm)?;
 
     return Ok(());

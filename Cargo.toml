@@ -20,3 +20,7 @@ icu_normalizer = "1.2.0"
 icu_properties = "1.2.0"
 icu_provider = { version = "1.2.0", features = ["sync"] }
 zerovec = "0.9.4"
+
+[features]
+# Run the garbage collector in stress test mode
+gc_stress_test = []

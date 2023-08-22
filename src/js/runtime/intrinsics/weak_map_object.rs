@@ -93,6 +93,7 @@ impl HeapObject for HeapPtr<WeakMapObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.weak_map_data);
 
         // Intentionally do not visit next_weak_map
     }

@@ -371,13 +371,13 @@ impl VirtualObject for Handle<Function> {
 
 impl Handle<Function> {
     pub fn add_fields(&mut self, cx: &mut Context, fields: Vec<ClassFieldDefinition>) {
-        // First collect fields into vec
-        let fields = fields.iter().map(|field| field.to_heap()).collect();
-
         let fields_array = BsArray::<HeapClassFieldDefinition>::new_from_vec(
             cx,
             ObjectKind::FunctionFieldsArray,
-            fields,
+            fields.len(),
+            // Collect fields into vec, but lazily dereference handles after array has been
+            // allocated.
+            || fields.iter().map(|field| field.to_heap()).collect(),
         );
         self.fields = Some(fields_array)
     }
@@ -387,16 +387,20 @@ impl Handle<Function> {
         cx: &mut Context,
         private_methods: HashMap<PrivateName, Property>,
     ) {
-        // First collect private methods into vec
-        let private_methods = private_methods
-            .iter()
-            .map(|(private_name, method_property)| (private_name.get_(), method_property.to_heap()))
-            .collect();
-
         let methods_array = BsArray::<(HeapPrivateName, HeapProperty)>::new_from_vec(
             cx,
             ObjectKind::FunctionPrivateMethodsArray,
-            private_methods,
+            private_methods.len(),
+            // Collect private methods into vec, but lazily dereference handles after array has been
+            // allocated.
+            || {
+                private_methods
+                    .iter()
+                    .map(|(private_name, method_property)| {
+                        (private_name.get_(), method_property.to_heap())
+                    })
+                    .collect()
+            },
         );
         self.private_methods = Some(methods_array);
     }

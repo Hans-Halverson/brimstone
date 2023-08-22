@@ -10,6 +10,7 @@ use crate::{
 
 use super::InlineArray;
 
+#[repr(C)]
 pub struct BsArray<T> {
     descriptor: HeapPtr<ObjectDescriptor>,
     array: InlineArray<T>,
@@ -28,16 +29,21 @@ impl<T: Clone> BsArray<T> {
         array
     }
 
-    pub fn new_from_vec(cx: &mut Context, kind: ObjectKind, elements: Vec<T>) -> HeapPtr<Self> {
-        let size = Self::calculate_size_in_bytes(elements.len());
+    pub fn new_from_vec(
+        cx: &mut Context,
+        kind: ObjectKind,
+        length: usize,
+        gen_elements: impl Fn() -> Vec<T>,
+    ) -> HeapPtr<Self> {
+        let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.heap.alloc_uninit_with_size::<BsArray<T>>(size);
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
 
         // Initialize entries array to empty
-        array.array.init_with_uninit(elements.len());
+        array.array.init_with_uninit(length);
 
-        for (i, element) in elements.into_iter().enumerate() {
+        for (i, element) in gen_elements().into_iter().enumerate() {
             array.array.set_unchecked(i, element);
         }
 

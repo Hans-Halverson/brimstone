@@ -117,7 +117,7 @@ impl HeapObject for HeapPtr<PrivateEnvironment> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
         visitor.visit_pointer(&mut self.names);
-        self.outer.as_mut().map(|o| o.visit_pointers(visitor));
+        visitor.visit_pointer_opt(&mut self.outer);
     }
 }
 

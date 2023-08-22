@@ -232,6 +232,6 @@ impl HeapObject for HeapPtr<ExecutionContext> {
             .map(|sm| sm.visit_pointers(visitor));
         self.lexical_env.visit_pointers(visitor);
         self.variable_env.visit_pointers(visitor);
-        self.private_env.as_mut().map(|e| e.visit_pointers(visitor));
+        visitor.visit_pointer_opt(&mut self.private_env);
     }
 }

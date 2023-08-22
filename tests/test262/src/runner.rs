@@ -57,7 +57,7 @@ impl TestRunner {
 
         let all_tests_start_timestamp = SystemTime::now();
 
-        for test in self.index.tests.values() {
+        for (i, test) in self.index.tests.values().enumerate() {
             if !self.should_run_test(test) {
                 num_skipped += 1;
                 continue;
@@ -75,7 +75,7 @@ impl TestRunner {
 
                 let panic_result = panic::catch_unwind(|| {
                     if verbose {
-                        println!("{}", test.path);
+                        println!("{i}: {}", test.path);
                     }
 
                     run_full_test(&test, &test262_root, start_timestamp)

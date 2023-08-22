@@ -47,6 +47,15 @@ impl IgnoredIndex {
             );
         }
 
+        if cfg!(feature = "gc_stress_test") {
+            let gc_stress_test_ignored = &ignored_json["gc_stress_test"];
+            Self::add_ignored_config(
+                gc_stress_test_ignored,
+                &mut ignored_tests_strings,
+                &mut ignored_features,
+            );
+        }
+
         let ignored_tests_regex = Regex::new(&format!("^({})$", ignored_tests_strings.join("|")))?;
 
         Ok(IgnoredIndex {

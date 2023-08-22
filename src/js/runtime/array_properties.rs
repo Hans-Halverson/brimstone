@@ -100,6 +100,9 @@ impl ArrayProperties {
         // Capacity must be at least doubled
         let new_capacity = u32::max(old_capacity.saturating_mul(2), new_length);
 
+        // Save old dense properties before allocation
+        let dense_properties = dense_properties.to_handle();
+
         // Create new dense array properties, ensure that no allocation happens after this point
         // otherwise we could try to GC a partially initialized array.
         let mut new_dense_properties = DenseArrayProperties::new(cx, new_capacity);
@@ -107,10 +110,9 @@ impl ArrayProperties {
 
         unsafe {
             // Copy data from old array to new array
-            let new_data_ptr = new_dense_properties.array.data_mut_ptr();
             std::ptr::copy_nonoverlapping(
                 dense_properties.array.data_ptr(),
-                new_data_ptr,
+                new_dense_properties.array.data_mut_ptr(),
                 old_length as usize,
             );
 
@@ -130,6 +132,9 @@ impl ArrayProperties {
             dense_properties.set_len(new_length);
             return;
         }
+
+        // Save old dense properties before allocation
+        let dense_properties = dense_properties.to_handle();
 
         // Create new dense array properties, ensure that no allocation happens after this point
         // otherwise we could try to GC a partially initialized array.

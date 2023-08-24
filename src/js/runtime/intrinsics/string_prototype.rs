@@ -929,7 +929,9 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        StringIterator::new(cx, string).into()
+        let flat_string = string.flatten();
+
+        StringIterator::new(cx, flat_string).into()
     }
 }
 

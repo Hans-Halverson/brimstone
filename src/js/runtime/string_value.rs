@@ -640,11 +640,6 @@ impl Handle<StringValue> {
         let flat_string = self.flatten();
         flat_string.iter_code_points()
     }
-
-    pub fn iter_code_points_safe(&self) -> SafeCodePointIterator {
-        let flat_string = self.flatten();
-        SafeCodePointIterator::from_string(flat_string)
-    }
 }
 
 impl From<Handle<StringValue>> for Handle<ObjectValue> {
@@ -989,6 +984,10 @@ impl Handle<FlatString> {
     #[inline]
     pub fn as_string(&self) -> Handle<StringValue> {
         self.cast()
+    }
+
+    pub fn iter_code_points_safe(&self) -> SafeCodePointIterator {
+        SafeCodePointIterator::from_string(*self)
     }
 }
 

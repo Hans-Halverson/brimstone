@@ -12,7 +12,7 @@ use crate::{
         ordinary_object::object_create,
         property::Property,
         realm::Realm,
-        string_value::{FlatString, SafeCodePointIterator, StringValue},
+        string_value::{FlatString, SafeCodePointIterator},
         Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
@@ -28,7 +28,7 @@ extend_object! {
 }
 
 impl StringIterator {
-    pub fn new(cx: &mut Context, string: Handle<StringValue>) -> Handle<StringIterator> {
+    pub fn new(cx: &mut Context, string: Handle<FlatString>) -> Handle<StringIterator> {
         let mut object = object_create::<StringIterator>(
             cx,
             ObjectKind::StringIterator,

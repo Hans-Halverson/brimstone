@@ -261,7 +261,7 @@ impl GarbageCollector {
                 let weak_key_value = weak_key.value_mut();
 
                 // Check if key has already been visited and moved to the to-space. If not, key
-                // should be garbage collected so remove entry from map. It is sfae to remove
+                // should be garbage collected so remove entry from map. It is safe to remove
                 // during iteration for a BsHashMap.
                 if !self.is_in_to_space(weak_key_value.as_pointer().as_ptr().cast()) {
                     weak_map.weak_map_data().remove(weak_key);
@@ -272,7 +272,7 @@ impl GarbageCollector {
         }
     }
 
-    // Visit live weak maps and check if their keys are still live. Visit the values associted with
+    // Visit live weak maps and check if their keys are still live. Visit the values associated with
     // all lives keys. Return whether any new live keys were found.
     fn visit_live_weak_map_entries(&mut self) -> bool {
         // Walk all live weak maps in the list

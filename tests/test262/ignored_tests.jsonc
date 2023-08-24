@@ -97,7 +97,8 @@
   // Slow tests which are ignored in GC stress test runs
   "gc_stress_test": {
     "tests": [
-      "language/identifiers/start-unicode-*.js"
+      "language/identifiers/start-unicode-*.js",
+      "built-ins/Array/prototype/sort/stability-2048-elements.js"
     ]
   }
 }

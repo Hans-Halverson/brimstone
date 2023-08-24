@@ -222,7 +222,9 @@ impl FinalizationRegistryCells {
     }
 
     pub fn iter_mut_gc_unsafe(&mut self) -> slice::IterMut<Option<FinalizationRegistryCell>> {
-        self.cells.as_mut_slice().iter_mut()
+        let num_cells_used = self.num_cells_used();
+        let used_slice = &mut self.cells.as_mut_slice()[0..num_cells_used];
+        used_slice.iter_mut()
     }
 }
 
@@ -233,8 +235,8 @@ impl HeapObject for HeapPtr<FinalizationRegistryObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
-        visitor.visit_pointer(&mut self.cleanup_callback);
         visitor.visit_pointer(&mut self.cells);
+        visitor.visit_pointer(&mut self.cleanup_callback);
 
         // Intentionally do not visit next_finalization_registry
     }

@@ -228,7 +228,10 @@ pub fn function_declaration_instantiation(
     } else {
         // A separate Environment Record is needed to ensure that closures created by expressions in
         // the formal parameter list do not have visibility of declarations in the function body.
-        callee_context.set_variable_env(DeclarativeEnvironment::new(cx, Some(env)).into_dyn_env());
+
+        // Be sure to allocate before calling setter
+        let decl_env = DeclarativeEnvironment::new(cx, Some(env));
+        callee_context.set_variable_env(decl_env.into_dyn_env());
         let mut var_env = callee_context.variable_env();
 
         let mut instantiated_var_names = HashSet::new();

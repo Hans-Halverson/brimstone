@@ -97,10 +97,7 @@
   // Slow tests which are ignored in GC stress test runs
   "gc_stress_test": {
     "tests": [
-      "language/identifiers/start-unicode-*.js",
-      "language/literals/regexp/u-case-mapping.js",
-      "language/literals/regexp/y-assertion-start.js",
-      "language/statements/class/subclass/builtin-objects/RegExp/regular-subclassing.js"
+      "language/identifiers/start-unicode-*.js"
     ]
   }
 }

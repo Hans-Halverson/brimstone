@@ -388,5 +388,8 @@ impl HeapObject for HeapPtr<RegExpObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.compiled_regexp);
+        visitor.visit_pointer(&mut self.escaped_pattern_source);
+        visitor.visit_pointer_opt(&mut self.flags_string);
     }
 }

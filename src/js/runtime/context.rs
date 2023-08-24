@@ -68,7 +68,9 @@ pub struct Context {
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
 
 impl Context {
-    pub fn new() -> Box<Context> {
+    /// Create a context. All allocations that occur during the init callback will be placed in
+    /// the permanent heap.
+    pub fn new<R>(mut init: impl FnMut(&mut Context) -> R) -> (Box<Context>, R) {
         let mut heap = Heap::new();
 
         // Context does not yet exist, so handle scope must directly reference heap
@@ -122,7 +124,11 @@ impl Context {
         // Clean up handles from Context creation
         handle_scope.exit();
 
-        cx
+        // Execute the init callback, and turn its allocations into the permanent heap
+        let result = init(&mut cx);
+        cx.heap.mark_current_semispace_as_permanent();
+
+        (cx, result)
     }
 
     pub fn push_execution_context(&mut self, exec_ctx: Handle<ExecutionContext>) {
@@ -247,24 +253,25 @@ impl Context {
         self.heap.visit_roots(visitor);
 
         visitor.visit_pointer(&mut self.global_symbol_registry);
-
-        self.names.visit_roots(visitor);
-        self.well_known_symbols.visit_roots(visitor);
-        self.base_descriptors.visit_roots(visitor);
         self.interned_strings.visit_roots(visitor);
 
         for closure_environment in self.closure_environments.iter_mut() {
             visitor.visit_pointer_opt(closure_environment);
         }
 
-        visitor.visit_pointer(&mut self.default_named_properties);
-        visitor.visit_pointer(&mut self.default_array_properties);
-        self.uninit_environment.visit_pointers(visitor);
-
         for finalizer_callback in self.finalizer_callbacks.iter_mut() {
             visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);
             visitor.visit_value(&mut finalizer_callback.held_value);
         }
+
+        // The following fields must be in the permanent semispace so they do not need to be visited
+        //
+        // - All builtin names
+        // - All builtin symbols
+        // - All builtin descriptors
+        // - default_named_properties
+        // - default_array_properties
+        // - uninit_environment
     }
 
     #[cfg(feature = "gc_stress_test")]

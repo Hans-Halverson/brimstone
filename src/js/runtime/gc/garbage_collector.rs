@@ -26,6 +26,10 @@ pub struct GarbageCollector {
     to_space_start_ptr: *const u8,
     to_space_end_ptr: *const u8,
 
+    // Bounds of the permanent region
+    permanent_start_ptr: *const u8,
+    permanent_end_ptr: *const u8,
+
     // Pointer to the next to-space object to fix
     fix_ptr: *const u8,
 
@@ -50,12 +54,15 @@ impl GarbageCollector {
     fn new(cx: &mut Context) -> GarbageCollector {
         let (from_space_start_ptr, from_space_end_ptr) = cx.heap.current_heap_bounds();
         let (to_space_start_ptr, to_space_end_ptr) = cx.heap.next_heap_bounds();
+        let (permanent_start_ptr, permanent_end_ptr) = cx.heap.permanent_heap_bounds();
 
         GarbageCollector {
             from_space_start_ptr,
             from_space_end_ptr,
             to_space_start_ptr,
             to_space_end_ptr,
+            permanent_start_ptr,
+            permanent_end_ptr,
             fix_ptr: to_space_start_ptr,
             alloc_ptr: to_space_start_ptr,
             weak_ref_list: None,
@@ -68,8 +75,11 @@ impl GarbageCollector {
     pub fn run(cx: &mut Context) {
         let mut gc = Self::new(cx);
 
-        // First visit roots and copy their objects to the from-heap
+        // First visit roots in the context and copy their objects to the to-heap
         cx.visit_roots(&mut gc);
+
+        // Then visit all the roots in the permanent heap and copy their objects to the to-heap
+        gc.visit_permanent_heap_roots();
 
         loop {
             // Then start fixing all pointers in each new heap object until fix pointer catches up with
@@ -101,13 +111,32 @@ impl GarbageCollector {
         cx.heap.swap_heaps(gc.alloc_ptr);
     }
 
+    /// Visit all the roots in the permanent heap and copy their objects to the to-heap.
+    ///
+    /// The permanent heap may contain pointers into the semispaces if a permanent heap object was
+    /// mutated.
+    fn visit_permanent_heap_roots(&mut self) {
+        let mut current_ptr = self.permanent_start_ptr;
+        while current_ptr < self.permanent_end_ptr {
+            let mut permanent_heap_item =
+                HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
+            permanent_heap_item.visit_pointers(self);
+
+            // Increment current pointer to point to next permanent heap object
+            let alloc_size = Heap::alloc_size_for_request_size(permanent_heap_item.byte_size());
+            unsafe { current_ptr = current_ptr.add(alloc_size) }
+        }
+    }
+
     #[inline]
     fn copy_or_fix_pointer(&mut self, heap_item: &mut HeapPtr<HeapItem>) {
-        // Pointers may either point outside the heap or have already been copied
+        // We only need to visit pointers to the from-space
         if !self.is_in_from_space(heap_item.as_ptr() as *const _ as *const u8) {
-            // The only other valid pointers are the null pointer and the const dangling pointer.
+            // The only valid pointers are either null, uninitialized (aka NonNull::dangling()), or
+            // pointers to the permanent space.
             debug_assert!(
-                heap_item.as_ptr() == NonNull::dangling().as_ptr()
+                self.is_in_permanent_space(heap_item.as_ptr().cast_const().cast())
+                    || heap_item.as_ptr() == NonNull::dangling().as_ptr()
                     || heap_item.as_ptr() as usize == 0
             );
 
@@ -174,6 +203,11 @@ impl GarbageCollector {
     #[inline]
     fn is_in_to_space(&self, ptr: *const u8) -> bool {
         self.to_space_start_ptr <= ptr && ptr < self.to_space_end_ptr
+    }
+
+    #[inline]
+    fn is_in_permanent_space(&self, ptr: *const u8) -> bool {
+        self.permanent_start_ptr <= ptr && ptr < self.permanent_end_ptr
     }
 
     // Add a weak ref to the linked list of weak refs that are live during this garbage collection.

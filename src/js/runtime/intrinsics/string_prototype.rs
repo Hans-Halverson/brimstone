@@ -679,9 +679,9 @@ impl StringPrototype {
             let mut code_unit_strings = vec![];
             let limit = usize::min(limit as usize, string.len());
 
-            for code_unit in string.iter_slice_code_units(0, limit) {
-                let code_unit_string = FlatString::from_code_unit(cx, code_unit).as_string();
-                code_unit_strings.push(code_unit_string.into());
+            for i in 0..limit {
+                let substring = string.substring(cx, i, i + 1);
+                code_unit_strings.push(substring.into());
             }
 
             return create_array_from_list(cx, &code_unit_strings).into();

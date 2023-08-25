@@ -98,6 +98,7 @@
   "gc_stress_test": {
     "tests": [
       "language/identifiers/start-unicode-*.js",
+      "language/literals/regexp/S7.8.5_A2.1_T2.js",
       "built-ins/Array/prototype/sort/stability-2048-elements.js"
     ]
   }

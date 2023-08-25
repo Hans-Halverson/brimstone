@@ -245,7 +245,11 @@ impl GarbageCollector {
         let mut next_weak_ref = self.weak_ref_list;
         while let Some(mut weak_ref) = next_weak_ref {
             let target = weak_ref.weak_ref_target();
-            if target.is_pointer() {
+
+            debug_assert!(target.is_pointer());
+            let target_ptr = target.as_pointer().as_ptr().cast();
+
+            if self.is_in_from_space(target_ptr) {
                 let target_descriptor = target.as_pointer().descriptor();
 
                 // Target is known to be live if it has already moved (and left a forwarding pointer)
@@ -269,15 +273,21 @@ impl GarbageCollector {
         while let Some(weak_set) = next_weak_set {
             for weak_ref in weak_set.weak_set_data().iter_mut_gc_unsafe() {
                 let weak_ref_value = weak_ref.value_mut();
-                let weak_ref_descriptor = weak_ref_value.as_pointer().descriptor();
 
-                // Value is known to be live if it has already moved (and left a forwarding pointer)
-                if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_ref_descriptor) {
-                    *weak_ref_value = forwarding_ptr.cast::<ObjectValue>().into();
-                } else {
-                    // Otherwise value was garbage collected so remove value from set.
-                    // It is safe to remove during iteration for a BsHashSet.
-                    weak_set.weak_set_data().remove(weak_ref);
+                debug_assert!(weak_ref_value.is_pointer());
+                let weak_ref_value_ptr = weak_ref_value.as_pointer().as_ptr().cast();
+
+                if self.is_in_from_space(weak_ref_value_ptr) {
+                    let weak_ref_descriptor = weak_ref_value.as_pointer().descriptor();
+
+                    // Value is known to be live if it has already moved (and left a forwarding pointer)
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_ref_descriptor) {
+                        *weak_ref_value = forwarding_ptr.cast::<ObjectValue>().into();
+                    } else {
+                        // Otherwise value was garbage collected so remove value from set.
+                        // It is safe to remove during iteration for a BsHashSet.
+                        weak_set.weak_set_data().remove(weak_ref);
+                    }
                 }
             }
 
@@ -294,10 +304,12 @@ impl GarbageCollector {
             for (weak_key, _) in weak_map.weak_map_data().iter_mut_gc_unsafe() {
                 let weak_key_value = weak_key.value_mut();
 
-                // Check if key has already been visited and moved to the to-space. If not, key
-                // should be garbage collected so remove entry from map. It is safe to remove
-                // during iteration for a BsHashMap.
-                if !self.is_in_to_space(weak_key_value.as_pointer().as_ptr().cast()) {
+                debug_assert!(weak_key_value.is_pointer());
+                let weak_key_ptr = weak_key_value.as_pointer().as_ptr().cast();
+
+                // Check if key was not live. If not, key should be garbage collected so remove
+                // entry from map. It is safe to remove during iteration for a BsHashMap.
+                if self.is_in_from_space(weak_key_ptr) {
                     weak_map.weak_map_data().remove(weak_key);
                 }
             }
@@ -311,14 +323,17 @@ impl GarbageCollector {
     fn visit_live_weak_map_entries(&mut self) -> bool {
         // Walk all live weak maps in the list
         let mut next_weak_map = self.weak_map_list;
-        let mut found_new_live_key = false;
+        let mut found_new_live_value = false;
 
         while let Some(weak_map) = next_weak_map {
             for (weak_key, value) in weak_map.weak_map_data().iter_mut_gc_unsafe() {
                 let weak_key_value = weak_key.value_mut();
 
-                // Check if key has already been visited and moved to the to-space
-                if !self.is_in_to_space(weak_key_value.as_pointer().as_ptr().cast()) {
+                debug_assert!(weak_key_value.is_pointer());
+                let weak_key_ptr = weak_key_value.as_pointer().as_ptr().cast();
+
+                // Check if key has not yet been visited and moved to the to-space
+                if self.is_in_from_space(weak_key_ptr) {
                     let weak_key_descriptor = weak_key_value.as_pointer().descriptor();
 
                     // Key is known to be live if it has already moved and left a forwarding
@@ -326,7 +341,23 @@ impl GarbageCollector {
                     // live. Also update key to point to to-space so we can tell it is visited.
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_key_descriptor) {
                         *weak_key_value = forwarding_ptr.cast::<ObjectValue>().into();
-                        found_new_live_key = true;
+                        found_new_live_value = true;
+                        self.visit_value(value);
+                    }
+                } else if self.is_in_permanent_space(weak_key_ptr) {
+                    // Check if key was in the permanent space. If so its value is live and will
+                    // always be visited.
+                    //
+                    // Note that we only need to visit the value if it is a pointer. Make sure to
+                    // only count this as a new live value if it was not already moved.
+                    if value.is_pointer()
+                        && self.is_in_from_space(value.as_pointer().as_ptr().cast())
+                    {
+                        let value_descriptor = value.as_pointer().descriptor();
+                        if decode_forwarding_pointer(value_descriptor).is_none() {
+                            found_new_live_value = true;
+                        }
+
                         self.visit_value(value);
                     }
                 }
@@ -335,7 +366,7 @@ impl GarbageCollector {
             next_weak_map = weak_map.next_weak_map();
         }
 
-        found_new_live_key
+        found_new_live_value
     }
 
     // Finalization registries are effectively a WeakMap from target value to unregister tokens.
@@ -352,8 +383,11 @@ impl GarbageCollector {
                 if let Some(cell) = cell {
                     let target_value = cell.target;
 
-                    // Check if target has already been visited and moved to the to-space
-                    if !self.is_in_to_space(target_value.as_pointer().as_ptr().cast()) {
+                    debug_assert!(target_value.is_pointer());
+                    let target_ptr = target_value.as_pointer().as_ptr().cast();
+
+                    // Check if key has not yet been visited and moved to the to-space
+                    if self.is_in_from_space(target_ptr) {
                         let target_descriptor = target_value.as_pointer().descriptor();
 
                         // Target is known to be live if it has already moved and left a forwarding
@@ -365,6 +399,25 @@ impl GarbageCollector {
 
                             if let Some(ref mut unregister_token) = cell.unregister_token {
                                 found_new_live_unregister_token = true;
+                                self.visit_value(unregister_token);
+                            }
+                        }
+                    } else if self.is_in_permanent_space(target_ptr) {
+                        // Check if target was in the permanent space. If so its unregister token is
+                        // live and will always be visited.
+                        //
+                        // Note that we only need to visit the token if it is a pointer. Make sure
+                        // to only count this as a new live token if it was not already moved.
+                        if let Some(ref mut unregister_token) = cell.unregister_token {
+                            if unregister_token.is_pointer()
+                                && self
+                                    .is_in_from_space(unregister_token.as_pointer().as_ptr().cast())
+                            {
+                                let token_descriptor = unregister_token.as_pointer().descriptor();
+                                if decode_forwarding_pointer(token_descriptor).is_none() {
+                                    found_new_live_unregister_token = true;
+                                }
+
                                 self.visit_value(unregister_token);
                             }
                         }
@@ -386,9 +439,12 @@ impl GarbageCollector {
         while let Some(finalization_registry) = next_finalization_registry {
             for cell_opt in finalization_registry.cells().iter_mut_gc_unsafe() {
                 if let Some(cell) = cell_opt {
+                    debug_assert!(cell.target.is_pointer());
+                    let target_ptr = cell.target.as_pointer().as_ptr().cast();
+
                     // Check if target has already been visited and moved to the to-space. If not,
                     // target should be garbage collected so remove cell from registry.
-                    if !self.is_in_to_space(cell.target.as_pointer().as_ptr().cast()) {
+                    if !self.is_in_to_space(target_ptr) {
                         // Save callback and held value to be called later
                         finalizer_callbacks.push(FinalizerCallback {
                             cleanup_callback: finalization_registry.cleanup_callback(),

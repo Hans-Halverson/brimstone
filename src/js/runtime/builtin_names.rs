@@ -90,6 +90,7 @@ builtin_names!(
     (int8_array, "Int8Array"),
     (int16_array, "Int16Array"),
     (int32_array, "Int32Array"),
+    (json, "JSON"),
     (map, "Map"),
     (math, "Math"),
     (number, "Number"),

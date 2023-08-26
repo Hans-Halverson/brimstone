@@ -9,10 +9,7 @@ use crate::{
         gc_object::GcObject,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
-        string_parsing::{
-            parse_between_ptrs_to_f64, parse_unsigned_decimal_literal, skip_string_whitespace,
-            StringLexer,
-        },
+        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
         string_value::StringValue,
         to_string,
         type_utilities::{to_int32, to_number},
@@ -131,6 +128,7 @@ pub fn set_default_global_bindings(
         intrinsic_prop!(cx.names.weak_set(), WeakSetConstructor);
 
         // 19.4 Other Properties of the Global Object
+        intrinsic_prop!(cx.names.json(), JSON);
         intrinsic_prop!(cx.names.math(), Math);
         intrinsic_prop!(cx.names.reflect(), Reflect);
 
@@ -206,27 +204,7 @@ fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
     let mut lexer = StringLexer::new(string);
 
     skip_string_whitespace(&mut lexer);
-
-    // Skip leading prefix
-    let mut is_negative = false;
-    if lexer.current_equals('-') {
-        lexer.advance();
-        is_negative = true;
-    } else if lexer.current_equals('+') {
-        lexer.advance();
-    }
-
-    let start_ptr = lexer.current_ptr();
-    parse_unsigned_decimal_literal(&mut lexer)?;
-    let end_ptr = lexer.current_ptr();
-
-    let number = parse_between_ptrs_to_f64(&lexer, start_ptr, end_ptr);
-
-    if is_negative {
-        Some(-number)
-    } else {
-        Some(number)
-    }
+    parse_signed_decimal_literal(&mut lexer)
 }
 
 // 19.2.5 parseInt

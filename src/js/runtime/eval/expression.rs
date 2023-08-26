@@ -242,7 +242,6 @@ fn eval_object_expression(cx: Context, expr: &ast::ObjectExpression) -> EvalResu
                 let property_key =
                     maybe!(eval_property_name(cx, &property.key, property.is_computed));
 
-                // TODO: Check if in JSON.parse
                 let is_proto_setter =
                     property_key.get() == cx.names.__proto__ && !property.is_computed;
                 if is_proto_setter {

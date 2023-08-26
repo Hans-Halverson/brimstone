@@ -36,6 +36,11 @@ impl StringLexer {
         lexer
     }
 
+    #[inline]
+    pub fn current(&self) -> Option<u16> {
+        self.current
+    }
+
     pub fn advance(&mut self) {
         let prev_ptr = self.iter.ptr();
         self.current = self.iter.next();
@@ -44,7 +49,7 @@ impl StringLexer {
 
     /// Advance if the current code unit is equal to the given character. Only valid for char in
     /// the u16 range.
-    fn expect(&mut self, char: char) -> Option<()> {
+    pub fn expect(&mut self, char: char) -> Option<()> {
         match self.current {
             Some(current_code_point) if current_code_point == char as u16 => {
                 self.advance();
@@ -58,7 +63,7 @@ impl StringLexer {
     /// the u16 range.
     ///
     /// Return true if the character was consumed.
-    fn eat(&mut self, char: char) -> bool {
+    pub fn eat(&mut self, char: char) -> bool {
         self.expect(char).is_some()
     }
 
@@ -108,6 +113,18 @@ impl StringLexer {
                 is_unicode_whitespace(code_point) || is_unicode_newline(code_point)
             }
             None => false,
+        }
+    }
+
+    /// Whether the current code point is whitespace according to the grammar of ECMA-404
+    pub fn current_is_json_whitespace(&self) -> bool {
+        if let Some(current) = self.current {
+            current == ' ' as u16
+                || current == '\n' as u16
+                || current == '\r' as u16
+                || current == '\t' as u16
+        } else {
+            false
         }
     }
 
@@ -340,6 +357,11 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
 
         true
     } else {
+        // No digits at start of numeric literal
+        if !has_digits_before_dot {
+            return None;
+        }
+
         false
     };
 
@@ -362,6 +384,29 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
     }
 
     Some(())
+}
+
+pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
+    // Skip leading prefix
+    let mut is_negative = false;
+    if lexer.current_equals('-') {
+        lexer.advance();
+        is_negative = true;
+    } else if lexer.current_equals('+') {
+        lexer.advance();
+    }
+
+    let start_ptr = lexer.current_ptr();
+    parse_unsigned_decimal_literal(lexer)?;
+    let end_ptr = lexer.current_ptr();
+
+    let number = parse_between_ptrs_to_f64(&lexer, start_ptr, end_ptr);
+
+    if is_negative {
+        Some(-number)
+    } else {
+        Some(number)
+    }
 }
 
 // Parse string to a BigInt following the grammar in:

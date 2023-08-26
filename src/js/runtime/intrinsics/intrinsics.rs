@@ -31,6 +31,7 @@ use crate::{
             function_prototype::FunctionPrototype,
             global_object::create_eval,
             iterator_prototype::IteratorPrototype,
+            json_object::JSONObject,
             map_constructor::MapConstructor,
             map_iterator::MapIteratorPrototype,
             map_prototype::MapPrototype,
@@ -123,6 +124,7 @@ pub enum Intrinsic {
     Int32ArrayConstructor,
     Int32ArrayPrototype,
     IteratorPrototype,
+    JSON,
     MapConstructor,
     MapIteratorPrototype,
     MapPrototype,
@@ -318,6 +320,7 @@ impl Intrinsics {
         register_intrinsic!(RegExpStringIteratorPrototype, RegExpStringIteratorPrototype);
 
         // Builtin objects
+        register_intrinsic!(JSON, JSONObject);
         register_intrinsic!(Math, MathObject);
         register_intrinsic!(ProxyConstructor, ProxyConstructor);
         register_intrinsic!(Reflect, ReflectObject);

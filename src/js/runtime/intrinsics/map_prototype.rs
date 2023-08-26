@@ -26,7 +26,7 @@ pub struct MapPrototype;
 
 impl MapPrototype {
     // 24.1.3 Properties of the Map Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -71,7 +71,7 @@ impl MapPrototype {
 
     // 24.1.3.1 Map.prototype.clear
     fn clear(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -89,7 +89,7 @@ impl MapPrototype {
 
     // 24.1.3.3 Map.prototype.delete
     fn delete(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -108,7 +108,7 @@ impl MapPrototype {
 
     // 24.1.3.4 Map.prototype.entries
     fn entries(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -124,7 +124,7 @@ impl MapPrototype {
 
     // 24.1.3.5 Map.prototype.forEach
     fn for_each(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -162,7 +162,7 @@ impl MapPrototype {
 
     // 24.1.3.6 Map.prototype.get
     fn get(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -183,7 +183,7 @@ impl MapPrototype {
 
     // 24.1.3.7 Map.prototype.has
     fn has(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -202,7 +202,7 @@ impl MapPrototype {
 
     // 24.1.3.8 Map.prototype.keys
     fn keys(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -218,7 +218,7 @@ impl MapPrototype {
 
     // 24.1.3.9 Map.prototype.set
     fn set(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -246,7 +246,7 @@ impl MapPrototype {
 
     // 24.1.3.10 get Map.prototype.size
     fn size(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -264,7 +264,7 @@ impl MapPrototype {
 
     // 24.1.3.11 Map.prototype.values
     fn values(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

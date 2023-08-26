@@ -27,7 +27,7 @@ extend_object! {
 }
 
 impl DateObject {
-    pub fn new(cx: &mut Context, date_value: f64) -> HeapPtr<DateObject> {
+    pub fn new(cx: Context, date_value: f64) -> HeapPtr<DateObject> {
         let mut date =
             object_create::<DateObject>(cx, ObjectKind::DateObject, Intrinsic::DatePrototype);
 
@@ -37,7 +37,7 @@ impl DateObject {
     }
 
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         date_value: f64,
     ) -> EvalResult<HeapPtr<DateObject>> {

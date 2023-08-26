@@ -38,7 +38,7 @@ extend_object! {
 
 impl RegExpStringIterator {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         regexp_object: Handle<ObjectValue>,
         target_string: Handle<StringValue>,
         is_global: bool,
@@ -76,7 +76,7 @@ impl RegExpStringIterator {
 pub struct RegExpStringIteratorPrototype;
 
 impl RegExpStringIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
@@ -96,7 +96,7 @@ impl RegExpStringIteratorPrototype {
 
     // 22.2.9.2.1 %RegExpStringIteratorPrototype%.next
     fn next(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

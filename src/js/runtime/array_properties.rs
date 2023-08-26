@@ -50,7 +50,7 @@ impl HeapPtr<ArrayProperties> {
         }
     }
 
-    pub fn get_property(&self, cx: &mut Context, array_index: u32) -> Option<Property> {
+    pub fn get_property(&self, cx: Context, array_index: u32) -> Option<Property> {
         if let Some(dense_properties) = self.as_dense_opt() {
             if array_index >= dense_properties.len() {
                 return None;
@@ -84,7 +84,7 @@ impl HeapPtr<ArrayProperties> {
 impl ArrayProperties {
     /// Expand an object's dense properties to have at least enough room for the new length.
     #[inline]
-    fn grow_dense_properties(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) {
+    fn grow_dense_properties(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) {
         let mut dense_properties = object.array_properties().as_dense();
         let old_length = dense_properties.len();
 
@@ -124,7 +124,7 @@ impl ArrayProperties {
     }
 
     #[inline]
-    fn shrink_dense_properties(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) {
+    fn shrink_dense_properties(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) {
         let mut dense_properties = object.array_properties().as_dense();
 
         // Only shrink backing array if it would be less than one half filled
@@ -153,7 +153,7 @@ impl ArrayProperties {
         object.set_array_properties(new_dense_properties.cast());
     }
 
-    fn transition_to_sparse_properties(cx: &mut Context, mut object: Handle<ObjectValue>) {
+    fn transition_to_sparse_properties(cx: Context, mut object: Handle<ObjectValue>) {
         let dense_properties = object.array_properties().as_dense().to_handle();
 
         // Initial sparse map size is the number of non-empty properties
@@ -191,7 +191,7 @@ impl ArrayProperties {
     // array, stop deleting other properties, and return false.
     //
     // Returns return true on success.
-    pub fn set_len(cx: &mut Context, mut object: Handle<ObjectValue>, new_length: u32) -> bool {
+    pub fn set_len(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) -> bool {
         let array_properties = object.array_properties();
         if let Some(dense_properties) = array_properties.as_dense_opt() {
             let array_length = dense_properties.len();
@@ -273,7 +273,7 @@ impl ArrayProperties {
     }
 
     pub fn set_property(
-        cx: &mut Context,
+        cx: Context,
         object: Handle<ObjectValue>,
         array_index: u32,
         property: Property,
@@ -324,10 +324,10 @@ pub struct DenseArrayProperties {
 const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, array);
 
 impl DenseArrayProperties {
-    pub fn new(cx: &mut Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
+    pub fn new(cx: Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity as usize);
-        let mut object = cx.heap.alloc_uninit_with_size::<DenseArrayProperties>(size);
+        let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
@@ -449,11 +449,9 @@ pub struct SparseArrayProperties {
 type SparseMap = BsHashMap<u32, HeapProperty>;
 
 impl SparseArrayProperties {
-    fn new(cx: &mut Context, capacity: usize, array_length: u32) -> HeapPtr<SparseArrayProperties> {
+    fn new(cx: Context, capacity: usize, array_length: u32) -> HeapPtr<SparseArrayProperties> {
         let byte_size = Self::calculate_size_in_bytes(capacity);
-        let mut object = cx
-            .heap
-            .alloc_uninit_with_size::<SparseArrayProperties>(byte_size);
+        let mut object = cx.alloc_uninit_with_size::<SparseArrayProperties>(byte_size);
 
         object
             .sparse_map
@@ -511,18 +509,18 @@ impl HeapPtr<SparseArrayProperties> {
 struct SparseMapField(Handle<ObjectValue>);
 
 impl BsHashMapField<u32, HeapProperty> for SparseMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<SparseMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<SparseMap> {
         let array_length = self.0.array_properties_length();
         SparseArrayProperties::new(cx, capacity, array_length).cast()
     }
 
     #[inline]
-    fn get(&self, _: &mut Context) -> HeapPtr<SparseMap> {
+    fn get(&self, _: Context) -> HeapPtr<SparseMap> {
         self.0.array_properties().as_sparse().sparse_map()
     }
 
     #[inline]
-    fn set(&mut self, _: &mut Context, map: HeapPtr<SparseMap>) {
+    fn set(&mut self, _: Context, map: HeapPtr<SparseMap>) {
         self.0.set_array_properties(map.cast())
     }
 }

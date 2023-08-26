@@ -23,7 +23,7 @@ macro_rules! create_native_error {
 
         impl $native_error {
             #[allow(dead_code)]
-            pub fn new_with_message(cx: &mut Context, message: String) -> Handle<ErrorObject> {
+            pub fn new_with_message(mut cx: Context, message: String) -> Handle<ErrorObject> {
                 // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(&message).into();
 
@@ -43,7 +43,7 @@ macro_rules! create_native_error {
             }
 
             pub fn new_from_constructor(
-                cx: &mut Context,
+                cx: Context,
                 constructor: Handle<ObjectValue>,
             ) -> EvalResult<Handle<ErrorObject>> {
                 let object = maybe!(object_create_from_constructor::<ErrorObject>(
@@ -61,7 +61,7 @@ macro_rules! create_native_error {
 
         impl $constructor {
             // 20.5.6.2 Properties of the NativeError Constructors
-            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
                 let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
                 let mut func = BuiltinFunction::create(
                     cx,
@@ -90,7 +90,7 @@ macro_rules! create_native_error {
 
             // 20.5.6.1.1 NativeError
             fn construct(
-                cx: &mut Context,
+                cx: Context,
                 _: Handle<Value>,
                 arguments: &[Handle<Value>],
                 new_target: Option<Handle<ObjectValue>>,
@@ -125,7 +125,7 @@ macro_rules! create_native_error {
 
         impl $prototype {
             // 20.5.6.3 Properties of the NativeError Prototype Objects
-            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let proto = realm.get_intrinsic(Intrinsic::ErrorPrototype);
                 let mut object = ObjectValue::new(cx, Some(proto), true);
 

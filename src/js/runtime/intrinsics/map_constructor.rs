@@ -24,7 +24,7 @@ pub struct MapConstructor;
 
 impl MapConstructor {
     // 24.1.1 The Map Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -55,7 +55,7 @@ impl MapConstructor {
 
     // 24.1.1.1 Map
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -87,7 +87,7 @@ impl MapConstructor {
 
     // 24.1.2.2 get Map [ @@species ]
     fn get_species(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -98,10 +98,10 @@ impl MapConstructor {
 
 // 24.1.1.2 AddEntriesFromIterable
 pub fn add_entries_from_iterable(
-    cx: &mut Context,
+    cx: Context,
     target: Handle<Value>,
     iterable: Handle<Value>,
-    mut adder: impl FnMut(&mut Context, Handle<Value>, Handle<Value>) -> EvalResult<()>,
+    mut adder: impl FnMut(Context, Handle<Value>, Handle<Value>) -> EvalResult<()>,
 ) -> EvalResult<Handle<Value>> {
     let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
     let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);

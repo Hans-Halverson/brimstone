@@ -39,7 +39,7 @@ macro_rules! builtin_names {
                 $(
                     self.names.$rust_name = {
                         let string_value = self.alloc_string($js_name);
-                        PropertyKey::string_not_array_index(self, string_value)
+                        PropertyKey::string_not_array_index(*self, string_value)
                     };
                 )*
             }
@@ -423,7 +423,7 @@ macro_rules! builtin_symbols {
                 $(
                     self.well_known_symbols.$rust_name = {
                         let description = self.alloc_string($description);
-                        PropertyKey::symbol(SymbolValue::new(self, Some(description))).get()
+                        PropertyKey::symbol(SymbolValue::new(*self, Some(description))).get()
                     };
                 )*
             }

@@ -91,7 +91,7 @@ impl Reference {
         &self.base
     }
 
-    pub fn name_as_property_key(&self, cx: &mut Context) -> Handle<PropertyKey> {
+    pub fn name_as_property_key(&self, cx: Context) -> Handle<PropertyKey> {
         match self.base {
             ReferenceBase::Unresolvable { name, .. } | ReferenceBase::Env { name, .. } => {
                 PropertyKey::string(cx, name).to_handle(cx)
@@ -119,7 +119,7 @@ impl Reference {
     }
 
     // 6.2.4.5 GetValue
-    pub fn get_value(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
+    pub fn get_value(&self, cx: Context) -> EvalResult<Handle<Value>> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 reference_error_(cx, &format!("Could not resolve {}", name))
@@ -136,7 +136,7 @@ impl Reference {
     }
 
     // 6.2.4.6 PutValue
-    pub fn put_value(&mut self, cx: &mut Context, value: Handle<Value>) -> EvalResult<()> {
+    pub fn put_value(&mut self, cx: Context, value: Handle<Value>) -> EvalResult<()> {
         match self.base {
             ReferenceBase::Unresolvable { name } => {
                 if self.is_strict {
@@ -184,7 +184,7 @@ impl Reference {
     // 6.2.4.8 InitializeReferencedBinding
     pub fn initialize_referenced_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         value: Handle<Value>,
     ) -> EvalResult<()> {
         match self.base {
@@ -197,7 +197,7 @@ impl Reference {
 
     // 6.2.4.9 MakePrivateReference
     pub fn make_private_reference(
-        cx: &mut Context,
+        cx: Context,
         base_value: Handle<Value>,
         private_name_string: Handle<StringValue>,
     ) -> Reference {

@@ -25,7 +25,7 @@ use super::intrinsics::Intrinsic;
 
 // 9.3.4 SetDefaultGlobalBindings
 pub fn set_default_global_bindings(
-    cx: &mut Context,
+    cx: Context,
     realm: Handle<Realm>,
     expose_gc: bool,
 ) -> EvalResult<()> {
@@ -147,13 +147,13 @@ pub fn set_default_global_bindings(
     })
 }
 
-pub fn create_eval(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
     BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None)
 }
 
 // 19.2.1 eval
 fn eval(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -164,7 +164,7 @@ fn eval(
 
 // 19.2.2 isFinite
 fn is_finite(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -176,7 +176,7 @@ fn is_finite(
 
 // 19.2.3 isNaN
 fn is_nan(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -188,7 +188,7 @@ fn is_nan(
 
 // 19.2.4 parseFloat
 fn parse_float(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -231,7 +231,7 @@ fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
 
 // 19.2.5 parseInt
 fn parse_int(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,

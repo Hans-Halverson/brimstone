@@ -44,17 +44,17 @@ impl Completion {
     }
 
     #[inline]
-    pub fn break_(cx: &mut Context, label: LabelId) -> Completion {
+    pub fn break_(cx: Context, label: LabelId) -> Completion {
         Completion { kind: CompletionKind::Break, label, value: cx.empty() }
     }
 
     #[inline]
-    pub fn continue_(cx: &mut Context, label: LabelId) -> Completion {
+    pub fn continue_(cx: Context, label: LabelId) -> Completion {
         Completion { kind: CompletionKind::Continue, label, value: cx.empty() }
     }
 
     #[inline]
-    pub fn empty(cx: &mut Context) -> Completion {
+    pub fn empty(cx: Context) -> Completion {
         Completion::normal(cx.empty())
     }
 
@@ -182,7 +182,7 @@ impl<T: Into<Completion>> From<EvalResult<T>> for Completion {
 
 impl Escapable for Completion {
     #[inline]
-    fn escape(&self, cx: &mut Context) -> Self {
+    fn escape(&self, cx: Context) -> Self {
         let value = self.value().escape(cx);
         Completion { kind: self.kind(), label: self.label(), value }
     }
@@ -190,7 +190,7 @@ impl Escapable for Completion {
 
 impl<T: Escapable> Escapable for EvalResult<T> {
     #[inline]
-    fn escape(&self, cx: &mut Context) -> Self {
+    fn escape(&self, cx: Context) -> Self {
         match self {
             EvalResult::Ok(ok) => EvalResult::Ok(ok.escape(cx)),
             EvalResult::Throw(thrown) => EvalResult::Throw(thrown.escape(cx)),

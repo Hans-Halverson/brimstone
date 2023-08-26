@@ -19,9 +19,9 @@ pub struct BsArray<T> {
 const ARRAY_BYTE_OFFSITE: usize = field_offset!(BsArray<u8>, array);
 
 impl<T: Clone> BsArray<T> {
-    pub fn new(cx: &mut Context, kind: ObjectKind, length: usize, initial: T) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: ObjectKind, length: usize, initial: T) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.heap.alloc_uninit_with_size::<BsArray<T>>(size);
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
         array.array.init_with(length, initial);
@@ -30,13 +30,13 @@ impl<T: Clone> BsArray<T> {
     }
 
     pub fn new_from_vec(
-        cx: &mut Context,
+        cx: Context,
         kind: ObjectKind,
         length: usize,
         gen_elements: impl Fn() -> Vec<T>,
     ) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.heap.alloc_uninit_with_size::<BsArray<T>>(size);
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
 

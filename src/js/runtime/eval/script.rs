@@ -30,12 +30,8 @@ pub struct Script {
 }
 
 impl Script {
-    pub fn new(
-        cx: &mut Context,
-        script_node: Rc<ast::Program>,
-        realm: Handle<Realm>,
-    ) -> Handle<Script> {
-        let mut script = cx.heap.alloc_uninit::<Script>();
+    pub fn new(cx: Context, script_node: Rc<ast::Program>, realm: Handle<Realm>) -> Handle<Script> {
+        let mut script = cx.alloc_uninit::<Script>();
 
         set_uninit!(script.descriptor, cx.base_descriptors.get(ObjectKind::Script));
         set_uninit!(script.script_node, script_node);
@@ -46,12 +42,8 @@ impl Script {
 }
 
 /// 16.1.6 ScriptEvaluation
-pub fn eval_script(
-    cx: &mut Context,
-    program: Rc<ast::Program>,
-    realm: Handle<Realm>,
-) -> Completion {
-    HandleScope::new(cx, |cx| {
+pub fn eval_script(cx: Context, program: Rc<ast::Program>, realm: Handle<Realm>) -> Completion {
+    HandleScope::new(cx, |mut cx| {
         let script = Script::new(cx, program.clone(), realm);
 
         let global_env = realm.global_env();
@@ -88,7 +80,7 @@ pub fn eval_script(
 
 /// 16.1.7 GlobalDeclarationInstantiation
 fn global_declaration_instantiation(
-    cx: &mut Context,
+    cx: Context,
     script: &ast::Program,
     mut env: Handle<GlobalEnvironment>,
 ) -> Completion {

@@ -36,8 +36,8 @@ extend_object! {
 
 impl FunctionPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: &mut Context) -> Handle<FunctionPrototype> {
-        let object = cx.heap.alloc_uninit::<FunctionPrototype>();
+    pub fn new_uninit(cx: Context) -> Handle<FunctionPrototype> {
+        let object = cx.alloc_uninit::<FunctionPrototype>();
 
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
@@ -50,7 +50,7 @@ impl FunctionPrototype {
 
 impl Handle<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
-    pub fn initialize(&mut self, cx: &mut Context, realm: Handle<Realm>) {
+    pub fn initialize(&mut self, mut cx: Context, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
         object_ordinary_init(cx, self.object().get_(), descriptor_ptr, Some(object_proto_ptr));
@@ -95,7 +95,7 @@ impl Handle<FunctionPrototype> {
 impl FunctionPrototype {
     // 20.2.3.1 Function.prototype.apply
     fn apply(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -117,7 +117,7 @@ impl FunctionPrototype {
 
     // 20.2.3.2 Function.prototype.bind
     fn bind(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -169,7 +169,7 @@ impl FunctionPrototype {
 
     // 20.2.3.3 Function.prototype.call
     fn call_intrinsic(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -188,7 +188,7 @@ impl FunctionPrototype {
 
     // 20.2.3.6 Function.prototype [ @@hasInstance ]
     fn has_instance(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -203,7 +203,7 @@ impl FunctionPrototype {
 impl VirtualObject for Handle<FunctionPrototype> {
     fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         _this_argument: Handle<Value>,
         _arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {

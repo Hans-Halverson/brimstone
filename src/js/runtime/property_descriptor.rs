@@ -128,7 +128,7 @@ impl PropertyDescriptor {
     }
 
     // 6.2.5.6 CompletePropertyDescriptor
-    pub fn complete_property_descriptor(&mut self, cx: &mut Context) {
+    pub fn complete_property_descriptor(&mut self, cx: Context) {
         if self.is_generic_descriptor() || self.is_data_descriptor() {
             if self.value.is_none() {
                 self.value = Some(cx.undefined());
@@ -152,7 +152,7 @@ impl PropertyDescriptor {
 }
 
 // 6.2.5.4 FromPropertyDescriptor
-pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
+pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
     let object = ordinary_object_create(cx);
 
     if let Some(value) = desc.value {
@@ -201,10 +201,7 @@ pub fn from_property_descriptor(cx: &mut Context, desc: PropertyDescriptor) -> H
 }
 
 // 6.2.5.5 ToPropertyDescriptor
-pub fn to_property_descriptor(
-    cx: &mut Context,
-    value: Handle<Value>,
-) -> EvalResult<PropertyDescriptor> {
+pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<PropertyDescriptor> {
     if !value.is_object() {
         return type_error_(cx, "property descriptor must be an object");
     }

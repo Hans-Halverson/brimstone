@@ -96,7 +96,7 @@ enum HeapFuncKind {
 
 impl Function {
     fn new(
-        cx: &mut Context,
+        cx: Context,
         prototype: Handle<ObjectValue>,
         func_node: FuncKind,
         is_lexical_this: bool,
@@ -208,11 +208,11 @@ impl VirtualObject for Handle<Function> {
     // 10.2.1 [[Call]]
     fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        HandleScope::new(cx, |cx| {
+        HandleScope::new(cx, |mut cx| {
             let callee_context = self.prepare_for_ordinary_call(cx, None);
 
             if self.is_class_constructor {
@@ -242,11 +242,11 @@ impl VirtualObject for Handle<Function> {
     // 10.2.2 [[Construct]]
     fn construct(
         &self,
-        cx: &mut Context,
+        cx: Context,
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        HandleScope::new(cx, |cx| {
+        HandleScope::new(cx, |mut cx| {
             // Default constructor is implemented as a special function. Steps follow the default
             // constructor abstract closure in 15.7.14 ClassDefinitionEvaluation.
             if self.is_default_constructor() {
@@ -364,13 +364,13 @@ impl VirtualObject for Handle<Function> {
         self.has_construct
     }
 
-    fn get_realm(&self, _: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    fn get_realm(&self, _: Context) -> EvalResult<HeapPtr<Realm>> {
         self.realm.into()
     }
 }
 
 impl Handle<Function> {
-    pub fn add_fields(&mut self, cx: &mut Context, fields: Vec<ClassFieldDefinition>) {
+    pub fn add_fields(&mut self, cx: Context, fields: Vec<ClassFieldDefinition>) {
         let fields_array = BsArray::<HeapClassFieldDefinition>::new_from_vec(
             cx,
             ObjectKind::FunctionFieldsArray,
@@ -384,7 +384,7 @@ impl Handle<Function> {
 
     pub fn add_private_methods(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         private_methods: HashMap<PrivateName, Property>,
     ) {
         let methods_array = BsArray::<(HeapPrivateName, HeapProperty)>::new_from_vec(
@@ -408,7 +408,7 @@ impl Handle<Function> {
     // 10.2.1.1 PrepareForOrdinaryCall
     fn prepare_for_ordinary_call(
         &self,
-        cx: &mut Context,
+        mut cx: Context,
         new_target: Option<Handle<ObjectValue>>,
     ) -> Handle<ExecutionContext> {
         let func_env = FunctionEnvironment::new(cx, *self, new_target).into_dyn_env();
@@ -431,7 +431,7 @@ impl Handle<Function> {
     // 10.2.1.2 OrdinaryCallBindThis
     fn ordinary_call_bind_this(
         &self,
-        cx: &mut Context,
+        cx: Context,
         callee_context: Handle<ExecutionContext>,
         this_argument: Handle<Value>,
     ) {
@@ -458,11 +458,7 @@ impl Handle<Function> {
 
     // 10.2.1.4 OrdinaryCallEvaluateBody
     // 10.2.1.3 EvaluateBody
-    fn ordinary_call_evaluate_body(
-        &self,
-        cx: &mut Context,
-        arguments: &[Handle<Value>],
-    ) -> Completion {
+    fn ordinary_call_evaluate_body(&self, cx: Context, arguments: &[Handle<Value>]) -> Completion {
         let other_self = *self;
         match &self.func_node {
             HeapFuncKind::Function(func_node) => {
@@ -497,9 +493,9 @@ impl Handle<Function> {
     }
 
     #[inline]
-    pub fn iter_fields<F: FnMut(&mut Context, ClassFieldDefinition) -> EvalResult<()>>(
+    pub fn iter_fields<F: FnMut(Context, ClassFieldDefinition) -> EvalResult<()>>(
         &self,
-        cx: &mut Context,
+        cx: Context,
         mut f: F,
     ) -> EvalResult<()> {
         if let Some(fields) = self.fields {
@@ -516,9 +512,9 @@ impl Handle<Function> {
     }
 
     #[inline]
-    pub fn iter_private_methods<F: FnMut(&mut Context, PrivateName, Property) -> EvalResult<()>>(
+    pub fn iter_private_methods<F: FnMut(Context, PrivateName, Property) -> EvalResult<()>>(
         &self,
-        cx: &mut Context,
+        cx: Context,
         mut f: F,
     ) -> EvalResult<()> {
         if let Some(private_methods) = self.private_methods {
@@ -551,7 +547,7 @@ impl FuncKind {
 
 // 10.2.3 OrdinaryFunctionCreate
 pub fn ordinary_function_create(
-    cx: &mut Context,
+    cx: Context,
     function_prototype: Handle<ObjectValue>,
     func_node: &ast::Function,
     is_lexical_this: bool,
@@ -580,7 +576,7 @@ pub fn ordinary_function_create(
 // A copy of OrdinaryObjectCreate, but for creating function objects with special non-function kinds
 // such as class properties and static initializers.
 pub fn ordinary_function_create_special_kind(
-    cx: &mut Context,
+    cx: Context,
     function_prototype: Handle<ObjectValue>,
     func_node: FuncKind,
     is_lexical_this: bool,
@@ -606,7 +602,7 @@ pub fn ordinary_function_create_special_kind(
 
 // 10.2.5 MakeConstructor
 pub fn make_constructor(
-    cx: &mut Context,
+    cx: Context,
     mut func: Handle<Function>,
     writable_prototype: Option<bool>,
     prototype: Option<Handle<ObjectValue>>,
@@ -645,7 +641,7 @@ pub fn make_method(mut func: Handle<Function>, home_object: Handle<ObjectValue>)
 
 // 10.2.8 DefineMethodProperty
 pub fn define_method_property(
-    cx: &mut Context,
+    cx: Context,
     home_object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     closure: Handle<Function>,
@@ -662,7 +658,7 @@ pub fn define_method_property(
 
 // 10.2.9 SetFunctionName
 pub fn set_function_name(
-    cx: &mut Context,
+    mut cx: Context,
     func: Handle<ObjectValue>,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
@@ -699,7 +695,7 @@ pub fn set_function_name(
 }
 
 // 10.2.10 SetFunctionLength
-pub fn set_function_length(cx: &mut Context, func: Handle<ObjectValue>, length: i32) {
+pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: i32) {
     let length_value = Value::smi(length).to_handle(cx);
     let desc = PropertyDescriptor::data(length_value, false, false, true);
     must!(define_property_or_throw(cx, func, cx.names.length(), desc))
@@ -707,7 +703,7 @@ pub fn set_function_length(cx: &mut Context, func: Handle<ObjectValue>, length: 
 
 // Identical to SetFunctionLength, but a None value represents a length of positive infinity
 pub fn set_function_length_maybe_infinity(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<ObjectValue>,
     length: Option<i32>,
 ) {
@@ -723,7 +719,7 @@ pub fn set_function_length_maybe_infinity(
 
 // 8.5.1 InstantiateFunctionObject
 pub fn instantiate_function_object(
-    cx: &mut Context,
+    cx: Context,
     func_node: &ast::Function,
     env: DynEnvironment,
     private_env: Option<Handle<PrivateEnvironment>>,
@@ -751,7 +747,7 @@ fn expected_argument_count(func_node: &ast::Function) -> i32 {
     count
 }
 
-pub fn get_argument(cx: &mut Context, arguments: &[Handle<Value>], i: usize) -> Handle<Value> {
+pub fn get_argument(cx: Context, arguments: &[Handle<Value>], i: usize) -> Handle<Value> {
     if i < arguments.len() {
         arguments[i]
     } else {

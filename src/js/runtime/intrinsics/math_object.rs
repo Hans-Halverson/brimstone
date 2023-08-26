@@ -21,7 +21,7 @@ use super::intrinsics::Intrinsic;
 pub struct MathObject;
 
 impl MathObject {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -100,7 +100,7 @@ impl MathObject {
 
     // 21.3.2.1 Math.abs
     fn abs(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -117,7 +117,7 @@ impl MathObject {
 
     // 21.3.2.2 Math.acos
     fn acos(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -129,7 +129,7 @@ impl MathObject {
 
     // 21.3.2.3 Math.acosh
     fn acosh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -143,7 +143,7 @@ impl MathObject {
 
     // 21.3.2.4 Math.asin
     fn asin(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -155,7 +155,7 @@ impl MathObject {
 
     // 21.3.2.5 Math.asinh
     fn asinh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -169,7 +169,7 @@ impl MathObject {
 
     // 21.3.2.6 Math.atan
     fn atan(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -181,7 +181,7 @@ impl MathObject {
 
     // 21.3.2.7 Math.atanh
     fn atanh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -195,7 +195,7 @@ impl MathObject {
 
     // 21.3.2.8 Math.atan2
     fn atan2(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -213,7 +213,7 @@ impl MathObject {
 
     // 21.3.2.9 Math.cbrt
     fn cbrt(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -225,7 +225,7 @@ impl MathObject {
 
     // 21.3.2.10 Math.ceil
     fn ceil(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -242,7 +242,7 @@ impl MathObject {
 
     // 21.3.2.11 Math.clz32
     fn clz32(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -254,7 +254,7 @@ impl MathObject {
 
     // 21.3.2.12 Math.cos
     fn cos(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -266,7 +266,7 @@ impl MathObject {
 
     // 21.3.2.13 Math.cosh
     fn cosh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -278,7 +278,7 @@ impl MathObject {
 
     // 21.3.2.14 Math.exp
     fn exp(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -290,7 +290,7 @@ impl MathObject {
 
     // 21.3.2.15 Math.expm1
     fn expm1(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -304,7 +304,7 @@ impl MathObject {
 
     // 21.3.2.16 Math.floor
     fn floor(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -323,7 +323,7 @@ impl MathObject {
 
     // 21.3.2.17 Math.fround
     fn fround(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -337,7 +337,7 @@ impl MathObject {
 
     // 21.3.2.18 Math.hypot
     fn hypot(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -384,7 +384,7 @@ impl MathObject {
 
     // 21.3.2.19 Math.imul
     fn imul(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -402,7 +402,7 @@ impl MathObject {
 
     // 21.3.2.20 Math.log
     fn log(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -414,7 +414,7 @@ impl MathObject {
 
     // 21.3.2.21 Math.log1p
     fn log1p(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -428,7 +428,7 @@ impl MathObject {
 
     // 21.3.2.22 Math.log10
     fn log10(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -442,7 +442,7 @@ impl MathObject {
 
     // 21.3.2.23 Math.log2
     fn log2(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -454,7 +454,7 @@ impl MathObject {
 
     // 21.3.2.24 Math.max
     fn max(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -488,7 +488,7 @@ impl MathObject {
 
     // 21.3.2.25 Math.min
     fn min(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -522,7 +522,7 @@ impl MathObject {
 
     // 21.3.2.26 Math.pow
     fn pow(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -540,7 +540,7 @@ impl MathObject {
 
     // 21.3.2.27 Math.random
     fn random(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -551,7 +551,7 @@ impl MathObject {
 
     // 21.3.2.28 Math.round
     fn round(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -577,7 +577,7 @@ impl MathObject {
 
     // 21.3.2.29 Math.sign
     fn sign(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -611,7 +611,7 @@ impl MathObject {
 
     // 21.3.2.30 Math.sin
     fn sin(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -623,7 +623,7 @@ impl MathObject {
 
     // 21.3.2.31 Math.sinh
     fn sinh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -635,7 +635,7 @@ impl MathObject {
 
     // 21.3.2.32 Math.sqrt
     fn sqrt(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -647,7 +647,7 @@ impl MathObject {
 
     // 21.3.2.33 Math.tan
     fn tan(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -659,7 +659,7 @@ impl MathObject {
 
     // 21.3.2.34 Math.tanh
     fn tanh(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -671,7 +671,7 @@ impl MathObject {
 
     // 21.3.2.35 Math.trunc
     fn trunc(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

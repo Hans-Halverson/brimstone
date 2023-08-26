@@ -35,7 +35,7 @@ pub struct ExecutionContext {
 
 impl ExecutionContext {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         function: Option<Handle<ObjectValue>>,
         realm: Handle<Realm>,
         script_or_module: Option<ScriptOrModule>,
@@ -44,7 +44,7 @@ impl ExecutionContext {
         private_env: Option<Handle<PrivateEnvironment>>,
         is_strict_mode: bool,
     ) -> Handle<ExecutionContext> {
-        let mut exec_context = cx.heap.alloc_uninit::<ExecutionContext>();
+        let mut exec_context = cx.alloc_uninit::<ExecutionContext>();
 
         let lex_env = lexical_env
             .map(|e| e.to_heap())
@@ -145,7 +145,7 @@ impl ExecutionContext {
 
 // 9.4.2 ResolveBinding
 pub fn resolve_binding(
-    cx: &mut Context,
+    cx: Context,
     name: Handle<StringValue>,
     env: Option<DynEnvironment>,
 ) -> EvalResult<Reference> {
@@ -160,7 +160,7 @@ pub fn resolve_binding(
 }
 
 // 9.4.3 GetThisEnvironment
-pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
+pub fn get_this_environment(cx: Context) -> DynEnvironment {
     let mut current_env = cx.current_execution_context_ptr().lexical_env();
     loop {
         if current_env.has_this_binding() {
@@ -174,12 +174,12 @@ pub fn get_this_environment(cx: &mut Context) -> DynEnvironment {
 }
 
 // 9.4.4 ResolveThisBinding
-pub fn resolve_this_binding(cx: &mut Context) -> EvalResult<Handle<Value>> {
+pub fn resolve_this_binding(cx: Context) -> EvalResult<Handle<Value>> {
     get_this_environment(cx).get_this_binding(cx)
 }
 
 // 9.4.5 GetNewTarget
-pub fn get_new_target(cx: &mut Context) -> Option<Handle<ObjectValue>> {
+pub fn get_new_target(cx: Context) -> Option<Handle<ObjectValue>> {
     let mut this_env = get_this_environment(cx);
     let func_env = this_env.as_function_environment().unwrap();
     func_env.new_target()

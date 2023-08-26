@@ -31,10 +31,7 @@ extend_object! {
 }
 
 impl BigIntObject {
-    pub fn new_from_value(
-        cx: &mut Context,
-        bigint_data: Handle<BigIntValue>,
-    ) -> Handle<BigIntObject> {
+    pub fn new_from_value(cx: Context, bigint_data: Handle<BigIntValue>) -> Handle<BigIntObject> {
         let mut object =
             object_create::<BigIntObject>(cx, ObjectKind::BigIntObject, Intrinsic::BigIntPrototype);
 
@@ -52,7 +49,7 @@ pub struct BigIntConstructor;
 
 impl BigIntConstructor {
     // 21.2.1 The BigInt Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -80,7 +77,7 @@ impl BigIntConstructor {
 
     // 21.2.1.1 BigInt
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

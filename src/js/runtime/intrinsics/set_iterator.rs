@@ -38,11 +38,7 @@ pub enum SetIteratorKind {
 }
 
 impl SetIterator {
-    pub fn new(
-        cx: &mut Context,
-        set: Handle<SetObject>,
-        kind: SetIteratorKind,
-    ) -> Handle<SetIterator> {
+    pub fn new(cx: Context, set: Handle<SetObject>, kind: SetIteratorKind) -> Handle<SetIterator> {
         let mut object = object_create::<SetIterator>(
             cx,
             ObjectKind::SetIterator,
@@ -76,7 +72,7 @@ impl SetIterator {
 pub struct SetIteratorPrototype;
 
 impl SetIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
 
@@ -97,7 +93,7 @@ impl SetIteratorPrototype {
     // 24.2.5.2.1 %SetIteratorPrototype%.next
     // Adapted from the abstract closure in 24.2.5.1 CreateSetIterator
     fn next(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

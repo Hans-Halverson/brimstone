@@ -25,13 +25,13 @@ use super::{
 
 // 7.2.5 IsExtensible
 #[inline]
-pub fn is_extensible(cx: &mut Context, object: Handle<ObjectValue>) -> EvalResult<bool> {
+pub fn is_extensible(cx: Context, object: Handle<ObjectValue>) -> EvalResult<bool> {
     object.is_extensible(cx)
 }
 
 // 7.3.2 Get
 pub fn get(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<Handle<Value>> {
@@ -40,7 +40,7 @@ pub fn get(
 
 // 7.3.3 GetV
 pub fn get_v(
-    cx: &mut Context,
+    cx: Context,
     value: Handle<Value>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<Handle<Value>> {
@@ -50,7 +50,7 @@ pub fn get_v(
 
 // 7.3.4 Set
 pub fn set(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -66,7 +66,7 @@ pub fn set(
 
 // 7.3.6 CreateMethodProperty
 pub fn create_method_property(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -77,7 +77,7 @@ pub fn create_method_property(
 
 // 7.3.5 CreateDataProperty
 pub fn create_data_property(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -88,7 +88,7 @@ pub fn create_data_property(
 
 // 7.3.7 CreateDataPropertyOrThrow
 pub fn create_data_property_or_throw(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -103,7 +103,7 @@ pub fn create_data_property_or_throw(
 
 // 7.3.8 CreateNonEnumerableDataPropertyOrThrow
 pub fn create_non_enumerable_data_property_or_throw(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -114,7 +114,7 @@ pub fn create_non_enumerable_data_property_or_throw(
 
 // 7.3.8 DefinePropertyOrThrow
 pub fn define_property_or_throw(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     prop_desc: PropertyDescriptor,
@@ -129,7 +129,7 @@ pub fn define_property_or_throw(
 
 // 7.3.10 DeletePropertyOrThrow
 pub fn delete_property_or_throw(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
@@ -142,7 +142,7 @@ pub fn delete_property_or_throw(
 
 // 7.3.11 GetMethod
 pub fn get_method(
-    cx: &mut Context,
+    cx: Context,
     value: Handle<Value>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<Option<Handle<ObjectValue>>> {
@@ -160,7 +160,7 @@ pub fn get_method(
 
 // 7.3.12 HasProperty
 pub fn has_property(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
@@ -169,7 +169,7 @@ pub fn has_property(
 
 // 7.3.13 HasOwnProperty
 pub fn has_own_property(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
@@ -179,7 +179,7 @@ pub fn has_own_property(
 
 // 7.3.14 Call
 pub fn call(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<Value>,
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -192,7 +192,7 @@ pub fn call(
 }
 
 pub fn call_object(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<ObjectValue>,
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -206,7 +206,7 @@ pub fn call_object(
 
 // 7.3.15 Construct
 pub fn construct(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
     new_target: Option<Handle<ObjectValue>>,
@@ -223,7 +223,7 @@ pub enum IntegrityLevel {
 
 // 7.3.16 SetIntegrityLevel
 pub fn set_integrity_level(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
@@ -269,7 +269,7 @@ pub fn set_integrity_level(
 
 // 7.3.17 TestIntegrityLevel
 pub fn test_integrity_level(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
@@ -302,14 +302,14 @@ pub fn test_integrity_level(
 }
 
 // 7.3.19 LengthOfArrayLike
-pub fn length_of_array_like(cx: &mut Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
+pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
     let length_value = maybe!(get(cx, object, cx.names.length()));
     to_length(cx, length_value).into()
 }
 
 // 7.3.20 CreateListFromArrayLike
 pub fn create_list_from_array_like(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<Value>,
 ) -> EvalResult<Vec<Handle<Value>>> {
     if !object.is_object() {
@@ -335,7 +335,7 @@ pub fn create_list_from_array_like(
 
 // 7.3.21 Invoke
 pub fn invoke(
-    cx: &mut Context,
+    cx: Context,
     value: Handle<Value>,
     key: Handle<PropertyKey>,
     arguments: &[Handle<Value>],
@@ -346,7 +346,7 @@ pub fn invoke(
 
 // 7.3.22 OrdinaryHasInstance
 pub fn ordinary_has_instance(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<Value>,
     object: Handle<Value>,
 ) -> EvalResult<bool> {
@@ -389,7 +389,7 @@ pub fn ordinary_has_instance(
 
 // 7.3.23 SpeciesConstructor
 pub fn species_constructor(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     default_constructor: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {
@@ -425,7 +425,7 @@ pub enum KeyOrValue {
 
 // 7.3.24 EnumerableOwnPropertyNames
 pub fn enumerable_own_property_names(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     kind: KeyOrValue,
 ) -> EvalResult<Vec<Handle<Value>>> {
@@ -467,16 +467,13 @@ pub fn enumerable_own_property_names(
 }
 
 // 7.3.25 GetFunctionRealm
-pub fn get_function_realm(
-    cx: &mut Context,
-    func: Handle<ObjectValue>,
-) -> EvalResult<HeapPtr<Realm>> {
+pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<HeapPtr<Realm>> {
     func.get_realm(cx)
 }
 
 // 7.3.26 CopyDataProperties
 pub fn copy_data_properties(
-    cx: &mut Context,
+    cx: Context,
     target: Handle<ObjectValue>,
     source: Handle<Value>,
     excluded_items: &HashSet<Handle<PropertyKey>>,
@@ -511,7 +508,7 @@ pub fn copy_data_properties(
 
 // 7.3.30 PrivateGet
 pub fn private_get(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     private_name: PrivateName,
 ) -> EvalResult<Handle<Value>> {
@@ -536,7 +533,7 @@ pub fn private_get(
 
 // 7.3.31 PrivateSet
 pub fn private_set(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     private_name: PrivateName,
     value: Handle<Value>,
@@ -567,7 +564,7 @@ pub fn private_set(
 
 // 7.3.32 DefineField
 pub fn define_field(
-    cx: &mut Context,
+    cx: Context,
     mut receiver: Handle<ObjectValue>,
     field_def: ClassFieldDefinition,
 ) -> EvalResult<()> {
@@ -590,7 +587,7 @@ pub fn define_field(
 
 // 7.3.33 InitializeInstanceElements
 pub fn initialize_instance_elements(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     constructor: Handle<Function>,
 ) -> EvalResult<()> {

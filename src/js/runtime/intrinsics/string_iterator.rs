@@ -28,7 +28,7 @@ extend_object! {
 }
 
 impl StringIterator {
-    pub fn new(cx: &mut Context, string: Handle<FlatString>) -> Handle<StringIterator> {
+    pub fn new(cx: Context, string: Handle<FlatString>) -> Handle<StringIterator> {
         let mut object = object_create::<StringIterator>(
             cx,
             ObjectKind::StringIterator,
@@ -47,7 +47,7 @@ impl StringIterator {
 pub struct StringIteratorPrototype;
 
 impl StringIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
@@ -67,7 +67,7 @@ impl StringIteratorPrototype {
 
     // 22.1.5.1.1 %StringIteratorPrototype%.next
     fn next(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

@@ -15,44 +15,44 @@ use super::{
 // 9.1 Environment Record
 pub trait Environment {
     // Environment functions from spec
-    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool>;
+    fn has_binding(&self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool>;
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()>;
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()>;
     fn initialize_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()>;
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,
     ) -> EvalResult<()>;
     fn get_binding_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Handle<Value>>;
-    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool>;
+    fn delete_binding(&mut self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool>;
     fn has_this_binding(&self) -> bool;
     fn has_super_binding(&self) -> bool;
     fn with_base_object(&self) -> Option<Handle<ObjectValue>>;
 
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Handle<Value>>;
+    fn get_this_binding(&self, cx: Context) -> EvalResult<Handle<Value>>;
 
     // Optional reference to the outer (parent) environment. If None this is the global environment.
     // Implements section 8.1 Lexical Environment, but embedded in each environment record.
@@ -74,7 +74,7 @@ pub trait Environment {
 
 // 8.1.2.1 GetIdentifierReference
 pub fn get_identifier_reference(
-    cx: &mut Context,
+    cx: Context,
     env: Option<DynEnvironment>,
     name: Handle<StringValue>,
     is_strict: bool,

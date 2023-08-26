@@ -24,7 +24,7 @@ impl fmt::Display for EvalError {
 }
 
 pub fn evaluate(
-    cx: &mut Context,
+    cx: Context,
     program: Rc<ast::Program>,
     realm: Handle<Realm>,
 ) -> Result<(), EvalError> {

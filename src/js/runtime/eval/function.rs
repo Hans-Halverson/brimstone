@@ -50,7 +50,7 @@ use super::{
 
 // 10.2.11 FunctionDeclarationInstantiation
 pub fn function_declaration_instantiation(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<Function>,
     arguments: &[Handle<Value>],
 ) -> Completion {
@@ -303,7 +303,7 @@ pub fn function_declaration_instantiation(
 
 // 15.2.4 InstantiateOrdinaryFunctionObject
 pub fn instantiate_ordinary_function_object(
-    cx: &mut Context,
+    cx: Context,
     func_node: &ast::Function,
     env: DynEnvironment,
     private_env: Option<Handle<PrivateEnvironment>>,
@@ -325,7 +325,7 @@ pub fn instantiate_ordinary_function_object(
 
 // 15.2.5 InstantiateOrdinaryFunctionExpression
 pub fn instantiate_ordinary_function_expression(
-    cx: &mut Context,
+    cx: Context,
     func_node: &ast::Function,
     name: Option<Handle<PropertyKey>>,
 ) -> Handle<Function> {
@@ -384,7 +384,7 @@ pub fn instantiate_ordinary_function_expression(
 
 // 15.3.4 InstantiateArrowFunctionExpression
 pub fn instantiate_arrow_function_expression(
-    cx: &mut Context,
+    cx: Context,
     func_node: &ast::Function,
     name: Option<Handle<PropertyKey>>,
 ) -> Handle<Function> {
@@ -407,7 +407,7 @@ pub fn instantiate_arrow_function_expression(
 
 // 15.4.4 DefineMethod
 pub fn define_method(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
     function_prototype: Option<Handle<ObjectValue>>,
@@ -429,7 +429,7 @@ pub fn define_method(
 
 // 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
 pub fn method_definition_evaluation(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
     property_key: Handle<PropertyKey>,
@@ -479,7 +479,7 @@ pub fn method_definition_evaluation(
 
 // 15.4.5 MethodDefinitionEvaluation is split into normal and private copies
 pub fn private_method_definition_evaluation(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     func_node: &ast::Function,
     property_name: Handle<PropertyKey>,
@@ -521,7 +521,7 @@ pub fn private_method_definition_evaluation(
 
 // 20.2.1.1.1 CreateDynamicFunction
 pub fn create_dynamic_function(
-    cx: &mut Context,
+    mut cx: Context,
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
     args: &[Handle<Value>],

@@ -62,7 +62,7 @@ pub struct StringValue {
 
 impl StringValue {
     pub fn concat(
-        cx: &mut Context,
+        cx: Context,
         left: Handle<StringValue>,
         right: Handle<StringValue>,
     ) -> Handle<StringValue> {
@@ -77,7 +77,7 @@ impl StringValue {
         ConcatString::new(cx, left, right, new_len, width)
     }
 
-    pub fn concat_all(cx: &mut Context, strings: &[Handle<StringValue>]) -> Handle<StringValue> {
+    pub fn concat_all(cx: Context, strings: &[Handle<StringValue>]) -> Handle<StringValue> {
         if strings.is_empty() {
             cx.names.empty_string().as_string()
         } else {
@@ -103,7 +103,7 @@ impl StringValue {
         self.kind != StringKind::Concat
     }
 
-    fn cx(&self) -> &mut Context {
+    fn cx(&self) -> Context {
         HeapInfo::from_raw_heap_ptr(self as *const _).cx()
     }
 }
@@ -208,7 +208,7 @@ impl Handle<StringValue> {
     /// Return a substring of this string between the given indices. Indices refer to a half-open
     /// range of code units in the string. This function does not bounds check, so caller must make
     /// sure that 0 <= start <= end < string length.
-    pub fn substring(&self, cx: &mut Context, start: usize, end: usize) -> Handle<FlatString> {
+    pub fn substring(&self, cx: Context, start: usize, end: usize) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         match flat_string.width() {
@@ -414,7 +414,7 @@ impl Handle<StringValue> {
         }
     }
 
-    pub fn trim(&self, cx: &mut Context, trim_start: bool, trim_end: bool) -> Handle<StringValue> {
+    pub fn trim(&self, cx: Context, trim_start: bool, trim_end: bool) -> Handle<StringValue> {
         let mut code_points_iter = self.iter_code_points();
 
         let mut start_ptr = code_points_iter.ptr();
@@ -465,7 +465,7 @@ impl Handle<StringValue> {
         }
     }
 
-    pub fn repeat(&self, cx: &mut Context, n: u64) -> Handle<FlatString> {
+    pub fn repeat(&self, cx: Context, n: u64) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         match flat_string.width() {
@@ -488,7 +488,7 @@ impl Handle<StringValue> {
         slice_code_units.consume_equals(&mut search_code_units)
     }
 
-    pub fn to_lower_case(&self, cx: &mut Context) -> Handle<FlatString> {
+    pub fn to_lower_case(&self, cx: Context) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         match flat_string.width() {
@@ -547,7 +547,7 @@ impl Handle<StringValue> {
         }
     }
 
-    pub fn to_upper_case(&self, cx: &mut Context) -> Handle<FlatString> {
+    pub fn to_upper_case(&self, cx: Context) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         let code_point_iter = match flat_string.width() {
@@ -699,11 +699,11 @@ struct FlatStringNoInteriorMutability {
 impl FlatString {
     const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
 
-    fn new_one_byte(cx: &mut Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+    fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
         let len = one_byte_slice.len();
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
-        let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
+        let mut string = cx.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
         set_uninit!(string.len, len);
@@ -718,11 +718,11 @@ impl FlatString {
         string
     }
 
-    fn new_two_byte(cx: &mut Context, two_byte_slice: &[u16]) -> HeapPtr<FlatString> {
+    fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> HeapPtr<FlatString> {
         let len = two_byte_slice.len();
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
-        let mut string = cx.heap.alloc_uninit_with_size::<FlatString>(size);
+        let mut string = cx.alloc_uninit_with_size::<FlatString>(size);
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
         set_uninit!(string.len, len);
@@ -737,7 +737,7 @@ impl FlatString {
         string
     }
 
-    pub fn from_wtf8(cx: &mut Context, bytes: &[u8]) -> HeapPtr<FlatString> {
+    pub fn from_wtf8(cx: Context, bytes: &[u8]) -> HeapPtr<FlatString> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -805,20 +805,20 @@ impl FlatString {
     }
 
     /// Create a new one byte string from a slice of Latin1 bytes
-    pub fn from_one_byte_slice(cx: &mut Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+    pub fn from_one_byte_slice(cx: Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
         FlatString::new_one_byte(cx, one_byte_slice)
     }
 
-    pub fn from_code_unit(cx: &mut Context, code_unit: CodeUnit) -> Handle<FlatString> {
+    pub fn from_code_unit(cx: Context, code_unit: CodeUnit) -> Handle<FlatString> {
         Self::from_code_points(cx, &[code_unit as CodePoint])
     }
 
-    pub fn from_code_point(cx: &mut Context, code_point: CodePoint) -> Handle<FlatString> {
+    pub fn from_code_point(cx: Context, code_point: CodePoint) -> Handle<FlatString> {
         Self::from_code_points(cx, &[code_point])
     }
 
     #[inline]
-    pub fn from_code_points(cx: &mut Context, code_points: &[CodePoint]) -> Handle<FlatString> {
+    pub fn from_code_points(cx: Context, code_points: &[CodePoint]) -> Handle<FlatString> {
         let is_one_byte = code_points.iter().all(|code_point| is_latin1(*code_point));
 
         if is_one_byte {
@@ -1046,13 +1046,13 @@ pub struct ConcatString {
 
 impl ConcatString {
     fn new(
-        cx: &mut Context,
+        cx: Context,
         left: Handle<StringValue>,
         right: Handle<StringValue>,
         len: usize,
         width: StringWidth,
     ) -> Handle<StringValue> {
-        let mut string = cx.heap.alloc_uninit::<ConcatString>();
+        let mut string = cx.alloc_uninit::<ConcatString>();
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(ObjectKind::String));
         set_uninit!(string.len, len);

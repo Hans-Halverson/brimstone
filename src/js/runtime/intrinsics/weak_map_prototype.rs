@@ -11,7 +11,7 @@ pub struct WeakMapPrototype;
 
 impl WeakMapPrototype {
     // 24.3.3 Properties of the WeakMap Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -34,7 +34,7 @@ impl WeakMapPrototype {
 
     // 24.3.3.2 WeakMap.prototype.delete
     fn delete(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -57,7 +57,7 @@ impl WeakMapPrototype {
 
     // 24.3.3.3 WeakMap.prototype.get
     fn get(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -82,7 +82,7 @@ impl WeakMapPrototype {
 
     // 24.3.3.4 WeakMap.prototype.has
     fn has(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -105,7 +105,7 @@ impl WeakMapPrototype {
 
     // 24.3.3.5 WeakMap.prototype.set
     fn set(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

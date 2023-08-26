@@ -22,11 +22,11 @@ pub struct ModuleEnvironment {
 // 9.1.1.5 Module Environment Record
 impl ModuleEnvironment {
     // 9.1.2.6 NewModuleEnvironment
-    fn _new(cx: &mut Context, outer: DynEnvironment) -> Handle<ModuleEnvironment> {
+    fn _new(cx: Context, outer: DynEnvironment) -> Handle<ModuleEnvironment> {
         // Allocate and put behind handles before allocating module environment
         let bindings = DeclarativeEnvironment::new_bindings_map(cx);
 
-        let mut env = cx.heap.alloc_uninit::<ModuleEnvironment>();
+        let mut env = cx.alloc_uninit::<ModuleEnvironment>();
 
         DeclarativeEnvironment::init_as_base(
             cx,
@@ -51,7 +51,7 @@ impl Environment for Handle<ModuleEnvironment> {
     // 9.1.1.5.1 GetBindingValue
     fn get_binding_value(
         &self,
-        _cx: &mut Context,
+        _cx: Context,
         _name: Handle<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
@@ -59,7 +59,7 @@ impl Environment for Handle<ModuleEnvironment> {
     }
 
     // 9.1.1.5.2 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, _name: Handle<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, _: Context, _name: Handle<StringValue>) -> EvalResult<bool> {
         unreachable!("ModuleEnvironment::delete_binding is never called according to the spec")
     }
 
@@ -69,19 +69,19 @@ impl Environment for Handle<ModuleEnvironment> {
     }
 
     // 9.1.1.5.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
+    fn get_this_binding(&self, cx: Context) -> EvalResult<Handle<Value>> {
         cx.undefined().into()
     }
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -90,7 +90,7 @@ impl Environment for Handle<ModuleEnvironment> {
 
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
@@ -99,7 +99,7 @@ impl Environment for Handle<ModuleEnvironment> {
 
     fn initialize_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -108,7 +108,7 @@ impl Environment for Handle<ModuleEnvironment> {
 
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,

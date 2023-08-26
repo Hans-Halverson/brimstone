@@ -30,7 +30,7 @@ pub struct DateConstructor;
 
 impl DateConstructor {
     // 21.4.2 The Date Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -62,7 +62,7 @@ impl DateConstructor {
 
     // 21.4.2.1 Date
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -159,7 +159,7 @@ impl DateConstructor {
 
     // 21.4.3.1 Date.now
     fn now(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -169,7 +169,7 @@ impl DateConstructor {
 
     // 21.4.3.2 Date.parse
     fn parse(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -186,7 +186,7 @@ impl DateConstructor {
 
     // 21.4.3.4 Date.UTC
     fn utc(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

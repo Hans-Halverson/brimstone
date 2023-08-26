@@ -164,7 +164,7 @@ bitflags! {
 
 impl ObjectDescriptor {
     pub fn new<T>(
-        cx: &mut Context,
+        cx: Context,
         descriptor: Handle<ObjectDescriptor>,
         kind: ObjectKind,
         flags: DescFlags,
@@ -172,7 +172,7 @@ impl ObjectDescriptor {
     where
         Handle<T>: VirtualObject,
     {
-        let mut desc = cx.heap.alloc_uninit::<ObjectDescriptor>();
+        let mut desc = cx.alloc_uninit::<ObjectDescriptor>();
 
         set_uninit!(desc.descriptor, descriptor.get_());
         set_uninit!(desc.vtable, extract_object_vtable::<Handle<T>>());
@@ -204,7 +204,7 @@ impl BaseDescriptors {
         BaseDescriptors { descriptors: vec![] }
     }
 
-    pub fn new(cx: &mut Context) -> BaseDescriptors {
+    pub fn new(cx: Context) -> BaseDescriptors {
         let mut descriptors = vec![];
 
         descriptors.reserve_exact(ObjectKind::count());

@@ -46,7 +46,7 @@ impl<T> Handle<T> {
     }
 
     #[inline]
-    pub fn empty(cx: &mut Context) -> Handle<T> {
+    pub fn empty(cx: Context) -> Handle<T> {
         let handle_context = cx.heap.info().handle_context();
         Handle::new(handle_context, Value::empty().to_handle_contents())
     }
@@ -82,20 +82,17 @@ pub struct HandleScope {
 
 impl HandleScope {
     #[inline]
-    pub fn new<F: FnMut(&mut Context) -> R, R: Escapable>(cx: &mut Context, mut f: F) -> R {
+    pub fn new<F: FnMut(Context) -> R, R: Escapable>(cx: Context, mut f: F) -> R {
         let handle_scope = Self::enter(cx);
         let result = f(cx);
         handle_scope.escape(cx, result)
     }
 
     #[inline]
-    pub fn enter(cx: &mut Context) -> HandleScope {
-        Self::enter_with_heap(&mut cx.heap)
-    }
-
-    #[inline]
-    pub fn enter_with_heap(heap: &mut Heap) -> HandleScope {
+    pub fn enter(mut cx: Context) -> HandleScope {
+        let heap = &mut cx.heap;
         let handle_context = heap.info().handle_context();
+
         HandleScope {
             heap_ptr: heap as *mut Heap,
             next_ptr: handle_context.next_ptr,
@@ -105,7 +102,7 @@ impl HandleScope {
 
     /// Exit a handle scope and return an item escaped into the parent's handle scope.
     #[inline]
-    pub fn escape<R: Escapable>(self, cx: &mut Context, result: R) -> R {
+    pub fn escape<R: Escapable>(self, cx: Context, result: R) -> R {
         self.exit();
         result.escape(cx)
     }
@@ -345,7 +342,7 @@ impl<T: IsHeapObject> Handle<T> {
 
 impl Value {
     #[inline]
-    pub fn to_handle(&self, cx: &mut Context) -> Handle<Value> {
+    pub fn to_handle(&self, cx: Context) -> Handle<Value> {
         let handle_context = cx.heap.info().handle_context();
         Handle::new(handle_context, self.to_handle_contents())
     }
@@ -424,33 +421,33 @@ pub trait Escapable {
     /// means that allocating a handle may overwrite the handles in this item. If multiple handles
     /// must be moved to the parent scope then be sure to copy out all the values before allocating
     /// any new handles, to avoid overwriting the old handles.
-    fn escape(&self, cx: &mut Context) -> Self;
+    fn escape(&self, cx: Context) -> Self;
 }
 
 impl Escapable for () {
     #[inline]
-    fn escape(&self, _: &mut Context) -> Self {
+    fn escape(&self, _: Context) -> Self {
         ()
     }
 }
 
 impl Escapable for Handle<Value> {
     #[inline]
-    fn escape(&self, cx: &mut Context) -> Self {
+    fn escape(&self, cx: Context) -> Self {
         self.get().to_handle(cx)
     }
 }
 
 impl<T: IsHeapObject> Escapable for Handle<T> {
     #[inline]
-    fn escape(&self, _: &mut Context) -> Self {
+    fn escape(&self, _: Context) -> Self {
         self.get_().to_handle()
     }
 }
 
 impl<T: Escapable> Escapable for Option<T> {
     #[inline]
-    fn escape(&self, cx: &mut Context) -> Self {
+    fn escape(&self, cx: Context) -> Self {
         self.as_ref().map(|some| some.escape(cx))
     }
 }

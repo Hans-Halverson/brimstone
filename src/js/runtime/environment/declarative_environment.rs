@@ -51,11 +51,11 @@ type BindingsMap = BsHashMap<HeapPtr<FlatString>, Binding>;
 
 impl DeclarativeEnvironment {
     // 9.1.2.2 NewDeclarativeEnvironment
-    pub fn new(cx: &mut Context, outer: Option<DynEnvironment>) -> Handle<DeclarativeEnvironment> {
+    pub fn new(cx: Context, outer: Option<DynEnvironment>) -> Handle<DeclarativeEnvironment> {
         // Allocate and place behind handle before allocating environment
         let bindings_map = Self::new_bindings_map(cx);
 
-        let mut env = cx.heap.alloc_uninit::<DeclarativeEnvironment>();
+        let mut env = cx.alloc_uninit::<DeclarativeEnvironment>();
 
         set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment));
         set_uninit!(env.bindings, bindings_map.get_());
@@ -65,7 +65,7 @@ impl DeclarativeEnvironment {
     }
 
     pub fn init_as_base(
-        cx: &mut Context,
+        cx: Context,
         env: &mut DeclarativeEnvironment,
         kind: ObjectKind,
         bindings: Handle<BindingsMap>,
@@ -76,8 +76,8 @@ impl DeclarativeEnvironment {
         set_uninit!(env.outer, outer.as_ref().map(DynEnvironment::to_heap));
     }
 
-    pub fn uninit(cx: &mut Context) -> Handle<DeclarativeEnvironment> {
-        let mut env = cx.heap.alloc_uninit::<DeclarativeEnvironment>();
+    pub fn uninit(cx: Context) -> Handle<DeclarativeEnvironment> {
+        let mut env = cx.alloc_uninit::<DeclarativeEnvironment>();
 
         set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::DeclarativeEnvironment));
         set_uninit!(env.bindings, HeapPtr::uninit());
@@ -86,7 +86,7 @@ impl DeclarativeEnvironment {
         env.to_handle()
     }
 
-    pub fn new_bindings_map(cx: &mut Context) -> Handle<BindingsMap> {
+    pub fn new_bindings_map(cx: Context) -> Handle<BindingsMap> {
         BindingsMap::new_initial(cx, ObjectKind::DeclarativeEnvironmentBindingsMap).to_handle()
     }
 }
@@ -99,14 +99,14 @@ impl Handle<DeclarativeEnvironment> {
 
 impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.1 HasBinding
-    fn has_binding(&self, _: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, _: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.bindings.contains_key(&name.flatten().get_()).into()
     }
 
     // 9.1.1.1.2 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -121,7 +121,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.3 CreateImmutableBinding
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
@@ -136,7 +136,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.4 InitializeBinding
     fn initialize_binding(
         &mut self,
-        _: &mut Context,
+        _: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -149,7 +149,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,
@@ -182,7 +182,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     // 9.1.1.1.6 GetBindingValue
     fn get_binding_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         _is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
@@ -195,7 +195,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
     }
 
     // 9.1.1.1.7 DeleteBinding
-    fn delete_binding(&mut self, _: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, _: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         let name = name.flatten().get_();
         let binding = self.bindings.get(&name).unwrap();
         if !binding.can_delete {
@@ -222,7 +222,7 @@ impl Environment for Handle<DeclarativeEnvironment> {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
+    fn get_this_binding(&self, _: Context) -> EvalResult<Handle<Value>> {
         panic!("DeclarativeEnvironment::get_this_binding is never called in spec")
     }
 
@@ -234,15 +234,15 @@ impl Environment for Handle<DeclarativeEnvironment> {
 pub struct DeclarativeEnvironmentBindingsMapField(Handle<DeclarativeEnvironment>);
 
 impl BsHashMapField<HeapPtr<FlatString>, Binding> for DeclarativeEnvironmentBindingsMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BindingsMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BindingsMap> {
         BindingsMap::new(cx, ObjectKind::DeclarativeEnvironmentBindingsMap, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<BindingsMap> {
+    fn get(&self, _: Context) -> HeapPtr<BindingsMap> {
         self.0.bindings
     }
 
-    fn set(&mut self, _: &mut Context, map: HeapPtr<BindingsMap>) {
+    fn set(&mut self, _: Context, map: HeapPtr<BindingsMap>) {
         self.0.bindings = map;
     }
 }

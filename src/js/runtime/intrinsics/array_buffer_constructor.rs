@@ -41,7 +41,7 @@ type DataArray = BsArray<u8>;
 impl ArrayBufferObject {
     // 25.1.2.1 AllocateArrayBuffer
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         byte_length: usize,
     ) -> EvalResult<Handle<ArrayBufferObject>> {
@@ -96,7 +96,7 @@ pub struct ArrayBufferConstructor;
 
 impl ArrayBufferConstructor {
     // 25.1.4 Properties of the ArrayBuffer Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -127,7 +127,7 @@ impl ArrayBufferConstructor {
 
     // 25.1.3.1 ArrayBuffer
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -146,7 +146,7 @@ impl ArrayBufferConstructor {
 
     // 25.1.4.3 get ArrayBuffer [ @@species ]
     fn get_species(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -157,7 +157,7 @@ impl ArrayBufferConstructor {
 
 // 25.1.2.4 CloneArrayBuffer
 pub fn clone_array_buffer(
-    cx: &mut Context,
+    cx: Context,
     mut source_buffer: Handle<ArrayBufferObject>,
     source_byte_offset: usize,
     source_length: usize,

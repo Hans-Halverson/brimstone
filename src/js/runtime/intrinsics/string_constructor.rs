@@ -24,7 +24,7 @@ pub struct StringConstructor;
 
 impl StringConstructor {
     // 22.1.2 Properties of the String Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -55,7 +55,7 @@ impl StringConstructor {
 
     // 22.1.1.1 String
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -83,7 +83,7 @@ impl StringConstructor {
 
     // 22.1.2.1 String.fromCharCode
     fn from_char_code(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -107,7 +107,7 @@ impl StringConstructor {
 
     // 22.1.2.2 String.fromCodePoint
     fn from_code_point(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

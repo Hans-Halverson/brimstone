@@ -42,11 +42,7 @@ pub enum MapIteratorKind {
 }
 
 impl MapIterator {
-    pub fn new(
-        cx: &mut Context,
-        map: Handle<MapObject>,
-        kind: MapIteratorKind,
-    ) -> Handle<MapIterator> {
+    pub fn new(cx: Context, map: Handle<MapObject>, kind: MapIteratorKind) -> Handle<MapIterator> {
         let mut object = object_create::<MapIterator>(
             cx,
             ObjectKind::MapIterator,
@@ -80,7 +76,7 @@ impl MapIterator {
 pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
 
@@ -101,7 +97,7 @@ impl MapIteratorPrototype {
     // 24.1.5.2.1 %MapIteratorPrototype%.next
     // Adapted from the abstract closure in 24.1.5.1 CreateMapIterator
     fn next(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

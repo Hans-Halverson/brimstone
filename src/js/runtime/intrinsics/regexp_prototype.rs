@@ -33,7 +33,7 @@ pub struct RegExpPrototype;
 
 impl RegExpPrototype {
     // 22.2.6 Properties of the RegExp Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -58,7 +58,7 @@ impl RegExpPrototype {
 
     // 22.2.6.2 RegExp.prototype.exec
     fn exec(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -80,7 +80,7 @@ impl RegExpPrototype {
 
     // 22.2.6.3 get RegExp.prototype.dotAll
     fn dot_all(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -90,7 +90,7 @@ impl RegExpPrototype {
 
     // 22.2.6.4 get RegExp.prototype.flags
     fn flags(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -164,7 +164,7 @@ impl RegExpPrototype {
 
     // 22.2.6.5 get RegExp.prototype.global
     fn global(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -174,7 +174,7 @@ impl RegExpPrototype {
 
     // 22.2.6.6 get RegExp.prototype.hasIndices
     fn has_indices(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -184,7 +184,7 @@ impl RegExpPrototype {
 
     // 22.2.6.7 get RegExp.prototype.ignoreCase
     fn ignore_case(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -194,7 +194,7 @@ impl RegExpPrototype {
 
     // 22.2.6.8 RegExp.prototype [ @@match ]
     fn match_(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -272,7 +272,7 @@ impl RegExpPrototype {
 
     // 22.2.6.9 RegExp.prototype [ @@matchAll ]
     fn match_all(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -309,7 +309,7 @@ impl RegExpPrototype {
 
     // 22.2.6.10 get RegExp.prototype.multiline
     fn multiline(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -319,7 +319,7 @@ impl RegExpPrototype {
 
     // 22.2.6.13 get RegExp.prototype.source
     fn source(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -344,7 +344,7 @@ impl RegExpPrototype {
 
     // 22.2.6.15 get RegExp.prototype.sticky
     fn sticky(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -354,7 +354,7 @@ impl RegExpPrototype {
 
     // 22.2.6.16 RegExp.prototype.test
     fn test(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -375,7 +375,7 @@ impl RegExpPrototype {
 
     // 22.2.6.17 RegExp.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -400,7 +400,7 @@ impl RegExpPrototype {
 
     // 22.2.6.18 get RegExp.prototype.unicode
     fn unicode(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -411,7 +411,7 @@ impl RegExpPrototype {
 
 // 22.2.6.4.1 RegExpHasFlag
 fn regexp_has_flag(
-    cx: &mut Context,
+    cx: Context,
     this_value: Handle<Value>,
     flag: RegExpFlags,
 ) -> EvalResult<Handle<Value>> {
@@ -437,7 +437,7 @@ pub fn flags_string_contains(flags_string: Handle<StringValue>, flag: CodePoint)
 
 // 22.2.7.1 RegExpExec
 pub fn regexp_exec(
-    cx: &mut Context,
+    cx: Context,
     regexp_object: Handle<ObjectValue>,
     string_value: Handle<StringValue>,
 ) -> EvalResult<Handle<Value>> {
@@ -461,7 +461,7 @@ pub fn regexp_exec(
 
 // 22.2.7.2 RegExpBuiltinExec
 fn regexp_builtin_exec(
-    cx: &mut Context,
+    cx: Context,
     regexp_object: Handle<RegExpObject>,
     string_value: Handle<StringValue>,
 ) -> EvalResult<Handle<Value>> {

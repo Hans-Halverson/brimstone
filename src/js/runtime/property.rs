@@ -97,7 +97,7 @@ impl Property {
         }
     }
 
-    pub fn private_getter(cx: &mut Context, getter: Handle<ObjectValue>) -> Property {
+    pub fn private_getter(cx: Context, getter: Handle<ObjectValue>) -> Property {
         let accessor_value = AccessorValue::new(cx, Some(getter), None);
         Property {
             value: accessor_value.into(),
@@ -105,7 +105,7 @@ impl Property {
         }
     }
 
-    pub fn private_setter(cx: &mut Context, setter: Handle<ObjectValue>) -> Property {
+    pub fn private_setter(cx: Context, setter: Handle<ObjectValue>) -> Property {
         let accessor_value = AccessorValue::new(cx, None, Some(setter));
         Property {
             value: accessor_value.into(),
@@ -190,7 +190,7 @@ impl Property {
         HeapProperty { value: self.value.get(), flags: self.flags }
     }
 
-    pub fn from_heap(cx: &mut Context, heap_property: &HeapProperty) -> Property {
+    pub fn from_heap(cx: Context, heap_property: &HeapProperty) -> Property {
         Property {
             value: heap_property.value.to_handle(cx),
             flags: heap_property.flags,

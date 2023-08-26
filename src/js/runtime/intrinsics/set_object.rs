@@ -26,7 +26,7 @@ type ValueSet = BsIndexSet<ValueCollectionKey>;
 
 impl SetObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<SetObject>> {
         // Allocate and place behind handle before allocating object
@@ -51,7 +51,7 @@ impl SetObject {
 }
 
 impl Handle<SetObject> {
-    pub fn clear_set_data(&mut self, cx: &mut Context) {
+    pub fn clear_set_data(&mut self, cx: Context) {
         let new_set = ValueSet::new(cx, ObjectKind::SetObjectValueSet, ValueSet::MIN_CAPACITY);
         self.set_data = new_set;
     }
@@ -65,7 +65,7 @@ impl Handle<SetObject> {
 pub struct SetObjectSetField(Handle<SetObject>);
 
 impl BsIndexSetField<ValueCollectionKey> for SetObjectSetField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<ValueSet> {
+    fn new(cx: Context, capacity: usize) -> HeapPtr<ValueSet> {
         ValueSet::new(cx, ObjectKind::SetObjectValueSet, capacity)
     }
 

@@ -34,7 +34,7 @@ const BOUND_ARGUMENTS_BYTE_OFFSET: usize = field_offset!(BoundFunctionObject, bo
 impl BoundFunctionObject {
     // 10.4.1.3 BoundFunctionCreate
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         target_function: Handle<ObjectValue>,
         bound_this: Handle<Value>,
         bound_arguments: Vec<Handle<Value>>,
@@ -44,9 +44,9 @@ impl BoundFunctionObject {
 
         // Create with variable size since bound arguments are stored inline
         let byte_size = Self::calculate_size_in_bytes(bound_arguments.len());
-        let mut object = cx
-            .heap
-            .alloc_uninit_with_size::<BoundFunctionObject>(byte_size);
+        // println!("heap bounds before BoundFUnctionObject allocation: {:?}", cx.heap.current_heap_bounds());
+        let mut object = cx.alloc_uninit_with_size::<BoundFunctionObject>(byte_size);
+        // println!("BoundFUnctionOBject alloced as {:p}", object.as_ptr());
 
         let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
         object_ordinary_init(cx, object.into(), descriptor, proto.map(|p| p.get_()));
@@ -76,12 +76,12 @@ impl BoundFunctionObject {
     }
 
     #[inline]
-    fn bound_this(&self, cx: &mut Context) -> Handle<Value> {
+    fn bound_this(&self, cx: Context) -> Handle<Value> {
         self.bound_this.to_handle(cx)
     }
 
     #[inline]
-    fn bound_arguments(&self, cx: &mut Context) -> Vec<Handle<Value>> {
+    fn bound_arguments(&self, cx: Context) -> Vec<Handle<Value>> {
         self.bound_arguments
             .as_slice()
             .iter()
@@ -95,7 +95,7 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     // 10.4.1.1 [[Call]]
     fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -115,7 +115,7 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     // 10.4.1.2 [[Construct]]
     fn construct(
         &self,
-        cx: &mut Context,
+        cx: Context,
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
@@ -145,7 +145,7 @@ impl VirtualObject for Handle<BoundFunctionObject> {
         self.bound_target_function().is_constructor()
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
         self.bound_target_function().get_realm(cx)
     }
 }

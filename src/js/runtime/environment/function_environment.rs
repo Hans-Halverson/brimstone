@@ -41,7 +41,7 @@ pub enum ThisBindingStatus {
 impl FunctionEnvironment {
     // 9.1.2.4 NewFunctionEnvironment
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         function_object: Handle<Function>,
         new_target: Option<Handle<ObjectValue>>,
     ) -> Handle<FunctionEnvironment> {
@@ -54,7 +54,7 @@ impl FunctionEnvironment {
         // Allocate and put behind handle before allocating function environment
         let bindings = DeclarativeEnvironment::new_bindings_map(cx);
 
-        let mut env = cx.heap.alloc_uninit::<FunctionEnvironment>();
+        let mut env = cx.alloc_uninit::<FunctionEnvironment>();
 
         DeclarativeEnvironment::init_as_base(
             cx,
@@ -72,7 +72,7 @@ impl FunctionEnvironment {
         env.to_handle()
     }
 
-    fn this_value(&self, cx: &mut Context) -> Handle<Value> {
+    fn this_value(&self, cx: Context) -> Handle<Value> {
         self.this_value.to_handle(cx)
     }
 
@@ -112,7 +112,7 @@ impl Environment for Handle<FunctionEnvironment> {
     }
 
     // 9.1.1.3.4 GetThisBinding
-    fn get_this_binding(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
+    fn get_this_binding(&self, cx: Context) -> EvalResult<Handle<Value>> {
         if self.this_binding_status == ThisBindingStatus::Uninitialized {
             return reference_error_(cx, "this is not initialized");
         }
@@ -122,13 +122,13 @@ impl Environment for Handle<FunctionEnvironment> {
 
     // All other methods inherited from DeclarativeEnvironment
 
-    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().has_binding(cx, name)
     }
 
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -137,7 +137,7 @@ impl Environment for Handle<FunctionEnvironment> {
 
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
@@ -146,7 +146,7 @@ impl Environment for Handle<FunctionEnvironment> {
 
     fn initialize_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -155,7 +155,7 @@ impl Environment for Handle<FunctionEnvironment> {
 
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,
@@ -165,14 +165,14 @@ impl Environment for Handle<FunctionEnvironment> {
 
     fn get_binding_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
         self.env().get_binding_value(cx, name, is_strict)
     }
 
-    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         self.env().delete_binding(cx, name)
     }
 
@@ -187,7 +187,7 @@ impl Environment for Handle<FunctionEnvironment> {
 
 impl FunctionEnvironment {
     // 9.1.1.3.1 BindThisValue
-    pub fn bind_this_value(&mut self, cx: &mut Context, value: Handle<Value>) -> EvalResult<()> {
+    pub fn bind_this_value(&mut self, cx: Context, value: Handle<Value>) -> EvalResult<()> {
         if self.this_binding_status == ThisBindingStatus::Initialized {
             return reference_error_(cx, "this is already initialized");
         }
@@ -199,7 +199,7 @@ impl FunctionEnvironment {
     }
 
     // 9.1.1.3.5 GetSuperBase
-    pub fn get_super_base(&self, cx: &mut Context) -> EvalResult<Handle<Value>> {
+    pub fn get_super_base(&self, cx: Context) -> EvalResult<Handle<Value>> {
         // Note that we can return either an object, undefined, or null, so we must convert from
         // options to the correct undefined vs null value.
         match self.function_object.home_object() {

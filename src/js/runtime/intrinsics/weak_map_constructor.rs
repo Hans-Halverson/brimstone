@@ -22,7 +22,7 @@ pub struct WeakMapConstructor;
 
 impl WeakMapConstructor {
     // 24.3.2 Properties of the WeakMap Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -45,7 +45,7 @@ impl WeakMapConstructor {
 
     // 24.3.1.1 WeakMap
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

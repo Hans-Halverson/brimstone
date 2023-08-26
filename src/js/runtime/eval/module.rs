@@ -6,10 +6,6 @@ use crate::js::{
 };
 
 #[allow(dead_code)]
-pub fn eval_module(
-    _cx: &mut Context,
-    _program: Rc<ast::Program>,
-    _realm: Handle<Realm>,
-) -> Completion {
+pub fn eval_module(_cx: Context, _program: Rc<ast::Program>, _realm: Handle<Realm>) -> Completion {
     unimplemented!("module evaluation")
 }

@@ -58,7 +58,7 @@ pub trait TypedArray {
 
     fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject>;
 
-    fn name(&self, cx: &mut Context) -> Handle<StringValue>;
+    fn name(&self, cx: Context) -> Handle<StringValue>;
 
     fn content_type(&self) -> ContentType;
 
@@ -68,7 +68,7 @@ pub trait TypedArray {
 
     fn read_element_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         array_buffer: HeapPtr<ArrayBufferObject>,
         byte_index: usize,
     ) -> Handle<Value>;
@@ -120,12 +120,12 @@ macro_rules! create_typed_array {
 }
 
 #[inline]
-pub fn to_int8_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<i8> {
+pub fn to_int8_element(cx: Context, value: Handle<Value>) -> EvalResult<i8> {
     to_int8(cx, value)
 }
 
 #[inline]
-pub fn from_int8_element(cx: &mut Context, element: i8) -> Handle<Value> {
+pub fn from_int8_element(cx: Context, element: i8) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -141,12 +141,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_uint8_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<u8> {
+pub fn to_uint8_element(cx: Context, value: Handle<Value>) -> EvalResult<u8> {
     to_uint8(cx, value)
 }
 
 #[inline]
-pub fn from_uint8_element(cx: &mut Context, element: u8) -> Handle<Value> {
+pub fn from_uint8_element(cx: Context, element: u8) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -162,12 +162,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_uint8_clamped_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<u8> {
+pub fn to_uint8_clamped_element(cx: Context, value: Handle<Value>) -> EvalResult<u8> {
     to_uint8_clamp(cx, value)
 }
 
 #[inline]
-pub fn from_uint8_clamped_element(cx: &mut Context, element: u8) -> Handle<Value> {
+pub fn from_uint8_clamped_element(cx: Context, element: u8) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -183,12 +183,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_int16_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<i16> {
+pub fn to_int16_element(cx: Context, value: Handle<Value>) -> EvalResult<i16> {
     to_int16(cx, value)
 }
 
 #[inline]
-pub fn from_int16_element(cx: &mut Context, element: i16) -> Handle<Value> {
+pub fn from_int16_element(cx: Context, element: i16) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -204,12 +204,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_uint16_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<u16> {
+pub fn to_uint16_element(cx: Context, value: Handle<Value>) -> EvalResult<u16> {
     to_uint16(cx, value)
 }
 
 #[inline]
-pub fn from_uint16_element(cx: &mut Context, element: u16) -> Handle<Value> {
+pub fn from_uint16_element(cx: Context, element: u16) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -225,12 +225,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_int32_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<i32> {
+pub fn to_int32_element(cx: Context, value: Handle<Value>) -> EvalResult<i32> {
     to_int32(cx, value)
 }
 
 #[inline]
-pub fn from_int32_element(cx: &mut Context, element: i32) -> Handle<Value> {
+pub fn from_int32_element(cx: Context, element: i32) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -246,12 +246,12 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_uint32_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<u32> {
+pub fn to_uint32_element(cx: Context, value: Handle<Value>) -> EvalResult<u32> {
     to_uint32(cx, value)
 }
 
 #[inline]
-pub fn from_uint32_element(cx: &mut Context, element: u32) -> Handle<Value> {
+pub fn from_uint32_element(cx: Context, element: u32) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -267,7 +267,7 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_big_int64_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<i64> {
+pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64> {
     let bigint = maybe!(to_big_int64(cx, value));
 
     // Guaranteed to have a single u64 component in i64 range from checks in to_big_int64
@@ -281,7 +281,7 @@ pub fn to_big_int64_element(cx: &mut Context, value: Handle<Value>) -> EvalResul
 }
 
 #[inline]
-pub fn from_big_int64_element(cx: &mut Context, element: i64) -> Handle<Value> {
+pub fn from_big_int64_element(cx: Context, element: i64) -> Handle<Value> {
     let bigint = BigInt::from(element);
     BigIntValue::new(cx, bigint).into()
 }
@@ -298,7 +298,7 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_big_uint64_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<u64> {
+pub fn to_big_uint64_element(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
     let bigint = maybe!(to_big_uint64(cx, value));
 
     // Guaranteed to have a single u64 component from checks in to_big_uint64
@@ -312,7 +312,7 @@ pub fn to_big_uint64_element(cx: &mut Context, value: Handle<Value>) -> EvalResu
 }
 
 #[inline]
-pub fn from_big_uint64_element(cx: &mut Context, element: u64) -> Handle<Value> {
+pub fn from_big_uint64_element(cx: Context, element: u64) -> Handle<Value> {
     let bigint = BigInt::from(element);
     BigIntValue::new(cx, bigint).into()
 }
@@ -329,13 +329,13 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_float32_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<f32> {
+pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> {
     let number = maybe!(to_number(cx, value));
     (number.as_number() as f32).into()
 }
 
 #[inline]
-pub fn from_float32_element(cx: &mut Context, element: f32) -> Handle<Value> {
+pub fn from_float32_element(cx: Context, element: f32) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 
@@ -351,13 +351,13 @@ create_typed_array!(
 );
 
 #[inline]
-pub fn to_float64_element(cx: &mut Context, value: Handle<Value>) -> EvalResult<f64> {
+pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
     let number = maybe!(to_number(cx, value));
     number.as_number().into()
 }
 
 #[inline]
-pub fn from_float64_element(cx: &mut Context, element: f64) -> Handle<Value> {
+pub fn from_float64_element(cx: Context, element: f64) -> Handle<Value> {
     Value::from(element).to_handle(cx)
 }
 

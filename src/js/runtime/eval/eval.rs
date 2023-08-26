@@ -30,7 +30,7 @@ use crate::{
 use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
 pub fn perform_eval(
-    cx: &mut Context,
+    mut cx: Context,
     code: Handle<Value>,
     is_strict_caller: bool,
     is_direct: bool,
@@ -170,7 +170,7 @@ pub fn perform_eval(
 
 // 19.2.1.3 EvalDeclarationInstantiation
 fn eval_declaration_instantiation(
-    cx: &mut Context,
+    cx: Context,
     ast: &ast::Program,
     mut var_env: DynEnvironment,
     mut lex_env: DynEnvironment,

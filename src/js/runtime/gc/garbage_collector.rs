@@ -51,7 +51,7 @@ pub struct GarbageCollector {
 }
 
 impl GarbageCollector {
-    fn new(cx: &mut Context) -> GarbageCollector {
+    fn new(cx: Context) -> GarbageCollector {
         let (from_space_start_ptr, from_space_end_ptr) = cx.heap.current_heap_bounds();
         let (to_space_start_ptr, to_space_end_ptr) = cx.heap.next_heap_bounds();
         let (permanent_start_ptr, permanent_end_ptr) = cx.heap.permanent_heap_bounds();
@@ -72,7 +72,7 @@ impl GarbageCollector {
         }
     }
 
-    pub fn run(cx: &mut Context) {
+    pub fn run(mut cx: Context) {
         let mut gc = Self::new(cx);
 
         // First visit roots in the context and copy their objects to the to-heap

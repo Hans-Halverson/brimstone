@@ -32,7 +32,7 @@ extend_object! {
 
 impl WeakRefObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         value: Handle<Value>,
     ) -> EvalResult<Handle<WeakRefObject>> {
@@ -69,7 +69,7 @@ pub struct WeakRefConstructor;
 
 impl WeakRefConstructor {
     // 26.1.2 Properties of the WeakRef Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -92,7 +92,7 @@ impl WeakRefConstructor {
 
     // 26.1.1.1 WeakRef
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -113,7 +113,7 @@ impl WeakRefConstructor {
 }
 
 // 9.14 CanBeHeldWeakly
-pub fn can_be_held_weakly(cx: &mut Context, value: Value) -> bool {
+pub fn can_be_held_weakly(cx: Context, value: Value) -> bool {
     if value.is_object() {
         true
     } else if value.is_symbol() {

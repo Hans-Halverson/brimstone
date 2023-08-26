@@ -32,7 +32,7 @@ extend_object! {
 
 impl DataViewObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         viewed_array_buffer: Handle<ArrayBufferObject>,
         byte_length: usize,
@@ -80,7 +80,7 @@ pub struct DataViewConstructor;
 
 impl DataViewConstructor {
     // 25.3.3 Properties of the DataView Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -108,7 +108,7 @@ impl DataViewConstructor {
 
     // 25.3.2.1 DataView
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

@@ -15,7 +15,7 @@ pub struct FinalizationRegistryPrototype;
 
 impl FinalizationRegistryPrototype {
     // 26.2.3 Properties of the FinalizationRegistry Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -36,7 +36,7 @@ impl FinalizationRegistryPrototype {
 
     // 26.2.3.2 FinalizationRegistry.prototype.register
     fn register(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -86,7 +86,7 @@ impl FinalizationRegistryPrototype {
 
     // 26.2.3.3 FinalizationRegistry.prototype.unregister
     fn unregister(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

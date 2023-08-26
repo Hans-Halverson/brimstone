@@ -31,7 +31,7 @@ pub enum IteratorHint {
 
 // 7.4.2 GetIterator
 pub fn get_iterator(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<Value>,
     hint: IteratorHint,
     method: Option<Handle<ObjectValue>>,
@@ -82,7 +82,7 @@ pub fn get_iterator(
 
 // 7.4.3 IteratorNext
 pub fn iterator_next(
-    cx: &mut Context,
+    cx: Context,
     iterator: &Iterator,
     value: Option<Handle<Value>>,
 ) -> EvalResult<Handle<ObjectValue>> {
@@ -100,24 +100,18 @@ pub fn iterator_next(
 }
 
 // 7.4.4 IteratorComplete
-pub fn iterator_complete(cx: &mut Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
+pub fn iterator_complete(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = maybe!(get(cx, iter_result, cx.names.done()));
     to_boolean(is_done.get()).into()
 }
 
 // 7.4.5 IteratorValue
-pub fn iterator_value(
-    cx: &mut Context,
-    iter_result: Handle<ObjectValue>,
-) -> EvalResult<Handle<Value>> {
+pub fn iterator_value(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<Handle<Value>> {
     get(cx, iter_result, cx.names.value())
 }
 
 // 7.4.6 IteratorStep
-pub fn iterator_step(
-    cx: &mut Context,
-    iterator: &Iterator,
-) -> EvalResult<Option<Handle<ObjectValue>>> {
+pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Handle<ObjectValue>>> {
     let iter_result = maybe!(iterator_next(cx, iterator, None));
     let is_done = maybe!(iterator_complete(cx, iter_result));
 
@@ -129,7 +123,7 @@ pub fn iterator_step(
 }
 
 // 7.4.7 IteratorClose
-pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Completion) -> Completion {
+pub fn iterator_close(cx: Context, iterator: &Iterator, completion: Completion) -> Completion {
     let inner_result = get_method(cx, iterator.iterator.into(), cx.names.return_());
     let inner_result = match inner_result {
         EvalResult::Ok(None) => return completion,
@@ -155,7 +149,7 @@ pub fn iterator_close(cx: &mut Context, iterator: &Iterator, completion: Complet
 
 // 7.4.10 CreateIterResultObject
 pub fn create_iter_result_object(
-    cx: &mut Context,
+    cx: Context,
     value: Handle<Value>,
     is_done: bool,
 ) -> Handle<ObjectValue> {
@@ -171,8 +165,8 @@ pub fn create_iter_result_object(
 
 // Iterate over an object, executing a callback function against every value returned by the
 // iterator. Return a completion from the callback function to stop and close the iterator.
-pub fn iter_iterator_values<F: FnMut(&mut Context, Handle<Value>) -> Option<Completion>>(
-    cx: &mut Context,
+pub fn iter_iterator_values<F: FnMut(Context, Handle<Value>) -> Option<Completion>>(
+    cx: Context,
     object: Handle<Value>,
     f: &mut F,
 ) -> Completion {
@@ -195,8 +189,8 @@ pub fn iter_iterator_values<F: FnMut(&mut Context, Handle<Value>) -> Option<Comp
     }
 }
 
-pub fn iter_iterator_method_values<F: FnMut(&mut Context, Handle<Value>) -> Option<Completion>>(
-    cx: &mut Context,
+pub fn iter_iterator_method_values<F: FnMut(Context, Handle<Value>) -> Option<Completion>>(
+    cx: Context,
     object: Handle<Value>,
     method: Handle<ObjectValue>,
     f: &mut F,

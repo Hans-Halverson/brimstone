@@ -89,8 +89,8 @@ impl Heap {
         unsafe { &mut *(self.heap_info as *const _ as *mut HeapInfo) }
     }
 
-    pub fn alloc_uninit<T>(&mut self) -> HeapPtr<T> {
-        self.alloc_uninit_with_size::<T>(size_of::<T>())
+    pub fn alloc_uninit<T>(cx: Context) -> HeapPtr<T> {
+        Self::alloc_uninit_with_size::<T>(cx, size_of::<T>())
     }
 
     /// Allocate an object of a given type with the specified size in bytes. When called directly,
@@ -98,41 +98,44 @@ impl Heap {
     ///
     /// Allocation will have at least the given size and is guaranteed to have 8-byte alignment.
     #[inline]
-    pub fn alloc_uninit_with_size<T>(&mut self, size: usize) -> HeapPtr<T> {
+    pub fn alloc_uninit_with_size<T>(mut cx: Context, size: usize) -> HeapPtr<T> {
         let alloc_size = Self::alloc_size_for_request_size(size);
 
         // Run a GC on every allocation in stress test mode
         #[cfg(feature = "gc_stress_test")]
-        if self.gc_stress_test {
-            self.run_gc();
+        if cx.heap.gc_stress_test {
+            Self::run_gc(cx);
         }
 
+        // Ensure that this direct reference to heap is not used after a GC or allocation
+        let heap = &mut cx.heap;
+
         unsafe {
-            let start = self.current;
+            let start = heap.current;
 
             // Calculate where the current will be after this allocation, checking if there is room
             let next_current = start.add(alloc_size);
-            if (next_current as usize) > (self.end as usize) {
+            if (next_current as usize) > (heap.end as usize) {
                 // If there is not room run a gc cycle
-                self.run_gc();
+                Self::run_gc(cx);
 
                 // Make sure there is enough space for allocation after gc, otherwise we are out of
                 // heap memory.
-                self.panic_if_out_of_memory(alloc_size);
+                cx.heap.panic_if_out_of_memory(alloc_size);
 
-                return self.alloc_uninit_with_size(alloc_size);
+                return Self::alloc_uninit_with_size(cx, alloc_size);
             }
 
             // Update end pointer and write into memory
-            self.current = next_current;
+            heap.current = next_current;
             let start = start.cast_mut().cast();
 
             HeapPtr::from_ptr(start)
         }
     }
 
-    pub fn run_gc(&mut self) {
-        GarbageCollector::run(self.info().cx())
+    pub fn run_gc(cx: Context) {
+        GarbageCollector::run(cx)
     }
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {
@@ -141,6 +144,7 @@ impl Heap {
 
     fn panic_if_out_of_memory(&self, alloc_size: usize) {
         if !self.has_room_for_alloc(alloc_size) {
+            // println!("Heap size: {} {}", self.bytes_allocated(), alloc_size);
             panic!("Ran of out heap memory");
         }
     }
@@ -249,7 +253,7 @@ fn align_pointer_up(ptr: *const u8, alignment: usize) -> *const u8 {
 /// Heap data stored at the beginning of the heap
 pub struct HeapInfo {
     /// Reference to the context that holds this heap.
-    context: *mut Context,
+    context: Context,
     handle_context: HandleContext,
 }
 
@@ -258,8 +262,8 @@ impl HeapInfo {
         self.handle_context.init();
     }
 
-    pub fn set_context(&mut self, cx: &mut Context) {
-        self.context = cx as *mut Context;
+    pub fn set_context(&mut self, cx: Context) {
+        self.context = cx;
     }
 
     #[inline]
@@ -275,8 +279,8 @@ impl HeapInfo {
         unsafe { &mut *heap_base }
     }
 
-    pub fn cx(&self) -> &mut Context {
-        unsafe { &mut *self.context }
+    pub fn cx(&self) -> Context {
+        self.context
     }
 
     pub fn handle_context(&mut self) -> &mut HandleContext {

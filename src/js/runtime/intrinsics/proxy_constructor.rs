@@ -22,7 +22,7 @@ pub struct ProxyConstructor;
 
 impl ProxyConstructor {
     // 28.2.2 Properties of the Proxy Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -42,7 +42,7 @@ impl ProxyConstructor {
 
     // 28.2.1.1 Proxy
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -59,7 +59,7 @@ impl ProxyConstructor {
 
     // 28.2.2.1 Proxy.revocable
     fn revocable(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -85,7 +85,7 @@ impl ProxyConstructor {
 
 // The revoker abstract closure
 fn revoke(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -112,10 +112,10 @@ pub struct RevokeProxyClosureEnvironment {
 
 impl RevokeProxyClosureEnvironment {
     fn new(
-        cx: &mut Context,
+        cx: Context,
         revocable_proxy: Option<Handle<ProxyObject>>,
     ) -> Handle<RevokeProxyClosureEnvironment> {
-        let mut env = cx.heap.alloc_uninit::<RevokeProxyClosureEnvironment>();
+        let mut env = cx.alloc_uninit::<RevokeProxyClosureEnvironment>();
 
         set_uninit!(
             env.descriptor,

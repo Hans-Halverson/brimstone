@@ -26,7 +26,7 @@ pub struct SetPrototype;
 
 impl SetPrototype {
     // 24.2.3 Properties of the Set Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -70,7 +70,7 @@ impl SetPrototype {
 
     // 24.2.3.1 Set.prototype.add
     fn add(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -96,7 +96,7 @@ impl SetPrototype {
 
     // 24.2.3.2 Set.prototype.clear
     fn clear(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -114,7 +114,7 @@ impl SetPrototype {
 
     // 24.2.3.4 Set.prototype.delete
     fn delete(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -133,7 +133,7 @@ impl SetPrototype {
 
     // 24.2.3.5 Set.prototype.entries
     fn entries(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -149,7 +149,7 @@ impl SetPrototype {
 
     // 24.2.3.6 Set.prototype.forEach
     fn for_each(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -185,7 +185,7 @@ impl SetPrototype {
 
     // 24.2.3.7 Set.prototype.has
     fn has(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -204,7 +204,7 @@ impl SetPrototype {
 
     // 24.2.3.9 get Set.prototype.size
     fn size(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -222,7 +222,7 @@ impl SetPrototype {
 
     // 24.2.3.10 Set.prototype.values
     fn values(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

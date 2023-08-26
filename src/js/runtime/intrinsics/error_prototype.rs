@@ -13,7 +13,7 @@ pub struct ErrorPrototype;
 
 impl ErrorPrototype {
     // 20.5.3 Properties of the Error Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -31,7 +31,7 @@ impl ErrorPrototype {
 
     // 20.5.3.4 Error.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

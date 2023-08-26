@@ -26,7 +26,7 @@ pub type ValueMap = BsIndexMap<ValueCollectionKey, Value>;
 
 impl MapObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<MapObject>> {
         // Allocate and place behind handle before allocating environment
@@ -51,7 +51,7 @@ impl MapObject {
 }
 
 impl Handle<MapObject> {
-    pub fn clear_map_data(&mut self, cx: &mut Context) {
+    pub fn clear_map_data(&mut self, cx: Context) {
         let new_map = ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY);
         self.map_data = new_map;
     }
@@ -64,7 +64,7 @@ impl Handle<MapObject> {
 pub struct MapObjectMapField(Handle<MapObject>);
 
 impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<ValueMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<ValueMap> {
         ValueMap::new(cx, ObjectKind::MapObjectValueMap, capacity)
     }
 

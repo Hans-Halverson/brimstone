@@ -42,7 +42,7 @@ pub struct StringPrototype;
 
 impl StringPrototype {
     // 22.1.3 Properties of the String Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
         let mut object: Handle<ObjectValue> =
@@ -99,7 +99,7 @@ impl StringPrototype {
 
     // 22.1.3.1 String.prototype.at
     fn at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -132,7 +132,7 @@ impl StringPrototype {
 
     // 22.1.3.2 String.prototype.charAt
     fn char_at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -154,7 +154,7 @@ impl StringPrototype {
 
     // 22.1.3.3 String.prototype.charCodeAt
     fn char_code_at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -175,7 +175,7 @@ impl StringPrototype {
 
     // 22.1.3.4 String.prototype.codePointAt
     fn code_point_at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -196,7 +196,7 @@ impl StringPrototype {
 
     // 22.1.3.5 String.prototype.concat
     fn concat(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -214,7 +214,7 @@ impl StringPrototype {
 
     // 22.1.3.7 String.prototype.endsWith
     fn ends_with(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -262,7 +262,7 @@ impl StringPrototype {
 
     // 22.1.3.8 String.prototype.includes
     fn includes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -294,7 +294,7 @@ impl StringPrototype {
 
     // 22.1.3.9 String.prototype.indexOf
     fn index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -324,7 +324,7 @@ impl StringPrototype {
 
     // 22.1.3.10 String.prototype.lastIndexOf
     fn last_index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -355,7 +355,7 @@ impl StringPrototype {
 
     // 22.1.3.12 String.prototype.match
     fn match_(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -384,7 +384,7 @@ impl StringPrototype {
 
     // 22.1.3.13 String.prototype.matchAll
     fn match_all(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -436,7 +436,7 @@ impl StringPrototype {
 
     // 22.1.3.14 String.prototype.normalize
     fn normalize(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -485,7 +485,7 @@ impl StringPrototype {
 
     // 22.1.3.15 String.prototype.padEnd
     fn pad_end(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -498,7 +498,7 @@ impl StringPrototype {
 
     // 22.1.3.16 String.prototype.padStart
     fn pad_start(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -510,7 +510,7 @@ impl StringPrototype {
     }
 
     fn pad_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         max_length_arg: Handle<Value>,
         fill_string_arg: Handle<Value>,
@@ -563,7 +563,7 @@ impl StringPrototype {
 
     // 22.1.3.17 String.prototype.repeat
     fn repeat(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -584,7 +584,7 @@ impl StringPrototype {
 
     // 22.1.3.21 String.prototype.slice
     fn slice(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -635,7 +635,7 @@ impl StringPrototype {
 
     // 22.1.3.22 String.prototype.split
     fn split(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -730,7 +730,7 @@ impl StringPrototype {
 
     // 22.1.3.23 String.prototype.startsWith
     fn starts_with(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -778,7 +778,7 @@ impl StringPrototype {
 
     // 22.1.3.24 String.prototype.substring
     fn substring(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -810,7 +810,7 @@ impl StringPrototype {
 
     // 22.1.3.25 String.prototype.toLocaleLowerCase
     fn to_locale_lower_case(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -823,7 +823,7 @@ impl StringPrototype {
 
     // 22.1.3.26 String.prototype.toLocaleUpperCase
     fn to_locale_upper_case(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -836,7 +836,7 @@ impl StringPrototype {
 
     // 22.1.3.27 String.prototype.toLowerCase
     fn to_lower_case(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -849,7 +849,7 @@ impl StringPrototype {
 
     // 22.1.3.28 String.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -859,7 +859,7 @@ impl StringPrototype {
 
     // 22.1.3.29 String.prototype.toUpperCase
     fn to_upper_case(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -872,7 +872,7 @@ impl StringPrototype {
 
     // 22.1.3.30 String.prototype.trim
     fn trim(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -885,7 +885,7 @@ impl StringPrototype {
 
     // 22.1.3.31 String.prototype.trimEnd
     fn trim_end(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -898,7 +898,7 @@ impl StringPrototype {
 
     // 22.1.3.32 String.prototype.trimStart
     fn trim_start(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -911,7 +911,7 @@ impl StringPrototype {
 
     // 22.1.3.33 String.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -921,7 +921,7 @@ impl StringPrototype {
 
     // 22.1.3.34 String.prototype [ @@iterator ]
     fn iterator(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -935,7 +935,7 @@ impl StringPrototype {
     }
 }
 
-fn this_string_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
+fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_string() {
         return value.into();
     }
@@ -1038,7 +1038,7 @@ impl Iterator for CharIterator {
 /// Normalize the given string using a function that returns the ICU4X normalization iterator for
 /// an iterator over valid code points.
 fn normalize_string<I: Iterator<Item = char>>(
-    cx: &mut Context,
+    cx: Context,
     string: Handle<StringValue>,
     f: impl Fn(CharIterator) -> I,
 ) -> Handle<StringValue> {

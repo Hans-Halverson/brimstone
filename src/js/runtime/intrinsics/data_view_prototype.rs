@@ -28,7 +28,7 @@ pub struct DataViewPrototype;
 
 impl DataViewPrototype {
     // 25.3.4 Properties of the DataView Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -70,7 +70,7 @@ impl DataViewPrototype {
 
     // 25.3.4.1 get DataView.prototype.buffer
     fn get_buffer(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -81,7 +81,7 @@ impl DataViewPrototype {
 
     // 25.3.4.2 get DataView.prototype.byteLength
     fn get_byte_length(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -97,7 +97,7 @@ impl DataViewPrototype {
 
     // 25.3.4.3 get DataView.prototype.byteOffset
     fn get_byte_offset(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -113,7 +113,7 @@ impl DataViewPrototype {
 
     // 25.3.4.5 DataView.prototype.getBigInt64
     fn get_big_int64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -123,7 +123,7 @@ impl DataViewPrototype {
 
     // 25.3.4.6 DataView.prototype.getBigUint64
     fn get_big_uint64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -133,7 +133,7 @@ impl DataViewPrototype {
 
     // 25.3.4.7 DataView.prototype.getFloat32
     fn get_float32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -146,7 +146,7 @@ impl DataViewPrototype {
 
     // 25.3.4.8 DataView.prototype.getFloat64
     fn get_float64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -159,7 +159,7 @@ impl DataViewPrototype {
 
     // 25.3.4.9 DataView.prototype.getInt8
     fn get_int8(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -169,7 +169,7 @@ impl DataViewPrototype {
 
     // 25.3.4.10 DataView.prototype.getInt16
     fn get_int16(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -179,7 +179,7 @@ impl DataViewPrototype {
 
     // 25.3.4.11 DataView.prototype.getInt32
     fn get_int32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -189,7 +189,7 @@ impl DataViewPrototype {
 
     // 25.3.4.12 DataView.prototype.getUint8
     fn get_uint8(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -199,7 +199,7 @@ impl DataViewPrototype {
 
     // 25.3.4.13 DataView.prototype.getUint16
     fn get_uint16(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -209,7 +209,7 @@ impl DataViewPrototype {
 
     // 25.3.4.14 DataView.prototype.getUint32
     fn get_uint32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -219,7 +219,7 @@ impl DataViewPrototype {
 
     // 25.3.4.15 DataView.prototype.setBigInt64
     fn set_big_int64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -236,7 +236,7 @@ impl DataViewPrototype {
 
     // 25.3.4.16 DataView.prototype.setBigUint64
     fn set_big_uint64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -253,7 +253,7 @@ impl DataViewPrototype {
 
     // 25.3.4.17 DataView.prototype.setFloat32
     fn set_float32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -273,7 +273,7 @@ impl DataViewPrototype {
 
     // 25.3.4.18 DataView.prototype.setFloat64
     fn set_float64(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -293,7 +293,7 @@ impl DataViewPrototype {
 
     // 25.3.4.19 DataView.prototype.setInt8
     fn set_int8(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -305,7 +305,7 @@ impl DataViewPrototype {
 
     // 25.3.4.20 DataView.prototype.setInt16
     fn set_int16(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -322,7 +322,7 @@ impl DataViewPrototype {
 
     // 25.3.4.21 DataView.prototype.setInt32
     fn set_int32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -339,7 +339,7 @@ impl DataViewPrototype {
 
     // 25.3.4.22 DataView.prototype.setUint8
     fn set_uint8(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -356,7 +356,7 @@ impl DataViewPrototype {
 
     // 25.3.4.23 DataView.prototype.setUint16
     fn set_uint16(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -373,7 +373,7 @@ impl DataViewPrototype {
 
     // 25.3.4.24 DataView.prototype.setUint32
     fn set_uint32(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -390,10 +390,7 @@ impl DataViewPrototype {
 }
 
 #[inline]
-fn require_is_data_view(
-    cx: &mut Context,
-    value: Handle<Value>,
-) -> EvalResult<Handle<DataViewObject>> {
+fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<DataViewObject>> {
     if !value.is_object() {
         return type_error_(cx, "expected data view");
     }
@@ -409,10 +406,10 @@ fn require_is_data_view(
 // 25.3.1.1 GetViewValue
 #[inline]
 fn get_view_value<T>(
-    cx: &mut Context,
+    cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
-    from_element_fn: fn(&mut Context, T) -> Handle<Value>,
+    from_element_fn: fn(Context, T) -> Handle<Value>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
     let data_view = maybe!(require_is_data_view(cx, this_value));
@@ -461,11 +458,11 @@ fn get_view_value<T>(
 // 25.3.1.2 SetViewValue
 #[inline]
 fn set_view_value<T>(
-    cx: &mut Context,
+    cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
     content_type: ContentType,
-    to_element_fn: fn(&mut Context, Handle<Value>) -> EvalResult<T>,
+    to_element_fn: fn(Context, Handle<Value>) -> EvalResult<T>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
     let data_view = maybe!(require_is_data_view(cx, this_value));

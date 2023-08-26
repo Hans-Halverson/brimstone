@@ -122,11 +122,11 @@ extend_object_without_conversions! {
 
 impl ObjectValue {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         prototype: Option<Handle<ObjectValue>>,
         is_extensible: bool,
     ) -> Handle<ObjectValue> {
-        let mut object = cx.heap.alloc_uninit::<ObjectValue>();
+        let mut object = cx.alloc_uninit::<ObjectValue>();
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| p.get_()));
@@ -146,7 +146,7 @@ impl ObjectValue {
     // 7.3.27 PrivateElementFind
     pub fn private_element_find(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         private_name: PrivateName,
     ) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
@@ -164,7 +164,7 @@ impl ObjectValue {
     }
 
     // Property accessors and mutators
-    pub fn get_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> Option<Property> {
+    pub fn get_property(&self, cx: Context, key: Handle<PropertyKey>) -> Option<Property> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             return self.array_properties.get_property(cx, array_index);
@@ -372,7 +372,7 @@ impl Handle<ObjectValue> {
     }
 
     // Property accessors and mutators
-    pub fn set_property(&mut self, cx: &mut Context, key: Handle<PropertyKey>, property: Property) {
+    pub fn set_property(&mut self, cx: Context, key: Handle<PropertyKey>, property: Property) {
         if key.is_array_index() {
             let array_index = key.as_array_index();
             ArrayProperties::set_property(cx, *self, array_index, property);
@@ -400,7 +400,7 @@ impl Handle<ObjectValue> {
 
     pub fn private_element_set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         private_name: PrivateName,
         value: Handle<Value>,
     ) {
@@ -415,7 +415,7 @@ impl Handle<ObjectValue> {
     // 7.3.28 PrivateFieldAdd
     pub fn private_field_add(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         private_name: PrivateName,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -435,7 +435,7 @@ impl Handle<ObjectValue> {
     // 7.3.29 PrivateMethodOrAccessorAdd
     pub fn private_method_or_accessor_add(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         private_name: PrivateName,
         private_method: Property,
     ) -> EvalResult<()> {
@@ -451,33 +451,33 @@ impl Handle<ObjectValue> {
         }
     }
 
-    pub fn set_array_properties_length(&mut self, cx: &mut Context, new_length: u32) -> bool {
+    pub fn set_array_properties_length(&mut self, cx: Context, new_length: u32) -> bool {
         ArrayProperties::set_len(cx, *self, new_length)
     }
 
     // Intrinsic creation utilities
     pub fn intrinsic_data_prop(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
     ) {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
-    pub fn instrinsic_length_prop(&mut self, cx: &mut Context, length: i32) {
+    pub fn instrinsic_length_prop(&mut self, cx: Context, length: i32) {
         let length_value = Value::smi(length).to_handle(cx);
         self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
     }
 
-    pub fn intrinsic_name_prop(&mut self, cx: &mut Context, name: &str) {
+    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &str) {
         let name_value = cx.alloc_string(name).into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 
     pub fn intrinsic_getter(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
@@ -489,7 +489,7 @@ impl Handle<ObjectValue> {
 
     pub fn intrinsic_getter_and_setter(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<PropertyKey>,
         getter: BuiltinFunctionPtr,
         setter: BuiltinFunctionPtr,
@@ -503,7 +503,7 @@ impl Handle<ObjectValue> {
 
     pub fn intrinsic_func(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         length: i32,
@@ -515,7 +515,7 @@ impl Handle<ObjectValue> {
 
     pub fn intrinsic_frozen_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
     ) {
@@ -527,7 +527,7 @@ impl Handle<ObjectValue> {
 impl Handle<ObjectValue> {
     /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
-    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+    pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().get_prototype_of(cx)
         } else {
@@ -539,7 +539,7 @@ impl Handle<ObjectValue> {
     /// implementations as necessary.
     pub fn set_prototype_of(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if self.is_proxy() {
@@ -552,7 +552,7 @@ impl Handle<ObjectValue> {
 
     /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
-    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+    pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().is_extensible(cx)
         } else {
@@ -562,7 +562,7 @@ impl Handle<ObjectValue> {
 
     /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
-    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+    pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
         if self.is_proxy() {
             self.cast::<ProxyObject>().prevent_extensions(cx)
         } else {
@@ -576,7 +576,7 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         self.virtual_object().get_own_property(cx, key)
@@ -585,7 +585,7 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -593,14 +593,14 @@ impl Handle<ObjectValue> {
     }
 
     #[inline]
-    pub fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    pub fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         self.virtual_object().has_property(cx, key)
     }
 
     #[inline]
     pub fn get(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
@@ -610,7 +610,7 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
@@ -619,19 +619,19 @@ impl Handle<ObjectValue> {
     }
 
     #[inline]
-    pub fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    pub fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         self.virtual_object().delete(cx, key)
     }
 
     #[inline]
-    pub fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+    pub fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         self.virtual_object().own_property_keys(cx)
     }
 
     #[inline]
     pub fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -641,7 +641,7 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn construct(
         &self,
-        cx: &mut Context,
+        cx: Context,
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
@@ -660,7 +660,7 @@ impl Handle<ObjectValue> {
     }
 
     #[inline]
-    pub fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    pub fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
         self.virtual_object().get_realm(cx)
     }
 
@@ -676,41 +676,41 @@ pub type VirtualObjectVtable = *const ();
 pub trait VirtualObject {
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>>;
 
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool>;
 
-    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
+    fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
 
     fn get(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>>;
 
     fn set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
     ) -> EvalResult<bool>;
 
-    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool>;
 
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>>;
+    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>>;
 
     fn call(
         &self,
-        _: &mut Context,
+        _: Context,
         _this_argument: Handle<Value>,
         _arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -719,7 +719,7 @@ pub trait VirtualObject {
 
     fn construct(
         &self,
-        _: &mut Context,
+        _: Context,
         _arguments: &[Handle<Value>],
         _new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
@@ -735,7 +735,7 @@ pub trait VirtualObject {
         false
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
         cx.current_realm_ptr().into()
     }
 
@@ -749,7 +749,7 @@ pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
 pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
 impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
         NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, capacity)
     }
 

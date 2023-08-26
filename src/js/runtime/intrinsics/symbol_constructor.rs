@@ -31,10 +31,7 @@ extend_object! {
 }
 
 impl SymbolObject {
-    pub fn new_from_value(
-        cx: &mut Context,
-        symbol_data: Handle<SymbolValue>,
-    ) -> Handle<SymbolObject> {
+    pub fn new_from_value(cx: Context, symbol_data: Handle<SymbolValue>) -> Handle<SymbolObject> {
         let mut object =
             object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
 
@@ -52,7 +49,7 @@ pub struct SymbolConstructor;
 
 impl SymbolConstructor {
     // 20.4.2 Properties of the Symbol Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -122,7 +119,7 @@ impl SymbolConstructor {
 
     // 20.4.1.1 Symbol
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -143,7 +140,7 @@ impl SymbolConstructor {
 
     // 20.4.2.2 Symbol.for
     fn for_(
-        cx: &mut Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -164,7 +161,7 @@ impl SymbolConstructor {
 
     // 20.4.2.6 Symbol.keyFor
     fn key_for(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

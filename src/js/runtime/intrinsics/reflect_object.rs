@@ -21,7 +21,7 @@ use super::intrinsics::Intrinsic;
 pub struct ReflectObject;
 
 impl ReflectObject {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -65,7 +65,7 @@ impl ReflectObject {
 
     // 28.1.1 Reflect.apply
     fn apply(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -84,7 +84,7 @@ impl ReflectObject {
 
     // 28.1.2 Reflect.construct
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -115,7 +115,7 @@ impl ReflectObject {
 
     // 28.1.3 Reflect.defineProperty
     fn define_property(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -139,7 +139,7 @@ impl ReflectObject {
 
     // 28.1.4 Reflect.deleteProperty
     fn delete_property(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -159,7 +159,7 @@ impl ReflectObject {
 
     // 28.1.5 Reflect.get
     fn get(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -183,7 +183,7 @@ impl ReflectObject {
 
     // 28.1.6 Reflect.getOwnPropertyDescriptor
     fn get_own_property_descriptor(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -206,7 +206,7 @@ impl ReflectObject {
 
     // 28.1.7 Reflect.getPrototypeOf
     fn get_prototype_of(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -226,7 +226,7 @@ impl ReflectObject {
 
     // 28.1.8 Reflect.has
     fn has(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -246,7 +246,7 @@ impl ReflectObject {
 
     // 28.1.9 Reflect.isExtensible
     fn is_extensible(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -262,7 +262,7 @@ impl ReflectObject {
 
     // 28.1.10 Reflect.ownKeys
     fn own_keys(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -279,7 +279,7 @@ impl ReflectObject {
 
     // 28.1.11 Reflect.preventExtensions
     fn prevent_extensions(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -295,7 +295,7 @@ impl ReflectObject {
 
     // 28.1.12 Reflect.set
     fn set(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -321,7 +321,7 @@ impl ReflectObject {
 
     // 28.1.13 Reflect.setPrototypeOf
     fn set_prototype_of(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

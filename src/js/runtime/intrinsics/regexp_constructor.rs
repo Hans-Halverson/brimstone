@@ -52,7 +52,7 @@ extend_object! {
 
 impl RegExpObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<RegExpObject>> {
         let mut object = maybe!(object_create_from_constructor::<RegExpObject>(
@@ -76,7 +76,7 @@ impl RegExpObject {
     }
 
     pub fn new_from_literal(
-        cx: &mut Context,
+        cx: Context,
         lit: &ast::RegExpLiteral,
     ) -> EvalResult<Handle<RegExpObject>> {
         // Can use source directly as "escaped" pattern source since
@@ -106,7 +106,7 @@ impl RegExpObject {
         object.into()
     }
 
-    fn define_last_index_property(cx: &mut Context, regexp_object: Handle<RegExpObject>) {
+    fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {
         let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
         must!(define_property_or_throw(
             cx,
@@ -146,7 +146,7 @@ pub struct RegExpConstructor;
 
 impl RegExpConstructor {
     // 22.2.5 Properties of the RegExp Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -178,7 +178,7 @@ impl RegExpConstructor {
 
     // 22.2.4.1 RegExp
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -241,7 +241,7 @@ impl RegExpConstructor {
 
     // 22.2.5.2 get RegExp [ @@species ]
     fn get_species(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -267,7 +267,7 @@ pub enum FlagsSource {
 
 // 22.2.3.1 RegExpCreate
 pub fn regexp_create(
-    cx: &mut Context,
+    cx: Context,
     regexp_source: RegExpSource,
     constructor: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Value>> {
@@ -311,7 +311,7 @@ pub fn regexp_create(
     regexp_object.into()
 }
 
-fn value_or_empty_string(cx: &mut Context, value: Handle<Value>) -> Handle<Value> {
+fn value_or_empty_string(cx: Context, value: Handle<Value>) -> Handle<Value> {
     if value.is_undefined() {
         cx.names.empty_string().as_string().into()
     } else {
@@ -319,11 +319,8 @@ fn value_or_empty_string(cx: &mut Context, value: Handle<Value>) -> Handle<Value
     }
 }
 
-fn parse_flags(cx: &mut Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
-    fn parse_lexer_stream(
-        cx: &mut Context,
-        lexer_stream: impl LexerStream,
-    ) -> EvalResult<RegExpFlags> {
+fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
+    fn parse_lexer_stream(cx: Context, lexer_stream: impl LexerStream) -> EvalResult<RegExpFlags> {
         match RegExpParser::parse_flags(lexer_stream) {
             Ok(flags) => flags.into(),
             Err(error) => syntax_error_(cx, &error.to_string()),
@@ -346,12 +343,12 @@ fn parse_flags(cx: &mut Context, flags_string: Handle<StringValue>) -> EvalResul
 }
 
 fn parse_pattern(
-    cx: &mut Context,
+    cx: Context,
     pattern_string: Handle<StringValue>,
     flags: RegExpFlags,
 ) -> EvalResult<RegExp> {
     fn parse_lexer_stream(
-        cx: &mut Context,
+        cx: Context,
         lexer_stream: impl LexerStream,
         flags: RegExpFlags,
     ) -> EvalResult<RegExp> {

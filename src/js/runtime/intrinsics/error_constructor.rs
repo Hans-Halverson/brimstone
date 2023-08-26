@@ -27,7 +27,7 @@ extend_object! {
 
 impl ErrorObject {
     fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ErrorObject>> {
         let object = maybe!(object_create_from_constructor::<ErrorObject>(
@@ -45,7 +45,7 @@ pub struct ErrorConstructor;
 
 impl ErrorConstructor {
     // 20.5.2 Properties of the Error Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -73,7 +73,7 @@ impl ErrorConstructor {
 
     // 20.5.1.1 Error
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -106,7 +106,7 @@ impl ErrorConstructor {
 
 // 20.5.8.1 InstallErrorCause
 pub fn install_error_cause(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ErrorObject>,
     options: Handle<Value>,
 ) -> EvalResult<()> {

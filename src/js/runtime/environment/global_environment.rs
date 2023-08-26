@@ -50,7 +50,7 @@ impl Handle<GlobalEnvironment> {
 impl GlobalEnvironment {
     // 9.1.2.5 NewGlobalEnvironment
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         global_object: Handle<ObjectValue>,
         global_this_value: Handle<ObjectValue>,
     ) -> Handle<GlobalEnvironment> {
@@ -59,7 +59,7 @@ impl GlobalEnvironment {
         let bindings = DeclarativeEnvironment::new_bindings_map(cx);
         let var_names = Self::new_var_names_set(cx).to_handle();
 
-        let mut env = cx.heap.alloc_uninit::<GlobalEnvironment>();
+        let mut env = cx.alloc_uninit::<GlobalEnvironment>();
 
         // Declarative environment contains outer environment
         DeclarativeEnvironment::init_as_base(
@@ -77,7 +77,7 @@ impl GlobalEnvironment {
         env.to_handle()
     }
 
-    pub fn new_var_names_set(cx: &mut Context) -> HeapPtr<VarNamesSet> {
+    pub fn new_var_names_set(cx: Context) -> HeapPtr<VarNamesSet> {
         GlobalEnvironmentVarNamesField::new(cx, VarNamesSet::MIN_CAPACITY)
     }
 
@@ -98,7 +98,7 @@ impl Environment for Handle<GlobalEnvironment> {
     }
 
     // 9.1.1.4.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return true.into();
         }
@@ -109,7 +109,7 @@ impl Environment for Handle<GlobalEnvironment> {
     // 9.1.1.4.2 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -123,7 +123,7 @@ impl Environment for Handle<GlobalEnvironment> {
     // 9.1.1.4.3 CreateImutableBinding
     fn create_immutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<()> {
@@ -138,7 +138,7 @@ impl Environment for Handle<GlobalEnvironment> {
     // 9.1.1.4.4 InitializeBinding
     fn initialize_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -152,7 +152,7 @@ impl Environment for Handle<GlobalEnvironment> {
     // 9.1.1.4.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,
@@ -170,7 +170,7 @@ impl Environment for Handle<GlobalEnvironment> {
     // 9.1.1.4.6 GetBindingValue
     fn get_binding_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
@@ -182,7 +182,7 @@ impl Environment for Handle<GlobalEnvironment> {
     }
 
     // 9.1.1.4.7 DeleteBinding
-    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         if must!(self.decl_env().has_binding(cx, name)) {
             return self.decl_env().delete_binding(cx, name);
         }
@@ -218,7 +218,7 @@ impl Environment for Handle<GlobalEnvironment> {
     }
 
     // 9.1.1.4.11 GetThisBinding
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
+    fn get_this_binding(&self, _: Context) -> EvalResult<Handle<Value>> {
         self.global_this_value().into()
     }
 
@@ -236,7 +236,7 @@ impl GlobalEnvironment {
     // 9.1.1.4.14 HasRestrictedGlobalProperty
     pub fn has_restricted_global_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
     ) -> EvalResult<bool> {
         // GC safe since self is never referenced after this point
@@ -254,7 +254,7 @@ impl GlobalEnvironment {
     // 9.1.1.4.15 CanDeclareGlobalVar
     pub fn can_declare_global_var(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
     ) -> EvalResult<bool> {
         // GC safe since self is never referenced after this point
@@ -270,7 +270,7 @@ impl GlobalEnvironment {
     // 9.1.1.4.16 CanDeclareGlobalFunction
     pub fn can_declare_global_function(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
     ) -> EvalResult<bool> {
         // GC safe since self is never referenced after this point
@@ -303,7 +303,7 @@ impl Handle<GlobalEnvironment> {
     // 9.1.1.4.13 HasLexicalDeclaration
     pub fn has_lexical_declaration(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
     ) -> EvalResult<bool> {
         self.decl_env().has_binding(cx, name)
@@ -312,7 +312,7 @@ impl Handle<GlobalEnvironment> {
     // 9.1.1.4.17 CreateGlobalVarBinding
     pub fn create_global_var_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -341,7 +341,7 @@ impl Handle<GlobalEnvironment> {
     // 9.1.1.4.18 CreateGlobalFunctionBinding
     pub fn create_global_function_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         can_delete: bool,
@@ -380,15 +380,15 @@ impl Handle<GlobalEnvironment> {
 pub struct GlobalEnvironmentVarNamesField(Handle<GlobalEnvironment>);
 
 impl BsHashSetField<HeapPtr<FlatString>> for GlobalEnvironmentVarNamesField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<VarNamesSet> {
+    fn new(cx: Context, capacity: usize) -> HeapPtr<VarNamesSet> {
         VarNamesSet::new(cx, ObjectKind::GlobalEnvironmentNameSet, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<VarNamesSet> {
+    fn get(&self, _: Context) -> HeapPtr<VarNamesSet> {
         self.0.var_names
     }
 
-    fn set(&mut self, _: &mut Context, set: HeapPtr<VarNamesSet>) {
+    fn set(&mut self, _: Context, set: HeapPtr<VarNamesSet>) {
         self.0.var_names = set;
     }
 }

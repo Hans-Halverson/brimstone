@@ -32,7 +32,7 @@ extend_object! {
 }
 
 impl ArrayObject {
-    pub fn new(cx: &mut Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
+    pub fn new(cx: Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
         let mut array = object_create_with_proto::<ArrayObject>(cx, ObjectKind::ArrayObject, proto);
 
         set_uninit!(array.is_length_writable, true);
@@ -46,7 +46,7 @@ impl VirtualObject for Handle<ArrayObject> {
     // 10.4.2.1 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -71,7 +71,7 @@ impl VirtualObject for Handle<ArrayObject> {
     // Not part of spec, but needed to return custom length property
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
@@ -89,7 +89,7 @@ impl VirtualObject for Handle<ArrayObject> {
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
-    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
             return false.into();
         }
@@ -98,7 +98,7 @@ impl VirtualObject for Handle<ArrayObject> {
     }
 
     // Not part of spec, but needed to add custom length property
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut property_keys = ordinary_own_property_keys(cx, self.object());
 
         // Insert length property after all the array index properies
@@ -110,7 +110,7 @@ impl VirtualObject for Handle<ArrayObject> {
 
 // 10.4.2.2 ArrayCreate
 pub fn array_create(
-    cx: &mut Context,
+    cx: Context,
     length: u64,
     proto: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ArrayObject>> {
@@ -131,7 +131,7 @@ pub fn array_create(
 
 // 10.4.2.3 ArraySpeciesCreate
 pub fn array_species_create(
-    cx: &mut Context,
+    cx: Context,
     original_array: Handle<ObjectValue>,
     length: u64,
 ) -> EvalResult<Handle<ObjectValue>> {
@@ -180,7 +180,7 @@ pub fn array_species_create(
 // 10.4.2.4 ArraySetLength
 // Modified from spec to use custom length property.
 fn array_set_length(
-    cx: &mut Context,
+    cx: Context,
     mut array: Handle<ArrayObject>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
@@ -221,7 +221,7 @@ fn array_set_length(
 }
 
 // 7.3.18 CreateArrayFromList
-pub fn create_array_from_list(cx: &mut Context, elements: &[Handle<Value>]) -> Handle<ArrayObject> {
+pub fn create_array_from_list(cx: Context, elements: &[Handle<Value>]) -> Handle<ArrayObject> {
     let array = must!(array_create(cx, 0, None));
 
     // Property key is shared between iterations

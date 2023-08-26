@@ -34,7 +34,7 @@ extend_object! {
 
 // Function pointer to a builtin function
 pub type BuiltinFunctionPtr = fn(
-    cx: &mut Context,
+    cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
     new_target: Option<Handle<ObjectValue>>,
@@ -47,7 +47,7 @@ pub struct ClosureEnvironment {}
 impl BuiltinFunction {
     // 10.3.3 CreateBuiltinFunction
     pub fn create(
-        cx: &mut Context,
+        cx: Context,
         builtin_func: BuiltinFunctionPtr,
         length: i32,
         name: Handle<PropertyKey>,
@@ -64,7 +64,7 @@ impl BuiltinFunction {
     }
 
     pub fn create_without_properties(
-        cx: &mut Context,
+        cx: Context,
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
@@ -103,13 +103,13 @@ impl BuiltinFunction {
 }
 
 impl Handle<BuiltinFunction> {
-    pub fn set_property(&mut self, cx: &mut Context, key: Handle<PropertyKey>, value: Property) {
+    pub fn set_property(&mut self, cx: Context, key: Handle<PropertyKey>, value: Property) {
         self.object().set_property(cx, key, value);
     }
 
     pub fn intrinsic_frozen_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
     ) {
@@ -118,7 +118,7 @@ impl Handle<BuiltinFunction> {
 
     pub fn intrinsic_func(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         length: i32,
@@ -129,7 +129,7 @@ impl Handle<BuiltinFunction> {
 
     pub fn intrinsic_getter(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
@@ -143,11 +143,11 @@ impl VirtualObject for Handle<BuiltinFunction> {
     // 10.3.1 [[Call]]
     fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        HandleScope::new(cx, |cx| {
+        HandleScope::new(cx, |mut cx| {
             let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
             let callee_context = ExecutionContext::new(
                 cx,
@@ -175,11 +175,11 @@ impl VirtualObject for Handle<BuiltinFunction> {
     // 10.3.2 [[Construct]]
     fn construct(
         &self,
-        cx: &mut Context,
+        cx: Context,
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        HandleScope::new(cx, |cx| {
+        HandleScope::new(cx, |mut cx| {
             let is_strict_mode = cx.current_execution_context_ptr().is_strict_mode();
             let callee_context = ExecutionContext::new(
                 cx,
@@ -212,7 +212,7 @@ impl VirtualObject for Handle<BuiltinFunction> {
         self.has_constructor
     }
 
-    fn get_realm(&self, _: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    fn get_realm(&self, _: Context) -> EvalResult<HeapPtr<Realm>> {
         self.realm.into()
     }
 }

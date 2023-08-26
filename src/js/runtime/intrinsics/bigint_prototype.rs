@@ -19,7 +19,7 @@ pub struct BigIntPrototype;
 
 impl BigIntPrototype {
     // 21.2.3 Properties of the BigInt Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -40,7 +40,7 @@ impl BigIntPrototype {
 
     // 21.2.3.3 BigInt.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -65,7 +65,7 @@ impl BigIntPrototype {
 
     // 21.2.3.4 BigInt.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -74,7 +74,7 @@ impl BigIntPrototype {
     }
 }
 
-fn this_bigint_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
+fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
         return value.as_bigint().into();
     }

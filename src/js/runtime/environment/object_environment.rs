@@ -31,12 +31,12 @@ pub struct ObjectEnvironment {
 impl ObjectEnvironment {
     // 9.1.2.3 NewObjectEnvironment
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         binding_object: Handle<ObjectValue>,
         is_with_environment: bool,
         outer: Option<DynEnvironment>,
     ) -> Handle<ObjectEnvironment> {
-        let mut env = cx.heap.alloc_uninit::<ObjectEnvironment>();
+        let mut env = cx.alloc_uninit::<ObjectEnvironment>();
 
         set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::ObjectEnvironment));
         set_uninit!(env.binding_object, binding_object.get_());
@@ -58,7 +58,7 @@ impl Environment for Handle<ObjectEnvironment> {
     }
 
     // 9.1.1.2.1 HasBinding
-    fn has_binding(&self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn has_binding(&self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         let binding_object = self.binding_object();
         let name_key = PropertyKey::string(cx, name).to_handle(cx);
         if !maybe!(has_property(cx, binding_object, name_key)) {
@@ -86,7 +86,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.1 CreateMutableBinding
     fn create_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         can_delete: bool,
     ) -> EvalResult<()> {
@@ -98,7 +98,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.3 CreateImmutableBinding
     fn create_immutable_binding(
         &mut self,
-        _: &mut Context,
+        _: Context,
         _: Handle<StringValue>,
         _: bool,
     ) -> EvalResult<()> {
@@ -108,7 +108,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.4 InitializeBinding
     fn initialize_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
     ) -> EvalResult<()> {
@@ -118,7 +118,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.5 SetMutableBinding
     fn set_mutable_binding(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
         is_strict: bool,
@@ -137,7 +137,7 @@ impl Environment for Handle<ObjectEnvironment> {
     // 9.1.1.2.6 GetBindingValue
     fn get_binding_value(
         &self,
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         is_strict: bool,
     ) -> EvalResult<Handle<Value>> {
@@ -155,7 +155,7 @@ impl Environment for Handle<ObjectEnvironment> {
     }
 
     // 9.1.1.2.7 DeleteBinding
-    fn delete_binding(&mut self, cx: &mut Context, name: Handle<StringValue>) -> EvalResult<bool> {
+    fn delete_binding(&mut self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
         let name_key = PropertyKey::string(cx, name).to_handle(cx);
         self.binding_object().delete(cx, name_key)
     }
@@ -179,7 +179,7 @@ impl Environment for Handle<ObjectEnvironment> {
         None
     }
 
-    fn get_this_binding(&self, _: &mut Context) -> EvalResult<Handle<Value>> {
+    fn get_this_binding(&self, _: Context) -> EvalResult<Handle<Value>> {
         panic!("ObjectEnvironment::get_this_binding is never called in spec")
     }
 

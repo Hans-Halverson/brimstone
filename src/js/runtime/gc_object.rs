@@ -1,12 +1,12 @@
 use super::{
-    completion::EvalResult, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
+    completion::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
     realm::Realm, Context, Handle, Value,
 };
 
 pub struct GcObject;
 
 impl GcObject {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -16,12 +16,12 @@ impl GcObject {
     }
 
     fn run(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        cx.heap.run_gc();
+        Heap::run_gc(cx);
         cx.undefined().into()
     }
 }

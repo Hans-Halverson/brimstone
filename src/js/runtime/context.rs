@@ -1,3 +1,8 @@
+use std::{
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
+
 use crate::js::{common::wtf_8::Wtf8String, parser::ast, runtime::gc::HandleScope};
 
 use super::{
@@ -24,7 +29,21 @@ use super::{
 /// Must never be moved, as there may be internal pointers held.
 ///
 /// Includes properties from section 8.6 Agent.
+///
+/// Contexts are always represented by a pointer to the Context itself. A mutable reference to a
+/// Context can be obtained from any reference to the heap. To avoid breaking Rust's mutable
+/// aliasing rules, we must pass around a Context pointer that allows deref access to its individual
+/// fields instead of passing around a `&mut Context`. This allows us to safely interweave Context
+/// mutations from different Context pointers.
+///
+/// Note that Contexts are not automatically dropped. Contexts must be manually droppd with
+/// Context::drop or Context::execute_then_drop.
+#[derive(Copy, Clone)]
 pub struct Context {
+    ptr: NonNull<ContextCell>,
+}
+
+pub struct ContextCell {
     execution_context_stack: Vec<HeapPtr<ExecutionContext>>,
     pub heap: Heap,
     global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
@@ -70,22 +89,13 @@ type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>
 impl Context {
     /// Create a context. All allocations that occur during the init callback will be placed in
     /// the permanent heap.
-    pub fn new<R>(mut init: impl FnMut(&mut Context) -> R) -> (Box<Context>, R) {
-        let mut heap = Heap::new();
-
-        // Context does not yet exist, so handle scope must directly reference heap
-        let handle_scope = HandleScope::enter_with_heap(&mut heap);
-
-        // Initialize some fields, leave others uninitialized and initialize later
-        let names = BuiltinNames::uninit();
-        let well_known_symbols = BuiltinSymbols::uninit();
-
-        let mut cx = Box::new(Context {
+    pub fn new<R>(mut init: impl FnMut(Context) -> R) -> (Context, R) {
+        let cx_cell = Box::new(ContextCell {
             execution_context_stack: vec![],
-            heap,
+            heap: Heap::new(),
             global_symbol_registry: HeapPtr::uninit(),
-            names,
-            well_known_symbols,
+            names: BuiltinNames::uninit(),
+            well_known_symbols: BuiltinSymbols::uninit(),
             base_descriptors: BaseDescriptors::uninit(),
             undefined: Value::undefined(),
             null: Value::null(),
@@ -102,33 +112,59 @@ impl Context {
             function_constructor_asts: vec![],
         });
 
-        cx.heap.info().set_context(&mut cx);
+        let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
 
-        // Initialize all uninitialized fields
-        cx.base_descriptors = BaseDescriptors::new(&mut cx);
-        InternedStrings::init(&mut cx);
+        cx.heap.info().set_context(cx);
 
-        cx.init_builtin_names();
-        cx.init_builtin_symbols();
+        HandleScope::new(cx, |mut cx| {
+            // Initialize all uninitialized fields
+            cx.base_descriptors = BaseDescriptors::new(cx);
+            InternedStrings::init(cx);
 
-        cx.global_symbol_registry =
-            GlobalSymbolRegistry::new_initial(&mut cx, ObjectKind::GlobalSymbolRegistryMap);
+            cx.init_builtin_names();
+            cx.init_builtin_symbols();
 
-        cx.default_array_properties = DenseArrayProperties::new(&mut cx, 0).cast();
-        cx.default_named_properties =
-            NamedPropertiesMap::new(&mut cx, ObjectKind::ObjectNamedPropertiesMap, 0);
-        cx.uninit_environment = DeclarativeEnvironment::uninit(&mut cx)
-            .into_dyn_env()
-            .to_heap();
+            cx.global_symbol_registry =
+                GlobalSymbolRegistry::new_initial(cx, ObjectKind::GlobalSymbolRegistryMap);
 
-        // Clean up handles from Context creation
-        handle_scope.exit();
+            cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
+            cx.default_named_properties =
+                NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, 0);
+            cx.uninit_environment = DeclarativeEnvironment::uninit(cx).into_dyn_env().to_heap();
+        });
 
         // Execute the init callback, and turn its allocations into the permanent heap
-        let result = init(&mut cx);
+        let result = init(cx);
         cx.heap.mark_current_semispace_as_permanent();
 
         (cx, result)
+    }
+
+    pub fn from_ptr(ptr: NonNull<ContextCell>) -> Context {
+        Context { ptr }
+    }
+
+    pub fn as_ptr(&self) -> NonNull<ContextCell> {
+        self.ptr
+    }
+
+    /// Execute a function then drop this Context.
+    pub fn execute_then_drop<R>(self, f: impl FnOnce(Context) -> R) -> R {
+        let result = f(self);
+        self.drop();
+        result
+    }
+
+    pub fn drop(self) {
+        unsafe { drop(Box::from_raw(self.ptr.as_ptr())) }
+    }
+
+    pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
+        Heap::alloc_uninit::<T>(*self)
+    }
+
+    pub fn alloc_uninit_with_size<T>(&self, size: usize) -> HeapPtr<T> {
+        Heap::alloc_uninit_with_size::<T>(*self, size)
     }
 
     pub fn push_execution_context(&mut self, exec_ctx: Handle<ExecutionContext>) {
@@ -208,12 +244,12 @@ impl Context {
 
     #[inline]
     pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
-        FlatString::from_wtf8(self, str.as_bytes())
+        FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
     pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> HeapPtr<FlatString> {
-        FlatString::from_wtf8(self, str.as_bytes())
+        FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
@@ -280,18 +316,32 @@ impl Context {
     }
 }
 
+impl Deref for Context {
+    type Target = ContextCell;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl DerefMut for Context {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.ptr.as_mut() }
+    }
+}
+
 pub struct GlobalSymbolRegistryField;
 
 impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
         GlobalSymbolRegistry::new(cx, ObjectKind::GlobalSymbolRegistryMap, capacity)
     }
 
-    fn get(&self, cx: &mut Context) -> HeapPtr<GlobalSymbolRegistry> {
+    fn get(&self, cx: Context) -> HeapPtr<GlobalSymbolRegistry> {
         cx.global_symbol_registry
     }
 
-    fn set(&mut self, cx: &mut Context, map: HeapPtr<GlobalSymbolRegistry>) {
+    fn set(&mut self, mut cx: Context, map: HeapPtr<GlobalSymbolRegistry>) {
         cx.global_symbol_registry = map;
     }
 }

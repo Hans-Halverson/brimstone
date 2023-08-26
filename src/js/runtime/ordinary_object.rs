@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use crate::{extend_object, maybe, must};
 
 use super::{
@@ -57,7 +55,7 @@ impl Handle<ObjectValue> {
     // 10.1.2.1 OrdinarySetPrototypeOf
     pub fn ordinary_set_prototype_of(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype(), new_prototype.map(|p| p.get_())) {
@@ -102,7 +100,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     // 10.1.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         ordinary_get_own_property(cx, self.object(), key).into()
@@ -111,7 +109,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     // 10.1.6 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -119,14 +117,14 @@ impl VirtualObject for Handle<OrdinaryObject> {
     }
 
     // 10.1.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_has_property(cx, self.object(), key)
     }
 
     // 10.1.8 [[Get]]
     fn get(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
@@ -136,7 +134,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
     // 10.1.9 [[Set]]
     fn set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
@@ -145,19 +143,19 @@ impl VirtualObject for Handle<OrdinaryObject> {
     }
 
     // 10.1.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_delete(cx, self.object(), key)
     }
 
     // 10.1.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         ordinary_own_property_keys(cx, self.object()).into()
     }
 }
 
 // 10.1.5.1 OrdinaryGetOwnProperty
 pub fn ordinary_get_own_property(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> Option<PropertyDescriptor> {
@@ -186,7 +184,7 @@ pub fn ordinary_get_own_property(
 
 // 10.1.6.1 OrdinaryDefineOwnProperty
 pub fn ordinary_define_own_property(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
@@ -200,7 +198,7 @@ pub fn ordinary_define_own_property(
 
 // 10.1.6.2 IsCompatiblePropertyDescriptor
 pub fn is_compatible_property_descriptor(
-    cx: &mut Context,
+    cx: Context,
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
@@ -217,7 +215,7 @@ pub fn is_compatible_property_descriptor(
 
 // 10.1.6.3 ValidateAndApplyPropertyDescriptor
 pub fn validate_and_apply_property_descriptor(
-    cx: &mut Context,
+    cx: Context,
     mut object: Option<Handle<ObjectValue>>,
     key: Handle<PropertyKey>,
     is_extensible: bool,
@@ -373,7 +371,7 @@ pub fn validate_and_apply_property_descriptor(
 
 // 10.1.7.1 OrdinaryHasProperty
 pub fn ordinary_has_property(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
@@ -391,7 +389,7 @@ pub fn ordinary_has_property(
 
 // 10.1.8.1 OrdinaryGet
 pub fn ordinary_get(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     receiver: Handle<Value>,
@@ -416,7 +414,7 @@ pub fn ordinary_get(
 // 10.1.9.1 OrdinarySet
 // 10.1.9.2 OrdinarySetWithOwnDescriptor
 pub fn ordinary_set(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
@@ -470,7 +468,7 @@ pub fn ordinary_set(
 
 // 10.1.10.1 OrdinaryDelete
 pub fn ordinary_delete(
-    cx: &mut Context,
+    cx: Context,
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
@@ -489,10 +487,7 @@ pub fn ordinary_delete(
 }
 
 // 10.1.11.1 OrdinaryOwnPropertyKeys
-pub fn ordinary_own_property_keys(
-    cx: &mut Context,
-    object: Handle<ObjectValue>,
-) -> Vec<Handle<Value>> {
+pub fn ordinary_own_property_keys(cx: Context, object: Handle<ObjectValue>) -> Vec<Handle<Value>> {
     let mut keys: Vec<Handle<Value>> = vec![];
 
     ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
@@ -503,7 +498,7 @@ pub fn ordinary_own_property_keys(
 
 #[inline]
 pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
-    cx: &mut Context,
+    mut cx: Context,
     object: Handle<ObjectValue>,
     keys: &mut Vec<Handle<Value>>,
     filter: F,
@@ -552,8 +547,8 @@ pub fn ordinary_own_string_symbol_property_keys(
     });
 }
 
-pub fn ordinary_object_create(cx: &mut Context) -> Handle<ObjectValue> {
-    let object = cx.heap.alloc_uninit::<ObjectValue>();
+pub fn ordinary_object_create(cx: Context) -> Handle<ObjectValue> {
+    let object = cx.alloc_uninit::<ObjectValue>();
 
     let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
@@ -563,14 +558,14 @@ pub fn ordinary_object_create(cx: &mut Context) -> Handle<ObjectValue> {
 }
 
 pub fn object_create<T>(
-    cx: &mut Context,
+    cx: Context,
     descriptor_kind: ObjectKind,
     intrinsic_proto: Intrinsic,
 ) -> HeapPtr<T>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.heap.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
@@ -580,14 +575,14 @@ where
 }
 
 pub fn object_create_with_proto<T>(
-    cx: &mut Context,
+    cx: Context,
     descriptor_kind: ObjectKind,
     proto: Handle<ObjectValue>,
 ) -> HeapPtr<T>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.heap.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
@@ -596,14 +591,14 @@ where
 }
 
 pub fn object_create_with_optional_proto<T>(
-    cx: &mut Context,
+    cx: Context,
     descriptor_kind: ObjectKind,
     proto: Option<Handle<ObjectValue>>,
 ) -> HeapPtr<T>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.heap.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     let proto = proto.map(|p| p.get_());
@@ -613,15 +608,11 @@ where
 }
 
 pub fn object_ordinary_init(
-    cx: &mut Context,
+    cx: Context,
     mut object: HeapPtr<ObjectValue>,
     descriptor: HeapPtr<ObjectDescriptor>,
     proto: Option<HeapPtr<ObjectValue>>,
 ) {
-    // Object initialization does not currently allocate so a GC cannot occur. This means it is
-    // safe to use a raw reference.
-    let object = object.deref_mut();
-
     object.set_descriptor(descriptor);
     object.set_prototype(proto);
     object.set_named_properties(cx.default_named_properties);
@@ -633,7 +624,7 @@ pub fn object_ordinary_init(
 // 10.1.13 OrdinaryCreateFromConstructor
 // Creates an object of type T, and initializes the standard object fields.
 pub fn object_create_from_constructor<T>(
-    cx: &mut Context,
+    cx: Context,
     constructor: Handle<ObjectValue>,
     descriptor_kind: ObjectKind,
     intrinsic_default_proto: Intrinsic,
@@ -644,7 +635,7 @@ where
     // May allocate, so call before allocating object
     let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
 
-    let object = cx.heap.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
@@ -655,7 +646,7 @@ where
 // 10.1.14 GetPrototypeFromConstructor
 // May allocate.
 pub fn get_prototype_from_constructor(
-    cx: &mut Context,
+    cx: Context,
     constructor: Handle<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {

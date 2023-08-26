@@ -59,10 +59,10 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
     // Public interface
 
-    pub fn new(cx: &mut Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.heap.alloc_uninit_with_size::<BsIndexMap<K, V>>(size);
+        let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size);
 
         set_uninit!(hash_map.descriptor, cx.base_descriptors.get(kind));
         set_uninit!(hash_map.num_occupied, 0);
@@ -353,7 +353,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 /// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
 /// new map.
 pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
 
     fn get(&self) -> HeapPtr<BsIndexMap<K, V>>;
 
@@ -362,7 +362,7 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
     /// Prepare map for insertion of a single entry. This will grow the map and update container to
     /// point to new map if there is no room to insert another entry in the map.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsIndexMap<K, V>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsIndexMap<K, V>> {
         let old_map = self.get();
         let num_entries_used = old_map.num_entries_used();
         let capacity = old_map.capacity();

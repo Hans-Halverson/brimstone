@@ -28,7 +28,7 @@ pub struct AggregateErrorObject;
 
 impl AggregateErrorObject {
     fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ErrorObject>> {
         let object = maybe!(object_create_from_constructor::<ErrorObject>(
@@ -46,7 +46,7 @@ pub struct AggregateErrorConstructor;
 
 impl AggregateErrorConstructor {
     // 20.5.7.2 Properties of the AggregateError Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -74,7 +74,7 @@ impl AggregateErrorConstructor {
 
     // 20.5.7.1.1 AggregateError
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

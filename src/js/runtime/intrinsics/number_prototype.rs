@@ -20,7 +20,7 @@ pub struct NumberPrototype;
 
 impl NumberPrototype {
     // 21.1.3 Properties of the Number Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object = NumberObject::new_with_proto(cx, object_proto, 0.0);
 
@@ -47,7 +47,7 @@ impl NumberPrototype {
 
     // 21.1.3.3 Number.prototype.toFixed
     fn to_fixed(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -96,7 +96,7 @@ impl NumberPrototype {
 
     // 21.1.3.4 Number.prototype.toLocaleString
     fn to_locale_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -106,7 +106,7 @@ impl NumberPrototype {
 
     // 21.1.3.6 Number.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -213,7 +213,7 @@ impl NumberPrototype {
 
     // 21.1.3.7 Number.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -232,7 +232,7 @@ const RADIX_TO_PRECISION: [u8; 37] = [
     11, 11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 ];
 
-fn this_number_value(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<Value> {
+fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Value> {
     let value = value_handle.get();
     if value.is_number() {
         return value.into();

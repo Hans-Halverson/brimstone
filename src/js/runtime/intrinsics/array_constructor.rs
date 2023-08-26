@@ -21,7 +21,7 @@ pub struct ArrayConstructor;
 
 impl ArrayConstructor {
     // 23.1.2 Properties of the Array Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -56,7 +56,7 @@ impl ArrayConstructor {
 
     // 23.1.1.1 Array
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -109,7 +109,7 @@ impl ArrayConstructor {
 
     // 23.1.2.2 Array.isArray
     fn is_array(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -121,7 +121,7 @@ impl ArrayConstructor {
 
     // 23.1.2.3 Array.of
     fn of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -151,7 +151,7 @@ impl ArrayConstructor {
 
     // 23.1.2.5 get Array [ @@species ]
     fn get_species(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

@@ -41,7 +41,7 @@ extend_object! {
 
 impl StringObject {
     pub fn new_from_value(
-        cx: &mut Context,
+        cx: Context,
         string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
         let mut object =
@@ -66,7 +66,7 @@ impl StringObject {
     }
 
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> EvalResult<Handle<StringObject>> {
@@ -96,7 +96,7 @@ impl StringObject {
     }
 
     pub fn new_with_proto(
-        cx: &mut Context,
+        cx: Context,
         proto: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
@@ -130,7 +130,7 @@ impl StringObject {
     // 10.4.3.5 StringGetOwnProperty
     fn string_get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> Option<PropertyDescriptor> {
         if key.is_symbol() {
@@ -163,7 +163,7 @@ impl VirtualObject for Handle<StringObject> {
     // 10.4.3.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let desc = ordinary_get_own_property(cx, self.object(), key);
@@ -177,7 +177,7 @@ impl VirtualObject for Handle<StringObject> {
     // 10.4.3.2 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -191,7 +191,7 @@ impl VirtualObject for Handle<StringObject> {
     }
 
     // 10.4.3.3 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+    fn own_property_keys(&self, mut cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut keys: Vec<Handle<Value>> = vec![];
 
         let length = self.string_data.len();

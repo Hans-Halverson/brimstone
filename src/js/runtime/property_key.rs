@@ -27,7 +27,7 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn string(cx: &mut Context, value: Handle<StringValue>) -> PropertyKey {
+    pub fn string(cx: Context, value: Handle<StringValue>) -> PropertyKey {
         // String value may represent an array index
         match parse_string_to_u32(value) {
             None => PropertyKey::string_not_array_index(cx, value),
@@ -39,7 +39,7 @@ impl PropertyKey {
     /// Create a string property key that is known to not be an array index. Be sure to not pass
     /// string property keys that may be an array index to this function.
     #[inline]
-    pub fn string_not_array_index(cx: &mut Context, value: Handle<StringValue>) -> PropertyKey {
+    pub fn string_not_array_index(cx: Context, value: Handle<StringValue>) -> PropertyKey {
         // Enforce that all string property keys are interned
         let flat_string = value.flatten();
         let interned_string = InternedStrings::get(cx, flat_string.get_()).as_string();
@@ -52,7 +52,7 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn array_index(cx: &mut Context, value: u32) -> PropertyKey {
+    pub fn array_index(mut cx: Context, value: u32) -> PropertyKey {
         if value == u32::MAX {
             let string_value = cx.alloc_string(&value.to_string());
             return PropertyKey::string_not_array_index(cx, string_value);
@@ -66,7 +66,7 @@ impl PropertyKey {
         PropertyKey { value: Value::smi(value as i32) }
     }
 
-    pub fn from_u64(cx: &mut Context, value: u64) -> PropertyKey {
+    pub fn from_u64(mut cx: Context, value: u64) -> PropertyKey {
         if value >= u32::MAX as u64 {
             let string_value = cx.alloc_string(&value.to_string());
             return PropertyKey::string_not_array_index(cx, string_value);
@@ -75,7 +75,7 @@ impl PropertyKey {
         PropertyKey { value: Value::smi(value as u32 as i32) }
     }
 
-    pub fn from_value(cx: &mut Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
+    pub fn from_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
         let value = value_handle.get();
         if is_integral_number(value) {
             let number = value.as_double();
@@ -138,7 +138,7 @@ impl Handle<PropertyKey> {
     /// Convert this property key to a string or symbol value as defined in the spec. All array
     /// index keys will be converted to strings.
     #[inline]
-    pub fn to_value(&self, cx: &mut Context) -> Handle<Value> {
+    pub fn to_value(&self, mut cx: Context) -> Handle<Value> {
         if self.value.is_smi() {
             let array_index_string = self.as_array_index().to_string();
             cx.alloc_string(&array_index_string).into()
@@ -233,7 +233,7 @@ impl Handle<PropertyKey> {
 
 impl PropertyKey {
     #[inline]
-    pub fn to_handle(&self, cx: &mut Context) -> Handle<PropertyKey> {
+    pub fn to_handle(&self, cx: Context) -> Handle<PropertyKey> {
         self.value.to_handle(cx).cast()
     }
 }

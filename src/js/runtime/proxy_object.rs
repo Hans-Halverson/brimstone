@@ -35,7 +35,7 @@ extend_object! {
 
 impl ProxyObject {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         proxy_target: Handle<ObjectValue>,
         proxy_handler: Handle<ObjectValue>,
         is_callable: bool,
@@ -74,7 +74,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.5 [[GetOwnProperty]]
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if self.is_revoked() {
@@ -151,7 +151,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.6 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -235,7 +235,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.7 [[HasProperty]]
-    fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -278,7 +278,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.8 [[Get]]
     fn get(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
@@ -321,7 +321,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.9 [[Set]]
     fn set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
@@ -365,7 +365,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.10 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -409,7 +409,7 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     // 10.5.11 [[OwnPropertyKeys]]
-    fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+    fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -513,7 +513,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.12 [[Call]]
     fn call(
         &self,
-        cx: &mut Context,
+        cx: Context,
         this_argument: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -538,7 +538,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.13 [[Construct]]
     fn construct(
         &self,
-        cx: &mut Context,
+        cx: Context,
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
@@ -574,7 +574,7 @@ impl VirtualObject for Handle<ProxyObject> {
         self.is_constructor
     }
 
-    fn get_realm(&self, cx: &mut Context) -> EvalResult<HeapPtr<Realm>> {
+    fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -585,7 +585,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
 impl ProxyObject {
     // 10.5.1 [[GetPrototypeOf]]
-    pub fn get_prototype_of(&self, cx: &mut Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+    pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -629,7 +629,7 @@ impl ProxyObject {
     // 10.5.2 [[SetPrototypeOf]]
     pub fn set_prototype_of(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         proto: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
@@ -673,7 +673,7 @@ impl ProxyObject {
     }
 
     // 10.5.3 [[IsExtensible]]
-    pub fn is_extensible(&self, cx: &mut Context) -> EvalResult<bool> {
+    pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -702,7 +702,7 @@ impl ProxyObject {
     }
 
     // 10.5.4 [[PreventExtensions]]
-    pub fn prevent_extensions(&mut self, cx: &mut Context) -> EvalResult<bool> {
+    pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error_(cx, "operation attempted on revoked proxy");
         }
@@ -736,7 +736,7 @@ impl ProxyObject {
 
 // 10.5.14 ProxyCreate
 pub fn proxy_create(
-    cx: &mut Context,
+    cx: Context,
     target: Handle<Value>,
     handler: Handle<Value>,
 ) -> EvalResult<Handle<ProxyObject>> {

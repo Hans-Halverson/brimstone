@@ -188,7 +188,7 @@ pub struct Intrinsics {
 
 impl Intrinsics {
     // 9.3.2 CreateIntrinsics
-    pub fn initialize(cx: &mut Context, mut realm: Handle<Realm>) {
+    pub fn initialize(cx: Context, mut realm: Handle<Realm>) {
         // Initialize all pointers to valid pointer outside heap in case a GC is triggered before
         // they are set to real intrinsic object.
         realm
@@ -351,7 +351,7 @@ impl Intrinsics {
     // Intrinsic prototypes are created before their corresponding constructors, so we must add a
     // constructor property after creation.
     fn add_constructor_to_prototype(
-        cx: &mut Context,
+        cx: Context,
         realm: Handle<Realm>,
         prototype: Intrinsic,
         constructor: Intrinsic,
@@ -366,7 +366,7 @@ impl Intrinsics {
 }
 
 fn throw_type_error(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -375,10 +375,7 @@ fn throw_type_error(
 }
 
 // 10.2.4.1 %ThrowTypeError%
-fn create_throw_type_error_intrinsic(
-    cx: &mut Context,
-    realm: Handle<Realm>,
-) -> Handle<BuiltinFunction> {
+fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
     let throw_type_error_func =
         BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
 
@@ -410,7 +407,7 @@ fn create_throw_type_error_intrinsic(
 
 // 10.2.4 AddRestrictedFunctionProperties
 fn add_restricted_function_properties(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<ObjectValue>,
     realm: Handle<Realm>,
 ) {

@@ -123,7 +123,7 @@ const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, inst
 
 impl CompiledRegExpObject {
     pub fn new(
-        cx: &mut Context,
+        mut cx: Context,
         instructions: Vec<Instruction>,
         regexp: &RegExp,
         num_progress_points: u32,
@@ -145,7 +145,7 @@ impl CompiledRegExpObject {
             .collect::<Vec<_>>();
 
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
-        let mut object = cx.heap.alloc_uninit_with_size::<CompiledRegExpObject>(size);
+        let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::CompiledRegExpObject));
         set_uninit!(object.flags, regexp.flags);

@@ -560,8 +560,8 @@ pub struct SymbolValue {
 }
 
 impl SymbolValue {
-    pub fn new(cx: &mut Context, description: Option<Handle<StringValue>>) -> Handle<SymbolValue> {
-        let mut symbol = cx.heap.alloc_uninit::<SymbolValue>();
+    pub fn new(cx: Context, description: Option<Handle<StringValue>>) -> Handle<SymbolValue> {
+        let mut symbol = cx.alloc_uninit::<SymbolValue>();
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| desc.get_()));
@@ -650,13 +650,13 @@ pub struct BigIntValue {
 impl BigIntValue {
     const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
 
-    pub fn new(cx: &mut Context, value: BigInt) -> Handle<BigIntValue> {
+    pub fn new(cx: Context, value: BigInt) -> Handle<BigIntValue> {
         // Extract sign and digits from BigInt
         let (sign, digits) = value.to_u32_digits();
         let len = digits.len();
 
         let size = Self::calculate_size_in_bytes(len);
-        let mut bigint = cx.heap.alloc_uninit_with_size::<BigIntValue>(size);
+        let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size);
 
         // Copy raw parts of BigInt into BigIntValue
         set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
@@ -707,11 +707,11 @@ pub struct AccessorValue {
 
 impl AccessorValue {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         get: Option<Handle<ObjectValue>>,
         set: Option<Handle<ObjectValue>>,
     ) -> Handle<AccessorValue> {
-        let mut accessor = cx.heap.alloc_uninit::<AccessorValue>();
+        let mut accessor = cx.alloc_uninit::<AccessorValue>();
 
         set_uninit!(accessor.descriptor, cx.base_descriptors.get(ObjectKind::Accessor));
         set_uninit!(accessor.get, get.map(|v| v.get_()));

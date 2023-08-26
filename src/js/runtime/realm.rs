@@ -39,12 +39,12 @@ const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 impl Realm {
     // 9.3.1 CreateRealm. Realm initializes intrinsics but leaves other properties uninitialized.
     // Must call `initialize` before using.
-    pub fn new_uninit(cx: &mut Context) -> Handle<Realm> {
+    pub fn new_uninit(cx: Context) -> Handle<Realm> {
         HandleScope::new(cx, |cx| {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
             // during intrinsic creation.
             let size = Self::calculate_size_in_bytes();
-            let mut realm = cx.heap.alloc_uninit_with_size::<Realm>(size);
+            let mut realm = cx.alloc_uninit_with_size::<Realm>(size);
 
             set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
             set_uninit!(realm.global_env, HeapPtr::uninit());
@@ -103,7 +103,7 @@ impl Handle<Realm> {
 
     pub fn add_template_object(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         template_node: AstPtr<TemplateLiteral>,
         template_object: Handle<ObjectValue>,
     ) {
@@ -116,7 +116,7 @@ impl Handle<Realm> {
     // Initializes remaining properties of realm that were not initialized in `new_uninit`.
     pub fn initialize(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         global_object: Option<Handle<ObjectValue>>,
         this_value: Option<Handle<ObjectValue>>,
     ) {
@@ -131,8 +131,8 @@ impl Handle<Realm> {
 }
 
 // 9.6 InitializeHostDefinedRealm
-pub fn initialize_host_defined_realm(cx: &mut Context, expose_gc: bool) -> Handle<Realm> {
-    HandleScope::new(cx, |cx| {
+pub fn initialize_host_defined_realm(cx: Context, expose_gc: bool) -> Handle<Realm> {
+    HandleScope::new(cx, |mut cx| {
         let mut realm = Realm::new_uninit(cx);
         let exec_ctx = ExecutionContext::new(
             cx, /* function */ None, realm, /* script_or_module */ None,
@@ -152,15 +152,15 @@ pub fn initialize_host_defined_realm(cx: &mut Context, expose_gc: bool) -> Handl
 pub struct RealmTemplateMapField(Handle<Realm>);
 
 impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for RealmTemplateMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<TemplateMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<TemplateMap> {
         TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<TemplateMap> {
+    fn get(&self, _: Context) -> HeapPtr<TemplateMap> {
         self.0.template_map
     }
 
-    fn set(&mut self, _: &mut Context, map: HeapPtr<TemplateMap>) {
+    fn set(&mut self, _: Context, map: HeapPtr<TemplateMap>) {
         self.0.template_map = map;
     }
 }

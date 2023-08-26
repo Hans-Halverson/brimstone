@@ -32,7 +32,7 @@ type WeakValueMap = BsHashMap<ValueCollectionKey, Value>;
 
 impl WeakMapObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakMapObject>> {
         let weak_map_data =
@@ -73,15 +73,15 @@ impl Handle<WeakMapObject> {
 pub struct WeakMapObjectMapField(Handle<WeakMapObject>);
 
 impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<WeakValueMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<WeakValueMap> {
         WeakValueMap::new(cx, ObjectKind::WeakMapObjectWeakValueMap, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<WeakValueMap> {
+    fn get(&self, _: Context) -> HeapPtr<WeakValueMap> {
         self.0.weak_map_data
     }
 
-    fn set(&mut self, _: &mut Context, map: HeapPtr<WeakValueMap>) {
+    fn set(&mut self, _: Context, map: HeapPtr<WeakValueMap>) {
         self.0.weak_map_data = map;
     }
 }

@@ -13,7 +13,7 @@ use super::{
 pub struct ConsoleObject;
 
 impl ConsoleObject {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -23,7 +23,7 @@ impl ConsoleObject {
     }
 
     fn log(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -41,7 +41,7 @@ impl ConsoleObject {
 }
 
 /// Format for printing value to console
-pub fn to_console_string(cx: &mut Context, value: Handle<Value>) -> String {
+pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
             ObjectKind::String => format!("{}", value.as_string()),

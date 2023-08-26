@@ -11,7 +11,7 @@ pub struct WeakSetPrototype;
 
 impl WeakSetPrototype {
     // 24.4.3 Properties of the WeakSet Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -33,7 +33,7 @@ impl WeakSetPrototype {
 
     // 24.4.3.1 WeakSet.prototype.add
     fn add(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -59,7 +59,7 @@ impl WeakSetPrototype {
 
     // 24.4.3.3 WeakSet.prototype.delete
     fn delete(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -82,7 +82,7 @@ impl WeakSetPrototype {
 
     // 24.4.3.4 WeakSet.prototype.has
     fn has(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

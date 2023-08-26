@@ -23,7 +23,7 @@ use brimstone::{
 pub struct Test262Object;
 
 impl Test262Object {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -47,7 +47,7 @@ impl Test262Object {
         object.to_handle()
     }
 
-    pub fn install(cx: &mut Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
+    pub fn install(mut cx: Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
         let test_262_string = cx.alloc_string("$262");
         let test_262_key = PropertyKey::string(cx, test_262_string).to_handle(cx);
         let desc = PropertyDescriptor::data(test_262_object.into(), true, false, true);
@@ -55,7 +55,7 @@ impl Test262Object {
     }
 
     fn create_realm(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -73,7 +73,7 @@ impl Test262Object {
     }
 
     fn eval_script(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -113,7 +113,7 @@ impl Test262Object {
     }
 
     fn detach_array_buffer(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

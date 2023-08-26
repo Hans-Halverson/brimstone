@@ -12,7 +12,7 @@ pub struct BooleanPrototype;
 
 impl BooleanPrototype {
     // 20.3.3 Properties of the Boolean Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object = BooleanObject::new_with_proto(cx, object_proto, false);
 
@@ -29,7 +29,7 @@ impl BooleanPrototype {
 
     // 20.3.3.2 Boolean.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -42,7 +42,7 @@ impl BooleanPrototype {
 
     // 20.3.3.3 Boolean.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -52,7 +52,7 @@ impl BooleanPrototype {
     }
 }
 
-fn this_boolean_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<bool> {
+fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     if value.is_bool() {
         return value.as_bool().into();
     }

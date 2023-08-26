@@ -18,7 +18,7 @@ pub struct BsIndexSet<T>(BsIndexMap<T, ()>);
 impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     pub const MIN_CAPACITY: usize = BsIndexMap::<T, ()>::MIN_CAPACITY;
 
-    pub fn new(cx: &mut Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
         BsIndexMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
@@ -78,7 +78,7 @@ impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
 /// A BsIndexSet stored as the field of a heap object. Can create new set and set the field to a
 /// new set.
 pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsIndexSet<T>>;
+    fn new(cx: Context, capacity: usize) -> HeapPtr<BsIndexSet<T>>;
 
     fn get(&self) -> HeapPtr<BsIndexSet<T>>;
 
@@ -87,7 +87,7 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
     /// Prepare set for insertion of a single element. This will grow the set and update container
     /// to point to new set if there is no room to insert another entry in the set.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsIndexSet<T>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsIndexSet<T>> {
         let mut map_field = IndexMapField(self.clone());
         map_field.maybe_grow_for_insertion(cx).cast()
     }
@@ -97,7 +97,7 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
 struct IndexMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsIndexSetField<T>> BsIndexMapField<T, ()> for IndexMapField<S> {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsIndexMap<T, ()>> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<T, ()>> {
         S::new(cx, capacity).cast()
     }
 

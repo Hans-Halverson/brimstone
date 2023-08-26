@@ -114,7 +114,7 @@ impl CompiledRegExpBuilder {
         self.emit_instruction(Instruction::Progress(index));
     }
 
-    fn compile(&mut self, cx: &mut Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
+    fn compile(&mut self, cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
         // Prime with new block
         self.new_block();
 
@@ -729,7 +729,7 @@ impl CompiledRegExpBuilder {
     }
 }
 
-pub fn compile_regexp(cx: &mut Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
+pub fn compile_regexp(cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
     let mut builder = CompiledRegExpBuilder::new(regexp);
     builder.compile(cx, regexp)
 }

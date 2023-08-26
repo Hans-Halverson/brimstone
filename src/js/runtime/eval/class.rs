@@ -72,7 +72,7 @@ impl ClassFieldDefinition {
     }
 
     pub fn from_heap(
-        cx: &mut Context,
+        cx: Context,
         heap_field_def: &HeapClassFieldDefinition,
     ) -> ClassFieldDefinition {
         ClassFieldDefinition {
@@ -95,7 +95,7 @@ impl ClassFieldDefinitionName {
     }
 
     pub fn from_heap(
-        cx: &mut Context,
+        cx: Context,
         heap_name_def: &HeapClassFieldDefinitionName,
     ) -> ClassFieldDefinitionName {
         match heap_name_def {
@@ -111,7 +111,7 @@ impl ClassFieldDefinitionName {
 
 // 15.7.10 ClassFieldDefinitionEvaluation
 fn class_field_definition_evaluation(
-    cx: &mut Context,
+    cx: Context,
     prop: &ast::ClassProperty,
     property_key: Handle<PropertyKey>,
     home_object: Handle<ObjectValue>,
@@ -141,7 +141,7 @@ fn class_field_definition_evaluation(
 
 // 15.7.11 ClassStaticBlockDefinitionEvaluation
 fn class_static_block_definition_evaluation(
-    cx: &mut Context,
+    cx: Context,
     block: &ast::ClassMethod,
     home_object: Handle<ObjectValue>,
 ) -> Handle<Function> {
@@ -164,7 +164,7 @@ enum StaticElement {
 
 // 15.7.14 ClassDefinitionEvaluation
 pub fn class_definition_evaluation(
-    cx: &mut Context,
+    cx: Context,
     class: &ast::Class,
     class_binding: Option<Handle<StringValue>>,
     class_name: Handle<PropertyKey>,
@@ -478,7 +478,7 @@ pub fn class_definition_evaluation(
 
 // 15.7.15 BindingClassDeclarationEvaluation
 fn binding_class_declaration_evaluation(
-    cx: &mut Context,
+    cx: Context,
     class: &ast::Class,
 ) -> EvalResult<Handle<Function>> {
     if let Some(id) = class.id.as_deref() {
@@ -496,12 +496,12 @@ fn binding_class_declaration_evaluation(
 }
 
 // 15.7.16 Class Declaration and Expression Evaluation
-pub fn eval_class_declaration(cx: &mut Context, class: &ast::Class) -> Completion {
+pub fn eval_class_declaration(cx: Context, class: &ast::Class) -> Completion {
     maybe__!(binding_class_declaration_evaluation(cx, class));
     Completion::empty(cx)
 }
 
-pub fn eval_class_expression(cx: &mut Context, class: &ast::Class) -> EvalResult<Handle<Value>> {
+pub fn eval_class_expression(cx: Context, class: &ast::Class) -> EvalResult<Handle<Value>> {
     if let Some(id) = class.id.as_deref() {
         let name_value = id_string_value(cx, id);
         let name_key = PropertyKey::string(cx, name_value).to_handle(cx);

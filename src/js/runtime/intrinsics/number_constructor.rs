@@ -35,7 +35,7 @@ extend_object! {
 }
 
 impl NumberObject {
-    pub fn new(cx: &mut Context, number_data: f64) -> Handle<NumberObject> {
+    pub fn new(cx: Context, number_data: f64) -> Handle<NumberObject> {
         let mut object =
             object_create::<NumberObject>(cx, ObjectKind::NumberObject, Intrinsic::NumberPrototype);
 
@@ -45,7 +45,7 @@ impl NumberObject {
     }
 
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         number_data: f64,
     ) -> EvalResult<Handle<NumberObject>> {
@@ -62,7 +62,7 @@ impl NumberObject {
     }
 
     pub fn new_with_proto(
-        cx: &mut Context,
+        cx: Context,
         proto: Handle<ObjectValue>,
         number_data: f64,
     ) -> Handle<NumberObject> {
@@ -83,7 +83,7 @@ pub struct NumberConstructor;
 
 impl NumberConstructor {
     // 21.1.2 Properties of the Number Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -160,7 +160,7 @@ impl NumberConstructor {
 
     // 21.1.1.1 Number
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -189,7 +189,7 @@ impl NumberConstructor {
 
     // 21.1.2.2 Number.isFinite
     fn is_finite(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -204,7 +204,7 @@ impl NumberConstructor {
 
     // 21.1.2.3 Number.isInteger
     fn is_integer(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -215,7 +215,7 @@ impl NumberConstructor {
 
     // 21.1.2.4 Number.isNaN
     fn is_nan(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -230,7 +230,7 @@ impl NumberConstructor {
 
     // 21.1.2.5 Number.isSafeInteger
     fn is_safe_integer(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

@@ -29,7 +29,7 @@ extend_object! {
         array: HeapPtr<ObjectValue>,
         kind: ArrayIteratorKind,
         current_index: usize,
-        get_length: fn(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64>,
+        get_length: fn(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64>,
     }
 }
 
@@ -41,7 +41,7 @@ pub enum ArrayIteratorKind {
 
 impl ArrayIterator {
     pub fn new(
-        cx: &mut Context,
+        cx: Context,
         array: Handle<ObjectValue>,
         kind: ArrayIteratorKind,
     ) -> Handle<ArrayIterator> {
@@ -71,7 +71,7 @@ impl ArrayIterator {
         self.array.to_handle()
     }
 
-    fn get_typed_array_length(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
+    fn get_typed_array_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         let typed_array = array.as_typed_array();
         if typed_array.viewed_array_buffer().is_detached() {
             return type_error_(cx, "array buffer is detached");
@@ -80,7 +80,7 @@ impl ArrayIterator {
         (typed_array.array_length() as u64).into()
     }
 
-    fn get_array_like_length(cx: &mut Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
+    fn get_array_like_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         length_of_array_like(cx, array)
     }
 
@@ -91,7 +91,7 @@ impl ArrayIterator {
 pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = ObjectValue::new(cx, Some(proto), true);
 
@@ -112,7 +112,7 @@ impl ArrayIteratorPrototype {
     // 23.1.5.2.1 %ArrayIteratorPrototype%.next
     // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
     fn next(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

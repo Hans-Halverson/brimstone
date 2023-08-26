@@ -31,7 +31,7 @@ extend_object! {
 }
 
 impl BooleanObject {
-    pub fn new(cx: &mut Context, boolean_data: bool) -> Handle<BooleanObject> {
+    pub fn new(cx: Context, boolean_data: bool) -> Handle<BooleanObject> {
         let mut object = object_create::<BooleanObject>(
             cx,
             ObjectKind::BooleanObject,
@@ -44,7 +44,7 @@ impl BooleanObject {
     }
 
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         boolean_data: bool,
     ) -> EvalResult<Handle<BooleanObject>> {
@@ -61,7 +61,7 @@ impl BooleanObject {
     }
 
     pub fn new_with_proto(
-        cx: &mut Context,
+        cx: Context,
         proto: Handle<ObjectValue>,
         boolean_data: bool,
     ) -> Handle<BooleanObject> {
@@ -82,7 +82,7 @@ pub struct BooleanConstructor;
 
 impl BooleanConstructor {
     // 20.3.2 Properties of the Boolean Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -110,7 +110,7 @@ impl BooleanConstructor {
 
     // 20.3.1.1 Boolean
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

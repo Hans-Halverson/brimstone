@@ -40,7 +40,7 @@ pub struct ArrayPrototype;
 
 impl ArrayPrototype {
     // 23.1.3 Properties of the Array Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let array = ArrayObject::new(cx, object_proto);
 
@@ -181,7 +181,7 @@ impl ArrayPrototype {
 
     // 23.1.3.1 Array.prototype.at
     fn at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -211,7 +211,7 @@ impl ArrayPrototype {
 
     // 23.1.3.2 Array.prototype.concat
     fn concat(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -231,7 +231,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.2.1 IsConcatSpreadable
-    fn is_concat_spreadable(cx: &mut Context, object: Handle<Value>) -> EvalResult<bool> {
+    fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
             return false.into();
         }
@@ -248,7 +248,7 @@ impl ArrayPrototype {
 
     #[inline]
     fn apply_concat_to_element(
-        cx: &mut Context,
+        cx: Context,
         element: Handle<Value>,
         array: Handle<ObjectValue>,
         n: &mut u64,
@@ -295,7 +295,7 @@ impl ArrayPrototype {
 
     // 23.1.3.4 Array.prototype.copyWithin
     fn copy_within(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -401,7 +401,7 @@ impl ArrayPrototype {
 
     // 23.1.3.5 Array.prototype.entries
     fn entries(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -412,7 +412,7 @@ impl ArrayPrototype {
 
     // 23.1.3.6 Array.prototype.every
     fn every(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -452,7 +452,7 @@ impl ArrayPrototype {
 
     // 23.1.3.7 Array.prototype.fill
     fn fill(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -504,7 +504,7 @@ impl ArrayPrototype {
 
     // 23.1.3.8 Array.prototype.filter
     fn filter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -555,7 +555,7 @@ impl ArrayPrototype {
 
     // 23.1.3.9 Array.prototype.find
     fn find(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -595,7 +595,7 @@ impl ArrayPrototype {
 
     // 23.1.3.10 Array.prototype.findIndex
     fn find_index(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -635,7 +635,7 @@ impl ArrayPrototype {
 
     // 23.1.3.13 Array.prototype.flat
     fn flat(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -669,7 +669,7 @@ impl ArrayPrototype {
 
     // 23.1.3.13.1 FlattenIntoArray
     fn flatten_into_array(
-        cx: &mut Context,
+        cx: Context,
         target: Handle<ObjectValue>,
         source: Handle<ObjectValue>,
         source_length: u64,
@@ -739,7 +739,7 @@ impl ArrayPrototype {
 
     // 23.1.3.14 Array.prototype.flatMap
     fn flat_map(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -772,7 +772,7 @@ impl ArrayPrototype {
 
     // 23.1.3.15 Array.prototype.forEach
     fn for_each(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -809,7 +809,7 @@ impl ArrayPrototype {
 
     // 23.1.3.16 Array.prototype.includes
     fn includes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -854,7 +854,7 @@ impl ArrayPrototype {
 
     // 23.1.3.17 Array.prototype.indexOf
     fn index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -900,7 +900,7 @@ impl ArrayPrototype {
 
     // 23.1.3.18 Array.prototype.join
     fn join(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -939,7 +939,7 @@ impl ArrayPrototype {
 
     // 23.1.3.19 Array.prototype.keys
     fn keys(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -950,7 +950,7 @@ impl ArrayPrototype {
 
     // 23.1.3.20 Array.prototype.lastIndexOf
     fn last_index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1004,7 +1004,7 @@ impl ArrayPrototype {
 
     // 23.1.3.21 Array.prototype.map
     fn map(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1044,7 +1044,7 @@ impl ArrayPrototype {
 
     // 23.1.3.22 Array.prototype.pop
     fn pop(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1072,7 +1072,7 @@ impl ArrayPrototype {
 
     // 23.1.3.23 Array.prototype.push
     fn push(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1101,7 +1101,7 @@ impl ArrayPrototype {
 
     // 23.1.3.24 Array.prototype.reduce
     fn reduce(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1162,7 +1162,7 @@ impl ArrayPrototype {
 
     // 23.1.3.25 Array.prototype.reduceRight
     fn reduce_right(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1222,7 +1222,7 @@ impl ArrayPrototype {
 
     // 23.1.3.26 Array.prototype.reverse
     fn reverse(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1278,7 +1278,7 @@ impl ArrayPrototype {
 
     // 23.1.3.27 Array.prototype.shift
     fn shift(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1322,7 +1322,7 @@ impl ArrayPrototype {
 
     // 23.1.3.28 Array.prototype.slice
     fn slice(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1390,7 +1390,7 @@ impl ArrayPrototype {
 
     // 23.1.3.29 Array.prototype.some
     fn some(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1430,7 +1430,7 @@ impl ArrayPrototype {
 
     // 23.1.3.30 Array.prototype.sort
     fn sort(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1470,7 +1470,7 @@ impl ArrayPrototype {
 
     // 23.1.3.31 Array.prototype.splice
     fn splice(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1574,7 +1574,7 @@ impl ArrayPrototype {
 
     // 23.1.3.32 Array.prototype.toLocaleString
     fn to_locale_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1610,7 +1610,7 @@ impl ArrayPrototype {
 
     // 23.1.3.34 Array.prototype.toSorted
     fn to_sorted(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1646,7 +1646,7 @@ impl ArrayPrototype {
 
     // 23.1.3.36 Array.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1665,7 +1665,7 @@ impl ArrayPrototype {
 
     // 23.1.3.37 Array.prototype.unshift
     fn unshift(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1709,7 +1709,7 @@ impl ArrayPrototype {
 
     // 23.1.3.38 Array.prototype.values
     fn values(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1719,7 +1719,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.41 Array.prototype [ @@unscopables ]
-    fn create_unscopables(cx: &mut Context) -> Handle<ObjectValue> {
+    fn create_unscopables(cx: Context) -> Handle<ObjectValue> {
         let list =
             object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
                 .to_handle();
@@ -1752,7 +1752,7 @@ pub const REGULAR_ARRAY: bool = false;
 
 // 23.1.3.30.1 SortIndexedProperties
 pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: bool>(
-    cx: &mut Context,
+    cx: Context,
     object: Handle<ObjectValue>,
     length: u64,
     compare_function: Handle<Value>,
@@ -1782,7 +1782,7 @@ pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: b
 
 // 23.1.3.30.2 CompareArrayElements
 fn compare_array_elements(
-    cx: &mut Context,
+    cx: Context,
     v1: Handle<Value>,
     v2: Handle<Value>,
     compare_function: Handle<Value>,
@@ -1834,13 +1834,9 @@ fn compare_array_elements(
 /// Naive merge sort where comparator function may have an abrupt completion.
 ///
 /// Much room for optimization.
-fn merge_sort<F>(
-    cx: &mut Context,
-    items: &[Handle<Value>],
-    f: &mut F,
-) -> EvalResult<Vec<Handle<Value>>>
+fn merge_sort<F>(cx: Context, items: &[Handle<Value>], f: &mut F) -> EvalResult<Vec<Handle<Value>>>
 where
-    F: FnMut(&mut Context, Handle<Value>, Handle<Value>) -> EvalResult<Ordering>,
+    F: FnMut(Context, Handle<Value>, Handle<Value>) -> EvalResult<Ordering>,
 {
     if items.len() <= 1 {
         return items.to_vec().into();

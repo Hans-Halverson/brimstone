@@ -41,15 +41,18 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         println!("{}", js::parser::print_program(&ast, &source));
     }
 
-    let (mut cx, realm) = js::runtime::Context::new(|cx| {
+    let (cx, realm) = js::runtime::Context::new(|cx| {
         // Allocate the realm's built-ins in the permanent heap
         js::runtime::initialize_host_defined_realm(cx, args.expose_gc)
     });
 
     #[cfg(feature = "gc_stress_test")]
-    cx.enable_gc_stress_test();
+    {
+        let mut cx = cx;
+        cx.enable_gc_stress_test();
+    }
 
-    js::runtime::evaluate(&mut cx, ast, realm)?;
+    cx.execute_then_drop(|cx| js::runtime::evaluate(cx, ast, realm))?;
 
     return Ok(());
 }

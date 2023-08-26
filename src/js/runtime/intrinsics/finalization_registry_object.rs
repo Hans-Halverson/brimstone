@@ -39,7 +39,7 @@ pub struct FinalizerCallback {
 
 impl FinalizationRegistryObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
         cleanup_callback: Handle<ObjectValue>,
     ) -> EvalResult<Handle<FinalizationRegistryObject>> {
@@ -102,11 +102,9 @@ const CELLS_BYTE_OFFSET: usize = field_offset!(FinalizationRegistryCells, cells)
 impl FinalizationRegistryCells {
     const MIN_CAPACITY: usize = 4;
 
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<FinalizationRegistryCells> {
+    fn new(cx: Context, capacity: usize) -> HeapPtr<FinalizationRegistryCells> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut cells = cx
-            .heap
-            .alloc_uninit_with_size::<FinalizationRegistryCells>(size);
+        let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size);
 
         set_uninit!(
             cells.descriptor,
@@ -144,7 +142,7 @@ impl FinalizationRegistryCells {
     /// Prepare array for insertion of a single cell. This will grow the array and update container to
     /// point to new array if there is no room to insert another cell in the array.
     pub fn maybe_grow_for_insertion(
-        cx: &mut Context,
+        cx: Context,
         mut registry: Handle<FinalizationRegistryObject>,
     ) -> HeapPtr<FinalizationRegistryCells> {
         let old_cells = registry.cells;

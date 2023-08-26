@@ -9,7 +9,7 @@ pub struct WeakRefPrototype;
 
 impl WeakRefPrototype {
     // 26.1.3 Properties of the WeakRef Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -29,7 +29,7 @@ impl WeakRefPrototype {
 
     // 26.1.3.2 WeakRef.prototype.deref
     fn deref(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

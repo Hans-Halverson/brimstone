@@ -43,7 +43,7 @@ extend_object! {
 }
 
 impl UnmappedArgumentsObject {
-    pub fn new(cx: &mut Context) -> Handle<ObjectValue> {
+    pub fn new(cx: Context) -> Handle<ObjectValue> {
         let object = object_create::<ObjectValue>(
             cx,
             ObjectKind::UnmappedArgumentsObject,
@@ -63,10 +63,7 @@ extend_object! {
 }
 
 impl MappedArgumentsObject {
-    pub fn new(
-        cx: &mut Context,
-        parameter_map: Handle<ObjectValue>,
-    ) -> Handle<MappedArgumentsObject> {
+    pub fn new(cx: Context, parameter_map: Handle<ObjectValue>) -> Handle<MappedArgumentsObject> {
         let mut object = object_create::<MappedArgumentsObject>(
             cx,
             ObjectKind::MappedArgumentsObject,
@@ -88,7 +85,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     // 10.4.4.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let mut desc = ordinary_get_own_property(cx, self.object(), key);
@@ -107,7 +104,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     // 10.4.4.2 [[DefineOwnProperty]]
     fn define_own_property(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
@@ -148,7 +145,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     // 10.4.4.3 [[Get]]
     fn get(
         &self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
@@ -163,7 +160,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     // 10.4.4.4 [[Set]]
     fn set(
         &mut self,
-        cx: &mut Context,
+        cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
         receiver: Handle<Value>,
@@ -185,7 +182,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     }
 
     // 10.4.4.5 [[Delete]]
-    fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         let mut parameter_map = self.parameter_map();
         let is_mapped = must!(has_own_property(cx, parameter_map, key));
 
@@ -200,10 +197,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 }
 
 // 10.4.4.6 CreateUnmappedArgumentsObject
-pub fn create_unmapped_arguments_object(
-    cx: &mut Context,
-    arguments: &[Handle<Value>],
-) -> Handle<Value> {
+pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]) -> Handle<Value> {
     let object = UnmappedArgumentsObject::new(cx).into();
 
     // Set length property
@@ -237,7 +231,7 @@ pub fn create_unmapped_arguments_object(
 
 // 10.4.4.7 CreateMappedArgumentsObject
 pub fn create_mapped_arguments_object(
-    cx: &mut Context,
+    cx: Context,
     func: Handle<Function>,
     param_nodes: &[ast::FunctionParam],
     arguments: &[Handle<Value>],
@@ -327,11 +321,11 @@ pub struct ArgAccessorClosureEnvironment {
 
 impl ArgAccessorClosureEnvironment {
     fn new(
-        cx: &mut Context,
+        cx: Context,
         name: Handle<StringValue>,
         env: DynEnvironment,
     ) -> Handle<ArgAccessorClosureEnvironment> {
-        let mut arg_env = cx.heap.alloc_uninit::<ArgAccessorClosureEnvironment>();
+        let mut arg_env = cx.alloc_uninit::<ArgAccessorClosureEnvironment>();
 
         set_uninit!(
             arg_env.descriptor,
@@ -355,7 +349,7 @@ impl ArgAccessorClosureEnvironment {
 
 // 10.4.4.7.1 MakeArgGetter
 fn arg_getter(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
@@ -369,7 +363,7 @@ fn arg_getter(
 
 // 10.4.4.7.2 MakeArgSetter
 fn arg_setter(
-    cx: &mut Context,
+    cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,

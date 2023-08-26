@@ -37,7 +37,7 @@ use crate::{
 // Combined with 13.15.5.2 DestructuringAssignmentEvaluation from spec, since implementations are
 // very close.
 pub fn binding_initialization(
-    cx: &mut Context,
+    cx: Context,
     patt: &ast::Pattern,
     value: Handle<Value>,
     env: Option<DynEnvironment>,
@@ -78,7 +78,7 @@ pub fn binding_initialization(
 // 14.3.3.2 RestBindingInitialization
 // 14.3.3.3 KeyedBindingInitialization.
 fn object_binding_initialization(
-    cx: &mut Context,
+    cx: Context,
     object: &ast::ObjectPattern,
     object_value: Handle<Value>,
     env: Option<DynEnvironment>,
@@ -194,7 +194,7 @@ enum ReferenceOrBindingPattern<'a> {
 
 // 8.5.3 IteratorBindingInitialization
 fn iterator_binding_initialization(
-    cx: &mut Context,
+    cx: Context,
     array_pattern: &ast::ArrayPattern,
     iterator: &mut Iterator,
     env: Option<DynEnvironment>,
@@ -416,7 +416,7 @@ fn iterator_binding_initialization(
 
 // 8.5.2.1 InitializeBoundName
 pub fn initialize_bound_name(
-    cx: &mut Context,
+    cx: Context,
     name: Handle<StringValue>,
     value: Handle<Value>,
     env: Option<DynEnvironment>,
@@ -435,7 +435,7 @@ pub fn initialize_bound_name(
 
 // 13.15.5.2 DestructuringAssignmentEvaluation
 pub fn destructuring_assignment_evaluation(
-    cx: &mut Context,
+    cx: Context,
     patt: &ast::Pattern,
     value: Handle<Value>,
 ) -> EvalResult<()> {
@@ -443,18 +443,18 @@ pub fn destructuring_assignment_evaluation(
 }
 
 #[inline]
-pub fn id_string_value(cx: &mut Context, id: &ast::Identifier) -> Handle<StringValue> {
+pub fn id_string_value(cx: Context, id: &ast::Identifier) -> Handle<StringValue> {
     InternedStrings::get_str(cx, &id.name)
 }
 
 #[inline]
-pub fn id_property_key(cx: &mut Context, id: &ast::Identifier) -> Handle<PropertyKey> {
+pub fn id_property_key(cx: Context, id: &ast::Identifier) -> Handle<PropertyKey> {
     let string_value = InternedStrings::get_str(cx, &id.name);
     PropertyKey::string(cx, string_value).to_handle(cx)
 }
 
 #[inline]
-pub fn private_id_property_key(cx: &mut Context, id: &ast::Identifier) -> Handle<PropertyKey> {
+pub fn private_id_property_key(mut cx: Context, id: &ast::Identifier) -> Handle<PropertyKey> {
     let private_string_value = cx.alloc_string(&format!("#{}", id.name));
     PropertyKey::string(cx, private_string_value).to_handle(cx)
 }

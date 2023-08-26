@@ -13,7 +13,7 @@ pub struct FunctionConstructor;
 
 impl FunctionConstructor {
     // 20.2.2 Properties of the Function Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -41,7 +41,7 @@ impl FunctionConstructor {
 
     // 20.2.1.1 Function
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

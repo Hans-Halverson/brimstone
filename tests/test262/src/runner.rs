@@ -158,88 +158,93 @@ fn run_single_test(
     start_timestamp: SystemTime,
 ) -> TestResult {
     // Each test is executed in its own realm
-    let (mut cx, realm) = Context::new(|cx| {
+    let (cx, realm) = Context::new(|cx| {
         // Allocate the realm's built-ins in the permanent heap
         initialize_host_defined_realm(cx, false)
     });
 
-    // Add $262 object to the realm's global object
-    let test_262_object = Test262Object::new(&mut cx, realm);
-    Test262Object::install(&mut cx, realm, test_262_object);
+    cx.execute_then_drop(|cx| {
+        // Add $262 object to the realm's global object
+        let test_262_object = Test262Object::new(cx, realm);
+        Test262Object::install(cx, realm, test_262_object);
 
-    #[cfg(feature = "gc_stress_test")]
-    cx.enable_gc_stress_test();
-
-    // Default harness files are loaded unless running in raw mode
-    if test.mode != TestMode::Raw {
-        load_harness_test_file(&mut cx, realm, test262_root, "assert.js");
-        load_harness_test_file(&mut cx, realm, test262_root, "sta.js");
-    }
-
-    // Load all other specified harness files
-    for include in &test.includes {
-        load_harness_test_file(&mut cx, realm, test262_root, include);
-    }
-
-    // Try to parse file
-    let parse_result = parse_file(&test.path, Some(test), test262_root, force_strict_mode);
-    let mut ast_and_source = match parse_result {
-        Ok(ast_and_source) => ast_and_source,
-        // An error during parse may be a success or failure depending on the expected result of
-        // the test.
-        Err(err) => {
-            // Do not count IO errors as negative tests results
-            let is_parse_error = match err.error {
-                js::parser::ParseError::Io(_) => false,
-                _ => true,
-            };
-
-            let duration = start_timestamp.elapsed().unwrap();
-
-            return match test.expected_result {
-                ExpectedResult::Negative { phase: TestPhase::Parse, .. } if is_parse_error => {
-                    TestResult::success(test, duration)
-                }
-                _ => TestResult::failure(
-                    test,
-                    format!("Unexpected error during parsing:\n{}", err.to_string()),
-                    duration,
-                ),
-            };
+        #[cfg(feature = "gc_stress_test")]
+        {
+            let mut cx = cx;
+            cx.enable_gc_stress_test();
         }
-    };
 
-    // Perform static analysis on file
-    let analyze_result = js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1);
-    match analyze_result {
-        Ok(_) => {}
-        // An error during analysis may be a success or failure depending on the expected result of
-        // the test.
-        Err(err) => {
-            let duration = start_timestamp.elapsed().unwrap();
-
-            return match test.expected_result {
-                ExpectedResult::Negative { phase: TestPhase::Parse, .. } => {
-                    TestResult::success(test, duration)
-                }
-                _ => TestResult::failure(
-                    test,
-                    format!("Unexpected error during analysis:\n{}", err.to_string()),
-                    duration,
-                ),
-            };
+        // Default harness files are loaded unless running in raw mode
+        if test.mode != TestMode::Raw {
+            load_harness_test_file(cx, realm, test262_root, "assert.js");
+            load_harness_test_file(cx, realm, test262_root, "sta.js");
         }
-    }
 
-    let completion = if test.mode == TestMode::Module {
-        eval_module(&mut cx, Rc::new(ast_and_source.0), realm)
-    } else {
-        eval_script(&mut cx, Rc::new(ast_and_source.0), realm)
-    };
+        // Load all other specified harness files
+        for include in &test.includes {
+            load_harness_test_file(cx, realm, test262_root, include);
+        }
 
-    let duration = start_timestamp.elapsed().unwrap();
+        // Try to parse file
+        let parse_result = parse_file(&test.path, Some(test), test262_root, force_strict_mode);
+        let mut ast_and_source = match parse_result {
+            Ok(ast_and_source) => ast_and_source,
+            // An error during parse may be a success or failure depending on the expected result of
+            // the test.
+            Err(err) => {
+                // Do not count IO errors as negative tests results
+                let is_parse_error = match err.error {
+                    js::parser::ParseError::Io(_) => false,
+                    _ => true,
+                };
 
-    check_expected_completion(&mut cx, test, completion, duration)
+                let duration = start_timestamp.elapsed().unwrap();
+
+                return match test.expected_result {
+                    ExpectedResult::Negative { phase: TestPhase::Parse, .. } if is_parse_error => {
+                        TestResult::success(test, duration)
+                    }
+                    _ => TestResult::failure(
+                        test,
+                        format!("Unexpected error during parsing:\n{}", err.to_string()),
+                        duration,
+                    ),
+                };
+            }
+        };
+
+        // Perform static analysis on file
+        let analyze_result = js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1);
+        match analyze_result {
+            Ok(_) => {}
+            // An error during analysis may be a success or failure depending on the expected result
+            // of the test.
+            Err(err) => {
+                let duration = start_timestamp.elapsed().unwrap();
+
+                return match test.expected_result {
+                    ExpectedResult::Negative { phase: TestPhase::Parse, .. } => {
+                        TestResult::success(test, duration)
+                    }
+                    _ => TestResult::failure(
+                        test,
+                        format!("Unexpected error during analysis:\n{}", err.to_string()),
+                        duration,
+                    ),
+                };
+            }
+        }
+
+        let completion = if test.mode == TestMode::Module {
+            eval_module(cx, Rc::new(ast_and_source.0), realm)
+        } else {
+            eval_script(cx, Rc::new(ast_and_source.0), realm)
+        };
+
+        let duration = start_timestamp.elapsed().unwrap();
+
+        check_expected_completion(cx, test, completion, duration)
+    })
 }
 
 fn parse_file(
@@ -270,7 +275,7 @@ fn parse_file(
     }
 }
 
-fn load_harness_test_file(cx: &mut Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
+fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
     let mut ast_and_source = parse_file(full_path.to_str().unwrap(), None, test262_root, false)
@@ -296,7 +301,7 @@ fn load_harness_test_file(cx: &mut Context, realm: Handle<Realm>, test262_root: 
 /// Determine whether the evaluation completion for a test corresponds to that test passing or
 /// failing, depending on the expected result of the test.
 fn check_expected_completion(
-    cx: &mut Context,
+    cx: Context,
     test: &Test,
     completion: Completion,
     duration: Duration,
@@ -380,7 +385,7 @@ fn check_expected_completion(
     }
 }
 
-fn to_console_string_test262(cx: &mut Context, value: Handle<Value>) -> String {
+fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
     // Extract message for Test262Error, otherwise print to console normally
     if value.is_object() {
         match to_string(cx, value) {

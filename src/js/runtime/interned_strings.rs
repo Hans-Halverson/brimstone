@@ -24,7 +24,7 @@ type InternedStringsSet = BsHashSet<HeapPtr<FlatString>>;
 type InternedStringsMap = BsHashMap<Wtf8String, HeapPtr<FlatString>>;
 
 impl InternedStrings {
-    pub fn init(cx: &mut Context) {
+    pub fn init(mut cx: Context) {
         set_uninit!(
             cx.interned_strings.strings,
             InternedStringsSet::new_initial(cx, ObjectKind::InternedStringsSet)
@@ -47,7 +47,7 @@ impl InternedStrings {
         InternedStringsMapField
     }
 
-    pub fn get(cx: &mut Context, mut string: HeapPtr<FlatString>) -> HeapPtr<FlatString> {
+    pub fn get(mut cx: Context, mut string: HeapPtr<FlatString>) -> HeapPtr<FlatString> {
         // Fast path if string is already interned
         if string.is_interned() {
             return string;
@@ -71,7 +71,7 @@ impl InternedStrings {
         }
     }
 
-    pub fn get_str(cx: &mut Context, str: &str) -> Handle<StringValue> {
+    pub fn get_str(mut cx: Context, str: &str) -> Handle<StringValue> {
         match cx.interned_strings.str_cache.get(str.as_bytes()) {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
@@ -88,7 +88,7 @@ impl InternedStrings {
         }
     }
 
-    pub fn get_wtf8_str(cx: &mut Context, str: &Wtf8String) -> Handle<StringValue> {
+    pub fn get_wtf8_str(mut cx: Context, str: &Wtf8String) -> Handle<StringValue> {
         match cx.interned_strings.str_cache.get(str) {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
@@ -117,15 +117,15 @@ impl InternedStrings {
 pub struct InternedStringsSetField;
 
 impl BsHashSetField<HeapPtr<FlatString>> for InternedStringsSetField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<InternedStringsSet> {
+    fn new(cx: Context, capacity: usize) -> HeapPtr<InternedStringsSet> {
         InternedStringsSet::new(cx, ObjectKind::InternedStringsSet, capacity)
     }
 
-    fn get(&self, cx: &mut Context) -> HeapPtr<InternedStringsSet> {
+    fn get(&self, cx: Context) -> HeapPtr<InternedStringsSet> {
         cx.interned_strings.strings
     }
 
-    fn set(&mut self, cx: &mut Context, set: HeapPtr<InternedStringsSet>) {
+    fn set(&mut self, mut cx: Context, set: HeapPtr<InternedStringsSet>) {
         cx.interned_strings.strings = set;
     }
 }
@@ -147,15 +147,15 @@ impl InternedStringsSetField {
 pub struct InternedStringsMapField;
 
 impl BsHashMapField<Wtf8String, HeapPtr<FlatString>> for InternedStringsMapField {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<InternedStringsMap> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<InternedStringsMap> {
         InternedStringsMap::new(cx, ObjectKind::InternedStringsMap, capacity)
     }
 
-    fn get(&self, cx: &mut Context) -> HeapPtr<InternedStringsMap> {
+    fn get(&self, cx: Context) -> HeapPtr<InternedStringsMap> {
         cx.interned_strings.str_cache
     }
 
-    fn set(&mut self, cx: &mut Context, map: HeapPtr<InternedStringsMap>) {
+    fn set(&mut self, mut cx: Context, map: HeapPtr<InternedStringsMap>) {
         cx.interned_strings.str_cache = map;
     }
 }

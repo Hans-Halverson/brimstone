@@ -30,7 +30,7 @@ pub struct DatePrototype;
 
 impl DatePrototype {
     // 21.4.4 Properties of the Date Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -132,7 +132,7 @@ impl DatePrototype {
 
     // 21.4.4.2 Date.prototype.getDate
     fn get_date(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -154,7 +154,7 @@ impl DatePrototype {
 
     // 21.4.4.3 Date.prototype.getDay
     fn get_day(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -176,7 +176,7 @@ impl DatePrototype {
 
     // 21.4.4.4 Date.prototype.getFullYear
     fn get_full_year(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -201,7 +201,7 @@ impl DatePrototype {
 
     // 21.4.4.5 Date.prototype.getHours
     fn get_hours(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -223,7 +223,7 @@ impl DatePrototype {
 
     // 21.4.4.6 Date.prototype.getMilliseconds
     fn get_milliseconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -248,7 +248,7 @@ impl DatePrototype {
 
     // 21.4.4.7 Date.prototype.getMinutes
     fn get_minutes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -273,7 +273,7 @@ impl DatePrototype {
 
     // 21.4.4.8 Date.prototype.getMonth
     fn get_month(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -295,7 +295,7 @@ impl DatePrototype {
 
     // 21.4.4.9 Date.prototype.getSeconds
     fn get_seconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -320,7 +320,7 @@ impl DatePrototype {
 
     // 21.4.4.10 Date.prototype.getTime
     fn get_time(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -334,7 +334,7 @@ impl DatePrototype {
 
     // 21.4.4.11 Date.prototype.getTimezoneOffset
     fn get_timezone_offset(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -356,7 +356,7 @@ impl DatePrototype {
 
     // 21.4.4.12 Date.prototype.getUTCDate
     fn get_utc_date(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -378,7 +378,7 @@ impl DatePrototype {
 
     // 21.4.4.13 Date.prototype.getUTCDay
     fn get_utc_day(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -400,7 +400,7 @@ impl DatePrototype {
 
     // 21.4.4.14 Date.prototype.getUTCFullYear
     fn get_utc_full_year(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -422,7 +422,7 @@ impl DatePrototype {
 
     // 21.4.4.15 Date.prototype.getUTCHours
     fn get_utc_hours(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -444,7 +444,7 @@ impl DatePrototype {
 
     // 21.4.4.16 Date.prototype.getUTCMilliseconds
     fn get_utc_milliseconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -469,7 +469,7 @@ impl DatePrototype {
 
     // 21.4.4.17 Date.prototype.getUTCMinutes
     fn get_utc_minutes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -494,7 +494,7 @@ impl DatePrototype {
 
     // 21.4.4.18 Date.prototype.getUTCMonth
     fn get_utc_month(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -519,7 +519,7 @@ impl DatePrototype {
 
     // 21.4.4.19 Date.prototype.getUTCSeconds
     fn get_utc_seconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -544,7 +544,7 @@ impl DatePrototype {
 
     // 21.4.4.20 Date.prototype.setDate
     fn set_date(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -576,7 +576,7 @@ impl DatePrototype {
 
     // 21.4.4.21 Date.prototype.setFullYear
     fn set_full_year(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -623,7 +623,7 @@ impl DatePrototype {
 
     // 21.4.4.22 Date.prototype.setHours
     fn set_hours(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -691,7 +691,7 @@ impl DatePrototype {
 
     // 21.4.4.23 Date.prototype.setMilliseconds
     fn set_milliseconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -731,7 +731,7 @@ impl DatePrototype {
 
     // 21.4.4.24 Date.prototype.setMinutes
     fn set_minutes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -790,7 +790,7 @@ impl DatePrototype {
 
     // 21.4.4.25 Date.prototype.setMonth
     fn set_month(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -834,7 +834,7 @@ impl DatePrototype {
 
     // 21.4.4.26 Date.prototype.setSeconds
     fn set_seconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -886,7 +886,7 @@ impl DatePrototype {
 
     // 21.4.4.27 Date.prototype.setTime
     fn set_time(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -905,7 +905,7 @@ impl DatePrototype {
 
     // 21.4.4.28 Date.prototype.setUTCDate
     fn set_utc_date(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -938,7 +938,7 @@ impl DatePrototype {
 
     // 21.4.4.29 Date.prototype.setUTCFullYear
     fn set_utc_full_year(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -983,7 +983,7 @@ impl DatePrototype {
 
     // 21.4.4.30 Date.prototype.setUTCHours
     fn set_utc_hours(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1050,7 +1050,7 @@ impl DatePrototype {
 
     // 21.4.4.31 Date.prototype.setUTCMilliseconds
     fn set_utc_milliseconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1088,7 +1088,7 @@ impl DatePrototype {
 
     // 21.4.4.32 Date.prototype.setUTCMinutes
     fn set_utc_minutes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1145,7 +1145,7 @@ impl DatePrototype {
 
     // 21.4.4.33 Date.prototype.setUTCMonth
     fn set_utc_month(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1190,7 +1190,7 @@ impl DatePrototype {
 
     // 21.4.4.34 Date.prototype.setUTCSeconds
     fn set_utc_seconds(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1240,7 +1240,7 @@ impl DatePrototype {
 
     // 21.4.4.35 Date.prototype.toDateString
     fn to_date_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1257,7 +1257,7 @@ impl DatePrototype {
         Self::to_date_string_shared(cx, date_value)
     }
 
-    fn to_date_string_shared(cx: &mut Context, date_value: f64) -> EvalResult<Handle<Value>> {
+    fn to_date_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
             return InternedStrings::get_str(cx, "Invalid Date").into();
         }
@@ -1272,7 +1272,7 @@ impl DatePrototype {
 
     // 21.4.4.36 Date.prototype.toISOString
     fn to_iso_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1315,7 +1315,7 @@ impl DatePrototype {
 
     // 21.4.4.37 Date.prototype.toJSON
     fn to_json(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1333,7 +1333,7 @@ impl DatePrototype {
 
     // 21.4.4.38 Date.prototype.toLocaleDateString
     fn to_locale_date_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1352,7 +1352,7 @@ impl DatePrototype {
 
     // 21.4.4.39 Date.prototype.toLocaleString
     fn to_locale_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1371,7 +1371,7 @@ impl DatePrototype {
 
     // 21.4.4.40 Date.prototype.toLocaleTimeString
     fn to_locale_time_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1390,7 +1390,7 @@ impl DatePrototype {
 
     // 21.4.4.41 Date.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1406,7 +1406,7 @@ impl DatePrototype {
 
     // 21.4.4.42 Date.prototype.toTimeString
     fn to_time_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1423,7 +1423,7 @@ impl DatePrototype {
         Self::to_time_string_shared(cx, date_value)
     }
 
-    fn to_time_string_shared(cx: &mut Context, date_value: f64) -> EvalResult<Handle<Value>> {
+    fn to_time_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
             return InternedStrings::get_str(cx, "Invalid Date").into();
         }
@@ -1440,7 +1440,7 @@ impl DatePrototype {
 
     // 21.4.4.43 Date.prototype.toUTCString
     fn to_utc_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1477,7 +1477,7 @@ impl DatePrototype {
 
     // 21.4.4.44 Date.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1493,7 +1493,7 @@ impl DatePrototype {
 
     // 21.4.4.45 Date.prototype [ @@toPrimitive ]
     fn to_primitive(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1598,7 +1598,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
 }
 
 // 21.4.4.41.4 ToDateString
-pub fn to_date_string(cx: &mut Context, time_value: f64) -> Handle<StringValue> {
+pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
     if time_value.is_nan() {
         return InternedStrings::get_str(cx, "Invalid Date");
     }

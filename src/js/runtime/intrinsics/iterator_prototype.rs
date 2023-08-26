@@ -8,7 +8,7 @@ use super::intrinsics::Intrinsic;
 pub struct IteratorPrototype;
 
 impl IteratorPrototype {
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -20,7 +20,7 @@ impl IteratorPrototype {
 
     // 27.1.2.1 %IteratorPrototype% [ @@iterator ]
     fn iterator(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

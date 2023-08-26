@@ -29,14 +29,14 @@ extend_object! {
 
 impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: &mut Context) -> Handle<ObjectPrototype> {
+    pub fn new_uninit(cx: Context) -> Handle<ObjectPrototype> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
         ObjectValue::new(cx, None, false).cast()
     }
 
     // 20.1.3 Properties of the Object Prototype Object
-    pub fn initialize(cx: &mut Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
+    pub fn initialize(cx: Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
         let mut object = object.object();
 
         let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
@@ -72,7 +72,7 @@ impl ObjectPrototype {
 
     // 20.1.3.2 Object.prototype.hasOwnProperty
     fn has_own_property(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -87,7 +87,7 @@ impl ObjectPrototype {
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
     fn is_prototype_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -117,7 +117,7 @@ impl ObjectPrototype {
 
     // 20.1.3.4 Object.prototype.propertyIsEnumerable
     fn property_is_enumerable(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -134,7 +134,7 @@ impl ObjectPrototype {
 
     // 20.1.3.5 Object.prototype.toLocaleString
     fn to_locale_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -144,7 +144,7 @@ impl ObjectPrototype {
 
     // 20.1.3.6 Object.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -195,7 +195,7 @@ impl ObjectPrototype {
 
     // 20.1.3.7 Object.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -205,7 +205,7 @@ impl ObjectPrototype {
 
     // 20.1.3.8.1 get Object.prototype.__proto__
     fn get_proto(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -219,7 +219,7 @@ impl ObjectPrototype {
 
     // 20.1.3.8.2 set Object.prototype.__proto__
     fn set_proto(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -248,7 +248,7 @@ impl ObjectPrototype {
 
     // 20.1.3.9.1 Object.prototype.__defineGetter__
     fn define_getter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -271,7 +271,7 @@ impl ObjectPrototype {
 
     // 20.1.3.9.2 Object.prototype.__defineSetter__
     fn define_setter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -294,7 +294,7 @@ impl ObjectPrototype {
 
     // 20.1.3.9.3 Object.prototype.__lookupGetter__
     fn lookup_getter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -327,7 +327,7 @@ impl ObjectPrototype {
 
     // 20.1.3.9.4 Object.prototype.__lookupSetter__
     fn lookup_setter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

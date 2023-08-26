@@ -36,7 +36,7 @@ pub struct TypedArrayPrototype;
 
 impl TypedArrayPrototype {
     // 23.2.3 Properties of the %TypedArray% Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -105,7 +105,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.1 %TypedArray%.prototype.at
     fn at(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -136,7 +136,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.2 get %TypedArray%.prototype.buffer
     fn buffer(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -147,7 +147,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.3 get %TypedArray%.prototype.byteLength
     fn byte_length(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -163,7 +163,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.4 get %TypedArray%.prototype.byteOffset
     fn byte_offset(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -179,7 +179,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.6 %TypedArray%.prototype.copyWithin
     fn copy_within(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -285,7 +285,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.7 %TypedArray%.prototype.entries
     fn entries(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -296,7 +296,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.8 %TypedArray%.prototype.every
     fn every(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -335,7 +335,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.9 %TypedArray%.prototype.fill
     fn fill(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -396,7 +396,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.10 %TypedArray%.prototype.filter
     fn filter(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -457,7 +457,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.11 %TypedArray%.prototype.find
     fn find(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -496,7 +496,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.12 %TypedArray%.prototype.findIndex
     fn find_index(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -535,7 +535,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.15 %TypedArray%.prototype.forEach
     fn for_each(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -571,7 +571,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.16 %TypedArray%.prototype.includes
     fn includes(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -617,7 +617,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.17 %TypedArray%.prototype.indexOf
     fn index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -664,7 +664,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.18 %TypedArray%.prototype.join
     fn join(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -704,7 +704,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.19 %TypedArray%.prototype.keys
     fn keys(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -715,7 +715,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.20 %TypedArray%.prototype.lastIndexOf
     fn last_index_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -770,7 +770,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.21 get %TypedArray%.prototype.length
     fn length(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -786,7 +786,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.22 %TypedArray%.prototype.map
     fn map(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -831,7 +831,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.23 %TypedArray%.prototype.reduce
     fn reduce(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -877,7 +877,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.24 %TypedArray%.prototype.reduceRight
     fn reduce_right(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -923,7 +923,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.25 %TypedArray%.prototype.reverse
     fn reverse(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -960,7 +960,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.27 %TypedArray%.prototype.slice
     fn slice(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1062,7 +1062,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.28 %TypedArray%.prototype.some
     fn some(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1101,7 +1101,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.29 %TypedArray%.prototype.sort
     fn sort(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1137,7 +1137,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.30 %TypedArray%.prototype.subarray
     fn subarray(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1195,7 +1195,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.31 %TypedArray%.prototype.toLocaleString
     fn to_locale_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1228,7 +1228,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.33 %TypedArray%.prototype.toSorted
     fn to_sorted(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1266,7 +1266,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.35 %TypedArray%.prototype.values
     fn values(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1277,7 +1277,7 @@ impl TypedArrayPrototype {
 
     // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]
     pub fn get_to_string_tag(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -1302,7 +1302,7 @@ macro_rules! create_typed_array_prototype {
 
         impl $prototype {
             // 23.2.7 Properties of the TypedArray Prototype Objects
-            pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let mut object = ObjectValue::new(
                     cx,
                     Some(realm.get_intrinsic(Intrinsic::TypedArrayPrototype)),
@@ -1325,7 +1325,7 @@ macro_rules! create_typed_array_prototype {
 }
 
 #[inline]
-fn require_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
+fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
     if !value.is_object() {
         return type_error_(cx, "expected typed array");
     }
@@ -1340,7 +1340,7 @@ fn require_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<Dyn
 
 // 23.2.4.1 TypedArraySpeciesCreate
 fn typed_array_species_create_object(
-    cx: &mut Context,
+    cx: Context,
     exemplar: DynTypedArray,
     arguments: &[Handle<Value>],
     length: Option<usize>,
@@ -1349,7 +1349,7 @@ fn typed_array_species_create_object(
     result.into_object_value().into()
 }
 fn typed_array_species_create(
-    cx: &mut Context,
+    cx: Context,
     exemplar: DynTypedArray,
     arguments: &[Handle<Value>],
     length: Option<usize>,
@@ -1381,7 +1381,7 @@ fn typed_array_species_create(
 
 // 23.2.4.2 TypedArrayCreate
 pub fn typed_array_create_object(
-    cx: &mut Context,
+    cx: Context,
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
     length: Option<usize>,
@@ -1391,7 +1391,7 @@ pub fn typed_array_create_object(
 }
 
 pub fn typed_array_create(
-    cx: &mut Context,
+    cx: Context,
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
     length: Option<usize>,
@@ -1411,7 +1411,7 @@ pub fn typed_array_create(
 
 // 23.2.4.3 TypedArrayCreateSameType
 fn typed_array_create_same_type(
-    cx: &mut Context,
+    cx: Context,
     exemplar: DynTypedArray,
     length: u64,
 ) -> EvalResult<Handle<ObjectValue>> {
@@ -1437,7 +1437,7 @@ fn typed_array_create_same_type(
 
 // 23.2.4.4 ValidateTypedArray
 #[inline]
-fn validate_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
+fn validate_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
     let typed_array = maybe!(require_typed_array(cx, value));
 
     if typed_array.viewed_array_buffer().is_detached() {
@@ -1451,7 +1451,7 @@ fn validate_typed_array(cx: &mut Context, value: Handle<Value>) -> EvalResult<Dy
 //
 // Will only be called on numbers and BigInts.
 pub fn compare_typed_array_elements(
-    cx: &mut Context,
+    cx: Context,
     v1: Handle<Value>,
     v2: Handle<Value>,
     compare_function: Handle<Value>,

@@ -15,7 +15,7 @@ pub struct SetConstructor;
 
 impl SetConstructor {
     // 24.2.1 The Set Constructor
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
@@ -46,7 +46,7 @@ impl SetConstructor {
 
     // 24.2.1.1 Set
     fn construct(
-        cx: &mut Context,
+        cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -88,7 +88,7 @@ impl SetConstructor {
 
     // 24.2.2.2 get Set [ @@species ]
     fn get_species(
-        _: &mut Context,
+        _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,

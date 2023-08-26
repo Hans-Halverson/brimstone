@@ -13,7 +13,7 @@ pub struct SymbolPrototype;
 
 impl SymbolPrototype {
     // 20.4.3 Properties of the Symbol Prototype Object
-    pub fn new(cx: &mut Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -53,7 +53,7 @@ impl SymbolPrototype {
 
     // 20.4.3.2 get Symbol.prototype.description
     fn get_description(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -67,7 +67,7 @@ impl SymbolPrototype {
 
     // 20.4.3.3 Symbol.prototype.toString
     fn to_string(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -78,7 +78,7 @@ impl SymbolPrototype {
 
     // 20.4.3.4 Symbol.prototype.valueOf
     fn value_of(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -88,7 +88,7 @@ impl SymbolPrototype {
 
     // 20.4.3.5 Symbol.prototype [ @@toPrimitive ]
     fn to_primitive(
-        cx: &mut Context,
+        cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -97,7 +97,7 @@ impl SymbolPrototype {
     }
 }
 
-fn this_symbol_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
+fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_symbol() {
         return value.into();
     }
@@ -114,7 +114,7 @@ fn this_symbol_value(cx: &mut Context, value: Handle<Value>) -> EvalResult<Handl
 
 // 20.4.3.3.1 SymbolDescriptiveString
 pub fn symbol_descriptive_string(
-    cx: &mut Context,
+    mut cx: Context,
     symbol: Handle<SymbolValue>,
 ) -> Handle<StringValue> {
     match symbol.description() {

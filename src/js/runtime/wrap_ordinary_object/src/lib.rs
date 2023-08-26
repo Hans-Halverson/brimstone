@@ -33,7 +33,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         "get_own_property",
         fn get_own_property(
             &self,
-            cx: &mut Context,
+            cx: Context,
             key: Handle<PropertyKey>,
         ) -> EvalResult<Option<PropertyDescriptor>> {
             self.ordinary_object().get_own_property(cx, key)
@@ -44,7 +44,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         "define_own_property",
         fn define_own_property(
             &mut self,
-            cx: &mut Context,
+            cx: Context,
             key: Handle<PropertyKey>,
             desc: PropertyDescriptor,
         ) -> EvalResult<bool> {
@@ -54,14 +54,14 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "has_property",
-        fn has_property(&self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+        fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
             self.ordinary_object().has_property(cx, key)
         }
     );
 
     implement_if_undefined!(
         "get",
-        fn get(&self, cx: &mut Context, key: Handle<PropertyKey>, receiver: Handle<Value>) -> EvalResult<Handle<Value>> {
+        fn get(&self, cx: Context, key: Handle<PropertyKey>, receiver: Handle<Value>) -> EvalResult<Handle<Value>> {
             self.ordinary_object().get(cx, key, receiver)
         }
     );
@@ -70,7 +70,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
         "set",
         fn set(
             &mut self,
-            cx: &mut Context,
+            cx: Context,
             key: Handle<PropertyKey>,
             value: Handle<Value>,
             receiver: Handle<Value>,
@@ -81,14 +81,14 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "delete",
-        fn delete(&mut self, cx: &mut Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+        fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
             self.ordinary_object().delete(cx, key)
         }
     );
 
     implement_if_undefined!(
         "own_property_keys",
-        fn own_property_keys(&self, cx: &mut Context) -> EvalResult<Vec<Handle<Value>>> {
+        fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
             self.ordinary_object().own_property_keys(cx)
         }
     );

@@ -32,7 +32,7 @@ type WeakValueSet = BsHashSet<ValueCollectionKey>;
 
 impl WeakSetObject {
     pub fn new_from_constructor(
-        cx: &mut Context,
+        cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakSetObject>> {
         let weak_set_data =
@@ -73,15 +73,15 @@ impl Handle<WeakSetObject> {
 pub struct WeakSetObjectSetField(Handle<WeakSetObject>);
 
 impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<WeakValueSet> {
+    fn new(cx: Context, capacity: usize) -> HeapPtr<WeakValueSet> {
         WeakValueSet::new(cx, ObjectKind::WeakSetObjectWeakValueSet, capacity)
     }
 
-    fn get(&self, _: &mut Context) -> HeapPtr<WeakValueSet> {
+    fn get(&self, _: Context) -> HeapPtr<WeakValueSet> {
         self.0.weak_set_data
     }
 
-    fn set(&mut self, _: &mut Context, set: HeapPtr<WeakValueSet>) {
+    fn set(&mut self, _: Context, set: HeapPtr<WeakValueSet>) {
         self.0.weak_set_data = set;
     }
 }

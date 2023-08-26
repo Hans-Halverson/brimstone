@@ -15,11 +15,11 @@ pub struct BsHashSet<T>(BsHashMap<T, ()>);
 impl<T: Eq + Hash + Clone> BsHashSet<T> {
     pub const MIN_CAPACITY: usize = BsHashMap::<T, ()>::MIN_CAPACITY;
 
-    pub fn new(cx: &mut Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
-    pub fn new_initial(cx: &mut Context, kind: ObjectKind) -> HeapPtr<Self> {
+    pub fn new_initial(cx: Context, kind: ObjectKind) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new_initial(cx, kind).cast()
     }
 
@@ -75,16 +75,16 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 /// A BsHashSet stored as the field of a heap object. Can create new set and set the field to a
 /// new set.
 pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
-    fn new(cx: &mut Context, capacity: usize) -> HeapPtr<BsHashSet<T>>;
+    fn new(cx: Context, capacity: usize) -> HeapPtr<BsHashSet<T>>;
 
-    fn get(&self, cx: &mut Context) -> HeapPtr<BsHashSet<T>>;
+    fn get(&self, cx: Context) -> HeapPtr<BsHashSet<T>>;
 
-    fn set(&mut self, cx: &mut Context, set: HeapPtr<BsHashSet<T>>);
+    fn set(&mut self, cx: Context, set: HeapPtr<BsHashSet<T>>);
 
     /// Prepare set for insertion of a single element. This will grow the set and update container
     /// to point to new set if there is no room to insert another entry in the set.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: &mut Context) -> HeapPtr<BsHashSet<T>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsHashSet<T>> {
         let mut map_field = HashMapField(self.clone());
         map_field.maybe_grow_for_insertion(cx).cast()
     }
@@ -94,15 +94,15 @@ pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
 struct HashMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashMapField<S> {
-    fn new(&self, cx: &mut Context, capacity: usize) -> HeapPtr<BsHashMap<T, ()>> {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<T, ()>> {
         S::new(cx, capacity).cast()
     }
 
-    fn get(&self, cx: &mut Context) -> HeapPtr<BsHashMap<T, ()>> {
+    fn get(&self, cx: Context) -> HeapPtr<BsHashMap<T, ()>> {
         self.0.get(cx).cast()
     }
 
-    fn set(&mut self, cx: &mut Context, map: HeapPtr<BsHashMap<T, ()>>) {
+    fn set(&mut self, cx: Context, map: HeapPtr<BsHashMap<T, ()>>) {
         self.0.set(cx, map.cast())
     }
 }

@@ -8,7 +8,7 @@ use crate::{
         },
         array_object::{array_create, array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
-        error::type_error_,
+        error::{range_error_, type_error_},
         function::get_argument,
         get,
         interned_strings::InternedStrings,
@@ -160,6 +160,9 @@ impl ArrayPrototype {
         array
             .object()
             .intrinsic_data_prop(cx, cx.names.values(), values_function);
+        array
+            .object()
+            .intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
 
         // 23.1.3.40 Array.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
@@ -1716,6 +1719,57 @@ impl ArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
         ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
+    }
+
+    // 23.1.3.39 Array.prototype.with
+    fn with(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let index_arg = get_argument(cx, arguments, 0);
+        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+
+        // Convert from relative to actual index, making sure index is in range
+        let actual_index = if relative_index >= 0.0 {
+            if relative_index >= length as f64 {
+                return range_error_(cx, "Array.prototype.with index is out of range");
+            }
+
+            relative_index as u64
+        } else {
+            let actual_index = relative_index + length as f64;
+            if actual_index < 0.0 {
+                return range_error_(cx, "Array.prototype.with index is out of range");
+            }
+
+            actual_index as u64
+        };
+
+        let array = maybe!(array_create(cx, length, None));
+        let new_value = get_argument(cx, arguments, 1);
+
+        // Key is shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        for i in 0..length {
+            key.replace(PropertyKey::from_u64(cx, i));
+
+            // Replace the i'th value with the new value
+            let value = if i == actual_index {
+                new_value
+            } else {
+                maybe!(get(cx, object, key))
+            };
+
+            must!(create_data_property_or_throw(cx, array.into(), key, value));
+        }
+
+        array.into()
     }
 
     // 23.1.3.41 Array.prototype [ @@unscopables ]

@@ -8,7 +8,7 @@ use crate::{
             call_object, construct, has_property, invoke, set, species_constructor,
         },
         builtin_function::BuiltinFunction,
-        error::type_error_,
+        error::{range_error_, type_error_},
         function::get_argument,
         get,
         interned_strings::InternedStrings,
@@ -91,6 +91,7 @@ impl TypedArrayPrototype {
                 .into(),
         );
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
+        object.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
 
         // 23.2.3.37 %TypedArray%.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
@@ -1273,6 +1274,64 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let typed_array = maybe!(validate_typed_array(cx, this_value)).into_object_value();
         ArrayIterator::new(cx, typed_array, ArrayIteratorKind::Value).into()
+    }
+
+    // 23.2.3.36 %TypedArray%.prototype.with
+    fn with(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length();
+
+        let index_arg = get_argument(cx, arguments, 0);
+        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+
+        // Convert from relative to actual index, making sure index is in range
+        let actual_index = if relative_index >= 0.0 {
+            if relative_index >= length as f64 {
+                return range_error_(cx, "TypedArray.prototype.with index is out of range");
+            }
+
+            relative_index as u64
+        } else {
+            let actual_index = relative_index + length as f64;
+            if actual_index < 0.0 {
+                return range_error_(cx, "TypedArray.prototype.with index is out of range");
+            }
+
+            actual_index as u64
+        };
+
+        // Convert new value to correct typed
+        let new_value = get_argument(cx, arguments, 1);
+        let new_value = match typed_array.content_type() {
+            ContentType::BigInt => maybe!(to_bigint(cx, new_value)).into(),
+            ContentType::Number => maybe!(to_number(cx, new_value)),
+        };
+
+        let array = maybe!(typed_array_create_same_type(cx, typed_array, length as u64));
+
+        // Key is shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        for i in 0..(length as u64) {
+            key.replace(PropertyKey::from_u64(cx, i));
+
+            // Replace the i'th value with the new value
+            let value = if i == actual_index {
+                new_value
+            } else {
+                must!(get(cx, object, key))
+            };
+
+            must!(set(cx, array.into(), key, value, true));
+        }
+
+        array.into()
     }
 
     // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]

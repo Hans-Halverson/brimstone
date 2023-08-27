@@ -385,6 +385,7 @@ builtin_names!(
     (value, "value"),
     (values, "values"),
     (value_of, "valueOf"),
+    (with, "with"),
     (writable, "writable")
 );
 

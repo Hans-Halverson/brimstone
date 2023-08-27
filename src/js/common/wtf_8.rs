@@ -29,6 +29,16 @@ impl Wtf8String {
     }
 
     #[inline]
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
+    }
+
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf
     }
@@ -46,8 +56,22 @@ impl Wtf8String {
     }
 
     #[inline]
+    pub fn push_str(&mut self, string: &str) {
+        self.buf.extend_from_slice(string.as_bytes());
+    }
+
+    #[inline]
     pub fn push_wtf8_str(&mut self, string: &Wtf8String) {
         self.buf.extend_from_slice(string.as_bytes());
+    }
+
+    #[inline]
+    pub fn truncate(&mut self, new_length: usize) {
+        self.buf.truncate(new_length);
+    }
+
+    pub fn repeat(&self, num_times: usize) -> Wtf8String {
+        Wtf8String { buf: self.buf.repeat(num_times) }
     }
 
     #[inline]

@@ -30,6 +30,11 @@ pub fn is_in_unicode_range(code_point: u32) -> bool {
 }
 
 #[inline]
+pub fn is_surrogate_code_point(code_point: CodePoint) -> bool {
+    code_point >= HIGH_SURROGATE_START as u32 && code_point <= LOW_SURROGATE_END as u32
+}
+
+#[inline]
 pub fn is_high_surrogate_code_unit(code_unit: CodeUnit) -> bool {
     code_unit >= HIGH_SURROGATE_START && code_unit <= HIGH_SURROGATE_END
 }

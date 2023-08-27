@@ -350,6 +350,7 @@ builtin_names!(
     (starts_with, "startsWith"),
     (sticky, "sticky"),
     (string_, "string"),
+    (stringify, "stringify"),
     (subarray, "subarray"),
     (substring, "substring"),
     (tan, "tan"),

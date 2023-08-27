@@ -18,7 +18,7 @@ use crate::{
             is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
             try_encode_surrogate_pair, CodePoint, CodeUnit,
         },
-        wtf_8::Wtf8CodePointsIterator,
+        wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
     set_uninit, static_assert,
 };
@@ -601,6 +601,11 @@ impl Handle<StringValue> {
         FlatString::new_two_byte(cx, &uppercased).to_handle()
     }
 
+    pub fn to_wtf8_string(&self) -> Wtf8String {
+        let flat_string = self.flatten();
+        flat_string.to_wtf8_string()
+    }
+
     /// Return an iterator over the code units of this string between the provided start and end
     /// indices (start index is inclusive, end index is exclusive).
     pub fn iter_slice_code_units(&self, start: usize, end: usize) -> CodeUnitIterator {
@@ -963,6 +968,15 @@ impl HeapPtr<FlatString> {
                 hash_code
             }
         }
+    }
+
+    pub fn to_wtf8_string(&self) -> Wtf8String {
+        let mut wtf8_string = Wtf8String::new();
+        for code_point in self.iter_code_points() {
+            wtf8_string.push(code_point);
+        }
+
+        wtf8_string
     }
 
     pub fn iter_code_units(&self) -> CodeUnitIterator {

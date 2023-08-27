@@ -156,6 +156,9 @@ impl ArrayPrototype {
             .intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
         array
             .object()
+            .intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm);
+        array
+            .object()
             .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         array
             .object()
@@ -1565,11 +1568,9 @@ impl ArrayPrototype {
         }
 
         // Insert items into array
-        if arguments.len() > 2 {
-            for (i, item) in (&arguments[2..]).iter().enumerate() {
-                to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64));
-                maybe!(set(cx, object, to_key, *item, true));
-            }
+        for (i, item) in arguments.iter().skip(2).enumerate() {
+            to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64));
+            maybe!(set(cx, object, to_key, *item, true));
         }
 
         let new_length_value = Value::from(new_length).to_handle(cx);
@@ -1675,6 +1676,79 @@ impl ArrayPrototype {
         }
 
         sorted_array.into()
+    }
+
+    // 23.1.3.35 Array.prototype.toSpliced
+    fn to_spliced(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        // Determine absolute start index from the relative index argument
+        let start_arg = get_argument(cx, arguments, 0);
+        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let actual_start_index = if relative_start < 0.0 {
+            if relative_start == f64::NEG_INFINITY {
+                0
+            } else {
+                i64::max(length as i64 + relative_start as i64, 0) as u64
+            }
+        } else {
+            u64::min(relative_start as u64, length)
+        };
+
+        let insert_count = (arguments.len() as u64).saturating_sub(2);
+
+        // Determine the skip count from the optional argument
+        let actual_skip_count = if arguments.len() == 0 {
+            0
+        } else if arguments.len() == 1 {
+            length - actual_start_index
+        } else {
+            let skip_count_arg = get_argument(cx, arguments, 1);
+            let skip_count = maybe!(to_integer_or_infinity(cx, skip_count_arg));
+            f64::min(f64::max(skip_count, 0.0), (length - actual_start_index) as f64) as u64
+        };
+
+        // Determine length of new array and make sure it is in range
+        let new_length = length + insert_count - actual_skip_count;
+        if new_length > MAX_SAFE_INTEGER_U64 {
+            return type_error_(cx, "TypedArray.prototype.toSpliced result array is too large");
+        }
+
+        let array = maybe!(array_create(cx, new_length, None));
+
+        // Keys are shared between iterations
+        let mut from_key = PropertyKey::uninit().to_handle(cx);
+        let mut to_key = PropertyKey::uninit().to_handle(cx);
+
+        // Elements before the start index are unchanged and can be copied
+        for i in 0..actual_start_index {
+            from_key.replace(PropertyKey::from_u64(cx, i));
+            let value = maybe!(get(cx, object, from_key));
+            must!(create_data_property_or_throw(cx, array.into(), from_key, value));
+        }
+
+        // Insert every element of provided items
+        for (i, item) in arguments.iter().skip(2).enumerate() {
+            to_key.replace(PropertyKey::from_u64(cx, actual_start_index + i as u64));
+            maybe!(create_data_property_or_throw(cx, array.into(), to_key, *item));
+        }
+
+        // All remaining elements after the skip count are copied
+        for i in (actual_start_index + insert_count)..new_length {
+            to_key.replace(PropertyKey::from_u64(cx, i));
+            from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count));
+
+            let value = maybe!(get(cx, object, from_key));
+            must!(create_data_property_or_throw(cx, array.into(), to_key, value));
+        }
+
+        array.into()
     }
 
     // 23.1.3.36 Array.prototype.toString

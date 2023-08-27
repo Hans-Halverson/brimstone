@@ -369,6 +369,7 @@ builtin_names!(
     (to_primitive, "toPrimitive"),
     (to_reversed, "toReversed"),
     (to_sorted, "toSorted"),
+    (to_spliced, "toSpliced"),
     (to_string, "toString"),
     (to_string_tag, "toStringTag"),
     (to_time_string, "toTimeString"),

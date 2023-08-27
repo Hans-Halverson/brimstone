@@ -81,6 +81,7 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
         object.intrinsic_func(cx, cx.names.subarray(), Self::subarray, 2, realm);
         object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
         object.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
@@ -1225,6 +1226,34 @@ impl TypedArrayPrototype {
             }
         }
         result.into()
+    }
+
+    // 23.2.3.32 %TypedArray%.prototype.toReversed
+    fn to_reversed(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
+
+        let array = maybe!(typed_array_create_same_type(cx, typed_array, length));
+
+        // Keys are shared between iterations
+        let mut from_key = PropertyKey::uninit().to_handle(cx);
+        let mut to_key = PropertyKey::uninit().to_handle(cx);
+
+        for i in 0..length {
+            from_key.replace(PropertyKey::from_u64(cx, length - i - 1));
+            to_key.replace(PropertyKey::from_u64(cx, i));
+
+            let value = must!(get(cx, object, from_key));
+            must!(set(cx, array, to_key, value, true));
+        }
+
+        array.into()
     }
 
     // 23.2.3.33 %TypedArray%.prototype.toSorted

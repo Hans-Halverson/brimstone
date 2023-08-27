@@ -150,6 +150,9 @@ impl ArrayPrototype {
         );
         array
             .object()
+            .intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
+        array
+            .object()
             .intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
         array
             .object()
@@ -1609,6 +1612,33 @@ impl ArrayPrototype {
         }
 
         result.into()
+    }
+
+    // 23.1.3.33 Array.prototype.toReversed
+    fn to_reversed(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let array = maybe!(array_create(cx, length, None));
+
+        // Keys are shared between iterations
+        let mut from_key = PropertyKey::uninit().to_handle(cx);
+        let mut to_key = PropertyKey::uninit().to_handle(cx);
+
+        for i in 0..length {
+            from_key.replace(PropertyKey::from_u64(cx, length - i - 1));
+            to_key.replace(PropertyKey::from_u64(cx, i));
+
+            let value = maybe!(get(cx, object, from_key));
+            must!(create_data_property_or_throw(cx, array.into(), to_key, value));
+        }
+
+        array.into()
     }
 
     // 23.1.3.34 Array.prototype.toSorted

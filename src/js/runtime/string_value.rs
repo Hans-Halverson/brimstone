@@ -15,8 +15,8 @@ use crate::{
     js::common::{
         unicode::{
             code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1,
-            is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
-            try_encode_surrogate_pair, CodePoint, CodeUnit, is_newline,
+            is_low_surrogate_code_unit, is_newline, is_surrogate_code_point, is_whitespace,
+            needs_surrogate_pair, try_encode_surrogate_pair, CodePoint, CodeUnit,
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
@@ -606,6 +606,16 @@ impl Handle<StringValue> {
         flat_string.to_wtf8_string()
     }
 
+    pub fn is_well_formed(&self) -> bool {
+        let flat_string = self.flatten();
+        flat_string.is_well_formed()
+    }
+
+    pub fn to_well_formed(&self, cx: Context) -> HeapPtr<FlatString> {
+        let flat_string = self.flatten();
+        flat_string.to_well_formed(cx)
+    }
+
     /// Return an iterator over the code units of this string between the provided start and end
     /// indices (start index is inclusive, end index is exclusive).
     pub fn iter_slice_code_units(&self, start: usize, end: usize) -> CodeUnitIterator {
@@ -977,6 +987,50 @@ impl HeapPtr<FlatString> {
         }
 
         wtf8_string
+    }
+
+    pub fn is_well_formed(&self) -> bool {
+        match self.width() {
+            // One byte strings are always well-formed
+            StringWidth::OneByte => true,
+            // Two byte strings are well-formed if they do not contain any unpaired surrogates
+            StringWidth::TwoByte => {
+                for code_point in self.iter_code_points() {
+                    if is_surrogate_code_point(code_point) {
+                        return false;
+                    }
+                }
+
+                true
+            }
+        }
+    }
+
+    pub fn to_well_formed(&self, cx: Context) -> HeapPtr<FlatString> {
+        match self.width() {
+            // One byte strings are always well-formed so never allocate new string
+            StringWidth::OneByte => *self,
+            // Two byte strings are well-formed if they do not contain any unpaired surrogates
+            StringWidth::TwoByte => {
+                if self.is_well_formed() {
+                    return *self;
+                }
+
+                // Copy all code points to new string, replacing unpaired surrogates with the
+                // replacement character.
+                let mut wtf8_string = Wtf8String::new();
+
+                for code_point in self.iter_code_points() {
+                    if is_surrogate_code_point(code_point) {
+                        wtf8_string.push_char(char::REPLACEMENT_CHARACTER);
+                    } else {
+                        wtf8_string.push(code_point);
+                    }
+                }
+
+                FlatString::from_wtf8(cx, wtf8_string.as_bytes())
+            }
+        }
     }
 
     pub fn iter_code_units(&self) -> CodeUnitIterator {

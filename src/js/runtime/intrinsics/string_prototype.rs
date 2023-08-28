@@ -57,6 +57,7 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm);
         object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
         object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.is_well_formed(), Self::is_well_formed, 0, realm);
         object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
         object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
@@ -85,6 +86,7 @@ impl StringPrototype {
         );
         object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
         object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_well_formed(), Self::to_well_formed, 0, realm);
         object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm);
         object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm);
         object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
@@ -322,7 +324,20 @@ impl StringPrototype {
         }
     }
 
-    // 22.1.3.10 String.prototype.lastIndexOf
+    // 22.1.3.10 String.prototype.isWellFormed
+    fn is_well_formed(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        cx.bool(string.is_well_formed()).into()
+    }
+
+    // 22.1.3.11 String.prototype.lastIndexOf
     fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -353,7 +368,7 @@ impl StringPrototype {
         }
     }
 
-    // 22.1.3.12 String.prototype.match
+    // 22.1.3.13 String.prototype.match
     fn match_(
         cx: Context,
         this_value: Handle<Value>,
@@ -382,7 +397,7 @@ impl StringPrototype {
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
     }
 
-    // 22.1.3.13 String.prototype.matchAll
+    // 22.1.3.14 String.prototype.matchAll
     fn match_all(
         cx: Context,
         this_value: Handle<Value>,
@@ -434,7 +449,7 @@ impl StringPrototype {
         invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
     }
 
-    // 22.1.3.14 String.prototype.normalize
+    // 22.1.3.15 String.prototype.normalize
     fn normalize(
         cx: Context,
         this_value: Handle<Value>,
@@ -483,7 +498,7 @@ impl StringPrototype {
         normalized_string.into()
     }
 
-    // 22.1.3.15 String.prototype.padEnd
+    // 22.1.3.16 String.prototype.padEnd
     fn pad_end(
         cx: Context,
         this_value: Handle<Value>,
@@ -496,7 +511,7 @@ impl StringPrototype {
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false)
     }
 
-    // 22.1.3.16 String.prototype.padStart
+    // 22.1.3.17 String.prototype.padStart
     fn pad_start(
         cx: Context,
         this_value: Handle<Value>,
@@ -561,7 +576,7 @@ impl StringPrototype {
         }
     }
 
-    // 22.1.3.17 String.prototype.repeat
+    // 22.1.3.18 String.prototype.repeat
     fn repeat(
         cx: Context,
         this_value: Handle<Value>,
@@ -582,7 +597,7 @@ impl StringPrototype {
         string.repeat(cx, n as u64).as_string().into()
     }
 
-    // 22.1.3.21 String.prototype.slice
+    // 22.1.3.22 String.prototype.slice
     fn slice(
         cx: Context,
         this_value: Handle<Value>,
@@ -633,7 +648,7 @@ impl StringPrototype {
         substring.into()
     }
 
-    // 22.1.3.22 String.prototype.split
+    // 22.1.3.23 String.prototype.split
     fn split(
         cx: Context,
         this_value: Handle<Value>,
@@ -728,7 +743,7 @@ impl StringPrototype {
         create_array_from_list(cx, &substrings).into()
     }
 
-    // 22.1.3.23 String.prototype.startsWith
+    // 22.1.3.24 String.prototype.startsWith
     fn starts_with(
         cx: Context,
         this_value: Handle<Value>,
@@ -776,7 +791,7 @@ impl StringPrototype {
         cx.bool(starts_with_string).into()
     }
 
-    // 22.1.3.24 String.prototype.substring
+    // 22.1.3.25 String.prototype.substring
     fn substring(
         cx: Context,
         this_value: Handle<Value>,
@@ -808,7 +823,7 @@ impl StringPrototype {
         substring.into()
     }
 
-    // 22.1.3.25 String.prototype.toLocaleLowerCase
+    // 22.1.3.26 String.prototype.toLocaleLowerCase
     fn to_locale_lower_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -821,7 +836,7 @@ impl StringPrototype {
         string.to_lower_case(cx).as_string().into()
     }
 
-    // 22.1.3.26 String.prototype.toLocaleUpperCase
+    // 22.1.3.27 String.prototype.toLocaleUpperCase
     fn to_locale_upper_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -834,7 +849,7 @@ impl StringPrototype {
         string.to_upper_case(cx).as_string().into()
     }
 
-    // 22.1.3.27 String.prototype.toLowerCase
+    // 22.1.3.28 String.prototype.toLowerCase
     fn to_lower_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -847,7 +862,7 @@ impl StringPrototype {
         string.to_lower_case(cx).as_string().into()
     }
 
-    // 22.1.3.28 String.prototype.toString
+    // 22.1.3.29 String.prototype.toString
     fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -857,7 +872,7 @@ impl StringPrototype {
         this_string_value(cx, this_value)
     }
 
-    // 22.1.3.29 String.prototype.toUpperCase
+    // 22.1.3.30 String.prototype.toUpperCase
     fn to_upper_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -870,7 +885,20 @@ impl StringPrototype {
         string.to_upper_case(cx).as_string().into()
     }
 
-    // 22.1.3.30 String.prototype.trim
+    // 22.1.3.31 String.prototype.toWellFormed
+    fn to_well_formed(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        string.to_well_formed(cx).as_string().to_handle().into()
+    }
+
+    // 22.1.3.32 String.prototype.trim
     fn trim(
         cx: Context,
         this_value: Handle<Value>,
@@ -883,7 +911,7 @@ impl StringPrototype {
         string.trim(cx, true, true).into()
     }
 
-    // 22.1.3.31 String.prototype.trimEnd
+    // 22.1.3.33 String.prototype.trimEnd
     fn trim_end(
         cx: Context,
         this_value: Handle<Value>,
@@ -896,7 +924,7 @@ impl StringPrototype {
         string.trim(cx, false, true).into()
     }
 
-    // 22.1.3.32 String.prototype.trimStart
+    // 22.1.3.34 String.prototype.trimStart
     fn trim_start(
         cx: Context,
         this_value: Handle<Value>,
@@ -909,7 +937,7 @@ impl StringPrototype {
         string.trim(cx, true, false).into()
     }
 
-    // 22.1.3.33 String.prototype.valueOf
+    // 22.1.3.35 String.prototype.valueOf
     fn value_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -919,7 +947,7 @@ impl StringPrototype {
         this_string_value(cx, this_value)
     }
 
-    // 22.1.3.34 String.prototype [ @@iterator ]
+    // 22.1.3.36 String.prototype [ @@iterator ]
     fn iterator(
         cx: Context,
         this_value: Handle<Value>,

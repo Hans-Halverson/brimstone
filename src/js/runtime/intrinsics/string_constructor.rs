@@ -2,17 +2,19 @@ use crate::{
     js::{
         common::unicode::CodePoint,
         runtime::{
+            abstract_operations::length_of_array_like,
             builtin_function::BuiltinFunction,
             completion::EvalResult,
             error::range_error_,
             function::get_argument,
+            get,
             object_value::ObjectValue,
             property::Property,
             realm::Realm,
             string_object::StringObject,
             string_value::{FlatString, StringValue},
-            type_utilities::{to_number, to_string, to_uint16, to_object},
-            Context, Handle, Value, abstract_operations::length_of_array_like, get, PropertyKey,
+            type_utilities::{to_number, to_object, to_string, to_uint16},
+            Context, Handle, PropertyKey, Value,
         },
     },
     maybe,
@@ -201,6 +203,5 @@ impl StringConstructor {
 
             next_index += 1;
         }
-
     }
 }

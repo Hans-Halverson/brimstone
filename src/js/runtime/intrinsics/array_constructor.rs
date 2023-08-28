@@ -25,7 +25,7 @@ impl ArrayConstructor {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
-            0,
+            1,
             cx.names.array(),
             Some(realm),
             None,

@@ -78,7 +78,7 @@ impl ArrayPrototype {
         array.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
         array.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
         array.intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm);
-        array.intrinsic_func(cx, cx.names.push(), Self::push, 0, realm);
+        array.intrinsic_func(cx, cx.names.push(), Self::push, 1, realm);
         array.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
         array.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
         array.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
@@ -150,11 +150,14 @@ impl ArrayPrototype {
 
         let mut n = 0;
 
-        Self::apply_concat_to_element(cx, object.into(), array, &mut n);
+        maybe!(Self::apply_concat_to_element(cx, object.into(), array, &mut n));
 
         for element in arguments {
-            Self::apply_concat_to_element(cx, *element, array, &mut n);
+            maybe!(Self::apply_concat_to_element(cx, *element, array, &mut n));
         }
+
+        let new_length_value = Value::from(n).to_handle(cx);
+        maybe!(set(cx, array, cx.names.length(), new_length_value, true));
 
         array.into()
     }
@@ -165,8 +168,8 @@ impl ArrayPrototype {
             return false.into();
         }
 
-        let is_concat_spreadable_key = cx.well_known_symbols.is_concat_spreadable();
-        let is_spreadable = maybe!(get(cx, object.as_object(), is_concat_spreadable_key));
+        let is_spreadable =
+            maybe!(get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable()));
 
         if !is_spreadable.is_undefined() {
             return to_boolean(is_spreadable.get()).into();
@@ -351,7 +354,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.every expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -443,7 +446,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.filter expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -675,7 +678,7 @@ impl ArrayPrototype {
                         element_length,
                         target_index,
                         new_depth,
-                        mapper_function,
+                        None,
                         this_arg
                     ));
                 } else {
@@ -708,7 +711,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         if !is_callable(mapper_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.flatMap expected function");
         }
 
         let array = maybe!(array_species_create(cx, object, 0));
@@ -739,7 +742,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.forEach expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -971,7 +974,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.map expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1068,7 +1071,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.reduce expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1129,7 +1132,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.reduceRight expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1200,30 +1203,32 @@ impl ArrayPrototype {
             lower_key.replace(PropertyKey::from_u64(cx, lower));
             upper_key.replace(PropertyKey::from_u64(cx, upper));
 
-            let lower_exists = maybe!(has_property(cx, object, lower_key));
-            let upper_exists = maybe!(has_property(cx, object, upper_key));
+            let lower_value = if maybe!(has_property(cx, object, lower_key)) {
+                Some(maybe!(get(cx, object, lower_key)))
+            } else {
+                None
+            };
 
-            match (lower_exists, upper_exists) {
-                (true, true) => {
-                    let lower_value = maybe!(get(cx, object, lower_key));
-                    let upper_value = maybe!(get(cx, object, upper_key));
+            let upper_value = if maybe!(has_property(cx, object, upper_key)) {
+                Some(maybe!(get(cx, object, upper_key)))
+            } else {
+                None
+            };
 
+            match (lower_value, upper_value) {
+                (Some(lower_value), Some(upper_value)) => {
                     maybe!(set(cx, object, lower_key, upper_value, true));
                     maybe!(set(cx, object, upper_key, lower_value, true));
                 }
-                (true, false) => {
-                    let lower_value = maybe!(get(cx, object, lower_key));
-
+                (Some(lower_value), None) => {
                     maybe!(delete_property_or_throw(cx, object, lower_key));
                     maybe!(set(cx, object, upper_key, lower_value, true));
                 }
-                (false, true) => {
-                    let upper_value = maybe!(get(cx, object, upper_key));
-
+                (None, Some(upper_value)) => {
                     maybe!(set(cx, object, lower_key, upper_value, true));
                     maybe!(delete_property_or_throw(cx, object, upper_key));
                 }
-                (false, false) => {}
+                (None, None) => {}
             }
 
             lower += 1;
@@ -1357,7 +1362,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.some expected function");
         }
 
         let callback_function = callback_function.as_object();

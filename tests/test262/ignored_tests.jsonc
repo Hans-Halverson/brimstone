@@ -58,6 +58,7 @@
       "legacy-regexp",
       "regexp-duplicate-named-groups",
       "resizable-arraybuffer",
+      "Array.fromAsync",
       "FinalizationRegistry.prototype.cleanupSome",
       "Intl.DurationFormat",
       "Intl.Locale-info",
@@ -99,6 +100,7 @@
     "tests": [
       "language/identifiers/start-unicode-*.js",
       "language/literals/regexp/S7.8.5_A2.1_T2.js",
+      "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array.js",
       "built-ins/Array/prototype/sort/stability-2048-elements.js"
     ]
   }

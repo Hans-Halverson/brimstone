@@ -28,6 +28,7 @@ extend_object! {
     pub struct ArrayIterator {
         array: HeapPtr<ObjectValue>,
         kind: ArrayIteratorKind,
+        is_done: bool,
         current_index: usize,
         get_length: fn(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64>,
     }
@@ -60,6 +61,7 @@ impl ArrayIterator {
         };
 
         set_uninit!(object.array, array.get_());
+        set_uninit!(object.is_done, false);
         set_uninit!(object.kind, kind);
         set_uninit!(object.current_index, 0);
         set_uninit!(object.get_length, get_length);
@@ -124,7 +126,8 @@ impl ArrayIteratorPrototype {
         let length = maybe!((array_iterator.get_length)(cx, array));
 
         let current_index = array_iterator.current_index as u64;
-        if current_index >= length {
+        if array_iterator.is_done || current_index >= length {
+            array_iterator.is_done = true;
             return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 

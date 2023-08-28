@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    array_prototype::{sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY},
+    array_prototype::{find_via_predicate, sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY},
     intrinsics::Intrinsic,
     typed_array::{ContentType, DynTypedArray, TypedArrayKind},
 };
@@ -65,6 +65,8 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
+        object.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm);
+        object.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
         object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
@@ -466,34 +468,23 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
-        let length = typed_array.array_length();
+        let length = typed_array.array_length() as u64;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "TypedArray.prototype.find expected function");
         }
 
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        // Shared between iterations
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
-        let mut index_value = Value::uninit().to_handle(cx);
+        let find_result =
+            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
-        for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            let value = must!(get(cx, object, index_key));
-
-            index_value.replace(Value::from(i));
-            let arguments = [value, index_value, object.into()];
-
-            let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-            if to_boolean(test_result.get()) {
-                return value.into();
-            }
+        match find_result {
+            Some((value, _)) => value.into(),
+            None => cx.undefined().into(),
         }
-
-        cx.undefined().into()
     }
 
     // 23.2.3.12 %TypedArray%.prototype.findIndex
@@ -505,34 +496,79 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let typed_array = maybe!(validate_typed_array(cx, this_value));
         let object = typed_array.into_object_value();
-        let length = typed_array.array_length();
+        let length = typed_array.array_length() as u64;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "TypedArray.prototype.findIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        // Shared between iterations
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
-        let mut index_value = Value::uninit().to_handle(cx);
+        let find_result =
+            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
-        for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            let value = must!(get(cx, object, index_key));
+        match find_result {
+            Some((_, index_value)) => index_value.into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+        }
+    }
 
-            index_value.replace(Value::from(i));
-            let arguments = [value, index_value, object.into()];
+    // 23.2.3.13 %TypedArray%.prototype.findLast
+    fn find_last(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
 
-            let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-            if to_boolean(test_result.get()) {
-                return index_value.into();
-            }
+        let predicate_function = get_argument(cx, arguments, 0);
+        if !is_callable(predicate_function) {
+            return type_error_(cx, "TypedArray.prototype.findLast expected function");
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        let predicate_function = predicate_function.as_object();
+        let this_arg = get_argument(cx, arguments, 1);
+
+        let find_result =
+            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+
+        match find_result {
+            Some((value, _)) => value.into(),
+            None => cx.undefined().into(),
+        }
+    }
+
+    // 23.2.3.14 %TypedArray%.prototype.findLastIndex
+    fn find_last_index(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+        let object = typed_array.into_object_value();
+        let length = typed_array.array_length() as u64;
+
+        let predicate_function = get_argument(cx, arguments, 0);
+        if !is_callable(predicate_function) {
+            return type_error_(cx, "TypedArray.prototype.findLastIndex expected function");
+        }
+
+        let predicate_function = predicate_function.as_object();
+        let this_arg = get_argument(cx, arguments, 1);
+
+        let find_result =
+            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+
+        match find_result {
+            Some((_, index_value)) => index_value.into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+        }
     }
 
     // 23.2.3.15 %TypedArray%.prototype.forEach

@@ -176,6 +176,8 @@ builtin_names!(
     (filter, "filter"),
     (find, "find"),
     (find_index, "findIndex"),
+    (find_last, "findLast"),
+    (find_last_index, "findLastIndex"),
     (flags, "flags"),
     (flat, "flat"),
     (flat_map, "flatMap"),

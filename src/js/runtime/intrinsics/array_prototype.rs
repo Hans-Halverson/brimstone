@@ -42,7 +42,7 @@ impl ArrayPrototype {
     // 23.1.3 Properties of the Array Prototype Object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let array = ArrayObject::new(cx, object_proto);
+        let mut array: Handle<ObjectValue> = ArrayObject::new(cx, object_proto).into();
 
         // Create values function as it is referenced by multiple properties
         let values_function = BuiltinFunction::create(
@@ -57,135 +57,55 @@ impl ArrayPrototype {
         .into();
 
         // Constructor property is added once ArrayConstructor has been created
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.join(), Self::join, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.push(), Self::push, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm);
-        array.object().intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            Self::to_locale_string,
-            0,
-            realm,
-        );
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm);
-        array
-            .object()
-            .intrinsic_data_prop(cx, cx.names.values(), values_function);
-        array
-            .object()
-            .intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
+        array.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
+        array.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
+        array.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm);
+        array.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
+        array.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
+        array.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm);
+        array.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
+        array.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
+        array.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
+        array.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm);
+        array.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm);
+        array.intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm);
+        array.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
+        array.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
+        array.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
+        array.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
+        array.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm);
+        array.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
+        array.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
+        array.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
+        array.intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm);
+        array.intrinsic_func(cx, cx.names.push(), Self::push, 0, realm);
+        array.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
+        array.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
+        array.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
+        array.intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm);
+        array.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
+        array.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
+        array.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
+        array.intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm);
+        array.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        array.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
+        array.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
+        array.intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm);
+        array.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        array.intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm);
+        array.intrinsic_data_prop(cx, cx.names.values(), values_function);
+        array.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
 
         // 23.1.3.40 Array.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
-        array.object().set_property(
-            cx,
-            iterator_key,
-            Property::data(values_function, true, false, true),
-        );
+        array.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
         // 23.1.3.41 Array.prototype [ @@unscopables ]
         let unscopables_key = cx.well_known_symbols.unscopables();
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
-        array
-            .object()
-            .set_property(cx, unscopables_key, unscopables);
+        array.set_property(cx, unscopables_key, unscopables);
 
-        array.into()
+        array
     }
 
     // 23.1.3.1 Array.prototype.at
@@ -574,32 +494,19 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.find expected function");
         }
 
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        // Shared between iterations
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
-        let mut index_value = Value::uninit().to_handle(cx);
+        let find_result =
+            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
-        for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
-
-                index_value.replace(Value::from(i));
-                let arguments = [value, index_value, object.into()];
-
-                let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-                if to_boolean(test_result.get()) {
-                    return value.into();
-                }
-            }
+        match find_result {
+            Some((value, _)) => value.into(),
+            None => cx.undefined().into(),
         }
-
-        cx.undefined().into()
     }
 
     // 23.1.3.10 Array.prototype.findIndex
@@ -614,32 +521,73 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "expected function");
+            return type_error_(cx, "Array.prototype.findIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        // Shared between iterations
-        let mut index_key = PropertyKey::uninit().to_handle(cx);
-        let mut index_value = Value::uninit().to_handle(cx);
+        let find_result =
+            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
-        for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+        match find_result {
+            Some((_, index_value)) => index_value.into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+        }
+    }
 
-                index_value.replace(Value::from(i));
-                let arguments = [value, index_value, object.into()];
+    // 23.1.3.11 Array.prototype.findLast
+    fn find_last(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
 
-                let test_result = maybe!(call_object(cx, predicate_function, this_arg, &arguments));
-                if to_boolean(test_result.get()) {
-                    return index_value.to_handle(cx).into();
-                }
-            }
+        let predicate_function = get_argument(cx, arguments, 0);
+        if !is_callable(predicate_function) {
+            return type_error_(cx, "Array.prototype.findLast expected function");
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        let predicate_function = predicate_function.as_object();
+        let this_arg = get_argument(cx, arguments, 1);
+
+        let find_result =
+            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+
+        match find_result {
+            Some((value, _)) => value.into(),
+            None => cx.undefined().into(),
+        }
+    }
+
+    // 23.1.3.12 Array.prototype.findLastIndex
+    fn find_last_index(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(to_object(cx, this_value));
+        let length = maybe!(length_of_array_like(cx, object));
+
+        let predicate_function = get_argument(cx, arguments, 0);
+        if !is_callable(predicate_function) {
+            return type_error_(cx, "Array.prototype.findLastIndex expected function");
+        }
+
+        let predicate_function = predicate_function.as_object();
+        let this_arg = get_argument(cx, arguments, 1);
+
+        let find_result =
+            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+
+        match find_result {
+            Some((_, index_value)) => index_value.into(),
+            None => Value::smi(-1).to_handle(cx).into(),
+        }
     }
 
     // 23.1.3.13 Array.prototype.flat
@@ -1890,14 +1838,48 @@ impl ArrayPrototype {
         must!(create_data_property_or_throw(cx, list, cx.names.fill(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.find(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.find_index(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.find_last(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.find_last_index(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.flat(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.includes(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.keys(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.to_reversed(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.to_sorted(), true_value));
+        must!(create_data_property_or_throw(cx, list, cx.names.to_spliced(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.values(), true_value));
 
         list
     }
+}
+
+// 23.1.3.12.1 FindViaPredicate
+#[inline]
+pub fn find_via_predicate(
+    cx: Context,
+    object: Handle<ObjectValue>,
+    indices_iter: impl Iterator<Item = u64>,
+    predicate: Handle<ObjectValue>,
+    this_arg: Handle<Value>,
+) -> EvalResult<Option<(Handle<Value>, Handle<Value>)>> {
+    // Shared between iterations
+    let mut index_key = PropertyKey::uninit().to_handle(cx);
+    let mut index_value = Value::uninit().to_handle(cx);
+
+    for i in indices_iter {
+        index_key.replace(PropertyKey::from_u64(cx, i));
+        let value = maybe!(get(cx, object, index_key));
+
+        index_value.replace(Value::from(i));
+        let arguments = [value, index_value, object.into()];
+
+        let test_result = maybe!(call_object(cx, predicate, this_arg, &arguments));
+        if to_boolean(test_result.get()) {
+            return Some((value, index_value)).into();
+        }
+    }
+
+    None.into()
 }
 
 // Whether to exclude holes from the sorted output or not

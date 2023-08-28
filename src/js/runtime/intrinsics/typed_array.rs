@@ -72,6 +72,14 @@ pub trait TypedArray {
         array_buffer: HeapPtr<ArrayBufferObject>,
         byte_index: usize,
     ) -> Handle<Value>;
+
+    /// Write the value at a particular index. Do not check that the index is in bounds.
+    fn write_element_value_unchecked(
+        &mut self,
+        cx: Context,
+        index: u64,
+        value: Handle<Value>,
+    ) -> EvalResult<()>;
 }
 
 heap_trait_object!(TypedArray, DynTypedArray, HeapDynTypedArray, into_dyn_typed_array);

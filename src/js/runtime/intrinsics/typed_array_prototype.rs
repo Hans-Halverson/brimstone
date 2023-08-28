@@ -5,21 +5,25 @@ use num_bigint::{BigUint, Sign};
 use crate::{
     js::runtime::{
         abstract_operations::{
-            call_object, construct, has_property, invoke, set, species_constructor,
+            call_object, construct, has_property, invoke, length_of_array_like, set,
+            species_constructor,
         },
         builtin_function::BuiltinFunction,
         error::{range_error_, type_error_},
         function::get_argument,
         get,
         interned_strings::InternedStrings,
-        intrinsics::array_iterator::{ArrayIterator, ArrayIteratorKind},
+        intrinsics::{
+            array_buffer_constructor::clone_array_buffer,
+            array_iterator::{ArrayIterator, ArrayIteratorKind},
+        },
         object_value::ObjectValue,
         property::Property,
         string_value::StringValue,
         to_string,
         type_utilities::{
-            is_callable, is_strictly_equal, same_value_zero, to_bigint, to_boolean,
-            to_integer_or_infinity, to_number,
+            is_callable, is_strictly_equal, same_object_value, same_value_zero, to_bigint,
+            to_boolean, to_integer_or_infinity, to_number, to_object,
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
@@ -78,6 +82,7 @@ impl TypedArrayPrototype {
         object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
         object.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
         object.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
+        object.intrinsic_func(cx, cx.names.set_(), Self::set, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
         object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
@@ -994,6 +999,155 @@ impl TypedArrayPrototype {
         }
 
         object.into()
+    }
+
+    // 23.2.3.26 %TypedArray%.prototype.set
+    fn set(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = maybe!(validate_typed_array(cx, this_value));
+
+        let offset_arg = get_argument(cx, arguments, 1);
+        let offset = maybe!(to_integer_or_infinity(cx, offset_arg));
+        if offset < 0.0 {
+            return range_error_(cx, "TypedArray.prototype.set offset is negative");
+        }
+
+        let source_arg = get_argument(cx, arguments, 0);
+        if source_arg.is_object() && source_arg.as_object().is_typed_array() {
+            maybe!(Self::set_typed_array_from_typed_array(
+                cx,
+                typed_array,
+                offset,
+                source_arg.as_object().as_typed_array()
+            ));
+        } else {
+            maybe!(Self::set_typed_array_from_array_like(cx, typed_array, offset, source_arg));
+        }
+
+        cx.undefined().into()
+    }
+
+    // 23.2.3.26.1 SetTypedArrayFromTypedArray
+    fn set_typed_array_from_typed_array(
+        cx: Context,
+        target: DynTypedArray,
+        offset: f64,
+        source: DynTypedArray,
+    ) -> EvalResult<()> {
+        let mut target_buffer = target.viewed_array_buffer();
+        if target_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        let target_length = target.array_length() as u64;
+
+        let mut source_buffer = source.viewed_array_buffer();
+        if source_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        let source_length = source.array_length();
+
+        if offset == f64::INFINITY || source_length as u64 + offset as u64 > target_length {
+            return range_error_(cx, "TypedArray.prototype.set offset is out of range");
+        }
+
+        let source_byte_index =
+            if same_object_value(source_buffer.get_().into(), target_buffer.get_().into()) {
+                source_buffer = maybe!(clone_array_buffer(
+                    cx,
+                    source_buffer,
+                    source.byte_offset(),
+                    source.byte_length(),
+                ));
+                0
+            } else {
+                source.byte_offset()
+            };
+
+        // If types are different then must call get and set and convert types
+        if source.kind() != target.kind() {
+            let source_object = source.into_object_value();
+            let target_object = target.into_object_value();
+
+            // Shared between iterations
+            let mut source_key = PropertyKey::uninit().to_handle(cx);
+            let mut target_key = PropertyKey::uninit().to_handle(cx);
+
+            let mut source_index = (source_byte_index / source.element_size()) as u64;
+            let mut target_index =
+                (target.byte_offset() / target.element_size()) as u64 + offset as u64;
+
+            for _ in 0..source_length {
+                source_key.replace(PropertyKey::from_u64(cx, source_index));
+                target_key.replace(PropertyKey::from_u64(cx, target_index));
+
+                let value = maybe!(get(cx, source_object, source_key));
+                maybe!(set(cx, target_object, target_key, value, true));
+
+                source_index += 1;
+                target_index += 1;
+            }
+        } else {
+            // Otherwse copy bytes directly instead of performing any conversions
+            let element_size = source.element_size();
+            let target_byte_index = target.byte_offset() + offset as usize * element_size;
+
+            unsafe {
+                let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
+                let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
+
+                for _ in 0..(source_length * element_size) {
+                    let byte = from_ptr.read();
+                    to_ptr.write(byte);
+
+                    from_ptr = from_ptr.add(1);
+                    to_ptr = to_ptr.add(1);
+                }
+            }
+        }
+
+        ().into()
+    }
+
+    fn set_typed_array_from_array_like(
+        cx: Context,
+        mut target: DynTypedArray,
+        offset: f64,
+        source: Handle<Value>,
+    ) -> EvalResult<()> {
+        let target_buffer = target.viewed_array_buffer();
+        if target_buffer.is_detached() {
+            return type_error_(cx, "array buffer is detached");
+        }
+
+        let target_length = target.array_length() as u64;
+
+        let source = maybe!(to_object(cx, source));
+        let source_length = maybe!(length_of_array_like(cx, source));
+
+        if offset == f64::INFINITY || source_length + offset as u64 > target_length {
+            return range_error_(cx, "TypedArray.prototype.set offset is out of range");
+        }
+        let offset = offset as u64;
+
+        // Keys are shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        for i in 0..source_length {
+            key.replace(PropertyKey::from_u64(cx, i));
+            let value = maybe!(get(cx, source, key));
+
+            let target_index = offset + i;
+
+            maybe!(target.write_element_value_unchecked(cx, target_index, value));
+        }
+
+        ().into()
     }
 
     // 23.2.3.27 %TypedArray%.prototype.slice

@@ -488,6 +488,28 @@ macro_rules! create_typed_array_constructor {
                 // May allocate
                 $from_element(cx, element)
             }
+
+            #[inline]
+            fn write_element_value_unchecked(
+                &mut self,
+                cx: Context,
+                index: u64,
+                value: Handle<Value>,
+            ) -> EvalResult<()> {
+                // May allocate, so call before accessing array buffer
+                let element_value = maybe!($to_element(cx, value));
+
+                let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                if array_buffer_ptr.is_detached() {
+                    return ().into();
+                }
+
+                let byte_index = (index as usize) * element_size!() + self.byte_offset;
+
+                $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
+
+                ().into()
+            }
         }
 
         pub struct $constructor;

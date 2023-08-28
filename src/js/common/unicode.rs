@@ -107,7 +107,7 @@ pub fn is_ascii_whitespace(code_point: CodePoint) -> bool {
 #[inline]
 pub fn is_unicode_whitespace(code_point: CodePoint) -> bool {
     match_u32!(match code_point {
-    // All non-ascii characters in the unicode Space_Separator category
+        // All non-ascii characters in the unicode Space_Separator category
         '\u{00A0}'
         | '\u{1680}'
         | '\u{2000}'..='\u{200A}'

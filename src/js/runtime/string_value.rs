@@ -16,7 +16,7 @@ use crate::{
         unicode::{
             code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1,
             is_low_surrogate_code_unit, is_whitespace, needs_surrogate_pair,
-            try_encode_surrogate_pair, CodePoint, CodeUnit,
+            try_encode_surrogate_pair, CodePoint, CodeUnit, is_newline,
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
@@ -421,7 +421,7 @@ impl Handle<StringValue> {
 
         if trim_start {
             while let Some(code_point) = code_points_iter.next() {
-                if !is_whitespace(code_point) {
+                if !is_whitespace(code_point) && !is_newline(code_point) {
                     break;
                 }
 
@@ -433,7 +433,7 @@ impl Handle<StringValue> {
 
         if trim_end {
             while let Some(code_point) = code_points_iter.next_back() {
-                if !is_whitespace(code_point) {
+                if !is_whitespace(code_point) && !is_newline(code_point) {
                     break;
                 }
 
@@ -441,7 +441,7 @@ impl Handle<StringValue> {
             }
         }
 
-        if code_points_iter.is_end() {
+        if start_ptr == end_ptr {
             return cx.names.empty_string().as_string();
         }
 
@@ -1341,10 +1341,6 @@ impl CodePointIterator {
         CodePointIterator {
             iter: CodeUnitIterator::from_two_byte_slice(string, start, end),
         }
-    }
-
-    fn is_end(&self) -> bool {
-        self.iter.is_end()
     }
 
     fn ptr(&self) -> *const u8 {

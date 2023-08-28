@@ -10,9 +10,9 @@ use crate::{
             property::Property,
             realm::Realm,
             string_object::StringObject,
-            string_value::FlatString,
-            type_utilities::{to_number, to_string, to_uint16},
-            Context, Handle, Value,
+            string_value::{FlatString, StringValue},
+            type_utilities::{to_number, to_string, to_uint16, to_object},
+            Context, Handle, Value, abstract_operations::length_of_array_like, get, PropertyKey,
         },
     },
     maybe,
@@ -49,6 +49,7 @@ impl StringConstructor {
 
         func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm);
         func.intrinsic_func(cx, cx.names.from_code_point(), Self::from_code_point, 1, realm);
+        func.intrinsic_func(cx, cx.names.raw(), Self::raw, 1, realm);
 
         func
     }
@@ -151,5 +152,55 @@ impl StringConstructor {
         FlatString::from_code_points(cx, &code_points)
             .as_string()
             .into()
+    }
+
+    // 22.1.2.4 String.raw
+    fn raw(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let substitution_count = arguments.len() - 1;
+
+        let template_arg = get_argument(cx, arguments, 0);
+        let cooked = maybe!(to_object(cx, template_arg));
+
+        let literals = maybe!(get(cx, cooked, cx.names.raw()));
+        let literals = maybe!(to_object(cx, literals));
+
+        let literal_count = maybe!(length_of_array_like(cx, literals));
+        if literal_count == 0 {
+            return cx.names.empty_string.as_string().to_handle().into();
+        }
+
+        let mut result = cx.names.empty_string.as_string().to_handle().into();
+        let mut next_index = 0;
+
+        // Key is shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        loop {
+            key.replace(PropertyKey::from_u64(cx, next_index));
+
+            let next_literal_value = maybe!(get(cx, literals, key));
+            let next_literal_string = maybe!(to_string(cx, next_literal_value));
+
+            result = StringValue::concat(cx, result, next_literal_string);
+
+            if next_index + 1 == literal_count {
+                return result.into();
+            }
+
+            if next_index < substitution_count as u64 {
+                let substitution_arg = get_argument(cx, arguments, next_index as usize + 1);
+                let next_substitution = maybe!(to_string(cx, substitution_arg));
+
+                result = StringValue::concat(cx, result, next_substitution);
+            }
+
+            next_index += 1;
+        }
+
     }
 }

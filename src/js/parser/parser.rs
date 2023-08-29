@@ -2382,12 +2382,13 @@ impl<'a> Parser<'a> {
 
             // Start position of flags is offset by two `/` characters and the entire pattern
             let flags_start_pos = start_pos + 2 + pattern.len();
-            let lexer_stream = Utf8LexerStream::new(flags_start_pos, source.clone(), &flags_string);
+            let lexer_stream =
+                Utf8LexerStream::new(flags_start_pos, source.clone(), flags_string.as_bytes());
             let flags = RegExpParser::parse_flags(lexer_stream)?;
 
             // Start position of pattern is offset by one to account for the leading `/`
             let pattern_start_pos = start_pos + 1;
-            let lexer_stream = Utf8LexerStream::new(pattern_start_pos, source, &pattern);
+            let lexer_stream = Utf8LexerStream::new(pattern_start_pos, source, pattern.as_bytes());
             let regexp = RegExpParser::parse_regexp(lexer_stream, flags)?;
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
@@ -2398,7 +2399,7 @@ impl<'a> Parser<'a> {
 
     fn parse_template_literal(
         &mut self,
-        raw: String,
+        raw: Wtf8String,
         cooked: Option<Wtf8String>,
         is_single_quasi: bool,
         is_tagged: bool,

@@ -6,7 +6,7 @@ use num_bigint::BigInt;
 
 use crate::js::common::unicode::{
     as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
-    decode_utf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
+    decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
     is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_id_part_ascii, is_id_part_unicode,
     is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
     is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
@@ -20,7 +20,7 @@ use super::token::Token;
 
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,
-    buf: &'a str,
+    buf: &'a [u8],
     current: u32,
     pos: Pos,
     is_new_line_before_current: bool,
@@ -41,16 +41,16 @@ const EOF_CHAR: u32 = 0x110000;
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
-        let buf = &source.contents;
+        let buf = source.contents.as_bytes();
         let current = if buf.len() == 0 {
             EOF_CHAR
         } else {
-            buf.as_bytes()[0].into()
+            buf[0].into()
         };
 
         Lexer {
             source: &source,
-            buf: &source.contents,
+            buf,
             current,
             pos: 0,
             is_new_line_before_current: false,
@@ -74,7 +74,7 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn code_point_at(&self, index: usize) -> u32 {
-        self.buf.as_bytes()[index].into()
+        self.buf[index].into()
     }
 
     #[inline]
@@ -672,7 +672,7 @@ impl<'a> Lexer<'a> {
         // This is a bigint literal
         if self.current == 'n' as u32 {
             let digits_slice = &self.buf[start_pos..self.pos];
-            let value = BigInt::parse_bytes(digits_slice.as_bytes(), 10).unwrap();
+            let value = BigInt::parse_bytes(digits_slice, 10).unwrap();
             self.advance();
 
             // BigInts do not allow a leading zeros
@@ -708,12 +708,15 @@ impl<'a> Lexer<'a> {
         }
 
         // Parse float using rust stdlib. Rust stdlib cannot handle numeric separators, so if there
-        // were numeric separators then first generate string with numeric separators removed.
+        // were numeric separators then first generate string with numeric separators removed. It is
+        // safe to treat this slice as valid UTF-8 as it only contains ASCII characters.
         let end_pos = self.pos;
+        let string = unsafe { std::str::from_utf8_unchecked(&self.buf[start_pos..end_pos]) };
+
         let value = if has_numeric_separator {
-            f64::from_str(&self.buf[start_pos..end_pos].replace('_', "")).unwrap()
+            f64::from_str(&string.replace('_', "")).unwrap()
         } else {
-            f64::from_str(&self.buf[start_pos..end_pos]).unwrap()
+            f64::from_str(string).unwrap()
         };
 
         self.emit(Token::NumberLiteral(value), start_pos)
@@ -770,7 +773,7 @@ impl<'a> Lexer<'a> {
 
         if self.current == 'n' as u32 {
             let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let value = BigInt::parse_bytes(digits_slice.as_bytes(), base).unwrap();
+            let value = BigInt::parse_bytes(digits_slice, base).unwrap();
             self.advance();
 
             return self.emit(Token::BigIntLiteral(value), start_pos);
@@ -1056,9 +1059,10 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let pattern = String::from(&self.buf[pattern_start_pos..pattern_end_pos]);
-        let flags = String::from(&self.buf[flags_start_pos..self.pos]);
-        let raw = String::from(&self.buf[start_pos..self.pos]);
+        let pattern =
+            Wtf8String::from_bytes_unchecked(&self.buf[pattern_start_pos..pattern_end_pos]);
+        let flags = Wtf8String::from_bytes_unchecked(&self.buf[flags_start_pos..self.pos]);
+        let raw = Wtf8String::from_bytes_unchecked(&self.buf[start_pos..self.pos]);
 
         self.emit(Token::RegExpLiteral { raw, pattern, flags }, start_pos)
     }
@@ -1268,12 +1272,29 @@ impl<'a> Lexer<'a> {
             })
         }
 
-        let mut raw = String::from(&self.buf[raw_start_pos..raw_end_pos]);
+        let mut raw = Wtf8String::from_bytes_unchecked(&self.buf[raw_start_pos..raw_end_pos]);
 
         // CR and CRLF are both converted to LF in raw string. This requires copying the string
         // again, so only perform the replace if a CR was encountered.
         if has_cr {
-            raw = raw.replace("\r\n", "\n").replace("\r", "\n");
+            let mut new_raw = Wtf8String::new();
+            for (i, slice) in raw.as_bytes().split(|byte| *byte == b'\r').enumerate() {
+                // Replace both `\r\n` and `\r`
+                let slice = if i != 0 && !slice.is_empty() && slice[0] == b'\n' {
+                    &slice[1..]
+                } else {
+                    slice
+                };
+
+                // Replace with a single `\n`
+                if i != 0 {
+                    new_raw.push_char('\n');
+                }
+
+                new_raw.push_bytes_unchecked(slice);
+            }
+
+            raw = new_raw;
         }
 
         // Only return cooked string if a malformed error location was not found
@@ -1300,13 +1321,14 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn lex_utf8_codepoint(&mut self) -> ParseResult<CodePoint> {
-        let buf = &self.buf.as_bytes()[self.pos..];
-        match decode_utf8_codepoint(buf) {
+        let buf = &self.buf[self.pos..];
+        match decode_wtf8_codepoint(buf) {
             Ok((code_point, byte_length)) => {
                 self.advance_n(byte_length);
                 Ok(code_point as u32)
             }
             Err(byte_length) => {
+                println!("bl is {byte_length}");
                 self.advance_n(byte_length);
                 let loc = self.mark_loc(self.pos - byte_length);
                 self.error(loc, ParseError::InvalidUnicode)
@@ -1399,8 +1421,11 @@ impl<'a> Lexer<'a> {
 
                 if let Some(char) = as_id_part(code_point) {
                     // Non-ASCII character is part of the identifier so bail to slow path, copying
-                    // over ASCII string and code point that has been created so far.
-                    let mut string_builder = String::from(&self.buf[start_pos..ascii_end_pos]);
+                    // over ASCII string and code point that has been created so far. Safe since
+                    // string is ASCII only so far and therefore valid UTF-8.
+                    let mut string_builder = unsafe {
+                        String::from_utf8_unchecked(self.buf[start_pos..ascii_end_pos].to_vec())
+                    };
                     string_builder.push(char);
 
                     return self.lex_identifier_non_ascii(start_pos, string_builder);
@@ -1412,12 +1437,14 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let id_string = &self.buf[start_pos..self.pos];
+        // Same since this slice is ASCII only and therefore valid UTF-8
+        let id_string =
+            unsafe { String::from_utf8_unchecked(self.buf[start_pos..self.pos].to_vec()) };
 
-        if let Some(keyword_token) = self.ascii_id_to_keyword(id_string) {
+        if let Some(keyword_token) = self.ascii_id_to_keyword(&id_string) {
             self.emit(keyword_token, start_pos)
         } else {
-            self.emit(Token::Identifier(String::from(id_string)), start_pos)
+            self.emit(Token::Identifier(id_string), start_pos)
         }
     }
 
@@ -1447,6 +1474,8 @@ impl<'a> Lexer<'a> {
                 } else {
                     break;
                 }
+            } else if self.current == EOF_CHAR {
+                break;
             } else {
                 // Otherwise must be a utf-8 encoded codepoint
                 let save_state = self.save();

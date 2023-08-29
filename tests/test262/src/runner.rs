@@ -18,6 +18,7 @@ use crate::{
 
 use brimstone::js::{
     self,
+    common::wtf_8::Wtf8String,
     runtime::{
         eval_module, eval_script, get, initialize_host_defined_realm, to_console_string, to_string,
         Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
@@ -265,7 +266,10 @@ fn parse_file(
     } else {
         // Manually insert use strict directive when forcing strict mode
         if force_strict_mode {
-            source.contents.insert_str(0, "\"use strict\";\n");
+            let mut source_with_directive = Wtf8String::from_str("\"use strict\";\n");
+            source_with_directive.push_wtf8_str(&source.contents);
+
+            source.contents = source_with_directive;
         }
 
         let source = Rc::new(source);

@@ -83,9 +83,9 @@ impl Test262Object {
             return type_error_(cx, "expected string");
         }
 
-        let source = Rc::new(Source::new_from_string(
+        let source = Rc::new(Source::new_from_wtf8_string(
             "<eval>",
-            String::from(script_text.as_string().to_string()),
+            script_text.as_string().to_wtf8_string(),
         ));
         let parse_result = parse_script(&source);
         let mut ast = match parse_result {

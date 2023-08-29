@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::js::common::unicode::{
-    code_point_from_surrogate_pair, decode_utf8_codepoint, is_ascii, is_high_surrogate_code_unit,
+    code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii, is_high_surrogate_code_unit,
     is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
 };
 
@@ -108,7 +108,7 @@ pub trait LexerStream {
 /// An input stream over a valid UTF-8 string.
 pub struct Utf8LexerStream<'a> {
     /// Buffer of bytes that are being parsed
-    buf: &'a str,
+    buf: &'a [u8],
     /// Location of the current byte in the buffer
     pos: Pos,
     /// Current byte or EOF_CHAR
@@ -120,11 +120,11 @@ pub struct Utf8LexerStream<'a> {
 }
 
 impl<'a> Utf8LexerStream<'a> {
-    pub fn new(buf_start_pos: Pos, source: Rc<Source>, buf: &'a str) -> Self {
+    pub fn new(buf_start_pos: Pos, source: Rc<Source>, buf: &'a [u8]) -> Self {
         let current = if buf.len() == 0 {
             EOF_CHAR
         } else {
-            buf.as_bytes()[0].into()
+            buf[0].into()
         };
 
         Utf8LexerStream { buf, pos: 0, current, buf_start_pos, source }
@@ -132,7 +132,7 @@ impl<'a> Utf8LexerStream<'a> {
 
     #[inline]
     fn code_point_at(&self, index: usize) -> u32 {
-        self.buf.as_bytes()[index].into()
+        self.buf[index].into()
     }
 
     fn loc_from_start_pos(&self, start_pos: Pos) -> Loc {
@@ -201,7 +201,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
 
     #[inline]
     fn parse_unicode_codepoint(&mut self) -> ParseResult<u32> {
-        // Must check if we are at end of buffer as decode_utf8_codepoint assumes we are not
+        // Must check if we are at end of buffer as decode_wtf8_codepoint assumes we are not
         if self.current == EOF_CHAR {
             return self.error(self.pos(), ParseError::UnexpectedRegExpEnd);
         }
@@ -211,8 +211,8 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
             self.advance_n(1);
             Ok(current)
         } else {
-            let buf = &self.buf.as_bytes()[self.pos..];
-            match decode_utf8_codepoint(buf) {
+            let buf = &self.buf[self.pos..];
+            match decode_wtf8_codepoint(buf) {
                 Ok((code_point, byte_length)) => {
                     self.advance_n(byte_length);
                     Ok(code_point as u32)

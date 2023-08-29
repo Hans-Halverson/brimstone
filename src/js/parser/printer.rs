@@ -570,7 +570,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_literal(&mut self, lit: &RegExpLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("raw", &lit.raw, Printer::print_string);
+        self.property("raw", &lit.raw, Printer::print_wtf8_string);
         self.property("value", lit, Printer::print_regex_value);
         self.property("regexp", &lit.regexp, Printer::print_regexp);
         self.end_node();
@@ -580,8 +580,8 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("pattern", &lit.pattern, Printer::print_string);
-        self.property("flags", &lit.flags, Printer::print_string);
+        self.property("pattern", &lit.pattern, Printer::print_wtf8_string);
+        self.property("flags", &lit.flags, Printer::print_wtf8_string);
 
         self.dec_indent();
         self.indent();
@@ -899,7 +899,7 @@ impl<'a> Printer<'a> {
         self.inc_indent();
 
         self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_string);
-        self.property("raw", &element.raw, Printer::print_string);
+        self.property("raw", &element.raw, Printer::print_wtf8_string);
 
         self.dec_indent();
         self.indent();

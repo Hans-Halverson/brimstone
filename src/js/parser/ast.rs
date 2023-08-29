@@ -648,9 +648,9 @@ pub struct BigIntLiteral {
 
 pub struct RegExpLiteral {
     pub loc: Loc,
-    pub raw: String,
-    pub pattern: String,
-    pub flags: String,
+    pub raw: Wtf8String,
+    pub pattern: Wtf8String,
+    pub flags: Wtf8String,
     pub regexp: RegExp,
 }
 
@@ -886,7 +886,7 @@ pub struct TemplateLiteral {
 
 pub struct TemplateElement {
     pub loc: Loc,
-    pub raw: String,
+    pub raw: Wtf8String,
     pub cooked: Option<Wtf8String>,
 }
 

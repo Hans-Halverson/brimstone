@@ -356,19 +356,6 @@ pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
     }
 }
 
-/// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
-/// current byte is in-bounds and is not ASCII meaning it is the start of a UTF-8 byte sequence.
-///
-/// Returns the codepoint as well as its length in bytes. If no valid codepoint could be parsed,
-/// return an error with the length of the invalid bytes.
-pub fn decode_utf8_codepoint(buf: &[u8]) -> Result<(char, usize), usize> {
-    let (code_point, byte_length) = decode_wtf8_codepoint(buf)?;
-    match char::from_u32(code_point) {
-        Some(char) => Ok((char, byte_length)),
-        None => Err(byte_length),
-    }
-}
-
 pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {
     if let Some(char) = char::from_u32(code_point) {
         return String::from(char);

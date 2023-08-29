@@ -2,12 +2,14 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+use crate::js::common::wtf_8::Wtf8String;
+
 use super::loc::calculate_line_offsets;
 use super::parse_error::ParseResult;
 
 pub struct Source {
     pub file_path: String,
-    pub contents: String,
+    pub contents: Wtf8String,
     line_offsets: RefCell<Option<Vec<usize>>>,
 }
 
@@ -20,10 +22,12 @@ impl Source {
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
 
-        Ok(Source::new_from_string(file_path, contents))
+        let wtf8_contents = Wtf8String::from_string(contents);
+
+        Ok(Source::new_from_wtf8_string(file_path, wtf8_contents))
     }
 
-    pub fn new_from_string(file_path: &str, contents: String) -> Source {
+    pub fn new_from_wtf8_string(file_path: &str, contents: Wtf8String) -> Source {
         Source {
             file_path: file_path.to_owned(),
             contents,
@@ -36,7 +40,7 @@ impl Source {
             match *(self.line_offsets.as_ptr()) {
                 Some(_) => (),
                 None => {
-                    let offsets = calculate_line_offsets(&self.contents);
+                    let offsets = calculate_line_offsets(self.contents.as_bytes());
                     self.line_offsets.replace(Some(offsets));
                 }
             }

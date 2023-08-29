@@ -2,6 +2,7 @@ use std::{collections::HashSet, rc::Rc};
 
 use crate::{
     js::{
+        common::wtf_8::Wtf8String,
         parser::{
             analyze::analyze_function_for_function_constructor,
             ast::{self, LexDecl, VarDecl, WithDecls},
@@ -536,31 +537,52 @@ pub fn create_dynamic_function(
     let arg_count = args.len();
 
     // Construct text for params, body, and entire function
-    let mut params_string = String::new();
+    let mut params_string = Wtf8String::new();
 
     let body_arg = if arg_count == 0 {
         cx.names.empty_string().as_string().into()
     } else if arg_count == 1 {
         args[0]
     } else {
-        params_string.push_str(&maybe!(to_string(cx, args[0])).to_string());
+        params_string.push_wtf8_str(&maybe!(to_string(cx, args[0])).to_wtf8_string());
 
         for arg in &args[1..(args.len() - 1)] {
-            params_string.push(',');
-            params_string.push_str(&maybe!(to_string(cx, *arg)).to_string());
+            params_string.push_char(',');
+            params_string.push_wtf8_str(&maybe!(to_string(cx, *arg)).to_wtf8_string());
         }
 
         args[args.len() - 1]
     };
 
+    // Build the body string
     let body_string = maybe!(to_string(cx, body_arg));
-    let body_string = format!("\n{}\n", body_string);
+    let body_string = {
+        let mut builder = Wtf8String::new();
 
-    let source_string = format!("{} anonymous({}\n) {{{}}}", prefix, params_string, body_string);
+        builder.push_char('\n');
+        builder.push_wtf8_str(&body_string.to_wtf8_string());
+        builder.push_char('\n');
+
+        builder
+    };
+
+    // Build the full source string
+    let source_string = {
+        let mut builder = Wtf8String::new();
+
+        builder.push_str(prefix);
+        builder.push_str(" anonymous(");
+        builder.push_wtf8_str(&params_string);
+        builder.push_str("\n) {");
+        builder.push_wtf8_str(&body_string);
+        builder.push_str("}");
+
+        builder
+    };
 
     // Make sure that parameter list and body are valid by themselves. Only need to check that they
     // parse correctly, full analysis will be performed on entire function text.
-    let params_source = Source::new_from_string("", params_string);
+    let params_source = Source::new_from_wtf8_string("", params_string);
     if let Err(err) = parse_function_params_for_function_constructor(
         &Rc::new(params_source),
         is_async,
@@ -569,7 +591,7 @@ pub fn create_dynamic_function(
         return syntax_error_(cx, &format!("could not parse function parameters: {}", err));
     }
 
-    let body_source = Source::new_from_string("", body_string);
+    let body_source = Source::new_from_wtf8_string("", body_string);
     if let Err(err) =
         parse_function_body_for_function_constructor(&Rc::new(body_source), is_async, is_generator)
     {
@@ -577,7 +599,7 @@ pub fn create_dynamic_function(
     }
 
     // Parse and analyze entire function
-    let full_source = Rc::new(Source::new_from_string("", source_string));
+    let full_source = Rc::new(Source::new_from_wtf8_string("", source_string));
     let mut func_node = match parse_function_for_function_constructor(&full_source) {
         Ok(func_node) => func_node,
         Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),

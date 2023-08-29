@@ -80,7 +80,7 @@ impl RegExpObject {
         lit: &ast::RegExpLiteral,
     ) -> EvalResult<Handle<RegExpObject>> {
         // Can use source directly as "escaped" pattern source since
-        let source = InternedStrings::get_str(cx, &lit.pattern);
+        let source = InternedStrings::get_wtf8_str(cx, &lit.pattern);
         let compiled_regexp = compile_regexp(cx, &lit.regexp);
 
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);

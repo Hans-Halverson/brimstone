@@ -18,15 +18,19 @@ impl Loc {
 }
 
 /// Calculate the byte offsets of the start of each line.
-pub fn calculate_line_offsets(source: &str) -> Vec<usize> {
+pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
     let mut line_offsets = vec![0];
 
     let mut pos = 0;
 
     loop {
-        match source[pos..].find('\n') {
+        match source[pos..]
+            .iter()
+            .enumerate()
+            .find(|(_, byte)| **byte == b'\n')
+        {
             None => break,
-            Some(newline_offset) => {
+            Some((newline_offset, _)) => {
                 pos += newline_offset + 1;
                 line_offsets.push(pos);
             }

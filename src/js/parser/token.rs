@@ -13,12 +13,12 @@ pub enum Token {
     StringLiteral(Wtf8String),
     BigIntLiteral(BigInt),
     RegExpLiteral {
-        raw: String,
-        pattern: String,
-        flags: String,
+        raw: Wtf8String,
+        pattern: Wtf8String,
+        flags: Wtf8String,
     },
     TemplatePart {
-        raw: String,
+        raw: Wtf8String,
         // Either a successful string, or a malformed escape sequence error at the given loc
         cooked: Result<Wtf8String, Loc>,
         is_head: bool,

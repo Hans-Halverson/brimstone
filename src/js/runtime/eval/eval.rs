@@ -85,7 +85,7 @@ pub fn perform_eval(
     };
 
     // Parse source code
-    let source = Rc::new(Source::new_from_string("<eval>", code.to_string()));
+    let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
     let parse_result = parse_script_for_eval(&source, is_strict_caller);
     let mut ast = match parse_result {
         Ok(ast) => ast,

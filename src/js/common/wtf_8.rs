@@ -16,8 +16,18 @@ impl Wtf8String {
     }
 
     #[inline]
+    pub fn from_string(string: String) -> Self {
+        Wtf8String { buf: string.into_bytes() }
+    }
+
+    #[inline]
     pub fn from_str(string: &str) -> Self {
-        Wtf8String { buf: string.as_bytes().to_vec() }
+        Self::from_bytes_unchecked(string.as_bytes())
+    }
+
+    #[inline]
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        Wtf8String { buf: bytes.to_vec() }
     }
 
     #[inline]
@@ -57,12 +67,17 @@ impl Wtf8String {
 
     #[inline]
     pub fn push_str(&mut self, string: &str) {
-        self.buf.extend_from_slice(string.as_bytes());
+        self.push_bytes_unchecked(string.as_bytes())
     }
 
     #[inline]
     pub fn push_wtf8_str(&mut self, string: &Wtf8String) {
-        self.buf.extend_from_slice(string.as_bytes());
+        self.push_bytes_unchecked(string.as_bytes())
+    }
+
+    #[inline]
+    pub fn push_bytes_unchecked(&mut self, bytes: &[u8]) {
+        self.buf.extend_from_slice(bytes);
     }
 
     #[inline]

@@ -20,7 +20,7 @@ use crate::{
             regexp::matcher::run_matcher,
             string_value::StringValue,
             to_string,
-            type_utilities::{is_callable, same_object_value, to_boolean, to_length},
+            type_utilities::{is_callable, same_object_value, same_value, to_boolean, to_length},
             Context, Handle, PropertyKey, Value,
         },
     },
@@ -47,6 +47,7 @@ impl RegExpPrototype {
         object.intrinsic_func(cx, cx.well_known_symbols.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.match_all(), Self::match_all, 1, realm);
         object.intrinsic_getter(cx, cx.names.multiline(), Self::multiline, realm);
+        object.intrinsic_func(cx, cx.well_known_symbols.search(), Self::search, 1, realm);
         object.intrinsic_getter(cx, cx.names.source(), Self::source, realm);
         object.intrinsic_getter(cx, cx.names.sticky(), Self::sticky, realm);
         object.intrinsic_func(cx, cx.names.test(), Self::test, 1, realm);
@@ -315,6 +316,45 @@ impl RegExpPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE)
+    }
+
+    // 22.2.6.12 RegExp.prototype [ @@search ]
+    fn search(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error_(cx, "RegExpr.prototype[@@search] must be called on object");
+        }
+
+        let regexp_object = this_value.as_object();
+
+        let string_arg = get_argument(cx, arguments, 0);
+        let string_value = maybe!(to_string(cx, string_arg));
+
+        // Save original last index, resetting to zero for search
+        let previous_last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+        if !previous_last_index.is_positive_zero() {
+            let zero_value = Value::from(0).to_handle(cx);
+            maybe!(set(cx, regexp_object, cx.names.last_index(), zero_value, true));
+        }
+
+        // Perform RegExp search
+        let result = maybe!(regexp_exec(cx, regexp_object, string_value));
+
+        // Restore original last index
+        let current_last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+        if !same_value(current_last_index, previous_last_index) {
+            maybe!(set(cx, regexp_object, cx.names.last_index(), previous_last_index, true));
+        }
+
+        if result.is_null() {
+            Value::from(-1).to_handle(cx).into()
+        } else {
+            get(cx, result.as_object(), cx.names.index())
+        }
     }
 
     // 22.2.6.13 get RegExp.prototype.source

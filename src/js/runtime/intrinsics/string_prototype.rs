@@ -68,6 +68,7 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm);
         object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm);
         object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
+        object.intrinsic_func(cx, cx.names.search(), Self::search, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
         object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm);
@@ -626,6 +627,37 @@ impl StringPrototype {
         }
 
         string.repeat(cx, n as u64).as_string().into()
+    }
+
+    // 22.1.3.21 String.prototype.search
+    fn search(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+
+        // Use the @@search method of the RegExp if one exists
+        let regexp_arg = get_argument(cx, arguments, 0);
+        if !regexp_arg.is_nullish() {
+            let searcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.search()));
+            if let Some(searcher) = searcher {
+                return call_object(cx, searcher, regexp_arg, &[object.into()]);
+            }
+        }
+
+        let string = maybe!(to_string(cx, object));
+
+        // Otherwise create a RegExp from input string and use its @@search method
+        let regexp_source = RegExpSource::PatternAndFlags(
+            regexp_arg,
+            FlagsSource::RegExpFlags(RegExpFlags::empty()),
+        );
+        let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
+        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
+
+        invoke(cx, regexp_object, cx.well_known_symbols.search(), &[string.into()])
     }
 
     // 22.1.3.22 String.prototype.slice

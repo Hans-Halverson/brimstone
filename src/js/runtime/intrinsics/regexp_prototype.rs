@@ -4,7 +4,8 @@ use crate::{
         parser::regexp::RegExpFlags,
         runtime::{
             abstract_operations::{
-                call, construct, create_data_property_or_throw, set, species_constructor,
+                call, construct, create_data_property_or_throw, length_of_array_like, set,
+                species_constructor,
             },
             array_object::{array_create, create_array_from_list},
             completion::EvalResult,
@@ -20,7 +21,9 @@ use crate::{
             regexp::matcher::run_matcher,
             string_value::StringValue,
             to_string,
-            type_utilities::{is_callable, same_object_value, same_value, to_boolean, to_length},
+            type_utilities::{
+                is_callable, same_object_value, same_value, to_boolean, to_length, to_uint32,
+            },
             Context, Handle, PropertyKey, Value,
         },
     },
@@ -49,6 +52,7 @@ impl RegExpPrototype {
         object.intrinsic_getter(cx, cx.names.multiline(), Self::multiline, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.search(), Self::search, 1, realm);
         object.intrinsic_getter(cx, cx.names.source(), Self::source, realm);
+        object.intrinsic_func(cx, cx.well_known_symbols.split(), Self::split, 2, realm);
         object.intrinsic_getter(cx, cx.names.sticky(), Self::sticky, realm);
         object.intrinsic_func(cx, cx.names.test(), Self::test, 1, realm);
         object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
@@ -380,6 +384,158 @@ impl RegExpPrototype {
         }
 
         type_error_(cx, "Expected a regular expression")
+    }
+
+    // 22.2.6.14 RegExp.prototype [ @@split ]
+    fn split(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let regexp_object = if this_value.is_object() {
+            this_value.as_object()
+        } else {
+            return type_error_(cx, "RegExpr.prototype[@@split] must be called on an object");
+        };
+
+        let string_arg = get_argument(cx, arguments, 0);
+        let string_value = maybe!(to_string(cx, string_arg));
+
+        let constructor =
+            maybe!(species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor));
+
+        // Get flags string, determining if a unicode or sticky flag is set
+        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
+        let mut flags_string = maybe!(to_string(cx, flags_string));
+
+        let mut is_unicode = false;
+        let mut is_sticky = false;
+        for code_point in flags_string.iter_code_points() {
+            if code_point == 'u' as u32 || code_point == 'v' as u32 {
+                is_unicode = true;
+            } else if code_point == 'y' as u32 {
+                is_sticky = true;
+            }
+        }
+
+        // Make sure the sticky flag is included in the flags string
+        if !is_sticky {
+            let y_string = InternedStrings::get_str(cx, "y");
+            flags_string = StringValue::concat(cx, flags_string, y_string);
+        }
+
+        let splitter =
+            maybe!(construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None));
+
+        let result_array: Handle<ObjectValue> = maybe!(array_create(cx, 0, None)).into();
+
+        // Calculate optional limit argument
+        let limit_arg = get_argument(cx, arguments, 1);
+        let limit = if limit_arg.is_undefined() {
+            u32::MAX
+        } else {
+            maybe!(to_uint32(cx, limit_arg))
+        };
+
+        if limit == 0 {
+            return result_array.into();
+        }
+
+        // Handle the empty string case
+        if string_value.is_empty() {
+            let exec_result = maybe!(regexp_exec(cx, splitter, string_value));
+            if !exec_result.is_null() {
+                return result_array.into();
+            }
+
+            let zero_key = PropertyKey::from_u8(0).to_handle(cx);
+            maybe!(create_data_property_or_throw(cx, result_array, zero_key, string_value.into()));
+        }
+
+        // Property keys are shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        let size = string_value.len() as u64;
+        let mut array_length = 0;
+        let mut p = 0;
+        let mut q = 0;
+
+        // Keep executing RegExp until there are no more matches or the entire string has been
+        // searched.
+        while q < size {
+            let q_value = Value::from(q).to_handle(cx);
+            maybe!(set(cx, splitter, cx.names.last_index(), q_value, true));
+
+            // Execute RegExp at current index, advancing to next index if there is no match
+            let exec_result = maybe!(regexp_exec(cx, splitter, string_value));
+
+            if exec_result.is_null() {
+                q = advance_string_index(string_value, q, is_unicode);
+            } else {
+                // Otherwise there was a match so determine end of match
+                let exec_result = exec_result.as_object();
+
+                let e = maybe!(get(cx, splitter, cx.names.last_index()));
+                let e = maybe!(to_length(cx, e));
+                let e = u64::min(e, size);
+
+                // If there was a match but it is empty then advance to next index
+                if e == p {
+                    q = advance_string_index(string_value, q, is_unicode);
+                } else {
+                    // Add portion of the string since the last match to the result array
+                    let match_slice = string_value
+                        .substring(cx, p as usize, q as usize)
+                        .as_string();
+
+                    key.replace(PropertyKey::array_index(cx, array_length));
+                    maybe!(create_data_property_or_throw(
+                        cx,
+                        result_array,
+                        key,
+                        match_slice.into()
+                    ));
+
+                    // Check if we have hit split limit
+                    array_length += 1;
+                    if array_length == limit {
+                        return result_array.into();
+                    }
+
+                    p = e;
+
+                    // Add capture groups to the result array
+                    let number_of_captures = maybe!(length_of_array_like(cx, exec_result));
+                    let number_of_captures = number_of_captures.saturating_sub(1);
+
+                    for i in 1..=number_of_captures {
+                        key.replace(PropertyKey::from_u64(cx, i));
+                        let next_capture = maybe!(get(cx, exec_result, key));
+
+                        key.replace(PropertyKey::array_index(cx, array_length));
+                        maybe!(create_data_property_or_throw(cx, result_array, key, next_capture));
+
+                        // Check if we have hit split limit
+                        array_length += 1;
+                        if array_length == limit {
+                            return result_array.into();
+                        }
+                    }
+
+                    q = p;
+                }
+            }
+        }
+
+        // Add remaining portion of the original string to the result array
+        let remaining_string = string_value
+            .substring(cx, p as usize, size as usize)
+            .as_string();
+        key.replace(PropertyKey::array_index(cx, array_length));
+        maybe!(create_data_property_or_throw(cx, result_array, key, remaining_string.into()));
+
+        result_array.into()
     }
 
     // 22.2.6.15 get RegExp.prototype.sticky

@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{
     js::{
         common::{
@@ -59,6 +61,7 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
         object.intrinsic_func(cx, cx.names.is_well_formed(), Self::is_well_formed, 0, realm);
         object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.locale_compare(), Self::locale_compare, 1, realm);
         object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
         object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm);
@@ -226,7 +229,7 @@ impl StringPrototype {
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
-        if search_value.is_object() && search_value.as_object().is_regexp_object() {
+        if maybe!(is_regexp(cx, search_value)) {
             return type_error_(cx, "first argument to startsWith cannot be a RegExp");
         }
 
@@ -366,6 +369,34 @@ impl StringPrototype {
             None => Value::smi(-1).to_handle(cx).into(),
             Some(index) => Value::from(index).to_handle(cx).into(),
         }
+    }
+
+    // 22.1.3.12 String.prototype.localeCompare
+    fn locale_compare(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+        let string = maybe!(to_string(cx, object));
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other_string = maybe!(to_string(cx, other_arg));
+
+        let wtf8_string = string.to_wtf8_string();
+        let wtf8_other_string = other_string.to_wtf8_string();
+        let comparison = ICU
+            .collator
+            .compare_utf8(wtf8_string.as_bytes(), wtf8_other_string.as_bytes());
+
+        let comparison_number = match comparison {
+            Ordering::Less => -1,
+            Ordering::Equal => 0,
+            Ordering::Greater => 1,
+        };
+
+        Value::smi(comparison_number).to_handle(cx).into()
     }
 
     // 22.1.3.13 String.prototype.match
@@ -755,7 +786,7 @@ impl StringPrototype {
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
-        if search_value.is_object() && search_value.as_object().is_regexp_object() {
+        if maybe!(is_regexp(cx, search_value)) {
             return type_error_(cx, "first argument to startsWith cannot be a RegExp");
         }
 

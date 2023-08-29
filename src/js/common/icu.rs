@@ -1,3 +1,5 @@
+use icu_collator::{Collator, CollatorOptions};
+use icu_locid::{locale, Locale};
 use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
 use icu_properties::{
     names::{PropertyValueNameToEnumMapper, PropertyValueNameToEnumMapperBorrowed},
@@ -6,15 +8,19 @@ use icu_properties::{
     sets::{self, CodePointSetData, CodePointSetDataBorrowed},
     GeneralCategoryGroup, Script,
 };
+use icu_provider_adapters::fallback::LocaleFallbackProvider;
 use once_cell::sync::Lazy;
 
 include!("../../../icu/data/mod.rs");
+
+const DEFAULT_LOCALE: Locale = locale!("en");
 
 pub struct ICU {
     pub general_categories: GeneralCategories,
     pub scripts: Scripts,
     pub properties: Properties,
     pub normalizers: Normalizers,
+    pub collator: Collator,
 }
 
 pub struct GeneralCategories {
@@ -335,6 +341,8 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
     static SCRIPT_NAMES: Lazy<PropertyValueNameToEnumMapper<Script>> =
         Lazy::new(|| Script::get_name_to_enum_mapper(&BakedDataProvider).unwrap());
 
+    let locale_provider = LocaleFallbackProvider::try_new_unstable(BakedDataProvider).unwrap();
+
     ICU {
         general_categories: GeneralCategories {
             other: OTHER_SET.as_borrowed(),
@@ -438,5 +446,11 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
             nfkc: ComposingNormalizer::try_new_nfkc_unstable(&BakedDataProvider).unwrap(),
             nfkd: DecomposingNormalizer::try_new_nfkd_unstable(&BakedDataProvider).unwrap(),
         },
+        collator: Collator::try_new_unstable(
+            &locale_provider,
+            &DataLocale::from(DEFAULT_LOCALE),
+            CollatorOptions::new(),
+        )
+        .unwrap(),
     }
 });

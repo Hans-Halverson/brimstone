@@ -260,6 +260,7 @@ builtin_names!(
     (last_index, "lastIndex"),
     (last_index_of, "lastIndexOf"),
     (length, "length"),
+    (locale_compare, "localeCompare"),
     (log, "log"),
     (log1p, "log1p"),
     (log10, "log10"),

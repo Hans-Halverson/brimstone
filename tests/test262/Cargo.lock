@@ -35,10 +35,13 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.1.0",
  "clap",
+ "icu_collator",
  "icu_collections",
+ "icu_locid",
  "icu_normalizer",
  "icu_properties",
  "icu_provider",
+ "icu_provider_adapters",
  "match_u32",
  "num-bigint",
  "once_cell",
@@ -169,6 +172,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "icu_collator"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "088882827079b243dc01883f92290dd3952b656faddc7a2972e6d3ab47e1fc7a"
+dependencies = [
+ "displaydoc",
+ "icu_collections",
+ "icu_locid",
+ "icu_normalizer",
+ "icu_properties",
+ "icu_provider",
+ "smallvec",
+ "utf16_iter",
+ "utf8_iter",
+ "zerovec",
+]
+
+[[package]]
 name = "icu_collections"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -190,6 +211,7 @@ dependencies = [
  "litemap",
  "tinystr",
  "writeable",
+ "zerovec",
 ]
 
 [[package]]
@@ -235,6 +257,19 @@ dependencies = [
  "writeable",
  "yoke",
  "zerofrom",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_provider_adapters"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4ae1e2bd0c41728b77e7c46e9afdec5e2127d1eedacc684724667d50c126bd3"
+dependencies = [
+ "icu_locid",
+ "icu_provider",
+ "tinystr",
+ "yoke",
  "zerovec",
 ]
 

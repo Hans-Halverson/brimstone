@@ -4,7 +4,10 @@ use crate::{
     js::{
         common::{
             icu::ICU,
-            unicode::{is_high_surrogate_code_unit, is_low_surrogate_code_unit, CodePoint},
+            unicode::{
+                is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit,
+                CodePoint,
+            },
             wtf_8::Wtf8String,
         },
         parser::regexp::RegExpFlags,
@@ -28,14 +31,14 @@ use crate::{
             string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
             to_string,
             type_utilities::{
-                is_regexp, require_object_coercible, to_integer_or_infinity, to_length, to_number,
-                to_uint32,
+                is_callable, is_regexp, require_object_coercible, to_integer_or_infinity,
+                to_length, to_number, to_uint32,
             },
             value::Value,
-            Context, Handle, HeapPtr,
+            Context, Handle, HeapPtr, PropertyKey,
         },
     },
-    maybe,
+    maybe, must,
 };
 
 use super::regexp_constructor::{FlagsSource, RegExpObject};
@@ -68,6 +71,8 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm);
         object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm);
         object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
+        object.intrinsic_func(cx, cx.names.replace(), Self::replace, 2, realm);
+        object.intrinsic_func(cx, cx.names.replace_all(), Self::replace_all, 2, realm);
         object.intrinsic_func(cx, cx.names.search(), Self::search, 1, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
         object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
@@ -629,6 +634,200 @@ impl StringPrototype {
         string.repeat(cx, n as u64).as_string().into()
     }
 
+    // 22.1.3.19 String.prototype.replace
+    fn replace(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+
+        let search_arg = get_argument(cx, arguments, 0);
+        let replace_arg = get_argument(cx, arguments, 1);
+
+        // Use the @@replace method of the argument if one exists
+        if !search_arg.is_nullish() {
+            let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
+            if let Some(replacer) = replacer {
+                return call_object(cx, replacer, search_arg, &[object.into(), replace_arg]);
+            }
+        }
+
+        let target_string = maybe!(to_string(cx, object));
+        let search_string = maybe!(to_string(cx, search_arg));
+
+        let replace_value = if is_callable(replace_arg) {
+            ReplaceValue::Function(replace_arg.as_object())
+        } else {
+            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+        };
+
+        // Find the first match of the search string in the target string
+        let matched_position = target_string.find(search_string, 0);
+        let matched_position = if let Some(matched_position) = matched_position {
+            matched_position
+        } else {
+            return target_string.into();
+        };
+
+        let replacement_string = match replace_value {
+            // If replace argument is a function, replacement is the result of calling that function
+            ReplaceValue::Function(replace_function) => {
+                let matched_position_value = Value::from(matched_position).to_handle(cx);
+                let replacement = maybe!(call_object(
+                    cx,
+                    replace_function,
+                    cx.undefined(),
+                    &[
+                        search_string.into(),
+                        matched_position_value,
+                        target_string.into()
+                    ]
+                ));
+
+                maybe!(to_string(cx, replacement))
+            }
+            // Otherwise replacement is the result of calling GetSubstitution
+            ReplaceValue::String(replace_string) => {
+                let substitution_template =
+                    SubstitutionTemplateParser::new(false).parse(cx, replace_string);
+                must!(substitution_template.get_substitution(
+                    cx,
+                    target_string,
+                    search_string,
+                    matched_position,
+                    &[],
+                    None
+                ))
+            }
+        };
+
+        // Replace the matched substring with the replacement string
+        let preceding_string = target_string.substring(cx, 0, matched_position).as_string();
+        let following_string = target_string
+            .substring(cx, matched_position + search_string.len(), target_string.len())
+            .as_string();
+
+        StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string])
+            .into()
+    }
+
+    // 22.1.3.20 String.prototype.replaceAll
+    fn replace_all(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let object = maybe!(require_object_coercible(cx, this_value));
+
+        let search_arg = get_argument(cx, arguments, 0);
+        let replace_arg = get_argument(cx, arguments, 1);
+
+        // Use the @@replace method of the argument if one exists
+        if !search_arg.is_nullish() {
+            // If search argument is a RegExp, check that it has the global flag
+            if maybe!(is_regexp(cx, search_arg)) {
+                let search_regexp = search_arg.as_object();
+                let flags_value = maybe!(get(cx, search_regexp, cx.names.flags()));
+
+                maybe!(require_object_coercible(cx, flags_value));
+
+                let flags_string = maybe!(to_string(cx, flags_value));
+
+                if !flags_string_contains(flags_string, 'g' as u32) {
+                    return type_error_(
+                        cx,
+                        "String.prototype.replaceAll expects RegExp with global flag",
+                    );
+                }
+            }
+
+            let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
+            if let Some(replacer) = replacer {
+                return call_object(cx, replacer, search_arg, &[object.into(), replace_arg]);
+            }
+        }
+
+        let target_string = maybe!(to_string(cx, object));
+        let search_string = maybe!(to_string(cx, search_arg));
+
+        let replace_value = if is_callable(replace_arg) {
+            ReplaceValue::Function(replace_arg.as_object())
+        } else {
+            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+        };
+
+        // Collect positions of all matches of the search string in the target string
+        let mut matched_positions = vec![];
+        let advance_by = usize::max(1, search_string.len());
+
+        let mut matched_position = target_string.find(search_string, 0);
+        while let Some(position) = matched_position {
+            matched_positions.push(position);
+            matched_position = target_string.find(search_string, position + advance_by);
+        }
+
+        let mut string_parts = vec![];
+        let mut end_of_last_match = 0;
+
+        for matched_position in matched_positions {
+            // Add the unchanged substring between the last match and this match
+            let preserved_substring = target_string
+                .substring(cx, end_of_last_match, matched_position)
+                .as_string();
+            string_parts.push(preserved_substring);
+
+            // Calculate the replacement string and add it
+            let replacement_string = match replace_value {
+                // If replace argument is a function, replacement is the result of calling that function
+                ReplaceValue::Function(replace_function) => {
+                    let matched_position_value = Value::from(matched_position).to_handle(cx);
+                    let replacement = maybe!(call_object(
+                        cx,
+                        replace_function,
+                        cx.undefined(),
+                        &[
+                            search_string.into(),
+                            matched_position_value,
+                            target_string.into()
+                        ]
+                    ));
+
+                    maybe!(to_string(cx, replacement))
+                }
+                // Otherwise replacement is the result of calling GetSubstitution
+                ReplaceValue::String(replace_string) => {
+                    let substitution_template =
+                        SubstitutionTemplateParser::new(false).parse(cx, replace_string);
+                    must!(substitution_template.get_substitution(
+                        cx,
+                        target_string,
+                        search_string,
+                        matched_position,
+                        &[],
+                        None
+                    ))
+                }
+            };
+
+            string_parts.push(replacement_string);
+
+            end_of_last_match = matched_position + search_string.len();
+        }
+
+        // Add the unchanged substring after the last match
+        if end_of_last_match < target_string.len() {
+            let preserved_substring = target_string
+                .substring(cx, end_of_last_match, target_string.len())
+                .as_string();
+            string_parts.push(preserved_substring);
+        }
+
+        StringValue::concat_all(cx, &string_parts).into()
+    }
+
     // 22.1.3.21 String.prototype.search
     fn search(
         cx: Context,
@@ -638,7 +837,7 @@ impl StringPrototype {
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(require_object_coercible(cx, this_value));
 
-        // Use the @@search method of the RegExp if one exists
+        // Use the @@search method of the argument if one exists
         let regexp_arg = get_argument(cx, arguments, 0);
         if !regexp_arg.is_nullish() {
             let searcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.search()));
@@ -1154,4 +1353,246 @@ fn normalize_string<I: Iterator<Item = char>>(
     FlatString::from_wtf8(cx, normalized_string.as_bytes())
         .as_string()
         .to_handle()
+}
+
+/// Replace argument may be either a function or string
+pub enum ReplaceValue {
+    Function(Handle<ObjectValue>),
+    String(Handle<StringValue>),
+}
+
+pub struct SubstitutionTemplate {
+    template: Handle<FlatString>,
+    parts: Vec<SubstitutionPart>,
+}
+
+enum SubstitutionPart {
+    /// A range of characters from the original string, [start, end)
+    Range(usize, usize),
+    /// The matched substring
+    Match,
+    /// The portion of the string before the match
+    BeforeMatch,
+    /// The portion of the string after the match
+    AfterMatch,
+    /// The indexed capture group with the given index. Also includes the [start, end) range of the
+    /// full $NN portion of the original string.
+    IndexedCapture(u8, usize, usize),
+    /// The named capture group with the given name
+    NamedCapture(Handle<StringValue>),
+}
+
+pub struct SubstitutionTemplateParser {
+    parts: Vec<SubstitutionPart>,
+    /// Current index in the string
+    pos: usize,
+    /// Start of the current range of literal characters
+    current_range_start: usize,
+    /// Whether to allow named captures
+    allow_named_captures: bool,
+}
+
+impl SubstitutionTemplateParser {
+    pub fn new(allow_named_captures: bool) -> Self {
+        Self {
+            parts: vec![],
+            pos: 0,
+            current_range_start: 0,
+            allow_named_captures,
+        }
+    }
+
+    fn flush_range_and_skip(&mut self, skip_length: usize) {
+        if self.pos > self.current_range_start {
+            self.parts
+                .push(SubstitutionPart::Range(self.current_range_start, self.pos));
+        }
+
+        self.pos += skip_length;
+        self.current_range_start = self.pos;
+    }
+
+    // 22.1.3.19.1 GetSubstitution - precomputed portions
+    pub fn parse(mut self, cx: Context, template: Handle<StringValue>) -> SubstitutionTemplate {
+        let template = template.flatten();
+        let template_length = template.len();
+
+        while self.pos < template_length {
+            // The start of a substitution
+            if template.code_unit_at(self.pos) == b'$' as u16 {
+                // Check if we are already at the end of the template, in which case `$` is a literal
+                if self.pos + 1 == template_length {
+                    self.pos += 1;
+                    continue;
+                }
+
+                let next_code_unit = template.code_unit_at(self.pos + 1);
+                if next_code_unit == '$' as u16 {
+                    // Escaped `$` is represented as a range of length 1 pointing to the `$`
+                    let dollar_sign_pos = self.pos + 1;
+                    self.flush_range_and_skip(2);
+                    self.parts
+                        .push(SubstitutionPart::Range(dollar_sign_pos, dollar_sign_pos + 1));
+                } else if next_code_unit == '`' as u16 {
+                    self.flush_range_and_skip(2);
+                    self.parts.push(SubstitutionPart::BeforeMatch);
+                } else if next_code_unit == '&' as u16 {
+                    self.flush_range_and_skip(2);
+                    self.parts.push(SubstitutionPart::Match);
+                } else if next_code_unit == '\'' as u16 {
+                    self.flush_range_and_skip(2);
+                    self.parts.push(SubstitutionPart::AfterMatch);
+                } else if is_decimal_digit(next_code_unit as u32) {
+                    // Must be an indexed capture group
+                    let start = self.pos;
+
+                    let mut capture_index = next_code_unit as u8 - b'0';
+                    let mut skip_length = 2;
+
+                    // Check if the capture index is two digits
+                    if self.pos + 2 < template_length {
+                        let next_code_unit = template.code_unit_at(self.pos + 2);
+                        if is_decimal_digit(next_code_unit as u32) {
+                            capture_index = capture_index * 10 + (next_code_unit as u8 - b'0');
+                            skip_length = 3;
+                        }
+                    }
+
+                    // `$0` or `$00` are interpreted as literals
+                    if capture_index == 0 {
+                        self.pos += 1;
+                        continue;
+                    }
+
+                    self.flush_range_and_skip(skip_length);
+                    self.parts.push(SubstitutionPart::IndexedCapture(
+                        capture_index,
+                        start,
+                        self.pos,
+                    ));
+                } else if next_code_unit == '<' as u16 && self.allow_named_captures {
+                    // Find the closing `>` for the capture name
+                    let mut name_end_pos = self.pos + 2;
+                    while name_end_pos < template_length
+                        && template.code_unit_at(name_end_pos) != '>' as u16
+                    {
+                        name_end_pos += 1;
+                    }
+
+                    // Did not find closing `>` so `$<` is a literal
+                    if name_end_pos == template_length {
+                        self.pos += 2;
+                        continue;
+                    }
+
+                    // Must be a named capture group, so extract name
+                    let name = template
+                        .substring(cx, self.pos + 2, name_end_pos)
+                        .as_string();
+
+                    self.flush_range_and_skip(name_end_pos - self.pos + 1);
+                    self.parts.push(SubstitutionPart::NamedCapture(name));
+                } else {
+                    // Otherwise was a `$` literal
+                    self.pos += 1;
+                }
+            } else {
+                self.pos += 1;
+            }
+        }
+
+        self.flush_range_and_skip(0);
+
+        SubstitutionTemplate { parts: self.parts, template }
+    }
+}
+
+impl SubstitutionTemplate {
+    // 22.1.3.19.1 GetSubstitution
+    pub fn get_substitution(
+        &self,
+        cx: Context,
+        target_string: Handle<StringValue>,
+        matched_string: Handle<StringValue>,
+        matched_position: usize,
+        indexed_captures: &[Option<Handle<StringValue>>],
+        named_captures: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<StringValue>> {
+        let mut string_parts = vec![];
+
+        for template_part in &self.parts {
+            match template_part {
+                SubstitutionPart::Range(start, end) => {
+                    let substring = self.template.substring(cx, *start, *end).as_string();
+                    string_parts.push(substring);
+                }
+                SubstitutionPart::Match => {
+                    string_parts.push(matched_string);
+                }
+                SubstitutionPart::BeforeMatch => {
+                    let substring = target_string.substring(cx, 0, matched_position).as_string();
+                    string_parts.push(substring);
+                }
+                SubstitutionPart::AfterMatch => {
+                    let target_string_length = target_string.len();
+                    let after_match_pos =
+                        usize::min(matched_position + matched_string.len(), target_string_length);
+
+                    let substring = target_string
+                        .substring(cx, after_match_pos, target_string_length)
+                        .as_string();
+                    string_parts.push(substring);
+                }
+                SubstitutionPart::IndexedCapture(index, start, end) => {
+                    let index = *index as usize;
+
+                    // Only use capture group if index is in range
+                    if index <= indexed_captures.len() {
+                        if let Some(captured_string) = indexed_captures.get(index - 1).unwrap() {
+                            string_parts.push(*captured_string);
+                        }
+
+                        continue;
+                    }
+
+                    // If index is multiple digits, check if only the first digit is in range
+                    if index >= 11 {
+                        let first_digit_index = index / 10;
+                        if first_digit_index <= indexed_captures.len() {
+                            if let Some(captured_string) =
+                                indexed_captures.get(first_digit_index - 1).unwrap()
+                            {
+                                string_parts.push(*captured_string);
+
+                                // Append second digit as a literal
+                                let second_digit_char = (index % 10) as u32 + '0' as u32;
+                                let second_digit_string =
+                                    FlatString::from_code_point(cx, second_digit_char);
+                                string_parts.push(second_digit_string.as_string().to_handle())
+                            }
+
+                            continue;
+                        }
+                    }
+
+                    // Otherwise treat as a literal
+                    let substring = self.template.substring(cx, *start, *end).as_string();
+                    string_parts.push(substring);
+                }
+                SubstitutionPart::NamedCapture(name) => {
+                    if let Some(named_captures) = named_captures {
+                        let key = PropertyKey::string(cx, *name).to_handle(cx);
+                        let captured_string = maybe!(get(cx, named_captures, key));
+
+                        if !captured_string.is_undefined() {
+                            let captured_string = maybe!(to_string(cx, captured_string));
+                            string_parts.push(captured_string);
+                        }
+                    }
+                }
+            }
+        }
+
+        StringValue::concat_all(cx, &string_parts).into()
+    }
 }

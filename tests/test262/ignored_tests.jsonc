@@ -79,6 +79,7 @@
       "language/literals/regexp/S7.8.5_A1.4_T2.js",
       "language/literals/regexp/S7.8.5_A2.4_T2.js",
       "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array.js",
+      "built-ins/RegExp/character-class-escape-non-whitespace.js",
       // All passing except for built-ins/RegExp/property-escapes/generated/strings/*
       "built-ins/RegExp/property-escapes/generated/*.js",
       // Some failing

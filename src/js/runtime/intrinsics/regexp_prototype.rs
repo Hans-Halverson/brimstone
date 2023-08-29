@@ -4,8 +4,8 @@ use crate::{
         parser::regexp::RegExpFlags,
         runtime::{
             abstract_operations::{
-                call, construct, create_data_property_or_throw, length_of_array_like, set,
-                species_constructor,
+                call, call_object, construct, create_data_property_or_throw, length_of_array_like,
+                set, species_constructor,
             },
             array_object::{array_create, create_array_from_list},
             completion::EvalResult,
@@ -13,7 +13,10 @@ use crate::{
             function::get_argument,
             get,
             interned_strings::InternedStrings,
-            intrinsics::regexp_string_iterator::RegExpStringIterator,
+            intrinsics::{
+                regexp_string_iterator::RegExpStringIterator,
+                string_prototype::SubstitutionTemplateParser,
+            },
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_with_optional_proto,
@@ -22,7 +25,8 @@ use crate::{
             string_value::StringValue,
             to_string,
             type_utilities::{
-                is_callable, same_object_value, same_value, to_boolean, to_length, to_uint32,
+                is_callable, same_object_value, same_value, to_boolean, to_integer_or_infinity,
+                to_length, to_object, to_uint32,
             },
             Context, Handle, PropertyKey, Value,
         },
@@ -30,7 +34,9 @@ use crate::{
     maybe, must,
 };
 
-use super::{intrinsics::Intrinsic, regexp_constructor::RegExpObject};
+use super::{
+    intrinsics::Intrinsic, regexp_constructor::RegExpObject, string_prototype::ReplaceValue,
+};
 
 pub struct RegExpPrototype;
 
@@ -50,6 +56,7 @@ impl RegExpPrototype {
         object.intrinsic_func(cx, cx.well_known_symbols.match_(), Self::match_, 1, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.match_all(), Self::match_all, 1, realm);
         object.intrinsic_getter(cx, cx.names.multiline(), Self::multiline, realm);
+        object.intrinsic_func(cx, cx.well_known_symbols.replace(), Self::replace, 2, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.search(), Self::search, 1, realm);
         object.intrinsic_getter(cx, cx.names.source(), Self::source, realm);
         object.intrinsic_func(cx, cx.well_known_symbols.split(), Self::split, 2, realm);
@@ -320,6 +327,197 @@ impl RegExpPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE)
+    }
+
+    // 22.2.6.11 RegExp.prototype [ @@replace ]
+    fn replace(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error_(cx, "RegExpr.prototype[@@replace] must be called on object");
+        }
+
+        let regexp_object = this_value.as_object();
+
+        let target_string_arg = get_argument(cx, arguments, 0);
+        let target_string = maybe!(to_string(cx, target_string_arg));
+
+        let replace_arg = get_argument(cx, arguments, 1);
+        let replace_value = if is_callable(replace_arg) {
+            ReplaceValue::Function(replace_arg.as_object())
+        } else {
+            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+        };
+
+        // Get flags string, determining if RegExp is unicode or global
+        let flags_value = maybe!(get(cx, regexp_object, cx.names.flags()));
+        let flags_string = maybe!(to_string(cx, flags_value));
+
+        let mut is_unicode = false;
+        let mut is_global = false;
+        for code_point in flags_string.iter_code_points() {
+            if code_point == 'u' as u32 || code_point == 'v' as u32 {
+                is_unicode = true;
+            } else if code_point == 'g' as u32 {
+                is_global = true;
+            }
+        }
+
+        if is_global {
+            let zero_value = Value::from(0).to_handle(cx);
+            maybe!(set(cx, regexp_object, cx.names.last_index(), zero_value, true));
+        }
+
+        // Key is shared between iterations
+        let mut key = PropertyKey::uninit().to_handle(cx);
+
+        let mut exec_results = vec![];
+
+        loop {
+            // Search target string, finding all matches if global
+            let exec_result = maybe!(regexp_exec(cx, regexp_object, target_string.into()));
+            if exec_result.is_null() {
+                break;
+            }
+
+            let exec_result = exec_result.as_object();
+
+            if !is_global {
+                exec_results.push(exec_result);
+                break;
+            }
+
+            // Extract matched string
+            key.replace(PropertyKey::array_index(cx, 0));
+            let matched_value = maybe!(get(cx, exec_result, key));
+            let matched_string = maybe!(to_string(cx, matched_value));
+
+            exec_results.push(exec_result);
+
+            // If matched string is empty then increment last index
+            if matched_string.is_empty() {
+                let this_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+                let this_index = maybe!(to_length(cx, this_index));
+
+                let next_index = advance_string_index(target_string, this_index, is_unicode);
+                let next_index_value = Value::from(next_index).to_handle(cx);
+                maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
+            }
+        }
+
+        let mut string_parts = vec![];
+        let mut next_source_position = 0;
+
+        // Cached substitution template
+        let mut substitution_template = None;
+
+        for exec_result in exec_results {
+            let result_length = maybe!(length_of_array_like(cx, exec_result));
+            let num_captures = result_length.saturating_sub(1);
+
+            // Extract the matched string
+            key.replace(PropertyKey::array_index(cx, 0));
+            let matched_value = maybe!(get(cx, exec_result, key));
+            let matched_string = maybe!(to_string(cx, matched_value));
+
+            // Extract the position of the matched string
+            let matched_position = maybe!(get(cx, exec_result, cx.names.index()));
+            let matched_position = maybe!(to_integer_or_infinity(cx, matched_position));
+            let matched_position =
+                f64::clamp(matched_position, 0.0, target_string.len() as f64) as usize;
+
+            // Collect all captures by their capture index
+            let mut indexed_captures = vec![];
+            for i in 1..=num_captures {
+                key.replace(PropertyKey::from_u64(cx, i));
+                let capture_value = maybe!(get(cx, exec_result, key));
+                if capture_value.is_undefined() {
+                    indexed_captures.push(None);
+                } else {
+                    let capture_string = maybe!(to_string(cx, capture_value));
+                    indexed_captures.push(Some(capture_string));
+                }
+            }
+
+            let named_captures = maybe!(get(cx, exec_result, cx.names.groups()));
+
+            let replacement_string = match replace_value {
+                ReplaceValue::Function(replacer_function) => {
+                    // Construct arguments for replacer function
+                    let mut replacer_args = vec![];
+                    replacer_args.push(matched_string.into());
+                    replacer_args.extend(indexed_captures.into_iter().map(|capture| {
+                        if let Some(capture) = capture {
+                            capture.into()
+                        } else {
+                            cx.undefined()
+                        }
+                    }));
+                    replacer_args.push(Value::from(matched_position).to_handle(cx));
+                    replacer_args.push(target_string.into());
+
+                    if !named_captures.is_undefined() {
+                        replacer_args.push(named_captures);
+                    }
+
+                    // Call replacer function and return string
+                    let replacement_value =
+                        maybe!(call_object(cx, replacer_function, cx.undefined(), &replacer_args));
+
+                    maybe!(to_string(cx, replacement_value))
+                }
+                ReplaceValue::String(replace_string) => {
+                    let named_captures = if named_captures.is_undefined() {
+                        None
+                    } else {
+                        Some(maybe!(to_object(cx, named_captures)))
+                    };
+
+                    // Cache substitution template since it does not change between matches
+                    if substitution_template.is_none() {
+                        let new_template =
+                            SubstitutionTemplateParser::new(named_captures.is_some())
+                                .parse(cx, replace_string);
+                        substitution_template = Some(new_template);
+                    }
+
+                    // Apply substitution template
+                    maybe!(substitution_template.as_ref().unwrap().get_substitution(
+                        cx,
+                        target_string,
+                        matched_string,
+                        matched_position,
+                        &indexed_captures,
+                        named_captures
+                    ))
+                }
+            };
+
+            // Add unchanged part between matches, then replacement for match
+            if matched_position >= next_source_position {
+                let unchanged_part = target_string
+                    .substring(cx, next_source_position, matched_position)
+                    .as_string();
+
+                string_parts.push(unchanged_part);
+                string_parts.push(replacement_string);
+
+                next_source_position = matched_position + matched_string.len();
+            }
+        }
+
+        // Add remaining portion of string
+        if next_source_position < target_string.len() {
+            let remaining_string = target_string
+                .substring(cx, next_source_position, target_string.len())
+                .as_string();
+            string_parts.push(remaining_string);
+        }
+
+        StringValue::concat_all(cx, &string_parts).into()
     }
 
     // 22.2.6.12 RegExp.prototype [ @@search ]

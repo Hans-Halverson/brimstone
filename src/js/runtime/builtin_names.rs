@@ -303,6 +303,7 @@ builtin_names!(
     (register, "register"),
     (repeat, "repeat"),
     (replace, "replace"),
+    (replace_all, "replaceAll"),
     (return_, "return"),
     (reverse, "reverse"),
     (revocable, "revocable"),

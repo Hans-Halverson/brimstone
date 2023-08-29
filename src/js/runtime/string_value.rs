@@ -210,17 +210,7 @@ impl Handle<StringValue> {
     /// sure that 0 <= start <= end < string length.
     pub fn substring(&self, cx: Context, start: usize, end: usize) -> Handle<FlatString> {
         let flat_string = self.flatten();
-
-        match flat_string.width() {
-            StringWidth::OneByte => {
-                let string_slice = &flat_string.as_one_byte_slice()[start..end];
-                FlatString::new_one_byte(cx, string_slice).to_handle()
-            }
-            StringWidth::TwoByte => {
-                let string_slice = &flat_string.as_two_byte_slice()[start..end];
-                FlatString::new_two_byte(cx, string_slice).to_handle()
-            }
-        }
+        flat_string.substring(cx, start, end)
     }
 
     /// Return the index of the first occurrence of the search string in this string, starting after
@@ -232,7 +222,13 @@ impl Handle<StringValue> {
 
         // Find the first character in search string, immediately returning if search string is empty
         let first_search_code_unit = match search_string_code_units.next() {
-            None => return Some(after),
+            None => {
+                if after <= self.len() {
+                    return Some(after);
+                } else {
+                    return None;
+                }
+            }
             Some(code_unit) => code_unit,
         };
 
@@ -921,7 +917,7 @@ impl FlatString {
     }
 
     #[inline]
-    fn code_unit_at(&self, index: usize) -> CodeUnit {
+    pub fn code_unit_at(&self, index: usize) -> CodeUnit {
         match self.width() {
             StringWidth::OneByte => self.as_one_byte_slice()[index] as CodeUnit,
             StringWidth::TwoByte => self.as_two_byte_slice()[index],
@@ -946,6 +942,20 @@ impl FlatString {
                 } else {
                     code_unit as CodePoint
                 }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn substring(&self, cx: Context, start: usize, end: usize) -> Handle<FlatString> {
+        match self.width() {
+            StringWidth::OneByte => {
+                let string_slice = &self.as_one_byte_slice()[start..end];
+                FlatString::new_one_byte(cx, string_slice).to_handle()
+            }
+            StringWidth::TwoByte => {
+                let string_slice = &self.as_two_byte_slice()[start..end];
+                FlatString::new_two_byte(cx, string_slice).to_handle()
             }
         }
     }

@@ -215,7 +215,8 @@ impl Handle<StringValue> {
 
     /// Return the index of the first occurrence of the search string in this string, starting after
     /// a given index (inclusive). This function does not bounds check the after index, so caller
-    /// must be make sure to only pass an after index that is less than the length of the string.
+    /// must be make sure to only pass an after index that is less than or equal to the length of
+    /// the string.
     pub fn find(&self, search_string: Handle<StringValue>, after: usize) -> Option<usize> {
         let mut string_code_units = self.iter_slice_code_units(after, self.len());
         let mut search_string_code_units = search_string.iter_code_units();
@@ -934,7 +935,7 @@ impl FlatString {
                 let code_unit = self.as_two_byte_slice()[index];
                 if is_high_surrogate_code_unit(code_unit) && index + 1 < self.len {
                     let next_code_unit = self.as_two_byte_slice()[index + 1];
-                    if is_low_surrogate_code_unit(code_unit) {
+                    if is_low_surrogate_code_unit(next_code_unit) {
                         code_point_from_surrogate_pair(code_unit, next_code_unit)
                     } else {
                         code_unit as CodePoint

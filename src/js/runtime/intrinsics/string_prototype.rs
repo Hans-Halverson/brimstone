@@ -177,7 +177,7 @@ impl StringPrototype {
         let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.names.empty_string().as_string().into();
+            return Value::nan().to_handle(cx).into();
         }
 
         let code_unit = string.code_unit_at(position as usize);
@@ -198,7 +198,7 @@ impl StringPrototype {
         let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.names.empty_string().as_string().into();
+            return cx.undefined().into();
         }
 
         let code_point = string.code_point_at(position as usize);
@@ -290,13 +290,10 @@ impl StringPrototype {
 
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
-        if pos == f64::INFINITY {
-            return Value::smi(-1).to_handle(cx).into();
-        }
+        let pos = pos.clamp(0.0, string.len() as f64) as usize;
 
-        let pos = pos as usize;
-        if pos >= string.len() {
-            return Value::smi(-1).to_handle(cx).into();
+        if pos > string.len() {
+            return cx.bool(false).into();
         }
 
         let found_search_string = string.find(search_string, pos).is_some();
@@ -318,12 +315,9 @@ impl StringPrototype {
 
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
-        if pos == f64::INFINITY {
-            return Value::smi(-1).to_handle(cx).into();
-        }
+        let pos = pos.clamp(0.0, string.len() as f64) as usize;
 
-        let pos = pos as usize;
-        if pos >= string.len() {
+        if pos > string.len() {
             return Value::smi(-1).to_handle(cx).into();
         }
 
@@ -359,17 +353,16 @@ impl StringPrototype {
         let search_arg = get_argument(cx, arguments, 0);
         let search_string = maybe!(to_string(cx, search_arg));
 
-        let mut string_end = search_string.len();
-
         let pos_arg = get_argument(cx, arguments, 1);
         let num_pos = maybe!(to_number(cx, pos_arg));
 
-        if !num_pos.is_nan() {
-            let pos = maybe!(to_integer_or_infinity(cx, num_pos));
-            if pos != f64::INFINITY {
-                string_end = usize::clamp(pos as usize, 0, string_end);
-            }
-        }
+        let pos = if num_pos.is_nan() {
+            f64::INFINITY
+        } else {
+            maybe!(to_integer_or_infinity(cx, num_pos))
+        };
+
+        let string_end = pos.clamp(0.0, string.len() as f64) as usize;
 
         match string.rfind(search_string, string_end) {
             None => Value::smi(-1).to_handle(cx).into(),

@@ -101,13 +101,13 @@ impl SetPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set = if let Some(set) = this_set_value(this_value) {
+        let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
             return type_error_(cx, "clear method must be called on set");
         };
 
-        set.clear_set_data(cx);
+        set.set_data().clear();
 
         cx.undefined().into()
     }

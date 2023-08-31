@@ -27,7 +27,7 @@ impl MapConstructor {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
-            1,
+            0,
             cx.names.map(),
             Some(realm),
             None,

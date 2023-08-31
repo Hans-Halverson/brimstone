@@ -51,11 +51,6 @@ impl SetObject {
 }
 
 impl Handle<SetObject> {
-    pub fn clear_set_data(&mut self, cx: Context) {
-        let new_set = ValueSet::new(cx, ObjectKind::SetObjectValueSet, ValueSet::MIN_CAPACITY);
-        self.set_data = new_set;
-    }
-
     pub fn set_data_field(&self) -> SetObjectSetField {
         SetObjectSetField(*self)
     }

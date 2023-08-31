@@ -777,7 +777,7 @@ impl hash::Hash for ValueCollectionKey {
         if self.0.is_number() {
             // Make sure that -0 has the same hash as +0
             return if self.0.is_negative_zero() {
-                (0 as u64).hash(state);
+                Value::smi(0).as_raw_bits().hash(state);
             } else {
                 self.0.as_raw_bits().hash(state);
             };

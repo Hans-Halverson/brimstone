@@ -29,6 +29,7 @@ extend_object! {
         set: HeapPtr<BsIndexMap<ValueCollectionKey, ()>>,
         next_entry_index: usize,
         kind: SetIteratorKind,
+        is_done: bool,
     }
 }
 
@@ -48,6 +49,7 @@ impl SetIterator {
         set_uninit!(object.set, set.set_data().cast());
         set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
+        set_uninit!(object.is_done, false);
 
         object.to_handle()
     }
@@ -100,13 +102,21 @@ impl SetIteratorPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
 
+        // Check if iterator is already done
+        if set_iterator.is_done {
+            return create_iter_result_object(cx, cx.undefined(), true).into();
+        }
+
         // Perform a single iteration, mutating iterator object
         let mut iter = set_iterator.get_iter();
         let iter_result = iter.next();
         set_iterator.store_iter(iter);
 
         match iter_result {
-            None => create_iter_result_object(cx, cx.undefined(), true).into(),
+            None => {
+                set_iterator.is_done = true;
+                create_iter_result_object(cx, cx.undefined(), true).into()
+            }
             Some((value, _)) => {
                 let value_value: Value = value.into();
                 let value_handle = value_value.to_handle(cx);

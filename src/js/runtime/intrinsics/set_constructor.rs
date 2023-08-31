@@ -19,7 +19,7 @@ impl SetConstructor {
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
-            1,
+            0,
             cx.names.set(),
             Some(realm),
             None,

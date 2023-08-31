@@ -32,6 +32,7 @@ extend_object! {
         map: HeapPtr<ValueMap>,
         next_entry_index: usize,
         kind: MapIteratorKind,
+        is_done: bool,
     }
 }
 
@@ -52,6 +53,7 @@ impl MapIterator {
         set_uninit!(object.map, map.map_data());
         set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
+        set_uninit!(object.is_done, false);
 
         object.to_handle()
     }
@@ -104,13 +106,21 @@ impl MapIteratorPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut map_iterator = maybe!(MapIterator::cast_from_value(cx, this_value));
 
+        // Check if iterator is already done
+        if map_iterator.is_done {
+            return create_iter_result_object(cx, cx.undefined(), true).into();
+        }
+
         // Perform a single iteration, mutating iterator object
         let mut iter = map_iterator.get_iter();
         let iter_result = iter.next();
         map_iterator.store_iter(iter);
 
         match iter_result {
-            None => create_iter_result_object(cx, cx.undefined(), true).into(),
+            None => {
+                map_iterator.is_done = true;
+                create_iter_result_object(cx, cx.undefined(), true).into()
+            }
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
                     let key_value: Value = key.into();

@@ -51,11 +51,6 @@ impl MapObject {
 }
 
 impl Handle<MapObject> {
-    pub fn clear_map_data(&mut self, cx: Context) {
-        let new_map = ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY);
-        self.map_data = new_map;
-    }
-
     pub fn map_data_field(&self) -> MapObjectMapField {
         MapObjectMapField(*self)
     }

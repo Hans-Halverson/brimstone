@@ -128,6 +128,16 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         }
     }
 
+    /// Remove all entries from this map.
+    pub fn clear(&mut self) {
+        // Clear indices array
+        self.indices.init_with(self.capacity(), EMPTY_INDEX);
+
+        // Entries array does not need to be changed, updating number of entires is sufficient
+        self.num_occupied = 0;
+        self.num_deleted = 0;
+    }
+
     /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<K, V> {

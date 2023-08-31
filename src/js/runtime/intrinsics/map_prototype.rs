@@ -76,13 +76,13 @@ impl MapPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map = if let Some(map) = this_map_value(this_value) {
+        let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
             return type_error_(cx, "clear method must be called on map");
         };
 
-        map.clear_map_data(cx);
+        map.map_data().clear();
 
         cx.undefined().into()
     }

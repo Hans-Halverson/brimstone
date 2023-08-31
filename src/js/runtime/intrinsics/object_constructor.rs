@@ -116,7 +116,7 @@ impl ObjectConstructor {
                     cx,
                     new_target,
                     ObjectKind::OrdinaryObject,
-                    Intrinsic::ObjectConstructor
+                    Intrinsic::ObjectPrototype,
                 ));
                 return new_object.to_handle().into();
             }

@@ -1590,10 +1590,10 @@ macro_rules! create_typed_array_prototype {
                 // Constructor property is added once TypedArrayConstructor has been created
                 let element_size_value =
                     Value::smi(std::mem::size_of::<$element_type>() as i32).to_handle(cx);
-                object.set_property(
+                object.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),
-                    Property::data(element_size_value, false, false, false),
+                    element_size_value,
                 );
 
                 object.into()

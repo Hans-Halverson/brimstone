@@ -12,7 +12,6 @@ use crate::{
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
         },
-        property::Property,
         realm::Realm,
         type_utilities::to_boolean,
         Context, HeapPtr, Value,
@@ -94,15 +93,10 @@ impl BooleanConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
         );
 
         func

@@ -9,7 +9,6 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
-        property::Property,
         realm::Realm,
         type_utilities::to_string,
         Context, Handle, Value,
@@ -74,15 +73,10 @@ macro_rules! create_native_error {
                 );
 
                 func.set_is_constructor();
-                func.set_property(
+                func.intrinsic_frozen_property(
                     cx,
                     cx.names.prototype(),
-                    Property::data(
-                        realm.get_intrinsic(Intrinsic::$prototype).into(),
-                        false,
-                        false,
-                        false,
-                    ),
+                    realm.get_intrinsic(Intrinsic::$prototype).into(),
                 );
 
                 func

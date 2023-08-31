@@ -15,7 +15,6 @@ use crate::{
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
         },
-        property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
         value::Value,
@@ -95,60 +94,35 @@ impl NumberConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
         );
 
         let epsilon_value = Value::number(f64::EPSILON).to_handle(cx);
-        func.set_property(
-            cx,
-            cx.names.epsilon(),
-            Property::data(epsilon_value, false, false, false),
-        );
+        func.intrinsic_frozen_property(cx, cx.names.epsilon(), epsilon_value);
 
         let max_safe_integer_value = Value::number(MAX_SAFE_INTEGER_F64).to_handle(cx);
-        func.set_property(
-            cx,
-            cx.names.max_safe_integer(),
-            Property::data(max_safe_integer_value, false, false, false),
-        );
+        func.intrinsic_frozen_property(cx, cx.names.max_safe_integer(), max_safe_integer_value);
 
         let max_value = Value::number(f64::MAX).to_handle(cx);
-        func.set_property(cx, cx.names.max_value(), Property::data(max_value, false, false, false));
+        func.intrinsic_frozen_property(cx, cx.names.max_value(), max_value);
 
         let min_safe_integer_value = Value::number(MIN_SAFE_INTEGER_F64).to_handle(cx);
-        func.set_property(
-            cx,
-            cx.names.min_safe_integer(),
-            Property::data(min_safe_integer_value, false, false, false),
-        );
+        func.intrinsic_frozen_property(cx, cx.names.min_safe_integer(), min_safe_integer_value);
 
         let min_value = Value::number(MIN_POSITIVE_SUBNORMAL_F64).to_handle(cx);
-        func.set_property(cx, cx.names.min_value(), Property::data(min_value, false, false, false));
+        func.intrinsic_frozen_property(cx, cx.names.min_value(), min_value);
 
         let nan_value = Value::nan().to_handle(cx);
-        func.set_property(cx, cx.names.nan(), Property::data(nan_value, false, false, false));
+        func.intrinsic_frozen_property(cx, cx.names.nan(), nan_value);
 
         let neg_infinity_value = Value::number(f64::NEG_INFINITY).to_handle(cx);
-        func.set_property(
-            cx,
-            cx.names.negative_infinity(),
-            Property::data(neg_infinity_value, false, false, false),
-        );
+        func.intrinsic_frozen_property(cx, cx.names.negative_infinity(), neg_infinity_value);
 
         let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
-        func.set_property(
-            cx,
-            cx.names.positive_infinity(),
-            Property::data(infinity_value, false, false, false),
-        );
+        func.intrinsic_frozen_property(cx, cx.names.positive_infinity(), infinity_value);
 
         func.intrinsic_func(cx, cx.names.is_finite(), Self::is_finite, 1, realm);
         func.intrinsic_func(cx, cx.names.is_integer(), Self::is_integer, 1, realm);

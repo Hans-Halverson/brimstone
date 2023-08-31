@@ -9,7 +9,6 @@ use crate::{
             function::get_argument,
             get,
             object_value::ObjectValue,
-            property::Property,
             realm::Realm,
             string_object::StringObject,
             string_value::{FlatString, StringValue},
@@ -38,15 +37,10 @@ impl StringConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::StringPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::StringPrototype).into(),
         );
 
         func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm);

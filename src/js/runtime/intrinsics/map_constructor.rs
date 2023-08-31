@@ -8,7 +8,6 @@ use crate::{
         get,
         iterator::iter_iterator_values,
         object_value::ObjectValue,
-        property::Property,
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
@@ -36,15 +35,10 @@ impl MapConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::MapPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::MapPrototype).into(),
         );
 
         let species_key = cx.well_known_symbols.species();

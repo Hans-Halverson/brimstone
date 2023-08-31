@@ -3,8 +3,8 @@ use crate::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, get,
         intrinsics::set_object::SetObject, iterator::iter_iterator_values,
-        object_value::ObjectValue, property::Property, realm::Realm, type_utilities::is_callable,
-        Completion, Context, Handle, Value,
+        object_value::ObjectValue, realm::Realm, type_utilities::is_callable, Completion, Context,
+        Handle, Value,
     },
     maybe,
 };
@@ -27,15 +27,10 @@ impl SetConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::SetPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::SetPrototype).into(),
         );
 
         let species_key = cx.well_known_symbols.species();

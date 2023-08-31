@@ -20,7 +20,6 @@ use crate::{
             ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
             ordinary_own_string_symbol_property_keys, ordinary_set,
         },
-        property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,

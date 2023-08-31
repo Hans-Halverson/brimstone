@@ -9,7 +9,6 @@ use crate::{
         intrinsics::typed_array_prototype::typed_array_create_object,
         iterator::iter_iterator_method_values,
         object_value::ObjectValue,
-        property::Property,
         type_utilities::{is_callable, is_constructor, to_object},
         value::Value,
         Context, Handle, PropertyKey, Realm,
@@ -35,15 +34,10 @@ impl TypedArrayConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
         );
 
         func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
@@ -529,22 +523,17 @@ macro_rules! create_typed_array_constructor {
                 );
 
                 func.set_is_constructor();
-                func.set_property(
+                func.intrinsic_frozen_property(
                     cx,
                     cx.names.prototype(),
-                    Property::data(
-                        realm.get_intrinsic(Intrinsic::$prototype).into(),
-                        false,
-                        false,
-                        false,
-                    ),
+                    realm.get_intrinsic(Intrinsic::$prototype).into(),
                 );
 
                 let element_size_value = Value::smi(element_size!() as i32).to_handle(cx);
-                func.set_property(
+                func.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),
-                    Property::data(element_size_value, false, false, false),
+                    element_size_value,
                 );
 
                 func

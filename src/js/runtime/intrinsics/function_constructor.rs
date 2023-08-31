@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction, completion::EvalResult,
-        eval::function::create_dynamic_function, object_value::ObjectValue, property::Property,
-        realm::Realm, Context, Handle, Value,
+        eval::function::create_dynamic_function, object_value::ObjectValue, realm::Realm, Context,
+        Handle, Value,
     },
     maybe,
 };
@@ -25,15 +25,10 @@ impl FunctionConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
         );
 
         func

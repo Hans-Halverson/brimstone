@@ -16,7 +16,6 @@ use crate::{
             object_create_from_constructor, object_create_with_optional_proto,
             ordinary_object_create,
         },
-        property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         property_key::PropertyKey,
         realm::Realm,
@@ -44,15 +43,10 @@ impl ObjectConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
         );
 
         func.intrinsic_func(cx, cx.names.assign(), Self::assign, 2, realm);

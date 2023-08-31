@@ -11,7 +11,6 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
-        property::Property,
         realm::Realm,
         type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
         value::BigIntValue,
@@ -61,15 +60,10 @@ impl BigIntConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
         );
 
         func

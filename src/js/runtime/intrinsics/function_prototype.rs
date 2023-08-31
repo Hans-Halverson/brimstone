@@ -18,7 +18,6 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::object_ordinary_init,
-        property::Property,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
@@ -84,11 +83,8 @@ impl Handle<FunctionPrototype> {
             None,
         )
         .into();
-        self.object().set_property(
-            cx,
-            has_instance_key,
-            Property::data(has_instance_func, false, false, false),
-        );
+        self.object()
+            .intrinsic_frozen_property(cx, has_instance_key, has_instance_func);
     }
 }
 

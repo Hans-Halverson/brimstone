@@ -11,7 +11,6 @@ use crate::{
                 date_prototype::{this_date_value, to_date_string},
             },
             object_value::ObjectValue,
-            property::Property,
             realm::Realm,
             string_parsing::parse_string_to_date,
             to_string,
@@ -42,15 +41,10 @@ impl DateConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::DatePrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::DatePrototype).into(),
         );
 
         func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm);

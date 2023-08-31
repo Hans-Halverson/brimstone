@@ -16,7 +16,6 @@ use crate::{
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
-        property::Property,
         property_descriptor::PropertyDescriptor,
         string_value::StringValue,
         type_utilities::canonical_numeric_index_string,
@@ -28,6 +27,7 @@ use crate::{
 
 use super::{
     gc::{HeapObject, HeapVisitor},
+    property::Property,
     string_value::FlatString,
 };
 
@@ -54,13 +54,7 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        // String objects have an immutable length property
-        let length_value = Value::from(string_length).to_handle(cx);
-        object.object().set_property(
-            cx,
-            cx.names.length(),
-            Property::data(length_value, false, false, false),
-        );
+        Self::set_length_property(object, cx, string_length);
 
         object
     }
@@ -84,13 +78,7 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        // String objects have an immutable length property
-        let length_value = Value::from(string_length).to_handle(cx);
-        object.object().set_property(
-            cx,
-            cx.names.length(),
-            Property::data(length_value, false, false, false),
-        );
+        Self::set_length_property(object, cx, string_length);
 
         object.into()
     }
@@ -110,15 +98,19 @@ impl StringObject {
 
         let object = object.to_handle();
 
+        Self::set_length_property(object, cx, string_length);
+
+        object
+    }
+
+    fn set_length_property(string: Handle<StringObject>, cx: Context, length: usize) {
         // String objects have an immutable length property
-        let length_value = Value::from(string_length).to_handle(cx);
-        object.object().set_property(
+        let length_value = Value::from(length).to_handle(cx);
+        string.object().set_property(
             cx,
             cx.names.length(),
             Property::data(length_value, false, false, false),
         );
-
-        object
     }
 
     pub fn string_data(&self) -> Handle<StringValue> {

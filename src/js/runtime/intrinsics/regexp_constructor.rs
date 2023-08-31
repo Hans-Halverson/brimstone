@@ -24,7 +24,6 @@ use crate::{
             object_descriptor::ObjectKind,
             object_value::ObjectValue,
             ordinary_object::object_create_from_constructor,
-            property::Property,
             realm::Realm,
             regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
             string_value::{StringValue, StringWidth},
@@ -158,15 +157,10 @@ impl RegExpConstructor {
         );
 
         func.set_is_constructor();
-        func.set_property(
+        func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            Property::data(
-                realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
-                false,
-                false,
-                false,
-            ),
+            realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
         );
 
         // 22.2.5.2 get RegExp [ @@species ]

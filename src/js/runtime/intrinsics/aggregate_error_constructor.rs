@@ -47,13 +47,14 @@ pub struct AggregateErrorConstructor;
 impl AggregateErrorConstructor {
     // 20.5.7.2 Properties of the AggregateError Constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+        let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
         let mut func = BuiltinFunction::create(
             cx,
             Self::construct,
-            1,
-            cx.names.error(),
+            2,
+            cx.names.aggregate_error(),
             Some(realm),
-            None,
+            Some(error_constructor),
             None,
         );
 
@@ -62,7 +63,9 @@ impl AggregateErrorConstructor {
             cx,
             cx.names.prototype(),
             Property::data(
-                realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
+                realm
+                    .get_intrinsic(Intrinsic::AggregateErrorPrototype)
+                    .into(),
                 false,
                 false,
                 false,

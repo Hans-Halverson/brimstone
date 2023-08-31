@@ -130,7 +130,11 @@ macro_rules! create_native_error {
                 let mut object = ObjectValue::new(cx, Some(proto), true);
 
                 // Constructor property is added once NativeErrorConstructor has been created
-                object.intrinsic_name_prop(cx, stringify!($native_error));
+                object.intrinsic_data_prop(
+                    cx,
+                    cx.names.name(),
+                    cx.names.$rust_name().as_string().into(),
+                );
                 object.intrinsic_data_prop(
                     cx,
                     cx.names.message(),

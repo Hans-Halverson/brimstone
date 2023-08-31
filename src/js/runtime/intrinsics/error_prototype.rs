@@ -18,7 +18,7 @@ impl ErrorPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once ErrorConstructor has been created
-        object.intrinsic_name_prop(cx, "Error");
+        object.intrinsic_data_prop(cx, cx.names.name(), cx.names.error().as_string().into());
         object.intrinsic_data_prop(
             cx,
             cx.names.message(),

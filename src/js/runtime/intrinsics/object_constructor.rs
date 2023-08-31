@@ -468,7 +468,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return type_error_(cx, "expected object");
+            return cx.bool(false).into();
         }
 
         let is_extensible = maybe!(is_extensible(cx, value.as_object()));
@@ -484,7 +484,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return type_error_(cx, "expected object");
+            return cx.bool(true).into();
         }
 
         let is_frozen = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen));
@@ -500,7 +500,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return type_error_(cx, "expected object");
+            return cx.bool(true).into();
         }
 
         let is_sealed = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed));
@@ -529,7 +529,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return type_error_(cx, "expected object");
+            return value.into();
         }
 
         if !maybe!(value.as_object().prevent_extensions(cx)) {

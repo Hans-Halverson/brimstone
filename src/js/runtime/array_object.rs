@@ -14,7 +14,8 @@ use super::{
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_create_with_proto, ordinary_define_own_property, ordinary_delete,
-        ordinary_get_own_property, ordinary_own_property_keys,
+        ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
+        ordinary_own_string_symbol_property_keys,
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -99,12 +100,16 @@ impl VirtualObject for Handle<ArrayObject> {
 
     // Not part of spec, but needed to add custom length property
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
-        let mut property_keys = ordinary_own_property_keys(cx, self.object());
+        let mut keys: Vec<Handle<Value>> = vec![];
 
-        // Insert length property after all the array index properies
-        property_keys.push(cx.names.length().as_string().into());
+        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, |_| true);
 
-        property_keys.into()
+        // Insert length as the first non-index property
+        keys.push(cx.names.length().as_string().into());
+
+        ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
+
+        keys.into()
     }
 }
 

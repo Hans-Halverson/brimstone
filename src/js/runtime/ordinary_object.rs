@@ -308,18 +308,30 @@ pub fn validate_and_apply_property_descriptor(
         }
     } else {
         if !current_desc.is_configurable() {
-            match desc.get {
-                Some(get) if !same_object_value_handles(get, current_desc.get.unwrap()) => {
-                    return false
+            // Error if a [[Get]] was provided but does not match the existing [[Get]]
+            if desc.has_get {
+                match (desc.get, current_desc.get) {
+                    (Some(get), Some(current_get))
+                        if !same_object_value_handles(get, current_get) =>
+                    {
+                        return false
+                    }
+                    (Some(_), None) | (None, Some(_)) => return false,
+                    _ => {}
                 }
-                _ => {}
             }
 
-            match desc.set {
-                Some(set) if !same_object_value_handles(set, current_desc.set.unwrap()) => {
-                    return false
+            // Error if a [[Set]] was provided but does not match the existing [[Set]]
+            if desc.has_set {
+                match (desc.set, current_desc.set) {
+                    (Some(set), Some(current_set))
+                        if !same_object_value_handles(set, current_set) =>
+                    {
+                        return false
+                    }
+                    (Some(_), None) | (None, Some(_)) => return false,
+                    _ => {}
                 }
-                _ => {}
             }
 
             return true;
@@ -351,12 +363,12 @@ pub fn validate_and_apply_property_descriptor(
             } else {
                 let mut accessor_value = property.value().as_accessor();
 
-                if let Some(get) = desc.get {
-                    accessor_value.get = Some(get.get_());
+                if desc.has_get {
+                    accessor_value.get = desc.get.map(|x| x.get_());
                 }
 
-                if let Some(set) = desc.set {
-                    accessor_value.set = Some(set.get_());
+                if desc.has_set {
+                    accessor_value.set = desc.set.map(|x| x.get_());
                 }
             }
 

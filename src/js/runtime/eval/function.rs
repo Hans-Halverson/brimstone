@@ -461,17 +461,13 @@ pub fn method_definition_evaluation(
         ast::PropertyKind::Get => {
             set_function_name(cx, closure.into(), property_key, Some("get"));
 
-            // TOOD: Check if property_key is private name
-            let desc =
-                PropertyDescriptor::accessor(Some(closure.into()), None, is_enumerable, true);
+            let desc = PropertyDescriptor::get_only(Some(closure.into()), is_enumerable, true);
             define_property_or_throw(cx, object, property_key, desc)
         }
         ast::PropertyKind::Set => {
             set_function_name(cx, closure.into(), property_key, Some("set"));
 
-            // TOOD: Check if property_key is private name
-            let desc =
-                PropertyDescriptor::accessor(None, Some(closure.into()), is_enumerable, true);
+            let desc = PropertyDescriptor::set_only(Some(closure.into()), is_enumerable, true);
             define_property_or_throw(cx, object, property_key, desc)
         }
         _ => unreachable!(),

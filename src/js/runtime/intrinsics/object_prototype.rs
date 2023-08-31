@@ -255,14 +255,14 @@ impl ObjectPrototype {
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
 
-        let getter = get_argument(cx, arguments, 0);
+        let getter = get_argument(cx, arguments, 1);
         if !is_callable(getter) {
             return type_error_(cx, "getter must be a function");
         }
 
-        let key_arg = get_argument(cx, arguments, 1);
+        let key_arg = get_argument(cx, arguments, 0);
         let key = maybe!(to_property_key(cx, key_arg));
-        let desc = PropertyDescriptor::accessor(Some(getter.as_object()), None, true, true);
+        let desc = PropertyDescriptor::get_only(Some(getter.as_object()), true, true);
 
         maybe!(define_property_or_throw(cx, object, key, desc));
 
@@ -278,14 +278,14 @@ impl ObjectPrototype {
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
 
-        let setter = get_argument(cx, arguments, 0);
+        let setter = get_argument(cx, arguments, 1);
         if !is_callable(setter) {
             return type_error_(cx, "setter must be a function");
         }
 
-        let key_arg = get_argument(cx, arguments, 1);
+        let key_arg = get_argument(cx, arguments, 0);
         let key = maybe!(to_property_key(cx, key_arg));
-        let desc = PropertyDescriptor::accessor(None, Some(setter.as_object()), true, true);
+        let desc = PropertyDescriptor::set_only(Some(setter.as_object()), true, true);
 
         maybe!(define_property_or_throw(cx, object, key, desc));
 

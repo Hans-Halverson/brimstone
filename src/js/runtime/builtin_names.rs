@@ -122,6 +122,8 @@ builtin_names!(
     (anonymous, "anonymous"),
     (apply, "apply"),
     (arguments, "arguments"),
+    (as_int_n, "asIntN"),
+    (as_uint_n, "asUintN"),
     (asin, "asin"),
     (asinh, "asinh"),
     (assign, "assign"),

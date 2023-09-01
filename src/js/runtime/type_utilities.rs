@@ -476,7 +476,7 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
             _ => {}
         }
     } else if primitive.is_bool() {
-        return if value.as_bool() {
+        return if primitive.as_bool() {
             BigIntValue::new(cx, 1.into()).into()
         } else {
             BigIntValue::new(cx, 0.into()).into()

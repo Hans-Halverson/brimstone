@@ -1,5 +1,8 @@
 use std::mem::size_of;
 
+use num_bigint::{BigInt, Sign};
+use num_traits::FromPrimitive;
+
 use crate::{
     extend_object,
     js::runtime::{
@@ -12,7 +15,9 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
-        type_utilities::{is_integral_number, to_bigint, to_primitive, ToPrimitivePreferredType},
+        type_utilities::{
+            is_integral_number, to_bigint, to_index, to_primitive, ToPrimitivePreferredType,
+        },
         value::BigIntValue,
         Context, Handle, HeapPtr, Value,
     },
@@ -66,6 +71,9 @@ impl BigIntConstructor {
             realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.as_int_n(), Self::as_int_n, 2, realm);
+        func.intrinsic_func(cx, cx.names.as_uint_n(), Self::as_uint_n, 2, realm);
+
         func
     }
 
@@ -91,12 +99,82 @@ impl BigIntConstructor {
             if primitive.is_smi() {
                 BigIntValue::new(cx, primitive.as_smi().into()).into()
             } else {
-                // TODO: This conversion is lossy
-                BigIntValue::new(cx, (primitive.as_double() as u64).into()).into()
+                // Safe to unwrap since we know the primitive is finite
+                let bigint = BigInt::from_f64(primitive.as_double()).unwrap();
+                BigIntValue::new(cx, bigint).into()
             }
         } else {
-            maybe!(to_bigint(cx, value)).into()
+            maybe!(to_bigint(cx, primitive)).into()
         }
+    }
+
+    // 21.2.2.1 BigInt.asIntN
+    fn as_int_n(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let bits_arg = get_argument(cx, arguments, 0);
+        let bits = maybe!(to_index(cx, bits_arg));
+
+        let bigint_arg = get_argument(cx, arguments, 1);
+        let bigint = maybe!(to_bigint(cx, bigint_arg));
+
+        // Convert BigInt to its representation as bits
+        let mut bytes = bigint.bigint().to_signed_bytes_le();
+
+        // Keep all the bytes that have some bits in the range to keep
+        let num_full_bytes = bits / 8;
+        bytes.truncate(num_full_bytes + 1);
+
+        // Clear the unused bits in the last byte that was kept
+        let num_bits_to_remove = 8 - bits % 8;
+        if num_bits_to_remove == 8 {
+            bytes.pop();
+        } else if !bytes.is_empty() {
+            // Be sure to sign extend from the new highest bit
+            let last_byte = bytes.last_mut().unwrap();
+            *last_byte <<= num_bits_to_remove;
+            *last_byte = ((*last_byte as i8) >> num_bits_to_remove) as u8;
+        }
+
+        let new_bigint = BigInt::from_signed_bytes_le(&bytes);
+        BigIntValue::new(cx, new_bigint).into()
+    }
+
+    // 21.2.2.2 BigInt.asUintN
+    fn as_uint_n(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let bits_arg = get_argument(cx, arguments, 0);
+        let bits = maybe!(to_index(cx, bits_arg));
+
+        let bigint_arg = get_argument(cx, arguments, 1);
+        let bigint = maybe!(to_bigint(cx, bigint_arg));
+
+        // Convert BigInt to its representation as bits
+        let mut bytes = bigint.bigint().to_signed_bytes_le();
+
+        // Keep all the bytes that have some bits in the range to keep
+        let num_full_bytes = bits / 8;
+        bytes.truncate(num_full_bytes + 1);
+
+        // Clear the unused bits in the last byte that was kept
+        let num_bits_to_remove = 8 - bits % 8;
+        if num_bits_to_remove == 8 {
+            bytes.pop();
+        } else if !bytes.is_empty() {
+            let last_byte = bytes.last_mut().unwrap();
+            *last_byte <<= num_bits_to_remove;
+            *last_byte >>= num_bits_to_remove;
+        }
+
+        let new_bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
+        BigIntValue::new(cx, new_bigint).into()
     }
 }
 

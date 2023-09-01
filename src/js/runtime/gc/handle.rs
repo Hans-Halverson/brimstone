@@ -226,6 +226,10 @@ impl HandleContext {
         new_end_ptr
     }
 
+    /// Return the number of handles that are currently being used.
+    ///
+    /// Currently only used for debugging.
+    #[allow(dead_code)]
     pub fn num_handles(&self) -> usize {
         // Number of handles used in the current block
         let mut total =
@@ -241,6 +245,10 @@ impl HandleContext {
         total
     }
 
+    /// Return the number of free handle blocks in the free list.
+    ///
+    /// Currently only used for debugging.
+    #[allow(dead_code)]
     pub fn num_free_handle_blocks(&self) -> usize {
         let mut total = 0;
 

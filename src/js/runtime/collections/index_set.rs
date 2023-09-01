@@ -7,7 +7,7 @@ use crate::js::runtime::{
 };
 
 use super::{
-    index_map::{GcSafeEntriesIter, GcUnsafeKeysIter, GcUnsafeKeysIterMut},
+    index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut},
     BsIndexMap, BsIndexMapField,
 };
 
@@ -49,12 +49,6 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     /// Remove all elements from this set.
     pub fn clear(&mut self) {
         self.0.clear()
-    }
-
-    /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there
-    /// are no allocations between construction and use.
-    pub fn iter_gc_unsafe(&self) -> GcUnsafeKeysIter<T, ()> {
-        self.0.keys_gc_unsafe()
     }
 
     /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there

@@ -359,12 +359,6 @@ impl BaseDescriptors {
     pub fn get(&self, kind: ObjectKind) -> HeapPtr<ObjectDescriptor> {
         self.descriptors[kind as usize]
     }
-
-    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-        for descriptor in self.descriptors.iter_mut() {
-            visitor.visit_pointer(descriptor)
-        }
-    }
 }
 
 impl HeapObject for HeapPtr<ObjectDescriptor> {

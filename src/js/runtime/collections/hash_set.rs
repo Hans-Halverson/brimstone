@@ -27,11 +27,6 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
         BsHashMap::<T, ()>::calculate_size_in_bytes(capacity)
     }
 
-    /// Number of elements inserted in the map.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     /// Total number of elemets in the backing array.
     pub fn capacity(&self) -> usize {
         self.0.capacity()

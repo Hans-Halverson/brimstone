@@ -90,11 +90,6 @@ impl Wtf8String {
     }
 
     #[inline]
-    pub fn eq_str(&self, string: &str) -> bool {
-        self.buf == string.as_bytes()
-    }
-
-    #[inline]
     pub fn iter_code_points<'a>(&'a self) -> Wtf8CodePointsIterator<'a> {
         Wtf8CodePointsIterator::new(&self.buf)
     }

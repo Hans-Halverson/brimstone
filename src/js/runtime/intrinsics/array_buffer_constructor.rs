@@ -85,6 +85,7 @@ impl ArrayBufferObject {
     }
 
     // 25.1.2.3 DetachArrayBuffer
+    #[allow(dead_code)]
     pub fn detach(&mut self) {
         self.data = None;
         self.byte_length = 0;

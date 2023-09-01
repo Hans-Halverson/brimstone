@@ -1,6 +1,4 @@
-use super::{
-    context::Context, gc::HeapVisitor, property_key::PropertyKey, value::SymbolValue, Handle,
-};
+use super::{context::Context, property_key::PropertyKey, value::SymbolValue, Handle};
 
 // All built-in string property keys referenced in the spec
 macro_rules! builtin_names {
@@ -21,17 +19,12 @@ macro_rules! builtin_names {
             }
 
             $(
+                #[allow(dead_code)]
                 #[inline]
                 pub fn $rust_name(&self) -> Handle<PropertyKey> {
                     Handle::<PropertyKey>::from_fixed_non_heap_ptr(&self.$rust_name)
                 }
             )*
-
-            pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-                $(
-                    visitor.visit_property_key(&mut self.$rust_name);
-                )*
-            }
         }
 
         impl Context {
@@ -423,12 +416,6 @@ macro_rules! builtin_symbols {
                     Handle::<PropertyKey>::from_fixed_non_heap_ptr(&self.$rust_name)
                 }
             )*
-
-            pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-                $(
-                    visitor.visit_property_key(&mut self.$rust_name);
-                )*
-            }
         }
 
         impl Context {

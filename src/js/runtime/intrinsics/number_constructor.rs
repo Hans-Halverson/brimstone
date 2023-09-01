@@ -1,4 +1,6 @@
-use std::{mem::size_of, str::FromStr};
+use std::mem::size_of;
+
+use num_traits::ToPrimitive;
 
 use crate::{
     extend_object,
@@ -145,9 +147,8 @@ impl NumberConstructor {
             let argument = get_argument(cx, arguments, 0);
             let numeric_value = maybe!(to_numeric(cx, argument));
             if numeric_value.is_bigint() {
-                // TODO: Create better conversion directly from BigInt to f64 instead of through string
-                let bigint_string = numeric_value.as_bigint().bigint().to_string();
-                f64::from_str(&bigint_string).unwrap().into()
+                // Safe since BigInt::to_f64 never returns None
+                numeric_value.as_bigint().bigint().to_f64().unwrap()
             } else {
                 numeric_value.as_number()
             }

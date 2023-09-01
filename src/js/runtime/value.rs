@@ -160,12 +160,6 @@ impl Value {
         self.as_raw_bits() == CANONICAL_NAN
     }
 
-    /// Whether the number is not NaN or infinity
-    #[inline]
-    pub fn is_finite(&self) -> bool {
-        self.as_double().is_finite()
-    }
-
     /// Whether number is positive or negative infinity
     #[inline]
     pub const fn is_infinity(&self) -> bool {
@@ -333,11 +327,6 @@ impl Value {
 
     #[inline]
     pub const fn as_bigint(&self) -> HeapPtr<BigIntValue> {
-        HeapPtr::from_ptr(self.restore_pointer_bits())
-    }
-
-    #[inline]
-    pub const fn as_accessor(&self) -> HeapPtr<AccessorValue> {
         HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 

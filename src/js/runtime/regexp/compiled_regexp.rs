@@ -212,6 +212,7 @@ impl CompiledRegExpObject {
         }
     }
 
+    #[allow(dead_code)]
     pub fn debug_print_instructions(&self) -> String {
         let mut string = String::new();
 
@@ -224,6 +225,7 @@ impl CompiledRegExpObject {
 }
 
 impl Instruction {
+    #[allow(dead_code)]
     fn debug_print(&self) -> String {
         match self {
             Instruction::Literal(code_point) => {

@@ -23,11 +23,6 @@ impl<T> HeapPtr<T> {
     }
 
     #[inline]
-    pub const fn from_ref(reference: &T) -> HeapPtr<T> {
-        HeapPtr::from_ptr(reference as *const T as *mut T)
-    }
-
-    #[inline]
     pub fn ptr_eq(&self, other: &Self) -> bool {
         self.ptr == other.ptr
     }

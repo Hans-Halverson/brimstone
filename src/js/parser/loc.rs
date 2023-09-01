@@ -10,13 +10,6 @@ pub struct Loc {
 
 pub const EMPTY_LOC: Loc = Loc { start: 0, end: 0 };
 
-impl Loc {
-    #[inline]
-    pub fn point(pos: Pos) -> Loc {
-        Loc { start: pos, end: pos }
-    }
-}
-
 /// Calculate the byte offsets of the start of each line.
 pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
     let mut line_offsets = vec![0];

@@ -13,7 +13,6 @@ use super::{
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::object_create_with_proto,
-    property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     realm::Realm,
@@ -107,10 +106,6 @@ impl BuiltinFunction {
 }
 
 impl Handle<BuiltinFunction> {
-    pub fn set_property(&mut self, cx: Context, key: Handle<PropertyKey>, value: Property) {
-        self.object().set_property(cx, key, value);
-    }
-
     pub fn intrinsic_frozen_property(
         &mut self,
         cx: Context,
@@ -218,14 +213,6 @@ impl VirtualObject for Handle<BuiltinFunction> {
 
     fn get_realm(&self, _: Context) -> EvalResult<HeapPtr<Realm>> {
         self.realm.into()
-    }
-}
-
-// TODO: For some reason this suppresses seemingly unrelated unused function warnings. Keeping for
-// now until this is figured out and the functions are cleaned up.
-impl Into<HeapPtr<()>> for &() {
-    fn into(self) -> HeapPtr<()> {
-        unimplemented!("")
     }
 }
 

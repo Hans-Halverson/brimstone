@@ -61,11 +61,13 @@ macro_rules! extend_object_without_conversions {
         }
 
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
+            #[allow(dead_code)]
             #[inline]
             pub fn descriptor(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
                 self.descriptor
             }
 
+            #[allow(dead_code)]
             #[inline]
             pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
                 self.descriptor = descriptor
@@ -73,6 +75,7 @@ macro_rules! extend_object_without_conversions {
         }
 
         impl $(<$($generics),*>)? $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
+            #[allow(dead_code)]
             #[inline]
             pub fn object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
                 self.cast()
@@ -80,6 +83,7 @@ macro_rules! extend_object_without_conversions {
 
             /// Cast to an ordinary object so that ordinary object's methods can be called. Only
             /// used when we know we want the default ordinary methods to be called.
+            #[allow(dead_code)]
             #[inline]
             pub fn ordinary_object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::ordinary_object::OrdinaryObject> {
                 self.cast()

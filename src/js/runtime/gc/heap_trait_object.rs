@@ -36,12 +36,15 @@ macro_rules! heap_trait_object {
         }
 
         impl $heap_object {
+            #[allow(dead_code)]
             pub fn uninit() -> $heap_object {
                 $heap_object {
                     data: $crate::js::runtime::HeapPtr::uninit(),
                     vtable: std::ptr::null(),
                 }
             }
+
+            #[allow(dead_code)]
             pub fn visit_pointers(
                 &mut self,
                 visitor: &mut impl $crate::js::runtime::gc::HeapVisitor,
@@ -51,27 +54,23 @@ macro_rules! heap_trait_object {
         }
 
         impl $stack_object {
+            #[allow(dead_code)]
             pub fn ptr_eq(&self, other: &Self) -> bool {
                 self.data.get_().ptr_eq(&other.data.get_())
             }
 
+            #[allow(dead_code)]
             #[inline]
             pub fn to_heap(&self) -> $heap_object {
                 $heap_object { data: self.data.get_(), vtable: self.vtable }
             }
 
+            #[allow(dead_code)]
             #[inline]
             pub fn from_heap(heap_object: &$heap_object) -> $stack_object {
                 $stack_object {
                     data: heap_object.data.to_handle(),
                     vtable: heap_object.vtable,
-                }
-            }
-
-            pub fn uninit() -> $stack_object {
-                $stack_object {
-                    data: $crate::js::runtime::Handle::dangling(),
-                    vtable: std::ptr::null(),
                 }
             }
         }

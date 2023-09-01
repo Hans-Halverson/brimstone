@@ -209,10 +209,6 @@ impl FinalizationRegistryCells {
         has_removed
     }
 
-    pub fn get_cell_unchecked(&self, index: usize) -> &Option<FinalizationRegistryCell> {
-        self.cells.get_unchecked(index)
-    }
-
     pub fn remove_cell(&mut self, cell_ref: &mut Option<FinalizationRegistryCell>) {
         *cell_ref = None;
         self.num_occupied -= 1;

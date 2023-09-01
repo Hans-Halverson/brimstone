@@ -149,10 +149,6 @@ impl Context {
         Context { ptr }
     }
 
-    pub fn as_ptr(&self) -> NonNull<ContextCell> {
-        self.ptr
-    }
-
     /// Execute a function then drop this Context.
     pub fn execute_then_drop<R>(self, f: impl FnOnce(Context) -> R) -> R {
         let result = f(self);

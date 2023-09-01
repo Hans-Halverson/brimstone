@@ -620,13 +620,6 @@ impl Expression {
             _ => panic!("Expected identifier expression"),
         }
     }
-
-    pub fn into_id(self) -> Identifier {
-        match self {
-            Expression::Id(id) => id,
-            _ => panic!("Expected identifier expression"),
-        }
-    }
 }
 
 pub struct BooleanLiteral {

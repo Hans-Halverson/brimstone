@@ -5,13 +5,9 @@ use crate::{
     js::{
         common::math::modulo,
         runtime::{
-            gc::HeapObject,
-            intrinsics::intrinsics::Intrinsic,
-            object_descriptor::ObjectKind,
-            object_value::ObjectValue,
-            ordinary_object::{object_create, object_create_from_constructor},
-            type_utilities::to_integer_or_infinity_f64,
-            Context, EvalResult, Handle, HeapPtr,
+            gc::HeapObject, intrinsics::intrinsics::Intrinsic, object_descriptor::ObjectKind,
+            object_value::ObjectValue, ordinary_object::object_create_from_constructor,
+            type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
         },
     },
     maybe, set_uninit,
@@ -27,15 +23,6 @@ extend_object! {
 }
 
 impl DateObject {
-    pub fn new(cx: Context, date_value: f64) -> HeapPtr<DateObject> {
-        let mut date =
-            object_create::<DateObject>(cx, ObjectKind::DateObject, Intrinsic::DatePrototype);
-
-        set_uninit!(date.date_value, date_value);
-
-        date
-    }
-
     pub fn new_from_constructor(
         cx: Context,
         constructor: Handle<ObjectValue>,

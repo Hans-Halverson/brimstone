@@ -1,4 +1,4 @@
-use std::{cmp::max, mem::size_of, rc::Weak};
+use std::{mem::size_of, rc::Weak};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
@@ -55,13 +55,13 @@ impl FunctionPrototype {
 
 impl Handle<FunctionPrototype> {
     // 20.2.3 Properties of the Function Prototype Object
-    pub fn initialize(&mut self, mut cx: Context, realm: Handle<Realm>) {
+    pub fn initialize(&mut self, cx: Context, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
         object_ordinary_init(cx, self.object().get_(), descriptor_ptr, Some(object_proto_ptr));
 
-        self.object().intrinsic_name_prop(cx, "");
         self.object().instrinsic_length_prop(cx, 0);
+        self.object().intrinsic_name_prop(cx, "");
 
         self.object()
             .intrinsic_func(cx, cx.names.apply(), FunctionPrototype::apply, 2, realm);
@@ -83,21 +83,21 @@ impl Handle<FunctionPrototype> {
         );
 
         // [Function.hasInstance] property
-        let has_instance_key = cx.well_known_symbols.has_instance();
-        let has_instance_name = cx.alloc_string("[Function.hasInstance]");
-        let has_instance_name_key = PropertyKey::string(cx, has_instance_name).to_handle(cx);
         let has_instance_func = BuiltinFunction::create(
             cx,
             FunctionPrototype::has_instance,
             1,
-            has_instance_name_key,
+            cx.well_known_symbols.has_instance(),
             Some(realm),
             None,
             None,
         )
         .into();
-        self.object()
-            .intrinsic_frozen_property(cx, has_instance_key, has_instance_func);
+        self.object().intrinsic_frozen_property(
+            cx,
+            cx.well_known_symbols.has_instance(),
+            has_instance_func,
+        );
     }
 }
 
@@ -151,7 +151,7 @@ impl FunctionPrototype {
         let mut length = Some(0);
 
         // Set function length to an integer or infinity based on the inner function's length
-        if maybe!(has_own_property(cx, bound_func, cx.names.length())) {
+        if maybe!(has_own_property(cx, target, cx.names.length())) {
             let target_length_value = maybe!(get(cx, target, cx.names.length()));
             if target_length_value.is_number() {
                 let target_length = target_length_value.as_number();
@@ -162,7 +162,7 @@ impl FunctionPrototype {
                 } else {
                     let target_len_as_int =
                         must!(to_integer_or_infinity(cx, target_length_value)) as usize;
-                    length = Some(max(target_len_as_int - num_bound_args, 0) as i32);
+                    length = Some(target_len_as_int.saturating_sub(num_bound_args) as usize);
                 }
             }
         }
@@ -170,7 +170,13 @@ impl FunctionPrototype {
         set_function_length_maybe_infinity(cx, bound_func, length);
 
         let target_name = maybe!(get(cx, target, cx.names.name()));
-        let name_key = maybe!(PropertyKey::from_value(cx, target_name)).to_handle(cx);
+        let target_name = if target_name.is_string() {
+            target_name.as_string()
+        } else {
+            cx.names.empty_string().as_string()
+        };
+
+        let name_key = PropertyKey::string(cx, target_name).to_handle(cx);
         set_function_name(cx, bound_func, name_key, Some("bound"));
 
         bound_func.into()

@@ -745,10 +745,10 @@ pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: i32) 
 pub fn set_function_length_maybe_infinity(
     cx: Context,
     func: Handle<ObjectValue>,
-    length: Option<i32>,
+    length: Option<usize>,
 ) {
     let length = if let Some(length) = length {
-        Value::smi(length).to_handle(cx)
+        Value::from(length).to_handle(cx)
     } else {
         Value::number(f64::INFINITY).to_handle(cx)
     };

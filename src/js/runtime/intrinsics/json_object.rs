@@ -472,7 +472,7 @@ impl JSONValue {
             Self::Null => cx.null(),
             Self::Boolean(b) => cx.bool(*b),
             Self::Number(n) => Value::from(*n).to_handle(cx),
-            Self::String(s) => cx.alloc_wtf8_string_ptr(s).as_string().to_handle().into(),
+            Self::String(s) => cx.alloc_wtf8_string(s).into(),
             Self::Array(values) => {
                 let array = must!(array_create(cx, 0, None));
 
@@ -537,9 +537,7 @@ impl JSONSerializer {
     }
 
     fn build(self, mut cx: Context) -> Handle<StringValue> {
-        cx.alloc_wtf8_string_ptr(&self.builder)
-            .as_string()
-            .to_handle()
+        cx.alloc_wtf8_string(&self.builder)
     }
 
     // 25.5.2.2 SerializeJSONProperty

@@ -247,10 +247,15 @@ pub fn class_definition_evaluation(
 
     let mut func = if let Some(constructor) = class.constructor.as_ref() {
         let constructor = constructor.as_ref();
-        let func = define_method(cx, proto.into(), &constructor.value, Some(constructor_parent));
+        let mut func =
+            define_method(cx, proto.into(), &constructor.value, Some(constructor_parent));
 
         make_class_constructor(func);
         set_function_name(cx, func.into(), class_name, None);
+
+        // Despite using the constructor's AST node, we consider the source location to contain the
+        // entire class.
+        func.set_source_loc(class.loc);
 
         func
     } else {
@@ -258,7 +263,7 @@ pub fn class_definition_evaluation(
         let func = ordinary_function_create_special_kind(
             cx,
             constructor_parent,
-            FuncKind::DefaultConstructor,
+            FuncKind::DefaultConstructor(class.loc),
             /* is_lexical_this */ false,
             /* is_strict */ true,
             /* argument_count */ 0,

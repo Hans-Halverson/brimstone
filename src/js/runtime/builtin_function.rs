@@ -89,6 +89,10 @@ impl BuiltinFunction {
         self.realm.to_handle()
     }
 
+    pub fn initial_name(&self) -> Option<Handle<StringValue>> {
+        self.initial_name.map(|s| s.to_handle())
+    }
+
     pub fn set_is_constructor(&mut self) {
         self.has_constructor = true;
     }

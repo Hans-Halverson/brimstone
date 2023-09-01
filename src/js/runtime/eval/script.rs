@@ -2,7 +2,10 @@ use std::{collections::HashSet, mem::size_of, rc::Rc};
 
 use crate::{
     js::{
-        parser::ast::{self, LexDecl, VarDecl, WithDecls},
+        parser::{
+            ast::{self, LexDecl, VarDecl, WithDecls},
+            source::Source,
+        },
         runtime::{
             completion::{Completion, EvalResult},
             environment::{environment::Environment, global_environment::GlobalEnvironment},
@@ -38,6 +41,10 @@ impl Script {
         set_uninit!(script.realm, realm.get_());
 
         script.to_handle()
+    }
+
+    pub fn source(&self) -> &Rc<Source> {
+        &self.script_node.source
     }
 }
 

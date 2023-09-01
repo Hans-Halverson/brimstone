@@ -282,6 +282,14 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::RegExpObject
     }
 
+    pub fn is_function_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::Function
+    }
+
+    pub fn is_builtin_function_object(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::BuiltinFunction
+    }
+
     pub fn is_map_object(&self) -> bool {
         self.descriptor_kind() == ObjectKind::MapObject
     }
@@ -360,15 +368,6 @@ impl Handle<ObjectValue> {
 
     fn named_properties_field(&self) -> NamedPropertiesMapField {
         NamedPropertiesMapField(*self)
-    }
-
-    // Type refinement functions
-    pub fn as_builtin_function_opt(&self) -> Option<Handle<BuiltinFunction>> {
-        if self.descriptor_kind() == ObjectKind::BuiltinFunction {
-            Some(self.cast())
-        } else {
-            None
-        }
     }
 
     // Property accessors and mutators

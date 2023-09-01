@@ -1,9 +1,14 @@
 use std::{
     ops::{Deref, DerefMut},
     ptr::NonNull,
+    rc::Rc,
 };
 
-use crate::js::{common::wtf_8::Wtf8String, parser::ast, runtime::gc::HandleScope};
+use crate::js::{
+    common::wtf_8::Wtf8String,
+    parser::{ast, source::Source},
+    runtime::gc::HandleScope,
+};
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
@@ -81,7 +86,7 @@ pub struct ContextCell {
     // are not freed while the context is still running, as they may be needed e.g. due to functions
     // returned from an eval.
     pub eval_asts: Vec<ast::Program>,
-    pub function_constructor_asts: Vec<ast::P<ast::Function>>,
+    pub function_constructor_asts: Vec<(ast::P<ast::Function>, Rc<Source>)>,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -255,6 +260,11 @@ impl Context {
     #[inline]
     pub fn alloc_string(&mut self, str: &str) -> Handle<StringValue> {
         self.alloc_string_ptr(str).as_string().to_handle()
+    }
+
+    #[inline]
+    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<StringValue> {
+        self.alloc_wtf8_string_ptr(str).as_string().to_handle()
     }
 
     #[inline]

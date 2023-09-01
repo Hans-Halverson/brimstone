@@ -276,6 +276,7 @@ impl<'a> Parser<'a> {
             loc,
             toplevels,
             ProgramKind::Script,
+            self.lexer.source.clone(),
             self.in_strict_mode,
             has_use_strict_directive,
         ))
@@ -328,6 +329,7 @@ impl<'a> Parser<'a> {
             loc,
             toplevels,
             ProgramKind::Module,
+            self.lexer.source.clone(),
             self.in_strict_mode,
             /* has_use_strict_directive */ false,
         ))

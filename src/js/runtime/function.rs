@@ -1,10 +1,21 @@
-use std::{collections::HashMap, mem::size_of};
+use std::{
+    collections::HashMap,
+    mem::size_of,
+    rc::{Rc, Weak},
+};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::parser::ast::{self, AstPtr},
+    js::{
+        parser::{
+            ast::{self, AstPtr},
+            loc::Loc,
+            source::Source,
+        },
+        runtime::builtin_function::BuiltinFunction,
+    },
     maybe, maybe_, maybe__, must, set_uninit,
 };
 
@@ -69,6 +80,7 @@ extend_object! {
         realm: HeapPtr<Realm>,
         script_or_module: Option<HeapScriptOrModule>,
         func_node: HeapFuncKind,
+        source: Option<Weak<Source>>,
         environment: HeapDynEnvironment,
         private_environment: Option<HeapPtr<PrivateEnvironment>>,
         fields: Option<HeapPtr<FieldsArray>>,
@@ -82,16 +94,18 @@ type PrivateMethodsArray = BsArray<(HeapPrivateName, HeapProperty)>;
 // Function objects may have special kinds, such as executing a class property node instead of a
 // function node, or executing a builtin constructor. Stored on stack.
 pub enum FuncKind {
-    Function(AstPtr<ast::Function>),
+    /// The AST node of the function, as well as the source location for the text considered to be
+    /// the string representation of the function. This may not match the function AST node.
+    Function(AstPtr<ast::Function>, Loc),
     ClassProperty(AstPtr<ast::ClassProperty>, Handle<PropertyKey>),
-    DefaultConstructor,
+    DefaultConstructor(Loc),
 }
 
 /// A FuncKind that is stored on the heap.
 enum HeapFuncKind {
-    Function(AstPtr<ast::Function>),
+    Function(AstPtr<ast::Function>, Loc),
     ClassProperty(AstPtr<ast::ClassProperty>, PropertyKey),
-    DefaultConstructor,
+    DefaultConstructor(Loc),
 }
 
 impl Function {
@@ -114,6 +128,8 @@ impl Function {
 
         let mut object = object_create_with_proto::<Function>(cx, ObjectKind::Function, prototype);
 
+        let script_or_module = cx.get_active_script_or_module();
+
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.is_class_constructor, false);
         set_uninit!(object.has_construct, false);
@@ -123,10 +139,9 @@ impl Function {
         set_uninit!(object.realm, cx.current_realm_ptr());
         set_uninit!(
             object.script_or_module,
-            cx.get_active_script_or_module()
-                .as_ref()
-                .map(ScriptOrModule::to_heap)
+            script_or_module.as_ref().map(ScriptOrModule::to_heap)
         );
+        set_uninit!(object.source, script_or_module.map(|sm| Rc::downgrade(sm.source())));
         set_uninit!(object.environment, environment.to_heap());
         set_uninit!(object.private_environment, private_environment.map(|p| p.get_()));
         set_uninit!(object.func_node, func_node.to_heap());
@@ -177,7 +192,7 @@ impl Function {
 
     fn is_default_constructor(&self) -> bool {
         match self.func_node {
-            HeapFuncKind::DefaultConstructor => true,
+            HeapFuncKind::DefaultConstructor(_) => true,
             _ => false,
         }
     }
@@ -185,9 +200,33 @@ impl Function {
     #[inline]
     pub fn func_ast_node(&self) -> Option<AstPtr<ast::Function>> {
         match &self.func_node {
-            HeapFuncKind::Function(func_ast_node) => Some(func_ast_node.clone()),
+            HeapFuncKind::Function(func_ast_node, _) => Some(func_ast_node.clone()),
             _ => None,
         }
+    }
+
+    pub fn source_loc(&self) -> Option<Loc> {
+        match &self.func_node {
+            HeapFuncKind::Function(_, loc) | HeapFuncKind::DefaultConstructor(loc) => Some(*loc),
+            _ => None,
+        }
+    }
+
+    pub fn set_source_loc(&mut self, loc: Loc) {
+        match &mut self.func_node {
+            HeapFuncKind::Function(_, loc_ref) | HeapFuncKind::DefaultConstructor(loc_ref) => {
+                *loc_ref = loc
+            }
+            _ => unreachable!("cannot set source location of non-function"),
+        }
+    }
+
+    pub fn source(&self) -> Option<Weak<Source>> {
+        self.source.clone()
+    }
+
+    pub fn set_source(&mut self, source: &Rc<Source>) {
+        self.source = Some(Rc::downgrade(source));
     }
 
     pub fn is_lexical_this_mode(&self) -> bool {
@@ -461,7 +500,7 @@ impl Handle<Function> {
     fn ordinary_call_evaluate_body(&self, cx: Context, arguments: &[Handle<Value>]) -> Completion {
         let other_self = *self;
         match &self.func_node {
-            HeapFuncKind::Function(func_node) => {
+            HeapFuncKind::Function(func_node, _) => {
                 let func_node = func_node.as_ref();
                 if func_node.is_async || func_node.is_generator {
                     unimplemented!("async and generator functions")
@@ -486,7 +525,7 @@ impl Handle<Function> {
 
                 Completion::return_(value)
             }
-            HeapFuncKind::DefaultConstructor => {
+            HeapFuncKind::DefaultConstructor(_) => {
                 unreachable!("default constructor body is never evaluated")
             }
         }
@@ -536,11 +575,11 @@ impl Handle<Function> {
 impl FuncKind {
     fn to_heap(&self) -> HeapFuncKind {
         match self {
-            FuncKind::Function(func_node) => HeapFuncKind::Function(func_node.clone()),
+            FuncKind::Function(func_node, loc) => HeapFuncKind::Function(func_node.clone(), *loc),
             FuncKind::ClassProperty(class_property_node, property_key) => {
                 HeapFuncKind::ClassProperty(class_property_node.clone(), property_key.get())
             }
-            FuncKind::DefaultConstructor => HeapFuncKind::DefaultConstructor,
+            FuncKind::DefaultConstructor(loc) => HeapFuncKind::DefaultConstructor(*loc),
         }
     }
 }
@@ -556,7 +595,7 @@ pub fn ordinary_function_create(
 ) -> Handle<Function> {
     let is_strict = func_node.is_strict_mode;
     let argument_count = expected_argument_count(func_node);
-    let func_node = FuncKind::Function(AstPtr::from_ref(func_node));
+    let func_node = FuncKind::Function(AstPtr::from_ref(func_node), func_node.loc);
 
     let func = Function::new(
         cx,
@@ -685,8 +724,9 @@ pub fn set_function_name(
         name_string
     };
 
-    if let Some(mut builtin_func) = func.as_builtin_function_opt() {
+    if func.is_builtin_function_object() {
         // Choose to not add prefix, as this is optional in spec
+        let mut builtin_func = func.cast::<BuiltinFunction>();
         builtin_func.set_initial_name(Some(name_string));
     }
 
@@ -781,11 +821,11 @@ impl HeapObject for HeapPtr<Function> {
 impl HeapFuncKind {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         match self {
-            HeapFuncKind::Function(_) => {}
+            HeapFuncKind::Function(_, _) => {}
             HeapFuncKind::ClassProperty(_, property_key) => {
                 visitor.visit_property_key(property_key);
             }
-            HeapFuncKind::DefaultConstructor => {}
+            HeapFuncKind::DefaultConstructor(_) => {}
         }
     }
 }

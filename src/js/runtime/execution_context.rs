@@ -1,6 +1,6 @@
-use std::mem::size_of;
+use std::{mem::size_of, rc::Rc};
 
-use crate::set_uninit;
+use crate::{js::parser::source::Source, set_uninit};
 
 use super::{
     completion::EvalResult,
@@ -206,6 +206,12 @@ impl ScriptOrModule {
     pub fn from_heap(heap_script_or_module: &HeapScriptOrModule) -> ScriptOrModule {
         match heap_script_or_module {
             HeapScriptOrModule::Script(script) => ScriptOrModule::Script(script.to_handle()),
+        }
+    }
+
+    pub fn source(&self) -> &Rc<Source> {
+        match self {
+            ScriptOrModule::Script(script) => script.source(),
         }
     }
 }

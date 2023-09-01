@@ -601,7 +601,9 @@ pub fn create_dynamic_function(
         Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),
     };
 
-    if let Err(errs) = analyze_function_for_function_constructor(&mut func_node, full_source) {
+    if let Err(errs) =
+        analyze_function_for_function_constructor(&mut func_node, full_source.clone())
+    {
         return syntax_error_(cx, &format!("could not parse function: {}", errs));
     }
 
@@ -609,15 +611,16 @@ pub fn create_dynamic_function(
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
     let env = cx.current_realm_ptr().global_env();
 
-    let func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn_env(), None);
+    let mut func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn_env(), None);
     set_function_name(cx, func.into(), cx.names.anonymous(), None);
+    func.set_source(&full_source);
 
     if !is_async && !is_generator {
         make_constructor(cx, func, None, None);
     }
 
-    // TODO: Need better way to save ASTs, following same pattern a eval for now
-    cx.function_constructor_asts.push(func_node);
+    // TODO: Need better way to save ASTs and sources, following same pattern as eval for now
+    cx.function_constructor_asts.push((func_node, full_source));
 
     func.into()
 }

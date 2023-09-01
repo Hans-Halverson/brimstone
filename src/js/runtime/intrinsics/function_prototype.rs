@@ -1,28 +1,34 @@
-use std::{cmp::max, mem::size_of};
+use std::{cmp::max, mem::size_of, rc::Weak};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::runtime::{
-        abstract_operations::{
-            call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
+    js::{
+        common::wtf_8::Wtf8String,
+        runtime::{
+            abstract_operations::{
+                call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
+            },
+            bound_function_object::BoundFunctionObject,
+            builtin_function::BuiltinFunction,
+            completion::EvalResult,
+            error::type_error_,
+            function::{
+                get_argument, set_function_length_maybe_infinity, set_function_name, Function,
+            },
+            gc::{HeapObject, HeapVisitor},
+            get,
+            object_descriptor::ObjectKind,
+            object_value::{ObjectValue, VirtualObject},
+            ordinary_object::object_ordinary_init,
+            property_descriptor::PropertyDescriptor,
+            property_key::PropertyKey,
+            realm::Realm,
+            string_value::FlatString,
+            type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
+            Context, Handle, HeapPtr, Value,
         },
-        bound_function_object::BoundFunctionObject,
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error_,
-        function::{get_argument, set_function_length_maybe_infinity, set_function_name},
-        gc::{HeapObject, HeapVisitor},
-        get,
-        object_descriptor::ObjectKind,
-        object_value::{ObjectValue, VirtualObject},
-        ordinary_object::object_ordinary_init,
-        property_descriptor::PropertyDescriptor,
-        property_key::PropertyKey,
-        realm::Realm,
-        type_utilities::{is_callable, to_integer_or_infinity},
-        Context, Handle, HeapPtr, Value,
     },
     maybe, must,
 };
@@ -66,6 +72,13 @@ impl Handle<FunctionPrototype> {
             cx.names.call(),
             FunctionPrototype::call_intrinsic,
             1,
+            realm,
+        );
+        self.object().intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            FunctionPrototype::to_string,
+            0,
             realm,
         );
 
@@ -180,6 +193,52 @@ impl FunctionPrototype {
             let argument = get_argument(cx, arguments, 0);
             call_object(cx, this_value.as_object(), argument, &arguments[1..])
         }
+    }
+
+    // 20.2.3.5 Function.prototype.toString
+    fn to_string(
+        mut cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error_(cx, "Function.prototype.toString expected a function");
+        }
+
+        let this_object = this_value.as_object();
+        if this_object.is_function_object() {
+            // If this is a function, return the original source code if it is available
+            let this_function = this_object.cast::<Function>();
+            if let Some(source_loc) = this_function.source_loc() {
+                if let Some(source) = this_function.source().as_ref().and_then(Weak::upgrade) {
+                    let func_bytes = &source.contents.as_bytes()[source_loc.start..source_loc.end];
+                    let func_string = FlatString::from_wtf8(cx, func_bytes)
+                        .as_string()
+                        .to_handle();
+
+                    return func_string.into();
+                }
+            }
+        } else if this_object.is_builtin_function_object() {
+            // All builtin functions are formatted specially
+            let this_func = this_object.cast::<BuiltinFunction>();
+            let func_name = if let Some(initial_name) = this_func.initial_name() {
+                initial_name.to_wtf8_string()
+            } else {
+                Wtf8String::new()
+            };
+
+            let mut func_string = Wtf8String::from_str("function ");
+            func_string.push_wtf8_str(&func_name);
+            func_string.push_str("() { [native code] }");
+
+            return cx.alloc_wtf8_string(&func_string).into();
+        } else if is_callable_object(this_object) {
+            return cx.alloc_string("function () { [native code] }").into();
+        }
+
+        type_error_(cx, "Function.prototype.toString expected a function")
     }
 
     // 20.2.3.6 Function.prototype [ @@hasInstance ]

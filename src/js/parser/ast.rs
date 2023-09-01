@@ -1,4 +1,4 @@
-use std::hash;
+use std::{hash, rc::Rc};
 
 use num_bigint::BigInt;
 
@@ -7,7 +7,7 @@ use crate::{
     maybe,
 };
 
-use super::{loc::Loc, regexp::RegExp};
+use super::{loc::Loc, regexp::RegExp, source::Source};
 
 pub type P<T> = Box<T>;
 
@@ -106,6 +106,7 @@ pub struct Program {
     pub loc: Loc,
     pub toplevels: Vec<Toplevel>,
     pub kind: ProgramKind,
+    pub source: Rc<Source>,
     // Whether the function is in strict mode, which could be inherited from surrounding context
     // (e.g. in a direct eval or module)
     pub is_strict_mode: bool,
@@ -121,6 +122,7 @@ impl Program {
         loc: Loc,
         toplevels: Vec<Toplevel>,
         kind: ProgramKind,
+        source: Rc<Source>,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Program {
@@ -128,6 +130,7 @@ impl Program {
             loc,
             toplevels,
             kind,
+            source,
             is_strict_mode,
             has_use_strict_directive,
             var_decls: vec![],

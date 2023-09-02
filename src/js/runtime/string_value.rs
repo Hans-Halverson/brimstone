@@ -513,33 +513,11 @@ impl Handle<StringValue> {
                 FlatString::new_one_byte(cx, &lowercased).to_handle()
             }
             StringWidth::TwoByte => {
-                // Two byte slow path. Must convert each code point to lowercase one by one, each of
-                // which can map to multiple code points.
-                let mut lowercased = vec![];
+                // Two byte slow path - must convert to valid str ranges for to_lowercase function
+                let iter = CodePointIterator::from_two_byte(flat_string.get_());
+                let lowercased = map_valid_substrings(iter, |str| str.to_lowercase());
 
-                let code_point_iter = CodePointIterator::from_two_byte(flat_string.get_());
-                for code_point in code_point_iter {
-                    match char::from_u32(code_point) {
-                        // Must be an unpaired surrogate, which should be written back to buffer
-                        None => lowercased.push(code_point as u16),
-                        Some(char) => {
-                            // May becomes multiple code points when lowercased
-                            for lowercase_char in char.to_lowercase() {
-                                match try_encode_surrogate_pair(lowercase_char as CodePoint) {
-                                    // Single code unit so write back to buffer
-                                    None => lowercased.push(lowercase_char as u16),
-                                    // Write both surrogate code units back to buffer
-                                    Some((high_surrogate, low_surrogate)) => {
-                                        lowercased.push(high_surrogate);
-                                        lowercased.push(low_surrogate);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                FlatString::new_two_byte(cx, &lowercased).to_handle()
+                FlatString::from_wtf8(cx, lowercased.as_bytes()).to_handle()
             }
         }
     }
@@ -570,32 +548,10 @@ impl Handle<StringValue> {
             StringWidth::TwoByte => CodePointIterator::from_two_byte(flat_string.get_()),
         };
 
-        // Slow path pessimistically generates two byte strings. Must convert each code point to
-        // uppercase one by one, each of which can map to multiple code points.
-        let mut uppercased = vec![];
+        // Slow path - must convert to valid str ranges for to_uppercase function
+        let uppercased = map_valid_substrings(code_point_iter, |str| str.to_uppercase());
 
-        for code_point in code_point_iter {
-            match char::from_u32(code_point) {
-                // Must be an unpaired surrogate, which should be written back to buffer
-                None => uppercased.push(code_point as u16),
-                Some(char) => {
-                    // May becomes multiple code points when uppercased
-                    for uppercase_char in char.to_uppercase() {
-                        match try_encode_surrogate_pair(uppercase_char as CodePoint) {
-                            // Single code unit so write back to buffer
-                            None => uppercased.push(uppercase_char as u16),
-                            // Write both surrogate code units back to buffer
-                            Some((high_surrogate, low_surrogate)) => {
-                                uppercased.push(high_surrogate);
-                                uppercased.push(low_surrogate);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        FlatString::new_two_byte(cx, &uppercased).to_handle()
+        FlatString::from_wtf8(cx, uppercased.as_bytes()).to_handle()
     }
 
     pub fn to_wtf8_string(&self) -> Wtf8String {
@@ -1458,6 +1414,39 @@ impl SafeCodePointIterator {
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.iter.string);
     }
+}
+
+/// Break up string into sequences of valid code points and individual unpaired surrogates, then
+/// apply a mapping function over valid strs leaving unpaired surrogates unchanged.
+fn map_valid_substrings(iter: CodePointIterator, f: impl Fn(&str) -> String) -> Wtf8String {
+    let mut result = Wtf8String::new();
+    let mut current_valid_substring = String::new();
+
+    for code_point in iter {
+        if is_surrogate_code_point(code_point) {
+            // First flush the valid range up until this unpaired surrogate, if there was a range
+            if !current_valid_substring.is_empty() {
+                let mapped_string = f(&current_valid_substring);
+                result.push_str(&mapped_string);
+            }
+
+            // Add the unpaired surrogate without modification
+            result.push(code_point);
+
+            current_valid_substring.clear();
+        } else {
+            // Add this code point to the current valid range
+            current_valid_substring.push(unsafe { char::from_u32_unchecked(code_point) });
+        }
+    }
+
+    // Flush the final valid range if one exists
+    if !current_valid_substring.is_empty() {
+        let mapped_string = f(&current_valid_substring);
+        result.push_str(&mapped_string);
+    }
+
+    result
 }
 
 impl HeapObject for HeapPtr<StringValue> {

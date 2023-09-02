@@ -88,15 +88,15 @@ pub fn set_default_global_bindings(
         value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
         // 19.2 Function Properties of the Global Object
-        intrinsic_prop!(cx.names.eval(), Eval);
-        func_prop!(cx.names.is_nan(), is_nan, 1);
-        func_prop!(cx.names.is_finite(), is_finite, 1);
-        func_prop!(cx.names.parse_float(), parse_float, 1);
-        func_prop!(cx.names.parse_int(), parse_int, 2);
         func_prop!(cx.names.decode_uri(), decode_uri, 1);
         func_prop!(cx.names.decode_uri_component(), decode_uri_component, 1);
         func_prop!(cx.names.encode_uri(), encode_uri, 1);
         func_prop!(cx.names.encode_uri_component(), encode_uri_component, 1);
+        intrinsic_prop!(cx.names.eval(), Eval);
+        func_prop!(cx.names.is_nan(), is_nan, 1);
+        func_prop!(cx.names.is_finite(), is_finite, 1);
+        intrinsic_prop!(cx.names.parse_float(), ParseFloat);
+        intrinsic_prop!(cx.names.parse_int(), ParseInt);
 
         // 19.3 Constructor Properties of the Global Object
         intrinsic_prop!(cx.names.aggregate_error(), AggregateErrorConstructor);
@@ -158,6 +158,14 @@ pub fn set_default_global_bindings(
 
 pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
     BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None)
+}
+
+pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), Some(realm), None, None)
+}
+
+pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), Some(realm), None, None)
 }
 
 // 19.2.1 eval
@@ -280,19 +288,18 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     let radix = radix as u32;
 
     // Calculate exclusive upper bound for digit ranges
-    let mut numeric_digit_upper_bound;
-    let mut lowercase_digit_upper_bound;
-    let mut uppercase_digit_upper_bound;
+    let numeric_digit_upper_bound;
+    let lowercase_digit_upper_bound;
+    let uppercase_digit_upper_bound;
 
     unsafe {
-        numeric_digit_upper_bound = char::from_u32_unchecked('9' as u32 + 1);
-        lowercase_digit_upper_bound = char::from_u32_unchecked('z' as u32 + 1);
-        uppercase_digit_upper_bound = char::from_u32_unchecked('Z' as u32 + 1);
-
         if radix <= 10 {
             numeric_digit_upper_bound = char::from_u32_unchecked(('0' as u32) + radix);
+            lowercase_digit_upper_bound = char::from_u32_unchecked('a' as u32);
+            uppercase_digit_upper_bound = char::from_u32_unchecked('A' as u32);
         } else {
             let num_letter_digits = radix - 10;
+            numeric_digit_upper_bound = char::from_u32_unchecked('9' as u32 + 1);
             lowercase_digit_upper_bound = char::from_u32_unchecked('a' as u32 + num_letter_digits);
             uppercase_digit_upper_bound = char::from_u32_unchecked('A' as u32 + num_letter_digits);
         }

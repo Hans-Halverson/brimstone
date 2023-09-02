@@ -29,7 +29,7 @@ use crate::{
             finalization_registry_prototype::FinalizationRegistryPrototype,
             function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype,
-            global_object::create_eval,
+            global_object::{create_eval, create_parse_float, create_parse_int},
             iterator_prototype::IteratorPrototype,
             json_object::JSONObject,
             map_constructor::MapConstructor,
@@ -134,6 +134,8 @@ pub enum Intrinsic {
     ObjectConstructor,
     ObjectPrototype,
     ObjectPrototypeToString,
+    ParseFloat,
+    ParseInt,
     ProxyConstructor,
     RangeErrorConstructor,
     RangeErrorPrototype,
@@ -254,6 +256,10 @@ impl Intrinsics {
             Intrinsic::FunctionPrototype,
             Intrinsic::FunctionConstructor,
         );
+
+        // Builtin functions needed for Number constructor
+        register_existing_intrinsic!(ParseFloat, create_parse_float(cx, realm));
+        register_existing_intrinsic!(ParseInt, create_parse_int(cx, realm));
 
         register_intrinsic_pair!(ErrorPrototype, ErrorConstructor);
         register_intrinsic_pair!(BooleanPrototype, BooleanConstructor);

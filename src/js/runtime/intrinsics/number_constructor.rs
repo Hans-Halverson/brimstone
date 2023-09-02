@@ -131,6 +131,12 @@ impl NumberConstructor {
         func.intrinsic_func(cx, cx.names.is_nan(), Self::is_nan, 1, realm);
         func.intrinsic_func(cx, cx.names.is_safe_integer(), Self::is_safe_integer, 1, realm);
 
+        let parse_float = realm.get_intrinsic(Intrinsic::ParseFloat);
+        func.intrinsic_data_prop(cx, cx.names.parse_float(), parse_float.into());
+
+        let parse_int = realm.get_intrinsic(Intrinsic::ParseInt);
+        func.intrinsic_data_prop(cx, cx.names.parse_int(), parse_int.into());
+
         func
     }
 

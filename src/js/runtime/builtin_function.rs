@@ -106,6 +106,15 @@ impl BuiltinFunction {
 }
 
 impl Handle<BuiltinFunction> {
+    pub fn intrinsic_data_prop(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+    ) {
+        self.object().intrinsic_data_prop(cx, key, value);
+    }
+
     pub fn intrinsic_frozen_property(
         &mut self,
         cx: Context,

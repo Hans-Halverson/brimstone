@@ -274,8 +274,13 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
     }
 
     let parse_float_start_ptr = lexer.current_ptr();
-    parse_unsigned_decimal_literal(&mut lexer)?;
-    let parse_float_end_ptr = lexer.current_ptr();
+    let parse_float_end_ptr = parse_unsigned_decimal_literal(&mut lexer)?;
+
+    // Check if the lexer is beyond the end of the float, meaning there were invalid trailing
+    // characters.
+    if parse_float_end_ptr != lexer.current_ptr() {
+        return None;
+    }
 
     skip_string_whitespace(&mut lexer);
 
@@ -339,14 +344,14 @@ fn non_numeric_literal_with_base(
 }
 
 // Parse an unsigned decimal literal, returning None if an unsigned decimal literal does not appear
-// at the beginning of the lexer. On success return Some, and the lexer will be one character beyond
+// at the beginning of the lexer. On success return Some with the pointer to one character beyond
 // the end of the parsed literal.
-pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
+pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<*const u8> {
     // Parse digits before dot
     let has_digits_before_dot = skip_decimal_digits(lexer);
 
     // Parse optional dot followed by digits
-    let has_dot = if lexer.current_equals('.') {
+    if lexer.current_equals('.') {
         lexer.advance();
         let has_digits_after_dot = skip_decimal_digits(lexer);
 
@@ -354,20 +359,18 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
         if !has_digits_before_dot && !has_digits_after_dot {
             return None;
         }
-
-        true
     } else {
         // No digits at start of numeric literal
         if !has_digits_before_dot {
             return None;
         }
-
-        false
     };
 
-    // Parse optional exponent, but only if there were some digits beforehand or after the dot
+    let end_before_exponent = lexer.current_ptr();
+
+    // Parse optional exponent if the exponent starts with a valid exponent character.
     if (lexer.current_equals('e') || lexer.current_equals('E'))
-        && (has_digits_before_dot || has_dot)
+        && matches!(lexer.peek_ascii_char(), Some('+' | '-' | '0'..='9'))
     {
         lexer.advance();
 
@@ -379,11 +382,11 @@ pub fn parse_unsigned_decimal_literal(lexer: &mut StringLexer) -> Option<()> {
         // Exponent must have some digits
         let has_digits_in_exponent = skip_decimal_digits(lexer);
         if !has_digits_in_exponent {
-            return None;
+            return Some(end_before_exponent);
         }
     }
 
-    Some(())
+    Some(lexer.current_ptr())
 }
 
 pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
@@ -396,9 +399,25 @@ pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
         lexer.advance();
     }
 
+    // Parse 'Infinity', one character at a time
+    if lexer.eat('I') {
+        lexer.expect('n')?;
+        lexer.expect('f')?;
+        lexer.expect('i')?;
+        lexer.expect('n')?;
+        lexer.expect('i')?;
+        lexer.expect('t')?;
+        lexer.expect('y')?;
+
+        if is_negative {
+            return Some(f64::NEG_INFINITY);
+        } else {
+            return Some(f64::INFINITY);
+        }
+    }
+
     let start_ptr = lexer.current_ptr();
-    parse_unsigned_decimal_literal(lexer)?;
-    let end_ptr = lexer.current_ptr();
+    let end_ptr = parse_unsigned_decimal_literal(lexer)?;
 
     let number = parse_between_ptrs_to_f64(&lexer, start_ptr, end_ptr);
 

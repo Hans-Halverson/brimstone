@@ -159,6 +159,8 @@ builtin_names!(
     (description, "description"),
     (done, "done"),
     (dot_all, "dotAll"),
+    (encode_uri, "encodeURI"),
+    (encode_uri_component, "encodeURIComponent"),
     (ends_with, "endsWith"),
     (entries, "entries"),
     (enumerable, "enumerable"),

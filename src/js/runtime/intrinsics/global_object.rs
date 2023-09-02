@@ -1,19 +1,23 @@
 use crate::{
-    js::runtime::{
-        abstract_operations::define_property_or_throw,
-        builtin_function::BuiltinFunction,
-        console::ConsoleObject,
-        eval::eval::perform_eval,
-        function::get_argument,
-        gc::HandleScope,
-        gc_object::GcObject,
-        object_value::ObjectValue,
-        property_descriptor::PropertyDescriptor,
-        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
-        string_value::StringValue,
-        to_string,
-        type_utilities::{to_int32, to_number},
-        Context, EvalResult, Handle, Realm, Value,
+    js::{
+        common::{unicode::encode_utf8_codepoint, wtf_8::Wtf8String},
+        runtime::{
+            abstract_operations::define_property_or_throw,
+            builtin_function::BuiltinFunction,
+            console::ConsoleObject,
+            error::uri_error_,
+            eval::eval::perform_eval,
+            function::get_argument,
+            gc::HandleScope,
+            gc_object::GcObject,
+            object_value::ObjectValue,
+            property_descriptor::PropertyDescriptor,
+            string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
+            string_value::{FlatString, StringValue},
+            to_string,
+            type_utilities::{to_int32, to_number},
+            Context, EvalResult, Handle, Realm, Value,
+        },
     },
     maybe,
 };
@@ -86,6 +90,8 @@ pub fn set_default_global_bindings(
         func_prop!(cx.names.is_finite(), is_finite, 1);
         func_prop!(cx.names.parse_float(), parse_float, 1);
         func_prop!(cx.names.parse_int(), parse_int, 2);
+        func_prop!(cx.names.encode_uri(), encode_uri, 1);
+        func_prop!(cx.names.encode_uri_component(), encode_uri_component, 1);
 
         // 19.3 Constructor Properties of the Global Object
         intrinsic_prop!(cx.names.aggregate_error(), AggregateErrorConstructor);
@@ -320,4 +326,86 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     } else {
         Some(value)
     }
+}
+
+// 19.2.6.3 encodeURI
+fn encode_uri(
+    cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let uri_arg = get_argument(cx, arguments, 0);
+    let uri_string = maybe!(to_string(cx, uri_arg));
+
+    encode::<true>(cx, uri_string)
+}
+
+// 19.2.6.4 encodeURIComponent
+fn encode_uri_component(
+    cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let uri_component_arg = get_argument(cx, arguments, 0);
+    let uri_component_string = maybe!(to_string(cx, uri_component_arg));
+
+    encode::<false>(cx, uri_component_string)
+}
+
+// 19.2.6.5 Encode
+fn encode<const INCLUDE_URI_UNESCAPED: bool>(
+    cx: Context,
+    string: Handle<StringValue>,
+) -> EvalResult<Handle<Value>> {
+    let mut encoded_string = Wtf8String::new();
+
+    for code_point in string.iter_code_points() {
+        // Very that the char is not an unpaired surrogate
+        let char = match char::from_u32(code_point) {
+            Some(char) => char,
+            None => {
+                return uri_error_(cx, "Unpaired surrogate cannot be encoded in URI");
+            }
+        };
+
+        match char {
+            // Characters that never need to be encoded
+            'A'..='Z'
+            | 'a'..='z'
+            | '0'..='9'
+            | '-'
+            | '_'
+            | '.'
+            | '!'
+            | '~'
+            | '*'
+            | '\''
+            | '('
+            | ')' => {
+                encoded_string.push_char(char);
+            }
+            // Characters that don't need to be encoded when escaping a whole URI
+            ';' | '/' | '?' | ':' | '@' | '&' | '=' | '+' | '$' | ',' | '#'
+                if INCLUDE_URI_UNESCAPED =>
+            {
+                encoded_string.push_char(char);
+            }
+            // Write each byte of the UTF-8 representation of the code point as `%XX`
+            _ => {
+                let mut buf = [0; 4];
+                let num_bytes = encode_utf8_codepoint(&mut buf, code_point);
+
+                for byte in &buf[..num_bytes] {
+                    encoded_string.push_str(&format!("%{:02X}", byte));
+                }
+            }
+        }
+    }
+
+    FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
+        .as_string()
+        .to_handle()
+        .into()
 }

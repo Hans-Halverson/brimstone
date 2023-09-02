@@ -114,6 +114,8 @@ impl ArrayBufferConstructor {
             realm.get_intrinsic(Intrinsic::ArrayBufferPrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.is_view(), Self::is_view, 1, realm);
+
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
@@ -137,6 +139,24 @@ impl ArrayBufferConstructor {
         let byte_length = maybe!(to_index(cx, byte_length_arg));
 
         maybe!(ArrayBufferObject::new(cx, new_target, byte_length)).into()
+    }
+
+    // 25.1.4.1 ArrayBuffer.isView
+    fn is_view(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let value = get_argument(cx, arguments, 0);
+        if !value.is_object() {
+            return cx.bool(false).into();
+        }
+
+        let object = value.as_object();
+        let is_view = object.is_data_view() || object.is_typed_array();
+
+        cx.bool(is_view).into()
     }
 
     // 25.1.4.3 get ArrayBuffer [ @@species ]

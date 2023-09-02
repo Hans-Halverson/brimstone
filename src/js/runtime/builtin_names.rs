@@ -248,6 +248,7 @@ builtin_names!(
     (is_prototype_of, "isPrototypeOf"),
     (is_safe_integer, "isSafeInteger"),
     (is_sealed, "isSealed"),
+    (is_view, "isView"),
     (is_well_formed, "isWellFormed"),
     (iterator, "iterator"),
     (join, "join"),

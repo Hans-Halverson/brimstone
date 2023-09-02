@@ -1,6 +1,9 @@
 use crate::{
     js::{
-        common::{unicode::encode_utf8_codepoint, wtf_8::Wtf8String},
+        common::{
+            unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
+            wtf_8::Wtf8String,
+        },
         runtime::{
             abstract_operations::define_property_or_throw,
             builtin_function::BuiltinFunction,
@@ -90,6 +93,8 @@ pub fn set_default_global_bindings(
         func_prop!(cx.names.is_finite(), is_finite, 1);
         func_prop!(cx.names.parse_float(), parse_float, 1);
         func_prop!(cx.names.parse_int(), parse_int, 2);
+        func_prop!(cx.names.decode_uri(), decode_uri, 1);
+        func_prop!(cx.names.decode_uri_component(), decode_uri_component, 1);
         func_prop!(cx.names.encode_uri(), encode_uri, 1);
         func_prop!(cx.names.encode_uri_component(), encode_uri_component, 1);
 
@@ -328,6 +333,136 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     }
 }
 
+// 19.2.6.1 decodeURI
+fn decode_uri(
+    cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let uri_arg = get_argument(cx, arguments, 0);
+    let uri_string = maybe!(to_string(cx, uri_arg));
+
+    decode::<true>(cx, uri_string)
+}
+
+// 19.2.6.2 decodeURIComponent
+fn decode_uri_component(
+    cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let uri_component_arg = get_argument(cx, arguments, 0);
+    let uri_component_string = maybe!(to_string(cx, uri_component_arg));
+
+    decode::<false>(cx, uri_component_string)
+}
+
+// 19.2.6.6 Decode
+fn decode<const INCLUDE_URI_UNESCAPED: bool>(
+    cx: Context,
+    string: Handle<StringValue>,
+) -> EvalResult<Handle<Value>> {
+    let mut decoded_string = Wtf8String::new();
+
+    let flat_string = string.flatten();
+    let string_length = flat_string.len();
+
+    let mut i = 0;
+
+    macro_rules! parse_hex_byte {
+        () => {{
+            if i + 2 >= string_length {
+                return uri_error_(cx, "Invalid URI escape sequence");
+            }
+
+            if flat_string.code_unit_at(i) != '%' as u16 {
+                return uri_error_(cx, "Invalid URI escape sequence");
+            }
+
+            let byte = match (
+                get_hex_value(flat_string.code_unit_at(i + 1) as u32),
+                get_hex_value(flat_string.code_unit_at(i + 2) as u32),
+            ) {
+                (Some(first), Some(second)) => ((first << 4) | second) as u8,
+                _ => return uri_error_(cx, "Invalid URI escape sequence"),
+            };
+
+            i += 3;
+
+            byte
+        }};
+    }
+
+    macro_rules! parse_hex_continuation_byte {
+        () => {{
+            let code_unit = parse_hex_byte!();
+
+            if !is_continuation_byte(code_unit) {
+                return uri_error_(cx, "Invalid URI escape sequence");
+            }
+
+            code_unit
+        }};
+    }
+
+    while i < string_length {
+        let code_unit = flat_string.code_unit_at(i);
+
+        if code_unit == '%' as u16 {
+            let first_byte = parse_hex_byte!();
+
+            if first_byte & 0x80 == 0 {
+                // Single byte UTF-8 sequence.
+                match first_byte as char {
+                    // If this is a preserved character then the encoded hex sequence must be a
+                    // literal since preserved characters are not encoded.
+                    ';' | '/' | '?' | ':' | '@' | '&' | '=' | '+' | '$' | ',' | '#'
+                        if INCLUDE_URI_UNESCAPED =>
+                    {
+                        decoded_string.push(flat_string.code_unit_at(i - 3) as u32);
+                        decoded_string.push(flat_string.code_unit_at(i - 2) as u32);
+                        decoded_string.push(flat_string.code_unit_at(i - 1) as u32);
+                    }
+                    _ => decoded_string.push(first_byte as u32),
+                }
+            } else if (first_byte & 0xE0) == 0xC0 {
+                // Two byte UTF-8 sequence
+                let mut code_point = (first_byte as u32 & 0x1F) << 6;
+                code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                decoded_string.push(code_point);
+            } else if (first_byte & 0xF0) == 0xE0 {
+                // Three byte UTF-8 sequence
+                let mut code_point = (first_byte as u32 & 0x0F) << 12;
+                code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
+                code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                decoded_string.push(code_point);
+            } else if (first_byte & 0xF8) == 0xF0 {
+                // Four byte UTF-8 sequence
+                let mut code_point = (first_byte as u32 & 0x07) << 18;
+                code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 12;
+                code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
+                code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                decoded_string.push(code_point);
+            } else {
+                return uri_error_(cx, "Invalid URI escape sequence");
+            }
+        } else {
+            decoded_string.push(code_unit as u32);
+            i += 1;
+        }
+    }
+
+    FlatString::from_wtf8(cx, decoded_string.as_bytes())
+        .as_string()
+        .to_handle()
+        .into()
+}
+
 // 19.2.6.3 encodeURI
 fn encode_uri(
     cx: Context,
@@ -404,6 +539,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
         }
     }
 
+    // Safe since only ASCII characters were used
     FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
         .as_string()
         .to_handle()

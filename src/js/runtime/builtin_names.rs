@@ -150,6 +150,8 @@ builtin_names!(
     (cos, "cos"),
     (cosh, "cosh"),
     (create, "create"),
+    (decode_uri, "decodeURI"),
+    (decode_uri_component, "decodeURIComponent"),
     (default, "default"),
     (define_properties, "defineProperties"),
     (define_property, "defineProperty"),

@@ -42,6 +42,7 @@ macro_rules! builtin_names {
 
 builtin_names!(
     (empty_string, ""),
+    (negative_zero, "-0"),
     (__define_getter__, "__defineGetter__"),
     (__define_setter__, "__defineSetter__"),
     (__lookup_getter__, "__lookupGetter__"),

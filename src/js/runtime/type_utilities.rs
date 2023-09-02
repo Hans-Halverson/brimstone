@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
-use crate::{js::common::math::modulo, maybe};
+use crate::{js::common::math::modulo, maybe, must};
 
 use super::{
     abstract_operations::{call_object, get, get_method},
@@ -621,10 +621,59 @@ pub fn to_length(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
 }
 
 // 7.1.21 CanonicalNumericIndexString
-pub fn canonical_numeric_index_string(key: Handle<PropertyKey>) -> Option<u32> {
-    // TODO: Support full safe integer range instead of just array index range
+// Determines if the given key is a canonical numeric index string, and validates that it can be
+// used as the index into an array with a particular length.
+//
+// - Returns Some(Some(index)) if the key is a canonical numeric index that is an integer and in
+//   range (greater than or equal to 0 and below the given array length).
+// - Returns Some(None) if the key is a canonical numeric index but not an integer or not in range
+// - Returns None if the key is not a canonical numeric index
+pub fn canonical_numeric_index_string(
+    cx: Context,
+    key: Handle<PropertyKey>,
+    array_length: usize,
+) -> Option<Option<usize>> {
     if key.is_array_index() {
-        Some(key.as_array_index())
+        // Fast path for array indices
+        let array_index = key.as_array_index() as usize;
+        if array_index < array_length {
+            Some(Some(array_index))
+        } else {
+            Some(None)
+        }
+    } else if key.is_string() {
+        // Otherwise must convert to number then back to string
+        let key_string = key.as_string();
+        let number_value = must!(to_number(cx, key_string.into()));
+
+        // If string representations are equal, must be canonical numeric index
+        let number_string = must!(to_string(cx, number_value));
+        if key_string.eq(&number_string) {
+            if !is_integral_number(number_value.get()) {
+                return Some(None);
+            }
+
+            let number = number_value.as_number();
+            if number.is_sign_negative() {
+                return Some(None);
+            }
+
+            let number = number as usize;
+            if number >= array_length {
+                return Some(None);
+            }
+
+            Some(Some(number))
+        } else if key_string
+            .get_()
+            .as_flat()
+            .eq(&cx.names.negative_zero.as_string().as_flat())
+        {
+            // The string "-0" is a canonical numeric index but is never valid as an index
+            Some(None)
+        } else {
+            None
+        }
     } else {
         None
     }

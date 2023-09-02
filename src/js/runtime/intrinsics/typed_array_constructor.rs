@@ -263,15 +263,15 @@ macro_rules! create_typed_array_constructor {
                 cx: Context,
                 key: Handle<PropertyKey>,
             ) -> EvalResult<Option<PropertyDescriptor>> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_get_own_property(cx, self.object(), key).into(),
                     Some(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
+                        if array_buffer_ptr.is_detached() || index.is_none() {
                             return None.into();
                         }
 
-                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
+                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
 
                         let value = self.read_element_value(cx, array_buffer_ptr, byte_index);
 
@@ -284,11 +284,11 @@ macro_rules! create_typed_array_constructor {
 
             // 10.4.5.2 [[HasProperty]]
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
-                        let is_valid_index = !self.viewed_array_buffer_ptr().is_detached()
-                            && (index as usize) < self.array_length;
+                        let is_valid_index =
+                            !self.viewed_array_buffer_ptr().is_detached() && index.is_some();
 
                         is_valid_index.into()
                     }
@@ -302,12 +302,10 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_define_own_property(cx, self.object(), key, desc),
                     Some(index) => {
-                        if self.viewed_array_buffer_ptr().is_detached()
-                            || (index as usize) >= self.array_length
-                        {
+                        if self.viewed_array_buffer_ptr().is_detached() || index.is_none() {
                             return false.into();
                         }
 
@@ -330,7 +328,7 @@ macro_rules! create_typed_array_constructor {
                             let array_buffer_ptr = self.viewed_array_buffer_ptr();
                             if !array_buffer_ptr.is_detached() {
                                 let byte_index =
-                                    (index as usize) * element_size!() + self.byte_offset;
+                                    index.unwrap() * element_size!() + self.byte_offset;
 
                                 $typed_array::write_element(
                                     array_buffer_ptr,
@@ -352,15 +350,15 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 receiver: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_get(cx, self.object(), key, receiver),
                     Some(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
+                        if array_buffer_ptr.is_detached() || index.is_none() {
                             return cx.undefined().into();
                         }
 
-                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
+                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
 
                         self.read_element_value(cx, array_buffer_ptr, byte_index)
                             .into()
@@ -376,18 +374,18 @@ macro_rules! create_typed_array_constructor {
                 value: Handle<Value>,
                 receiver: Handle<Value>,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_set(cx, self.object(), key, value, receiver),
                     Some(index) => {
                         // May allocate, so call before accessing array buffer
                         let element_value = maybe!($to_element(cx, value));
 
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || (index as usize) >= self.array_length {
+                        if array_buffer_ptr.is_detached() || index.is_none() {
                             return true.into();
                         }
 
-                        let byte_index = (index as usize) * element_size!() + self.byte_offset;
+                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
 
                         $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
@@ -398,11 +396,11 @@ macro_rules! create_typed_array_constructor {
 
             // 10.4.5.6 [[Delete]]
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(key) {
+                match canonical_numeric_index_string(cx, key, self.array_length) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
-                        let is_invalid_index = self.viewed_array_buffer_ptr().is_detached()
-                            || (index as usize) >= self.array_length;
+                        let is_invalid_index =
+                            self.viewed_array_buffer_ptr().is_detached() || index.is_none();
 
                         is_invalid_index.into()
                     }

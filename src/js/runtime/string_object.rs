@@ -129,20 +129,9 @@ impl StringObject {
             return None;
         }
 
-        let index = if let Some(index) = canonical_numeric_index_string(key) {
-            index
-        } else {
-            return None;
-        };
-
-        let code_unit = {
-            let string = self.string_data();
-            if index as usize >= string.len() {
-                return None;
-            }
-
-            string.code_unit_at(index as usize)
-        };
+        let string = self.string_data();
+        let index = canonical_numeric_index_string(cx, key, string.len())??;
+        let code_unit = string.code_unit_at(index);
 
         let char_string = FlatString::from_code_unit(cx, code_unit).as_string();
 

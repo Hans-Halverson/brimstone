@@ -363,6 +363,7 @@ builtin_names!(
     (tanh, "tanh"),
     (test, "test"),
     (to_date_string, "toDateString"),
+    (to_exponential, "toExponential"),
     (to_fixed, "toFixed"),
     (to_iso_string, "toISOString"),
     (to_json, "toJSON"),

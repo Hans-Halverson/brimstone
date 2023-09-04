@@ -23,30 +23,98 @@ impl NumberPrototype {
     // 21.1.3 Properties of the Number Prototype Object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let object = NumberObject::new_with_proto(cx, object_proto, 0.0);
+        let mut object: Handle<ObjectValue> =
+            NumberObject::new_with_proto(cx, object_proto, 0.0).into();
 
         // Constructor property is added once NumberConstructor has been created
-        object.object().intrinsic_func(
-            cx,
-            cx.names.to_locale_string(),
-            Self::to_locale_string,
-            0,
-            realm,
-        );
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.to_precision(), Self::to_precision, 1, realm);
-        object
-            .object()
-            .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_exponential(), Self::to_exponential, 1, realm);
+        object.intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm);
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_precision(), Self::to_precision, 1, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
-        object.into()
+        object
+    }
+
+    // 21.1.3.2 Number.prototype.toExponential
+    fn to_exponential(
+        mut cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let number_value = maybe!(this_number_value(cx, this_value));
+        let mut number = number_value.as_number();
+
+        let fraction_digits_arg = get_argument(cx, arguments, 0);
+        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
+
+        if !number.is_finite() {
+            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+        }
+
+        if num_fraction_digits < 0.0 || num_fraction_digits > 100.0 {
+            return range_error_(cx, "number of fraction digits must between 0 and 100");
+        }
+
+        // If number of fraction digits is not specified then we need to use the minimum number of
+        // digits required to uniquely represent the number. Use Rust's default exponential
+        // formatting for this, with some tweaks.
+        if fraction_digits_arg.is_undefined() {
+            let mut formatted = format!("{:e}", number);
+
+            // Exponent must include an explicit '+' sign, unlike Rust's default formatting
+            let exponent_index = formatted.find('e').unwrap();
+            if formatted.as_bytes()[exponent_index + 1] != b'-' {
+                formatted.insert(exponent_index + 1, '+');
+            }
+
+            return cx.alloc_string(&formatted).into();
+        }
+
+        // Otherwise format string ourselves so that we control rounding to precision. We cannot
+        // use Rust's default exponential formatting with precision as it will round ties in the
+        // non-fractional component to even.
+        //
+        // e.g. if using Rust, (25).toPrecision(0) == '2e+1' while (35).toPrecision(0) == '4e+1'
+        let mut result = String::new();
+
+        if number < 0.0 {
+            number = -number;
+            result.push('-');
+        }
+
+        let exponent;
+        let mantissa;
+
+        if number == 0.0 {
+            exponent = 0;
+            mantissa = "0".repeat(num_fraction_digits as usize + 1);
+        } else {
+            (exponent, mantissa) =
+                to_exponent_and_mantissa(number, num_fraction_digits as usize + 1);
+        }
+
+        // Insert decimal point after first digit (if there are any fractional digits)
+        if num_fraction_digits != 0.0 {
+            result.push_str(&mantissa[..1]);
+            result.push('.');
+            result.push_str(&mantissa[1..]);
+        } else {
+            result.push_str(&mantissa);
+        }
+
+        // Add exponent, with explicity '+' or '-' sign
+        result.push('e');
+
+        if exponent >= 0 {
+            result.push('+');
+        }
+
+        result.push_str(&exponent.to_string());
+
+        cx.alloc_string(&result).into()
     }
 
     // 21.1.3.3 Number.prototype.toFixed
@@ -153,71 +221,7 @@ impl NumberPrototype {
             exponent = 0;
             mantissa = "0".repeat(precision as usize);
         } else {
-            // We cannot perform floating point math to find exponent and mantissa due to the
-            // imprecision of floating point numbers. Instead, we first convert the number to a
-            // string and then perform numeric calculations on the string itself.
-
-            // We need to make sure there are at least 100 significant digits written to the string
-            // so that no rounding is performed. For numbers < 1 this means we need to find the
-            // log10 to account for leading zeros, that way we get 100 significant non-zero digits.
-            let format_precision = if number < 1.0 {
-                -(number.log10().floor()) as usize + 100
-            } else {
-                100
-            };
-
-            let mut number_string = format!("{:.*}", format_precision, number);
-
-            // Find the exponent of the number. For numbers >= 1 find the number of digits before
-            // the decimal point. For numbers < 1 find the number of leading zeros after the decimal
-            // point. This algorithm fails if number == 0, but this case is handled above.
-            let decimal_point_index = number_string.find('.').unwrap();
-            
-            if number >= 1.0 {
-                exponent = decimal_point_index as i32 - 1;
-
-                // Remove the decimal point, leaving only significant digits
-                number_string.remove(decimal_point_index);
-            } else {
-                let num_leading_zeros = number_string[decimal_point_index + 1..]
-                    .find(|digit| digit != '0')
-                    .unwrap();
-                exponent = -(num_leading_zeros as i32) - 1;
-
-                // Remove all digits before the first significant (non-zero) digit
-                number_string =
-                    number_string[decimal_point_index + 1 + num_leading_zeros..].to_owned();
-            };
-
-            // Round to the correct precision, manually carrying upwards through digits if necessary
-            let remaining_digits = number_string.split_off(precision as usize);
-            let mut carry = remaining_digits.chars().next().unwrap() >= '5';
-
-            let mut number_bytes = number_string.into_bytes();
-            for digit in number_bytes.iter_mut().rev() {
-                if !carry {
-                    break;
-                }
-
-                if *digit == b'9' {
-                    *digit = b'0';
-                    carry = true;
-                } else {
-                    *digit += 1;
-                    carry = false;
-                }
-            }
-
-            // If we still need to carry at the end of the string, we need to add a leading one
-            // then adjust the exponent.
-            if carry {
-                number_bytes.insert(0, b'1');
-                number_bytes.pop();
-                exponent += 1;
-            }
-
-            // Digits string is used as the mantissa
-            mantissa = String::from_utf8(number_bytes).unwrap();
+            (exponent, mantissa) = to_exponent_and_mantissa(number, precision as usize);
 
             // Back to format from the spec now that we have calculated the exponent and mantissa
             if exponent < -6 || exponent >= precision {
@@ -399,4 +403,77 @@ fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Val
     }
 
     type_error_(cx, "value cannot be converted to number")
+}
+
+/// Decompose an f64 to its exponent and mantissa, where the mantissa is rounded to exactly the
+/// specified precision (aka number of digits).
+fn to_exponent_and_mantissa(number: f64, precision: usize) -> (i32, String) {
+    let mut exponent;
+
+    // We cannot perform floating point math to find exponent and mantissa due to the
+    // imprecision of floating point numbers. Instead, we first convert the number to a
+    // string and then perform numeric calculations on the string itself.
+
+    // We need to make sure there are at least 100 significant digits written to the string
+    // so that no rounding is performed. For numbers < 1 this means we need to find the
+    // log10 to account for leading zeros, that way we get 100 significant non-zero digits.
+    let format_precision = if number < 1.0 {
+        -(number.log10().floor()) as usize + 101
+    } else {
+        101
+    };
+
+    let mut number_string = format!("{:.*}", format_precision, number);
+
+    // Find the exponent of the number. For numbers >= 1 find the number of digits before
+    // the decimal point. For numbers < 1 find the number of leading zeros after the decimal
+    // point. This algorithm fails if number == 0, but this case is handled above.
+    let decimal_point_index = number_string.find('.').unwrap();
+
+    if number >= 1.0 {
+        exponent = decimal_point_index as i32 - 1;
+
+        // Remove the decimal point, leaving only significant digits
+        number_string.remove(decimal_point_index);
+    } else {
+        let num_leading_zeros = number_string[decimal_point_index + 1..]
+            .find(|digit| digit != '0')
+            .unwrap();
+        exponent = -(num_leading_zeros as i32) - 1;
+
+        // Remove all digits before the first significant (non-zero) digit
+        number_string = number_string[decimal_point_index + 1 + num_leading_zeros..].to_owned();
+    };
+
+    // Round to the correct precision, manually carrying upwards through digits if necessary
+    let remaining_digits = number_string.split_off(precision);
+    let mut carry = remaining_digits.chars().next().unwrap() >= '5';
+
+    let mut number_bytes = number_string.into_bytes();
+    for digit in number_bytes.iter_mut().rev() {
+        if !carry {
+            break;
+        }
+
+        if *digit == b'9' {
+            *digit = b'0';
+            carry = true;
+        } else {
+            *digit += 1;
+            carry = false;
+        }
+    }
+
+    // If we still need to carry at the end of the string, we need to add a leading one
+    // then adjust the exponent.
+    if carry {
+        number_bytes.insert(0, b'1');
+        number_bytes.pop();
+        exponent += 1;
+    }
+
+    // Digits string is used as the mantissa
+    let mantissa = String::from_utf8(number_bytes).unwrap();
+
+    (exponent, mantissa)
 }

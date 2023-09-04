@@ -7,6 +7,7 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         string_value::FlatString,
+        to_string,
         type_utilities::{number_to_string, to_integer_or_infinity},
         value::Value,
         Context, Handle,
@@ -38,6 +39,9 @@ impl NumberPrototype {
         object
             .object()
             .intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm);
+        object
+            .object()
+            .intrinsic_func(cx, cx.names.to_precision(), Self::to_precision, 1, realm);
         object
             .object()
             .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
@@ -102,6 +106,155 @@ impl NumberPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Self::to_string(cx, this_value, &[], None)
+    }
+
+    // 21.1.3.5 Number.prototype.toPrecision
+    fn to_precision(
+        mut cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let number_value = maybe!(this_number_value(cx, this_value));
+
+        let precision_arg = get_argument(cx, arguments, 0);
+        if precision_arg.is_undefined() {
+            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+        }
+
+        let precision = maybe!(to_integer_or_infinity(cx, precision_arg));
+        if !number_value.as_number().is_finite() {
+            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+        }
+
+        let precision = precision as i64;
+        if precision < 1 || precision > 100 {
+            return range_error_(
+                cx,
+                "Number.prototype.toPrecision requires precision between 1 and 100",
+            );
+        }
+        let precision = precision as i32;
+
+        let mut result = String::new();
+
+        let mut number = number_value.as_number();
+
+        if number < 0.0 {
+            number = -number;
+            result.push('-');
+        }
+
+        // Exponent and mantissa ("e" and "m") from spec
+        let mut exponent;
+        let mut mantissa;
+
+        if number == 0.0 {
+            exponent = 0;
+            mantissa = "0".repeat(precision as usize);
+        } else {
+            // We cannot perform floating point math to find exponent and mantissa due to the
+            // imprecision of floating point numbers. Instead, we first convert the number to a
+            // string and then perform numeric calculations on the string itself.
+
+            // We need to make sure there are at least 100 significant digits written to the string
+            // so that no rounding is performed. For numbers < 1 this means we need to find the
+            // log10 to account for leading zeros, that way we get 100 significant non-zero digits.
+            let format_precision = if number < 1.0 {
+                -(number.log10().floor()) as usize + 100
+            } else {
+                100
+            };
+
+            let mut number_string = format!("{:.*}", format_precision, number);
+
+            // Find the exponent of the number. For numbers >= 1 find the number of digits before
+            // the decimal point. For numbers < 1 find the number of leading zeros after the decimal
+            // point. This algorithm fails if number == 0, but this case is handled above.
+            let decimal_point_index = number_string.find('.').unwrap();
+            
+            if number >= 1.0 {
+                exponent = decimal_point_index as i32 - 1;
+
+                // Remove the decimal point, leaving only significant digits
+                number_string.remove(decimal_point_index);
+            } else {
+                let num_leading_zeros = number_string[decimal_point_index + 1..]
+                    .find(|digit| digit != '0')
+                    .unwrap();
+                exponent = -(num_leading_zeros as i32) - 1;
+
+                // Remove all digits before the first significant (non-zero) digit
+                number_string =
+                    number_string[decimal_point_index + 1 + num_leading_zeros..].to_owned();
+            };
+
+            // Round to the correct precision, manually carrying upwards through digits if necessary
+            let remaining_digits = number_string.split_off(precision as usize);
+            let mut carry = remaining_digits.chars().next().unwrap() >= '5';
+
+            let mut number_bytes = number_string.into_bytes();
+            for digit in number_bytes.iter_mut().rev() {
+                if !carry {
+                    break;
+                }
+
+                if *digit == b'9' {
+                    *digit = b'0';
+                    carry = true;
+                } else {
+                    *digit += 1;
+                    carry = false;
+                }
+            }
+
+            // If we still need to carry at the end of the string, we need to add a leading one
+            // then adjust the exponent.
+            if carry {
+                number_bytes.insert(0, b'1');
+                number_bytes.pop();
+                exponent += 1;
+            }
+
+            // Digits string is used as the mantissa
+            mantissa = String::from_utf8(number_bytes).unwrap();
+
+            // Back to format from the spec now that we have calculated the exponent and mantissa
+            if exponent < -6 || exponent >= precision {
+                if precision != 1 {
+                    mantissa.insert(1, '.');
+                }
+
+                let sign = if exponent > 0 {
+                    '+'
+                } else {
+                    exponent = -exponent;
+                    '-'
+                };
+
+                result.push_str(&mantissa);
+                result.push('e');
+                result.push(sign);
+                result.push_str(&exponent.to_string());
+
+                return cx.alloc_string(&result).into();
+            }
+        }
+
+        if exponent == precision - 1 {
+            result.push_str(&mantissa);
+        } else if exponent >= 0 {
+            let period_index = usize::min((exponent + 1) as usize, mantissa.len());
+            result.push_str(&mantissa[..period_index as usize]);
+            result.push('.');
+            result.push_str(&mantissa[period_index..]);
+        } else {
+            result.push_str("0.");
+            result.push_str(&"0".repeat(-(exponent + 1) as usize));
+            result.push_str(&mantissa);
+        }
+
+        cx.alloc_string(&result).into()
     }
 
     // 21.1.3.6 Number.prototype.toString

@@ -372,6 +372,7 @@ builtin_names!(
     (to_locale_time_string, "toLocaleTimeString"),
     (to_locale_upper_case, "toLocaleUpperCase"),
     (to_lower_case, "toLowerCase"),
+    (to_precision, "toPrecision"),
     (to_primitive, "toPrimitive"),
     (to_reversed, "toReversed"),
     (to_sorted, "toSorted"),

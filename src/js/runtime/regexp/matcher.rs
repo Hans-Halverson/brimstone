@@ -306,7 +306,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     self.advance_instruction();
                 }
                 Instruction::CompareIsNotWord => {
-                    if is_word_code_point(self.string_lexer.current()) {
+                    if !is_word_code_point(self.string_lexer.current()) {
                         self.compare_register = true;
                     }
 
@@ -347,6 +347,7 @@ impl<T: LexerStream> MatchEngine<T> {
                 Instruction::Lookaround(is_ahead, is_positive, lookaround_instruction_index) => {
                     // Save lexer state for starting lookaround
                     let saved_string_state = self.string_lexer.save();
+                    let saved_capture_stack_len = self.capture_stack.len();
 
                     // Save the index of the instruction after the lookaround
                     self.advance_instruction();
@@ -375,6 +376,12 @@ impl<T: LexerStream> MatchEngine<T> {
                     if is_match == is_positive {
                         self.string_lexer.restore(&saved_string_state);
                         self.instruction_index = next_instruction_index;
+
+                        // If this is a successful negative lookaround make sure to restore capture
+                        // state to before the lookaround.
+                        if !is_positive {
+                            self.capture_stack.truncate(saved_capture_stack_len);            
+                        }
                     } else {
                         self.backtrack()?;
                     }

@@ -4,8 +4,9 @@ use match_u32::match_u32;
 
 use crate::js::common::{
     unicode::{
-        as_id_part, as_id_start, get_hex_value, is_ascii_alphabetic, is_decimal_digit,
-        is_id_continue_unicode,
+        as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
+        is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_unit, is_id_continue_unicode,
+        is_low_surrogate_code_unit,
     },
     unicode_property::{
         BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
@@ -464,7 +465,9 @@ impl<T: LexerStream> RegExpParser<T> {
             // quantifiable assertions in Annex B (but all engines appear to support quantifiable
             // lookaheads in non-Annex B mode).
             match term {
-                Term::Assertion(_) | Term::Lookaround(Lookaround { is_ahead: false, .. }) => {
+                Term::Lookaround(Lookaround { is_ahead: true, .. }) if !self.is_unicode_aware() => {
+                }
+                Term::Assertion(_) | Term::Lookaround(_) => {
                     return self.error(quantifier_pos, ParseError::NonQuantifiableAssertion);
                 }
                 _ => {}
@@ -609,6 +612,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
         let mut ranges = vec![];
         while !self.eat(']') {
+            let atom_start_pos = self.pos();
             let atom = self.parse_class_atom()?;
 
             if self.eat('-') {
@@ -624,6 +628,10 @@ impl<T: LexerStream> RegExpParser<T> {
 
                 let start = self.class_atom_to_range_bound(atom)?;
                 let end = self.class_atom_to_range_bound(end_atom)?;
+
+                if end < start {
+                    return self.error(atom_start_pos, ParseError::InvalidCharacterClassRange);
+                }
 
                 ranges.push(ClassRange::Range(start, end));
             } else {
@@ -928,11 +936,35 @@ impl<T: LexerStream> RegExpParser<T> {
 
             self.expect('}')?;
 
-            Ok(value)
-        } else {
-            let code_point = self.parse_hex4_digits(start_pos)?;
-            Ok(code_point)
+            return Ok(value);
         }
+
+        let code_unit = self.parse_hex4_digits(start_pos)?;
+
+        // All code units are handled separately in unicode unaware mode
+        if !self.is_unicode_aware() {
+            return Ok(code_unit as u32);
+        }
+
+        // Check if this could be the start of a surrogate pair
+        if is_high_surrogate_code_unit(code_unit)
+            && self.current() == '\\' as u32
+            && self.peek() == 'u' as u32
+        {
+            let save_state = self.save();
+
+            // Speculatively parse the next code unit, checking if it forms a surrogate pair. If not
+            // then restore to before the next code unit.
+            self.advance2();
+            let next_code_unit = self.parse_hex4_digits(start_pos)?;
+            if is_low_surrogate_code_unit(next_code_unit) {
+                return Ok(code_point_from_surrogate_pair(code_unit, next_code_unit));
+            }
+
+            self.restore(&save_state);
+        }
+
+        Ok(code_unit as u32)
     }
 
     fn parse_hex2_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {
@@ -950,13 +982,13 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(value)
     }
 
-    fn parse_hex4_digits(&mut self, start_pos: Pos) -> ParseResult<u32> {
+    fn parse_hex4_digits(&mut self, start_pos: Pos) -> ParseResult<u16> {
         let mut value = 0;
         for _ in 0..4 {
             if let Some(hex_value) = get_hex_value(self.current()) {
                 self.advance();
                 value <<= 4;
-                value += hex_value;
+                value += hex_value as u16;
             } else {
                 return self.error(start_pos, ParseError::MalformedEscapeSeqence);
             }

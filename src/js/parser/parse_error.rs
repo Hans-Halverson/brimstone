@@ -81,6 +81,7 @@ pub enum ParseError {
     DuplicateRegExpFlag,
     UnexpectedRegExpQuantifier,
     UnexpectedRegExpEnd,
+    InvalidCharacterClassRange,
     RegExpCharacterClassInRange,
     TooManyCaptureGroups,
     DuplicateCaptureGroupName,
@@ -312,6 +313,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::RegExpCharacterClassInRange => {
                 write!(f, "Character class cannot be a bound in a character range")
+            }
+            ParseError::InvalidCharacterClassRange => {
+                write!(f, "Invalid character class range in regular expression")
             }
             ParseError::TooManyCaptureGroups => {
                 write!(f, "Too many capture groups in regular expression")

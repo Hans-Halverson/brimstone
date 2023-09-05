@@ -379,9 +379,9 @@
       kind: {
         type: "Literal",
         loc: "18:0-18:7",
-        raw: "/[a--]/",
+        raw: "/[+--]/",
         value: {
-          pattern: "[a--]",
+          pattern: "[+--]",
           flags: "",
         },
         regexp: {
@@ -394,7 +394,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "Range(a, -)",
+                    "Range(+, -)",
                   ],
                 },
               ],

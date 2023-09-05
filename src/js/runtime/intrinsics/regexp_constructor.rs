@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     js::{
+        common::{unicode::is_newline, wtf_8::Wtf8String},
         parser::{
             ast,
             lexer_stream::{
@@ -292,9 +293,8 @@ pub fn regexp_create(
 
             let compiled_regexp = compile_regexp(cx, &regexp);
 
-            // TODO: Escape pattern source
             regexp_object.compiled_regexp = compiled_regexp.get_();
-            regexp_object.escaped_pattern_source = pattern_string.get_();
+            regexp_object.escaped_pattern_source = escape_pattern_string(cx, pattern_string).get_();
         }
     }
 
@@ -370,6 +370,44 @@ fn parse_pattern(
             }
         }
     }
+}
+
+fn escape_pattern_string(
+    mut cx: Context,
+    pattern_string: Handle<StringValue>,
+) -> Handle<StringValue> {
+    // Special case the empty pattern string - equivalent to an empty non-capturing group
+    if pattern_string.is_empty() {
+        return InternedStrings::get_str(cx, "(?:)");
+    }
+
+    // Only need to escape line terminators and forward slash
+    let neeeds_escape = pattern_string
+        .iter_code_units()
+        .any(|code_unit| code_unit == '/' as u16 || is_newline(code_unit as u32));
+    if !neeeds_escape {
+        return pattern_string;
+    }
+
+    let mut escaped_string = Wtf8String::new();
+
+    for code_unit in pattern_string.iter_code_units() {
+        if code_unit == '/' as u16 {
+            escaped_string.push_str("\\/");
+        } else if code_unit == '\n' as u16 {
+            escaped_string.push_str("\\n");
+        } else if code_unit == '\r' as u16 {
+            escaped_string.push_str("\\r");
+        } else if code_unit == '\u{2028}' as u16 {
+            escaped_string.push_str("\\u2028");
+        } else if code_unit == '\u{2029}' as u16 {
+            escaped_string.push_str("\\u2029");
+        } else {
+            escaped_string.push(code_unit as u32);
+        }
+    }
+
+    cx.alloc_wtf8_string(&escaped_string)
 }
 
 impl HeapObject for HeapPtr<RegExpObject> {

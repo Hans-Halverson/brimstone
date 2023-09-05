@@ -2,6 +2,7 @@
 /a/img;
 
 // Can use `=` at start of regexp
+/=/;
 /=abc/;
 
 // Alternation

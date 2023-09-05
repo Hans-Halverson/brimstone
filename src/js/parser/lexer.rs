@@ -1011,15 +1011,18 @@ impl<'a> Lexer<'a> {
     // Lex a regexp literal. Must be called when the previously lexed token was either a '/' or '/='
     pub fn next_regexp_literal(&mut self) -> LexResult {
         let start_pos = if self.code_point_at(self.pos - 1) == '/' as u32 {
-            self.pos - 1
+            let start_pos = self.pos - 1;
+
+            // RegularExpressionFirstChar
+            self.lex_regex_character(false)?;
+
+            start_pos
         } else {
+            // First pattern character is a '='
             self.pos - 2
         };
 
         let pattern_start_pos = start_pos + 1;
-
-        // RegularExpressionFirstChar
-        self.lex_regex_character(false)?;
 
         // RegularExpressionChars
         while self.current != '/' as u32 {

@@ -73,8 +73,9 @@
       // Passing but ignored
       "language/comments/S7.4_A5.js",
       "language/comments/S7.4_A6.js",
-      "language/literals/regexp/S7.8.5_A2.1_T2.js",
+      "language/literals/regexp/S7.8.5_A1.1_T2.js",
       "language/literals/regexp/S7.8.5_A1.4_T2.js",
+      "language/literals/regexp/S7.8.5_A2.1_T2.js",
       "language/literals/regexp/S7.8.5_A2.4_T2.js",
       "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array.js",
       "built-ins/RegExp/character-class-escape-non-whitespace.js",

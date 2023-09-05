@@ -32,7 +32,7 @@ extend_object! {
         target_string: HeapPtr<StringValue>,
         is_global: bool,
         is_unicode: bool,
-        is_non_global_done: bool,
+        is_done: bool,
     }
 }
 
@@ -54,7 +54,7 @@ impl RegExpStringIterator {
         set_uninit!(object.target_string, target_string.get_());
         set_uninit!(object.is_global, is_global);
         set_uninit!(object.is_unicode, is_unicode);
-        set_uninit!(object.is_non_global_done, false);
+        set_uninit!(object.is_done, false);
 
         object.to_handle()
     }
@@ -106,8 +106,8 @@ impl RegExpStringIteratorPrototype {
         let regexp_object = regexp_iterator.regexp_object();
         let target_string = regexp_iterator.target_string();
 
-        // Check if we have already marked the iterator as done, e.g. for one shot non-global regexps
-        if regexp_iterator.is_non_global_done {
+        // Check if we have already marked the iterator as done
+        if regexp_iterator.is_done {
             return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 
@@ -116,11 +116,12 @@ impl RegExpStringIteratorPrototype {
 
         // No match so return a completed iterator
         if match_result.is_null() {
+            regexp_iterator.is_done = true;
             return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 
         if !regexp_iterator.is_global {
-            regexp_iterator.is_non_global_done = true;
+            regexp_iterator.is_done = true;
             return create_iter_result_object(cx, match_result, false).into();
         }
 

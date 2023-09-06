@@ -45,8 +45,6 @@ extend_object! {
         // The pattern component of the original regexp as a string. Escaped so that it can be
         // parsed into exactly the same pattern again.
         escaped_pattern_source: HeapPtr<StringValue>,
-        // Lazily generated flags string
-        flags_string: Option<HeapPtr<StringValue>>,
     }
 }
 
@@ -66,7 +64,6 @@ impl RegExpObject {
         // we must ensure the RegExpObject is in a valid state.
         set_uninit!(object.compiled_regexp, HeapPtr::uninit());
         set_uninit!(object.escaped_pattern_source, HeapPtr::uninit());
-        set_uninit!(object.flags_string, None);
 
         let object = object.to_handle();
 
@@ -93,7 +90,6 @@ impl RegExpObject {
 
         set_uninit!(object.compiled_regexp, compiled_regexp.get_());
         set_uninit!(object.escaped_pattern_source, source.get_());
-        set_uninit!(object.flags_string, None);
 
         let object = object.to_handle();
 
@@ -124,16 +120,6 @@ impl RegExpObject {
     #[inline]
     pub fn flags(&self) -> RegExpFlags {
         self.compiled_regexp.flags
-    }
-
-    #[inline]
-    pub fn flags_string(&self) -> Option<Handle<StringValue>> {
-        self.flags_string.map(|f| f.to_handle())
-    }
-
-    #[inline]
-    pub fn set_flags_string(&mut self, flags_string: Handle<StringValue>) {
-        self.flags_string = Some(flags_string.get_());
     }
 
     #[inline]
@@ -272,7 +258,6 @@ pub fn regexp_create(
         RegExpSource::RegExpObject(old_regexp_object) => {
             regexp_object.compiled_regexp = old_regexp_object.compiled_regexp;
             regexp_object.escaped_pattern_source = old_regexp_object.escaped_pattern_source;
-            regexp_object.flags_string = old_regexp_object.flags_string;
         }
         RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
@@ -419,6 +404,5 @@ impl HeapObject for HeapPtr<RegExpObject> {
         self.cast::<ObjectValue>().visit_pointers(visitor);
         visitor.visit_pointer(&mut self.compiled_regexp);
         visitor.visit_pointer(&mut self.escaped_pattern_source);
-        visitor.visit_pointer_opt(&mut self.flags_string);
     }
 }

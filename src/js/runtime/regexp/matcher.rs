@@ -380,7 +380,7 @@ impl<T: LexerStream> MatchEngine<T> {
                         // If this is a successful negative lookaround make sure to restore capture
                         // state to before the lookaround.
                         if !is_positive {
-                            self.capture_stack.truncate(saved_capture_stack_len);            
+                            self.capture_stack.truncate(saved_capture_stack_len);
                         }
                     } else {
                         self.backtrack()?;

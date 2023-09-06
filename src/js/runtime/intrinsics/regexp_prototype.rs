@@ -113,15 +113,6 @@ impl RegExpPrototype {
 
         let this_object = this_value.as_object();
 
-        // When this value is a regexp object, use cached flags string
-        let is_regexp_object = this_object.is_regexp_object();
-        if is_regexp_object {
-            let regexp_object = this_object.cast::<RegExpObject>();
-            if let Some(flags_string) = regexp_object.flags_string() {
-                return flags_string.into();
-            }
-        }
-
         let mut flags_string = String::new();
 
         let has_indices_value = maybe!(get(cx, this_object, cx.names.has_indices()));
@@ -164,12 +155,6 @@ impl RegExpPrototype {
         } else {
             cx.alloc_string(&flags_string)
         };
-
-        // Cache flags string for regexp objects
-        if is_regexp_object {
-            let mut regexp_object = this_object.cast::<RegExpObject>();
-            regexp_object.set_flags_string(flags_string);
-        }
 
         flags_string.into()
     }
@@ -220,18 +205,11 @@ impl RegExpPrototype {
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = maybe!(to_string(cx, string_arg));
 
-        let (is_global, is_unicode) = if regexp_object.is_regexp_object() {
-            let flags = regexp_object.cast::<RegExpObject>().flags();
-            (flags.contains(RegExpFlags::GLOBAL), flags.contains(RegExpFlags::UNICODE_AWARE))
-        } else {
-            let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
-            let flags_string = maybe!(to_string(cx, flags_string));
+        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
+        let flags_string = maybe!(to_string(cx, flags_string));
 
-            let is_global = flags_string_contains(flags_string, 'g' as u32);
-            let is_unicode = flags_string_contains(flags_string, 'u' as u32);
-
-            (is_global, is_unicode)
-        };
+        let is_global = flags_string_contains(flags_string, 'g' as u32);
+        let is_unicode = flags_string_contains(flags_string, 'u' as u32);
 
         if !is_global {
             return regexp_exec(cx, regexp_object, string_value);
@@ -316,7 +294,7 @@ impl RegExpPrototype {
         let is_global = flags_string_contains(flags_string, 'g' as u32);
         let is_unicode = flags_string_contains(flags_string, 'u' as u32);
 
-        RegExpStringIterator::new(cx, regexp_object, string_value, is_global, is_unicode).into()
+        RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode).into()
     }
 
     // 22.2.6.10 get RegExp.prototype.multiline

@@ -43,6 +43,8 @@ pub struct RegExpParser<T: LexerStream> {
     named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
     // All indexed backreferences encountered. Saves the index and source position.
     indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
+    // Number of parenthesized groups the parser is currently inside
+    group_depth: usize,
 }
 
 impl<T: LexerStream> RegExpParser<T> {
@@ -55,6 +57,7 @@ impl<T: LexerStream> RegExpParser<T> {
             capture_group_names: HashMap::new(),
             named_backreferences: vec![],
             indexed_backreferences: vec![],
+            group_depth: 0,
         }
     }
 
@@ -246,7 +249,15 @@ impl<T: LexerStream> RegExpParser<T> {
                 }
                 '}' | ']' => return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative
-                ')' | '|' => break,
+                '|' => break,
+                ')' => {
+                    // Only a valid end if we are inside a group
+                    if self.group_depth > 0 {
+                        break;
+                    } else {
+                        return self.error_unexpected_token(self.pos());
+                    }
+                }
                 // Otherwise must be the start of a term
                 _ => {}
             });
@@ -272,7 +283,13 @@ impl<T: LexerStream> RegExpParser<T> {
                 self.advance();
                 Term::Wildcard
             }
-            '(' => self.parse_group()?,
+            '(' => {
+                self.group_depth += 1;
+                let group = self.parse_group()?;
+                self.group_depth -= 1;
+
+                group
+            }
             '[' => self.parse_character_class()?,
             '^' => {
                 self.advance();

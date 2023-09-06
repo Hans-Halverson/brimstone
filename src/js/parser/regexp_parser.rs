@@ -467,7 +467,7 @@ impl<T: LexerStream> RegExpParser<T> {
                     Some(lower_bound)
                 };
 
-                self.eat('}');
+                self.expect('}')?;
 
                 Some((lower_bound, upper_bound))
             }
@@ -750,7 +750,7 @@ impl<T: LexerStream> RegExpParser<T> {
     fn parse_regexp_escape_sequence(&mut self) -> ParseResult<u32> {
         match_u32!(match self.peek() {
             // Unicode escape sequence
-            'u' => self.parse_regex_unicode_escape_sequence(),
+            'u' => self.parse_regex_unicode_escape_sequence(self.is_unicode_aware()),
             // Standard control characters
             'f' => {
                 self.advance2();
@@ -879,7 +879,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
         // First character must be an id start, which can be an escape sequence
         let code_point = if self.current() == '\\' as u32 {
-            self.parse_regex_unicode_escape_sequence()?
+            self.parse_regex_unicode_escape_sequence(true)?
         } else {
             // Otherwise must be a unicode codepoint
             self.parse_unicode_codepoint()?
@@ -895,7 +895,7 @@ impl<T: LexerStream> RegExpParser<T> {
         loop {
             // Can be an escape sequence
             if self.current() == '\\' as u32 {
-                let code_point = self.parse_regex_unicode_escape_sequence()?;
+                let code_point = self.parse_regex_unicode_escape_sequence(true)?;
 
                 if let Some(char) = as_id_part(code_point) {
                     string_builder.push(char);
@@ -920,15 +920,25 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(string_builder)
     }
 
-    fn parse_regex_unicode_escape_sequence(&mut self) -> ParseResult<u32> {
+    fn parse_regex_unicode_escape_sequence(&mut self, is_unicode_aware: bool) -> ParseResult<u32> {
         let start_pos = self.pos();
 
         // Unicode escape sequences always start with `\u`
         self.advance();
+
+        let after_slash_state = self.save();
+
         self.expect('u')?;
 
         // In unicode aware mode the escape sequence \u{digits} is allowed
-        if self.is_unicode_aware() && self.eat('{') {
+        if self.eat('{') {
+            // If not in unicode aware mode this was an escaped 'u' and following characters should
+            // be parsed separately.
+            if !is_unicode_aware {
+                self.restore(&after_slash_state);
+                return Ok('u' as u32);
+            }
+
             // Cannot be empty
             if self.eat('}') {
                 return self.error(start_pos, ParseError::MalformedEscapeSeqence);
@@ -959,7 +969,7 @@ impl<T: LexerStream> RegExpParser<T> {
         let code_unit = self.parse_hex4_digits(start_pos)?;
 
         // All code units are handled separately in unicode unaware mode
-        if !self.is_unicode_aware() {
+        if !is_unicode_aware {
             return Ok(code_unit as u32);
         }
 

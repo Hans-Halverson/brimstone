@@ -28,13 +28,26 @@ pub struct MatchEngine<T: LexerStream> {
     // Index of the next instruction to execute
     instruction_index: usize,
     // Saved restore points for backtracking
-    backtrack_stack: Vec<BacktrackRestoreState>,
-    // All capture points that have been marked
-    capture_stack: Vec<CapturePoint>,
+    backtrack_stack: Vec<BacktrackEntry>,
+    // String index for each capture point
+    capture_points: Vec<usize>,
     // A saved string index for each progress instruction
     progress_points: Vec<HashSet<usize>>,
     // An accumulator register for building multi-part comparisons
     compare_register: bool,
+    // Backtrack stack base index for the current sub-execution. For the top-level execution this is
+    // always 0, for sub-executions this is the size of the backtrack stack at the sub-execution start.
+    backtrack_stack_base: usize,
+}
+
+enum BacktrackEntry {
+    /// Backtrack to an (instruction, string index) state
+    RestoreState(BacktrackRestoreState),
+    /// Restore a capture point
+    CapturePoint(CapturePoint),
+    /// Restore the backtrack stack to a given size, backtracking through all entries
+    /// above that size.
+    RestoreBacktrackStack(usize),
 }
 
 struct BacktrackRestoreState {
@@ -42,28 +55,15 @@ struct BacktrackRestoreState {
     instruction_index: usize,
     // Current target string state when this restore point was created
     saved_string_state: SavedLexerStreamState,
-    // Length of the capture stack when this restore point was created
-    capture_stack_len: usize,
 }
+
+const EMPTY_STRING_INDEX: usize = usize::MAX;
 
 struct CapturePoint {
     // Capture point index marking the beginning or end of a capture group
     capture_point_index: u32,
     // Target string index that was marked
     string_index: usize,
-}
-
-impl CapturePoint {
-    /// Special clear marker to mark a cleared capture group. This is denoted by a usize::MAX string
-    /// index, which would not normally be possible due to string length limits. In this form the
-    /// capture group index field instead represents the 1-indexed capture group that was cleared.
-    fn clear_marker(capture_index: u32) -> Self {
-        CapturePoint { capture_point_index: capture_index, string_index: usize::MAX }
-    }
-
-    fn is_clear_marker(&self) -> bool {
-        self.string_index == usize::MAX
-    }
 }
 
 #[derive(Debug)]
@@ -87,37 +87,66 @@ impl<T: LexerStream> MatchEngine<T> {
         let mut progress_points = Vec::with_capacity(regexp.num_progress_points as usize);
         progress_points.resize_with(regexp.num_progress_points as usize, || HashSet::new());
 
+        let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
+
         Self {
             regexp,
             string_lexer,
             instruction_index: 0,
             backtrack_stack: Vec::new(),
-            capture_stack: Vec::new(),
+            capture_points: vec![EMPTY_STRING_INDEX; num_capture_points],
             progress_points,
             compare_register: false,
+            backtrack_stack_base: 0,
         }
     }
 
     fn push_backtrack_restore_state(&mut self, instruction_index: usize) {
         let saved_string_state = self.string_lexer.save();
-        let restore_state = BacktrackRestoreState {
-            instruction_index,
-            saved_string_state,
-            capture_stack_len: self.capture_stack.len(),
-        };
+        let restore_state = BacktrackRestoreState { instruction_index, saved_string_state };
 
-        self.backtrack_stack.push(restore_state);
+        self.backtrack_stack
+            .push(BacktrackEntry::RestoreState(restore_state));
     }
 
     fn backtrack(&mut self) -> Result<(), ()> {
-        match self.backtrack_stack.pop() {
-            None => Err(()),
-            Some(restore_state) => {
-                self.instruction_index = restore_state.instruction_index;
-                self.string_lexer.restore(&restore_state.saved_string_state);
-                self.capture_stack.truncate(restore_state.capture_stack_len);
+        while self.backtrack_stack.len() > self.backtrack_stack_base {
+            let backtrack_entry = self.backtrack_stack.pop().unwrap();
+            match backtrack_entry {
+                BacktrackEntry::RestoreState(restore_state) => {
+                    self.instruction_index = restore_state.instruction_index;
+                    self.string_lexer.restore(&restore_state.saved_string_state);
 
-                Ok(())
+                    return Ok(());
+                }
+                BacktrackEntry::CapturePoint(capture_point) => {
+                    self.set_capture_point(
+                        capture_point.capture_point_index,
+                        capture_point.string_index,
+                    );
+
+                    // Continue backtracking
+                }
+                BacktrackEntry::RestoreBacktrackStack(backtrack_stack_size) => {
+                    self.backtrack_to_stack_size(backtrack_stack_size);
+
+                    // Continue backtracking
+                }
+            }
+        }
+
+        Err(())
+    }
+
+    /// Restore the backtrack stack to a particular size, undoing all captures along the way.
+    fn backtrack_to_stack_size(&mut self, backtrack_stack_size: usize) {
+        while self.backtrack_stack.len() > backtrack_stack_size {
+            let backtrack_entry = self.backtrack_stack.pop().unwrap();
+            if let BacktrackEntry::CapturePoint(capture_point) = backtrack_entry {
+                self.set_capture_point(
+                    capture_point.capture_point_index,
+                    capture_point.string_index,
+                );
             }
         }
     }
@@ -135,6 +164,16 @@ impl<T: LexerStream> MatchEngine<T> {
     #[inline]
     fn set_next_instruction(&mut self, next_instruction_index: u32) {
         self.instruction_index = next_instruction_index as usize;
+    }
+
+    #[inline]
+    fn get_capture_point(&self, capture_point_index: u32) -> usize {
+        self.capture_points[capture_point_index as usize]
+    }
+
+    #[inline]
+    fn set_capture_point(&mut self, capture_point_index: u32, string_index: usize) {
+        self.capture_points[capture_point_index as usize] = string_index;
     }
 
     fn run(&mut self) -> Option<Match> {
@@ -181,16 +220,13 @@ impl<T: LexerStream> MatchEngine<T> {
                 }
                 Instruction::MarkCapturePoint(capture_point_index) => {
                     let string_index = self.string_lexer.pos();
-                    let capture_point = CapturePoint { capture_point_index, string_index };
-
-                    self.capture_stack.push(capture_point);
-
+                    self.push_capture_point(capture_point_index, string_index);
                     self.advance_instruction();
                 }
                 Instruction::ClearCapture(capture_group_index) => {
-                    let clear_marker = CapturePoint::clear_marker(capture_group_index);
-                    self.capture_stack.push(clear_marker);
-
+                    // Clearing just the ending capture point for the group is enough
+                    let capture_point_index = capture_group_index * 2 + 1;
+                    self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX);
                     self.advance_instruction();
                 }
                 Instruction::Progress(progress_index) => {
@@ -348,18 +384,21 @@ impl<T: LexerStream> MatchEngine<T> {
                 Instruction::Lookaround(is_ahead, is_positive, lookaround_instruction_index) => {
                     // Save lexer state for starting lookaround
                     let saved_string_state = self.string_lexer.save();
-                    let saved_capture_stack_len = self.capture_stack.len();
 
-                    // Save the index of the instruction after the lookaround
+                    // Save the index of the instruction to be executed after the lookaround
                     self.advance_instruction();
                     let next_instruction_index = self.instruction_index;
 
-                    // Save the backtrack stack since sub-execution will use a new backtrack stack
-                    let backtrack_stack = std::mem::replace(&mut self.backtrack_stack, vec![]);
+                    // Save the base and size of the backtrack stack before the sub-execution starts
+                    let old_backtrack_stack_size = self.backtrack_stack.len();
+                    let old_backtrack_stack_base = self.backtrack_stack_base;
 
-                    self.set_next_instruction(lookaround_instruction_index);
+                    // Set up new sub-execution frame on backtrack stack
+                    self.backtrack_stack_base = self.backtrack_stack.len();
 
                     // Execute the lookaround as a sub-execution within engine
+                    self.set_next_instruction(lookaround_instruction_index);
+
                     let is_match = if is_ahead {
                         // Prime lexer for forwards traversal
                         self.string_lexer.advance_n(0);
@@ -370,19 +409,23 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.execute_bytecode::<BACKWARD>().is_ok()
                     };
 
-                    // Restore backtrack stack
-                    self.backtrack_stack = backtrack_stack;
+                    // Successfully matched - we want to keep the captures for now, but must allow
+                    // undoing the captures in the future when backtracking.
+                    if is_match {
+                        self.backtrack_stack
+                            .push(BacktrackEntry::RestoreBacktrackStack(old_backtrack_stack_size))
+                    } else {
+                        // If did not match then backtrack stack must have been popped back to
+                        // the old size.
+                        debug_assert!(self.backtrack_stack.len() == old_backtrack_stack_size);
+                    }
+
+                    self.backtrack_stack_base = old_backtrack_stack_base;
 
                     // Check if lookaround succeeded and either restore or backtrack
                     if is_match == is_positive {
                         self.string_lexer.restore(&saved_string_state);
                         self.instruction_index = next_instruction_index;
-
-                        // If this is a successful negative lookaround make sure to restore capture
-                        // state to before the lookaround.
-                        if !is_positive {
-                            self.capture_stack.truncate(saved_capture_stack_len);
-                        }
                     } else {
                         self.backtrack()?;
                     }
@@ -433,11 +476,23 @@ impl<T: LexerStream> MatchEngine<T> {
         is_current_word != is_prev_word
     }
 
+    fn push_capture_point(&mut self, capture_point_index: u32, string_index: usize) {
+        // Save old capture point on backtrack stack
+        let old_string_index = self.get_capture_point(capture_point_index);
+        self.backtrack_stack
+            .push(BacktrackEntry::CapturePoint(CapturePoint {
+                capture_point_index,
+                string_index: old_string_index,
+            }));
+
+        self.set_capture_point(capture_point_index, string_index);
+    }
+
     fn execute_backreference<const DIRECTION: bool>(
         &mut self,
         capture_group_index: u32,
     ) -> Result<(), ()> {
-        match self.find_backreference_capture_bounds(capture_group_index) {
+        match self.get_valid_capture_bounds(capture_group_index) {
             None => self.advance_instruction(),
             Some((start_index, end_index)) => {
                 let captured_slice = self.string_lexer.slice(start_index, end_index);
@@ -477,102 +532,31 @@ impl<T: LexerStream> MatchEngine<T> {
         Ok(())
     }
 
-    /// Return the bounds of most recent match of the given capture group
-    fn find_backreference_capture_bounds(
-        &self,
-        capture_group_index: u32,
-    ) -> Option<(usize, usize)> {
-        // Precalculate the start and end capture point indices to search for
-        let start_capture_point_index = capture_group_index * 2;
-        let end_capture_point_index = start_capture_point_index + 1;
+    /// Return the bounds of the current match for the given capture group index. Capture group
+    /// is 1-indexed where 0 is the entire match.
+    ///
+    /// If either bound is empty then the capture group did not match and return None.
+    fn get_valid_capture_bounds(&self, capture_group_index: u32) -> Option<(usize, usize)> {
+        let start_string_index = self.get_capture_point(capture_group_index * 2);
+        let end_string_index = self.get_capture_point(capture_group_index * 2 + 1);
 
-        let mut start_string_index = None;
-        let mut end_string_index = None;
-
-        // Find the last (start_index, end_index) pair in the capture stack. Note that either the
-        // start or end could appear first, since we may have matched forwards or backwards.
-        for capture_point in self.capture_stack.iter().rev() {
-            // If we see a clear marker before completing a (start, end) match there is no capture
-            if capture_point.is_clear_marker() {
-                if capture_point.capture_point_index == capture_group_index {
-                    return None;
-                } else {
-                    continue;
-                }
-            }
-
-            if capture_point.capture_point_index == start_capture_point_index {
-                if let Some(end_string_index) = end_string_index {
-                    return Some((capture_point.string_index, end_string_index));
-                } else {
-                    start_string_index = Some(capture_point.string_index);
-                }
-            } else if capture_point.capture_point_index == end_capture_point_index {
-                if let Some(start_string_index) = start_string_index {
-                    return Some((start_string_index, capture_point.string_index));
-                } else {
-                    end_string_index = Some(capture_point.string_index);
-                }
-            }
+        if start_string_index == EMPTY_STRING_INDEX || end_string_index == EMPTY_STRING_INDEX {
+            return None;
         }
 
-        None
+        Some((start_string_index, end_string_index))
     }
 
     fn build_match(&self) -> Match {
-        #[derive(Clone)]
-        struct LatestCapture {
-            start: Option<usize>,
-            end: Option<usize>,
-            is_cleared: bool,
-        }
+        let num_capture_point_pairs = self.regexp.num_capture_groups + 1;
+        let mut capture_groups = Vec::with_capacity(num_capture_point_pairs as usize);
 
-        let mut latest_captures: Vec<LatestCapture> =
-            vec![
-                LatestCapture { start: None, end: None, is_cleared: false };
-                self.regexp.num_capture_groups as usize + 1
-            ];
-
-        // Collect the latest start and end capture points for each capture group
-        for capture_point in self.capture_stack.iter().rev() {
-            // If we see a clear marker without finishing the capture points for that group yet,
-            // then mark the group as cleared.
-            if capture_point.is_clear_marker() {
-                let latest_capture =
-                    &mut latest_captures[capture_point.capture_point_index as usize];
-                if latest_capture.start.is_none() || latest_capture.end.is_none() {
-                    latest_capture.is_cleared = true;
-                }
-
-                continue;
-            }
-
-            let capture_group_index = capture_point.capture_point_index as usize / 2;
-            let is_start_point = capture_point.capture_point_index % 2 == 0;
-
-            let latest_capture = &mut latest_captures[capture_group_index];
-
-            if is_start_point {
-                if latest_capture.start.is_none() {
-                    latest_capture.start = Some(capture_point.string_index);
-                }
-            } else {
-                if latest_capture.end.is_none() {
-                    latest_capture.end = Some(capture_point.string_index);
-                }
+        for i in 0..num_capture_point_pairs {
+            match self.get_valid_capture_bounds(i) {
+                Some((start, end)) => capture_groups.push(Some(Capture { start, end })),
+                None => capture_groups.push(None),
             }
         }
-
-        // If a start and end capture point appear then form a complete capture
-        let capture_groups = latest_captures
-            .into_iter()
-            .map(|latest_capture| match latest_capture {
-                LatestCapture { start: Some(start), end: Some(end), is_cleared: false } => {
-                    Some(Capture { start, end })
-                }
-                _ => None,
-            })
-            .collect();
 
         Match { capture_groups }
     }

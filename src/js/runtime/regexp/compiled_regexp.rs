@@ -48,7 +48,7 @@ pub enum Instruction {
     WildcardNoNewline,
     /// Continue execution at the instruction with the given index
     Jump(u32),
-    /// Branch between two instructions given their indicies, following first then second branch
+    /// Branch between two instructions given their indices, following first then second branch
     Branch(u32, u32),
     /// Found a match
     Accept,

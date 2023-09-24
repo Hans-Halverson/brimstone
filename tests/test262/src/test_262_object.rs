@@ -1,23 +1,19 @@
 use std::rc::Rc;
 
-use brimstone::{
-    js::{
-        parser::{analyze::analyze, parse_script, source::Source},
-        runtime::{
-            abstract_operations::define_property_or_throw,
-            completion::CompletionKind,
-            error::{syntax_error_, type_error_},
-            eval::script::eval_script,
-            function::get_argument,
-            intrinsics::{
-                array_buffer_constructor::ArrayBufferObject,
-                global_object::set_default_global_bindings, intrinsics::Intrinsic,
-            },
-            object_value::ObjectValue,
-            Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Realm, Value,
+use brimstone::js::{
+    parser::{analyze::analyze, parse_script, source::Source},
+    runtime::{
+        completion::CompletionKind,
+        error::{syntax_error_, type_error_},
+        eval::script::eval_script,
+        function::get_argument,
+        intrinsics::{
+            array_buffer_constructor::ArrayBufferObject,
+            global_object::set_default_global_bindings, intrinsics::Intrinsic,
         },
+        object_value::ObjectValue,
+        to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-    must,
 };
 
 pub struct Test262Object;
@@ -48,10 +44,31 @@ impl Test262Object {
     }
 
     pub fn install(mut cx: Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
+        // Install the the "$262" property on the global object
         let test_262_string = cx.alloc_string("$262");
         let test_262_key = PropertyKey::string(cx, test_262_string).to_handle(cx);
-        let desc = PropertyDescriptor::data(test_262_object.into(), true, false, true);
-        must!(define_property_or_throw(cx, realm.global_object(), test_262_key, desc));
+        realm
+            .global_object()
+            .intrinsic_data_prop(cx, test_262_key, test_262_object.into());
+
+        // Also install a global print function needed in tests
+        let print_string = cx.alloc_string("print");
+        let print_key = PropertyKey::string(cx, print_string).to_handle(cx);
+        realm
+            .global_object()
+            .intrinsic_func(cx, print_key, Self::print, 1, realm);
+    }
+
+    fn print(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let value = get_argument(cx, arguments, 0);
+        println!("{}", to_console_string(cx, value));
+
+        cx.undefined().into()
     }
 
     fn create_realm(

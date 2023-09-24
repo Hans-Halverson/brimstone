@@ -344,7 +344,7 @@ fn parse_pattern(
             parse_lexer_stream(cx, lexer_stream, flags)
         }
         StringWidth::TwoByte => {
-            if flags.contains(RegExpFlags::UNICODE_AWARE) {
+            if flags.has_any_unicode_flag() {
                 let lexer_stream =
                     HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
                 parse_lexer_stream(cx, lexer_stream, flags)

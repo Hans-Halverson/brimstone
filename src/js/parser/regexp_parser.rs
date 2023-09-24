@@ -150,7 +150,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
     #[inline]
     fn is_unicode_aware(&self) -> bool {
-        self.flags.contains(RegExpFlags::UNICODE_AWARE)
+        self.flags.has_any_unicode_flag()
     }
 
     fn error_unexpected_token<E>(&self, start_pos: Pos) -> ParseResult<E> {
@@ -209,9 +209,15 @@ impl<T: LexerStream> RegExpParser<T> {
                 'm' => add_flag!(RegExpFlags::MULTILINE),
                 's' => add_flag!(RegExpFlags::DOT_ALL),
                 'u' => add_flag!(RegExpFlags::UNICODE_AWARE),
+                'v' => add_flag!(RegExpFlags::UNICODE_SETS),
                 'y' => add_flag!(RegExpFlags::STICKY),
                 _ => return lexer_stream.error(lexer_stream.pos(), ParseError::InvalidRegExpFlag),
             })
+        }
+
+        // RegExp can only have one of the `u` or `v` flags
+        if flags.has_simple_unicode_flag() && flags.has_unicode_sets_flag() {
+            return lexer_stream.error(lexer_stream.pos(), ParseError::MultipleUnicodeFlags);
         }
 
         Ok(flags)

@@ -79,6 +79,7 @@ pub enum ParseError {
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
     DuplicateRegExpFlag,
+    MultipleUnicodeFlags,
     UnexpectedRegExpQuantifier,
     UnexpectedRegExpEnd,
     InvalidCharacterClassRange,
@@ -304,6 +305,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::DuplicateRegExpFlag => {
                 write!(f, "Duplicate regular expression flag")
+            }
+            ParseError::MultipleUnicodeFlags => {
+                write!(f, "RegExp cannot have both `u` and `v` flags")
             }
             ParseError::UnexpectedRegExpQuantifier => {
                 write!(f, "Unexpected regular expression quantifier")

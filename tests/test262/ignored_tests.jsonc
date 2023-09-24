@@ -78,6 +78,7 @@
       "language/literals/regexp/S7.8.5_A2.1_T2.js",
       "language/literals/regexp/S7.8.5_A2.4_T2.js",
       "built-ins/Array/prototype/concat/Array.prototype.concat_large-typed-array.js",
+      "built-ins/RegExp/CharacterClassEscapes/*.js",
       "built-ins/RegExp/character-class-escape-non-whitespace.js",
       "built-ins/parseFloat/S15.1.2.3_A6.js",
       "built-ins/parseInt/S15.1.2.2_A8.js",
@@ -122,10 +123,9 @@
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached-prototype.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached.js",
-      // All passing except for built-ins/RegExp/property-escapes/generated/strings/*
-      "built-ins/RegExp/property-escapes/generated/*.js",
-      // Some failing
-      "built-ins/RegExp/CharacterClassEscapes/*.js"
+      // All passing except for built-ins/RegExp/property-escapes/generated/strings/* which require
+      // unicode sets support.
+      "built-ins/RegExp/property-escapes/generated/*.js"
     ]
   },
   // Slow tests which are ignored in GC stress test runs

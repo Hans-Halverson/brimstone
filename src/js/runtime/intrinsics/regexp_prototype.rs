@@ -64,6 +64,7 @@ impl RegExpPrototype {
         object.intrinsic_func(cx, cx.names.test(), Self::test, 1, realm);
         object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_getter(cx, cx.names.unicode(), Self::unicode, realm);
+        object.intrinsic_getter(cx, cx.names.unicode_sets(), Self::unicode_sets, realm);
 
         object
     }
@@ -143,6 +144,11 @@ impl RegExpPrototype {
         let unicode_value = maybe!(get(cx, this_object, cx.names.unicode()));
         if to_boolean(unicode_value.get()) {
             flags_string.push('u');
+        }
+
+        let unicode_sets_value = maybe!(get(cx, this_object, cx.names.unicode_sets()));
+        if to_boolean(unicode_sets_value.get()) {
+            flags_string.push('v');
         }
 
         let sticky_value = maybe!(get(cx, this_object, cx.names.sticky()));
@@ -779,6 +785,16 @@ impl RegExpPrototype {
     ) -> EvalResult<Handle<Value>> {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE)
     }
+
+    // 22.2.6.19 get RegExp.prototype.unicodeSets
+    fn unicode_sets(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_SETS)
+    }
 }
 
 // 22.2.6.4.1 RegExpHasFlag
@@ -844,9 +860,9 @@ fn regexp_builtin_exec(
     let mut last_index = maybe!(to_length(cx, last_index)) as usize;
 
     let flags = regexp_object.flags();
-    let is_global = flags.contains(RegExpFlags::GLOBAL);
-    let is_sticky = flags.contains(RegExpFlags::STICKY);
-    let has_indices = flags.contains(RegExpFlags::HAS_INDICES);
+    let is_global = flags.is_global();
+    let is_sticky = flags.is_sticky();
+    let has_indices = flags.has_indices();
 
     if !is_global && !is_sticky {
         last_index = 0;

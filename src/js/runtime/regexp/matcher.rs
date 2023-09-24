@@ -8,12 +8,9 @@ use crate::js::{
             try_encode_surrogate_pair, CodePoint,
         },
     },
-    parser::{
-        lexer_stream::{
-            HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
-            HeapTwoByteCodeUnitLexerStream, LexerStream, SavedLexerStreamState,
-        },
-        regexp::RegExpFlags,
+    parser::lexer_stream::{
+        HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
+        LexerStream, SavedLexerStreamState,
     },
     runtime::{
         string_value::{FlatString, StringValue, StringWidth},
@@ -598,7 +595,7 @@ pub fn run_matcher(
 ) -> Option<Match> {
     let flat_string = target_string.flatten();
 
-    if regexp.flags.contains(RegExpFlags::IGNORE_CASE) {
+    if regexp.flags.is_case_insensitive() {
         return run_case_insensitive_matcher(regexp, flat_string, start_index);
     }
 
@@ -608,7 +605,7 @@ pub fn run_matcher(
             match_lexer_stream(lexer_stream, regexp, start_index)
         }
         StringWidth::TwoByte => {
-            if regexp.flags.contains(RegExpFlags::UNICODE_AWARE) {
+            if regexp.flags.has_any_unicode_flag() {
                 let lexer_stream =
                     HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
                 match_lexer_stream(lexer_stream, regexp, start_index)
@@ -629,7 +626,7 @@ fn run_case_insensitive_matcher(
     // If ignoring case, canonicalize into an off-heap UTF-16 string
     let mut lowercase_string_code_units = Vec::with_capacity(target_string.len());
 
-    if regexp.flags.contains(RegExpFlags::UNICODE_AWARE) {
+    if regexp.flags.has_any_unicode_flag() {
         for code_point in target_string.iter_code_points() {
             let canonical_code_point = canonicalize(code_point, true);
 

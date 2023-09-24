@@ -441,10 +441,7 @@ impl StringPrototype {
             if maybe!(is_regexp(cx, regexp_arg)) {
                 let regexp_object = regexp_arg.as_object();
                 let has_global_flag = if regexp_object.is_regexp_object() {
-                    regexp_object
-                        .cast::<RegExpObject>()
-                        .flags()
-                        .contains(RegExpFlags::GLOBAL)
+                    regexp_object.cast::<RegExpObject>().flags().is_global()
                 } else {
                     let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
                     maybe!(require_object_coercible(cx, flags_string));

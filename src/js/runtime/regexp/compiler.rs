@@ -120,7 +120,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn canonicalize(&mut self, code_point: CodePoint) -> CodePoint {
-        canonicalize(code_point, self.flags.contains(RegExpFlags::UNICODE_AWARE))
+        canonicalize(code_point, self.flags.has_any_unicode_flag())
     }
 
     fn compile(&mut self, cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
@@ -128,7 +128,7 @@ impl CompiledRegExpBuilder {
         self.new_block();
 
         // Emit preamble allowing match to start at any point in the string
-        if !self.flags.contains(RegExpFlags::STICKY) {
+        if !self.flags.is_sticky() {
             self.emit_preamble();
         }
 
@@ -373,7 +373,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_code_point_literal(&mut self, code_point: CodePoint) {
-        let code_point = if self.flags.contains(RegExpFlags::IGNORE_CASE) {
+        let code_point = if self.flags.is_case_insensitive() {
             self.canonicalize(code_point)
         } else {
             code_point
@@ -397,7 +397,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_wildcard(&mut self) {
-        if self.flags.contains(RegExpFlags::DOT_ALL) {
+        if self.flags.is_dot_all() {
             self.emit_instruction(Instruction::Wildcard)
         } else {
             self.emit_instruction(Instruction::WildcardNoNewline)
@@ -407,14 +407,14 @@ impl CompiledRegExpBuilder {
     fn emit_assertion(&mut self, assertion: &Assertion) {
         match assertion {
             Assertion::Start => {
-                if self.flags.contains(RegExpFlags::MULTILINE) {
+                if self.flags.is_multiline() {
                     self.emit_instruction(Instruction::AssertStartOrNewline)
                 } else {
                     self.emit_instruction(Instruction::AssertStart)
                 }
             }
             Assertion::End => {
-                if self.flags.contains(RegExpFlags::MULTILINE) {
+                if self.flags.is_multiline() {
                     self.emit_instruction(Instruction::AssertEndOrNewline)
                 } else {
                     self.emit_instruction(Instruction::AssertEnd)
@@ -613,7 +613,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
-        let is_case_insensitive = self.flags.contains(RegExpFlags::IGNORE_CASE);
+        let is_case_insensitive = self.flags.is_case_insensitive();
         let mut set_builder = CodePointInversionListBuilder::new();
 
         for class_range in &character_class.ranges {

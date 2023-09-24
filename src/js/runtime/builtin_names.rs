@@ -390,6 +390,7 @@ builtin_names!(
     (trunc, "trunc"),
     (undefined, "undefined"),
     (unicode, "unicode"),
+    (unicode_sets, "unicodeSets"),
     (unregister, "unregister"),
     (unscopables, "unscopables"),
     (unshift, "unshift"),

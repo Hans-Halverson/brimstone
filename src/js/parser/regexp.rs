@@ -28,9 +28,58 @@ bitflags! {
         /// a sequence of UTF-16 encoded code points, as opposed to default mode which treats every
         /// 16-bit sequence as a literal (non-encoded) code point value: `u`
         const UNICODE_AWARE = 1 << 5;
+        /// Unicode sets mode which enables additional unicode features like set operations: `v`
+        const UNICODE_SETS = 1 << 6;
         /// Sticky search. Remembers its position and only matches at the current position in the
         /// target string: `y`
-        const STICKY = 1 << 6;
+        const STICKY = 1 << 7;
+    }
+}
+
+impl RegExpFlags {
+    /// The `d` flag is set
+    pub fn has_indices(&self) -> bool {
+        self.contains(Self::HAS_INDICES)
+    }
+
+    /// The `g` flag is set
+    pub fn is_global(&self) -> bool {
+        self.contains(Self::GLOBAL)
+    }
+
+    /// The `i` flag is set
+    pub fn is_case_insensitive(&self) -> bool {
+        self.contains(Self::IGNORE_CASE)
+    }
+
+    /// The `m` flag is set
+    pub fn is_multiline(&self) -> bool {
+        self.contains(Self::MULTILINE)
+    }
+
+    /// The `s` flag is set
+    pub fn is_dot_all(&self) -> bool {
+        self.contains(Self::DOT_ALL)
+    }
+
+    /// The `u` flag is set
+    pub fn has_simple_unicode_flag(&self) -> bool {
+        self.contains(Self::UNICODE_AWARE)
+    }
+
+    /// The `v` flag is set
+    pub fn has_unicode_sets_flag(&self) -> bool {
+        self.contains(Self::UNICODE_SETS)
+    }
+
+    /// Either the `u` or `v` flag is set
+    pub fn has_any_unicode_flag(&self) -> bool {
+        self.contains(Self::UNICODE_AWARE)
+    }
+
+    /// The `y` flag is set
+    pub fn is_sticky(&self) -> bool {
+        self.contains(Self::STICKY)
     }
 }
 

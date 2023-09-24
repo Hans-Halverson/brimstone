@@ -10,7 +10,6 @@ pub struct IgnoredIndex {
     ignored_features: HashSet<String>,
     ignore_async_generator: bool,
     ignore_module: bool,
-    ignore_regexp: bool,
     ignore_annex_b: bool,
 }
 
@@ -20,7 +19,6 @@ impl IgnoredIndex {
         run_all_tests: bool,
         ignore_async_generator: bool,
         ignore_module: bool,
-        ignore_regexp: bool,
         ignore_annex_b: bool,
     ) -> Result<IgnoredIndex, GenericError> {
         let ignored_string = fs::read_to_string(ignored_path)?;
@@ -63,7 +61,6 @@ impl IgnoredIndex {
             ignored_features,
             ignore_async_generator,
             ignore_module,
-            ignore_regexp,
             ignore_annex_b,
         })
     }
@@ -112,12 +109,6 @@ impl IgnoredIndex {
             && (test.path.contains("module")
                 || test.path.contains("import")
                 || test.path.contains("export"))
-        {
-            return true;
-        }
-
-        if self.ignore_regexp
-            && (test.path.contains("regex") || test.path.contains("regular-expression"))
         {
             return true;
         }

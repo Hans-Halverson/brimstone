@@ -33,10 +33,6 @@ struct Args {
     #[arg(long, default_value_t = false)]
     ignore_module: bool,
 
-    /// Ignore regexp tests
-    #[arg(long, default_value_t = false)]
-    ignore_regexp: bool,
-
     /// Ignore Annex B tests
     #[arg(long, default_value_t = false)]
     ignore_annex_b: bool,
@@ -93,7 +89,6 @@ fn main_impl() -> GenericResult {
         args.all,
         args.ignore_async_generator,
         args.ignore_module,
-        args.ignore_regexp,
         args.ignore_annex_b,
     )?;
 

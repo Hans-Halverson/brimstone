@@ -1,5 +1,7 @@
+use icu_collections::codepointinvlist::CodePointInversionListBuilder;
+
 use crate::js::{
-    common::wtf_8::Wtf8String,
+    common::{unicode::CodePoint, wtf_8::Wtf8String},
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
@@ -7,7 +9,10 @@ use crate::js::{
     runtime::{Context, Handle},
 };
 
-use super::compiled_regexp::{CompiledRegExpObject, Instruction};
+use super::{
+    compiled_regexp::{CompiledRegExpObject, Instruction},
+    matcher::canonicalize,
+};
 
 type BlockId = usize;
 
@@ -112,6 +117,10 @@ impl CompiledRegExpBuilder {
         self.num_progress_points += 1;
 
         self.emit_instruction(Instruction::Progress(index));
+    }
+
+    fn canonicalize(&mut self, code_point: CodePoint) -> CodePoint {
+        canonicalize(code_point, self.flags.contains(RegExpFlags::UNICODE_AWARE))
     }
 
     fn compile(&mut self, cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
@@ -363,16 +372,26 @@ impl CompiledRegExpBuilder {
         }
     }
 
+    fn emit_code_point_literal(&mut self, code_point: CodePoint) {
+        let code_point = if self.flags.contains(RegExpFlags::IGNORE_CASE) {
+            self.canonicalize(code_point)
+        } else {
+            code_point
+        };
+
+        self.emit_instruction(Instruction::Literal(code_point))
+    }
+
     fn emit_literal(&mut self, string: &Wtf8String) {
         if self.is_forwards() {
             for code_point in string.iter_code_points() {
-                self.emit_instruction(Instruction::Literal(code_point))
+                self.emit_code_point_literal(code_point)
             }
         } else {
             // When emitting backwards, emit concatenation of literals in reverse order
             let code_points = string.iter_code_points().collect::<Vec<_>>();
             for code_point in code_points.iter().rev() {
-                self.emit_instruction(Instruction::Literal(*code_point))
+                self.emit_code_point_literal(*code_point)
             }
         }
     }
@@ -594,15 +613,29 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
-        let mut all_char_ranges = vec![];
+        let is_case_insensitive = self.flags.contains(RegExpFlags::IGNORE_CASE);
+        let mut set_builder = CodePointInversionListBuilder::new();
+
         for class_range in &character_class.ranges {
             match class_range {
                 // Accumulate single and range char ranges
                 ClassRange::Single(code_point) => {
-                    all_char_ranges.push((*code_point, *code_point + 1));
+                    if is_case_insensitive {
+                        set_builder.add_u32(self.canonicalize(*code_point));
+                    } else {
+                        set_builder.add_u32(*code_point)
+                    }
                 }
                 ClassRange::Range(start, end) => {
-                    all_char_ranges.push((*start, *end + 1));
+                    if is_case_insensitive {
+                        // Canonicalize each element of range and add to set
+                        for code_point in *start..=*end {
+                            set_builder.add_u32(self.canonicalize(code_point));
+                        }
+                    } else {
+                        // Otherwise can add the range directly
+                        set_builder.add_range_u32(&(*start..=*end));
+                    }
                 }
                 // Shorthand char ranges have own instructions
                 ClassRange::Digit => self.emit_instruction(Instruction::CompareIsDigit),
@@ -622,39 +655,18 @@ impl CompiledRegExpBuilder {
             }
         }
 
-        // Order char ranges by starting index, then ending index
-        all_char_ranges.sort_by(|(start_1, end_1), (start_2, end_2)| {
-            start_1.cmp(start_2).then_with(|| end_1.cmp(end_2))
-        });
+        let set = set_builder.build();
 
-        // Merge adjacent char ranges
-        if !all_char_ranges.is_empty() {
-            let mut merged_char_ranges = vec![];
-            let mut current_char_range = all_char_ranges[0];
+        // Emit char ranges in set. Iterates over inclusive ranges.
+        for range in set.iter_ranges() {
+            let start = *range.start();
+            let end = *range.end();
 
-            for (start, end) in &all_char_ranges[1..] {
-                // If next range overlaps current range then merge them
-                if *start <= current_char_range.1 {
-                    current_char_range.1 = u32::max(current_char_range.1, *end);
-                } else {
-                    // Otherwise next range doesn't overlap so emit disjoint ranges
-                    merged_char_ranges.push(current_char_range);
-                    current_char_range = (*start, *end);
-                }
-            }
-
-            // Emit the last range
-            merged_char_ranges.push(current_char_range);
-
-            all_char_ranges = merged_char_ranges
-        }
-
-        // Emit merged char ranges
-        for range in all_char_ranges {
-            if range.0 + 1 == range.1 {
-                self.emit_instruction(Instruction::CompareEquals(range.0));
+            if start == end {
+                self.emit_instruction(Instruction::CompareEquals(start));
             } else {
-                self.emit_instruction(Instruction::CompareBetween(range.0, range.1));
+                // Convert from inclusive end to exclusive end
+                self.emit_instruction(Instruction::CompareBetween(start, end + 1));
             }
         }
 

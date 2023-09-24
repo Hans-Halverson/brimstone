@@ -1,3 +1,4 @@
+use icu_casemapping::CaseMapping;
 use icu_collator::{Collator, CollatorOptions};
 use icu_locid::{locale, Locale};
 use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
@@ -21,6 +22,7 @@ pub struct ICU {
     pub properties: Properties,
     pub normalizers: Normalizers,
     pub collator: Collator,
+    pub case_mapping: CaseMapping,
 }
 
 pub struct GeneralCategories {
@@ -452,5 +454,6 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
             CollatorOptions::new(),
         )
         .unwrap(),
+        case_mapping: CaseMapping::try_new(&BakedDataProvider).unwrap(),
     }
 });

@@ -4,6 +4,7 @@ pub mod alpha_v1;
 pub mod bidi_c_v1;
 pub mod bidi_m_v1;
 pub mod cased_v1;
+pub mod casemap_v1;
 pub mod ci_v1;
 pub mod cwcf_v1;
 pub mod cwcm_v1;

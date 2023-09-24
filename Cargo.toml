@@ -16,6 +16,7 @@ ryu-js = "0.2.2"
 wrap_ordinary_object = { path = "src/js/runtime/wrap_ordinary_object" }
 
 # ICU4X crates must all be the same version
+icu_casemapping = "0.7.2"
 icu_collator = "1.2.0"
 icu_collections = "1.2.0"
 icu_locid = "1.2.0"

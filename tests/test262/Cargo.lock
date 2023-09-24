@@ -35,6 +35,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.1.0",
  "clap",
+ "icu_casemapping",
  "icu_collator",
  "icu_collections",
  "icu_locid",
@@ -170,6 +171,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "icu_casemapping"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44be22dcbc418f34dbf0fc444a538fdeac5bd52c8688ad6f328603a90af9c2e0"
+dependencies = [
+ "displaydoc",
+ "icu_collections",
+ "icu_locid",
+ "icu_provider",
+ "yoke",
+ "zerovec",
 ]
 
 [[package]]

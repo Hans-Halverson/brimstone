@@ -1,8 +1,12 @@
 use std::collections::HashSet;
 
 use crate::js::{
-    common::unicode::{
-        is_ascii_alphabetic, is_decimal_digit, is_newline, is_whitespace, CodePoint,
+    common::{
+        icu::ICU,
+        unicode::{
+            is_ascii_alphabetic, is_decimal_digit, is_newline, is_whitespace,
+            try_encode_surrogate_pair, CodePoint,
+        },
     },
     parser::{
         lexer_stream::{
@@ -12,7 +16,7 @@ use crate::js::{
         regexp::RegExpFlags,
     },
     runtime::{
-        string_value::{StringValue, StringWidth},
+        string_value::{FlatString, StringValue, StringWidth},
         Handle, HeapPtr,
     },
 };
@@ -440,6 +444,7 @@ impl<T: LexerStream> MatchEngine<T> {
             None => self.advance_instruction(),
             Some((start_index, end_index)) => {
                 let captured_slice = self.string_lexer.slice(start_index, end_index);
+                let captured_slice_len = end_index - start_index;
 
                 match DIRECTION {
                     FORWARD => {
@@ -448,7 +453,7 @@ impl<T: LexerStream> MatchEngine<T> {
                             .string_lexer
                             .slice_equals(self.string_lexer.pos(), captured_slice)
                         {
-                            self.string_lexer.advance_n(captured_slice.len());
+                            self.string_lexer.advance_n(captured_slice_len);
                             self.advance_instruction();
                         } else {
                             self.backtrack()?;
@@ -456,13 +461,13 @@ impl<T: LexerStream> MatchEngine<T> {
                     }
                     BACKWARD => {
                         // Slice to check is directly before current string position
-                        let start_pos = self.string_lexer.pos().checked_sub(captured_slice.len());
+                        let start_pos = self.string_lexer.pos().checked_sub(captured_slice_len);
                         if start_pos.is_some()
                             && self
                                 .string_lexer
                                 .slice_equals(start_pos.unwrap(), captured_slice)
                         {
-                            self.string_lexer.advance_backwards_n(captured_slice.len());
+                            self.string_lexer.advance_backwards_n(captured_slice_len);
                             self.advance_instruction();
                         } else {
                             self.backtrack()?;
@@ -576,46 +581,119 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 }
 
+fn match_lexer_stream(
+    mut lexer_stream: impl LexerStream,
+    regexp: HeapPtr<CompiledRegExpObject>,
+    start_index: usize,
+) -> Option<Match> {
+    lexer_stream.advance_n(start_index);
+    let mut match_engine = MatchEngine::new(regexp, lexer_stream);
+    match_engine.run()
+}
+
 pub fn run_matcher(
     regexp: HeapPtr<CompiledRegExpObject>,
     target_string: Handle<StringValue>,
     start_index: usize,
 ) -> Option<Match> {
-    fn match_lexer_stream(
-        lexer_stream: impl LexerStream,
-        regexp: HeapPtr<CompiledRegExpObject>,
-    ) -> Option<Match> {
-        let mut match_engine = MatchEngine::new(regexp, lexer_stream);
-        match_engine.run()
+    let flat_string = target_string.flatten();
+
+    if regexp.flags.contains(RegExpFlags::IGNORE_CASE) {
+        return run_case_insensitive_matcher(regexp, flat_string, start_index);
     }
 
-    let flat_string = target_string.flatten();
     match flat_string.width() {
         StringWidth::OneByte => {
-            let mut lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-            lexer_stream.advance_n(start_index);
-
-            match_lexer_stream(lexer_stream, regexp)
+            let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
+            match_lexer_stream(lexer_stream, regexp, start_index)
         }
         StringWidth::TwoByte => {
             if regexp.flags.contains(RegExpFlags::UNICODE_AWARE) {
-                let mut lexer_stream =
+                let lexer_stream =
                     HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                lexer_stream.advance_n(start_index);
-
-                match_lexer_stream(lexer_stream, regexp)
+                match_lexer_stream(lexer_stream, regexp, start_index)
             } else {
-                let mut lexer_stream =
+                let lexer_stream =
                     HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
-                lexer_stream.advance_n(start_index);
-
-                match_lexer_stream(lexer_stream, regexp)
+                match_lexer_stream(lexer_stream, regexp, start_index)
             }
         }
+    }
+}
+
+fn run_case_insensitive_matcher(
+    regexp: HeapPtr<CompiledRegExpObject>,
+    target_string: Handle<FlatString>,
+    start_index: usize,
+) -> Option<Match> {
+    // If ignoring case, canonicalize into an off-heap UTF-16 string
+    let mut lowercase_string_code_units = Vec::with_capacity(target_string.len());
+
+    if regexp.flags.contains(RegExpFlags::UNICODE_AWARE) {
+        for code_point in target_string.iter_code_points() {
+            let canonical_code_point = canonicalize(code_point, true);
+
+            match try_encode_surrogate_pair(canonical_code_point) {
+                None => lowercase_string_code_units.push(canonical_code_point as u16),
+                Some((high, low)) => {
+                    lowercase_string_code_units.push(high);
+                    lowercase_string_code_units.push(low);
+                }
+            }
+        }
+
+        let lexer_stream = HeapTwoByteCodePointLexerStream::new(&lowercase_string_code_units);
+        match_lexer_stream(lexer_stream, regexp, start_index)
+    } else {
+        for code_unit in target_string.iter_code_units() {
+            let canonical_code_point = canonicalize(code_unit as CodePoint, false);
+
+            match try_encode_surrogate_pair(canonical_code_point) {
+                None => lowercase_string_code_units.push(canonical_code_point as u16),
+                Some((high, low)) => {
+                    lowercase_string_code_units.push(high);
+                    lowercase_string_code_units.push(low);
+                }
+            }
+        }
+
+        // We can use the match indices returned from matching the canonicalized string. This is
+        // because both simple case folding and simple uppercase do not map code points outside the
+        // BMP inside the BMP (and vice versa). This means that the number of code units needed per
+        // code point is the same.
+        let lexer_stream = HeapTwoByteCodeUnitLexerStream::new(&lowercase_string_code_units);
+        match_lexer_stream(lexer_stream, regexp, start_index)
     }
 }
 
 /// Whether a code point is a word character as defined by \w or \b
 fn is_word_code_point(code_point: CodePoint) -> bool {
     is_ascii_alphabetic(code_point) || is_decimal_digit(code_point) || code_point == '_' as u32
+}
+
+// 22.2.2.7.3 Canonicalize
+#[inline]
+pub fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint {
+    if is_unicode_aware {
+        // Use simple case folding for Unicode-aware case-insensitive matching
+        match char::from_u32(code_point) {
+            None => code_point,
+            Some(c) => ICU.case_mapping.fold(c) as CodePoint,
+        }
+    } else {
+        match char::from_u32(code_point) {
+            None => code_point,
+            Some(c) => {
+                // Use simple uppercase for non-Unicode-aware case-insensitive matching
+                let uppercase_code_point = ICU.case_mapping.to_uppercase(c) as CodePoint;
+
+                // Do not allow mapping non-ASCII code points to ASCII code points
+                if uppercase_code_point < 128 && code_point >= 128 {
+                    code_point
+                } else {
+                    uppercase_code_point
+                }
+            }
+        }
+    }
 }

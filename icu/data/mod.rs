@@ -20,6 +20,15 @@ use ::icu_provider::prelude::*;
 #[allow(unused_macros)]
 macro_rules! impl_data_provider {
     ($ provider : path) => {
+        impl DataProvider<::icu_casemapping::provider::CaseMappingV1Marker> for $provider {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_casemapping::provider::CaseMappingV1Marker>, DataError> {
+                props::casemap_v1::lookup(&req.locale)
+                    .map(zerofrom::ZeroFrom::zero_from)
+                    .map(DataPayload::from_owned)
+                    .map(|payload| DataResponse { metadata: Default::default(), payload: Some(payload) })
+                    .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_casemapping::provider::CaseMappingV1Marker::KEY, req))
+            }
+        }
         impl DataProvider<::icu_collator::provider::CollationDataV1Marker> for $provider {
             fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_collator::provider::CollationDataV1Marker>, DataError> {
                 collator::data_v1::lookup(&req.locale)
@@ -679,6 +688,7 @@ macro_rules! impl_any_provider {
     ($ provider : path) => {
         impl AnyProvider for $provider {
             fn load_any(&self, key: DataKey, req: DataRequest) -> Result<AnyResponse, DataError> {
+                const CASEMAPPINGV1MARKER: ::icu_provider::DataKeyHash = ::icu_casemapping::provider::CaseMappingV1Marker::KEY.hashed();
                 const COLLATIONDATAV1MARKER: ::icu_provider::DataKeyHash = ::icu_collator::provider::CollationDataV1Marker::KEY.hashed();
                 const COLLATIONDIACRITICSV1MARKER: ::icu_provider::DataKeyHash = ::icu_collator::provider::CollationDiacriticsV1Marker::KEY.hashed();
                 const COLLATIONJAMOV1MARKER: ::icu_provider::DataKeyHash = ::icu_collator::provider::CollationJamoV1Marker::KEY.hashed();
@@ -768,6 +778,7 @@ macro_rules! impl_any_provider {
                 const LOCALEFALLBACKPARENTSV1MARKER: ::icu_provider::DataKeyHash =
                     ::icu_provider_adapters::fallback::provider::LocaleFallbackParentsV1Marker::KEY.hashed();
                 match key.hashed() {
+                    CASEMAPPINGV1MARKER => props::casemap_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     COLLATIONDATAV1MARKER => collator::data_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     COLLATIONDIACRITICSV1MARKER => collator::dia_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),
                     COLLATIONJAMOV1MARKER => collator::jamo_v1::lookup(&req.locale).map(AnyPayload::from_static_ref),

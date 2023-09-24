@@ -12,6 +12,7 @@ normalizer/nfd@1
 normalizer/nfdex@1
 normalizer/nfkd@1
 normalizer/nfkdex@1
+props/casemap@1
 props/gc@1
 props/scx@1
 propnames/from/sc@1

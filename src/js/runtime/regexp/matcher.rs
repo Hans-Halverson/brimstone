@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::js::{
     common::{
         icu::ICU,
@@ -31,8 +29,8 @@ pub struct MatchEngine<T: LexerStream> {
     backtrack_stack: Vec<BacktrackEntry>,
     // String index for each capture point
     capture_points: Vec<usize>,
-    // A saved string index for each progress instruction
-    progress_points: Vec<HashSet<usize>>,
+    // The most recent string index marked at each progress instruction
+    progress_points: Vec<usize>,
     // An accumulator register for building multi-part comparisons
     compare_register: bool,
     // Backtrack stack base index for the current sub-execution. For the top-level execution this is
@@ -45,6 +43,8 @@ enum BacktrackEntry {
     RestoreState(BacktrackRestoreState),
     /// Restore a capture point
     CapturePoint(CapturePoint),
+    /// Restore a progress point (progress point index, string index to restore)
+    ProgressPoint(u32, usize),
     /// Restore the backtrack stack to a given size, backtracking through all entries
     /// above that size.
     RestoreBacktrackStack(usize),
@@ -85,7 +85,7 @@ const BACKWARD: bool = false;
 impl<T: LexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExpObject>, string_lexer: T) -> Self {
         let mut progress_points = Vec::with_capacity(regexp.num_progress_points as usize);
-        progress_points.resize_with(regexp.num_progress_points as usize, || HashSet::new());
+        progress_points.resize(regexp.num_progress_points as usize, usize::MAX);
 
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
 
@@ -124,6 +124,11 @@ impl<T: LexerStream> MatchEngine<T> {
                         capture_point.capture_point_index,
                         capture_point.string_index,
                     );
+
+                    // Continue backtracking
+                }
+                BacktrackEntry::ProgressPoint(progress_point_index, string_index) => {
+                    self.set_progress_point(progress_point_index, string_index);
 
                     // Continue backtracking
                 }
@@ -174,6 +179,16 @@ impl<T: LexerStream> MatchEngine<T> {
     #[inline]
     fn set_capture_point(&mut self, capture_point_index: u32, string_index: usize) {
         self.capture_points[capture_point_index as usize] = string_index;
+    }
+
+    #[inline]
+    fn get_progress_point(&self, progress_point_index: u32) -> usize {
+        self.progress_points[progress_point_index as usize]
+    }
+
+    #[inline]
+    fn set_progress_point(&mut self, progress_point_index: u32, string_index: usize) {
+        self.progress_points[progress_point_index as usize] = string_index;
     }
 
     fn run(&mut self) -> Option<Match> {
@@ -231,7 +246,8 @@ impl<T: LexerStream> MatchEngine<T> {
                 }
                 Instruction::Progress(progress_index) => {
                     let string_index = self.string_lexer.pos();
-                    if self.progress_points[progress_index as usize].insert(string_index) {
+                    if self.get_progress_point(progress_index) != string_index {
+                        self.push_progress_point(progress_index, string_index);
                         self.advance_instruction();
                     } else {
                         self.backtrack()?;
@@ -486,6 +502,15 @@ impl<T: LexerStream> MatchEngine<T> {
             }));
 
         self.set_capture_point(capture_point_index, string_index);
+    }
+
+    fn push_progress_point(&mut self, progress_point_index: u32, string_index: usize) {
+        // Save old progress point on backtrack stack
+        let old_string_index = self.get_progress_point(progress_point_index);
+        self.backtrack_stack
+            .push(BacktrackEntry::ProgressPoint(progress_point_index, old_string_index));
+
+        self.set_progress_point(progress_point_index, string_index);
     }
 
     fn execute_backreference<const DIRECTION: bool>(

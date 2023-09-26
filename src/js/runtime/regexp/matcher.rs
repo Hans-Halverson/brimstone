@@ -31,6 +31,8 @@ pub struct MatchEngine<T: LexerStream> {
     capture_points: Vec<usize>,
     // The most recent string index marked at each progress instruction
     progress_points: Vec<usize>,
+    // The next loop iteration for each loop
+    loop_registers: Vec<usize>,
     // An accumulator register for building multi-part comparisons
     compare_register: bool,
     // Backtrack stack base index for the current sub-execution. For the top-level execution this is
@@ -45,6 +47,8 @@ enum BacktrackEntry {
     CapturePoint(CapturePoint),
     /// Restore a progress point (progress point index, string index to restore)
     ProgressPoint(u32, usize),
+    /// Restore a loop register to a given value (loop register index, value)
+    LoopRegister(u32, usize),
     /// Restore the backtrack stack to a given size, backtracking through all entries
     /// above that size.
     RestoreBacktrackStack(usize),
@@ -84,9 +88,6 @@ const BACKWARD: bool = false;
 
 impl<T: LexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExpObject>, string_lexer: T) -> Self {
-        let mut progress_points = Vec::with_capacity(regexp.num_progress_points as usize);
-        progress_points.resize(regexp.num_progress_points as usize, usize::MAX);
-
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
 
         Self {
@@ -95,7 +96,8 @@ impl<T: LexerStream> MatchEngine<T> {
             instruction_index: 0,
             backtrack_stack: Vec::new(),
             capture_points: vec![EMPTY_STRING_INDEX; num_capture_points],
-            progress_points,
+            progress_points: vec![EMPTY_STRING_INDEX; regexp.num_progress_points as usize],
+            loop_registers: vec![0; regexp.num_loop_registers as usize],
             compare_register: false,
             backtrack_stack_base: 0,
         }
@@ -132,6 +134,11 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     // Continue backtracking
                 }
+                BacktrackEntry::LoopRegister(loop_register_index, value) => {
+                    self.set_loop_register(loop_register_index, value);
+
+                    // Continue backtracking
+                }
                 BacktrackEntry::RestoreBacktrackStack(backtrack_stack_size) => {
                     self.backtrack_to_stack_size(backtrack_stack_size);
 
@@ -143,15 +150,25 @@ impl<T: LexerStream> MatchEngine<T> {
         Err(())
     }
 
-    /// Restore the backtrack stack to a particular size, undoing all captures along the way.
+    /// Restore the backtrack stack to a particular size, restoring all registers that were set
+    /// along the way.
     fn backtrack_to_stack_size(&mut self, backtrack_stack_size: usize) {
         while self.backtrack_stack.len() > backtrack_stack_size {
             let backtrack_entry = self.backtrack_stack.pop().unwrap();
-            if let BacktrackEntry::CapturePoint(capture_point) = backtrack_entry {
-                self.set_capture_point(
-                    capture_point.capture_point_index,
-                    capture_point.string_index,
-                );
+            match backtrack_entry {
+                BacktrackEntry::CapturePoint(capture_point) => {
+                    self.set_capture_point(
+                        capture_point.capture_point_index,
+                        capture_point.string_index,
+                    );
+                }
+                BacktrackEntry::ProgressPoint(progress_point_index, string_index) => {
+                    self.set_progress_point(progress_point_index, string_index);
+                }
+                BacktrackEntry::LoopRegister(loop_register_index, value) => {
+                    self.set_loop_register(loop_register_index, value);
+                }
+                BacktrackEntry::RestoreState(_) | BacktrackEntry::RestoreBacktrackStack(_) => {}
             }
         }
     }
@@ -189,6 +206,16 @@ impl<T: LexerStream> MatchEngine<T> {
     #[inline]
     fn set_progress_point(&mut self, progress_point_index: u32, string_index: usize) {
         self.progress_points[progress_point_index as usize] = string_index;
+    }
+
+    #[inline]
+    fn get_loop_register(&self, loop_register_index: u32) -> usize {
+        self.loop_registers[loop_register_index as usize]
+    }
+
+    #[inline]
+    fn set_loop_register(&mut self, loop_register_index: u32, value: usize) {
+        self.loop_registers[loop_register_index as usize] = value;
     }
 
     fn run(&mut self) -> Option<Match> {
@@ -251,6 +278,16 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.advance_instruction();
                     } else {
                         self.backtrack()?;
+                    }
+                }
+                Instruction::Loop { loop_register_index, loop_max_value, end_branch } => {
+                    let loop_register_value = self.get_loop_register(loop_register_index);
+                    if loop_register_value < loop_max_value as usize {
+                        self.push_loop_register(loop_register_index, loop_register_value + 1);
+                        self.advance_instruction();
+                    } else {
+                        self.push_loop_register(loop_register_index, 0);
+                        self.set_next_instruction(end_branch);
                     }
                 }
                 Instruction::AssertStart => {
@@ -511,6 +548,15 @@ impl<T: LexerStream> MatchEngine<T> {
             .push(BacktrackEntry::ProgressPoint(progress_point_index, old_string_index));
 
         self.set_progress_point(progress_point_index, string_index);
+    }
+
+    fn push_loop_register(&mut self, loop_register_index: u32, value: usize) {
+        // Save old loop register on backtrack stack
+        let old_value = self.get_loop_register(loop_register_index);
+        self.backtrack_stack
+            .push(BacktrackEntry::LoopRegister(loop_register_index, old_value));
+
+        self.set_loop_register(loop_register_index, value);
     }
 
     fn execute_backreference<const DIRECTION: bool>(

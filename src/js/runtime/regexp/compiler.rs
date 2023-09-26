@@ -21,6 +21,7 @@ struct CompiledRegExpBuilder {
     flags: RegExpFlags,
     current_block_id: BlockId,
     num_progress_points: u32,
+    num_loop_registers: u32,
     /// Nonempty stack of directions denoting the set of possibly nested direction contexts created
     /// by lookaround. The top of the stack is the current direction.
     direction_stack: Vec<Direction>,
@@ -54,6 +55,10 @@ impl SubExpressionInfo {
     }
 }
 
+/// Maximum number of repititons within a quantifier that will have their terms inlined, vs using
+/// loop instructions.
+const MAX_INLINED_REPITITIONS: u64 = 10;
+
 impl CompiledRegExpBuilder {
     fn new(regexp: &RegExp) -> Self {
         Self {
@@ -61,6 +66,7 @@ impl CompiledRegExpBuilder {
             flags: regexp.flags,
             current_block_id: 0,
             num_progress_points: 0,
+            num_loop_registers: 0,
             direction_stack: vec![Direction::Forward],
             repitition_depth: 0,
         }
@@ -119,6 +125,12 @@ impl CompiledRegExpBuilder {
         self.emit_instruction(Instruction::Progress(index));
     }
 
+    fn next_loop_register(&mut self) -> u32 {
+        let next_register = self.num_loop_registers;
+        self.num_loop_registers += 1;
+        next_register
+    }
+
     fn canonicalize(&mut self, code_point: CodePoint) -> CodePoint {
         canonicalize(code_point, self.flags.has_any_unicode_flag())
     }
@@ -141,7 +153,13 @@ impl CompiledRegExpBuilder {
 
         let instructions = self.flatten_and_fix_indices();
 
-        CompiledRegExpObject::new(cx, instructions, regexp, self.num_progress_points)
+        CompiledRegExpObject::new(
+            cx,
+            instructions,
+            regexp,
+            self.num_progress_points,
+            self.num_loop_registers,
+        )
     }
 
     /// Emit the preable for the regexp, which allows starting the match at any point in the string.
@@ -425,11 +443,13 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn in_block(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self)) {
+    fn in_block<R>(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self) -> R) -> R {
         let current_block_id = self.current_block_id;
         self.set_current_block(block_id);
-        f(self);
+        let result = f(self);
         self.set_current_block(current_block_id);
+
+        result
     }
 
     fn emit_quantifier(&mut self, quantifier: &Quantifier) -> SubExpressionInfo {
@@ -450,50 +470,120 @@ impl CompiledRegExpBuilder {
         // Otherwise the quantifier is never guaranteed to consume.
         let mut quantifier_info = SubExpressionInfo::no_captures(false);
 
-        // Emit term min times for repititions that must be present
-        for _ in 0..quantifier.min {
-            quantifier_info = self.emit_term(&quantifier.term);
+        // Can inline a small number of repititions otherwise use a loop
+        if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPITITIONS {
+            // Emit term min times for repititions that must be present
+            for _ in 0..quantifier.min {
+                quantifier_info = self.emit_term(&quantifier.term);
+            }
+        } else {
+            // Jump to a new loop block for the minimum repititions
+            let loop_block_id = self.new_block();
+            let loop_end_block_id = self.new_block();
+
+            self.emit_jump_instruction(loop_block_id);
+
+            // Loop block consists of loop instruction, term, then loops back to start of block
+            self.in_block(loop_block_id, |this| {
+                let loop_register_index = this.next_loop_register();
+                this.emit_instruction(Instruction::Loop {
+                    loop_register_index,
+                    loop_max_value: quantifier.min,
+                    end_branch: loop_end_block_id as u32,
+                });
+
+                quantifier_info = this.emit_term(&quantifier.term);
+
+                this.emit_jump_instruction(loop_block_id);
+            });
+
+            // Start emitting in the loop end block after loop finishes
+            self.set_current_block(loop_end_block_id);
         }
 
         if let Some(max) = quantifier.max {
+            let num_remaining_repititions = max - quantifier.min;
+
             // Exact number of repititions
-            if quantifier.min == max {
+            if num_remaining_repititions == 0 {
                 return quantifier_info;
             }
 
             let join_block_id = self.new_block();
 
-            // Emit term blocks max - min times, each is optional and is preceded by a branch to
-            // the join block.
-            for i in quantifier.min..max {
-                let pred_block_id = self.current_block_id;
+            // Can inline a small number of optional repititions otherwise use a loop
+            if num_remaining_repititions <= MAX_INLINED_REPITITIONS {
+                // Emit term blocks max - min times, each is optional and is preceded by a branch to
+                // the join block.
+                for i in quantifier.min..max {
+                    let pred_block_id = self.current_block_id;
 
-                // Emit term block
-                let term_block_id = self.new_block();
-                self.set_current_block(term_block_id);
-                let info = self.emit_term(&quantifier.term);
+                    // Emit term block
+                    let term_block_id = self.new_block();
+                    self.set_current_block(term_block_id);
+                    let info = self.emit_term(&quantifier.term);
 
-                // Emit branch between term block and join block in predecessor
-                self.in_block(pred_block_id, |this| {
-                    // If we are in a repitition but never enter a term block with captures even
-                    // once, we must clear those captures in case they were previously matched.
-                    if i == 0 && is_inside_repitition && !info.captures.is_empty() {
-                        this.emit_quantifier_clear_captures_branch(
-                            quantifier,
-                            &info,
-                            term_block_id,
-                            join_block_id,
-                        )
-                    } else {
-                        this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
-                    }
+                    // Emit branch between term block and join block in predecessor
+                    self.in_block(pred_block_id, |this| {
+                        // If we are in a repitition but never enter a term block with captures even
+                        // once, we must clear those captures in case they were previously matched.
+                        if i == 0 && is_inside_repitition && !info.captures.is_empty() {
+                            this.emit_quantifier_clear_captures_branch(
+                                quantifier,
+                                &info,
+                                term_block_id,
+                                join_block_id,
+                            )
+                        } else {
+                            this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
+                        }
+                    });
+
+                    quantifier_info.captures = info.captures;
+                }
+
+                // Last term block always proceeds to the join block
+                self.emit_jump_instruction(join_block_id);
+            } else {
+                let predecessor_block_id = self.current_block_id;
+                let loop_block_id = self.new_block();
+
+                // Will emit the branch to the loop block later
+
+                // Loop block consists of loop instruction, term, then branches back to start of block
+                let info = self.in_block(loop_block_id, |this| {
+                    let loop_register_index = this.next_loop_register();
+                    this.emit_instruction(Instruction::Loop {
+                        loop_register_index,
+                        loop_max_value: num_remaining_repititions,
+                        end_branch: join_block_id as u32,
+                    });
+
+                    let info = this.emit_term(&quantifier.term);
+
+                    this.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
+
+                    info
                 });
+
+                // Emit the branch to the loop block from predecessor
+                self.set_current_block(predecessor_block_id);
+
+                // If we are in a repitition but never enter a term block with captures even once,
+                // we must clear those captures in case they were previously matched.
+                if quantifier.min == 0 && is_inside_repitition && !info.captures.is_empty() {
+                    self.emit_quantifier_clear_captures_branch(
+                        quantifier,
+                        &info,
+                        loop_block_id,
+                        join_block_id,
+                    )
+                } else {
+                    self.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
+                }
 
                 quantifier_info.captures = info.captures;
             }
-
-            // Last term block always proceeds to the join block
-            self.emit_jump_instruction(join_block_id);
 
             // Quantifier ends at start of join block
             self.set_current_block(join_block_id);
@@ -566,7 +656,7 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    /// Emit a quantifier bridge that clears all the provided captures along the edge to the
+    /// Emit a quantifier branch that clears all the provided captures along the edge to the
     /// provided join block.
     fn emit_quantifier_clear_captures_branch(
         &mut self,
@@ -732,6 +822,9 @@ impl CompiledRegExpBuilder {
                 }
                 Instruction::Jump(block_id) | Instruction::Lookaround(_, _, block_id) => {
                     *block_id = id_map[(*block_id) as usize] as u32;
+                }
+                Instruction::Loop { end_branch, .. } => {
+                    *end_branch = id_map[(*end_branch) as usize] as u32;
                 }
                 _ => {}
             }

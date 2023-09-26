@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryFrom};
 
 use match_u32::match_u32;
 
@@ -368,10 +368,15 @@ impl<T: LexerStream> RegExpParser<T> {
                         self.advance();
                         let index = self.parse_decimal_digits()?;
 
-                        // Save indexed backreference to be analyzed after parsing
-                        self.indexed_backreferences.push((index, start_pos));
+                        // Ensure that index is in range
+                        if let Ok(index) = u32::try_from(index) {
+                            // Save indexed backreference to be analyzed after parsing
+                            self.indexed_backreferences.push((index, start_pos));
 
-                        Term::Backreference(p(Backreference { index }))
+                            Term::Backreference(p(Backreference { index }))
+                        } else {
+                            return self.error(start_pos, ParseError::InvalidBackreferenceIndex);
+                        }
                     }
                     // Named backreferences
                     'k' => {
@@ -502,18 +507,18 @@ impl<T: LexerStream> RegExpParser<T> {
         }
     }
 
-    fn parse_decimal_digits(&mut self) -> ParseResult<u32> {
+    fn parse_decimal_digits(&mut self) -> ParseResult<u64> {
         // Sequence of decimal digits must be nonempty
         if !is_decimal_digit(self.current()) {
             return self.error_unexpected_token(self.pos());
         }
 
-        let mut value: u32 = 0;
+        let mut value: u64 = 0;
 
         while is_decimal_digit(self.current()) {
             value = value.checked_mul(10).unwrap();
             value = value
-                .checked_add((self.current() as u32) - ('0' as u32))
+                .checked_add((self.current() as u64) - ('0' as u64))
                 .unwrap();
             self.advance();
         }

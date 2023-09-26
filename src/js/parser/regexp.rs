@@ -119,9 +119,9 @@ pub enum Term {
 pub struct Quantifier {
     pub term: P<Term>,
     /// The minimum number of times the term must match
-    pub min: u32,
+    pub min: u64,
     /// The maximum number of times the term can match, inclusive. If None then there is no maximum.
-    pub max: Option<u32>,
+    pub max: Option<u64>,
     /// Whether the quantifier is greedy or not. Greedy by default, postfixed with `?` to be lazy.
     pub is_greedy: bool,
 }

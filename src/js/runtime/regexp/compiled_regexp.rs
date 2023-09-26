@@ -28,6 +28,7 @@ pub struct CompiledRegExpObject {
     // Number of capture groups, not counting the implicit 0'th capture group for the entire match.
     pub num_capture_groups: u32,
     pub num_progress_points: u32,
+    pub num_loop_registers: u32,
     // Array of bytecode instructions
     instructions: InlineArray<Instruction>,
     // Array of capture groups, optionally containing capture group name. Field should not be
@@ -64,6 +65,13 @@ pub enum Instruction {
     /// fail if this string location has already been visited for the progress index. This is used
     /// to avoid epsilon loops.
     Progress(u32),
+    /// Check if the loop register is less than the provided max value. Proceed if so, otherwise
+    /// jump to the end branch instruction. Always increment the loop register by 1.
+    Loop {
+        loop_register_index: u32,
+        loop_max_value: u64,
+        end_branch: u32,
+    },
     /// Assert the start of the input (^)
     AssertStart,
     /// Assert the end of the input ($)
@@ -127,6 +135,7 @@ impl CompiledRegExpObject {
         instructions: Vec<Instruction>,
         regexp: &RegExp,
         num_progress_points: u32,
+        num_loop_registers: u32,
     ) -> Handle<CompiledRegExpObject> {
         let num_capture_groups = regexp.capture_groups.len() as u32;
         let mut has_named_capture_groups = false;
@@ -152,6 +161,7 @@ impl CompiledRegExpObject {
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
         set_uninit!(object.num_capture_groups, num_capture_groups);
         set_uninit!(object.num_progress_points, num_progress_points);
+        set_uninit!(object.num_loop_registers, num_loop_registers);
 
         object.instructions.init_from_vec(instructions);
 
@@ -242,6 +252,9 @@ impl Instruction {
             Instruction::MarkCapturePoint(index) => format!("MarkCapture({})", index),
             Instruction::ClearCapture(index) => format!("ClearCapture({})", index),
             Instruction::Progress(index) => format!("Progress({})", index),
+            Instruction::Loop { loop_register_index, loop_max_value, end_branch } => {
+                format!("Loop({}, {}, {})", loop_register_index, loop_max_value, end_branch)
+            }
             Instruction::AssertStart => String::from("AssertStart"),
             Instruction::AssertEnd => String::from("AssertEnd"),
             Instruction::AssertStartOrNewline => String::from("AssertStartOrNewline"),

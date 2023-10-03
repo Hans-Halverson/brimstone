@@ -1,7 +1,7 @@
 use icu_collections::codepointinvlist::CodePointInversionListBuilder;
 
 use crate::js::{
-    common::{unicode::CodePoint, wtf_8::Wtf8String},
+    common::{unicode::CodePoint, unicode_property::UnicodeProperty, wtf_8::Wtf8String},
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
@@ -10,14 +10,27 @@ use crate::js::{
 };
 
 use super::{
-    compiled_regexp::{CompiledRegExpObject, Instruction},
+    compiled_regexp::CompiledRegExpObject,
+    instruction::{
+        AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
+        AssertNotWordBoundaryInstruction, AssertStartInstruction, AssertStartOrNewlineInstruction,
+        AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
+        ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
+        CompareIsDigitInstruction, CompareIsNotDigitInstruction,
+        CompareIsNotUnicodePropertyInstruction, CompareIsNotWhitespaceInstruction,
+        CompareIsNotWordInstruction, CompareIsUnicodePropertyInstruction,
+        CompareIsWhitespaceInstruction, CompareIsWordInstruction, ConsumeIfFalseInstruction,
+        ConsumeIfTrueInstruction, FailInstruction, InstructionIteratorMut, JumpInstruction,
+        LiteralInstruction, LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
+        OpCode, ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
+    },
     matcher::canonicalize,
 };
 
 type BlockId = usize;
 
 struct CompiledRegExpBuilder {
-    blocks: Vec<Vec<Instruction>>,
+    blocks: Vec<Vec<u32>>,
     flags: RegExpFlags,
     current_block_id: BlockId,
     num_progress_points: u32,
@@ -106,23 +119,152 @@ impl CompiledRegExpBuilder {
         self.repitition_depth > 0
     }
 
-    fn emit_instruction(&mut self, instruction: Instruction) {
-        self.blocks[self.current_block_id].push(instruction)
+    fn current_block_buf(&mut self) -> &mut Vec<u32> {
+        &mut self.blocks[self.current_block_id]
+    }
+
+    fn emit_literal_instruction(&mut self, code_point: CodePoint) {
+        LiteralInstruction::write(self.current_block_buf(), code_point)
+    }
+
+    fn emit_wildcard_instruction(&mut self) {
+        WildcardInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_wildcard_no_newline_instruction(&mut self) {
+        WildcardNoNewlineInstruction::write(self.current_block_buf())
     }
 
     fn emit_jump_instruction(&mut self, block_id: BlockId) {
-        self.emit_instruction(Instruction::Jump(block_id as u32))
+        JumpInstruction::write(self.current_block_buf(), block_id as u32)
     }
 
     fn emit_branch_instruction(&mut self, first_block_id: BlockId, second_block_id: BlockId) {
-        self.emit_instruction(Instruction::Branch(first_block_id as u32, second_block_id as u32))
+        BranchInstruction::write(
+            self.current_block_buf(),
+            first_block_id as u32,
+            second_block_id as u32,
+        )
+    }
+
+    fn emit_accept_instruction(&mut self) {
+        AcceptInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_fail_instruction(&mut self) {
+        FailInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_mark_capture_point_instruction(&mut self, capture_point_index: u32) {
+        MarkCapturePointInstruction::write(self.current_block_buf(), capture_point_index)
+    }
+
+    fn emit_clear_capture_instruction(&mut self, capture_group_index: u32) {
+        ClearCaptureInstruction::write(self.current_block_buf(), capture_group_index)
     }
 
     fn emit_progress_instruction(&mut self) {
         let index = self.num_progress_points;
         self.num_progress_points += 1;
 
-        self.emit_instruction(Instruction::Progress(index));
+        ProgressInstruction::write(self.current_block_buf(), index);
+    }
+
+    fn emit_loop_instruction(
+        &mut self,
+        loop_register_index: u32,
+        loop_max_value: u32,
+        end_branch: u32,
+    ) {
+        LoopInstruction::write(
+            self.current_block_buf(),
+            loop_register_index,
+            loop_max_value,
+            end_branch,
+        )
+    }
+
+    fn emit_assert_start_instruction(&mut self) {
+        AssertStartInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_assert_end_instruction(&mut self) {
+        AssertEndInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_assert_start_or_newline_instruction(&mut self) {
+        AssertStartOrNewlineInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_assert_end_or_newline_instruction(&mut self) {
+        AssertEndOrNewlineInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_assert_word_boundary_instruction(&mut self) {
+        AssertWordBoundaryInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_assert_not_word_boundary_instruction(&mut self) {
+        AssertNotWordBoundaryInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_backreference_instruction(&mut self, capture_group_index: u32) {
+        BackreferenceInstruction::write(self.current_block_buf(), capture_group_index)
+    }
+
+    fn emit_consume_if_true_instruction(&mut self) {
+        ConsumeIfTrueInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_consume_if_false_instruction(&mut self) {
+        ConsumeIfFalseInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_equals_instruction(&mut self, code_point: CodePoint) {
+        CompareEqualsInstruction::write(self.current_block_buf(), code_point)
+    }
+
+    fn emit_compare_between_instruction(&mut self, start: CodePoint, end: CodePoint) {
+        CompareBetweenInstruction::write(self.current_block_buf(), start, end)
+    }
+
+    fn emit_compare_is_digit_instruction(&mut self) {
+        CompareIsDigitInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_not_digit_instruction(&mut self) {
+        CompareIsNotDigitInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_word_instruction(&mut self) {
+        CompareIsWordInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_not_word_instruction(&mut self) {
+        CompareIsNotWordInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_whitespace_instruction(&mut self) {
+        CompareIsWhitespaceInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_not_whitespace_instruction(&mut self) {
+        CompareIsNotWhitespaceInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_compare_is_unicode_property_instruction(&mut self, unicode_property: UnicodeProperty) {
+        CompareIsUnicodePropertyInstruction::write(self.current_block_buf(), unicode_property)
+    }
+
+    fn emit_compare_is_not_unicode_property_instruction(
+        &mut self,
+        unicode_property: UnicodeProperty,
+    ) {
+        CompareIsNotUnicodePropertyInstruction::write(self.current_block_buf(), unicode_property)
+    }
+
+    fn emit_lookaround_instruction(&mut self, is_ahead: bool, is_positive: bool, body_branch: u32) {
+        LookaroundInstruction::write(self.current_block_buf(), is_ahead, is_positive, body_branch)
     }
 
     fn next_loop_register(&mut self) -> u32 {
@@ -145,11 +287,11 @@ impl CompiledRegExpBuilder {
         }
 
         // Wrap the entire pattern in the 0'th capture group
-        self.emit_instruction(Instruction::MarkCapturePoint(0));
+        self.emit_mark_capture_point_instruction(0);
         self.emit_disjunction(&regexp.disjunction);
-        self.emit_instruction(Instruction::MarkCapturePoint(1));
+        self.emit_mark_capture_point_instruction(1);
 
-        self.emit_instruction(Instruction::Accept);
+        self.emit_accept_instruction();
 
         let instructions = self.flatten_and_fix_indices();
 
@@ -173,7 +315,7 @@ impl CompiledRegExpBuilder {
 
         // Repeat wildcard block
         self.set_current_block(wildcard_block);
-        self.emit_instruction(Instruction::Wildcard);
+        self.emit_wildcard_instruction();
         self.emit_branch_instruction(join_block, wildcard_block);
 
         // Resume at the join block where pattern will start being emitted
@@ -235,7 +377,7 @@ impl CompiledRegExpBuilder {
                         let prev_alternative_captures = &alternative_blocks[i - 1].captures;
                         self.set_current_block(branch_block_ids[i]);
                         for capture_index in prev_alternative_captures {
-                            self.emit_instruction(Instruction::ClearCapture(*capture_index));
+                            self.emit_clear_capture_instruction(*capture_index);
                         }
                     }
                 }
@@ -249,7 +391,7 @@ impl CompiledRegExpBuilder {
                     self.set_current_block(
                         alternative_blocks[alternative_blocks.len() - 1].exit_block,
                     );
-                    self.emit_instruction(Instruction::ClearCapture(*capture_index));
+                    self.emit_clear_capture_instruction(*capture_index);
                 }
 
                 // Note that the last alternative does not need its captures cleared when entering
@@ -272,7 +414,7 @@ impl CompiledRegExpBuilder {
                     // Emit this clear block and set it as the current one
                     self.set_current_block(clear_capture_block_id);
                     for capture_index in alternative_captures {
-                        self.emit_instruction(Instruction::ClearCapture(*capture_index));
+                        self.emit_clear_capture_instruction(*capture_index);
                     }
 
                     // Link to the next clear (or join) block in the chain
@@ -382,7 +524,7 @@ impl CompiledRegExpBuilder {
                 SubExpressionInfo::no_captures(false)
             }
             Term::Backreference(backreference) => {
-                self.emit_instruction(Instruction::Backreference(backreference.index));
+                self.emit_backreference_instruction(backreference.index);
 
                 // Backreferences may be empty depending on what was captured
                 SubExpressionInfo::no_captures(false)
@@ -397,7 +539,7 @@ impl CompiledRegExpBuilder {
             code_point
         };
 
-        self.emit_instruction(Instruction::Literal(code_point))
+        self.emit_literal_instruction(code_point)
     }
 
     fn emit_literal(&mut self, string: &Wtf8String) {
@@ -416,9 +558,9 @@ impl CompiledRegExpBuilder {
 
     fn emit_wildcard(&mut self) {
         if self.flags.is_dot_all() {
-            self.emit_instruction(Instruction::Wildcard)
+            self.emit_wildcard_instruction()
         } else {
-            self.emit_instruction(Instruction::WildcardNoNewline)
+            self.emit_wildcard_no_newline_instruction()
         }
     }
 
@@ -426,20 +568,20 @@ impl CompiledRegExpBuilder {
         match assertion {
             Assertion::Start => {
                 if self.flags.is_multiline() {
-                    self.emit_instruction(Instruction::AssertStartOrNewline)
+                    self.emit_assert_start_or_newline_instruction()
                 } else {
-                    self.emit_instruction(Instruction::AssertStart)
+                    self.emit_assert_start_instruction()
                 }
             }
             Assertion::End => {
                 if self.flags.is_multiline() {
-                    self.emit_instruction(Instruction::AssertEndOrNewline)
+                    self.emit_assert_end_or_newline_instruction()
                 } else {
-                    self.emit_instruction(Instruction::AssertEnd)
+                    self.emit_assert_end_instruction()
                 }
             }
-            Assertion::WordBoundary => self.emit_instruction(Instruction::AssertWordBoundary),
-            Assertion::NotWordBoundary => self.emit_instruction(Instruction::AssertNotWordBoundary),
+            Assertion::WordBoundary => self.emit_assert_word_boundary_instruction(),
+            Assertion::NotWordBoundary => self.emit_assert_not_word_boundary_instruction(),
         }
     }
 
@@ -480,7 +622,7 @@ impl CompiledRegExpBuilder {
             // The minimum number of repititions is greater than the max possible string length.
             // Each repitition must consume at least one character, so we know this quantifier will
             // fail to match.
-            self.emit_instruction(Instruction::Fail);
+            self.emit_fail_instruction();
         } else {
             // Jump to a new loop block for the minimum repititions
             let loop_block_id = self.new_block();
@@ -491,11 +633,11 @@ impl CompiledRegExpBuilder {
             // Loop block consists of loop instruction, term, then loops back to start of block
             self.in_block(loop_block_id, |this| {
                 let loop_register_index = this.next_loop_register();
-                this.emit_instruction(Instruction::Loop {
+                this.emit_loop_instruction(
                     loop_register_index,
-                    loop_max_value: quantifier.min as u32,
-                    end_branch: loop_end_block_id as u32,
-                });
+                    quantifier.min as u32,
+                    loop_end_block_id as u32,
+                );
 
                 quantifier_info = this.emit_term(&quantifier.term);
 
@@ -553,7 +695,7 @@ impl CompiledRegExpBuilder {
                 // The minimum number of repititions is greater than the max possible string length.
                 // Each repitition must consume at least one character, so we know this quantifier
                 // will fail to match.
-                self.emit_instruction(Instruction::Fail);
+                self.emit_fail_instruction();
             } else {
                 let predecessor_block_id = self.current_block_id;
                 let loop_block_id = self.new_block();
@@ -563,11 +705,11 @@ impl CompiledRegExpBuilder {
                 // Loop block consists of loop instruction, term, then branches back to start of block
                 let info = self.in_block(loop_block_id, |this| {
                     let loop_register_index = this.next_loop_register();
-                    this.emit_instruction(Instruction::Loop {
+                    this.emit_loop_instruction(
                         loop_register_index,
-                        loop_max_value: num_remaining_repititions as u32,
-                        end_branch: join_block_id as u32,
-                    });
+                        num_remaining_repititions as u32,
+                        join_block_id as u32,
+                    );
 
                     let info = this.emit_term(&quantifier.term);
 
@@ -682,7 +824,7 @@ impl CompiledRegExpBuilder {
 
         self.set_current_block(clear_block_id);
         for capture_index in &info.captures {
-            self.emit_instruction(Instruction::ClearCapture(*capture_index));
+            self.emit_clear_capture_instruction(*capture_index);
         }
 
         self.emit_jump_instruction(join_block_id);
@@ -698,9 +840,9 @@ impl CompiledRegExpBuilder {
             std::mem::swap(&mut capture_start_index, &mut capture_end_index);
         }
 
-        self.emit_instruction(Instruction::MarkCapturePoint(capture_start_index));
+        self.emit_mark_capture_point_instruction(capture_start_index);
         let mut info = self.emit_disjunction(&group.disjunction);
-        self.emit_instruction(Instruction::MarkCapturePoint(capture_end_index));
+        self.emit_mark_capture_point_instruction(capture_end_index);
 
         // Add this capture group to the set of captures
         info.captures.push(group.index);
@@ -738,19 +880,17 @@ impl CompiledRegExpBuilder {
                     }
                 }
                 // Shorthand char ranges have own instructions
-                ClassRange::Digit => self.emit_instruction(Instruction::CompareIsDigit),
-                ClassRange::NotDigit => self.emit_instruction(Instruction::CompareIsNotDigit),
-                ClassRange::Word => self.emit_instruction(Instruction::CompareIsWord),
-                ClassRange::NotWord => self.emit_instruction(Instruction::CompareIsNotWord),
-                ClassRange::Whitespace => self.emit_instruction(Instruction::CompareIsWhitespace),
-                ClassRange::NotWhitespace => {
-                    self.emit_instruction(Instruction::CompareIsNotWhitespace)
-                }
+                ClassRange::Digit => self.emit_compare_is_digit_instruction(),
+                ClassRange::NotDigit => self.emit_compare_is_not_digit_instruction(),
+                ClassRange::Word => self.emit_compare_is_word_instruction(),
+                ClassRange::NotWord => self.emit_compare_is_not_word_instruction(),
+                ClassRange::Whitespace => self.emit_compare_is_whitespace_instruction(),
+                ClassRange::NotWhitespace => self.emit_compare_is_not_whitespace_instruction(),
                 ClassRange::UnicodeProperty(property) => {
-                    self.emit_instruction(Instruction::CompareIsUnicodeProperty(*property))
+                    self.emit_compare_is_unicode_property_instruction(*property)
                 }
                 ClassRange::NotUnicodeProperty(property) => {
-                    self.emit_instruction(Instruction::CompareIsNotUnicodeProperty(*property))
+                    self.emit_compare_is_not_unicode_property_instruction(*property)
                 }
             }
         }
@@ -763,28 +903,28 @@ impl CompiledRegExpBuilder {
             let end = *range.end();
 
             if start == end {
-                self.emit_instruction(Instruction::CompareEquals(start));
+                self.emit_compare_equals_instruction(start);
             } else {
                 // Convert from inclusive end to exclusive end
-                self.emit_instruction(Instruction::CompareBetween(start, end + 1));
+                self.emit_compare_between_instruction(start, end + 1);
             }
         }
 
         // Emit the final consume instruction, noting whether to invert
         if character_class.is_inverted {
-            self.emit_instruction(Instruction::ConsumeIfFalse);
+            self.emit_consume_if_false_instruction();
         } else {
-            self.emit_instruction(Instruction::ConsumeIfTrue);
+            self.emit_consume_if_true_instruction();
         }
     }
 
     fn emit_lookaround(&mut self, lookaround: &Lookaround) {
         let body_block_id = self.new_block();
-        self.emit_instruction(Instruction::Lookaround(
+        self.emit_lookaround_instruction(
             lookaround.is_ahead,
             lookaround.is_positive,
             body_block_id as u32,
-        ));
+        );
 
         // The body of the lookaround is generated in a new direction context to allow for emitting
         // backwards matches.
@@ -800,7 +940,7 @@ impl CompiledRegExpBuilder {
         self.set_current_block(body_block_id);
 
         self.emit_disjunction(&lookaround.disjunction);
-        self.emit_instruction(Instruction::Accept);
+        self.emit_accept_instruction();
 
         self.exit_direction_context();
 
@@ -808,33 +948,40 @@ impl CompiledRegExpBuilder {
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions
-    /// originally use block ids as their operands - replace these with instruction indices into
-    /// the flat array.
-    fn flatten_and_fix_indices(&mut self) -> Vec<Instruction> {
+    /// originally use block ids as their operands - replace these with u32 indices into the encoded
+    /// flat array.
+    fn flatten_and_fix_indices(&mut self) -> Vec<u32> {
         let num_instructions = self.blocks.iter().map(|block| block.len()).sum();
         let mut instructions = Vec::with_capacity(num_instructions);
 
-        // Map from block ids to instruction indices in the flattened array
+        // Map from block ids to u32 indices in the flattened array
         let mut id_map = Vec::with_capacity(self.blocks.len());
 
         // Flatten blocks into instruction array
         for block in &self.blocks {
-            id_map.push(instructions.len());
+            id_map.push(instructions.len() as u32);
             instructions.extend(block.iter());
         }
 
-        // Fix up indices
-        for instruction in &mut instructions {
-            match instruction {
-                Instruction::Branch(block_id_1, block_id_2) => {
-                    *block_id_1 = id_map[(*block_id_1) as usize] as u32;
-                    *block_id_2 = id_map[(*block_id_2) as usize] as u32;
+        // Fix up branch targets
+        for instr in InstructionIteratorMut::new(&mut instructions) {
+            match instr.opcode() {
+                OpCode::Branch => {
+                    let instr = instr.cast_mut::<BranchInstruction>();
+                    instr.set_first_branch(id_map[instr.first_branch() as usize]);
+                    instr.set_second_branch(id_map[instr.second_branch() as usize]);
                 }
-                Instruction::Jump(block_id) | Instruction::Lookaround(_, _, block_id) => {
-                    *block_id = id_map[(*block_id) as usize] as u32;
+                OpCode::Jump => {
+                    let instr = instr.cast_mut::<JumpInstruction>();
+                    instr.set_target(id_map[instr.target() as usize]);
                 }
-                Instruction::Loop { end_branch, .. } => {
-                    *end_branch = id_map[(*end_branch) as usize] as u32;
+                OpCode::Lookaround => {
+                    let instr = instr.cast_mut::<LookaroundInstruction>();
+                    instr.set_body_branch(id_map[instr.body_branch() as usize]);
+                }
+                OpCode::Loop => {
+                    let instr = instr.cast_mut::<LoopInstruction>();
+                    instr.set_end_branch(id_map[instr.end_branch() as usize]);
                 }
                 _ => {}
             }

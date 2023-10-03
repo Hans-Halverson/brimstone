@@ -11,12 +11,28 @@ use crate::js::{
         LexerStream, SavedLexerStreamState,
     },
     runtime::{
+        regexp::instruction::OpCode,
         string_value::{string_index_to_usize, FlatString, StringValue, StringWidth},
         Handle, HeapPtr,
     },
 };
 
-use super::compiled_regexp::{CompiledRegExpObject, Instruction};
+use super::{
+    compiled_regexp::CompiledRegExpObject,
+    instruction::{
+        AssertEndInstruction, AssertEndOrNewlineInstruction, AssertNotWordBoundaryInstruction,
+        AssertStartInstruction, AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
+        BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
+        CompareBetweenInstruction, CompareEqualsInstruction, CompareIsDigitInstruction,
+        CompareIsNotDigitInstruction, CompareIsNotUnicodePropertyInstruction,
+        CompareIsNotWhitespaceInstruction, CompareIsNotWordInstruction,
+        CompareIsUnicodePropertyInstruction, CompareIsWhitespaceInstruction,
+        CompareIsWordInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction,
+        JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
+        MarkCapturePointInstruction, ProgressInstruction, TInstruction, WildcardInstruction,
+        WildcardNoNewlineInstruction,
+    },
+};
 
 pub struct MatchEngine<T: LexerStream> {
     // Lexer over the target string with a current position
@@ -174,13 +190,20 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 
     #[inline]
-    fn current_instruction(&self) -> Instruction {
-        self.regexp.instructions()[self.instruction_index]
+    fn current_instruction(&self) -> &Instruction {
+        unsafe {
+            &*self
+                .regexp
+                .instructions()
+                .as_ptr()
+                .add(self.instruction_index)
+                .cast::<Instruction>()
+        }
     }
 
     #[inline]
-    fn advance_instruction(&mut self) {
-        self.instruction_index += 1;
+    fn advance_instruction<I: TInstruction>(&mut self) {
+        self.instruction_index += I::SIZE;
     }
 
     #[inline]
@@ -227,220 +250,252 @@ impl<T: LexerStream> MatchEngine<T> {
 
     fn execute_bytecode<const DIRECTION: bool>(&mut self) -> Result<(), ()> {
         loop {
-            match self.current_instruction() {
-                Instruction::Accept => return Ok(()),
-                Instruction::Fail => self.backtrack()?,
-                Instruction::Literal(code_point) => {
-                    if self.string_lexer.current() != code_point {
+            let instr = self.current_instruction();
+            match instr.opcode() {
+                OpCode::Accept => return Ok(()),
+                OpCode::Fail => self.backtrack()?,
+                OpCode::Literal => {
+                    let instr = instr.cast::<LiteralInstruction>();
+
+                    if self.string_lexer.current() != instr.code_point() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction();
+                        self.advance_instruction::<LiteralInstruction>();
                     }
                 }
-                Instruction::Wildcard => {
+                OpCode::Wildcard => {
                     if !self.string_lexer.has_current() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction();
+                        self.advance_instruction::<WildcardInstruction>();
                     }
                 }
-                Instruction::WildcardNoNewline => {
+                OpCode::WildcardNoNewline => {
                     if !self.string_lexer.has_current() || is_newline(self.string_lexer.current()) {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction();
+                        self.advance_instruction::<WildcardNoNewlineInstruction>();
                     }
                 }
-                Instruction::Jump(next_instruction_index) => {
-                    self.set_next_instruction(next_instruction_index);
+                OpCode::Jump => {
+                    let instr = instr.cast::<JumpInstruction>();
+                    self.set_next_instruction(instr.target());
                 }
-                Instruction::Branch(first_instruction_index, second_instruction_index) => {
-                    self.push_backtrack_restore_state(second_instruction_index as usize);
-                    self.set_next_instruction(first_instruction_index);
+                OpCode::Branch => {
+                    let instr = instr.cast::<BranchInstruction>();
+                    let first_branch = instr.first_branch();
+                    let second_branch = instr.second_branch();
+
+                    self.push_backtrack_restore_state(second_branch as usize);
+                    self.set_next_instruction(first_branch);
                 }
-                Instruction::MarkCapturePoint(capture_point_index) => {
+                OpCode::MarkCapturePoint => {
+                    let instr = instr.cast::<MarkCapturePointInstruction>();
                     let string_index = self.string_lexer.pos() as u32;
-                    self.push_capture_point(capture_point_index, string_index);
-                    self.advance_instruction();
+                    self.push_capture_point(instr.capture_point_index(), string_index);
+                    self.advance_instruction::<MarkCapturePointInstruction>();
                 }
-                Instruction::ClearCapture(capture_group_index) => {
+                OpCode::ClearCapture => {
+                    let instr = instr.cast::<ClearCaptureInstruction>();
+
                     // Clearing just the ending capture point for the group is enough
-                    let capture_point_index = capture_group_index * 2 + 1;
+                    let capture_point_index = instr.capture_group_index() * 2 + 1;
                     self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX);
-                    self.advance_instruction();
+                    self.advance_instruction::<ClearCaptureInstruction>();
                 }
-                Instruction::Progress(progress_index) => {
+                OpCode::Progress => {
+                    let instr = instr.cast::<ProgressInstruction>();
+                    let progress_index = instr.progress_index();
+
                     let string_index = self.string_lexer.pos() as u32;
                     if self.get_progress_point(progress_index) != string_index {
                         self.push_progress_point(progress_index, string_index);
-                        self.advance_instruction();
+                        self.advance_instruction::<ProgressInstruction>();
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::Loop { loop_register_index, loop_max_value, end_branch } => {
+                OpCode::Loop => {
+                    let instr = instr.cast::<LoopInstruction>();
+                    let loop_register_index = instr.loop_register_index();
+                    let end_branch = instr.end_branch();
+
                     let loop_register_value = self.get_loop_register(loop_register_index);
-                    if loop_register_value < loop_max_value as usize {
+                    if loop_register_value < instr.loop_max_value() as usize {
                         self.push_loop_register(loop_register_index, loop_register_value + 1);
-                        self.advance_instruction();
+                        self.advance_instruction::<LoopInstruction>();
                     } else {
                         self.push_loop_register(loop_register_index, 0);
                         self.set_next_instruction(end_branch);
                     }
                 }
-                Instruction::AssertStart => {
+                OpCode::AssertStart => {
                     if self.string_lexer.is_start() {
-                        self.advance_instruction();
+                        self.advance_instruction::<AssertStartInstruction>();
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::AssertEnd => {
+                OpCode::AssertEnd => {
                     if self.string_lexer.is_end() {
-                        self.advance_instruction();
+                        self.advance_instruction::<AssertEndInstruction>();
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::AssertStartOrNewline => {
+                OpCode::AssertStartOrNewline => {
                     if self.string_lexer.is_start()
                         || is_newline(self.code_point_before_current_pos::<DIRECTION>())
                     {
-                        self.advance_instruction();
+                        self.advance_instruction::<AssertStartOrNewlineInstruction>();
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::AssertEndOrNewline => {
+                OpCode::AssertEndOrNewline => {
                     if self.string_lexer.is_end()
                         || is_newline(self.code_point_after_current_pos::<DIRECTION>())
                     {
-                        self.advance_instruction();
+                        self.advance_instruction::<AssertEndOrNewlineInstruction>();
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::AssertWordBoundary => {
+                OpCode::AssertWordBoundary => {
                     if self.is_at_word_boundary::<DIRECTION>() {
-                        self.advance_instruction()
+                        self.advance_instruction::<AssertWordBoundaryInstruction>()
                     } else {
                         self.backtrack()?;
                     }
                 }
-                Instruction::AssertNotWordBoundary => {
+                OpCode::AssertNotWordBoundary => {
                     if self.is_at_word_boundary::<DIRECTION>() {
                         self.backtrack()?;
                     } else {
-                        self.advance_instruction()
+                        self.advance_instruction::<AssertNotWordBoundaryInstruction>()
                     }
                 }
-                Instruction::Backreference(capture_group_index) => {
-                    self.execute_backreference::<DIRECTION>(capture_group_index)?;
+                OpCode::Backreference => {
+                    let instr = instr.cast::<BackreferenceInstruction>();
+                    self.execute_backreference::<DIRECTION>(instr.capture_group_index())?;
                 }
-                Instruction::ConsumeIfTrue => {
+                OpCode::ConsumeIfTrue => {
                     if !self.compare_register || !self.string_lexer.has_current() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction();
+                        self.advance_instruction::<ConsumeIfTrueInstruction>();
                     }
 
                     self.compare_register = false;
                 }
-                Instruction::ConsumeIfFalse => {
+                OpCode::ConsumeIfFalse => {
                     if self.compare_register || !self.string_lexer.has_current() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
-                        self.advance_instruction();
+                        self.advance_instruction::<ConsumeIfFalseInstruction>();
                     }
 
                     self.compare_register = false;
                 }
-                Instruction::CompareEquals(code_point) => {
-                    if code_point == self.string_lexer.current() {
+                OpCode::CompareEquals => {
+                    let instr = instr.cast::<CompareEqualsInstruction>();
+
+                    if instr.code_point() == self.string_lexer.current() {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareEqualsInstruction>();
                 }
-                Instruction::CompareBetween(lower, upper) => {
+                OpCode::CompareBetween => {
+                    let instr = instr.cast::<CompareBetweenInstruction>();
+
                     let current = self.string_lexer.current();
-                    if current >= lower && current < upper {
+                    if current >= instr.start_code_point() && current < instr.end_code_point() {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareBetweenInstruction>();
                 }
-                Instruction::CompareIsDigit => {
+                OpCode::CompareIsDigit => {
                     if is_decimal_digit(self.string_lexer.current()) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsDigitInstruction>();
                 }
-                Instruction::CompareIsNotDigit => {
+                OpCode::CompareIsNotDigit => {
                     if !is_decimal_digit(self.string_lexer.current()) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsNotDigitInstruction>();
                 }
-                Instruction::CompareIsWord => {
+                OpCode::CompareIsWord => {
                     if is_word_code_point(self.string_lexer.current()) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsWordInstruction>();
                 }
-                Instruction::CompareIsNotWord => {
+                OpCode::CompareIsNotWord => {
                     if !is_word_code_point(self.string_lexer.current()) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsNotWordInstruction>();
                 }
-                Instruction::CompareIsWhitespace => {
+                OpCode::CompareIsWhitespace => {
                     let current = self.string_lexer.current();
                     if is_whitespace(current) || is_newline(current) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsWhitespaceInstruction>();
                 }
-                Instruction::CompareIsNotWhitespace => {
+                OpCode::CompareIsNotWhitespace => {
                     let current = self.string_lexer.current();
                     if !is_whitespace(current) && !is_newline(current) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsNotWhitespaceInstruction>();
                 }
-                Instruction::CompareIsUnicodeProperty(property) => {
+                OpCode::CompareIsUnicodeProperty => {
+                    let instr = instr.cast::<CompareIsUnicodePropertyInstruction>();
+
                     let current = self.string_lexer.current();
-                    if property.is_match(current) {
+                    if instr.unicode_property().is_match(current) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsUnicodePropertyInstruction>();
                 }
-                Instruction::CompareIsNotUnicodeProperty(property) => {
+                OpCode::CompareIsNotUnicodeProperty => {
+                    let instr = instr.cast::<CompareIsNotUnicodePropertyInstruction>();
+
                     let current = self.string_lexer.current();
-                    if !property.is_match(current) {
+                    if !instr.unicode_property().is_match(current) {
                         self.compare_register = true;
                     }
 
-                    self.advance_instruction();
+                    self.advance_instruction::<CompareIsNotUnicodePropertyInstruction>();
                 }
-                Instruction::Lookaround(is_ahead, is_positive, lookaround_instruction_index) => {
+                OpCode::Lookaround => {
+                    let instr = instr.cast::<LookaroundInstruction>();
+                    let is_ahead = instr.is_ahead();
+                    let is_positive = instr.is_positive();
+                    let body_branch = instr.body_branch();
+
                     // Save lexer state for starting lookaround
                     let saved_string_state = self.string_lexer.save();
 
                     // Save the index of the instruction to be executed after the lookaround
-                    self.advance_instruction();
+                    self.advance_instruction::<LookaroundInstruction>();
                     let next_instruction_index = self.instruction_index;
 
                     // Save the base and size of the backtrack stack before the sub-execution starts
@@ -451,7 +506,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     self.backtrack_stack_base = self.backtrack_stack.len();
 
                     // Execute the lookaround as a sub-execution within engine
-                    self.set_next_instruction(lookaround_instruction_index);
+                    self.set_next_instruction(body_branch);
 
                     let is_match = if is_ahead {
                         // Prime lexer for forwards traversal
@@ -565,7 +620,7 @@ impl<T: LexerStream> MatchEngine<T> {
         capture_group_index: u32,
     ) -> Result<(), ()> {
         match self.get_valid_capture_bounds(capture_group_index) {
-            None => self.advance_instruction(),
+            None => self.advance_instruction::<BackreferenceInstruction>(),
             Some((start_index, end_index)) => {
                 let start_index = start_index as usize;
                 let end_index = end_index as usize;
@@ -581,7 +636,7 @@ impl<T: LexerStream> MatchEngine<T> {
                             .slice_equals(self.string_lexer.pos(), captured_slice)
                         {
                             self.string_lexer.advance_n(captured_slice_len);
-                            self.advance_instruction();
+                            self.advance_instruction::<BackreferenceInstruction>();
                         } else {
                             self.backtrack()?;
                         }
@@ -595,7 +650,7 @@ impl<T: LexerStream> MatchEngine<T> {
                                 .slice_equals(start_pos.unwrap(), captured_slice)
                         {
                             self.string_lexer.advance_backwards_n(captured_slice_len);
-                            self.advance_instruction();
+                            self.advance_instruction::<BackreferenceInstruction>();
                         } else {
                             self.backtrack()?;
                         }

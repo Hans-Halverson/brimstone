@@ -11,7 +11,7 @@ use crate::js::{
         LexerStream, SavedLexerStreamState,
     },
     runtime::{
-        string_value::{FlatString, StringValue, StringWidth},
+        string_value::{string_index_to_usize, FlatString, StringValue, StringWidth},
         Handle, HeapPtr,
     },
 };
@@ -28,9 +28,9 @@ pub struct MatchEngine<T: LexerStream> {
     // Saved restore points for backtracking
     backtrack_stack: Vec<BacktrackEntry>,
     // String index for each capture point
-    capture_points: Vec<usize>,
+    capture_points: Vec<u32>,
     // The most recent string index marked at each progress instruction
-    progress_points: Vec<usize>,
+    progress_points: Vec<u32>,
     // The next loop iteration for each loop
     loop_registers: Vec<usize>,
     // An accumulator register for building multi-part comparisons
@@ -46,7 +46,7 @@ enum BacktrackEntry {
     /// Restore a capture point
     CapturePoint(CapturePoint),
     /// Restore a progress point (progress point index, string index to restore)
-    ProgressPoint(u32, usize),
+    ProgressPoint(u32, u32),
     /// Restore a loop register to a given value (loop register index, value)
     LoopRegister(u32, usize),
     /// Restore the backtrack stack to a given size, backtracking through all entries
@@ -61,13 +61,13 @@ struct BacktrackRestoreState {
     saved_string_state: SavedLexerStreamState,
 }
 
-const EMPTY_STRING_INDEX: usize = usize::MAX;
+const EMPTY_STRING_INDEX: u32 = u32::MAX;
 
 struct CapturePoint {
     // Capture point index marking the beginning or end of a capture group
     capture_point_index: u32,
     // Target string index that was marked
-    string_index: usize,
+    string_index: u32,
 }
 
 #[derive(Debug)]
@@ -79,8 +79,8 @@ pub struct Match {
 /// Bounds of a matched capture group. The start index is inclusive, the end index is exclusive.
 #[derive(Debug)]
 pub struct Capture {
-    pub start: usize,
-    pub end: usize,
+    pub start: u32,
+    pub end: u32,
 }
 
 const FORWARD: bool = true;
@@ -189,22 +189,22 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 
     #[inline]
-    fn get_capture_point(&self, capture_point_index: u32) -> usize {
+    fn get_capture_point(&self, capture_point_index: u32) -> u32 {
         self.capture_points[capture_point_index as usize]
     }
 
     #[inline]
-    fn set_capture_point(&mut self, capture_point_index: u32, string_index: usize) {
+    fn set_capture_point(&mut self, capture_point_index: u32, string_index: u32) {
         self.capture_points[capture_point_index as usize] = string_index;
     }
 
     #[inline]
-    fn get_progress_point(&self, progress_point_index: u32) -> usize {
+    fn get_progress_point(&self, progress_point_index: u32) -> u32 {
         self.progress_points[progress_point_index as usize]
     }
 
     #[inline]
-    fn set_progress_point(&mut self, progress_point_index: u32, string_index: usize) {
+    fn set_progress_point(&mut self, progress_point_index: u32, string_index: u32) {
         self.progress_points[progress_point_index as usize] = string_index;
     }
 
@@ -261,7 +261,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     self.set_next_instruction(first_instruction_index);
                 }
                 Instruction::MarkCapturePoint(capture_point_index) => {
-                    let string_index = self.string_lexer.pos();
+                    let string_index = self.string_lexer.pos() as u32;
                     self.push_capture_point(capture_point_index, string_index);
                     self.advance_instruction();
                 }
@@ -272,7 +272,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     self.advance_instruction();
                 }
                 Instruction::Progress(progress_index) => {
-                    let string_index = self.string_lexer.pos();
+                    let string_index = self.string_lexer.pos() as u32;
                     if self.get_progress_point(progress_index) != string_index {
                         self.push_progress_point(progress_index, string_index);
                         self.advance_instruction();
@@ -529,7 +529,7 @@ impl<T: LexerStream> MatchEngine<T> {
         is_current_word != is_prev_word
     }
 
-    fn push_capture_point(&mut self, capture_point_index: u32, string_index: usize) {
+    fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) {
         // Save old capture point on backtrack stack
         let old_string_index = self.get_capture_point(capture_point_index);
         self.backtrack_stack
@@ -541,7 +541,7 @@ impl<T: LexerStream> MatchEngine<T> {
         self.set_capture_point(capture_point_index, string_index);
     }
 
-    fn push_progress_point(&mut self, progress_point_index: u32, string_index: usize) {
+    fn push_progress_point(&mut self, progress_point_index: u32, string_index: u32) {
         // Save old progress point on backtrack stack
         let old_string_index = self.get_progress_point(progress_point_index);
         self.backtrack_stack
@@ -566,6 +566,9 @@ impl<T: LexerStream> MatchEngine<T> {
         match self.get_valid_capture_bounds(capture_group_index) {
             None => self.advance_instruction(),
             Some((start_index, end_index)) => {
+                let start_index = start_index as usize;
+                let end_index = end_index as usize;
+
                 let captured_slice = self.string_lexer.slice(start_index, end_index);
                 let captured_slice_len = end_index - start_index;
 
@@ -607,7 +610,7 @@ impl<T: LexerStream> MatchEngine<T> {
     /// is 1-indexed where 0 is the entire match.
     ///
     /// If either bound is empty then the capture group did not match and return None.
-    fn get_valid_capture_bounds(&self, capture_group_index: u32) -> Option<(usize, usize)> {
+    fn get_valid_capture_bounds(&self, capture_group_index: u32) -> Option<(u32, u32)> {
         let start_string_index = self.get_capture_point(capture_group_index * 2);
         let end_string_index = self.get_capture_point(capture_group_index * 2 + 1);
 
@@ -636,9 +639,9 @@ impl<T: LexerStream> MatchEngine<T> {
 fn match_lexer_stream(
     mut lexer_stream: impl LexerStream,
     regexp: HeapPtr<CompiledRegExpObject>,
-    start_index: usize,
+    start_index: u32,
 ) -> Option<Match> {
-    lexer_stream.advance_n(start_index);
+    lexer_stream.advance_n(start_index as usize);
     let mut match_engine = MatchEngine::new(regexp, lexer_stream);
     match_engine.run()
 }
@@ -646,7 +649,7 @@ fn match_lexer_stream(
 pub fn run_matcher(
     regexp: HeapPtr<CompiledRegExpObject>,
     target_string: Handle<StringValue>,
-    start_index: usize,
+    start_index: u32,
 ) -> Option<Match> {
     let flat_string = target_string.flatten();
 
@@ -676,10 +679,11 @@ pub fn run_matcher(
 fn run_case_insensitive_matcher(
     regexp: HeapPtr<CompiledRegExpObject>,
     target_string: Handle<FlatString>,
-    start_index: usize,
+    start_index: u32,
 ) -> Option<Match> {
     // If ignoring case, canonicalize into an off-heap UTF-16 string
-    let mut lowercase_string_code_units = Vec::with_capacity(target_string.len());
+    let mut lowercase_string_code_units =
+        Vec::with_capacity(string_index_to_usize(target_string.len()));
 
     if regexp.flags.has_any_unicode_flag() {
         for code_point in target_string.iter_code_points() {

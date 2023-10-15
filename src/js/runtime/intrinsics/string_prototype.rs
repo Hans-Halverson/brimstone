@@ -25,6 +25,7 @@ use crate::{
                 regexp_prototype::flags_string_contains,
                 string_iterator::StringIterator,
             },
+            numeric_constants::MAX_U32_AS_F64,
             object_value::ObjectValue,
             realm::Realm,
             string_object::StringObject,
@@ -136,7 +137,7 @@ impl StringPrototype {
             return cx.undefined().into();
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(index as usize))
+        FlatString::from_code_unit(cx, string.code_unit_at(index as u32))
             .as_string()
             .into()
     }
@@ -158,7 +159,7 @@ impl StringPrototype {
             return cx.names.empty_string().as_string().into();
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(position as usize))
+        FlatString::from_code_unit(cx, string.code_unit_at(position as u32))
             .as_string()
             .into()
     }
@@ -180,7 +181,7 @@ impl StringPrototype {
             return Value::nan().to_handle(cx).into();
         }
 
-        let code_unit = string.code_unit_at(position as usize);
+        let code_unit = string.code_unit_at(position as u32);
         Value::smi(code_unit as i32).to_handle(cx).into()
     }
 
@@ -201,7 +202,7 @@ impl StringPrototype {
             return cx.undefined().into();
         }
 
-        let code_point = string.code_point_at(position as usize);
+        let code_point = string.code_point_at(position as u32);
         Value::smi(code_point as i32).to_handle(cx).into()
     }
 
@@ -236,7 +237,7 @@ impl StringPrototype {
 
         let search_value = get_argument(cx, arguments, 0);
         if maybe!(is_regexp(cx, search_value)) {
-            return type_error_(cx, "first argument to startsWith cannot be a RegExp");
+            return type_error_(cx, "first argument to endsWith cannot be a RegExp");
         }
 
         let search_string = maybe!(to_string(cx, search_value));
@@ -246,14 +247,7 @@ impl StringPrototype {
             length
         } else {
             let end_index = maybe!(to_integer_or_infinity(cx, end_index_argument));
-
-            if end_index < 0.0 {
-                0
-            } else if end_index > (length as f64) {
-                length
-            } else {
-                end_index as usize
-            }
+            end_index.clamp(0.0, length as f64) as u32
         };
 
         let search_length = search_string.len();
@@ -290,7 +284,7 @@ impl StringPrototype {
 
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
-        let pos = pos.clamp(0.0, string.len() as f64) as usize;
+        let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
             return cx.bool(false).into();
@@ -315,7 +309,7 @@ impl StringPrototype {
 
         let pos_arg = get_argument(cx, arguments, 1);
         let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
-        let pos = pos.clamp(0.0, string.len() as f64) as usize;
+        let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
             return Value::smi(-1).to_handle(cx).into();
@@ -362,7 +356,7 @@ impl StringPrototype {
             maybe!(to_integer_or_infinity(cx, num_pos))
         };
 
-        let string_end = pos.clamp(0.0, string.len() as f64) as usize;
+        let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
         match string.rfind(search_string, string_end) {
             None => Value::smi(-1).to_handle(cx).into(),
@@ -562,12 +556,16 @@ impl StringPrototype {
         let string = maybe!(to_string(cx, object));
 
         let int_max_length = maybe!(to_length(cx, max_length_arg));
-        let string_length = string.len() as u64;
+        let string_length = string.len();
 
         // No need to pad as string already has max length
-        if int_max_length <= string_length {
+        if int_max_length <= string_length as u64 {
             return string.into();
+        } else if int_max_length > u32::MAX as u64 {
+            return range_error_(cx, "target string length exceeds maximum string size");
         }
+
+        let int_max_length = int_max_length as u32;
 
         let fill_string = if fill_string_arg.is_undefined() {
             InternedStrings::get_str(cx, " ")
@@ -576,7 +574,7 @@ impl StringPrototype {
         };
 
         let fill_length = int_max_length - string_length;
-        let fill_string_length = fill_string.len() as u64;
+        let fill_string_length = fill_string.len();
 
         // Check for an empty padding string which would have no effect
         if fill_string_length == 0 {
@@ -590,9 +588,7 @@ impl StringPrototype {
         // Add a partial pad string if the pad strings did not evenly divide the padding length
         let partial_length = fill_length - (num_whole_repitions * fill_string_length);
         if partial_length != 0 {
-            let partial_string = fill_string
-                .substring(cx, 0, partial_length as usize)
-                .as_string();
+            let partial_string = fill_string.substring(cx, 0, partial_length).as_string();
             pad_string = StringValue::concat(cx, pad_string, partial_string);
         }
 
@@ -615,13 +611,13 @@ impl StringPrototype {
 
         let n_arg = get_argument(cx, arguments, 0);
         let n = maybe!(to_integer_or_infinity(cx, n_arg));
-        if n < 0.0 || n == f64::INFINITY {
-            return range_error_(cx, "count must be a finite, positive number");
+        if n < 0.0 || n > MAX_U32_AS_F64 {
+            return range_error_(cx, "count must be a finite, positive number that does not exceed the maximum string size");
         } else if n == 0.0 {
             return cx.names.empty_string().as_string().into();
         }
 
-        string.repeat(cx, n as u64).as_string().into()
+        string.repeat(cx, n as u32).as_string().into()
     }
 
     // 22.1.3.19 String.prototype.replace
@@ -751,7 +747,7 @@ impl StringPrototype {
 
         // Collect positions of all matches of the search string in the target string
         let mut matched_positions = vec![];
-        let advance_by = usize::max(1, search_string.len());
+        let advance_by = u32::max(1, search_string.len());
 
         let mut matched_position = target_string.find(search_string, 0);
         while let Some(position) = matched_position {
@@ -866,10 +862,10 @@ impl StringPrototype {
             if relative_start == f64::NEG_INFINITY {
                 0
             } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
+                i64::max(length as i64 + relative_start as i64, 0) as u32
             }
         } else {
-            u64::min(relative_start as u64, length as u64)
+            u32::min(relative_start as u32, length)
         };
 
         let end_argument = get_argument(cx, arguments, 1);
@@ -880,22 +876,20 @@ impl StringPrototype {
                 if relative_end == f64::NEG_INFINITY {
                     0
                 } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
+                    i64::max(length as i64 + relative_end as i64, 0) as u32
                 }
             } else {
-                u64::min(relative_end as u64, length as u64)
+                u32::min(relative_end as u32, length)
             }
         } else {
-            length as u64
+            length
         };
 
         if start_index >= end_index {
             return cx.names.empty_string().as_string().into();
         }
 
-        let substring = string
-            .substring(cx, start_index as usize, end_index as usize)
-            .as_string();
+        let substring = string.substring(cx, start_index, end_index).as_string();
 
         substring.into()
     }
@@ -944,7 +938,7 @@ impl StringPrototype {
         let separator_length = separator.len();
         if separator_length == 0 {
             let mut code_unit_strings = vec![];
-            let limit = usize::min(limit as usize, string.len());
+            let limit = u32::min(limit, string.len());
 
             for i in 0..limit {
                 let substring = string.substring(cx, i, i + 1);
@@ -1024,7 +1018,7 @@ impl StringPrototype {
             } else if start_index > (length as f64) {
                 length
             } else {
-                start_index as usize
+                start_index as u32
             }
         };
 
@@ -1056,14 +1050,14 @@ impl StringPrototype {
 
         let start_arg = get_argument(cx, arguments, 0);
         let start = maybe!(to_integer_or_infinity(cx, start_arg));
-        let mut int_start = f64::max(0.0, f64::min(start, length as f64)) as usize;
+        let mut int_start = f64::max(0.0, f64::min(start, length as f64)) as u32;
 
         let end_argument = get_argument(cx, arguments, 1);
         let mut int_end = if end_argument.is_undefined() {
-            length as usize
+            length
         } else {
             let end = maybe!(to_integer_or_infinity(cx, end_argument));
-            f64::max(0.0, f64::min(end, length as f64)) as usize
+            f64::max(0.0, f64::min(end, length as f64)) as u32
         };
 
         if int_end < int_start {
@@ -1239,7 +1233,7 @@ enum NormalizationForm {
 
 enum StringPart {
     // A valid range of code points between the two indices [start, end)
-    ValidRange(usize, usize),
+    ValidRange(u32, u32),
     UnpairedSurrogate(u16),
 }
 
@@ -1274,7 +1268,7 @@ fn to_valid_string_parts(string: HeapPtr<FlatString>) -> Vec<StringPart> {
                 // First flush the valid range up until this unpaired surrogate, if there was such
                 // a range.
                 if i != start {
-                    parts.push(StringPart::ValidRange(start, i));
+                    parts.push(StringPart::ValidRange(start as u32, i as u32));
                 }
 
                 parts.push(StringPart::UnpairedSurrogate(code_unit));
@@ -1285,7 +1279,7 @@ fn to_valid_string_parts(string: HeapPtr<FlatString>) -> Vec<StringPart> {
 
             // Flush the final valid range if one exists
             if i != start {
-                parts.push(StringPart::ValidRange(start, code_units.len()));
+                parts.push(StringPart::ValidRange(start as u32, code_units.len() as u32));
             }
 
             parts
@@ -1358,7 +1352,7 @@ pub struct SubstitutionTemplate {
 
 enum SubstitutionPart {
     /// A range of characters from the original string, [start, end)
-    Range(usize, usize),
+    Range(u32, u32),
     /// The matched substring
     Match,
     /// The portion of the string before the match
@@ -1367,7 +1361,7 @@ enum SubstitutionPart {
     AfterMatch,
     /// The indexed capture group with the given index. Also includes the [start, end) range of the
     /// full $NN portion of the original string.
-    IndexedCapture(u8, usize, usize),
+    IndexedCapture(u8, u32, u32),
     /// The named capture group with the given name
     NamedCapture(Handle<StringValue>),
 }
@@ -1375,9 +1369,9 @@ enum SubstitutionPart {
 pub struct SubstitutionTemplateParser {
     parts: Vec<SubstitutionPart>,
     /// Current index in the string
-    pos: usize,
+    pos: u32,
     /// Start of the current range of literal characters
-    current_range_start: usize,
+    current_range_start: u32,
     /// Whether to allow named captures
     allow_named_captures: bool,
 }
@@ -1392,7 +1386,7 @@ impl SubstitutionTemplateParser {
         }
     }
 
-    fn flush_range_and_skip(&mut self, skip_length: usize) {
+    fn flush_range_and_skip(&mut self, skip_length: u32) {
         if self.pos > self.current_range_start {
             self.parts
                 .push(SubstitutionPart::Range(self.current_range_start, self.pos));
@@ -1504,7 +1498,7 @@ impl SubstitutionTemplate {
         cx: Context,
         target_string: Handle<StringValue>,
         matched_string: Handle<StringValue>,
-        matched_position: usize,
+        matched_position: u32,
         indexed_captures: &[Option<Handle<StringValue>>],
         named_captures: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<StringValue>> {
@@ -1526,7 +1520,7 @@ impl SubstitutionTemplate {
                 SubstitutionPart::AfterMatch => {
                     let target_string_length = target_string.len();
                     let after_match_pos =
-                        usize::min(matched_position + matched_string.len(), target_string_length);
+                        u32::min(matched_position + matched_string.len(), target_string_length);
 
                     let substring = target_string
                         .substring(cx, after_match_pos, target_string_length)

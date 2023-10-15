@@ -18,7 +18,7 @@ use crate::{
         },
         property_descriptor::PropertyDescriptor,
         string_value::StringValue,
-        type_utilities::canonical_numeric_index_string,
+        type_utilities::canonical_numeric_string_index_string,
         value::Value,
         Context, PropertyKey,
     },
@@ -103,7 +103,7 @@ impl StringObject {
         object
     }
 
-    fn set_length_property(string: Handle<StringObject>, cx: Context, length: usize) {
+    fn set_length_property(string: Handle<StringObject>, cx: Context, length: u32) {
         // String objects have an immutable length property
         let length_value = Value::from(length).to_handle(cx);
         string.object().set_property(
@@ -130,7 +130,7 @@ impl StringObject {
         }
 
         let string = self.string_data();
-        let index = canonical_numeric_index_string(cx, key, string.len())??;
+        let index = canonical_numeric_string_index_string(cx, key, string.len())??;
         let code_unit = string.code_unit_at(index);
 
         let char_string = FlatString::from_code_unit(cx, code_unit).as_string();
@@ -182,7 +182,7 @@ impl VirtualObject for Handle<StringObject> {
         }
 
         ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, &|index| {
-            index >= length
+            index >= (length as usize)
         });
 
         ordinary_own_string_symbol_property_keys(self.object(), &mut keys);

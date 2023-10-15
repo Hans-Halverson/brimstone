@@ -257,7 +257,7 @@ impl RegExpPrototype {
                 let last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
                 let last_index = maybe!(to_length(cx, last_index));
 
-                let next_index = advance_string_index(string_value, last_index, is_unicode);
+                let next_index = advance_u64_string_index(string_value, last_index, is_unicode);
                 let next_index_value = Value::from(next_index).to_handle(cx);
                 maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
             }
@@ -386,7 +386,7 @@ impl RegExpPrototype {
                 let this_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
                 let this_index = maybe!(to_length(cx, this_index));
 
-                let next_index = advance_string_index(target_string, this_index, is_unicode);
+                let next_index = advance_u64_string_index(target_string, this_index, is_unicode);
                 let next_index_value = Value::from(next_index).to_handle(cx);
                 maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
             }
@@ -411,7 +411,7 @@ impl RegExpPrototype {
             let matched_position = maybe!(get(cx, exec_result, cx.names.index()));
             let matched_position = maybe!(to_integer_or_infinity(cx, matched_position));
             let matched_position =
-                f64::clamp(matched_position, 0.0, target_string.len() as f64) as usize;
+                f64::clamp(matched_position, 0.0, target_string.len() as f64) as u32;
 
             // Collect all captures by their capture index
             let mut indexed_captures = vec![];
@@ -638,7 +638,7 @@ impl RegExpPrototype {
         // Property keys are shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
 
-        let size = string_value.len() as u64;
+        let size = string_value.len();
         let mut array_length = 0;
         let mut p = 0;
         let mut q = 0;
@@ -660,16 +660,14 @@ impl RegExpPrototype {
 
                 let e = maybe!(get(cx, splitter, cx.names.last_index()));
                 let e = maybe!(to_length(cx, e));
-                let e = u64::min(e, size);
+                let e = u64::min(e, size as u64) as u32;
 
                 // If there was a match but it is empty then advance to next index
                 if e == p {
                     q = advance_string_index(string_value, q, is_unicode);
                 } else {
                     // Add portion of the string since the last match to the result array
-                    let match_slice = string_value
-                        .substring(cx, p as usize, q as usize)
-                        .as_string();
+                    let match_slice = string_value.substring(cx, p, q).as_string();
 
                     key.replace(PropertyKey::array_index(cx, array_length));
                     maybe!(create_data_property_or_throw(
@@ -711,9 +709,7 @@ impl RegExpPrototype {
         }
 
         // Add remaining portion of the original string to the result array
-        let remaining_string = string_value
-            .substring(cx, p as usize, size as usize)
-            .as_string();
+        let remaining_string = string_value.substring(cx, p, size).as_string();
         key.replace(PropertyKey::array_index(cx, array_length));
         maybe!(create_data_property_or_throw(cx, result_array, key, remaining_string.into()));
 
@@ -857,7 +853,7 @@ fn regexp_builtin_exec(
     let string_length = string_value.len();
 
     let last_index = maybe!(get(cx, regexp_object.into(), cx.names.last_index()));
-    let mut last_index = maybe!(to_length(cx, last_index)) as usize;
+    let mut last_index = maybe!(to_length(cx, last_index));
 
     let flags = regexp_object.flags();
     let is_global = flags.is_global();
@@ -870,7 +866,7 @@ fn regexp_builtin_exec(
 
     // Check if last index is already out of range meaning the match will always fail, resetting
     // last index under certain flags.
-    if last_index > string_length {
+    if last_index > string_length as u64 {
         if is_global || is_sticky {
             let zero_value = Value::from(0).to_handle(cx);
             maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
@@ -878,6 +874,7 @@ fn regexp_builtin_exec(
 
         return cx.null().into();
     }
+    let last_index = last_index as u32;
 
     // Run the matching engine on the regexp and input string
     let match_ = run_matcher(compiled_regexp.get_(), string_value, last_index);
@@ -1029,22 +1026,39 @@ fn regexp_builtin_exec(
     result_array.into()
 }
 
-// 22.2.7.3 AdvanceStringIndex
-// Increments the index by one if not unicode-aware, and by the size of the current code point if unicode-aware.
+/// 22.2.7.3 AdvanceStringIndex
+/// Increments the index by one if not unicode-aware, and by the size of the current code point if unicode-aware.
+///
+/// Caller must ensure that the index is not out of bounds.
 pub fn advance_string_index(
     string_value: Handle<StringValue>,
-    prev_index: u64,
+    prev_index: u32,
     is_unicode: bool,
-) -> u64 {
+) -> u32 {
     if !is_unicode {
         return prev_index + 1;
     }
 
-    let num_code_units = if needs_surrogate_pair(string_value.code_point_at(prev_index as usize)) {
+    let num_code_units = if needs_surrogate_pair(string_value.code_point_at(prev_index)) {
         2
     } else {
         1
     };
 
     prev_index + num_code_units
+}
+
+/// Saem as AdvanceStringIndex, but index is expanded to the u64 range and is not guarnateed to be
+/// in bounds for the string.
+pub fn advance_u64_string_index(
+    string_value: Handle<StringValue>,
+    prev_index: u64,
+    is_unicode: bool,
+) -> u64 {
+    let string_length = string_value.len();
+    if prev_index + 1 >= string_length as u64 {
+        return prev_index + 1;
+    }
+
+    advance_string_index(string_value, prev_index as u32, is_unicode) as u64
 }

@@ -8,7 +8,7 @@ use crate::{
         error::type_error_,
         gc::{HeapObject, HeapVisitor},
         get,
-        intrinsics::regexp_prototype::{advance_string_index, regexp_exec},
+        intrinsics::regexp_prototype::{advance_u64_string_index, regexp_exec},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -138,7 +138,7 @@ impl RegExpStringIteratorPrototype {
             let last_index = maybe!(to_length(cx, last_index));
 
             let next_index =
-                advance_string_index(target_string, last_index, regexp_iterator.is_unicode);
+                advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode);
             let next_index_value = Value::from(next_index).to_handle(cx);
             maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
         }

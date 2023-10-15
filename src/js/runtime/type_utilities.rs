@@ -679,6 +679,58 @@ pub fn canonical_numeric_index_string(
     }
 }
 
+/// Identical to CanonicalNumericIndexString, but for u32 string indices
+pub fn canonical_numeric_string_index_string(
+    cx: Context,
+    key: Handle<PropertyKey>,
+    string_length: u32,
+) -> Option<Option<u32>> {
+    if key.is_array_index() {
+        // Fast path for array indices
+        let array_index = key.as_array_index();
+        if array_index < string_length {
+            Some(Some(array_index))
+        } else {
+            Some(None)
+        }
+    } else if key.is_string() {
+        // Otherwise must convert to number then back to string
+        let key_string = key.as_string();
+        let number_value = must!(to_number(cx, key_string.into()));
+
+        // If string representations are equal, must be canonical numeric index
+        let number_string = must!(to_string(cx, number_value));
+        if key_string.eq(&number_string) {
+            if !is_integral_number(number_value.get()) {
+                return Some(None);
+            }
+
+            let number = number_value.as_number();
+            if number.is_sign_negative() {
+                return Some(None);
+            }
+
+            let number = number as usize;
+            if number >= string_length as usize {
+                return Some(None);
+            }
+
+            Some(Some(number as u32))
+        } else if key_string
+            .get_()
+            .as_flat()
+            .eq(&cx.names.negative_zero.as_string().as_flat())
+        {
+            // The string "-0" is a canonical numeric index but is never valid as an index
+            Some(None)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 // 7.1.22 ToIndex
 pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     let value = value_handle.get();

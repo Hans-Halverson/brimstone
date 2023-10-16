@@ -53,6 +53,8 @@ pub enum Instruction {
     Branch(u32, u32),
     /// Found a match
     Accept,
+    /// Did not find a match, backtrack if possible.
+    Fail,
     /// Mark the current location in the string on the capture stack. Takes a capture point index,
     /// which may be the beginning or end of a capture group.
     MarkCapturePoint(u32),
@@ -69,7 +71,7 @@ pub enum Instruction {
     /// jump to the end branch instruction. Always increment the loop register by 1.
     Loop {
         loop_register_index: u32,
-        loop_max_value: u64,
+        loop_max_value: u32,
         end_branch: u32,
     },
     /// Assert the start of the input (^)
@@ -249,6 +251,7 @@ impl Instruction {
                 format!("Branch({}, {})", first_index, second_index)
             }
             Instruction::Accept => String::from("Accept"),
+            Instruction::Fail => String::from("Fail"),
             Instruction::MarkCapturePoint(index) => format!("MarkCapture({})", index),
             Instruction::ClearCapture(index) => format!("ClearCapture({})", index),
             Instruction::Progress(index) => format!("Progress({})", index),

@@ -476,6 +476,11 @@ impl CompiledRegExpBuilder {
             for _ in 0..quantifier.min {
                 quantifier_info = self.emit_term(&quantifier.term);
             }
+        } else if quantifier.min > u32::MAX as u64 {
+            // The minimum number of repititions is greater than the max possible string length.
+            // Each repitition must consume at least one character, so we know this quantifier will
+            // fail to match.
+            self.emit_instruction(Instruction::Fail);
         } else {
             // Jump to a new loop block for the minimum repititions
             let loop_block_id = self.new_block();
@@ -488,7 +493,7 @@ impl CompiledRegExpBuilder {
                 let loop_register_index = this.next_loop_register();
                 this.emit_instruction(Instruction::Loop {
                     loop_register_index,
-                    loop_max_value: quantifier.min,
+                    loop_max_value: quantifier.min as u32,
                     end_branch: loop_end_block_id as u32,
                 });
 
@@ -544,6 +549,11 @@ impl CompiledRegExpBuilder {
 
                 // Last term block always proceeds to the join block
                 self.emit_jump_instruction(join_block_id);
+            } else if num_remaining_repititions > u32::MAX as u64 {
+                // The minimum number of repititions is greater than the max possible string length.
+                // Each repitition must consume at least one character, so we know this quantifier
+                // will fail to match.
+                self.emit_instruction(Instruction::Fail);
             } else {
                 let predecessor_block_id = self.current_block_id;
                 let loop_block_id = self.new_block();
@@ -555,7 +565,7 @@ impl CompiledRegExpBuilder {
                     let loop_register_index = this.next_loop_register();
                     this.emit_instruction(Instruction::Loop {
                         loop_register_index,
-                        loop_max_value: num_remaining_repititions,
+                        loop_max_value: num_remaining_repititions as u32,
                         end_branch: join_block_id as u32,
                     });
 

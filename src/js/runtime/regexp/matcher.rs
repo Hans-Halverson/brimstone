@@ -229,6 +229,7 @@ impl<T: LexerStream> MatchEngine<T> {
         loop {
             match self.current_instruction() {
                 Instruction::Accept => return Ok(()),
+                Instruction::Fail => self.backtrack()?,
                 Instruction::Literal(code_point) => {
                     if self.string_lexer.current() != code_point {
                         self.backtrack()?;

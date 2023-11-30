@@ -15,7 +15,6 @@ pub struct InternedStrings {
     strings: HeapPtr<InternedStringsSet>,
     // Map from wtf8 strs to their canonical interned strings, used for mapping strings from AST
     // to string values on the heap.
-    // TODO: Drop Strings whose values are garbage collected so we don't leak memory
     str_cache: HeapPtr<InternedStringsMap>,
 }
 
@@ -37,6 +36,14 @@ impl InternedStrings {
 
     pub fn uninit() -> InternedStrings {
         InternedStrings { strings: HeapPtr::uninit(), str_cache: HeapPtr::uninit() }
+    }
+
+    pub fn strings(cx: Context) -> HeapPtr<InternedStringsSet> {
+        cx.interned_strings.strings
+    }
+
+    pub fn str_cache(cx: Context) -> HeapPtr<InternedStringsMap> {
+        cx.interned_strings.str_cache
     }
 
     pub fn strings_field(&mut self) -> InternedStringsSetField {
@@ -106,8 +113,6 @@ impl InternedStrings {
     }
 
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-        // TODO: Do not mark interned strings, treat them as weak references that will be GC'd if
-        // nothing else references them.
         visitor.visit_pointer(&mut self.strings);
         visitor.visit_pointer(&mut self.str_cache);
     }
@@ -138,9 +143,7 @@ impl InternedStringsSetField {
     pub fn visit_pointers(set: &mut HeapPtr<InternedStringsSet>, visitor: &mut impl HeapVisitor) {
         set.visit_pointers(visitor);
 
-        for element in set.iter_mut_gc_unsafe() {
-            visitor.visit_pointer(element);
-        }
+        // Intentionally do not visit interned strings as they are treated as weak references
     }
 }
 
@@ -168,8 +171,6 @@ impl InternedStringsMapField {
     pub fn visit_pointers(map: &mut HeapPtr<InternedStringsMap>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
-        for (_, value) in map.iter_mut_gc_unsafe() {
-            visitor.visit_pointer(value);
-        }
+        // Intentionally do not visit interned strings as they are treated as weak references
     }
 }

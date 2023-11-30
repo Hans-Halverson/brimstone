@@ -2,6 +2,7 @@ use std::ptr::NonNull;
 
 use crate::js::runtime::{
     gc::Heap,
+    interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::{FinalizationRegistryObject, FinalizerCallback},
         weak_map_object::WeakMapObject,
@@ -10,6 +11,7 @@ use crate::js::runtime::{
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
+    string_value::FlatString,
     Context, Value,
 };
 
@@ -99,6 +101,9 @@ impl GarbageCollector {
                 break;
             }
         }
+
+        // Prune interned strings that are no longer referenced
+        gc.prune_weak_interned_strings(cx);
 
         // Fix the weak objects, handling objects that have been garbage collected
         gc.fix_weak_refs();
@@ -461,6 +466,42 @@ impl GarbageCollector {
         }
 
         finalizer_callbacks
+    }
+
+    fn prune_weak_interned_strings(&mut self, cx: Context) {
+        // First check interned strings set
+        let mut string_set = InternedStrings::strings(cx);
+        for string_ref in string_set.clone().iter_mut_gc_unsafe() {
+            let string_descriptor = string_ref.descriptor();
+
+            if self.is_in_from_space(string_ref.as_ptr().cast()) {
+                // String is known to be live if it has already moved (and left a forwarding pointer)
+                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
+                    *string_ref = forwarding_ptr.cast::<FlatString>().into();
+                } else {
+                    // Otherwise string was garbage collected so remove string from set.
+                    // It is safe to remove during iteration for a BsHashSet.
+                    string_set.remove(string_ref);
+                }
+            }
+        }
+
+        // Then check values of interned strings map
+        let mut string_map = InternedStrings::str_cache(cx);
+        for (wtf8_str, string_ref) in string_map.clone().iter_mut_gc_unsafe() {
+            let string_descriptor = string_ref.descriptor();
+
+            if self.is_in_from_space(string_ref.as_ptr().cast()) {
+                // String is known to be live if it has already moved (and left a forwarding pointer)
+                if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
+                    *string_ref = forwarding_ptr.cast::<FlatString>().into();
+                } else {
+                    // Otherwise string was garbage collected so remove string from map.
+                    // It is safe to remove during iteration for a BsHashMap.
+                    string_map.remove(wtf8_str);
+                }
+            }
+        }
     }
 }
 

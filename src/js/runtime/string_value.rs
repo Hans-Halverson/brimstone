@@ -865,6 +865,11 @@ impl FlatString {
     }
 
     #[inline]
+    pub const fn descriptor(&self) -> HeapPtr<ObjectDescriptor> {
+        self.descriptor
+    }
+
+    #[inline]
     pub const fn one_byte_data(&self) -> *const u8 {
         self.data.as_ptr()
     }

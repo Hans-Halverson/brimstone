@@ -6,6 +6,10 @@ use crate::js::runtime::{
     array_properties::{DenseArrayProperties, SparseArrayProperties},
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
+    bytecode::{
+        constant_table::ConstantTable,
+        function::{BytecodeFunction, Closure},
+    },
     context::GlobalSymbolRegistryField,
     environment::{
         declarative_environment::{DeclarativeEnvironment, DeclarativeEnvironmentBindingsMapField},
@@ -135,6 +139,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ExecutionContext => self.cast::<ExecutionContext>().byte_size(),
             ObjectKind::Realm => self.cast::<Realm>().byte_size(),
             ObjectKind::Script => self.cast::<Script>().byte_size(),
+            ObjectKind::Closure => self.cast::<Closure>().byte_size(),
+            ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().byte_size(),
+            ObjectKind::ConstantTable => self.cast::<ConstantTable>().byte_size(),
             ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
             ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
@@ -252,6 +259,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ExecutionContext => self.cast::<ExecutionContext>().visit_pointers(visitor),
             ObjectKind::Realm => self.cast::<Realm>().visit_pointers(visitor),
             ObjectKind::Script => self.cast::<Script>().visit_pointers(visitor),
+            ObjectKind::Closure => self.cast::<Closure>().visit_pointers(visitor),
+            ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().visit_pointers(visitor),
+            ObjectKind::ConstantTable => self.cast::<ConstantTable>().visit_pointers(visitor),
             ObjectKind::DeclarativeEnvironment => self
                 .cast::<DeclarativeEnvironment>()
                 .visit_pointers(visitor),

@@ -109,6 +109,10 @@ pub enum ObjectKind {
     Realm,
     Script,
 
+    Closure,
+    BytecodeFunction,
+    ConstantTable,
+
     DeclarativeEnvironment,
     FunctionEnvironment,
     GlobalEnvironment,
@@ -319,6 +323,10 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ExecutionContext);
         other_heap_object_descriptor!(ObjectKind::Realm);
         other_heap_object_descriptor!(ObjectKind::Script);
+
+        other_heap_object_descriptor!(ObjectKind::Closure);
+        other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
+        other_heap_object_descriptor!(ObjectKind::ConstantTable);
 
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
         other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);

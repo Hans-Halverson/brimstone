@@ -18,7 +18,7 @@ use crate::{
 
 use brimstone::js::{
     self,
-    common::wtf_8::Wtf8String,
+    common::{options::Options, wtf_8::Wtf8String},
     runtime::{
         eval_module, eval_script, get, initialize_host_defined_realm, to_console_string, to_string,
         Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
@@ -159,7 +159,8 @@ fn run_single_test(
     start_timestamp: SystemTime,
 ) -> TestResult {
     // Each test is executed in its own realm
-    let (cx, realm) = Context::new(|cx| {
+    let options = Rc::new(Options::default());
+    let (cx, realm) = Context::new(options, |cx| {
         // Allocate the realm's built-ins in the permanent heap
         initialize_host_defined_realm(cx, false)
     });

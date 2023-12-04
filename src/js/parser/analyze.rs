@@ -810,7 +810,7 @@ impl Analyzer<'_> {
             // directly by index.
             if let Some(id) = toplevel_id {
                 let mut scope = id.scope.unwrap();
-                let binding = scope.as_mut().get_binding_mut(&id.name).unwrap();
+                let binding = scope.as_mut().get_binding_mut(&id.name);
                 binding.set_vm_location(VMLocation::Argument(param_index));
             }
 

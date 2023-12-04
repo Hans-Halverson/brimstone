@@ -1066,7 +1066,7 @@ fn eval_binary_expression(cx: Context, expr: &ast::BinaryExpression) -> EvalResu
     }
 }
 
-fn eval_add(
+pub fn eval_add(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1098,7 +1098,7 @@ fn eval_add(
     }
 }
 
-fn eval_subtract(
+pub fn eval_subtract(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1242,7 +1242,7 @@ fn eval_exponentiation(
     }
 }
 
-fn eval_less_than(
+pub fn eval_less_than(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,

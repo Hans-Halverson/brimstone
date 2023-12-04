@@ -5,26 +5,9 @@ use clap::Parser;
 use std::error::Error;
 use std::rc::Rc;
 
-#[derive(Parser)]
-#[command(about)]
-struct Args {
-    /// Print the AST the console
-    #[arg(long, default_value_t = false)]
-    print_ast: bool,
-
-    /// Parse as module instead of script
-    #[arg(long, default_value_t = false)]
-    module: bool,
-
-    /// Expose global gc methods
-    #[arg(long, default_value_t = false)]
-    expose_gc: bool,
-
-    file: String,
-}
-
 fn main_impl() -> Result<(), Box<dyn Error>> {
-    let args = Args::parse();
+    let args = js::common::options::Args::parse();
+    let options = Rc::new(js::common::options::Options::new_from_args(&args));
 
     let source = Rc::new(js::parser::source::Source::new_from_file(&args.file)?);
     let mut parse_result = if args.module {
@@ -41,7 +24,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         println!("{}", js::parser::print_program(&parse_result.program, &source));
     }
 
-    let (cx, realm) = js::runtime::Context::new(|cx| {
+    let (cx, realm) = js::runtime::Context::new(options.clone(), |cx| {
         // Allocate the realm's built-ins in the permanent heap
         js::runtime::initialize_host_defined_realm(cx, args.expose_gc)
     });
@@ -52,7 +35,24 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         cx.enable_gc_stress_test();
     }
 
-    cx.execute_then_drop(|cx| js::runtime::evaluate(cx, parse_result, realm))?;
+    if options.bytecode {
+        use js::runtime::bytecode::{
+            function::Closure, generator::BytecodeProgramGenerator, vm::VM,
+        };
+
+        // Use the bytecode interpreter
+        let bytecode_program =
+            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result)?;
+
+        cx.execute_then_drop(|cx| {
+            let mut vm = VM::new(cx);
+            let closure = Closure::new(cx, bytecode_program);
+            vm.execute(closure, &[]);
+        });
+    } else {
+        // Use the tree walk interpreter
+        cx.execute_then_drop(|cx| js::runtime::evaluate(cx, parse_result, realm))?;
+    }
 
     return Ok(());
 }

@@ -392,6 +392,10 @@ impl AstScopeNode {
         self.id
     }
 
+    pub fn num_local_registers(&self) -> usize {
+        self.num_local_registers
+    }
+
     fn add_binding(&mut self, name: &str, kind: BindingKind, vm_location: Option<VMLocation>) {
         let insert_result = self
             .bindings
@@ -404,8 +408,12 @@ impl AstScopeNode {
         self.num_bindings += 1;
     }
 
-    pub fn get_binding_mut(&mut self, name: &str) -> Option<&mut Binding> {
-        self.bindings.get_mut(name)
+    pub fn get_binding(&self, name: &str) -> &Binding {
+        self.bindings.get(name).unwrap()
+    }
+
+    pub fn get_binding_mut(&mut self, name: &str) -> &mut Binding {
+        self.bindings.get_mut(name).unwrap()
     }
 
     /// Iterator over all bindings in this scope, including funtion parameters and catch parameters.
@@ -510,11 +518,16 @@ impl Binding {
         self.is_captured = true;
     }
 
+    pub fn vm_location(&self) -> Option<VMLocation> {
+        self.vm_location
+    }
+
     pub fn set_vm_location(&mut self, location: VMLocation) {
         self.vm_location = Some(location);
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum VMLocation {
     /// Binding is in the global scope.
     Global,

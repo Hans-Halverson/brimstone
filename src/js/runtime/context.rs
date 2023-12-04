@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::js::{
-    common::wtf_8::Wtf8String,
+    common::{options::Options, wtf_8::Wtf8String},
     parser::{
         parser::{ParseFunctionResult, ParseProgramResult},
         source::Source,
@@ -85,6 +85,9 @@ pub struct ContextCell {
     // TODO: Call finalizer callbacks
     finalizer_callbacks: Vec<FinalizerCallback>,
 
+    /// Options passed to this program.
+    pub options: Rc<Options>,
+
     // All ASTs produced by eval and function constructors in this context. Saved here so that they
     // are not freed while the context is still running, as they may be needed e.g. due to functions
     // returned from an eval.
@@ -97,7 +100,7 @@ type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>
 impl Context {
     /// Create a context. All allocations that occur during the init callback will be placed in
     /// the permanent heap.
-    pub fn new<R>(mut init: impl FnMut(Context) -> R) -> (Context, R) {
+    pub fn new<R>(options: Rc<Options>, mut init: impl FnMut(Context) -> R) -> (Context, R) {
         let cx_cell = Box::new(ContextCell {
             execution_context_stack: vec![],
             heap: Heap::new(),
@@ -116,6 +119,7 @@ impl Context {
             default_array_properties: HeapPtr::uninit(),
             uninit_environment: HeapDynEnvironment::uninit(),
             finalizer_callbacks: vec![],
+            options,
             eval_asts: vec![],
             function_constructor_asts: vec![],
         });

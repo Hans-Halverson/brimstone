@@ -38,8 +38,8 @@ impl<T> InlineArray<T> {
         set_uninit!(self.len, vec.len());
 
         // Set uninitialized memory
-        for (i, value) in vec.into_iter().enumerate() {
-            unsafe { self.data_mut_ptr().add(i).write(value) }
+        unsafe {
+            std::ptr::copy_nonoverlapping(vec.as_ptr(), self.data_mut_ptr(), vec.len());
         }
     }
 

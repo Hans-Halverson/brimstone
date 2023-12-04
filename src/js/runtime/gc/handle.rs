@@ -57,6 +57,11 @@ impl<T> Handle<T> {
     }
 
     #[inline]
+    pub fn is_dangling(&self) -> bool {
+        self.ptr == NonNull::dangling()
+    }
+
+    #[inline]
     pub fn cast<U>(&self) -> Handle<U> {
         Handle { ptr: self.ptr, phantom_data: PhantomData }
     }
@@ -345,6 +350,13 @@ impl<T: IsHeapObject> Handle<T> {
     #[inline]
     pub fn get_(&self) -> HeapPtr<T> {
         unsafe { self.ptr.as_ptr().cast::<HeapPtr<T>>().read() }
+    }
+
+    /// Replace the value stored behind this handle with a new value. Note that all copies of this
+    /// handle will also be changed.
+    #[inline]
+    pub fn replace(&mut self, value: HeapPtr<T>) {
+        unsafe { self.ptr.as_ptr().write(value.to_handle_contents()) }
     }
 }
 

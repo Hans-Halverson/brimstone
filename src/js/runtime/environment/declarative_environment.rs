@@ -14,7 +14,7 @@ use crate::{
         value::Value,
         Context, HeapPtr,
     },
-    set_uninit,
+    must, set_uninit,
 };
 
 #[derive(Clone, Copy)]
@@ -157,8 +157,8 @@ impl Environment for Handle<DeclarativeEnvironment> {
         match self.bindings.get_mut(&name.flatten().get_()) {
             None if is_strict => err_not_defined_(cx, name),
             None => {
-                self.create_mutable_binding(cx, name, true);
-                self.initialize_binding(cx, name, value);
+                must!(self.create_mutable_binding(cx, name, true));
+                must!(self.initialize_binding(cx, name, value));
                 ().into()
             }
             Some(binding) => {

@@ -407,9 +407,9 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
         name_desc,
     ));
 
-    throw_type_error_func
+    must!(throw_type_error_func
         .cast::<ObjectValue>()
-        .prevent_extensions(cx);
+        .prevent_extensions(cx));
 
     throw_type_error_func
 }

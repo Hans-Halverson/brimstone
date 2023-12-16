@@ -3,7 +3,10 @@ use std::{
     rc::Rc,
 };
 
-use crate::{js::parser::parse_error::InvalidDuplicateParametersReason, visit_opt, visit_vec};
+use crate::{
+    js::{parser::parse_error::InvalidDuplicateParametersReason, runtime::EvalResult},
+    must, visit_opt, visit_vec,
+};
 
 use super::{
     ast::*,
@@ -424,10 +427,10 @@ impl<'a> AstVisitor for Analyzer {
             self.visit_pattern(param);
 
             // Parameter bindings are treated as lexical declarations scoped to the catch body
-            param.iter_bound_names(&mut |id| {
+            must!(param.iter_bound_names(&mut |id| {
                 self.add_lex_declared_id(id, NameKind::CatchParameter);
                 ().into()
-            });
+            }));
         }
 
         default_visit_block(self, &mut catch.body);
@@ -777,26 +780,26 @@ impl Analyzer {
             for var_decl in func.var_decls() {
                 match var_decl {
                     VarDecl::Func(_) => {
-                        var_decl.iter_bound_names(&mut |id| {
+                        must!(var_decl.iter_bound_names(&mut |id| {
                             if id.name == "arguments" {
                                 is_arguments_object_needed = false;
                             }
 
                             ().into()
-                        });
+                        }));
                     }
                     _ => {}
                 }
             }
 
             for lex_decl in func.lex_decls() {
-                lex_decl.iter_bound_names(&mut |id| {
+                must!(lex_decl.iter_bound_names(&mut |id| {
                     if id.name == "arguments" {
                         is_arguments_object_needed = false;
                     }
 
                     ().into()
-                });
+                }));
             }
         }
 
@@ -1047,16 +1050,16 @@ impl Analyzer {
             }
 
             // Check for invalid names depending on context
-            declaration.iter_bound_names(&mut |id| {
+            must!(declaration.iter_bound_names(&mut |id| {
                 if var_decl.kind != VarKind::Var && id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
                 }
 
                 ().into()
-            });
+            }));
 
             // Add names to scope, checking for redeclarations
-            declaration.iter_bound_names(&mut |id| {
+            must!(declaration.iter_bound_names(&mut |id| {
                 match var_decl.kind {
                     VarKind::Var => self.add_var_declared_id(id, NameKind::Var),
                     VarKind::Const => self.add_lex_declared_id(id, NameKind::Const),
@@ -1064,7 +1067,7 @@ impl Analyzer {
                 }
 
                 ().into()
-            });
+            }));
         }
 
         default_visit_variable_declaration(self, var_decl);

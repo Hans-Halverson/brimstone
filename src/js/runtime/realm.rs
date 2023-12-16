@@ -4,7 +4,7 @@ use crate::{
         parser::ast::{AstPtr, TemplateLiteral},
         runtime::gc::HandleScope,
     },
-    set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -19,7 +19,7 @@ use super::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
-    Context,
+    Context, EvalResult,
 };
 
 // 9.3 Realm Record
@@ -143,7 +143,7 @@ pub fn initialize_host_defined_realm(cx: Context, expose_gc: bool) -> Handle<Rea
         cx.push_execution_context(exec_ctx);
 
         realm.initialize(cx, None, None);
-        set_default_global_bindings(cx, realm, expose_gc);
+        must!(set_default_global_bindings(cx, realm, expose_gc));
 
         realm
     })

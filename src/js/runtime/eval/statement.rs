@@ -159,7 +159,7 @@ fn block_declaration_instantiation(
                 let func_id = func_node.id.as_deref().unwrap();
                 let func_name_value = id_string_value(cx, func_id);
 
-                env.create_mutable_binding(cx, func_name_value, false);
+                must!(env.create_mutable_binding(cx, func_name_value, false));
 
                 let env_object = env.into_dyn_env();
                 let private_env = cx.current_execution_context_ptr().private_env();
@@ -473,7 +473,7 @@ fn for_body_evaluation(
     let mut last_value = Value::undefined().to_handle(cx);
 
     if let Some(per_iteration_decl) = per_iteration_decl {
-        create_per_iteration_environment(cx, per_iteration_decl);
+        maybe__!(create_per_iteration_environment(cx, per_iteration_decl));
     }
 
     loop {
@@ -512,7 +512,11 @@ fn for_body_evaluation(
         }
 
         if let Some(per_iteration_decl) = per_iteration_decl {
-            create_per_iteration_environment(cx, per_iteration_decl);
+            maybe_escape__!(
+                cx,
+                handle_scope,
+                create_per_iteration_environment(cx, per_iteration_decl)
+            );
         }
 
         if let Some(update) = stmt.update.as_deref() {

@@ -1,19 +1,22 @@
 use std::rc::Rc;
 
-use brimstone::js::{
-    parser::{analyze::analyze, parse_script, source::Source},
-    runtime::{
-        completion::CompletionKind,
-        error::{syntax_error_, type_error_},
-        eval::script::eval_script,
-        function::get_argument,
-        intrinsics::{
-            array_buffer_constructor::ArrayBufferObject,
-            global_object::set_default_global_bindings, intrinsics::Intrinsic,
+use brimstone::{
+    js::{
+        parser::{analyze::analyze, parse_script, source::Source},
+        runtime::{
+            completion::CompletionKind,
+            error::{syntax_error_, type_error_},
+            eval::script::eval_script,
+            function::get_argument,
+            intrinsics::{
+                array_buffer_constructor::ArrayBufferObject,
+                global_object::set_default_global_bindings, intrinsics::Intrinsic,
+            },
+            object_value::ObjectValue,
+            to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
         },
-        object_value::ObjectValue,
-        to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
+    maybe,
 };
 
 pub struct Test262Object;
@@ -80,7 +83,7 @@ impl Test262Object {
         // Create a new realm
         let mut realm = Realm::new_uninit(cx);
         realm.initialize(cx, None, None);
-        set_default_global_bindings(cx, realm, false);
+        maybe!(set_default_global_bindings(cx, realm, false));
 
         // Add $262 object to new global object
         let test_262_object = Test262Object::new(cx, realm);

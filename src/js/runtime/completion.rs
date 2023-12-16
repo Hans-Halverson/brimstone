@@ -116,6 +116,7 @@ impl<T: Into<Handle<Value>>> From<T> for Completion {
 }
 
 /// EvalResult is for functions which are either sucessful or throw a value.
+#[must_use]
 pub enum EvalResult<T> {
     Ok(T),
     Throw(Handle<Value>),

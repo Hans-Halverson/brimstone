@@ -9,7 +9,7 @@ pub mod parser;
 mod printer;
 pub mod regexp;
 pub mod regexp_parser;
-mod scope;
+pub mod scope_tree;
 pub mod source;
 mod token;
 

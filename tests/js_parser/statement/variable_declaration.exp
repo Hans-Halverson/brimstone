@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-17:8",
+  loc: "1:0-17:9",
   body: [
     {
       type: "VariableDeclaration",
@@ -74,20 +74,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "5:0-5:10",
+      loc: "5:0-5:11",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "5:4-5:9",
+          loc: "5:4-5:10",
           id: {
             type: "Identifier",
-            loc: "5:4-5:5",
-            name: "x",
+            loc: "5:4-5:6",
+            name: "x2",
           },
           init: {
             type: "Identifier",
-            loc: "5:8-5:9",
+            loc: "5:9-5:10",
             name: "a",
           },
         },
@@ -95,20 +95,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "7:0-7:12",
+      loc: "7:0-7:13",
       kind: "const",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "7:6-7:11",
+          loc: "7:6-7:12",
           id: {
             type: "Identifier",
-            loc: "7:6-7:7",
-            name: "x",
+            loc: "7:6-7:8",
+            name: "x3",
           },
           init: {
             type: "Identifier",
-            loc: "7:10-7:11",
+            loc: "7:11-7:12",
             name: "a",
           },
         },
@@ -215,16 +215,16 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "15:0-15:6",
+      loc: "15:0-15:7",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "15:4-15:5",
+          loc: "15:4-15:6",
           id: {
             type: "Identifier",
-            loc: "15:4-15:5",
-            name: "x",
+            loc: "15:4-15:6",
+            name: "x4",
           },
           init: null,
         },
@@ -232,16 +232,16 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "17:0-17:8",
+      loc: "17:0-17:9",
       kind: "const",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "17:6-17:7",
+          loc: "17:6-17:8",
           id: {
             type: "Identifier",
-            loc: "17:6-17:7",
-            name: "x",
+            loc: "17:6-17:8",
+            name: "x5",
           },
           init: null,
         },

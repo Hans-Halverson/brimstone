@@ -7,8 +7,9 @@ use crate::{
     js::{
         parser::{
             analyze::{analyze_for_eval, PrivateNameUsage},
-            ast::{self, LexDecl, VarDecl, WithDecls},
+            ast::{self},
             parse_script_for_eval,
+            scope_tree::BindingKind,
             source::Source,
         },
         runtime::{
@@ -20,6 +21,7 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
+            interned_strings::InternedStrings,
             string_value::FlatString,
             Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
@@ -179,36 +181,28 @@ fn eval_declaration_instantiation(
 ) -> EvalResult<()> {
     if !is_strict_eval {
         if let Some(var_env) = var_env.as_global_environment() {
-            for var_decl in ast.var_decls() {
-                maybe!(var_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    if maybe!(var_env.has_lexical_declaration(cx, name_value)) {
-                        return syntax_error_(
-                            cx,
-                            &format!("identifier '{}' has already been declared", name_value),
-                        );
-                    }
-
-                    ().into()
-                }));
+            for (name, _) in ast.scope.as_ref().iter_var_decls() {
+                let name_value = InternedStrings::get_str(cx, name);
+                if maybe!(var_env.has_lexical_declaration(cx, name_value)) {
+                    return syntax_error_(
+                        cx,
+                        &format!("identifier '{}' has already been declared", name_value),
+                    );
+                }
             }
         }
 
         let mut this_env = lex_env;
         while !this_env.ptr_eq(&var_env) {
             if this_env.as_object_environment().is_none() {
-                for var_decl in ast.var_decls() {
-                    maybe!(var_decl.iter_bound_names(&mut |id| {
-                        let name_value = id_string_value(cx, id);
-                        if must!(this_env.has_binding(cx, name_value)) {
-                            return syntax_error_(
-                                cx,
-                                &format!("identifier '{}' has already been declared", name_value),
-                            );
-                        }
-
-                        ().into()
-                    }));
+                for (name, _) in ast.scope.as_ref().iter_var_decls() {
+                    let name_value = InternedStrings::get_str(cx, name);
+                    if must!(this_env.has_binding(cx, name_value)) {
+                        return syntax_error_(
+                            cx,
+                            &format!("identifier '{}' has already been declared", name_value),
+                        );
+                    }
                 }
             }
 
@@ -221,14 +215,11 @@ fn eval_declaration_instantiation(
     let mut functions_to_initialize = vec![];
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
-    for var_decl in ast.var_decls().iter().rev() {
-        if let VarDecl::Func(func_ptr) = var_decl {
-            let func = func_ptr.as_ref();
-            let name = &func.id.as_deref().unwrap().name;
-
+    for (name, binding) in ast.scope.as_ref().iter_var_decls() {
+        if let BindingKind::Function { func_node, .. } = binding.kind() {
             if declared_function_names.insert(name) {
                 if let Some(var_env) = var_env.as_global_environment() {
-                    let name_value = id_string_value(cx, func.id.as_deref().unwrap());
+                    let name_value = InternedStrings::get_str(cx, name);
                     if !maybe!(var_env.can_declare_global_function(cx, name_value)) {
                         return type_error_(
                             cx,
@@ -237,7 +228,7 @@ fn eval_declaration_instantiation(
                     }
                 }
 
-                functions_to_initialize.push(func);
+                functions_to_initialize.push(func_node.as_ref());
             }
         }
     }
@@ -245,44 +236,31 @@ fn eval_declaration_instantiation(
     // Order does not matter for declared var names, despite ordering in spec
     let mut declared_var_names: HashSet<Handle<FlatString>> = HashSet::new();
 
-    for var_decl in ast.var_decls() {
-        if let VarDecl::Var(var_decl) = var_decl {
-            maybe!(var_decl.as_ref().iter_bound_names(&mut |id| {
-                let name = &id.name;
-                if !declared_function_names.contains(name) {
-                    let name_value = id_string_value(cx, id);
+    for (name, binding) in ast.scope.as_ref().iter_var_decls() {
+        if let BindingKind::Var = binding.kind() {
+            if !declared_function_names.contains(name) {
+                let name_value = InternedStrings::get_str(cx, name);
 
-                    if let Some(var_env) = var_env.as_global_environment() {
-                        if !maybe!(var_env.can_declare_global_var(cx, name_value)) {
-                            return type_error_(
-                                cx,
-                                &format!("cannot declare global var {}", name_value),
-                            );
-                        }
+                if let Some(var_env) = var_env.as_global_environment() {
+                    if !maybe!(var_env.can_declare_global_var(cx, name_value)) {
+                        return type_error_(
+                            cx,
+                            &format!("cannot declare global var {}", name_value),
+                        );
                     }
-
-                    declared_var_names.insert(name_value.flatten());
                 }
 
-                ().into()
-            }));
+                declared_var_names.insert(name_value.flatten());
+            }
         }
     }
 
-    for lex_decl in ast.lex_decls() {
-        match lex_decl {
-            LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                maybe!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    lex_env.create_immutable_binding(cx, name_value, true)
-                }))
-            }
-            _ => {
-                maybe!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    lex_env.create_mutable_binding(cx, name_value, false)
-                }))
-            }
+    for (name, binding) in ast.scope.as_ref().iter_lex_decls() {
+        let name_value = InternedStrings::get_str(cx, name);
+        if binding.is_const() {
+            maybe!(lex_env.create_immutable_binding(cx, name_value, true));
+        } else {
+            maybe!(lex_env.create_mutable_binding(cx, name_value, false));
         }
     }
 

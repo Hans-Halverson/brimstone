@@ -261,23 +261,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "15:0-15:17",
+      loc: "15:0-15:18",
       declaration: {
         type: "VariableDeclaration",
-        loc: "15:7-15:17",
+        loc: "15:7-15:18",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "15:11-15:16",
+            loc: "15:11-15:17",
             id: {
               type: "Identifier",
-              loc: "15:11-15:12",
-              name: "a",
+              loc: "15:11-15:13",
+              name: "a2",
             },
             init: {
               type: "Literal",
-              loc: "15:15-15:16",
+              loc: "15:16-15:17",
               value: 1,
             },
           },
@@ -288,23 +288,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "16:0-16:19",
+      loc: "16:0-16:20",
       declaration: {
         type: "VariableDeclaration",
-        loc: "16:7-16:19",
+        loc: "16:7-16:20",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "16:13-16:18",
+            loc: "16:13-16:19",
             id: {
               type: "Identifier",
-              loc: "16:13-16:14",
-              name: "a",
+              loc: "16:13-16:15",
+              name: "a3",
             },
             init: {
               type: "Literal",
-              loc: "16:17-16:18",
+              loc: "16:18-16:19",
               value: 1,
             },
           },
@@ -315,34 +315,34 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "17:0-17:24",
+      loc: "17:0-17:26",
       declaration: {
         type: "VariableDeclaration",
-        loc: "17:7-17:24",
+        loc: "17:7-17:26",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "17:13-17:23",
+            loc: "17:13-17:25",
             id: {
               type: "ArrayPattern",
-              loc: "17:13-17:19",
+              loc: "17:13-17:21",
               elements: [
                 {
                   type: "Identifier",
-                  loc: "17:14-17:15",
-                  name: "a",
+                  loc: "17:14-17:16",
+                  name: "a4",
                 },
                 {
                   type: "Identifier",
-                  loc: "17:17-17:18",
-                  name: "b",
+                  loc: "17:18-17:20",
+                  name: "b5",
                 },
               ],
             },
             init: {
               type: "Literal",
-              loc: "17:22-17:23",
+              loc: "17:24-17:25",
               value: 1,
             },
           },
@@ -402,19 +402,19 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "22:0-22:30",
+      loc: "22:0-22:31",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "22:7-22:30",
+        loc: "22:7-22:31",
         id: {
           type: "Identifier",
-          loc: "22:22-22:25",
-          name: "foo",
+          loc: "22:22-22:26",
+          name: "foo2",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "22:28-22:30",
+          loc: "22:29-22:31",
           body: [],
         },
         async: true,
@@ -426,19 +426,19 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "24:0-24:32",
+      loc: "24:0-24:33",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "24:15-24:32",
+        loc: "24:15-24:33",
         id: {
           type: "Identifier",
-          loc: "24:24-24:27",
-          name: "foo",
+          loc: "24:24-24:28",
+          name: "foo3",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "24:30-24:32",
+          loc: "24:31-24:33",
           body: [],
         },
         async: false,
@@ -466,19 +466,19 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "26:0-26:38",
+      loc: "26:0-26:39",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "26:15-26:38",
+        loc: "26:15-26:39",
         id: {
           type: "Identifier",
-          loc: "26:30-26:33",
-          name: "foo",
+          loc: "26:30-26:34",
+          name: "foo4",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "26:36-26:38",
+          loc: "26:37-26:39",
           body: [],
         },
         async: true,
@@ -506,19 +506,19 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "29:0-29:25",
+      loc: "29:0-29:26",
       declaration: {
         type: "ClassDeclaration",
-        loc: "29:15-29:25",
+        loc: "29:15-29:26",
         id: {
           type: "Identifier",
-          loc: "29:21-29:22",
-          name: "C",
+          loc: "29:21-29:23",
+          name: "C2",
         },
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "29:15-29:25",
+          loc: "29:15-29:26",
           body: [],
         },
       },
@@ -540,14 +540,14 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "32:0-32:17",
+      loc: "32:0-32:18",
       declaration: {
         type: "ExpressionStatement",
-        loc: "32:15-32:17",
+        loc: "32:15-32:18",
         kind: {
           type: "Identifier",
-          loc: "32:15-32:16",
-          name: "a",
+          loc: "32:15-32:17",
+          name: "a6",
         },
       },
     },

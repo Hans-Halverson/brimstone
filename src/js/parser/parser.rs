@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use bitflags::bitflags;
+
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
@@ -8,6 +10,9 @@ use super::lexer_stream::Utf8LexerStream;
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
+use super::scope_tree::{
+    BindingKind, SavedScopeTreeBuilderState, ScopeNode, ScopeNodeKind, ScopeTree, ScopeTreeBuilder,
+};
 use super::source::Source;
 use super::token::Token;
 
@@ -57,24 +62,44 @@ struct PropertyNameResult {
     is_private: bool,
 }
 
+bitflags! {
+    #[derive(Clone, Copy)]
+    pub struct FunctionContext: u8 {
+        /// Whether this is a function declaration or expression.
+        const DECLARATION = 1 << 0;
+        /// If this is a function declaration, whether the name is optional.
+        const OPTIONAL_NAME = 1 << 1;
+        /// If this is a function declaration, whether the function appears at the toplevel of a
+        /// script or function body (ignoring labels) for the purpose of scoping.
+        const TOPLEVEL = 1 << 2;
+        /// If this is a function declaration, whether the function is labeled.
+        const LABELED = 1 << 3;
+    }
+}
+
 struct Parser<'a> {
     lexer: Lexer<'a>,
     token: Token,
     loc: Loc,
     prev_loc: Loc,
-    // Whether the parser is currently parsing in strict mode
+    /// Whether the parser is currently parsing in strict mode
     in_strict_mode: bool,
-    // Whether the parser is currently in a context where an await expression is allowed
+    /// Whether the parser is currently in a context where an await expression is allowed
     allow_await: bool,
-    // Whether the parser is currently in a context where a yield expression is allowed
+    /// Whether the parser is currently in a context where a yield expression is allowed
     allow_yield: bool,
-    // Whether the parser is currently in a context where an in expression is allowed
+    /// Whether the parser is currently in a context where an in expression is allowed
     allow_in: bool,
+    /// The scope builder is used to build the scope tree while parsing.
+    scope_builder: ScopeTreeBuilder,
+    /// The program kind that is currently being parsed - script vs module.
+    program_kind: ProgramKind,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
 struct ParserSaveState {
     saved_lexer_state: SavedLexerState,
+    saved_scope_builder_state: SavedScopeTreeBuilderState,
     token: Token,
     loc: Loc,
     prev_loc: Loc,
@@ -102,6 +127,8 @@ impl<'a> Parser<'a> {
             allow_await: false,
             allow_yield: false,
             allow_in: true,
+            scope_builder: ScopeTreeBuilder::new_global(),
+            program_kind: ProgramKind::Script,
         }
     }
 
@@ -113,6 +140,7 @@ impl<'a> Parser<'a> {
     fn save(&self) -> ParserSaveState {
         ParserSaveState {
             saved_lexer_state: self.lexer.save(),
+            saved_scope_builder_state: self.scope_builder.save(),
             token: self.token.clone(),
             loc: self.loc,
             prev_loc: self.prev_loc,
@@ -125,6 +153,8 @@ impl<'a> Parser<'a> {
 
     fn restore(&mut self, save_state: ParserSaveState) {
         self.lexer.restore(&save_state.saved_lexer_state);
+        self.scope_builder
+            .restore(&save_state.saved_scope_builder_state);
         self.token = save_state.token;
         self.loc = save_state.loc;
         self.prev_loc = save_state.prev_loc;
@@ -219,6 +249,14 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
+    fn add_binding(&mut self, id: &Identifier, kind: BindingKind) -> ParseResult<()> {
+        if let Err(error) = self.scope_builder.add_binding(&id.name, kind) {
+            self.error(id.loc, error)
+        } else {
+            Ok(())
+        }
+    }
+
     // Expect a semicolon, or insert one via automatic semicolon insertion if possible. Error if
     // a semicolon was not present and one could not be inserted.
     fn expect_semicolon(&mut self) -> ParseResult<()> {
@@ -251,7 +289,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_script(&mut self, initial_state: ParserSaveState) -> ParseResult<Program> {
+    fn parse_script(mut self, initial_state: ParserSaveState) -> ParseResult<Program> {
+        self.program_kind = ProgramKind::Script;
+
         let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Restore to initial state, then reparse directives with strict mode properly set
@@ -272,11 +312,16 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
+        // Retrieve the global scope node
+        let scope = self.scope_builder.get_node_ptr(0);
+
         Ok(Program::new(
             loc,
             toplevels,
             ProgramKind::Script,
             self.lexer.source.clone(),
+            self.scope_builder.finish(),
+            scope,
             self.in_strict_mode,
             has_use_strict_directive,
         ))
@@ -306,7 +351,9 @@ impl<'a> Parser<'a> {
         Ok(has_use_strict_directive)
     }
 
-    fn parse_module(&mut self) -> ParseResult<Program> {
+    fn parse_module(mut self) -> ParseResult<Program> {
+        self.program_kind = ProgramKind::Module;
+
         // Modules are always in strict mode
         self.set_in_strict_mode(true);
 
@@ -325,22 +372,39 @@ impl<'a> Parser<'a> {
         // Start out at beginning of file
         let loc = self.mark_loc(0);
 
+        // Retrieve the global scope node
+        let scope = self.scope_builder.get_node_ptr(0);
+
         Ok(Program::new(
             loc,
             toplevels,
             ProgramKind::Module,
             self.lexer.source.clone(),
+            self.scope_builder.finish(),
+            scope,
             self.in_strict_mode,
             /* has_use_strict_directive */ false,
         ))
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
-        let stmt = self.parse_statement_list_item()?;
+        // Toplevel declarations are only considered "toplevel" from the perspective of scoping
+        // in scripts.
+        let function_flags = if self.program_kind == ProgramKind::Script {
+            FunctionContext::TOPLEVEL
+        } else {
+            FunctionContext::empty()
+        };
+
+        let stmt = self.parse_statement_list_item(function_flags)?;
         Ok(Toplevel::Statement(stmt))
     }
 
-    fn parse_statement_list_item(&mut self) -> ParseResult<Statement> {
+    /// Parse a StatementListItem. Specify the flags to be used for function declarations.
+    fn parse_statement_list_item(
+        &mut self,
+        function_flags: FunctionContext,
+    ) -> ParseResult<Statement> {
         match self.token {
             Token::Const => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
             Token::Let => {
@@ -350,21 +414,30 @@ impl<'a> Parser<'a> {
                     self.parse_statement()
                 }
             }
-            Token::Class => Ok(Statement::ClassDecl(self.parse_class(true)?)),
+            Token::Class => Ok(Statement::ClassDecl(self.parse_class(true, true)?)),
             _ => {
                 if self.is_function_start()? {
-                    return Ok(Statement::FuncDecl(self.parse_function(true)?));
+                    return Ok(Statement::FuncDecl(
+                        self.parse_function_declaration(function_flags)?,
+                    ));
                 }
 
-                self.parse_statement()
+                self.parse_statement_with_function_context(function_flags)
             }
         }
     }
 
     fn parse_statement(&mut self) -> ParseResult<Statement> {
+        self.parse_statement_with_function_context(FunctionContext::empty())
+    }
+
+    fn parse_statement_with_function_context(
+        &mut self,
+        function_flags: FunctionContext,
+    ) -> ParseResult<Statement> {
         match self.token {
             Token::Var => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
-            Token::LeftBrace => Ok(Statement::Block(self.parse_block()?)),
+            Token::LeftBrace => Ok(Statement::Block(self.parse_block_default_scope()?)),
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
             Token::For => self.parse_any_for_statement(),
@@ -411,9 +484,13 @@ impl<'a> Parser<'a> {
 
                         // Functions can be labeled items
                         let body = if self.is_function_start()? {
-                            Statement::FuncDecl(self.parse_function(true)?)
+                            Statement::FuncDecl(self.parse_function_declaration(
+                                function_flags | FunctionContext::LABELED,
+                            )?)
                         } else {
-                            self.parse_statement()?
+                            // From the perspective of function declaration scoping, function
+                            // declarations arbitrarily nested within labels are still toplevel.
+                            self.parse_statement_with_function_context(function_flags)?
                         };
 
                         let loc = self.mark_loc(start_pos);
@@ -485,7 +562,7 @@ impl<'a> Parser<'a> {
         let mut declarations = vec![];
         loop {
             let start_pos = self.current_start_pos();
-            let id = self.parse_pattern()?;
+            let id = self.parse_pattern(kind.binding_kind())?;
 
             let init = match self.token {
                 Token::Equals => {
@@ -515,7 +592,15 @@ impl<'a> Parser<'a> {
         Ok(VariableDeclaration { loc, kind, declarations })
     }
 
-    fn parse_function(&mut self, is_decl: bool) -> ParseResult<P<Function>> {
+    fn parse_function_declaration(&mut self, flags: FunctionContext) -> ParseResult<P<Function>> {
+        self.parse_function(flags | FunctionContext::DECLARATION)
+    }
+
+    fn parse_function_expression(&mut self) -> ParseResult<P<Function>> {
+        self.parse_function(FunctionContext::empty())
+    }
+
+    fn parse_function(&mut self, flags: FunctionContext) -> ParseResult<P<Function>> {
         let start_pos = self.current_start_pos();
 
         // Function can be prefixed by async keyword
@@ -532,27 +617,62 @@ impl<'a> Parser<'a> {
             self.advance()?
         }
 
-        // For declarations name is required and await/yield inherited from surrounding context
+        let is_decl = flags.contains(FunctionContext::DECLARATION);
+
+        // Function node must be allocated on heap and then initialized later, so that a pointer to
+        // the function node can be passed to the scope builder.
+        let mut func = p(Function::new_uninit());
+
+        // For declarations name is required and await/yield inherited from surrounding context,
+        // and name is introduces into current scope.
         let mut id = None;
         if is_decl {
-            id = Some(p(self.parse_binding_identifier()?))
+            // Name may be optional in the case of export declarations
+            if !flags.contains(FunctionContext::OPTIONAL_NAME) || self.token != Token::LeftParen {
+                // Function is var scoped if it is toplevel, but if function has a label then it is
+                // only var scoped if it is non-async and non-generator.
+                let is_var_scoped = if flags.contains(FunctionContext::TOPLEVEL) {
+                    if flags.contains(FunctionContext::LABELED) {
+                        !is_async && !is_generator
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                };
+
+                let binding_kind = BindingKind::Function {
+                    is_lexical: !is_var_scoped,
+                    func_node: AstPtr::from_ref(func.as_ref()),
+                };
+
+                id = Some(p(self.parse_binding_identifier(Some(binding_kind))?));
+            }
         }
 
         // Enter async/generator context for parsing the function arguments and body
         let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
         let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
-        // For expressions name is optional and is within this function's await/yield context
+        // For expressions name is optional and is within this function's await/yield context.
+        // Function expressions do not introduce name into current scope.
         if !is_decl && self.token != Token::LeftParen {
-            id = Some(p(self.parse_binding_identifier()?))
+            id = Some(p(self.parse_binding_identifier(None)?))
         }
+
+        // Function scope node must contain the params and body, but not function name.
+        let scope = self
+            .scope_builder
+            .enter_scope(ScopeNodeKind::Function(start_pos));
 
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
-        let func = Function::new(
+        self.scope_builder.exit_scope();
+
+        func.init(
             loc,
             id,
             params,
@@ -561,12 +681,13 @@ impl<'a> Parser<'a> {
             is_generator,
             is_strict_mode,
             has_use_strict_directive,
+            scope,
         );
 
         self.allow_await = did_allow_await;
         self.allow_yield = did_allow_yield;
 
-        Ok(p(func))
+        Ok(func)
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
@@ -576,7 +697,7 @@ impl<'a> Parser<'a> {
 
         while self.token != Token::RightParen {
             if self.token == Token::Spread {
-                let rest_element = self.parse_rest_element()?;
+                let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
                 params.push(FunctionParam::Rest(rest_element));
 
                 // Trailing commas are not allowed after rest elements, nor are any other params
@@ -587,7 +708,8 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let pattern = self.parse_pattern_including_assignment_pattern()?;
+            let pattern =
+                self.parse_pattern_including_assignment_pattern(BindingKind::FunctionParameter)?;
             params.push(FunctionParam::Pattern(pattern));
 
             if self.token == Token::Comma {
@@ -608,7 +730,7 @@ impl<'a> Parser<'a> {
 
         while self.token != Token::Eof {
             if self.token == Token::Spread {
-                let rest_element = self.parse_rest_element()?;
+                let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
                 params.push(FunctionParam::Rest(rest_element));
 
                 // Trailing commas are not allowed after rest elements, nor are any other params
@@ -619,7 +741,8 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let pattern = self.parse_pattern_including_assignment_pattern()?;
+            let pattern =
+                self.parse_pattern_including_assignment_pattern(BindingKind::FunctionParameter)?;
             params.push(FunctionParam::Pattern(pattern));
 
             if self.token == Token::Comma {
@@ -656,7 +779,7 @@ impl<'a> Parser<'a> {
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
-            body.push(self.parse_statement_list_item()?)
+            body.push(self.parse_statement_list_item(FunctionContext::TOPLEVEL)?)
         }
 
         self.advance()?;
@@ -689,7 +812,7 @@ impl<'a> Parser<'a> {
 
         let mut body = vec![];
         while self.token != Token::Eof {
-            body.push(self.parse_statement_list_item()?)
+            body.push(self.parse_statement_list_item(FunctionContext::TOPLEVEL)?)
         }
 
         // Restore to strict mode context from before this function
@@ -698,19 +821,30 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    fn parse_block(&mut self) -> ParseResult<Block> {
+    /// Parse a block with a standard block scope.
+    fn parse_block_default_scope(&mut self) -> ParseResult<Block> {
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        let block = self.parse_block_custom_scope(scope)?;
+        self.scope_builder.exit_scope();
+
+        Ok(block)
+    }
+
+    /// Parse a block but do not perform scope management. Instead use the scope node provided to
+    /// the function, and let caller handle scope management.
+    fn parse_block_custom_scope(&mut self, scope: AstPtr<ScopeNode>) -> ParseResult<Block> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
-            body.push(self.parse_statement_list_item()?)
+            body.push(self.parse_statement_list_item(FunctionContext::empty())?)
         }
 
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Block::new(loc, body))
+        Ok(Block { loc, body, scope })
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Statement> {
@@ -743,6 +877,9 @@ impl<'a> Parser<'a> {
         let discriminant = self.parse_expression()?;
         self.expect(Token::RightParen)?;
 
+        // Switch statements start a new block scope
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+
         let mut cases = vec![];
         self.expect(Token::LeftBrace)?;
 
@@ -767,7 +904,7 @@ impl<'a> Parser<'a> {
                         && self.token != Token::Default
                         && self.token != Token::RightBrace
                     {
-                        body.push(self.parse_statement_list_item()?)
+                        body.push(self.parse_statement_list_item(FunctionContext::empty())?)
                     }
 
                     let loc = self.mark_loc(case_start_pos);
@@ -780,12 +917,17 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::Switch(SwitchStatement::new(loc, discriminant, cases)))
+        self.scope_builder.exit_scope();
+
+        Ok(Statement::Switch(SwitchStatement { loc, discriminant, cases, scope }))
     }
 
     fn parse_any_for_statement(&mut self) -> ParseResult<Statement> {
         let start_pos = self.current_start_pos();
         self.advance()?;
+
+        // For scope must encompass any variables declared in the initializer, as well as the body.
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
         // Optional await keyword signifies a for-await-of
         let await_loc = self.loc;
@@ -817,18 +959,18 @@ impl<'a> Parser<'a> {
                     }
 
                     let init = p(ForEachInit::VarDecl(var_decl));
-                    self.parse_for_each_statement(init, start_pos, is_await)?
+                    self.parse_for_each_statement(init, start_pos, is_await, scope)?
                 }
                 _ => {
                     let init = Some(p(ForInit::VarDecl(var_decl)));
                     self.expect(Token::Semicolon)?;
-                    self.parse_for_statement(init, start_pos)?
+                    self.parse_for_statement(init, start_pos, scope)?
                 }
             }
         } else if self.token == Token::Semicolon {
             // Empty init, but we know this is a regular for loop
             self.advance()?;
-            self.parse_for_statement(None, start_pos)?
+            self.parse_for_statement(None, start_pos, scope)?
         } else {
             // Otherwise init is an expression
             let expr_start_pos = self.current_start_pos();
@@ -844,7 +986,7 @@ impl<'a> Parser<'a> {
                     let pattern =
                         self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
                     let left = p(ForEachInit::Pattern(pattern));
-                    self.parse_for_each_statement(left, start_pos, is_await)?
+                    self.parse_for_each_statement(left, start_pos, is_await, scope)?
                 }
                 // An in expression is actually `for (expr in right)`
                 (
@@ -870,13 +1012,14 @@ impl<'a> Parser<'a> {
                         right,
                         body,
                         is_await: false,
+                        scope,
                     })
                 }
                 // Otherwise this is a regular for loop and the expression is used directly
                 (_, expr) => {
                     let init = Some(p(ForInit::Expression(expr)));
                     self.expect(Token::Semicolon)?;
-                    self.parse_for_statement(init, start_pos)?
+                    self.parse_for_statement(init, start_pos, scope)?
                 }
             }
         };
@@ -888,6 +1031,8 @@ impl<'a> Parser<'a> {
             }
         }
 
+        self.scope_builder.exit_scope();
+
         Ok(for_stmt)
     }
 
@@ -895,6 +1040,7 @@ impl<'a> Parser<'a> {
         &mut self,
         init: Option<P<ForInit>>,
         start_pos: Pos,
+        scope: AstPtr<ScopeNode>,
     ) -> ParseResult<Statement> {
         let test = match self.token {
             Token::Semicolon => None,
@@ -911,7 +1057,7 @@ impl<'a> Parser<'a> {
         let body = p(self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::For(ForStatement { loc, init, test, update, body }))
+        Ok(Statement::For(ForStatement { loc, init, test, update, body, scope }))
     }
 
     fn parse_for_each_statement(
@@ -919,6 +1065,7 @@ impl<'a> Parser<'a> {
         left: P<ForEachInit>,
         start_pos: Pos,
         is_await: bool,
+        scope: AstPtr<ScopeNode>,
     ) -> ParseResult<Statement> {
         let kind = match self.token {
             Token::In => ForEachKind::In,
@@ -937,7 +1084,15 @@ impl<'a> Parser<'a> {
         let body = p(self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::ForEach(ForEachStatement { loc, kind, left, right, body, is_await }))
+        Ok(Statement::ForEach(ForEachStatement {
+            loc,
+            kind,
+            left,
+            right,
+            body,
+            is_await,
+            scope,
+        }))
     }
 
     fn parse_while_statement(&mut self) -> ParseResult<Statement> {
@@ -995,10 +1150,13 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let block = p(self.parse_block()?);
+        let block = p(self.parse_block_default_scope()?);
 
         // Optional handler block
         let handler = if self.token == Token::Catch {
+            // Set up block scope before catch parameter is parsed, so it is included in block scope
+            let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+
             let catch_start_pos = self.current_start_pos();
             self.advance()?;
 
@@ -1007,13 +1165,15 @@ impl<'a> Parser<'a> {
             } else {
                 // Handler optionally has a single pattern as the parameter
                 self.expect(Token::LeftParen)?;
-                let param = self.parse_pattern()?;
+                let param = self.parse_pattern(BindingKind::CatchParameter)?;
                 self.expect(Token::RightParen)?;
                 Some(p(param))
             };
 
-            let body = p(self.parse_block()?);
+            let body = p(self.parse_block_custom_scope(scope)?);
             let loc = self.mark_loc(catch_start_pos);
+
+            self.scope_builder.exit_scope();
 
             Some(p(CatchClause { loc, param, body }))
         } else {
@@ -1022,7 +1182,7 @@ impl<'a> Parser<'a> {
 
         let finalizer = if self.token == Token::Finally {
             self.advance()?;
-            Some(p(self.parse_block()?))
+            Some(p(self.parse_block_default_scope()?))
         } else {
             None
         };
@@ -1204,6 +1364,11 @@ impl<'a> Parser<'a> {
     fn parse_arrow_function(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
 
+        // Function scope node must contain params and body
+        let scope = self
+            .scope_builder
+            .enter_scope(ScopeNodeKind::Function(start_pos));
+
         let is_async = self.token == Token::Async;
         if is_async {
             let async_loc = self.loc;
@@ -1218,6 +1383,8 @@ impl<'a> Parser<'a> {
                     self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
+                self.scope_builder.exit_scope();
+
                 return Ok(p(Expression::ArrowFunction(p(Function::new(
                     loc,
                     /* id */ None,
@@ -1227,6 +1394,7 @@ impl<'a> Parser<'a> {
                     /* is_generator */ false,
                     is_strict_mode,
                     has_use_strict_directive,
+                    scope,
                 )))));
             }
         }
@@ -1235,7 +1403,7 @@ impl<'a> Parser<'a> {
         let params = match self.token {
             Token::LeftParen => self.parse_function_params()?,
             _ => {
-                let id = self.parse_binding_identifier()?;
+                let id = self.parse_binding_identifier(Some(BindingKind::FunctionParameter))?;
                 vec![FunctionParam::Pattern(Pattern::Id(id))]
             }
         };
@@ -1253,6 +1421,8 @@ impl<'a> Parser<'a> {
         let (body, has_use_strict_directive, is_strict_mode) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
+        self.scope_builder.exit_scope();
+
         Ok(p(Expression::ArrowFunction(p(Function::new(
             loc,
             /* id */ None,
@@ -1262,6 +1432,7 @@ impl<'a> Parser<'a> {
             /* is_generator */ false,
             is_strict_mode,
             has_use_strict_directive,
+            scope,
         )))))
     }
 
@@ -2150,7 +2321,7 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
-            Token::Class => Ok(p(Expression::Class(self.parse_class(false)?))),
+            Token::Class => Ok(p(Expression::Class(self.parse_class(false, false)?))),
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
@@ -2168,7 +2339,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if self.is_function_start()? {
-                    return Ok(p(Expression::Function(self.parse_function(false)?)));
+                    return Ok(p(Expression::Function(self.parse_function_expression()?)));
                 }
 
                 // Check for the start of an async arrow function
@@ -2188,7 +2359,7 @@ impl<'a> Parser<'a> {
                     // If followed by an identifier this is `async id`
                     let id_token = self.token.clone();
                     let id_loc = self.loc;
-                    if let Ok(_) = self.parse_binding_identifier() {
+                    if let Ok(_) = self.parse_binding_identifier(None) {
                         // Start of an async arrow function. This can only occur if we are trying
                         // to parse a non-arrow function first, so fail the try parse.
                         if self.token == Token::Arrow {
@@ -2215,8 +2386,19 @@ impl<'a> Parser<'a> {
         self.parse_identifier()
     }
 
-    fn parse_binding_identifier(&mut self) -> ParseResult<Identifier> {
-        self.parse_identifier()
+    /// Parse an identifier that may introduce a binding into the current scope. Add binding to
+    /// scope if binding kind is provided.
+    fn parse_binding_identifier(
+        &mut self,
+        binding_kind: Option<BindingKind>,
+    ) -> ParseResult<Identifier> {
+        let id = self.parse_identifier()?;
+
+        if let Some(binding_kind) = binding_kind {
+            self.add_binding(&id, binding_kind)?;
+        }
+
+        Ok(id)
     }
 
     fn parse_label_identifier(&mut self) -> ParseResult<Identifier> {
@@ -2865,10 +3047,17 @@ impl<'a> Parser<'a> {
         let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
         let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
+        // Function scope node must contain params and body
+        let scope = self
+            .scope_builder
+            .enter_scope(ScopeNodeKind::Function(start_pos));
+
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
+
+        self.scope_builder.exit_scope();
 
         // Check for correct number of parameters
         match kind {
@@ -2900,6 +3089,7 @@ impl<'a> Parser<'a> {
                 is_generator,
                 is_strict_mode,
                 has_use_strict_directive,
+                scope,
             ))))),
         };
 
@@ -2909,7 +3099,7 @@ impl<'a> Parser<'a> {
         Ok((property, is_private))
     }
 
-    fn parse_class(&mut self, is_name_required: bool) -> ParseResult<Class> {
+    fn parse_class(&mut self, is_decl: bool, is_name_required: bool) -> ParseResult<Class> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -2921,7 +3111,14 @@ impl<'a> Parser<'a> {
         let id = if is_name_required
             || (self.token != Token::LeftBrace && self.token != Token::Extends)
         {
-            Some(p(self.parse_binding_identifier()?))
+            // Only introduce a binding for class declarations
+            let binding_kind = if is_decl {
+                Some(BindingKind::Class)
+            } else {
+                None
+            };
+
+            Some(p(self.parse_binding_identifier(binding_kind)?))
         } else {
             None
         };
@@ -2981,7 +3178,13 @@ impl<'a> Parser<'a> {
 
             // Check for static initializer
             if self.token == Token::LeftBrace {
+                // Static initializers are functions and are wrapped in a function scope, as vars
+                // cannot be hoisted out of the static initializer.
+                let scope = self
+                    .scope_builder
+                    .enter_scope(ScopeNodeKind::Function(start_pos));
                 let (block, _, _) = self.parse_function_block_body()?;
+                self.scope_builder.exit_scope();
 
                 let loc = self.mark_loc(start_pos);
 
@@ -2999,6 +3202,7 @@ impl<'a> Parser<'a> {
                         /* is_generator */ false,
                         /* is_strict_mode */ true,
                         /* has_use_strict_directive */ false,
+                        scope,
                     )),
                     kind: ClassMethodKind::StaticInitializer,
                     is_computed: false,
@@ -3128,17 +3332,20 @@ impl<'a> Parser<'a> {
         ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
 
-    fn parse_pattern(&mut self) -> ParseResult<Pattern> {
+    fn parse_pattern(&mut self, binding_kind: BindingKind) -> ParseResult<Pattern> {
         match &self.token {
-            Token::LeftBracket => self.parse_array_pattern(),
-            Token::LeftBrace => self.parse_object_pattern(),
-            _ => Ok(Pattern::Id(self.parse_binding_identifier()?)),
+            Token::LeftBracket => self.parse_array_pattern(binding_kind),
+            Token::LeftBrace => self.parse_object_pattern(binding_kind),
+            _ => Ok(Pattern::Id(self.parse_binding_identifier(Some(binding_kind))?)),
         }
     }
 
-    fn parse_pattern_including_assignment_pattern(&mut self) -> ParseResult<Pattern> {
+    fn parse_pattern_including_assignment_pattern(
+        &mut self,
+        binding_kind: BindingKind,
+    ) -> ParseResult<Pattern> {
         let start_pos = self.current_start_pos();
-        let patt = self.parse_pattern()?;
+        let patt = self.parse_pattern(binding_kind)?;
         self.parse_assignment_pattern(patt, start_pos)
     }
 
@@ -3157,7 +3364,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_array_pattern(&mut self) -> ParseResult<Pattern> {
+    fn parse_array_pattern(&mut self, binding_kind: BindingKind) -> ParseResult<Pattern> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -3173,7 +3380,7 @@ impl<'a> Parser<'a> {
                     elements.push(ArrayPatternElement::Hole);
                 }
                 Token::Spread => {
-                    let rest_element = self.parse_rest_element()?;
+                    let rest_element = self.parse_rest_element(binding_kind)?;
                     elements.push(ArrayPatternElement::Rest(rest_element));
 
                     // Trailing commas are not allowed after rest elements, nor are any other elements
@@ -3184,7 +3391,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 _ => {
-                    let pattern = self.parse_pattern_including_assignment_pattern()?;
+                    let pattern = self.parse_pattern_including_assignment_pattern(binding_kind)?;
                     elements.push(ArrayPatternElement::Pattern(pattern));
                     if self.token == Token::Comma {
                         self.advance()?;
@@ -3203,17 +3410,17 @@ impl<'a> Parser<'a> {
         Ok(Pattern::Array(ArrayPattern { loc, elements }))
     }
 
-    fn parse_rest_element(&mut self) -> ParseResult<RestElement> {
+    fn parse_rest_element(&mut self, binding_kind: BindingKind) -> ParseResult<RestElement> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let argument = p(self.parse_pattern()?);
+        let argument = p(self.parse_pattern(binding_kind)?);
         let loc = self.mark_loc(start_pos);
 
         Ok(RestElement { loc, argument })
     }
 
-    fn parse_object_pattern(&mut self) -> ParseResult<Pattern> {
+    fn parse_object_pattern(&mut self, binding_kind: BindingKind) -> ParseResult<Pattern> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -3224,7 +3431,7 @@ impl<'a> Parser<'a> {
         let mut properties = vec![];
         while self.token != Token::RightBrace {
             if self.token == Token::Spread {
-                properties.push(self.parse_object_rest_property()?);
+                properties.push(self.parse_object_pattern_rest_property(binding_kind)?);
 
                 // Trailing commas are not allowed after rest elements, nor are any other properties
                 if self.token == Token::Comma {
@@ -3234,7 +3441,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            properties.push(self.parse_object_pattern_property()?);
+            properties.push(self.parse_object_pattern_property(binding_kind)?);
 
             if self.token == Token::RightBrace {
                 break;
@@ -3251,7 +3458,10 @@ impl<'a> Parser<'a> {
         Ok(Pattern::Object(ObjectPattern { loc, properties }))
     }
 
-    fn parse_object_pattern_property(&mut self) -> ParseResult<ObjectPatternProperty> {
+    fn parse_object_pattern_property(
+        &mut self,
+        binding_kind: BindingKind,
+    ) -> ParseResult<ObjectPatternProperty> {
         let start_pos = self.current_start_pos();
 
         let property_name = self.parse_property_name(PropertyContext::Pattern)?;
@@ -3262,6 +3472,9 @@ impl<'a> Parser<'a> {
                 if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
+
+                // Add binding to scope since this is a shorthand property
+                self.add_binding(&id, binding_kind)?;
 
                 Pattern::Id(id)
             } else {
@@ -3283,7 +3496,7 @@ impl<'a> Parser<'a> {
 
         // Regular properties
         self.expect(Token::Colon)?;
-        let value = p(self.parse_pattern_including_assignment_pattern()?);
+        let value = p(self.parse_pattern_including_assignment_pattern(binding_kind)?);
         let loc = self.mark_loc(start_pos);
 
         Ok(ObjectPatternProperty {
@@ -3295,12 +3508,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_object_rest_property(&mut self) -> ParseResult<ObjectPatternProperty> {
+    fn parse_object_pattern_rest_property(
+        &mut self,
+        binding_kind: BindingKind,
+    ) -> ParseResult<ObjectPatternProperty> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
         // Only identifiers are allowed as rest property arguments
-        let id_argument = self.parse_binding_identifier()?;
+        let id_argument = self.parse_binding_identifier(Some(binding_kind))?;
         let loc = self.mark_loc(start_pos);
 
         Ok(ObjectPatternProperty {
@@ -3541,7 +3757,10 @@ impl<'a> Parser<'a> {
             | Token::Var
             | Token::Let
             | Token::Const => {
-                let declaration = Some(p(self.parse_statement_list_item()?));
+                // From the perspective of function declaration scoping, being inside an export
+                // declaration makes them not toplevel.
+                let declaration =
+                    Some(p(self.parse_statement_list_item(FunctionContext::empty())?));
                 let loc = self.mark_loc(start_pos);
 
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
@@ -3558,13 +3777,15 @@ impl<'a> Parser<'a> {
                 // Default function and class declarations have an optional name
                 match self.token {
                     Token::Function | Token::Async => {
-                        let declaration = p(Statement::FuncDecl(self.parse_function(false)?));
+                        let declaration = p(Statement::FuncDecl(
+                            self.parse_function_declaration(FunctionContext::OPTIONAL_NAME)?,
+                        ));
                         let loc = self.mark_loc(start_pos);
 
                         Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                     }
                     Token::Class => {
-                        let declaration = p(Statement::ClassDecl(self.parse_class(false)?));
+                        let declaration = p(Statement::ClassDecl(self.parse_class(true, false)?));
                         let loc = self.mark_loc(start_pos);
 
                         Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
@@ -3877,7 +4098,7 @@ pub fn parse_function_params_for_function_constructor(
     source: &Rc<Source>,
     is_async: bool,
     is_generator: bool,
-) -> ParseResult<Vec<FunctionParam>> {
+) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
@@ -3888,14 +4109,16 @@ pub fn parse_function_params_for_function_constructor(
 
     parser.advance()?;
 
-    Ok(parser.parse_function_params_without_parens()?)
+    parser.parse_function_params_without_parens()?;
+
+    Ok(())
 }
 
 pub fn parse_function_body_for_function_constructor(
     source: &Rc<Source>,
     is_async: bool,
     is_generator: bool,
-) -> ParseResult<Vec<Statement>> {
+) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
@@ -3907,14 +4130,21 @@ pub fn parse_function_body_for_function_constructor(
     let initial_state = parser.save();
     parser.advance()?;
 
-    Ok(parser.parse_function_body_statements(initial_state)?)
+    parser.parse_function_body_statements(initial_state)?;
+
+    Ok(())
 }
 
-pub fn parse_function_for_function_constructor(source: &Rc<Source>) -> ParseResult<P<Function>> {
+pub fn parse_function_for_function_constructor(
+    source: &Rc<Source>,
+) -> ParseResult<(P<Function>, ScopeTree)> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
     parser.advance()?;
 
-    Ok(parser.parse_function(true)?)
+    let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;
+    let scope_tree = parser.scope_builder.finish();
+
+    Ok((func_node, scope_tree))
 }

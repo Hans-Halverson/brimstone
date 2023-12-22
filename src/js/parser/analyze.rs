@@ -9,12 +9,8 @@ use crate::{
 };
 
 use super::{
-    ast::*,
-    ast_visitor::*,
-    loc::Loc,
-    scope::{NameKind, ScopeBuilder},
-    source::Source,
-    LocalizedParseError, LocalizedParseErrors, ParseError,
+    ast::*, ast_visitor::*, loc::Loc, source::Source, LocalizedParseError, LocalizedParseErrors,
+    ParseError,
 };
 
 pub struct Analyzer {
@@ -22,7 +18,6 @@ pub struct Analyzer {
     source: Rc<Source>,
     // Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
-    scope_builder: ScopeBuilder,
     // Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     // Set of labels defined where the visitor is currently in
@@ -96,7 +91,6 @@ impl<'a> Analyzer {
         Analyzer {
             source,
             errors: Vec::new(),
-            scope_builder: ScopeBuilder::new(),
             strict_mode_context_depth: 0,
             labels: HashMap::new(),
             label_depth: 0,
@@ -194,26 +188,6 @@ impl<'a> Analyzer {
         self.allow_arguments = state.allow_arguments;
     }
 
-    fn add_var_declared_id(&mut self, id: &Identifier, kind: NameKind) {
-        let error_opt = self
-            .scope_builder
-            .add_var_declared_name(&id.name, &id.loc, kind);
-
-        if let Some(error) = error_opt {
-            self.emit_error(id.loc, error);
-        }
-    }
-
-    fn add_lex_declared_id(&mut self, id: &Identifier, kind: NameKind) {
-        let error_opt = self
-            .scope_builder
-            .add_lex_declared_name(&id.name, &id.loc, kind);
-
-        if let Some(error) = error_opt {
-            self.emit_error(id.loc, error);
-        }
-    }
-
     fn error_if_strict_eval_or_arguments(&mut self, id: &Identifier) {
         if !self.is_in_strict_mode_context() {
             return;
@@ -233,19 +207,7 @@ impl<'a> AstVisitor for Analyzer {
             self.enter_strict_mode_context();
         }
 
-        self.scope_builder.enter_toplevel_scope(program);
-
-        for toplevel in &mut program.toplevels {
-            match toplevel {
-                Toplevel::Statement(stmt) => self.visit_top_level_declaration_statement(stmt),
-                Toplevel::Import(import) => self.visit_import_declaration(import),
-                Toplevel::ExportDefault(export) => self.visit_export_default_declaration(export),
-                Toplevel::ExportNamed(export) => self.visit_export_named_declaration(export),
-                Toplevel::ExportAll(export) => self.visit_export_all_declaration(export),
-            }
-        }
-
-        self.scope_builder.exit_scope();
+        visit_vec!(self, program.toplevels, visit_toplevel);
 
         if program.is_strict_mode {
             self.exit_strict_mode_context();
@@ -253,27 +215,13 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_function_declaration(&mut self, func: &mut Function) {
-        self.visit_function_declaration_common(func, true)
-    }
-
-    fn visit_class_declaration(&mut self, class: &mut Class) {
-        self.scope_builder.add_class_decl(class);
-
-        if let Some(class_id) = class.id.as_deref() {
-            self.add_lex_declared_id(class_id, NameKind::Class);
-        }
-
-        self.visit_class_common(class)
-    }
-
-    fn visit_block(&mut self, block: &mut Block) {
-        self.scope_builder.enter_block_scope(block);
-        default_visit_block(self, block);
-        self.scope_builder.exit_scope();
+        self.visit_function_common(
+            func, /* is_arrow_function */ false, /* is_method */ false,
+            /*is_derived_constructor */ false, /* is_static_initializer */ false,
+        );
     }
 
     fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement) {
-        self.scope_builder.enter_switch_scope(stmt);
         self.inc_breakable_depth();
 
         let mut seen_default = false;
@@ -293,7 +241,6 @@ impl<'a> AstVisitor for Analyzer {
         }
 
         self.dec_breakable_depth();
-        self.scope_builder.exit_scope();
     }
 
     fn visit_variable_declaration(&mut self, var_decl: &mut VariableDeclaration) {
@@ -323,10 +270,6 @@ impl<'a> AstVisitor for Analyzer {
             func, /* is_arrow_function */ true, /* is_method */ false,
             /*is_derived_constructor */ false, /* is_static_initializer */ false,
         );
-    }
-
-    fn visit_class_expression(&mut self, class: &mut Class) {
-        self.visit_class_common(class)
     }
 
     fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
@@ -392,25 +335,21 @@ impl<'a> AstVisitor for Analyzer {
     }
 
     fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
-        self.scope_builder.enter_for_scope();
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_statement(self, stmt);
 
         self.dec_iterable_depth();
-        self.scope_builder.exit_scope();
     }
 
     fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
-        self.scope_builder.enter_for_scope();
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_each_statement(self, stmt);
 
         self.dec_iterable_depth();
-        self.scope_builder.exit_scope();
     }
 
     fn visit_for_each_init(&mut self, init: &mut ForEachInit) {
@@ -418,24 +357,6 @@ impl<'a> AstVisitor for Analyzer {
             ForEachInit::Pattern(patt) => self.visit_pattern(patt),
             ForEachInit::VarDecl(decl) => self.visit_variable_declaration_common(decl, true),
         }
-    }
-
-    fn visit_catch_clause(&mut self, catch: &mut CatchClause) {
-        self.scope_builder.enter_block_scope(&catch.body);
-
-        if let Some(param) = catch.param.as_deref_mut() {
-            self.visit_pattern(param);
-
-            // Parameter bindings are treated as lexical declarations scoped to the catch body
-            must!(param.iter_bound_names(&mut |id| {
-                self.add_lex_declared_id(id, NameKind::CatchParameter);
-                ().into()
-            }));
-        }
-
-        default_visit_block(self, &mut catch.body);
-
-        self.scope_builder.exit_scope();
     }
 
     fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
@@ -581,248 +502,8 @@ impl<'a> AstVisitor for Analyzer {
 
         default_visit_identifier_pattern(self, id)
     }
-}
 
-impl Analyzer {
-    fn visit_top_level_declaration_statement(&mut self, stmt: &mut Statement) {
-        match stmt {
-            // Toplevel function declarations are treated as var scoped decls
-            Statement::FuncDecl(func_decl) => {
-                self.visit_function_declaration_common(func_decl, false)
-            }
-            // Find statement under labels, if it is a function it is a var scoped decl
-            Statement::Labeled(ref mut labeled_stmt) => {
-                let (inner_stmt, label_stack) = self.push_all_labels(labeled_stmt);
-
-                if let Statement::FuncDecl(func_decl) = inner_stmt {
-                    self.visit_function_declaration_common(func_decl, false);
-                } else {
-                    self.visit_statement(inner_stmt);
-                }
-
-                self.pop_all_labels(label_stack);
-            }
-            _ => self.visit_statement(stmt),
-        }
-    }
-
-    fn visit_function_declaration_common(&mut self, func: &mut Function, is_lex_scoped_decl: bool) {
-        self.scope_builder.add_func_decl(func, is_lex_scoped_decl);
-
-        if let Some(func_id) = func.id.as_deref() {
-            if is_lex_scoped_decl {
-                self.add_lex_declared_id(func_id, NameKind::Function);
-            } else {
-                self.add_var_declared_id(func_id, NameKind::Function);
-            }
-        }
-
-        self.visit_function_common(
-            func, /* is_arrow_function */ false, /* is_method */ false,
-            /*is_derived_constructor */ false, /* is_static_initializer */ false,
-        );
-    }
-
-    fn visit_function_common(
-        &mut self,
-        func: &mut Function,
-        is_arrow_function: bool,
-        is_method: bool,
-        is_derived_constructor: bool,
-        is_static_initializer: bool,
-    ) {
-        self.function_stack.push(FunctionStackEntry {
-            func: Some(AstPtr::from_ref(func)),
-            is_arrow_function,
-            _is_method: is_method,
-            is_derived_constructor,
-        });
-
-        // Return is not allowed in static initializers, but is allowed in all other functions
-        self.allow_return_stack.push(!is_static_initializer);
-
-        // Super member expressions are allowed in methods, and in arrow functions are inherited
-        // from surrounding context.
-        if !is_arrow_function {
-            self.allow_super_member_stack.push(is_method);
-        }
-
-        // Save analyzer context before descending into function
-        let saved_state = self.save_state();
-
-        // Enter strict mode context if applicable
-        if func.is_strict_mode {
-            self.enter_strict_mode_context();
-        }
-
-        // Arguments are always allowed directly within non-arrow functions, but not within static
-        // initializers. Arrow functions inherit from lexical context.
-        if is_static_initializer {
-            self.allow_arguments = false;
-        } else if !is_arrow_function {
-            self.allow_arguments = true;
-        }
-
-        // Check function name, which cannot be "eval" or "arguments" in strict mode
-        visit_opt!(self, func.id, visit_identifier);
-
-        if !is_method {
-            if let Some(func_id) = &func.id {
-                self.error_if_strict_eval_or_arguments(func_id);
-            }
-        }
-
-        // Enter function scope for params and body
-        self.scope_builder.enter_function_scope(func);
-
-        // Visit and analyze function parameters
-        visit_vec!(self, func.params, visit_function_param);
-
-        // Static analysis of parameters and other function properties once body has been visited
-        let mut has_parameter_expressions = false;
-        let mut has_binding_patterns = false;
-        let mut has_rest_parameter = false;
-        let mut has_duplicate_parameters = false;
-        let mut has_argument_parameter = false;
-
-        let mut parameter_names = HashSet::new();
-
-        for param in &func.params {
-            if let FunctionParam::Rest(_) = param {
-                has_rest_parameter = true;
-            }
-
-            param.iter_patterns(&mut |patt| match patt {
-                Pattern::Id(id) => {
-                    if parameter_names.contains(&id.name) {
-                        has_duplicate_parameters = true;
-                    } else {
-                        parameter_names.insert(&id.name);
-                    }
-
-                    // Function parameters are treated as variable declarations scoped to func body
-                    self.add_var_declared_id(id, NameKind::FunctionParameter);
-
-                    // Arguments object is not needed if "arguments" is a bound name in the
-                    // function parameters.
-                    if id.name == "arguments" {
-                        has_argument_parameter = true;
-                    }
-                }
-                Pattern::Array(_) => {
-                    has_binding_patterns = true;
-                }
-                Pattern::Object(object_pattern) => {
-                    has_binding_patterns = true;
-
-                    let has_computed_property = object_pattern
-                        .properties
-                        .iter()
-                        .any(|prop| prop.is_computed);
-
-                    if has_computed_property {
-                        has_parameter_expressions = true;
-                    }
-                }
-                Pattern::Assign(_) => {
-                    has_parameter_expressions = true;
-                }
-                Pattern::Reference(_) => {}
-            });
-        }
-
-        func.has_parameter_expressions = has_parameter_expressions;
-        func.has_simple_parameter_list =
-            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
-        func.has_duplicate_parameters = has_duplicate_parameters;
-
-        // Functions with an explicit "use strict" in their body must have a simple parameter list
-        if func.has_use_strict_directive && !func.has_simple_parameter_list {
-            self.emit_error(func.loc, ParseError::UseStrictFunctionNonSimpleParameterList);
-        }
-
-        // Duplicate parameters are not allowed in certain contexts
-        if has_duplicate_parameters {
-            let invalid_reason = if self.is_in_strict_mode_context() {
-                Some(InvalidDuplicateParametersReason::StrictMode)
-            } else if is_arrow_function {
-                Some(InvalidDuplicateParametersReason::ArrowFunction)
-            } else if is_method {
-                Some(InvalidDuplicateParametersReason::Method)
-            } else if !func.has_simple_parameter_list {
-                Some(InvalidDuplicateParametersReason::NonSimpleParameters)
-            } else {
-                None
-            };
-
-            if let Some(invalid_reason) = invalid_reason {
-                self.emit_error(func.loc, ParseError::InvalidDuplicateParameters(invalid_reason));
-            }
-        }
-
-        // Visit function body
-        match *func.body {
-            FunctionBody::Block(ref mut block) => {
-                for stmt in &mut block.body {
-                    self.visit_top_level_declaration_statement(stmt)
-                }
-            }
-            FunctionBody::Expression(ref mut expr) => self.visit_expression(expr),
-        }
-
-        // Arguments object may have been set to needed based on analysis of function body
-        let mut is_arguments_object_needed =
-            func.is_arguments_object_needed && !has_argument_parameter;
-
-        // Arguments object is not needed if "arguments" appears in the lexically declared names, or
-        // as a function var declared name.
-        if is_arguments_object_needed && !func.has_parameter_expressions {
-            for var_decl in func.var_decls() {
-                match var_decl {
-                    VarDecl::Func(_) => {
-                        must!(var_decl.iter_bound_names(&mut |id| {
-                            if id.name == "arguments" {
-                                is_arguments_object_needed = false;
-                            }
-
-                            ().into()
-                        }));
-                    }
-                    _ => {}
-                }
-            }
-
-            for lex_decl in func.lex_decls() {
-                must!(lex_decl.iter_bound_names(&mut |id| {
-                    if id.name == "arguments" {
-                        is_arguments_object_needed = false;
-                    }
-
-                    ().into()
-                }));
-            }
-        }
-
-        func.is_arguments_object_needed = is_arguments_object_needed;
-
-        self.scope_builder.exit_scope();
-
-        if func.is_strict_mode {
-            self.exit_strict_mode_context();
-        }
-
-        if !is_arrow_function {
-            self.allow_super_member_stack.pop();
-        }
-
-        self.allow_return_stack.pop();
-        self.function_stack.pop();
-
-        // Restore analyzer context after visiting function
-        self.restore_state(saved_state);
-    }
-
-    fn visit_class_common(&mut self, class: &mut Class) {
+    fn visit_class(&mut self, class: &mut Class) {
         // Save analyzer context before descending into class
         let saved_state = self.save_state();
 
@@ -958,6 +639,176 @@ impl Analyzer {
         // Restore analyzer context after visiting class
         self.restore_state(saved_state);
     }
+}
+
+impl Analyzer {
+    fn visit_function_common(
+        &mut self,
+        func: &mut Function,
+        is_arrow_function: bool,
+        is_method: bool,
+        is_derived_constructor: bool,
+        is_static_initializer: bool,
+    ) {
+        self.function_stack.push(FunctionStackEntry {
+            func: Some(AstPtr::from_ref(func)),
+            is_arrow_function,
+            _is_method: is_method,
+            is_derived_constructor,
+        });
+
+        // Return is not allowed in static initializers, but is allowed in all other functions
+        self.allow_return_stack.push(!is_static_initializer);
+
+        // Super member expressions are allowed in methods, and in arrow functions are inherited
+        // from surrounding context.
+        if !is_arrow_function {
+            self.allow_super_member_stack.push(is_method);
+        }
+
+        // Save analyzer context before descending into function
+        let saved_state = self.save_state();
+
+        // Enter strict mode context if applicable
+        if func.is_strict_mode {
+            self.enter_strict_mode_context();
+        }
+
+        // Arguments are always allowed directly within non-arrow functions, but not within static
+        // initializers. Arrow functions inherit from lexical context.
+        if is_static_initializer {
+            self.allow_arguments = false;
+        } else if !is_arrow_function {
+            self.allow_arguments = true;
+        }
+
+        // Check function name, which cannot be "eval" or "arguments" in strict mode
+        visit_opt!(self, func.id, visit_identifier);
+
+        if !is_method {
+            if let Some(func_id) = &func.id {
+                self.error_if_strict_eval_or_arguments(func_id);
+            }
+        }
+
+        // Visit and analyze function parameters
+        visit_vec!(self, func.params, visit_function_param);
+
+        // Static analysis of parameters and other function properties once body has been visited
+        let mut has_parameter_expressions = false;
+        let mut has_binding_patterns = false;
+        let mut has_rest_parameter = false;
+        let mut has_duplicate_parameters = false;
+        let mut has_argument_parameter = false;
+
+        let mut parameter_names = HashSet::new();
+
+        for param in &func.params {
+            if let FunctionParam::Rest(_) = param {
+                has_rest_parameter = true;
+            }
+
+            param.iter_patterns(&mut |patt| match patt {
+                Pattern::Id(id) => {
+                    if parameter_names.contains(&id.name) {
+                        has_duplicate_parameters = true;
+                    } else {
+                        parameter_names.insert(&id.name);
+                    }
+
+                    // Arguments object is not needed if "arguments" is a bound name in the
+                    // function parameters.
+                    if id.name == "arguments" {
+                        has_argument_parameter = true;
+                    }
+                }
+                Pattern::Array(_) => {
+                    has_binding_patterns = true;
+                }
+                Pattern::Object(object_pattern) => {
+                    has_binding_patterns = true;
+
+                    let has_computed_property = object_pattern
+                        .properties
+                        .iter()
+                        .any(|prop| prop.is_computed);
+
+                    if has_computed_property {
+                        has_parameter_expressions = true;
+                    }
+                }
+                Pattern::Assign(_) => {
+                    has_parameter_expressions = true;
+                }
+                Pattern::Reference(_) => {}
+            });
+        }
+
+        func.has_parameter_expressions = has_parameter_expressions;
+        func.has_simple_parameter_list =
+            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
+        func.has_duplicate_parameters = has_duplicate_parameters;
+
+        // Functions with an explicit "use strict" in their body must have a simple parameter list
+        if func.has_use_strict_directive && !func.has_simple_parameter_list {
+            self.emit_error(func.loc, ParseError::UseStrictFunctionNonSimpleParameterList);
+        }
+
+        // Duplicate parameters are not allowed in certain contexts
+        if has_duplicate_parameters {
+            let invalid_reason = if self.is_in_strict_mode_context() {
+                Some(InvalidDuplicateParametersReason::StrictMode)
+            } else if is_arrow_function {
+                Some(InvalidDuplicateParametersReason::ArrowFunction)
+            } else if is_method {
+                Some(InvalidDuplicateParametersReason::Method)
+            } else if !func.has_simple_parameter_list {
+                Some(InvalidDuplicateParametersReason::NonSimpleParameters)
+            } else {
+                None
+            };
+
+            if let Some(invalid_reason) = invalid_reason {
+                self.emit_error(func.loc, ParseError::InvalidDuplicateParameters(invalid_reason));
+            }
+        }
+
+        // Visit function body
+        self.visit_function_body(&mut func.body);
+
+        // Arguments object may have been set to needed based on analysis of function body
+        let mut is_arguments_object_needed =
+            func.is_arguments_object_needed && !has_argument_parameter;
+
+        // Arguments object is not needed if "arguments" appears in the lexically declared names, or
+        // as a function var declared name.
+        if is_arguments_object_needed && !func.has_parameter_expressions {
+            for (name, binding) in func.scope.as_ref().iter_bindings() {
+                let kind = binding.kind();
+                if kind.is_lexically_scoped() || kind.is_function() {
+                    if name == "arguments" {
+                        is_arguments_object_needed = false;
+                    }
+                }
+            }
+        }
+
+        func.is_arguments_object_needed = is_arguments_object_needed;
+
+        if func.is_strict_mode {
+            self.exit_strict_mode_context();
+        }
+
+        if !is_arrow_function {
+            self.allow_super_member_stack.pop();
+        }
+
+        self.allow_return_stack.pop();
+        self.function_stack.pop();
+
+        // Restore analyzer context after visiting function
+        self.restore_state(saved_state);
+    }
 
     fn visit_class_method(&mut self, method: &mut ClassMethod) {
         let key_name_bytes = if method.is_computed {
@@ -1042,8 +893,6 @@ impl Analyzer {
         var_decl: &mut VariableDeclaration,
         is_for_each_init: bool,
     ) {
-        self.scope_builder.add_var_decl(var_decl);
-
         for declaration in &var_decl.declarations {
             if var_decl.kind == VarKind::Const && declaration.init.is_none() && !is_for_each_init {
                 self.emit_error(declaration.loc, ParseError::ConstWithoutInitializer);
@@ -1053,17 +902,6 @@ impl Analyzer {
             must!(declaration.iter_bound_names(&mut |id| {
                 if var_decl.kind != VarKind::Var && id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
-                }
-
-                ().into()
-            }));
-
-            // Add names to scope, checking for redeclarations
-            must!(declaration.iter_bound_names(&mut |id| {
-                match var_decl.kind {
-                    VarKind::Var => self.add_var_declared_id(id, NameKind::Var),
-                    VarKind::Const => self.add_lex_declared_id(id, NameKind::Const),
-                    VarKind::Let => self.add_lex_declared_id(id, NameKind::Let),
                 }
 
                 ().into()

@@ -6,7 +6,7 @@ use std::{
 
 use crate::js::{
     common::wtf_8::Wtf8String,
-    parser::{ast, source::Source},
+    parser::{ast, scope_tree::ScopeTree, source::Source},
     runtime::gc::HandleScope,
 };
 
@@ -86,7 +86,7 @@ pub struct ContextCell {
     // are not freed while the context is still running, as they may be needed e.g. due to functions
     // returned from an eval.
     pub eval_asts: Vec<ast::Program>,
-    pub function_constructor_asts: Vec<(ast::P<ast::Function>, Rc<Source>)>,
+    pub function_constructor_asts: Vec<(ast::P<ast::Function>, Rc<Source>, ScopeTree)>,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;

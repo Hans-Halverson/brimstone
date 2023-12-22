@@ -25,6 +25,10 @@ fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
     URIError::new_with_message(cx, message.to_owned()).into()
 }
 
+pub fn syntax_error(cx: Context, message: &str) -> Completion {
+    Completion::throw(syntax_error_value(cx, message))
+}
+
 pub fn type_error(cx: Context, message: &str) -> Completion {
     Completion::throw(type_error_value(cx, message))
 }

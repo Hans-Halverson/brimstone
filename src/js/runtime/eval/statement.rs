@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use crate::{
     js::{
-        parser::ast::{self, LabelId, LexDecl, WithDecls},
+        parser::{
+            ast::{self, LabelId},
+            scope_tree::{Binding, BindingKind},
+        },
         runtime::{
             completion::{Completion, CompletionKind, EvalResult, EMPTY_LABEL},
             environment::{
@@ -18,6 +21,7 @@ use crate::{
             execution_context::resolve_binding,
             function::instantiate_function_object,
             gc::HandleScope,
+            interned_strings::InternedStrings,
             iterator::iter_iterator_values,
             property_key::PropertyKey,
             type_utilities::{is_strictly_equal, to_boolean, to_object},
@@ -131,7 +135,7 @@ fn eval_block(cx: Context, block: &ast::Block) -> Completion {
     let old_env = current_context.lexical_env();
     let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
-    block_declaration_instantiation(cx, block.lex_decls(), block_env);
+    block_declaration_instantiation(cx, block.scope.as_ref().iter_lex_decls(), block_env);
 
     current_context.set_lexical_env(block_env.into_dyn_env());
     let block_value = eval_statement_list(cx, &block.body);
@@ -141,37 +145,31 @@ fn eval_block(cx: Context, block: &ast::Block) -> Completion {
 }
 
 // 14.2.3 BlockDeclarationInstantiation
-fn block_declaration_instantiation(
+fn block_declaration_instantiation<'a>(
     cx: Context,
-    lex_decls: &[ast::LexDecl],
+    lex_decls: impl Iterator<Item = (&'a String, &'a Binding)>,
     mut env: Handle<DeclarativeEnvironment>,
 ) {
-    for lex_decl in lex_decls {
-        match lex_decl {
-            LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                must!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    env.create_immutable_binding(cx, name_value, true)
-                }))
-            }
-            LexDecl::Func(func_decl) => {
-                let func_node = func_decl.as_ref();
-                let func_id = func_node.id.as_deref().unwrap();
-                let func_name_value = id_string_value(cx, func_id);
+    for (name, binding) in lex_decls {
+        let name_value = InternedStrings::get_str(cx, name);
 
-                must!(env.create_mutable_binding(cx, func_name_value, false));
+        match binding.kind() {
+            BindingKind::Const => {
+                must!(env.create_immutable_binding(cx, name_value, true));
+            }
+            BindingKind::Function { func_node, .. } => {
+                must!(env.create_mutable_binding(cx, name_value, false));
 
                 let env_object = env.into_dyn_env();
                 let private_env = cx.current_execution_context_ptr().private_env();
                 let func_object =
-                    instantiate_function_object(cx, func_node, env_object, private_env);
+                    instantiate_function_object(cx, func_node.as_ref(), env_object, private_env);
 
-                must!(env.initialize_binding(cx, func_name_value, func_object.into()));
+                must!(env.initialize_binding(cx, name_value, func_object.into()));
             }
-            _ => must!(lex_decl.iter_bound_names(&mut |id| {
-                let name_value = id_string_value(cx, id);
-                env.create_mutable_binding(cx, name_value, false)
-            })),
+            _ => {
+                must!(env.create_mutable_binding(cx, name_value, false))
+            }
         }
     }
 }
@@ -953,7 +951,7 @@ fn eval_switch_statement(
     let old_env = current_execution_context.lexical_env();
     let block_env = DeclarativeEnvironment::new(cx, Some(old_env));
 
-    block_declaration_instantiation(cx, &stmt.lex_decls, block_env);
+    block_declaration_instantiation(cx, stmt.scope.as_ref().iter_lex_decls(), block_env);
 
     current_execution_context.set_lexical_env(block_env.into_dyn_env());
 

@@ -5,12 +5,13 @@ use crate::{
         common::wtf_8::Wtf8String,
         parser::{
             analyze::analyze_function_for_function_constructor,
-            ast::{self, LexDecl, VarDecl, WithDecls},
+            ast::{self},
             parser::{
                 parse_function_body_for_function_constructor,
                 parse_function_for_function_constructor,
                 parse_function_params_for_function_constructor,
             },
+            scope_tree::BindingKind,
             source::Source,
         },
         runtime::{
@@ -67,13 +68,11 @@ pub fn function_declaration_instantiation(
     let mut functions_to_initialize = vec![];
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
-    for var_decl in func_node.var_decls().iter().rev() {
-        if let VarDecl::Func(func_ptr) = var_decl {
-            let func = func_ptr.as_ref();
-            let name = &func.id.as_deref().unwrap().name;
-
-            function_names.insert(name);
-            functions_to_initialize.push(func);
+    for (name, binding) in func_node.scope.as_ref().iter_var_decls() {
+        if let BindingKind::Function { func_node, .. } = binding.kind() {
+            if function_names.insert(name) {
+                functions_to_initialize.push(func_node.as_ref());
+            }
         }
     }
 
@@ -213,16 +212,12 @@ pub fn function_declaration_instantiation(
     let mut var_env = if !func_node.has_parameter_expressions {
         let mut instantiated_var_names = parameter_names;
 
-        for var_decl in func_node.var_decls() {
-            must!(var_decl.iter_bound_names(&mut |id| {
-                if instantiated_var_names.insert(&id.name) {
-                    let name_value = id_string_value(cx, id);
-                    must!(env.create_mutable_binding(cx, name_value, false));
-                    must!(env.initialize_binding(cx, name_value, cx.undefined()));
-                }
-
-                ().into()
-            }));
+        for (name, _) in func_node.scope.as_ref().iter_var_decls() {
+            if instantiated_var_names.insert(name) {
+                let name_value = InternedStrings::get_str(cx, name);
+                must!(env.create_mutable_binding(cx, name_value, false));
+                must!(env.initialize_binding(cx, name_value, cx.undefined()));
+            }
         }
 
         env
@@ -237,28 +232,21 @@ pub fn function_declaration_instantiation(
 
         let mut instantiated_var_names = HashSet::new();
 
-        for var_decl in func_node.var_decls() {
-            must!(var_decl.iter_bound_names(&mut |id| {
-                if instantiated_var_names.insert(&id.name) {
-                    let name_value = id_string_value(cx, id);
+        for (name, _) in func_node.scope.as_ref().iter_var_decls() {
+            if instantiated_var_names.insert(name) {
+                let name_value = InternedStrings::get_str(cx, name);
 
-                    must!(var_env.create_mutable_binding(cx, name_value, false));
+                must!(var_env.create_mutable_binding(cx, name_value, false));
 
-                    let initial_value = if !parameter_names.contains(id.name.as_str())
-                        || function_names.contains(&id.name)
-                    {
+                let initial_value =
+                    if !parameter_names.contains(name.as_str()) || function_names.contains(name) {
                         cx.undefined()
                     } else {
                         must!(env.get_binding_value(cx, name_value, false))
                     };
 
-                    must!(var_env.initialize_binding(cx, name_value, initial_value));
-
-                    ().into()
-                }
-
-                ().into()
-            }));
+                must!(var_env.initialize_binding(cx, name_value, initial_value));
+            }
         }
 
         var_env
@@ -276,18 +264,12 @@ pub fn function_declaration_instantiation(
     callee_context.set_lexical_env(lex_env);
 
     // Create bindings for lex decls in function body
-    for lex_decl in func_node.lex_decls() {
-        match lex_decl {
-            LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                must!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    lex_env.create_immutable_binding(cx, name_value, true)
-                }))
-            }
-            _ => must!(lex_decl.iter_bound_names(&mut |id| {
-                let name_value = id_string_value(cx, id);
-                lex_env.create_mutable_binding(cx, name_value, false)
-            })),
+    for (name, binding) in func_node.scope.as_ref().iter_lex_decls() {
+        let name_value = InternedStrings::get_str(cx, name);
+        if binding.is_const() {
+            must!(lex_env.create_immutable_binding(cx, name_value, true));
+        } else {
+            must!(lex_env.create_mutable_binding(cx, name_value, false))
         }
     }
 
@@ -596,8 +578,8 @@ pub fn create_dynamic_function(
 
     // Parse and analyze entire function
     let full_source = Rc::new(Source::new_from_wtf8_string("", source_string));
-    let mut func_node = match parse_function_for_function_constructor(&full_source) {
-        Ok(func_node) => func_node,
+    let (mut func_node, scope_tree) = match parse_function_for_function_constructor(&full_source) {
+        Ok(parse_result) => parse_result,
         Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),
     };
 
@@ -620,7 +602,8 @@ pub fn create_dynamic_function(
     }
 
     // TODO: Need better way to save ASTs and sources, following same pattern as eval for now
-    cx.function_constructor_asts.push((func_node, full_source));
+    cx.function_constructor_asts
+        .push((func_node, full_source, scope_tree));
 
     func.into()
 }

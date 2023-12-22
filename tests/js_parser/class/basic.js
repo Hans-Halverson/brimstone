@@ -1,6 +1,6 @@
 class A {}
 
-class A extends B {}
+class A2 extends B {}
 
 (class A {});
 
@@ -16,7 +16,7 @@ class C {
 
 // Static initializer blocks
 
-class C {
+class C2 {
   static {}
 
   static {

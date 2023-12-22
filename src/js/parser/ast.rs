@@ -1,4 +1,8 @@
-use std::{hash, rc::Rc};
+use std::{
+    fmt::{self, Debug},
+    hash,
+    rc::Rc,
+};
 
 use num_bigint::BigInt;
 
@@ -7,7 +11,12 @@ use crate::{
     maybe,
 };
 
-use super::{loc::Loc, regexp::RegExp, source::Source};
+use super::{
+    loc::{Loc, EMPTY_LOC},
+    regexp::RegExp,
+    scope_tree::{BindingKind, ScopeNode, ScopeTree},
+    source::Source,
+};
 
 pub type P<T> = Box<T>;
 
@@ -16,11 +25,15 @@ pub fn p<T>(node: T) -> P<T> {
 }
 
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
-pub struct AstPtr<T: ?Sized> {
+pub struct AstPtr<T> {
     ptr: *const T,
 }
 
-impl<T: ?Sized> AstPtr<T> {
+impl<T> AstPtr<T> {
+    pub fn null() -> AstPtr<T> {
+        AstPtr { ptr: std::ptr::null() }
+    }
+
     pub fn from_ref(value: &T) -> AstPtr<T> {
         AstPtr { ptr: value }
     }
@@ -34,11 +47,13 @@ impl<T: ?Sized> AstPtr<T> {
     }
 }
 
-impl<T: ?Sized> Clone for AstPtr<T> {
+impl<T> Clone for AstPtr<T> {
     fn clone(&self) -> AstPtr<T> {
         AstPtr { ptr: self.ptr }
     }
 }
+
+impl<T> Copy for AstPtr<T> {}
 
 impl<T> PartialEq for AstPtr<T> {
     fn eq(&self, other: &Self) -> bool {
@@ -54,52 +69,10 @@ impl<T> hash::Hash for AstPtr<T> {
     }
 }
 
-// An element of 8.1.7 VarScopedDeclarations
-pub enum VarDecl {
-    Func(AstPtr<Function>),
-    Var(AstPtr<VariableDeclaration>),
-}
-
-// An element of 8.1.5 LexicallyScopedDeclarations
-pub enum LexDecl {
-    Func(AstPtr<Function>),
-    Var(AstPtr<VariableDeclaration>),
-    Class(AstPtr<Class>),
-}
-
-impl VarDecl {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
-        &'a self,
-        f: &mut F,
-    ) -> EvalResult<()> {
-        match &self {
-            VarDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
-            VarDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
-        }
+impl<T> Debug for AstPtr<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "AstPtr({:p})", self.ptr)
     }
-}
-
-impl LexDecl {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
-        &'a self,
-        f: &mut F,
-    ) -> EvalResult<()> {
-        match &self {
-            LexDecl::Func(func) => f(&func.as_ref().id.as_deref().unwrap()),
-            LexDecl::Var(var_decl) => var_decl.as_ref().iter_bound_names(f),
-            LexDecl::Class(class) => class.as_ref().id.as_deref().map(f).unwrap_or(().into()),
-        }
-    }
-}
-
-pub trait WithDecls {
-    fn var_decls(&self) -> &[VarDecl];
-
-    fn lex_decls(&self) -> &[LexDecl];
-
-    fn add_var_decl(&mut self, var_decl: VarDecl);
-
-    fn add_lex_decl(&mut self, lex_decl: LexDecl);
 }
 
 pub struct Program {
@@ -113,8 +86,8 @@ pub struct Program {
     // Whether the program has a "use strict" directive
     pub has_use_strict_directive: bool,
 
-    pub var_decls: Vec<VarDecl>,
-    pub lex_decls: Vec<LexDecl>,
+    pub scope_tree: ScopeTree,
+    pub scope: AstPtr<ScopeNode>,
 }
 
 impl Program {
@@ -123,6 +96,8 @@ impl Program {
         toplevels: Vec<Toplevel>,
         kind: ProgramKind,
         source: Rc<Source>,
+        scope_tree: ScopeTree,
+        scope: AstPtr<ScopeNode>,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Program {
@@ -133,8 +108,8 @@ impl Program {
             source,
             is_strict_mode,
             has_use_strict_directive,
-            var_decls: vec![],
-            lex_decls: vec![],
+            scope_tree,
+            scope,
         }
     }
 }
@@ -143,24 +118,6 @@ impl Program {
 pub enum ProgramKind {
     Script,
     Module,
-}
-
-impl WithDecls for Program {
-    fn var_decls(&self) -> &[VarDecl] {
-        &self.var_decls
-    }
-
-    fn lex_decls(&self) -> &[LexDecl] {
-        &self.lex_decls
-    }
-
-    fn add_var_decl(&mut self, var_decl: VarDecl) {
-        self.var_decls.push(var_decl)
-    }
-
-    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
-        self.lex_decls.push(lex_decl)
-    }
 }
 
 pub enum Toplevel {
@@ -206,6 +163,16 @@ pub enum VarKind {
     Const,
 }
 
+impl VarKind {
+    pub fn binding_kind(&self) -> BindingKind {
+        match self {
+            VarKind::Var => BindingKind::Var,
+            VarKind::Let => BindingKind::Let,
+            VarKind::Const => BindingKind::Const,
+        }
+    }
+}
+
 pub struct VariableDeclaration {
     pub loc: Loc,
     pub kind: VarKind,
@@ -240,6 +207,8 @@ impl VariableDeclarator {
     }
 }
 
+pub type FunctionId = usize;
+
 pub struct Function {
     pub loc: Loc,
     pub id: Option<P<Identifier>>,
@@ -248,8 +217,6 @@ pub struct Function {
     pub is_async: bool,
     pub is_generator: bool,
 
-    pub var_decls: Vec<VarDecl>,
-    pub lex_decls: Vec<LexDecl>,
     pub has_simple_parameter_list: bool,
     pub has_parameter_expressions: bool,
     pub has_duplicate_parameters: bool,
@@ -261,9 +228,55 @@ pub struct Function {
     pub has_use_strict_directive: bool,
     // Whether the function is in strict mode, which could be inherited from surrounding context
     pub is_strict_mode: bool,
+
+    /// Scope node for the function, containing function parameters and the body.
+    pub scope: AstPtr<ScopeNode>,
 }
 
 impl Function {
+    pub fn new_uninit() -> Function {
+        Function {
+            // Default values that will be overwritten by `init`
+            loc: EMPTY_LOC,
+            id: None,
+            params: vec![],
+            body: p(FunctionBody::Block(FunctionBlockBody { loc: EMPTY_LOC, body: vec![] })),
+            is_async: false,
+            is_generator: false,
+            is_strict_mode: false,
+            has_use_strict_directive: false,
+            scope: AstPtr::null(),
+            // Initial values that will not be overwritten by `init`
+            has_simple_parameter_list: false,
+            has_parameter_expressions: false,
+            has_duplicate_parameters: false,
+            is_arguments_object_needed: false,
+        }
+    }
+
+    pub fn init(
+        &mut self,
+        loc: Loc,
+        id: Option<P<Identifier>>,
+        params: Vec<FunctionParam>,
+        body: P<FunctionBody>,
+        is_async: bool,
+        is_generator: bool,
+        is_strict_mode: bool,
+        has_use_strict_directive: bool,
+        scope: AstPtr<ScopeNode>,
+    ) {
+        self.loc = loc;
+        self.id = id;
+        self.params = params;
+        self.body = body;
+        self.is_async = is_async;
+        self.is_generator = is_generator;
+        self.is_strict_mode = is_strict_mode;
+        self.has_use_strict_directive = has_use_strict_directive;
+        self.scope = scope;
+    }
+
     pub fn new(
         loc: Loc,
         id: Option<P<Identifier>>,
@@ -273,8 +286,10 @@ impl Function {
         is_generator: bool,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
+        scope: AstPtr<ScopeNode>,
     ) -> Function {
-        Function {
+        let mut func = Function::new_uninit();
+        func.init(
             loc,
             id,
             params,
@@ -282,32 +297,15 @@ impl Function {
             is_async,
             is_generator,
             is_strict_mode,
-            var_decls: vec![],
-            lex_decls: vec![],
-            has_simple_parameter_list: false,
-            has_parameter_expressions: false,
-            has_duplicate_parameters: false,
-            is_arguments_object_needed: false,
             has_use_strict_directive,
-        }
-    }
-}
-
-impl WithDecls for Function {
-    fn var_decls(&self) -> &[VarDecl] {
-        &self.var_decls
+            scope,
+        );
+        func
     }
 
-    fn lex_decls(&self) -> &[LexDecl] {
-        &self.lex_decls
-    }
-
-    fn add_var_decl(&mut self, var_decl: VarDecl) {
-        self.var_decls.push(var_decl)
-    }
-
-    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
-        self.lex_decls.push(lex_decl)
+    /// Functions can be uniquely determined by their starting source position.
+    pub fn function_id(&self) -> FunctionId {
+        self.loc.start
     }
 }
 
@@ -408,31 +406,8 @@ pub struct Block {
     pub loc: Loc,
     pub body: Vec<Statement>,
 
-    pub lex_decls: Vec<LexDecl>,
-}
-
-impl Block {
-    pub fn new(loc: Loc, body: Vec<Statement>) -> Block {
-        Block { loc, body, lex_decls: vec![] }
-    }
-}
-
-impl WithDecls for Block {
-    fn var_decls(&self) -> &[VarDecl] {
-        panic!("Blocks do not have var decls")
-    }
-
-    fn lex_decls(&self) -> &[LexDecl] {
-        &self.lex_decls
-    }
-
-    fn add_var_decl(&mut self, _: VarDecl) {
-        panic!("Blocks do not have var decls")
-    }
-
-    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
-        self.lex_decls.push(lex_decl)
-    }
+    /// Block scope node for the block.
+    pub scope: AstPtr<ScopeNode>,
 }
 
 pub struct IfStatement {
@@ -447,31 +422,8 @@ pub struct SwitchStatement {
     pub discriminant: P<Expression>,
     pub cases: Vec<SwitchCase>,
 
-    pub lex_decls: Vec<LexDecl>,
-}
-
-impl SwitchStatement {
-    pub fn new(loc: Loc, discriminant: P<Expression>, cases: Vec<SwitchCase>) -> SwitchStatement {
-        SwitchStatement { loc, discriminant, cases, lex_decls: vec![] }
-    }
-}
-
-impl WithDecls for SwitchStatement {
-    fn var_decls(&self) -> &[VarDecl] {
-        panic!("SwitchStatements do not have var decls")
-    }
-
-    fn lex_decls(&self) -> &[LexDecl] {
-        &self.lex_decls
-    }
-
-    fn add_var_decl(&mut self, _: VarDecl) {
-        panic!("SwitchStatements do not have var decls")
-    }
-
-    fn add_lex_decl(&mut self, lex_decl: LexDecl) {
-        self.lex_decls.push(lex_decl)
-    }
+    /// Block scope node for the switch statement body.
+    pub scope: AstPtr<ScopeNode>,
 }
 
 pub struct SwitchCase {
@@ -486,6 +438,9 @@ pub struct ForStatement {
     pub test: Option<P<Expression>>,
     pub update: Option<P<Expression>>,
     pub body: P<Statement>,
+
+    /// Block scope node that contains the for statement variable declarations and the body.
+    pub scope: AstPtr<ScopeNode>,
 }
 
 pub enum ForInit {
@@ -500,6 +455,9 @@ pub struct ForEachStatement {
     pub right: P<Expression>,
     pub body: P<Statement>,
     pub is_await: bool,
+
+    /// Block scope node that contains the for statement variable declarations and the body.
+    pub scope: AstPtr<ScopeNode>,
 }
 
 #[derive(PartialEq)]
@@ -541,6 +499,7 @@ pub struct TryStatement {
 pub struct CatchClause {
     pub loc: Loc,
     pub param: Option<P<Pattern>>,
+    /// Body scope node contains the catch clause parameter binding.
     pub body: P<Block>,
 }
 

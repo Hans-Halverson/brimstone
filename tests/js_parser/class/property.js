@@ -2,27 +2,27 @@
 
 class C { a = b }
 
-class C { 1 = b }
+class C2 { 1 = b }
 
-class C { "prop" = b }
+class C3 { "prop" = b }
 
-class C { [key] = b }
+class C4 { [key] = b }
 
-class C { #key = b }
+class C5 { #key = b }
 
 // Property without initializer
 
-class C { a; b; c };
+class C6 { a; b; c };
 
-class C { 1 }
+class C7 { 1 }
 
-class C { "prop" }
+class C8 { "prop" }
 
-class C { [key] }
+class C9 { [key] }
 
-class C { #key }
+class C10 { #key }
 
-class C {
+class C11 {
   a = b
   c = d
   e = f
@@ -30,13 +30,13 @@ class C {
 
 // Methods
 
-class C { a() {} }
+class C12 { a() {} }
 
-class C { a(b,) {} }
+class C13 { a(b,) {} }
 
-class C { async a() {}; *a() {}; async *a() {} }
+class C14 { async a() {}; *a() {}; async *a() {} }
 
-class C {
+class C15 {
   [a]() {}
   1() {}
   "test"() {}
@@ -44,14 +44,14 @@ class C {
 }
 
 // Keywords as shorthand properties
-class C {
+class C16 {
   get;
   set;
   async;
   static;
 }
 
-class C {
+class C17 {
   get = 1
   set = 1
   async = 1
@@ -59,33 +59,33 @@ class C {
 }
 
 // Keywords as methods
-class C {
+class C18 {
   get() {}
   set() {}
   async() {}
   static() {}
 }
 
-class C {
+class C19 {
   async get() {}
   async set() {}
   async async() {}
   async static() {}
 }
 
-class C {
+class C20 {
   get a() {}
   set a(b) {}
 }
 
-class C {
+class C21 {
   get [a]() {}
   get 1() {}
   get "a"() {}
   get #a() {}
 }
 
-class C {
+class C22 {
   get get() {}
   get set() {}
   set get(x) {}
@@ -94,7 +94,7 @@ class C {
 
 // Static properties
 
-class C {
+class C23 {
   static a
   static a = 1
   static [a] = 1

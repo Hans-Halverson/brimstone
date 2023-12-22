@@ -1,7 +1,7 @@
 // Let declarations
 let a = 1;
-let [a] = 1;
-let {a} = 1;
+let [a2] = 1;
+let {a3} = 1;
 let static = 1;
 let async = 1;
 let await = 1;

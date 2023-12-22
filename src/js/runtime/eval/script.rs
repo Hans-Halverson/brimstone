@@ -3,23 +3,25 @@ use std::{collections::HashSet, mem::size_of, rc::Rc};
 use crate::{
     js::{
         parser::{
-            ast::{self, LexDecl, VarDecl, WithDecls},
+            ast::{self},
+            scope_tree::BindingKind,
             source::Source,
         },
         runtime::{
             completion::{Completion, EvalResult},
             environment::{environment::Environment, global_environment::GlobalEnvironment},
-            error::{syntax_error_, type_error, type_error_},
+            error::{syntax_error, type_error},
             execution_context::{ExecutionContext, ScriptOrModule},
             function::instantiate_function_object,
             gc::{Handle, HandleScope, HeapObject, HeapVisitor},
+            interned_strings::InternedStrings,
             object_descriptor::{ObjectDescriptor, ObjectKind},
             realm::Realm,
             string_value::FlatString,
             Context, HeapPtr,
         },
     },
-    maybe, maybe__, must, set_uninit,
+    maybe__, must, set_uninit,
 };
 
 use super::{pattern::id_string_value, statement::eval_toplevel_list};
@@ -91,36 +93,27 @@ fn global_declaration_instantiation(
     script: &ast::Program,
     mut env: Handle<GlobalEnvironment>,
 ) -> Completion {
-    for lex_decl in script.lex_decls() {
-        maybe__!(lex_decl.iter_bound_names(&mut |id| {
-            let name_value = id_string_value(cx, id);
+    for (name, _) in script.scope.as_ref().iter_lex_decls() {
+        let name_value = InternedStrings::get_str(cx, name);
 
-            if env.has_var_declaration(name_value)
-                || must!(env.has_lexical_declaration(cx, name_value))
-            {
-                return syntax_error_(cx, &format!("redeclaration of {}", name_value));
-            }
+        if env.has_var_declaration(name_value) || must!(env.has_lexical_declaration(cx, name_value))
+        {
+            return syntax_error(cx, &format!("redeclaration of {}", name_value));
+        }
 
-            if maybe!(env.has_restricted_global_property(cx, name_value)) {
-                return syntax_error_(
-                    cx,
-                    &format!("cannot redeclare restricted global property {}", name_value),
-                );
-            }
-
-            ().into()
-        }));
+        if maybe__!(env.has_restricted_global_property(cx, name_value)) {
+            return syntax_error(
+                cx,
+                &format!("cannot redeclare restricted global property {}", name_value),
+            );
+        }
     }
 
-    for var_decl in script.var_decls() {
-        maybe__!(var_decl.iter_bound_names(&mut |id| {
-            let name_value = id_string_value(cx, id);
-            if must!(env.has_lexical_declaration(cx, name_value)) {
-                return syntax_error_(cx, &format!("redeclaration of {}", name_value));
-            }
-
-            ().into()
-        }));
+    for (name, _) in script.scope.as_ref().iter_var_decls() {
+        let name_value = InternedStrings::get_str(cx, name);
+        if must!(env.has_lexical_declaration(cx, name_value)) {
+            return syntax_error(cx, &format!("redeclaration of {}", name_value));
+        }
     }
 
     let mut declared_function_names = HashSet::new();
@@ -128,13 +121,10 @@ fn global_declaration_instantiation(
     let mut functions_to_initialize = vec![];
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
-    for var_decl in script.var_decls().iter().rev() {
-        if let VarDecl::Func(func_ptr) = var_decl {
-            let func = func_ptr.as_ref();
-            let name = &func.id.as_deref().unwrap().name;
-
+    for (name, binding) in script.scope.as_ref().iter_var_decls().rev() {
+        if let BindingKind::Function { func_node, .. } = binding.kind() {
             if declared_function_names.insert(name) {
-                let name_value = id_string_value(cx, func.id.as_deref().unwrap());
+                let name_value = InternedStrings::get_str(cx, name);
                 if !maybe__!(env.can_declare_global_function(cx, name_value)) {
                     return type_error(
                         cx,
@@ -142,7 +132,7 @@ fn global_declaration_instantiation(
                     );
                 }
 
-                functions_to_initialize.push(func);
+                functions_to_initialize.push(func_node.as_ref());
             }
         }
     }
@@ -150,44 +140,25 @@ fn global_declaration_instantiation(
     // Order does not matter for declared var names, despite ordering in spec
     let mut declared_var_names: HashSet<Handle<FlatString>> = HashSet::new();
 
-    for var_decl in script.var_decls() {
-        match var_decl {
-            VarDecl::Var(var_decl) => {
-                maybe__!(var_decl.as_ref().iter_bound_names(&mut |id| {
-                    let name = &id.name;
-                    if !declared_function_names.contains(name) {
-                        let name_value = id_string_value(cx, id);
-                        if !maybe!(env.can_declare_global_var(cx, name_value)) {
-                            return type_error_(
-                                cx,
-                                &format!("cannot declare global var {}", name_value),
-                            );
-                        }
+    for (name, binding) in script.scope.as_ref().iter_var_decls() {
+        if let BindingKind::Var = binding.kind() {
+            if !declared_function_names.contains(name) {
+                let name_value = InternedStrings::get_str(cx, name);
+                if !maybe__!(env.can_declare_global_var(cx, name_value)) {
+                    return type_error(cx, &format!("cannot declare global var {}", name_value));
+                }
 
-                        declared_var_names.insert(name_value.flatten());
-                    }
-
-                    ().into()
-                }));
+                declared_var_names.insert(name_value.flatten());
             }
-            VarDecl::Func(_) => {}
         }
     }
 
-    for lex_decl in script.lex_decls() {
-        match lex_decl {
-            LexDecl::Var(var_decl) if var_decl.as_ref().kind == ast::VarKind::Const => {
-                maybe__!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    env.create_immutable_binding(cx, name_value, true)
-                }))
-            }
-            _ => {
-                maybe__!(lex_decl.iter_bound_names(&mut |id| {
-                    let name_value = id_string_value(cx, id);
-                    env.create_mutable_binding(cx, name_value, false)
-                }))
-            }
+    for (name, binding) in script.scope.as_ref().iter_lex_decls() {
+        let name_value = InternedStrings::get_str(cx, name);
+        if binding.is_const() {
+            maybe__!(env.create_immutable_binding(cx, name_value, true));
+        } else {
+            maybe__!(env.create_mutable_binding(cx, name_value, false));
         }
     }
 

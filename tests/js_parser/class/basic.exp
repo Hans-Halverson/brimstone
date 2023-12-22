@@ -19,20 +19,20 @@
     },
     {
       type: "ClassDeclaration",
-      loc: "3:0-3:20",
+      loc: "3:0-3:21",
       id: {
         type: "Identifier",
-        loc: "3:6-3:7",
-        name: "A",
+        loc: "3:6-3:8",
+        name: "A2",
       },
       superClass: {
         type: "Identifier",
-        loc: "3:16-3:17",
+        loc: "3:17-3:18",
         name: "B",
       },
       body: {
         type: "ClassBody",
-        loc: "3:0-3:20",
+        loc: "3:0-3:21",
         body: [],
       },
     },
@@ -132,8 +132,8 @@
       loc: "19:0-26:1",
       id: {
         type: "Identifier",
-        loc: "19:6-19:7",
-        name: "C",
+        loc: "19:6-19:8",
+        name: "C2",
       },
       superClass: null,
       body: {

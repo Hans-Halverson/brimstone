@@ -2,9 +2,9 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
+use super::scope_tree::BindingKind;
 use super::{
     loc::{find_line_col_for_pos, Loc},
-    scope::NameKind,
     source::Source,
     token::Token,
 };
@@ -40,7 +40,7 @@ pub enum ParseError {
     NullishCoalesceMixedWithLogical,
     HashNotFollowedByIdentifier,
     ForEachInitInvalidVarDecl,
-    NameRedeclaration(String, NameKind),
+    NameRedeclaration(String, BindingKind),
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -184,13 +184,13 @@ impl fmt::Display for ParseError {
             }
             ParseError::NameRedeclaration(name, kind) => {
                 let kind_string = match kind {
-                    NameKind::Var => "var",
-                    NameKind::Const => "const",
-                    NameKind::Let => "let",
-                    NameKind::Function => "function",
-                    NameKind::FunctionParameter => "function parameter",
-                    NameKind::Class => "class",
-                    NameKind::CatchParameter => "catch parameter",
+                    BindingKind::Var => "var",
+                    BindingKind::Const => "const",
+                    BindingKind::Let => "let",
+                    BindingKind::Function { .. } => "function",
+                    BindingKind::FunctionParameter => "function parameter",
+                    BindingKind::Class => "class",
+                    BindingKind::CatchParameter => "catch parameter",
                 };
                 write!(f, "Redeclaration of {} {}", kind_string, name)
             }

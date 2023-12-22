@@ -25,26 +25,26 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "3:0-3:12",
+      loc: "3:0-3:13",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "3:4-3:11",
+          loc: "3:4-3:12",
           id: {
             type: "ArrayPattern",
-            loc: "3:4-3:7",
+            loc: "3:4-3:8",
             elements: [
               {
                 type: "Identifier",
-                loc: "3:5-3:6",
-                name: "a",
+                loc: "3:5-3:7",
+                name: "a2",
               },
             ],
           },
           init: {
             type: "Literal",
-            loc: "3:10-3:11",
+            loc: "3:11-3:12",
             value: 1,
           },
         },
@@ -52,24 +52,24 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "4:0-4:12",
+      loc: "4:0-4:13",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "4:4-4:11",
+          loc: "4:4-4:12",
           id: {
             type: "ObjectPattern",
-            loc: "4:4-4:7",
+            loc: "4:4-4:8",
             properties: [
               {
                 type: "Property",
-                loc: "4:5-4:6",
+                loc: "4:5-4:7",
                 key: null,
                 value: {
                   type: "Identifier",
-                  loc: "4:5-4:6",
-                  name: "a",
+                  loc: "4:5-4:7",
+                  name: "a3",
                 },
                 computed: false,
               },
@@ -77,7 +77,7 @@
           },
           init: {
             type: "Literal",
-            loc: "4:10-4:11",
+            loc: "4:11-4:12",
             value: 1,
           },
         },

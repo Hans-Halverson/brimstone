@@ -107,6 +107,10 @@ pub trait AstVisitor: Sized {
         default_visit_function_body(self, body)
     }
 
+    fn visit_function_block_body(&mut self, block_body: &mut FunctionBlockBody) {
+        default_visit_function_block_body(self, block_body)
+    }
+
     fn visit_class_declaration(&mut self, class_decl: &mut Class) {
         default_visit_class_declaration(self, class_decl)
     }
@@ -460,9 +464,16 @@ pub fn default_visit_function_param<V: AstVisitor>(visitor: &mut V, param: &mut 
 
 pub fn default_visit_function_body<V: AstVisitor>(visitor: &mut V, body: &mut FunctionBody) {
     match body {
-        FunctionBody::Block(ref mut block) => visitor.visit_block(block),
+        FunctionBody::Block(ref mut block_body) => visitor.visit_function_block_body(block_body),
         FunctionBody::Expression(ref mut expr) => visitor.visit_expression(expr),
     }
+}
+
+pub fn default_visit_function_block_body<V: AstVisitor>(
+    visitor: &mut V,
+    body: &mut FunctionBlockBody,
+) {
+    visit_vec!(visitor, body.body, visit_statement);
 }
 
 pub fn default_visit_class_declaration<V: AstVisitor>(visitor: &mut V, class: &mut Class) {

@@ -632,7 +632,7 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn parse_function_block_body(&mut self) -> ParseResult<(Block, bool, bool)> {
+    fn parse_function_block_body(&mut self) -> ParseResult<(FunctionBlockBody, bool, bool)> {
         let start_pos = self.current_start_pos();
 
         // Save state before the first potential directive token is lexed
@@ -666,7 +666,7 @@ impl<'a> Parser<'a> {
         let is_strict_mode = self.in_strict_mode;
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok((Block::new(loc, body), has_use_strict_directive, is_strict_mode))
+        Ok((FunctionBlockBody { loc, body }, has_use_strict_directive, is_strict_mode))
     }
 
     fn parse_function_body_statements(
@@ -2981,7 +2981,7 @@ impl<'a> Parser<'a> {
 
             // Check for static initializer
             if self.token == Token::LeftBrace {
-                let block = self.parse_block()?;
+                let (block, _, _) = self.parse_function_block_body()?;
 
                 let loc = self.mark_loc(start_pos);
 

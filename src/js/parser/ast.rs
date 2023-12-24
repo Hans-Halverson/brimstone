@@ -336,8 +336,13 @@ impl FunctionParam {
 }
 
 pub enum FunctionBody {
-    Block(Block),
+    Block(FunctionBlockBody),
     Expression(Expression),
+}
+
+pub struct FunctionBlockBody {
+    pub loc: Loc,
+    pub body: Vec<Statement>,
 }
 
 pub struct Class {

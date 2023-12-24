@@ -238,9 +238,15 @@ impl<'a> Printer<'a> {
 
     fn print_function_body(&mut self, body: &FunctionBody) {
         match body {
-            FunctionBody::Block(block) => self.print_block(block),
+            FunctionBody::Block(block) => self.print_function_block_body(block),
             FunctionBody::Expression(expr) => self.print_expression(&expr),
         }
+    }
+
+    fn print_function_block_body(&mut self, block: &FunctionBlockBody) {
+        self.start_node("Block", &block.loc);
+        self.array_property("body", &block.body, Printer::print_statement);
+        self.end_node();
     }
 
     fn print_class(&mut self, class: &Class, name: &str) {

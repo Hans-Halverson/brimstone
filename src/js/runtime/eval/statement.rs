@@ -243,7 +243,7 @@ pub fn eval_named_anonymous_function_or_expression(
     name: Handle<PropertyKey>,
 ) -> EvalResult<Handle<Value>> {
     match expr {
-        ast::Expression::Function(func @ ast::Function { id: None, .. }) => {
+        ast::Expression::Function(func) if func.id.is_none() => {
             instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
         }
         ast::Expression::ArrowFunction(func) => {
@@ -265,7 +265,7 @@ pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
     if_predicate: F,
 ) -> EvalResult<Handle<Value>> {
     match expr {
-        ast::Expression::Function(func @ ast::Function { id: None, .. }) if if_predicate() => {
+        ast::Expression::Function(func) if func.id.is_none() && if_predicate() => {
             instantiate_ordinary_function_expression(cx, &func, Some(name)).into()
         }
         ast::Expression::ArrowFunction(func) if if_predicate() => {

@@ -515,7 +515,7 @@ impl<'a> Parser<'a> {
         Ok(VariableDeclaration { loc, kind, declarations })
     }
 
-    fn parse_function(&mut self, is_decl: bool) -> ParseResult<Function> {
+    fn parse_function(&mut self, is_decl: bool) -> ParseResult<P<Function>> {
         let start_pos = self.current_start_pos();
 
         // Function can be prefixed by async keyword
@@ -566,7 +566,7 @@ impl<'a> Parser<'a> {
         self.allow_await = did_allow_await;
         self.allow_yield = did_allow_yield;
 
-        Ok(func)
+        Ok(p(func))
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
@@ -1218,7 +1218,7 @@ impl<'a> Parser<'a> {
                     self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
-                return Ok(p(Expression::ArrowFunction(Function::new(
+                return Ok(p(Expression::ArrowFunction(p(Function::new(
                     loc,
                     /* id */ None,
                     params,
@@ -1227,7 +1227,7 @@ impl<'a> Parser<'a> {
                     /* is_generator */ false,
                     is_strict_mode,
                     has_use_strict_directive,
-                ))));
+                )))));
             }
         }
 
@@ -1253,7 +1253,7 @@ impl<'a> Parser<'a> {
         let (body, has_use_strict_directive, is_strict_mode) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::ArrowFunction(Function::new(
+        Ok(p(Expression::ArrowFunction(p(Function::new(
             loc,
             /* id */ None,
             params,
@@ -1262,7 +1262,7 @@ impl<'a> Parser<'a> {
             /* is_generator */ false,
             is_strict_mode,
             has_use_strict_directive,
-        ))))
+        )))))
     }
 
     fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, bool, bool)> {
@@ -2374,9 +2374,9 @@ impl<'a> Parser<'a> {
         self.advance_regexp_literal()?;
 
         if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
-            let raw = raw.clone();
-            let pattern = pattern.clone();
-            let flags_string = flags.clone();
+            let raw = p(raw.clone());
+            let pattern = p(pattern.clone());
+            let flags_string = p(flags.clone());
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);
@@ -2391,7 +2391,7 @@ impl<'a> Parser<'a> {
             // Start position of pattern is offset by one to account for the leading `/`
             let pattern_start_pos = start_pos + 1;
             let lexer_stream = Utf8LexerStream::new(pattern_start_pos, source, pattern.as_bytes());
-            let regexp = RegExpParser::parse_regexp(lexer_stream, flags)?;
+            let regexp = p(RegExpParser::parse_regexp(lexer_stream, flags)?);
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {
@@ -2891,7 +2891,7 @@ impl<'a> Parser<'a> {
             is_computed,
             is_method: true,
             kind,
-            value: Some(p(Expression::Function(Function::new(
+            value: Some(p(Expression::Function(p(Function::new(
                 loc,
                 /* id */ None,
                 params,
@@ -2900,7 +2900,7 @@ impl<'a> Parser<'a> {
                 is_generator,
                 is_strict_mode,
                 has_use_strict_directive,
-            )))),
+            ))))),
         };
 
         self.allow_await = did_allow_await;
@@ -3076,7 +3076,7 @@ impl<'a> Parser<'a> {
         let Property { key, value, is_computed, kind, .. } = property;
 
         let func_value = if let Expression::Function(func) = *value.unwrap() {
-            p(func)
+            func
         } else {
             unreachable!("method properties must have function expression")
         };
@@ -3916,5 +3916,5 @@ pub fn parse_function_for_function_constructor(source: &Rc<Source>) -> ParseResu
     let mut parser = Parser::new(lexer);
     parser.advance()?;
 
-    Ok(p(parser.parse_function(true)?))
+    Ok(parser.parse_function(true)?)
 }

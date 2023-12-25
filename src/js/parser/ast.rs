@@ -178,7 +178,7 @@ pub struct Identifier {
 
 pub enum Statement {
     VarDecl(VariableDeclaration),
-    FuncDecl(Function),
+    FuncDecl(P<Function>),
     ClassDecl(Class),
     Expr(ExpressionStatement),
     Block(Block),
@@ -604,8 +604,8 @@ pub enum Expression {
     Sequence(SequenceExpression),
     Array(ArrayExpression),
     Object(ObjectExpression),
-    Function(Function),
-    ArrowFunction(Function),
+    Function(P<Function>),
+    ArrowFunction(P<Function>),
     Class(Class),
     This(Loc),
     Await(AwaitExpression),
@@ -649,10 +649,10 @@ pub struct BigIntLiteral {
 
 pub struct RegExpLiteral {
     pub loc: Loc,
-    pub raw: Wtf8String,
-    pub pattern: Wtf8String,
-    pub flags: Wtf8String,
-    pub regexp: RegExp,
+    pub raw: P<Wtf8String>,
+    pub pattern: P<Wtf8String>,
+    pub flags: P<Wtf8String>,
+    pub regexp: P<RegExp>,
 }
 
 #[derive(PartialEq)]

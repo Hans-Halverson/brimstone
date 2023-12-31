@@ -497,7 +497,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(Statement::Labeled(LabeledStatement {
                             loc,
-                            label: Label::new(p(label)),
+                            label: Label::new(label.loc, label.name),
                             body: p(body),
                         }));
                     }
@@ -691,44 +691,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
-        // Read all function params between the parentheses
-        let mut params = vec![];
         self.expect(Token::LeftParen)?;
-
-        while self.token != Token::RightParen {
-            if self.token == Token::Spread {
-                let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
-                params.push(FunctionParam::Rest(rest_element));
-
-                // Trailing commas are not allowed after rest elements, nor are any other params
-                if self.token == Token::Comma {
-                    return self.error(self.loc, ParseError::RestTrailingComma);
-                } else {
-                    break;
-                }
-            }
-
-            let pattern =
-                self.parse_pattern_including_assignment_pattern(BindingKind::FunctionParameter)?;
-            params.push(FunctionParam::Pattern(pattern));
-
-            if self.token == Token::Comma {
-                self.advance()?;
-            } else {
-                break;
-            }
-        }
-
+        let params = self.parse_function_params_until_terminator(Token::RightParen)?;
         self.expect(Token::RightParen)?;
 
         Ok(params)
     }
 
-    fn parse_function_params_without_parens(&mut self) -> ParseResult<Vec<FunctionParam>> {
-        // Read all function params until EOF
+    fn parse_function_params_until_terminator(
+        &mut self,
+        terminator: Token,
+    ) -> ParseResult<Vec<FunctionParam>> {
+        // Read all function params until the terminator token
         let mut params = vec![];
 
-        while self.token != Token::Eof {
+        while self.token != terminator {
             if self.token == Token::Spread {
                 let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
                 params.push(FunctionParam::Rest(rest_element));
@@ -753,6 +730,10 @@ impl<'a> Parser<'a> {
         }
 
         Ok(params)
+    }
+
+    fn parse_function_params_without_parens(&mut self) -> ParseResult<Vec<FunctionParam>> {
+        self.parse_function_params_until_terminator(Token::Eof)
     }
 
     fn parse_function_block_body(&mut self) -> ParseResult<(FunctionBlockBody, bool, bool)> {
@@ -1236,7 +1217,8 @@ impl<'a> Parser<'a> {
         let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            let label = Label::new(p(self.parse_label_identifier()?));
+            let id = self.parse_label_identifier()?;
+            let label = Label::new(id.loc, id.name);
             self.expect_semicolon()?;
             Some(label)
         };
@@ -1253,7 +1235,8 @@ impl<'a> Parser<'a> {
         let label = if self.maybe_expect_semicolon()? {
             None
         } else {
-            let label = Label::new(p(self.parse_label_identifier()?));
+            let id = self.parse_label_identifier()?;
+            let label = Label::new(id.loc, id.name);
             self.expect_semicolon()?;
             Some(label)
         };
@@ -3646,10 +3629,11 @@ impl<'a> Parser<'a> {
                 if self.token == Token::As {
                     self.advance()?;
 
+                    let id = ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name });
                     let local = p(self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
-                    ImportNamedSpecifier { loc, imported: Some(p(ModuleName::Id(id))), local }
+                    ImportNamedSpecifier { loc, imported: Some(p(id)), local }
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
@@ -3692,12 +3676,12 @@ impl<'a> Parser<'a> {
                 // Parse list of specifiers between braces
                 while self.token != Token::RightBrace {
                     let start_pos = self.current_start_pos();
-                    let local = p(self.parse_module_name()?);
+                    let local = p(self.parse_identifier_reference()?);
 
                     // Specifiers optionally have an export alias
                     let exported = if self.token == Token::As {
                         self.advance()?;
-                        Some(p(self.parse_module_name()?))
+                        Some(p(self.parse_export_module_name()?))
                     } else {
                         None
                     };
@@ -3739,7 +3723,7 @@ impl<'a> Parser<'a> {
                 // Optional exported alias
                 let exported = if self.token == Token::As {
                     self.advance()?;
-                    Some(p(self.parse_module_name()?))
+                    Some(p(self.parse_export_module_name()?))
                 } else {
                     None
                 };
@@ -3810,14 +3794,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_module_name(&mut self) -> ParseResult<ModuleName> {
+    fn parse_export_module_name(&mut self) -> ParseResult<ModuleName> {
         if let Token::StringLiteral(value) = &self.token {
             let imported =
                 ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
             self.advance()?;
             Ok(imported)
         } else if let Some(id) = self.parse_identifier_name()? {
-            Ok(ModuleName::Id(id))
+            Ok(ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name }))
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }

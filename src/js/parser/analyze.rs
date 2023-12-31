@@ -926,12 +926,12 @@ impl Analyzer {
         let mut labels = vec![];
         // Keep track of duplicate labels so that we don't pop the duplicate labels at the end
         let is_label_duplicate = self.visit_label_def(stmt, label_id);
-        labels.push((stmt.label.label.name.clone(), is_label_duplicate));
+        labels.push((stmt.label.name.clone(), is_label_duplicate));
 
         let mut inner_stmt = stmt.body.as_mut();
         while let Statement::Labeled(stmt) = inner_stmt {
             let is_label_duplicate = self.visit_label_def(stmt, label_id);
-            labels.push((stmt.label.label.name.clone(), is_label_duplicate));
+            labels.push((stmt.label.name.clone(), is_label_duplicate));
 
             inner_stmt = stmt.body.as_mut()
         }
@@ -967,11 +967,11 @@ impl Analyzer {
     }
 
     fn visit_label_def(&mut self, stmt: &mut LabeledStatement, label_id: LabelId) -> bool {
-        let label_name = &stmt.label.label.name;
+        let label_name = &stmt.label.name;
         let is_duplicate = self.labels.contains_key(label_name);
 
         if is_duplicate {
-            self.emit_error(stmt.label.label.loc, ParseError::DuplicateLabel);
+            self.emit_error(stmt.label.loc, ParseError::DuplicateLabel);
         } else {
             self.labels
                 .insert(label_name.clone(), LabelInfo { label_id, is_continue_target: false });
@@ -982,7 +982,7 @@ impl Analyzer {
         // Annex B: Always error on labeled function declarations in strict mode
         if self.is_in_strict_mode_context() {
             if let Statement::FuncDecl(_) = stmt.body.as_ref() {
-                self.emit_error(stmt.label.label.loc, ParseError::InvalidLabeledFunction(true));
+                self.emit_error(stmt.label.loc, ParseError::InvalidLabeledFunction(true));
             }
         }
 
@@ -1001,10 +1001,7 @@ impl Analyzer {
 
             if let Statement::FuncDecl(_) = current_labeled.body.as_ref() {
                 if !self.is_in_strict_mode_context() {
-                    self.emit_error(
-                        labeled.label.label.loc,
-                        ParseError::InvalidLabeledFunction(false),
-                    )
+                    self.emit_error(labeled.label.loc, ParseError::InvalidLabeledFunction(false))
                 }
             }
         }
@@ -1012,10 +1009,10 @@ impl Analyzer {
 
     fn visit_label_use(&mut self, label: Option<&mut Label>, is_continue: bool) {
         if let Some(label) = label {
-            match self.labels.get(&label.label.name) {
-                None => self.emit_error(label.label.loc, ParseError::LabelNotFound),
+            match self.labels.get(&label.name) {
+                None => self.emit_error(label.loc, ParseError::LabelNotFound),
                 Some(label_info) if is_continue && !label_info.is_continue_target => {
-                    self.emit_error(label.label.loc, ParseError::LabelNotFound)
+                    self.emit_error(label.loc, ParseError::LabelNotFound)
                 }
                 Some(label_info) => {
                     label.id = label_info.label_id;

@@ -9,7 +9,7 @@ export {a} from 'b'
 
 export {a as b, c, d as e}
 
-export {'a' as 'b', 'c'};
+export {a as 'b'};
 
 export var a = 1;
 export let a2 = 1;

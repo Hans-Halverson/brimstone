@@ -477,7 +477,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_label(&mut self, label: &Label) {
-        self.print_identifier(&label.label)
+        self.print_identifier_parts(&label.loc, &label.name);
     }
 
     fn print_empty_statement(&mut self, loc: &Loc) {
@@ -953,8 +953,12 @@ impl<'a> Printer<'a> {
     }
 
     fn print_identifier(&mut self, id: &Identifier) {
-        self.start_node("Identifier", &id.loc);
-        self.property("name", &id.name, Printer::print_string);
+        self.print_identifier_parts(&id.loc, &id.name);
+    }
+
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &String) {
+        self.start_node("Identifier", loc);
+        self.property("name", name, Printer::print_string);
         self.end_node();
     }
 
@@ -1090,13 +1094,13 @@ impl<'a> Printer<'a> {
     fn print_export_specifier(&mut self, spec: &ExportSpecifier) {
         self.start_node("ExportSpecifier", &spec.loc);
         self.property("exported", spec.exported.as_ref(), Printer::print_optional_module_name);
-        self.property("local", spec.local.as_ref(), Printer::print_module_name);
+        self.property("local", spec.local.as_ref(), Printer::print_identifier);
         self.end_node();
     }
 
     fn print_module_name(&mut self, module_name: &ModuleName) {
         match module_name {
-            ModuleName::Id(id) => self.print_identifier(id),
+            ModuleName::Id(id) => self.print_identifier_parts(&id.loc, &id.name),
             ModuleName::String(lit) => self.print_string_literal(lit),
         }
     }

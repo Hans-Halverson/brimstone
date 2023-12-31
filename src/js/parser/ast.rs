@@ -532,13 +532,14 @@ pub struct LabeledStatement {
 pub type LabelId = u16;
 
 pub struct Label {
-    pub label: P<Identifier>,
+    pub loc: Loc,
+    pub name: String,
     pub id: LabelId,
 }
 
 impl Label {
-    pub fn new(label: P<Identifier>) -> Label {
-        Label { label, id: 0 }
+    pub fn new(loc: Loc, name: String) -> Label {
+        Label { loc, name, id: 0 }
     }
 }
 
@@ -1056,7 +1057,7 @@ pub struct ExportNamedDeclaration {
 
 pub struct ExportSpecifier {
     pub loc: Loc,
-    pub local: P<ModuleName>,
+    pub local: P<Identifier>,
     pub exported: Option<P<ModuleName>>,
 }
 
@@ -1073,6 +1074,11 @@ pub struct ExportAllDeclaration {
 }
 
 pub enum ModuleName {
-    Id(Identifier),
+    Id(ModuleNameIdentifier),
     String(StringLiteral),
+}
+
+pub struct ModuleNameIdentifier {
+    pub loc: Loc,
+    pub name: String,
 }

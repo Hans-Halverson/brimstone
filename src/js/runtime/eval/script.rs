@@ -4,6 +4,7 @@ use crate::{
     js::{
         parser::{
             ast::{self},
+            parser::ParseProgramResult,
             scope_tree::BindingKind,
             source::Source,
         },
@@ -31,11 +32,15 @@ use super::{pattern::id_string_value, statement::eval_toplevel_list};
 pub struct Script {
     descriptor: HeapPtr<ObjectDescriptor>,
     realm: HeapPtr<Realm>,
-    script_node: Rc<ast::Program>,
+    script_node: Rc<ParseProgramResult>,
 }
 
 impl Script {
-    pub fn new(cx: Context, script_node: Rc<ast::Program>, realm: Handle<Realm>) -> Handle<Script> {
+    pub fn new(
+        cx: Context,
+        script_node: Rc<ParseProgramResult>,
+        realm: Handle<Realm>,
+    ) -> Handle<Script> {
         let mut script = cx.alloc_uninit::<Script>();
 
         set_uninit!(script.descriptor, cx.base_descriptors.get(ObjectKind::Script));
@@ -46,14 +51,18 @@ impl Script {
     }
 
     pub fn source(&self) -> &Rc<Source> {
-        &self.script_node.source
+        &self.script_node.program.source
     }
 }
 
 /// 16.1.6 ScriptEvaluation
-pub fn eval_script(cx: Context, program: Rc<ast::Program>, realm: Handle<Realm>) -> Completion {
+pub fn eval_script(
+    cx: Context,
+    parse_result: Rc<ParseProgramResult>,
+    realm: Handle<Realm>,
+) -> Completion {
     HandleScope::new(cx, |mut cx| {
-        let script = Script::new(cx, program.clone(), realm);
+        let script = Script::new(cx, parse_result.clone(), realm);
 
         let global_env = realm.global_env();
         let global_env_object = global_env.into_dyn_env();
@@ -66,15 +75,15 @@ pub fn eval_script(cx: Context, program: Rc<ast::Program>, realm: Handle<Realm>)
             /* lexical_env */ Some(global_env_object),
             /* variable_env */ Some(global_env_object),
             /* private_env */ None,
-            program.has_use_strict_directive,
+            parse_result.program.has_use_strict_directive,
         );
 
         cx.push_execution_context(script_ctx);
 
-        let mut result = global_declaration_instantiation(cx, &program, global_env);
+        let mut result = global_declaration_instantiation(cx, &parse_result.program, global_env);
 
         if result.is_normal() {
-            result = eval_toplevel_list(cx, &program.toplevels);
+            result = eval_toplevel_list(cx, &parse_result.program.toplevels);
         }
 
         if result.is_empty() {

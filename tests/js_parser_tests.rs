@@ -56,13 +56,13 @@ fn process_snapshot_test_file(env: &mut TestEnv, path: &Path) -> GenericResult {
 
     let source = Rc::new(js::parser::source::Source::new_from_file(path_str)?);
 
-    let ast = if path_str.contains("module") {
+    let parse_result = if path_str.contains("module") {
         js::parser::parse_module(&source)?
     } else {
         js::parser::parse_script(&source)?
     };
 
-    let actual = js::parser::print_program(&ast, &source);
+    let actual = js::parser::print_program(&parse_result.program, &source);
 
     let expected = if exp_path.exists() {
         fs::read_to_string(&exp_path)?

@@ -10,9 +10,7 @@ use super::lexer_stream::Utf8LexerStream;
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
-use super::scope_tree::{
-    BindingKind, SavedScopeTreeBuilderState, ScopeNode, ScopeNodeKind, ScopeTree, ScopeTreeBuilder,
-};
+use super::scope_tree::{AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree};
 use super::source::Source;
 use super::token::Token;
 
@@ -91,7 +89,7 @@ struct Parser<'a> {
     /// Whether the parser is currently in a context where an in expression is allowed
     allow_in: bool,
     /// The scope builder is used to build the scope tree while parsing.
-    scope_builder: ScopeTreeBuilder,
+    scope_builder: ScopeTree,
     /// The program kind that is currently being parsed - script vs module.
     program_kind: ProgramKind,
 }
@@ -99,7 +97,7 @@ struct Parser<'a> {
 /// A save point for the parser, can be used to restore the parser to a particular position.
 struct ParserSaveState {
     saved_lexer_state: SavedLexerState,
-    saved_scope_builder_state: SavedScopeTreeBuilderState,
+    saved_scope_builder_state: SavedScopeTreeState,
     token: Token,
     loc: Loc,
     prev_loc: Loc,
@@ -117,7 +115,7 @@ fn swap_and_save<T: Copy>(reference: &mut T, new_value: T) -> T {
 
 impl<'a> Parser<'a> {
     // Must prime parser by calling advance before using.
-    fn new(lexer: Lexer<'a>) -> Parser<'a> {
+    fn new(lexer: Lexer<'a>, scope_builder: ScopeTree) -> Parser<'a> {
         Parser {
             lexer,
             token: Token::Eof,
@@ -127,7 +125,7 @@ impl<'a> Parser<'a> {
             allow_await: false,
             allow_yield: false,
             allow_in: true,
-            scope_builder: ScopeTreeBuilder::new_global(),
+            scope_builder,
             program_kind: ProgramKind::Script,
         }
     }
@@ -249,11 +247,13 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
-    fn add_binding(&mut self, id: &Identifier, kind: BindingKind) -> ParseResult<()> {
-        if let Err(error) = self.scope_builder.add_binding(&id.name, kind) {
-            self.error(id.loc, error)
-        } else {
-            Ok(())
+    fn add_binding(&mut self, id: &mut Identifier, kind: BindingKind) -> ParseResult<()> {
+        match self.scope_builder.add_binding(&id.name, kind) {
+            Ok(scope) => {
+                id.scope = Some(scope);
+                Ok(())
+            }
+            Err(error) => self.error(id.loc, error),
         }
     }
 
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_script(mut self, initial_state: ParserSaveState) -> ParseResult<Program> {
+    fn parse_script(mut self, initial_state: ParserSaveState) -> ParseResult<ParseProgramResult> {
         self.program_kind = ProgramKind::Script;
 
         let has_use_strict_directive = self.parse_directive_prologue()?;
@@ -313,18 +313,21 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(0);
 
         // Retrieve the global scope node
-        let scope = self.scope_builder.get_node_ptr(0);
+        let scope = self.scope_builder.get_ast_node_ptr(0);
 
-        Ok(Program::new(
+        let program = Program::new(
             loc,
             toplevels,
             ProgramKind::Script,
             self.lexer.source.clone(),
-            self.scope_builder.finish(),
             scope,
             self.in_strict_mode,
             has_use_strict_directive,
-        ))
+        );
+
+        let scope_tree = self.scope_builder.finish_ast_scope_tree();
+
+        Ok(ParseProgramResult { program, scope_tree })
     }
 
     fn parse_directive_prologue(&mut self) -> ParseResult<bool> {
@@ -351,7 +354,7 @@ impl<'a> Parser<'a> {
         Ok(has_use_strict_directive)
     }
 
-    fn parse_module(mut self) -> ParseResult<Program> {
+    fn parse_module(mut self) -> ParseResult<ParseProgramResult> {
         self.program_kind = ProgramKind::Module;
 
         // Modules are always in strict mode
@@ -373,18 +376,21 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(0);
 
         // Retrieve the global scope node
-        let scope = self.scope_builder.get_node_ptr(0);
+        let scope = self.scope_builder.get_ast_node_ptr(0);
 
-        Ok(Program::new(
+        let program = Program::new(
             loc,
             toplevels,
             ProgramKind::Module,
             self.lexer.source.clone(),
-            self.scope_builder.finish(),
             scope,
             self.in_strict_mode,
             /* has_use_strict_directive */ false,
-        ))
+        );
+
+        let scope_tree = self.scope_builder.finish_ast_scope_tree();
+
+        Ok(ParseProgramResult { program, scope_tree })
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -497,7 +503,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(Statement::Labeled(LabeledStatement {
                             loc,
-                            label: Label::new(label.loc, label.name),
+                            label: p(Label::new(label.loc, label.name)),
                             body: p(body),
                         }));
                     }
@@ -813,7 +819,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a block but do not perform scope management. Instead use the scope node provided to
     /// the function, and let caller handle scope management.
-    fn parse_block_custom_scope(&mut self, scope: AstPtr<ScopeNode>) -> ParseResult<Block> {
+    fn parse_block_custom_scope(&mut self, scope: AstPtr<AstScopeNode>) -> ParseResult<Block> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -1021,7 +1027,7 @@ impl<'a> Parser<'a> {
         &mut self,
         init: Option<P<ForInit>>,
         start_pos: Pos,
-        scope: AstPtr<ScopeNode>,
+        scope: AstPtr<AstScopeNode>,
     ) -> ParseResult<Statement> {
         let test = match self.token {
             Token::Semicolon => None,
@@ -1046,7 +1052,7 @@ impl<'a> Parser<'a> {
         left: P<ForEachInit>,
         start_pos: Pos,
         is_await: bool,
-        scope: AstPtr<ScopeNode>,
+        scope: AstPtr<AstScopeNode>,
     ) -> ParseResult<Statement> {
         let kind = match self.token {
             Token::In => ForEachKind::In,
@@ -1120,11 +1126,14 @@ impl<'a> Parser<'a> {
         let object = self.parse_expression()?;
         self.expect(Token::RightParen)?;
 
+        // With statements start a new special with scope to mark with boundary
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::With);
         let body = p(self.parse_statement()?);
+        self.scope_builder.exit_scope();
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::With(WithStatement { loc, object, body }))
+        Ok(Statement::With(WithStatement { loc, object, body, scope }))
     }
 
     fn parse_try_statement(&mut self) -> ParseResult<Statement> {
@@ -1360,7 +1369,10 @@ impl<'a> Parser<'a> {
             // Special case for when async is actually the single parameter: async => body
             if self.token == Token::Arrow {
                 self.advance()?;
-                let async_id = Identifier { loc: async_loc, name: "async".to_owned() };
+
+                let mut async_id = Identifier::new(async_loc, "async".to_owned());
+                self.add_binding(&mut async_id, BindingKind::FunctionParameter)?;
+
                 let params = vec![FunctionParam::Pattern(Pattern::Id(async_id))];
                 let (body, has_use_strict_directive, is_strict_mode) =
                     self.parse_arrow_function_body()?;
@@ -2333,10 +2345,8 @@ impl<'a> Parser<'a> {
                     // `async [newline] id` is an `async` identifier with ASI followed by another
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
-                        return Ok(p(Expression::Id(Identifier {
-                            loc: async_loc,
-                            name: String::from("async"),
-                        })));
+                        let async_id = Identifier::new(async_loc, "async".to_owned());
+                        return Ok(p(Expression::Id(async_id)));
                     }
 
                     // If followed by an identifier this is `async id`
@@ -2353,10 +2363,8 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
-                        return Ok(p(Expression::Id(Identifier {
-                            loc: async_loc,
-                            name: String::from("async"),
-                        })));
+                        let async_id = Identifier::new(async_loc, "async".to_owned());
+                        return Ok(p(Expression::Id(async_id)));
                     }
                 }
 
@@ -2375,10 +2383,10 @@ impl<'a> Parser<'a> {
         &mut self,
         binding_kind: Option<BindingKind>,
     ) -> ParseResult<Identifier> {
-        let id = self.parse_identifier()?;
+        let mut id = self.parse_identifier()?;
 
         if let Some(binding_kind) = binding_kind {
-            self.add_binding(&id, binding_kind)?;
+            self.add_binding(&mut id, binding_kind)?;
         }
 
         Ok(id)
@@ -2399,12 +2407,12 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let name = name.clone();
                 self.advance()?;
-                Ok(Identifier { loc, name })
+                Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
                 let name = self.token.to_string();
                 self.advance()?;
-                Ok(Identifier { loc, name })
+                Ok(Identifier::new(loc, name))
             }
         } else {
             self.error_unexpected_token(self.loc, &self.token)
@@ -2449,7 +2457,7 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let name = name.clone();
                 self.advance()?;
-                Ok(Some(Identifier { loc, name }))
+                Ok(Some(Identifier::new(loc, name)))
             }
             // All keywords can be uses as an identifier name
             Token::Var
@@ -2503,7 +2511,7 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let name = self.token.to_string();
                 self.advance()?;
-                Ok(Some(Identifier { loc, name }))
+                Ok(Some(Identifier::new(loc, name)))
             }
             _ => Ok(None),
         }
@@ -2729,8 +2737,9 @@ impl<'a> Parser<'a> {
 
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
-                    let name =
-                        p(Expression::Id(Identifier { loc: id_loc, name: id_token.to_string() }));
+                    let id = Identifier::new(id_loc, id_token.to_string());
+                    let name = p(Expression::Id(id));
+
                     return self.parse_method_property(
                         name,
                         start_pos,
@@ -2746,8 +2755,9 @@ impl<'a> Parser<'a> {
                 let is_init_property = self.is_property_initializer(prop_context)
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
-                    let name =
-                        p(Expression::Id(Identifier { loc: id_loc, name: id_token.to_string() }));
+                    let id = Identifier::new(id_loc, id_token.to_string());
+                    let name = p(Expression::Id(id));
+
                     return self.parse_init_property(
                         name,
                         start_pos,
@@ -2780,8 +2790,9 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let name =
-                    p(Expression::Id(Identifier { loc: async_loc, name: String::from("async") }));
+                let async_id = Identifier::new(async_loc, "async".to_owned());
+                let name = p(Expression::Id(async_id));
+
                 return self.parse_method_property(
                     name,
                     start_pos,
@@ -2797,8 +2808,9 @@ impl<'a> Parser<'a> {
             let is_init_property = self.is_property_initializer(prop_context)
                 || self.is_pattern_initializer_in_object(prop_context);
             if is_init_property || self.is_property_end(prop_context) {
-                let name =
-                    p(Expression::Id(Identifier { loc: async_loc, name: String::from("async") }));
+                let async_id = Identifier::new(async_loc, "async".to_owned());
+                let name = p(Expression::Id(async_id));
+
                 return self.parse_init_property(
                     name,
                     start_pos,
@@ -3196,8 +3208,8 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let name =
-                    p(Expression::Id(Identifier { loc: static_loc, name: String::from("static") }));
+                let static_id = Identifier::new(static_loc, "static".to_owned());
+                let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
                     name,
@@ -3218,8 +3230,8 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let name =
-                    p(Expression::Id(Identifier { loc: static_loc, name: String::from("static") }));
+                let static_id = Identifier::new(static_loc, "static".to_owned());
+                let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
                     name,
@@ -3451,13 +3463,13 @@ impl<'a> Parser<'a> {
 
         // Shorthand property
         if property_name.is_shorthand {
-            let value = if let Expression::Id(id) = *property_name.key {
+            let value = if let Expression::Id(mut id) = *property_name.key {
                 if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
 
                 // Add binding to scope since this is a shorthand property
-                self.add_binding(&id, binding_kind)?;
+                self.add_binding(&mut id, binding_kind)?;
 
                 Pattern::Id(id)
             } else {
@@ -4041,10 +4053,20 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
+pub struct ParseProgramResult {
+    pub program: Program,
+    pub scope_tree: ScopeTree,
+}
+
+pub struct ParseFunctionResult {
+    pub function: P<Function>,
+    pub scope_tree: ScopeTree,
+}
+
+pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
 
     let initial_state = parser.save();
     parser.advance()?;
@@ -4052,10 +4074,10 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<Program> {
     Ok(parser.parse_script(initial_state)?)
 }
 
-pub fn parse_module(source: &Rc<Source>) -> ParseResult<Program> {
+pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
     parser.advance()?;
 
     Ok(parser.parse_module()?)
@@ -4064,10 +4086,10 @@ pub fn parse_module(source: &Rc<Source>) -> ParseResult<Program> {
 pub fn parse_script_for_eval(
     source: &Rc<Source>,
     inherit_strict_mode: bool,
-) -> ParseResult<Program> {
+) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);
@@ -4085,7 +4107,7 @@ pub fn parse_function_params_for_function_constructor(
 ) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4105,7 +4127,7 @@ pub fn parse_function_body_for_function_constructor(
 ) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4121,14 +4143,14 @@ pub fn parse_function_body_for_function_constructor(
 
 pub fn parse_function_for_function_constructor(
     source: &Rc<Source>,
-) -> ParseResult<(P<Function>, ScopeTree)> {
+) -> ParseResult<ParseFunctionResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global());
     parser.advance()?;
 
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;
-    let scope_tree = parser.scope_builder.finish();
+    let scope_tree = parser.scope_builder.finish_ast_scope_tree();
 
-    Ok((func_node, scope_tree))
+    Ok(ParseFunctionResult { function: func_node, scope_tree })
 }

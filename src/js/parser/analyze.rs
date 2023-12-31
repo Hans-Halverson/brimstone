@@ -4,20 +4,30 @@ use std::{
 };
 
 use crate::{
-    js::{parser::parse_error::InvalidDuplicateParametersReason, runtime::EvalResult},
+    js::{
+        parser::{parse_error::InvalidDuplicateParametersReason, scope_tree::VMLocation},
+        runtime::EvalResult,
+    },
     must, visit_opt, visit_vec,
 };
 
 use super::{
-    ast::*, ast_visitor::*, loc::Loc, source::Source, LocalizedParseError, LocalizedParseErrors,
-    ParseError,
+    ast::*,
+    ast_visitor::*,
+    loc::Loc,
+    parser::{ParseFunctionResult, ParseProgramResult},
+    scope_tree::{AstScopeNode, ScopeNodeId, ScopeTree},
+    source::Source,
+    LocalizedParseError, LocalizedParseErrors, ParseError,
 };
 
-pub struct Analyzer {
+pub struct Analyzer<'a> {
     // Current source that is being analyzed
     source: Rc<Source>,
     // Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
+    /// Scope tree for the AST that is being analyzed
+    scope_tree: &'a mut ScopeTree,
     // Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     // Set of labels defined where the visitor is currently in
@@ -33,6 +43,8 @@ pub struct Analyzer {
     function_stack: Vec<FunctionStackEntry>,
     // The classes that the visitor is currently inside, if any
     class_stack: Vec<ClassStackEntry>,
+    /// Stack of scopes that the visitor is currently inside
+    scope_stack: Vec<AstPtr<AstScopeNode>>,
     // Whether the "arguments" identifier is currently disallowed due to being in a class initializer
     allow_arguments: bool,
     // Whether a return statement is allowed
@@ -86,11 +98,12 @@ impl PrivateNameUsage {
     }
 }
 
-impl<'a> Analyzer {
-    pub fn new(source: Rc<Source>) -> Analyzer {
+impl<'a> Analyzer<'a> {
+    pub fn new(source: Rc<Source>, scope_tree: &'a mut ScopeTree) -> Analyzer<'a> {
         Analyzer {
             source,
             errors: Vec::new(),
+            scope_tree,
             strict_mode_context_depth: 0,
             labels: HashMap::new(),
             label_depth: 0,
@@ -98,6 +111,7 @@ impl<'a> Analyzer {
             iterable_depth: 0,
             function_stack: vec![],
             class_stack: vec![],
+            scope_stack: vec![],
             allow_arguments: true,
             allow_return_stack: vec![false],
             allow_super_member_stack: vec![false],
@@ -160,6 +174,13 @@ impl<'a> Analyzer {
             .find(|func| !func.is_arrow_function)
     }
 
+    fn enclosing_non_arrow_function_mut(&mut self) -> Option<&mut FunctionStackEntry> {
+        self.function_stack
+            .iter_mut()
+            .rev()
+            .find(|func| !func.is_arrow_function)
+    }
+
     // Save state before visiting a function or class. This prevents labels and some context from
     // leaking into the inner function or class.
     fn save_state(&mut self) -> AnalyzerSavedState {
@@ -199,15 +220,38 @@ impl<'a> Analyzer {
             _ => {}
         }
     }
+
+    fn enter_scope(&mut self, scope: AstPtr<AstScopeNode>) {
+        self.scope_stack.push(scope);
+    }
+
+    fn exit_scope(&mut self) {
+        if let Some(exited_scope_node) = self.scope_stack.pop() {
+            self.scope_tree
+                .finish_vm_scope_node(exited_scope_node.as_ref().id());
+        }
+    }
+
+    fn current_scope_id(&self) -> ScopeNodeId {
+        self.scope_stack.last().unwrap().as_ref().id()
+    }
+
+    fn finish(self) {
+        self.scope_tree.finish_vm_scope_tree();
+    }
 }
 
-impl<'a> AstVisitor for Analyzer {
+impl<'a> AstVisitor for Analyzer<'a> {
     fn visit_program(&mut self, program: &mut Program) {
         if program.is_strict_mode {
             self.enter_strict_mode_context();
         }
 
+        self.enter_scope(program.scope);
+
         visit_vec!(self, program.toplevels, visit_toplevel);
+
+        self.exit_scope();
 
         if program.is_strict_mode {
             self.exit_strict_mode_context();
@@ -228,6 +272,9 @@ impl<'a> AstVisitor for Analyzer {
 
         self.visit_expression(&mut stmt.discriminant);
 
+        // Body of switch statement is in its own scope
+        self.enter_scope(stmt.scope);
+
         for case in &mut stmt.cases {
             if case.test.is_none() {
                 if !seen_default {
@@ -240,6 +287,7 @@ impl<'a> AstVisitor for Analyzer {
             self.visit_switch_case(case);
         }
 
+        self.exit_scope();
         self.dec_breakable_depth();
     }
 
@@ -304,7 +352,17 @@ impl<'a> AstVisitor for Analyzer {
 
         self.check_for_labeled_function(&stmt.body);
 
-        default_visit_with_statement(self, stmt);
+        self.visit_expression(&mut stmt.object);
+
+        // Must conservatively use VM scope locations for all visible bindings so that they can be
+        // dynamcally looked up from within the with statement.
+        self.scope_tree
+            .force_vm_scope_for_visible_bindings(self.current_scope_id());
+
+        // With statement bodies are in their own scope
+        self.enter_scope(stmt.scope);
+        self.visit_statement(&mut stmt.body);
+        self.exit_scope();
     }
 
     fn visit_if_statement(&mut self, stmt: &mut IfStatement) {
@@ -336,19 +394,23 @@ impl<'a> AstVisitor for Analyzer {
 
     fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
         self.inc_iterable_depth();
+        self.enter_scope(stmt.scope);
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_statement(self, stmt);
 
+        self.exit_scope();
         self.dec_iterable_depth();
     }
 
     fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
         self.inc_iterable_depth();
+        self.enter_scope(stmt.scope);
 
         self.check_for_labeled_function(&stmt.body);
         default_visit_for_each_statement(self, stmt);
 
+        self.exit_scope();
         self.dec_iterable_depth();
     }
 
@@ -357,6 +419,25 @@ impl<'a> AstVisitor for Analyzer {
             ForEachInit::Pattern(patt) => self.visit_pattern(patt),
             ForEachInit::VarDecl(decl) => self.visit_variable_declaration_common(decl, true),
         }
+    }
+
+    fn visit_catch_clause(&mut self, catch: &mut CatchClause) {
+        // Catch scope includes the catch parameter
+        self.enter_scope(catch.body.scope);
+
+        visit_opt!(self, catch.param, visit_pattern);
+
+        // Visit statements in catch body instead of calling visit_block since we have already
+        // entered the catch scope.
+        default_visit_block(self, &mut catch.body);
+
+        self.exit_scope();
+    }
+
+    fn visit_block(&mut self, block: &mut Block) {
+        self.enter_scope(block.scope);
+        default_visit_block(self, block);
+        self.exit_scope();
     }
 
     fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
@@ -431,12 +512,19 @@ impl<'a> AstVisitor for Analyzer {
         match id.name.as_str() {
             "arguments" | "eval" => {
                 if let Some(FunctionStackEntry { func: Some(func), .. }) =
-                    self.enclosing_non_arrow_function()
+                    self.enclosing_non_arrow_function_mut()
                 {
                     func.as_mut().is_arguments_object_needed = true;
                 }
             }
             _ => {}
+        }
+
+        // If "eval" is ever encountered, conservatively force all visible bindings to have VM scope
+        // locations instead of local registers so they can be dynamically looked up.
+        if id.name.as_str() == "eval" {
+            self.scope_tree
+                .force_vm_scope_for_visible_bindings(self.current_scope_id());
         }
     }
 
@@ -490,6 +578,8 @@ impl<'a> AstVisitor for Analyzer {
             self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
         }
 
+        self.resolve_identifier_use(id);
+
         default_visit_identifier_expression(self, id)
     }
 
@@ -498,6 +588,12 @@ impl<'a> AstVisitor for Analyzer {
             self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
         } else {
             self.error_if_strict_eval_or_arguments(id);
+        }
+
+        // Def patterns will already have scope node added, but use patterns will not. Resolve ids
+        // in use patterns at this point.
+        if id.scope.is_none() {
+            self.resolve_identifier_use(id);
         }
 
         default_visit_identifier_pattern(self, id)
@@ -641,7 +737,7 @@ impl<'a> AstVisitor for Analyzer {
     }
 }
 
-impl Analyzer {
+impl Analyzer<'_> {
     fn visit_function_common(
         &mut self,
         func: &mut Function,
@@ -691,8 +787,36 @@ impl Analyzer {
             }
         }
 
+        // Function parameters and body (but not function name) are in the function scope
+        self.enter_scope(func.scope);
+
         // Visit and analyze function parameters
-        visit_vec!(self, func.params, visit_function_param);
+        let mut param_index = 0;
+        for param in &mut func.params {
+            // Check if this is a top level id pattern, optionally with a default
+            let toplevel_id = match param {
+                FunctionParam::Pattern(Pattern::Id(id)) => Some(id),
+                FunctionParam::Pattern(Pattern::Assign(AssignmentPattern { left, .. })) => {
+                    if let Pattern::Id(id) = left.as_mut() {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+
+            // If this is a top level id pattern then the binding's VM location is the argument
+            // directly by index.
+            if let Some(id) = toplevel_id {
+                let mut scope = id.scope.unwrap();
+                let binding = scope.as_mut().get_binding_mut(&id.name).unwrap();
+                binding.set_vm_location(VMLocation::Argument(param_index));
+            }
+
+            self.visit_function_param(param);
+            param_index += 1;
+        }
 
         // Static analysis of parameters and other function properties once body has been visited
         let mut has_parameter_expressions = false;
@@ -775,6 +899,7 @@ impl Analyzer {
 
         // Visit function body
         self.visit_function_body(&mut func.body);
+        self.exit_scope();
 
         // Arguments object may have been set to needed based on analysis of function body
         let mut is_arguments_object_needed =
@@ -1041,13 +1166,24 @@ impl Analyzer {
             }
         }
     }
+
+    fn resolve_identifier_use(&mut self, id: &mut Identifier) {
+        let current_scope = self.scope_stack.last().unwrap().as_ref().id();
+        if let Some(def_scope) = self.scope_tree.resolve_use(current_scope, &id.name) {
+            id.scope = Some(def_scope);
+        }
+    }
 }
 
-pub fn analyze(program: &mut Program, source: Rc<Source>) -> Result<(), LocalizedParseErrors> {
-    let mut analyzer = Analyzer::new(source);
-    analyzer.visit_program(program);
+pub fn analyze(
+    parse_result: &mut ParseProgramResult,
+    source: Rc<Source>,
+) -> Result<(), LocalizedParseErrors> {
+    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
+    analyzer.visit_program(&mut parse_result.program);
 
     if analyzer.errors.is_empty() {
+        analyzer.finish();
         Ok(())
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))
@@ -1055,7 +1191,7 @@ pub fn analyze(program: &mut Program, source: Rc<Source>) -> Result<(), Localize
 }
 
 pub fn analyze_for_eval(
-    program: &mut Program,
+    parse_result: &mut ParseProgramResult,
     source: Rc<Source>,
     private_names: Option<HashMap<String, PrivateNameUsage>>,
     in_function: bool,
@@ -1063,7 +1199,7 @@ pub fn analyze_for_eval(
     in_derived_constructor: bool,
     in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
-    let mut analyzer = Analyzer::new(source);
+    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
 
     // Initialize private names from surrounding context if supplied
     if let Some(private_names) = private_names {
@@ -1091,9 +1227,10 @@ pub fn analyze_for_eval(
         analyzer.allow_arguments = false;
     }
 
-    analyzer.visit_program(program);
+    analyzer.visit_program(&mut parse_result.program);
 
     if analyzer.errors.is_empty() {
+        analyzer.finish();
         Ok(())
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))
@@ -1101,13 +1238,14 @@ pub fn analyze_for_eval(
 }
 
 pub fn analyze_function_for_function_constructor(
-    func: &mut Function,
+    parse_result: &mut ParseFunctionResult,
     source: Rc<Source>,
 ) -> Result<(), LocalizedParseErrors> {
-    let mut analyzer = Analyzer::new(source);
-    analyzer.visit_function_expression(func);
+    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
+    analyzer.visit_function_expression(&mut parse_result.function);
 
     if analyzer.errors.is_empty() {
+        analyzer.finish();
         Ok(())
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))

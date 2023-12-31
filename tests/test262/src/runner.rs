@@ -253,16 +253,17 @@ fn parse_file(
     test: Option<&Test>,
     test262_root: &str,
     force_strict_mode: bool,
-) -> js::parser::ParseResult<(js::parser::ast::Program, Rc<js::parser::source::Source>)> {
+) -> js::parser::ParseResult<(js::parser::parser::ParseProgramResult, Rc<js::parser::source::Source>)>
+{
     let full_path = Path::new(test262_root).join("test").join(file);
 
     let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
     if let Some(Test { mode: TestMode::Module, .. }) = test {
         let source = Rc::new(source);
-        let ast = js::parser::parse_module(&source)?;
+        let parese_result = js::parser::parse_module(&source)?;
 
-        Ok((ast, source))
+        Ok((parese_result, source))
     } else {
         // Manually insert use strict directive when forcing strict mode
         if force_strict_mode {
@@ -273,9 +274,9 @@ fn parse_file(
         }
 
         let source = Rc::new(source);
-        let ast = js::parser::parse_script(&source)?;
+        let parse_result = js::parser::parse_script(&source)?;
 
-        Ok((ast, source))
+        Ok((parse_result, source))
     }
 }
 

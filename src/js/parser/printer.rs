@@ -471,7 +471,7 @@ impl<'a> Printer<'a> {
 
     fn print_labeled_statement(&mut self, stmt: &LabeledStatement) {
         self.start_node("LabeledStatement", &stmt.loc);
-        self.property("label", &stmt.label, Printer::print_label);
+        self.property("label", stmt.label.as_ref(), Printer::print_label);
         self.property("body", stmt.body.as_ref(), Printer::print_statement);
         self.end_node();
     }

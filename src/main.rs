@@ -27,18 +27,18 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     let source = Rc::new(js::parser::source::Source::new_from_file(&args.file)?);
-    let mut ast = if args.module {
+    let mut parse_result = if args.module {
         js::parser::parse_module(&source)?
     } else {
         js::parser::parse_script(&source)?
     };
 
-    js::parser::analyze::analyze(&mut ast, source.clone())?;
+    js::parser::analyze::analyze(&mut parse_result, source.clone())?;
 
-    let ast = Rc::new(ast);
+    let parse_result = Rc::new(parse_result);
 
     if args.print_ast {
-        println!("{}", js::parser::print_program(&ast, &source));
+        println!("{}", js::parser::print_program(&parse_result.program, &source));
     }
 
     let (cx, realm) = js::runtime::Context::new(|cx| {
@@ -52,7 +52,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         cx.enable_gc_stress_test();
     }
 
-    cx.execute_then_drop(|cx| js::runtime::evaluate(cx, ast, realm))?;
+    cx.execute_then_drop(|cx| js::runtime::evaluate(cx, parse_result, realm))?;
 
     return Ok(());
 }

@@ -2,7 +2,7 @@ use core::panic;
 use std::{error::Error, fmt, rc::Rc};
 
 use crate::js::{
-    parser::ast,
+    parser::parser::ParseProgramResult,
     runtime::{
         completion::CompletionKind, console::to_console_string, realm::Realm, Context, Handle,
     },
@@ -25,7 +25,7 @@ impl fmt::Display for EvalError {
 
 pub fn evaluate(
     cx: Context,
-    program: Rc<ast::Program>,
+    program: Rc<ParseProgramResult>,
     realm: Handle<Realm>,
 ) -> Result<(), EvalError> {
     let completion = eval_script(cx, program, realm);

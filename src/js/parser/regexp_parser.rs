@@ -1038,7 +1038,7 @@ impl<T: LexerStream> RegExpParser<T> {
     /// Analyze and resolve all backreferences in the pattern regexp. Backreferences may have been
     /// parsed before the associated capture group was found, so error on unresolved backreferences
     /// and fill in correct indices for named backreferences.
-    fn resolve_backreferences(&self) -> ParseResult<()> {
+    fn resolve_backreferences(&mut self) -> ParseResult<()> {
         // Keep track of the first error that appears in the input
         let mut first_error = None;
 
@@ -1055,22 +1055,22 @@ impl<T: LexerStream> RegExpParser<T> {
         // Check for any indexed backreferences that are out of range
         for (index, error_pos) in &self.indexed_backreferences {
             if (*index) as usize > self.capture_groups.len() {
-                update_first_error(error_pos, ParseError::InvalidBackreferenceIndex);
+                update_first_error(*error_pos, ParseError::InvalidBackreferenceIndex);
             }
         }
 
         // Resolve named backreferences, erroring if the name cannot be resolved
-        for (name, error_pos, backreference_ptr) in &self.named_backreferences {
+        for (name, error_pos, backreference_ptr) in &mut self.named_backreferences {
             if let Some(index) = self.capture_group_names.get(name) {
                 backreference_ptr.as_mut().index = *index;
             } else {
-                update_first_error(error_pos, ParseError::InvalidBackreferenceName);
+                update_first_error(*error_pos, ParseError::InvalidBackreferenceName);
             }
         }
 
         match first_error {
             None => Ok(()),
-            Some((pos, error)) => self.error(*pos, error),
+            Some((pos, error)) => self.error(pos, error),
         }
     }
 }

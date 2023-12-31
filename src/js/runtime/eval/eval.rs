@@ -89,14 +89,14 @@ pub fn perform_eval(
     // Parse source code
     let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
     let parse_result = parse_script_for_eval(&source, is_strict_caller);
-    let mut ast = match parse_result {
-        Ok(ast) => ast,
+    let mut parse_result = match parse_result {
+        Ok(parse_result) => parse_result,
         Err(error) => return syntax_error_(cx, &error.to_string()),
     };
 
     // Analyze source code
     let analyze_result = analyze_for_eval(
-        &mut ast,
+        &mut parse_result,
         source,
         private_names,
         in_function,
@@ -111,7 +111,7 @@ pub fn perform_eval(
         return syntax_error_(cx, &error.to_string());
     }
 
-    let is_strict_eval = is_strict_caller || ast.has_use_strict_directive;
+    let is_strict_eval = is_strict_caller || parse_result.program.has_use_strict_directive;
 
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(cx, Some(running_context.lexical_env()));
@@ -141,13 +141,19 @@ pub fn perform_eval(
 
     cx.push_execution_context(eval_context);
 
-    let result =
-        eval_declaration_instantiation(cx, &ast, var_env, lex_env, private_env, is_strict_eval);
+    let result = eval_declaration_instantiation(
+        cx,
+        &parse_result.program,
+        var_env,
+        lex_env,
+        private_env,
+        is_strict_eval,
+    );
 
     let mut result = if let EvalResult::Throw(thrown_value) = result {
         Completion::throw(thrown_value)
     } else {
-        eval_toplevel_list(cx, &ast.toplevels)
+        eval_toplevel_list(cx, &parse_result.program.toplevels)
     };
 
     if result.is_normal() && result.is_empty() {
@@ -159,7 +165,7 @@ pub fn perform_eval(
     // TODO: Need better way to save ASTs generated from eval instead of freeing them, as they may
     // be needed later e.g. for functions returned from eval. Currently all eval ASTs are saved in
     // the context and effectively leaked since they may not actually be needed.
-    cx.eval_asts.push(ast);
+    cx.eval_asts.push(parse_result);
 
     match result.kind() {
         CompletionKind::Normal => EvalResult::Ok(result.value()),

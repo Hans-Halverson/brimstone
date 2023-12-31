@@ -1,6 +1,7 @@
 use std::{
     fmt::{self, Debug},
     hash,
+    ptr::NonNull,
     rc::Rc,
 };
 
@@ -14,7 +15,7 @@ use crate::{
 use super::{
     loc::{Loc, EMPTY_LOC},
     regexp::RegExp,
-    scope_tree::{BindingKind, ScopeNode, ScopeTree},
+    scope_tree::{AstScopeNode, BindingKind},
     source::Source,
 };
 
@@ -26,24 +27,25 @@ pub fn p<T>(node: T) -> P<T> {
 
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
 pub struct AstPtr<T> {
-    ptr: *const T,
+    ptr: NonNull<T>,
 }
 
 impl<T> AstPtr<T> {
-    pub fn null() -> AstPtr<T> {
-        AstPtr { ptr: std::ptr::null() }
+    pub fn uninit() -> AstPtr<T> {
+        AstPtr { ptr: NonNull::dangling() }
     }
 
     pub fn from_ref(value: &T) -> AstPtr<T> {
-        AstPtr { ptr: value }
+        let ptr = unsafe { NonNull::new_unchecked(value as *const _ as *mut T) };
+        AstPtr { ptr }
     }
 
     pub fn as_ref(&self) -> &T {
-        unsafe { &*self.ptr }
+        unsafe { self.ptr.as_ref() }
     }
 
-    pub fn as_mut(&self) -> &mut T {
-        unsafe { &mut *self.ptr.cast_mut() }
+    pub fn as_mut(&mut self) -> &mut T {
+        unsafe { self.ptr.as_mut() }
     }
 }
 
@@ -86,8 +88,7 @@ pub struct Program {
     // Whether the program has a "use strict" directive
     pub has_use_strict_directive: bool,
 
-    pub scope_tree: ScopeTree,
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 impl Program {
@@ -96,8 +97,7 @@ impl Program {
         toplevels: Vec<Toplevel>,
         kind: ProgramKind,
         source: Rc<Source>,
-        scope_tree: ScopeTree,
-        scope: AstPtr<ScopeNode>,
+        scope: AstPtr<AstScopeNode>,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Program {
@@ -108,7 +108,6 @@ impl Program {
             source,
             is_strict_mode,
             has_use_strict_directive,
-            scope_tree,
             scope,
         }
     }
@@ -131,6 +130,17 @@ pub enum Toplevel {
 pub struct Identifier {
     pub loc: Loc,
     pub name: String,
+    /// Reference to the scope that contains the binding for this identifier. None if this
+    /// identifier could not be statically resolved.
+    ///
+    /// For defs this is set during parsing. For uses this is set during analysis.
+    pub scope: Option<AstPtr<AstScopeNode>>,
+}
+
+impl Identifier {
+    pub fn new(loc: Loc, name: String) -> Identifier {
+        Identifier { loc, name, scope: None }
+    }
 }
 
 pub enum Statement {
@@ -207,6 +217,7 @@ impl VariableDeclarator {
     }
 }
 
+/// Functions can be uniquely determined by their starting source position.
 pub type FunctionId = usize;
 
 pub struct Function {
@@ -230,7 +241,7 @@ pub struct Function {
     pub is_strict_mode: bool,
 
     /// Scope node for the function, containing function parameters and the body.
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 impl Function {
@@ -245,7 +256,7 @@ impl Function {
             is_generator: false,
             is_strict_mode: false,
             has_use_strict_directive: false,
-            scope: AstPtr::null(),
+            scope: AstPtr::uninit(),
             // Initial values that will not be overwritten by `init`
             has_simple_parameter_list: false,
             has_parameter_expressions: false,
@@ -264,7 +275,7 @@ impl Function {
         is_generator: bool,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
-        scope: AstPtr<ScopeNode>,
+        scope: AstPtr<AstScopeNode>,
     ) {
         self.loc = loc;
         self.id = id;
@@ -286,7 +297,7 @@ impl Function {
         is_generator: bool,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
-        scope: AstPtr<ScopeNode>,
+        scope: AstPtr<AstScopeNode>,
     ) -> Function {
         let mut func = Function::new_uninit();
         func.init(
@@ -301,11 +312,6 @@ impl Function {
             scope,
         );
         func
-    }
-
-    /// Functions can be uniquely determined by their starting source position.
-    pub fn function_id(&self) -> FunctionId {
-        self.loc.start
     }
 }
 
@@ -407,7 +413,7 @@ pub struct Block {
     pub body: Vec<Statement>,
 
     /// Block scope node for the block.
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 pub struct IfStatement {
@@ -423,7 +429,7 @@ pub struct SwitchStatement {
     pub cases: Vec<SwitchCase>,
 
     /// Block scope node for the switch statement body.
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 pub struct SwitchCase {
@@ -440,7 +446,7 @@ pub struct ForStatement {
     pub body: P<Statement>,
 
     /// Block scope node that contains the for statement variable declarations and the body.
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 pub enum ForInit {
@@ -457,7 +463,7 @@ pub struct ForEachStatement {
     pub is_await: bool,
 
     /// Block scope node that contains the for statement variable declarations and the body.
-    pub scope: AstPtr<ScopeNode>,
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 #[derive(PartialEq)]
@@ -487,6 +493,9 @@ pub struct WithStatement {
     pub loc: Loc,
     pub object: P<Expression>,
     pub body: P<Statement>,
+
+    /// Scope node for the with statement body
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 pub struct TryStatement {
@@ -525,7 +534,7 @@ pub struct ContinueStatement {
 
 pub struct LabeledStatement {
     pub loc: Loc,
-    pub label: Label,
+    pub label: P<Label>,
     pub body: P<Statement>,
 }
 

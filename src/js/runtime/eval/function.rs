@@ -578,13 +578,13 @@ pub fn create_dynamic_function(
 
     // Parse and analyze entire function
     let full_source = Rc::new(Source::new_from_wtf8_string("", source_string));
-    let (mut func_node, scope_tree) = match parse_function_for_function_constructor(&full_source) {
+    let mut parse_result = match parse_function_for_function_constructor(&full_source) {
         Ok(parse_result) => parse_result,
         Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),
     };
 
     if let Err(errs) =
-        analyze_function_for_function_constructor(&mut func_node, full_source.clone())
+        analyze_function_for_function_constructor(&mut parse_result, full_source.clone())
     {
         return syntax_error_(cx, &format!("could not parse function: {}", errs));
     }
@@ -593,7 +593,14 @@ pub fn create_dynamic_function(
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
     let env = cx.current_realm_ptr().global_env();
 
-    let mut func = ordinary_function_create(cx, proto, &func_node, false, env.into_dyn_env(), None);
+    let mut func = ordinary_function_create(
+        cx,
+        proto,
+        &parse_result.function,
+        false,
+        env.into_dyn_env(),
+        None,
+    );
     set_function_name(cx, func.into(), cx.names.anonymous(), None);
     func.set_source(&full_source);
 
@@ -603,7 +610,7 @@ pub fn create_dynamic_function(
 
     // TODO: Need better way to save ASTs and sources, following same pattern as eval for now
     cx.function_constructor_asts
-        .push((func_node, full_source, scope_tree));
+        .push((parse_result, full_source));
 
     func.into()
 }

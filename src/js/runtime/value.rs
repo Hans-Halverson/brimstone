@@ -7,10 +7,11 @@ use crate::{field_offset, set_uninit};
 
 use super::{
     context::Context,
+    debug_print::{DebugPrint, DebugPrinter},
     gc::{Handle, HandleContents, HeapItem, HeapObject, HeapPtr, HeapVisitor},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
-    string_value::StringValue,
+    string_value::{FlatString, StringValue},
     type_utilities::same_value_zero_non_allocating,
 };
 
@@ -423,6 +424,30 @@ impl Value {
     }
 }
 
+impl DebugPrint for Value {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        // Format primitive values
+        if self.is_bool() {
+            printer.write_default_with_context("bool", &self.as_bool().to_string())
+        } else if self.is_smi() {
+            printer.write_default_with_context("smi", &self.as_smi().to_string())
+        } else if self.is_double() {
+            printer.write_default_with_context("double", &self.as_double().to_string())
+        } else if self.is_undefined() {
+            printer.write_default("undefined")
+        } else if self.is_null() {
+            printer.write_default("null")
+        } else if self.is_empty() {
+            printer.write_default("empty")
+        } else {
+            debug_assert!(self.is_pointer());
+
+            // Format heap allocated pointer values
+            self.as_pointer().debug_format(printer)
+        }
+    }
+}
+
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::bool(value)
@@ -543,13 +568,14 @@ impl From<HeapPtr<AccessorValue>> for Value {
 #[repr(C)]
 pub struct SymbolValue {
     descriptor: HeapPtr<ObjectDescriptor>,
-    description: Option<HeapPtr<StringValue>>,
+    description: Option<HeapPtr<FlatString>>,
     // Stable hash code for this symbol, since symbol can be moved by GC
     hash_code: u32,
 }
 
 impl SymbolValue {
     pub fn new(cx: Context, description: Option<Handle<StringValue>>) -> Handle<SymbolValue> {
+        let description = description.map(|d| d.flatten());
         let mut symbol = cx.alloc_uninit::<SymbolValue>();
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
@@ -559,12 +585,22 @@ impl SymbolValue {
         symbol.to_handle()
     }
 
-    pub fn description_ptr(&self) -> Option<HeapPtr<StringValue>> {
+    pub fn description_ptr(&self) -> Option<HeapPtr<FlatString>> {
         self.description
     }
 
-    pub fn description(&self) -> Option<Handle<StringValue>> {
+    pub fn description(&self) -> Option<Handle<FlatString>> {
         self.description.map(|d| d.to_handle())
+    }
+}
+
+impl DebugPrint for HeapPtr<SymbolValue> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        if let Some(description) = self.description_ptr() {
+            printer.write_heap_item_with_context(self.cast(), &description.to_string())
+        } else {
+            printer.write_heap_item_default(self.cast())
+        }
     }
 }
 
@@ -661,13 +697,17 @@ impl BigIntValue {
         // Calculate size of BigIntValue with inlined digits
         Self::DIGITS_OFFSET + num_u32_digits * size_of::<u32>()
     }
-}
 
-impl BigIntValue {
     pub fn bigint(&self) -> BigInt {
         // Recreate BigInt from stored raw parts
         let slice = unsafe { std::slice::from_raw_parts(self.digits.as_ptr(), self.len) };
         BigInt::from_slice(self.sign, slice)
+    }
+}
+
+impl DebugPrint for HeapPtr<BigIntValue> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        printer.write_heap_item_with_context(self.cast(), &self.bigint().to_string())
     }
 }
 

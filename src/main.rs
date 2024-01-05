@@ -44,6 +44,10 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
         let bytecode_program =
             BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result)?;
 
+        if options.print_bytecode {
+            println!("{}", bytecode_program.debug_print_recursive());
+        }
+
         cx.execute_then_drop(|cx| {
             let mut vm = VM::new(cx);
             let closure = Closure::new(cx, bytecode_program);

@@ -10,6 +10,7 @@ mod collections;
 pub mod completion;
 mod console;
 mod context;
+mod debug_print;
 mod environment;
 pub mod error;
 pub mod eval;

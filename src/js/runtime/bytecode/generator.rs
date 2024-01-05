@@ -134,7 +134,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             );
 
             // Patch function into parent function's constant table
-            let mut parent_constant_table = parent_function.constant_table().unwrap();
+            let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
             parent_constant_table.set_constant(
                 constant_index as usize,
                 bytecode_function_handle.cast::<Value>().get(),
@@ -470,10 +470,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.num_parameters,
             debug_name,
         );
-
-        if self.cx.options.print_bytecode {
-            println!("{}", bytecode_function.debug_print());
-        }
 
         EmitFunctionResult {
             bytecode_function,

@@ -708,7 +708,7 @@ pub fn set_function_name(
             let left_paren = cx.alloc_string("[");
             let right_paren = cx.alloc_string("]");
 
-            StringValue::concat_all(cx, &[left_paren, description, right_paren])
+            StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])
         } else {
             cx.names.empty_string().as_string()
         }

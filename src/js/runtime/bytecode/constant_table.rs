@@ -2,6 +2,7 @@ use crate::{
     field_offset,
     js::runtime::{
         collections::InlineArray,
+        debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         Context, Handle, HeapPtr, Value,
@@ -43,6 +44,35 @@ impl ConstantTable {
 
     pub fn set_constant(&mut self, index: usize, value: Value) {
         self.constants.as_mut_slice()[index] = value;
+    }
+
+    pub fn as_slice(&self) -> &[Value] {
+        self.constants.as_slice()
+    }
+}
+
+impl DebugPrint for HeapPtr<ConstantTable> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        if printer.is_short_mode() {
+            printer.write_heap_item_default(self.cast());
+            return;
+        }
+
+        // Constant table items are indented and all written in short mode
+        printer.write("Constant Table:\n");
+
+        printer.inc_indent();
+        printer.push_mode(DebugPrintMode::Short);
+
+        for (i, constant) in self.constants.as_slice().iter().enumerate() {
+            printer.write_indent();
+            printer.write(&format!("{}: ", i));
+            constant.debug_format(printer);
+            printer.write("\n");
+        }
+
+        printer.pop_mode();
+        printer.dec_indent();
     }
 }
 

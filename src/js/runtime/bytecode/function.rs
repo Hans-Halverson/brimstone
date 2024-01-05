@@ -3,8 +3,9 @@ use std::mem::size_of;
 use crate::{
     extend_object, field_offset,
     js::runtime::{
-        bytecode::instruction::debug_print_instructions,
+        bytecode::instruction::debug_format_instructions,
         collections::InlineArray,
+        debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::{ObjectDescriptor, ObjectKind},
@@ -103,32 +104,97 @@ impl BytecodeFunction {
         Self::BYTECODE_BYTE_OFFSET + InlineArray::<u8>::calculate_size_in_bytes(bytecode_len)
     }
 
+    #[inline]
     pub fn bytecode(&self) -> &[u8] {
         self.bytecode.as_slice()
     }
 
-    pub fn constant_table(&self) -> Option<HeapPtr<ConstantTable>> {
+    #[inline]
+    pub fn constant_table_ptr(&self) -> Option<HeapPtr<ConstantTable>> {
         self.constant_table
     }
 
+    #[inline]
     pub fn num_parameters(&self) -> u32 {
         self.num_parameters
     }
 
+    #[inline]
     pub fn num_registers(&self) -> u32 {
         self.num_registers
     }
 }
 
-impl Handle<BytecodeFunction> {
-    pub fn debug_print(&self) -> String {
+impl DebugPrint for HeapPtr<BytecodeFunction> {
+    /// Debug print this function only.
+    fn debug_format(&self, printer: &mut DebugPrinter) {
         let name = if let Some(name) = self.debug_name {
             name.to_string()
         } else {
-            "<anonymous>".to_string()
+            "<anonymous>".to_owned()
         };
 
-        format!("Bytecode for {}:\n{}", name, debug_print_instructions(self.bytecode()))
+        if printer.is_short_mode() {
+            printer.write_heap_item_with_context(self.cast(), &name);
+            return;
+        }
+
+        // Write the function name and indent body
+        printer.write_heap_item_with_context(self.cast(), &name);
+        printer.write(" {\n");
+        printer.inc_indent();
+
+        // Followed by some function metadata
+        printer.write_indent();
+        printer.write(&format!(
+            "Parameters: {}, Registers: {}\n",
+            self.num_parameters(),
+            self.num_registers()
+        ));
+
+        // Followed by instructions which are further indented
+        printer.inc_indent();
+        debug_format_instructions(self.bytecode(), printer);
+        printer.dec_indent();
+
+        // Followed by the constant table if present
+        if let Some(constant_table) = self.constant_table_ptr() {
+            printer.write_indent();
+            constant_table.debug_format(printer);
+        }
+
+        printer.dec_indent();
+        printer.write("}\n");
+    }
+}
+
+impl HeapPtr<BytecodeFunction> {
+    /// Debug print this function and all its child functions.
+    pub fn debug_print_recursive(&self) -> String {
+        let mut printer = DebugPrinter::new(DebugPrintMode::Verbose);
+        let mut queue = vec![*self];
+
+        while let Some(function) = queue.pop() {
+            if !printer.is_empty() {
+                printer.write("\n");
+            }
+
+            function.debug_format(&mut printer);
+
+            // Constant table contains all child functions in declaration order
+            if let Some(constant_table) = function.constant_table_ptr() {
+                for constant in constant_table.as_slice() {
+                    if constant.is_pointer() {
+                        let heap_item = constant.as_pointer();
+                        if heap_item.descriptor().kind() == ObjectKind::BytecodeFunction {
+                            queue.push(heap_item.cast::<BytecodeFunction>());
+                        }
+                    }
+                }
+            }
+        }
+
+        printer.finish()
     }
 }
 

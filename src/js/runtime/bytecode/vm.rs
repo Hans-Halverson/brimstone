@@ -412,7 +412,7 @@ impl VM {
         constant_index: UInt<W>,
     ) -> Value {
         // If a constant index is referenced the constant table must exist
-        let constant_table = unsafe { func.constant_table().unwrap_unchecked() };
+        let constant_table = unsafe { func.constant_table_ptr().unwrap_unchecked() };
         constant_table.get_constant(constant_index.value().to_usize())
     }
 

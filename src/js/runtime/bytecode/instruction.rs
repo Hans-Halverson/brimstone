@@ -6,7 +6,7 @@ use super::{
     writer::BytecodeWriter,
 };
 
-use crate::{count, replace_expr};
+use crate::{count, js::runtime::debug_print::DebugPrinter, replace_expr};
 
 /// Generic properties of instructions.
 pub trait Instruction: fmt::Display {
@@ -358,7 +358,7 @@ pub fn decode_width_and_opcode_at_index(bytecode: &[u8], index: usize) -> Decode
 
 /// Iterator over instructions in a buffer containing bytecode. Returns both the instruction trait
 /// object and the offset of the start of that instruction.
-struct InstructionIterator<'a> {
+pub struct InstructionIterator<'a> {
     pos: usize,
     bytecode: &'a [u8],
 }
@@ -407,9 +407,7 @@ impl<'a> Iterator for InstructionIterator<'a> {
     }
 }
 
-pub fn debug_print_instructions(bytecode: &[u8]) -> String {
-    let mut result = String::new();
-
+pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
     // Find the max instruction length and max offset in the bytecode to calculate padding
     let mut prev_offset = 0;
     let mut max_instr_length = 0;
@@ -431,19 +429,18 @@ pub fn debug_print_instructions(bytecode: &[u8]) -> String {
         let next_offset = offsets[i + 1];
 
         // First print the padded instruction offset
-        result.push_str(&format!("{offset:>offset_width$}: "));
+        printer.write_indent();
+        printer.write(&format!("{offset:>offset_width$}: "));
 
         // Then print the raw bytes of the instruction
         for byte in &bytecode[offset..next_offset] {
-            result.push_str(&format!("{:02x} ", byte));
+            printer.write(&format!("{:02x} ", byte));
         }
 
         // Pad the raw bytes to the max instruction length
-        result.push_str(&"   ".repeat(max_instr_length - (next_offset - offset)));
+        printer.write(&"   ".repeat(max_instr_length - (next_offset - offset)));
 
         // Then print the instruction in a readable form
-        result.push_str(&format!("  {instr}\n"));
+        printer.write(&format!("  {instr}\n"));
     }
-
-    result
 }

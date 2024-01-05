@@ -24,6 +24,7 @@ use crate::{
 };
 
 use super::{
+    debug_print::{DebugPrint, DebugPrinter},
     gc::{Handle, HeapInfo, HeapObject, HeapPtr, HeapVisitor},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -131,6 +132,16 @@ impl HeapPtr<StringValue> {
             concat_string.width()
         } else {
             self.as_flat().width()
+        }
+    }
+}
+
+impl DebugPrint for HeapPtr<StringValue> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        if let Some(concat_string) = self.as_concat_opt() {
+            concat_string.debug_format(printer)
+        } else {
+            self.as_flat().debug_format(printer)
         }
     }
 }
@@ -624,16 +635,27 @@ impl fmt::Display for HeapPtr<StringValue> {
     }
 }
 
+fn format_code_point_iter(
+    f: &mut fmt::Formatter,
+    iter: impl Iterator<Item = CodePoint>,
+) -> fmt::Result {
+    for code_point in iter {
+        let char = char::from_u32(code_point).unwrap_or(char::REPLACEMENT_CHARACTER);
+        f.write_char(char)?;
+    }
+
+    Ok(())
+}
+
 impl fmt::Display for Handle<StringValue> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let iter = self.iter_code_points();
+        format_code_point_iter(f, self.iter_code_points())
+    }
+}
 
-        for code_point in iter {
-            let char = char::from_u32(code_point).unwrap_or(char::REPLACEMENT_CHARACTER);
-            f.write_char(char)?;
-        }
-
-        Ok(())
+impl fmt::Display for HeapPtr<FlatString> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        format_code_point_iter(f, self.iter_code_points())
     }
 }
 
@@ -1058,6 +1080,12 @@ impl HeapPtr<FlatString> {
     }
 }
 
+impl DebugPrint for HeapPtr<FlatString> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        printer.write_default_with_context("String", &self.to_string());
+    }
+}
+
 impl Handle<FlatString> {
     #[inline]
     pub fn as_string(&self) -> Handle<StringValue> {
@@ -1156,6 +1184,12 @@ impl HeapPtr<ConcatString> {
     #[inline]
     pub fn as_string(&self) -> HeapPtr<StringValue> {
         self.cast()
+    }
+}
+
+impl DebugPrint for HeapPtr<ConcatString> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        printer.write_default("ConcatString");
     }
 }
 

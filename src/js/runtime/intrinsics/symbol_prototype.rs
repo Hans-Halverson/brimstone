@@ -61,7 +61,7 @@ impl SymbolPrototype {
         let symbol_value = maybe!(this_symbol_value(cx, this_value));
         match symbol_value.as_symbol().description() {
             None => cx.undefined().into(),
-            Some(desc) => desc.into(),
+            Some(desc) => desc.as_string().into(),
         }
     }
 
@@ -123,7 +123,7 @@ pub fn symbol_descriptive_string(
             let symbol_prefix = cx.alloc_string("Symbol(");
             let symbol_suffix = cx.alloc_string(")");
 
-            StringValue::concat_all(cx, &[symbol_prefix, description, symbol_suffix])
+            StringValue::concat_all(cx, &[symbol_prefix, description.as_string(), symbol_suffix])
         }
     }
 }

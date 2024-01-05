@@ -30,3 +30,6 @@ zerovec = "0.9.4"
 [features]
 # Run the garbage collector in stress test mode
 gc_stress_test = []
+
+[lib]
+doctest = false

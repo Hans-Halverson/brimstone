@@ -240,6 +240,21 @@ define_instructions!(
         [0] dest: Register,
     }
 
+    /// Load the value `null` into a register.
+    LoadNull (LoadNullInstruction, load_null_instruction) {
+        [0] dest: Register,
+    }
+
+    /// Load the value `true` into a register.
+    LoadTrue (LoadTrueInstruction, load_true_instruction) {
+        [0] dest: Register,
+    }
+
+    /// Load the value `false` into a register.
+    LoadFalse (LoadFalseInstruction, load_false_instruction) {
+        [0] dest: Register,
+    }
+
     /// Load a global variable into a register. The global variable's name is stored in the constant
     /// table.
     LoadGlobal (LoadGlobalInstruction, load_global_instruction) {

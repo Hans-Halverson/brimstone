@@ -21,7 +21,8 @@ use super::{
     instruction::{
         AddInstruction, CallInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction, LessThanInstruction,
-        LoadConstantInstruction, LoadGlobalInstruction, LoadImmediateInstruction,
+        LoadConstantInstruction, LoadFalseInstruction, LoadGlobalInstruction,
+        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, MovInstruction, NewClosureInstruction, OpCode, RetInstruction,
         StoreGlobalInstruction, SubInstruction,
     },
@@ -272,6 +273,9 @@ impl VM {
                     OpCode::LoadUndefined => {
                         dispatch!(LoadUndefinedInstruction, execute_load_undefined)
                     }
+                    OpCode::LoadNull => dispatch!(LoadNullInstruction, execute_load_null),
+                    OpCode::LoadTrue => dispatch!(LoadTrueInstruction, execute_load_true),
+                    OpCode::LoadFalse => dispatch!(LoadFalseInstruction, execute_load_false),
                     OpCode::LoadConstant => {
                         dispatch!(LoadConstantInstruction, execute_load_constant)
                     }
@@ -502,6 +506,21 @@ impl VM {
     #[inline]
     fn execute_load_undefined<W: Width>(&mut self, instr: &LoadUndefinedInstruction<W>) {
         self.write_register(instr.dest(), Value::undefined())
+    }
+
+    #[inline]
+    fn execute_load_null<W: Width>(&mut self, instr: &LoadNullInstruction<W>) {
+        self.write_register(instr.dest(), Value::null())
+    }
+
+    #[inline]
+    fn execute_load_true<W: Width>(&mut self, instr: &LoadTrueInstruction<W>) {
+        self.write_register(instr.dest(), Value::bool(true))
+    }
+
+    #[inline]
+    fn execute_load_false<W: Width>(&mut self, instr: &LoadFalseInstruction<W>) {
+        self.write_register(instr.dest(), Value::bool(false))
     }
 
     #[inline]

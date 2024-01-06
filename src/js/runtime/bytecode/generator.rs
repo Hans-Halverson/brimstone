@@ -509,7 +509,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         match expr {
             ast::Expression::Id(expr) => self.gen_identifier_expression(expr, dest),
+            ast::Expression::Null(_) => self.gen_null_literal_expression(),
             ast::Expression::Number(expr) => self.gen_number_literal_expression(expr),
+            ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr),
+            ast::Expression::String(expr) => self.gen_string_literal_expression(expr),
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr),
             ast::Expression::Call(expr) => self.gen_call_expression(expr),
             _ => unimplemented!("bytecode for expression kind"),
@@ -604,6 +607,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    fn gen_null_literal_expression(&mut self) -> EmitResult<GenRegister> {
+        let dest = self.register_allocator.allocate()?;
+        self.writer.load_null_instruction(dest);
+        Ok(dest)
+    }
+
     fn gen_number_literal_expression(
         &mut self,
         expr: &ast::NumberLiteral,
@@ -620,6 +629,37 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer
                 .load_constant_instruction(dest, ConstantIndex::new(constant_index));
         }
+
+        Ok(dest)
+    }
+
+    fn gen_boolean_literal_expression(
+        &mut self,
+        expr: &ast::BooleanLiteral,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.register_allocator.allocate()?;
+
+        if expr.value {
+            self.writer.load_true_instruction(dest);
+        } else {
+            self.writer.load_false_instruction(dest);
+        }
+
+        Ok(dest)
+    }
+
+    fn gen_string_literal_expression(
+        &mut self,
+        expr: &ast::StringLiteral,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.register_allocator.allocate()?;
+
+        // All string literals are loaded from the constant table
+        let string = InternedStrings::get_wtf8_str(self.cx, &expr.value).as_flat();
+        let constant_index = self.constant_table_builder.add_string(string)?;
+
+        self.writer
+            .load_constant_instruction(dest, ConstantIndex::new(constant_index));
 
         Ok(dest)
     }

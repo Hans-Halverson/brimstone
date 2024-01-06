@@ -1,9 +1,9 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: 11 ff 00   NewClosure r0, c0
-    3: 07 ff 01   StoreGlobal r0, c1
+    0: 14 ff 00   NewClosure r0, c0
+    3: 0a ff 01   StoreGlobal r0, c1
     6: 05 ff      LoadUndefined r0
-    8: 09 ff      Ret r0
+    8: 0c ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -11,7 +11,7 @@
 
 [BytecodeFunction: test1] {
   Parameters: 2, Registers: 1
-    0: 0a ff 05 06   Add r0, a0, a1
-    4: 0b ff 05 06   Sub r0, a0, a1
-    8: 0c ff 05 06   LessThan r0, a0, a1
+    0: 0d ff 05 06   Add r0, a0, a1
+    4: 0e ff 05 06   Sub r0, a0, a1
+    8: 0f ff 05 06   LessThan r0, a0, a1
 }

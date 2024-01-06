@@ -1,0 +1,14 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: 06 ff      LoadNull r0
+     2: 07 ff      LoadTrue r0
+     4: 08 ff      LoadFalse r0
+     6: 04 ff 00   LoadConstant r0, c0
+     9: 04 ff 01   LoadConstant r0, c1
+    12: 04 ff 01   LoadConstant r0, c1
+    15: 05 ff      LoadUndefined r0
+    17: 0c ff      Ret r0
+  Constant Table:
+    0: [String: ]
+    1: [String: hello]
+}

@@ -9,7 +9,7 @@
     32: 01 00 00 03 ff ff ff ff ff ff ff 7f   LoadImmediate (ExtraWide) r0, 2147483647
     44: 04 ff 00                              LoadConstant r0, c0
     47: 05 ff                                 LoadUndefined r0
-    49: 09 ff                                 Ret r0
+    49: 0c ff                                 Ret r0
   Constant Table:
     0: [double: 0.5]
 }

@@ -1,17 +1,17 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 11 ff 00   NewClosure r0, c0
-     3: 07 ff 01   StoreGlobal r0, c1
-     6: 11 ff 02   NewClosure r0, c2
-     9: 07 ff 03   StoreGlobal r0, c3
-    12: 11 ff 04   NewClosure r0, c4
-    15: 07 ff 05   StoreGlobal r0, c5
-    18: 11 ff 06   NewClosure r0, c6
-    21: 07 ff 07   StoreGlobal r0, c7
-    24: 11 ff 08   NewClosure r0, c8
-    27: 07 ff 07   StoreGlobal r0, c7
+     0: 14 ff 00   NewClosure r0, c0
+     3: 0a ff 01   StoreGlobal r0, c1
+     6: 14 ff 02   NewClosure r0, c2
+     9: 0a ff 03   StoreGlobal r0, c3
+    12: 14 ff 04   NewClosure r0, c4
+    15: 0a ff 05   StoreGlobal r0, c5
+    18: 14 ff 06   NewClosure r0, c6
+    21: 0a ff 07   StoreGlobal r0, c7
+    24: 14 ff 08   NewClosure r0, c8
+    27: 0a ff 07   StoreGlobal r0, c7
     30: 05 ff      LoadUndefined r0
-    32: 09 ff      Ret r0
+    32: 0c ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -27,23 +27,23 @@
 [BytecodeFunction: f] {
   Parameters: 0, Registers: 1
     0: 05 ff   LoadUndefined r0
-    2: 09 ff   Ret r0
+    2: 0c ff   Ret r0
 }
 
 [BytecodeFunction: testShortPatchCondJump] {
   Parameters: 1, Registers: 1
-     0: 0f 05 08   JumpFalse a0, 8 (.L0)
+     0: 12 05 08   JumpFalse a0, 8 (.L0)
      3: 03 ff 01   LoadImmediate r0, 1
-     6: 09 ff      Ret r0
+     6: 0c ff      Ret r0
   .L0:
      8: 03 ff 02   LoadImmediate r0, 2
-    11: 09 ff      Ret r0
+    11: 0c ff      Ret r0
 }
 
 [BytecodeFunction: testLongPatchCondJump] {
   Parameters: 1, Registers: 11
-      0: 10 05 01         JumpFalseConstant a0, c1 (.L0)
-      3: 06 ff 00         LoadGlobal r0, c0
+      0: 13 05 01         JumpFalseConstant a0, c1 (.L0)
+      3: 09 ff 00         LoadGlobal r0, c0
       6: 03 fe 01         LoadImmediate r1, 1
       9: 03 fd 02         LoadImmediate r2, 2
      12: 03 fc 03         LoadImmediate r3, 3
@@ -54,8 +54,8 @@
      27: 03 f7 08         LoadImmediate r8, 8
      30: 03 f6 09         LoadImmediate r9, 9
      33: 03 f5 0a         LoadImmediate r10, 10
-     36: 08 ff ff fe 0a   Call r0, r0, r1, 10
-     41: 06 ff 00         LoadGlobal r0, c0
+     36: 0b ff ff fe 0a   Call r0, r0, r1, 10
+     41: 09 ff 00         LoadGlobal r0, c0
      44: 03 fe 01         LoadImmediate r1, 1
      47: 03 fd 02         LoadImmediate r2, 2
      50: 03 fc 03         LoadImmediate r3, 3
@@ -66,8 +66,8 @@
      65: 03 f7 08         LoadImmediate r8, 8
      68: 03 f6 09         LoadImmediate r9, 9
      71: 03 f5 0a         LoadImmediate r10, 10
-     74: 08 ff ff fe 0a   Call r0, r0, r1, 10
-     79: 06 ff 00         LoadGlobal r0, c0
+     74: 0b ff ff fe 0a   Call r0, r0, r1, 10
+     79: 09 ff 00         LoadGlobal r0, c0
      82: 03 fe 01         LoadImmediate r1, 1
      85: 03 fd 02         LoadImmediate r2, 2
      88: 03 fc 03         LoadImmediate r3, 3
@@ -78,8 +78,8 @@
     103: 03 f7 08         LoadImmediate r8, 8
     106: 03 f6 09         LoadImmediate r9, 9
     109: 03 f5 0a         LoadImmediate r10, 10
-    112: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    117: 06 ff 00         LoadGlobal r0, c0
+    112: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    117: 09 ff 00         LoadGlobal r0, c0
     120: 03 fe 01         LoadImmediate r1, 1
     123: 03 fd 02         LoadImmediate r2, 2
     126: 03 fc 03         LoadImmediate r3, 3
@@ -90,8 +90,8 @@
     141: 03 f7 08         LoadImmediate r8, 8
     144: 03 f6 09         LoadImmediate r9, 9
     147: 03 f5 0a         LoadImmediate r10, 10
-    150: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    155: 06 ff 00         LoadGlobal r0, c0
+    150: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    155: 09 ff 00         LoadGlobal r0, c0
     158: 03 fe 01         LoadImmediate r1, 1
     161: 03 fd 02         LoadImmediate r2, 2
     164: 03 fc 03         LoadImmediate r3, 3
@@ -102,8 +102,8 @@
     179: 03 f7 08         LoadImmediate r8, 8
     182: 03 f6 09         LoadImmediate r9, 9
     185: 03 f5 0a         LoadImmediate r10, 10
-    188: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    193: 06 ff 00         LoadGlobal r0, c0
+    188: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    193: 09 ff 00         LoadGlobal r0, c0
     196: 03 fe 01         LoadImmediate r1, 1
     199: 03 fd 02         LoadImmediate r2, 2
     202: 03 fc 03         LoadImmediate r3, 3
@@ -114,8 +114,8 @@
     217: 03 f7 08         LoadImmediate r8, 8
     220: 03 f6 09         LoadImmediate r9, 9
     223: 03 f5 0a         LoadImmediate r10, 10
-    226: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    231: 06 ff 00         LoadGlobal r0, c0
+    226: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    231: 09 ff 00         LoadGlobal r0, c0
     234: 03 fe 01         LoadImmediate r1, 1
     237: 03 fd 02         LoadImmediate r2, 2
     240: 03 fc 03         LoadImmediate r3, 3
@@ -126,11 +126,11 @@
     255: 03 f7 08         LoadImmediate r8, 8
     258: 03 f6 09         LoadImmediate r9, 9
     261: 03 f5 0a         LoadImmediate r10, 10
-    264: 08 ff ff fe 0a   Call r0, r0, r1, 10
+    264: 0b ff ff fe 0a   Call r0, r0, r1, 10
     269: 03 ff 01         LoadImmediate r0, 1
-    272: 09 ff            Ret r0
+    272: 0c ff            Ret r0
     274: 03 ff 02         LoadImmediate r0, 2
-    277: 09 ff            Ret r0
+    277: 0c ff            Ret r0
   Constant Table:
     0: [String: f]
     1: 274
@@ -138,23 +138,23 @@
 
 [BytecodeFunction: testShortPatchJump] {
   Parameters: 1, Registers: 1
-     0: 0f 05 08   JumpFalse a0, 8 (.L0)
+     0: 12 05 08   JumpFalse a0, 8 (.L0)
      3: 03 ff 01   LoadImmediate r0, 1
-     6: 0d 05      Jump 5 (.L1)
+     6: 10 05      Jump 5 (.L1)
   .L0:
      8: 03 ff 02   LoadImmediate r0, 2
   .L1:
     11: 03 ff 03   LoadImmediate r0, 3
-    14: 09 ff      Ret r0
+    14: 0c ff      Ret r0
 }
 
 [BytecodeFunction: testShortPatchJump] {
   Parameters: 1, Registers: 11
-      0: 0f 05 08         JumpFalse a0, 8 (.L1)
+      0: 12 05 08         JumpFalse a0, 8 (.L1)
       3: 03 ff 01         LoadImmediate r0, 1
-      6: 0e 01            JumpConstant c1 (.L0)
+      6: 11 01            JumpConstant c1 (.L0)
   .L1:
-      8: 06 ff 00         LoadGlobal r0, c0
+      8: 09 ff 00         LoadGlobal r0, c0
      11: 03 fe 01         LoadImmediate r1, 1
      14: 03 fd 02         LoadImmediate r2, 2
      17: 03 fc 03         LoadImmediate r3, 3
@@ -165,8 +165,8 @@
      32: 03 f7 08         LoadImmediate r8, 8
      35: 03 f6 09         LoadImmediate r9, 9
      38: 03 f5 0a         LoadImmediate r10, 10
-     41: 08 ff ff fe 0a   Call r0, r0, r1, 10
-     46: 06 ff 00         LoadGlobal r0, c0
+     41: 0b ff ff fe 0a   Call r0, r0, r1, 10
+     46: 09 ff 00         LoadGlobal r0, c0
      49: 03 fe 01         LoadImmediate r1, 1
      52: 03 fd 02         LoadImmediate r2, 2
      55: 03 fc 03         LoadImmediate r3, 3
@@ -177,8 +177,8 @@
      70: 03 f7 08         LoadImmediate r8, 8
      73: 03 f6 09         LoadImmediate r9, 9
      76: 03 f5 0a         LoadImmediate r10, 10
-     79: 08 ff ff fe 0a   Call r0, r0, r1, 10
-     84: 06 ff 00         LoadGlobal r0, c0
+     79: 0b ff ff fe 0a   Call r0, r0, r1, 10
+     84: 09 ff 00         LoadGlobal r0, c0
      87: 03 fe 01         LoadImmediate r1, 1
      90: 03 fd 02         LoadImmediate r2, 2
      93: 03 fc 03         LoadImmediate r3, 3
@@ -189,8 +189,8 @@
     108: 03 f7 08         LoadImmediate r8, 8
     111: 03 f6 09         LoadImmediate r9, 9
     114: 03 f5 0a         LoadImmediate r10, 10
-    117: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    122: 06 ff 00         LoadGlobal r0, c0
+    117: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    122: 09 ff 00         LoadGlobal r0, c0
     125: 03 fe 01         LoadImmediate r1, 1
     128: 03 fd 02         LoadImmediate r2, 2
     131: 03 fc 03         LoadImmediate r3, 3
@@ -201,8 +201,8 @@
     146: 03 f7 08         LoadImmediate r8, 8
     149: 03 f6 09         LoadImmediate r9, 9
     152: 03 f5 0a         LoadImmediate r10, 10
-    155: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    160: 06 ff 00         LoadGlobal r0, c0
+    155: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    160: 09 ff 00         LoadGlobal r0, c0
     163: 03 fe 01         LoadImmediate r1, 1
     166: 03 fd 02         LoadImmediate r2, 2
     169: 03 fc 03         LoadImmediate r3, 3
@@ -213,8 +213,8 @@
     184: 03 f7 08         LoadImmediate r8, 8
     187: 03 f6 09         LoadImmediate r9, 9
     190: 03 f5 0a         LoadImmediate r10, 10
-    193: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    198: 06 ff 00         LoadGlobal r0, c0
+    193: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    198: 09 ff 00         LoadGlobal r0, c0
     201: 03 fe 01         LoadImmediate r1, 1
     204: 03 fd 02         LoadImmediate r2, 2
     207: 03 fc 03         LoadImmediate r3, 3
@@ -225,8 +225,8 @@
     222: 03 f7 08         LoadImmediate r8, 8
     225: 03 f6 09         LoadImmediate r9, 9
     228: 03 f5 0a         LoadImmediate r10, 10
-    231: 08 ff ff fe 0a   Call r0, r0, r1, 10
-    236: 06 ff 00         LoadGlobal r0, c0
+    231: 0b ff ff fe 0a   Call r0, r0, r1, 10
+    236: 09 ff 00         LoadGlobal r0, c0
     239: 03 fe 01         LoadImmediate r1, 1
     242: 03 fd 02         LoadImmediate r2, 2
     245: 03 fc 03         LoadImmediate r3, 3
@@ -237,9 +237,9 @@
     260: 03 f7 08         LoadImmediate r8, 8
     263: 03 f6 09         LoadImmediate r9, 9
     266: 03 f5 0a         LoadImmediate r10, 10
-    269: 08 ff ff fe 0a   Call r0, r0, r1, 10
+    269: 0b ff ff fe 0a   Call r0, r0, r1, 10
     274: 03 ff 02         LoadImmediate r0, 2
-    277: 09 ff            Ret r0
+    277: 0c ff            Ret r0
   Constant Table:
     0: [String: f]
     1: 268

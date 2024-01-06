@@ -74,7 +74,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         HandleScope::new(self.cx, |_| {
             let mut generator =
-                BytecodeFunctionGenerator::new_for_program(self.cx, &self.scope_tree);
+                BytecodeFunctionGenerator::new_for_program(self.cx, program, &self.scope_tree)?;
 
             // Script function consists of toplevel statements
             for toplevel in &program.toplevels {
@@ -249,8 +249,26 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         ))
     }
 
-    fn new_for_program(cx: Context, scope_tree: &'a ScopeTree) -> Self {
-        Self::new(cx, scope_tree, Some("<global>".to_owned()), 0, 0)
+    fn new_for_program(
+        cx: Context,
+        program: &ast::Program,
+        scope_tree: &'a ScopeTree,
+    ) -> EmitResult<Self> {
+        // Number of local registers was determined while creating the VM scope tree
+        let num_local_registers = program.scope.as_ref().num_local_registers();
+
+        // Validate that the number of local registers is within the limits of the bytecode format
+        if num_local_registers > GenRegister::MAX_LOCAL_INDEX as usize {
+            return Err(EmitError::TooManyRegisters);
+        }
+
+        Ok(Self::new(
+            cx,
+            scope_tree,
+            Some("<global>".to_owned()),
+            0,
+            num_local_registers as u32,
+        ))
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -489,6 +507,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         debug_assert!(self.register_allocator.is_empty());
 
         let result = match stmt {
+            ast::Statement::VarDecl(var_decl) => self.gen_variable_declaration(var_decl),
             ast::Statement::FuncDecl(func_decl) => self.gen_function_declaraton(func_decl.as_ref()),
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
@@ -509,17 +528,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         match expr {
             ast::Expression::Id(expr) => self.gen_identifier_expression(expr, dest),
-            ast::Expression::Null(_) => self.gen_null_literal_expression(),
-            ast::Expression::Number(expr) => self.gen_number_literal(expr.value),
-            ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr),
-            ast::Expression::String(expr) => self.gen_string_literal_expression(expr),
+            ast::Expression::Null(_) => self.gen_null_literal_expression(dest),
+            ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
+            ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr, dest),
+            ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
             ast::Expression::Unary(expr) => match expr.operator {
-                ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr),
-                ast::UnaryOperator::Void => self.gen_void_expression(expr),
+                ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
+                ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
                 _ => unimplemented!("bytecode for unary operator"),
             },
-            ast::Expression::Binary(expr) => self.gen_binary_expression(expr),
-            ast::Expression::Call(expr) => self.gen_call_expression(expr),
+            ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
+            ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             _ => unimplemented!("bytecode for expression kind"),
         }
     }
@@ -550,6 +569,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match dest {
                     ExprDest::Any => Ok(arg_reg),
                     ExprDest::NewTemporary => self.gen_mov_to_new_temporary(arg_reg),
+                    ExprDest::Fixed(dest) => {
+                        self.write_mov_instruction(dest, arg_reg);
+                        Ok(dest)
+                    }
                 }
             }
             VMLocation::LocalRegister(index) => {
@@ -557,6 +580,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match dest {
                     ExprDest::Any => Ok(local_reg),
                     ExprDest::NewTemporary => self.gen_mov_to_new_temporary(local_reg),
+                    ExprDest::Fixed(dest) => {
+                        self.write_mov_instruction(dest, local_reg);
+                        Ok(dest)
+                    }
                 }
             }
             // Global variables must first be loaded to a register
@@ -564,7 +591,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
                 let constant_index = self.constant_table_builder.add_string(name_value)?;
 
-                let dest = self.register_allocator.allocate()?;
+                let dest = self.allocate_destination(dest)?;
                 self.writer
                     .load_global_instruction(dest, ConstantIndex::new(constant_index));
 
@@ -606,20 +633,54 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    /// Find the best expression destination in which to place the result of an expression that will
+    /// be stored at the given identifier's location.
+    ///
+    /// This allows expressions to be stored directly into their destination register, avoiding an
+    /// unnecessary mov instruction.
+    fn expr_dest_for_id(&mut self, id: &ast::Identifier) -> ExprDest {
+        // Unresolved variables can be stored from any register
+        if id.scope.is_none() {
+            return ExprDest::Any;
+        }
+
+        let scope = id.scope.unwrap();
+        let binding = scope.as_ref().get_binding(&id.name);
+
+        match binding.vm_location().unwrap() {
+            // Variables in arguments and registers can be encoded directly as register operands.
+            // Make sure to load to a new temporary if necessary.
+            VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),
+            VMLocation::LocalRegister(index) => ExprDest::Fixed(Register::local(index)),
+            // Global variables can be stored from any register
+            VMLocation::Global => ExprDest::Any,
+            VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
+        }
+    }
+
+    /// Allocate the destination register for an expression, which may be a new temporary or a fixed
+    /// register that was specified.
+    fn allocate_destination(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
+        match dest {
+            ExprDest::Any | ExprDest::NewTemporary => self.register_allocator.allocate(),
+            ExprDest::Fixed(dest) => Ok(dest),
+        }
+    }
+
     fn gen_mov_to_new_temporary(&mut self, src: GenRegister) -> EmitResult<GenRegister> {
         let dest = self.register_allocator.allocate()?;
         self.write_mov_instruction(dest, src);
         Ok(dest)
     }
 
-    fn gen_null_literal_expression(&mut self) -> EmitResult<GenRegister> {
-        let dest = self.register_allocator.allocate()?;
+    fn gen_null_literal_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
         self.writer.load_null_instruction(dest);
         Ok(dest)
     }
 
-    fn gen_number_literal(&mut self, value: f64) -> EmitResult<GenRegister> {
-        let dest = self.register_allocator.allocate()?;
+    fn gen_number_literal(&mut self, value: f64, dest: ExprDest) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
 
         // Smis are inlined as immediate while all other numbers are stored in the constant table
         let number = Value::number(value);
@@ -638,8 +699,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_boolean_literal_expression(
         &mut self,
         expr: &ast::BooleanLiteral,
+        dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let dest = self.register_allocator.allocate()?;
+        let dest = self.allocate_destination(dest)?;
 
         if expr.value {
             self.writer.load_true_instruction(dest);
@@ -653,8 +715,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_string_literal_expression(
         &mut self,
         expr: &ast::StringLiteral,
+        dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let dest = self.register_allocator.allocate()?;
+        let dest = self.allocate_destination(dest)?;
 
         // All string literals are loaded from the constant table
         let string = InternedStrings::get_wtf8_str(self.cx, &expr.value).as_flat();
@@ -669,34 +732,43 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_unary_minus_expression(
         &mut self,
         expr: &ast::UnaryExpression,
+        dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // A unary minus on a number literal is inlined as a negative number literal
         if let ast::Expression::Number(number_expr) = expr.argument.as_ref() {
-            return self.gen_number_literal(-number_expr.value);
+            return self.gen_number_literal(-number_expr.value, dest);
         }
 
         unimplemented!("bytecode for unary minus expression")
     }
 
-    fn gen_void_expression(&mut self, expr: &ast::UnaryExpression) -> EmitResult<GenRegister> {
+    fn gen_void_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         // Void expressions are evaluated for side effects only, so simply evaluate the argument
         // and return undefined.
         let result = self.gen_expression(&expr.argument)?;
         self.register_allocator.release(result);
 
-        let dest = self.register_allocator.allocate()?;
+        let dest = self.allocate_destination(dest)?;
         self.writer.load_undefined_instruction(dest);
 
         Ok(dest)
     }
 
-    fn gen_binary_expression(&mut self, expr: &ast::BinaryExpression) -> EmitResult<GenRegister> {
+    fn gen_binary_expression(
+        &mut self,
+        expr: &ast::BinaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         let left = self.gen_expression(&expr.left)?;
         let right = self.gen_expression(&expr.right)?;
 
         self.register_allocator.release(right);
         self.register_allocator.release(left);
-        let dest = self.register_allocator.allocate()?;
+        let dest = self.allocate_destination(dest)?;
 
         match expr.operator {
             ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right),
@@ -708,7 +780,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
-    fn gen_call_expression(&mut self, expr: &ast::CallExpression) -> EmitResult<GenRegister> {
+    fn gen_call_expression(
+        &mut self,
+        expr: &ast::CallExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         let callee = self.gen_expression(&expr.callee)?;
 
         if expr
@@ -754,7 +830,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(*arg_reg);
         }
         self.register_allocator.release(callee);
-        let dest = self.register_allocator.allocate()?;
+        let dest = self.allocate_destination(dest)?;
 
         self.writer.call_instruction(dest, callee, argv, argc);
 
@@ -776,17 +852,46 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         true
     }
 
+    fn gen_variable_declaration(&mut self, var_decl: &ast::VariableDeclaration) -> EmitResult<()> {
+        if var_decl.kind != ast::VarKind::Var {
+            unimplemented!("bytecode for const and let declarations");
+        }
+
+        for decl in &var_decl.declarations {
+            if let Some(init) = decl.init.as_deref() {
+                match decl.id.as_ref() {
+                    ast::Pattern::Id(id) => {
+                        let init_value_dest = self.expr_dest_for_id(id);
+                        let init_value = self.gen_expression_with_dest(init, init_value_dest)?;
+
+                        self.gen_store_identifier(id, init_value)?;
+                        self.register_allocator.release(init_value);
+                    }
+                    _ => unimplemented!("bytecode for variable destructuring patterns"),
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn gen_function_declaraton(&mut self, func_decl: &ast::Function) -> EmitResult<()> {
         let func_constant_index = self.enqueue_function_to_generate(AstPtr::from_ref(func_decl))?;
 
-        // Create a new closure
-        let closure_reg = self.register_allocator.allocate()?;
+        // Create a new closure, directly into binding location if possible
+        let closure_dest = if let Some(id) = func_decl.id.as_ref() {
+            self.expr_dest_for_id(id)
+        } else {
+            ExprDest::Any
+        };
+        let closure_reg = self.allocate_destination(closure_dest)?;
+
         self.writer
             .new_closure_instruction(closure_reg, ConstantIndex::new(func_constant_index));
 
         // And store at the binding's location
-        if let Some(id) = &func_decl.id {
-            self.gen_store_identifier(id.as_ref(), closure_reg)?;
+        if let Some(id) = func_decl.id.as_ref() {
+            self.gen_store_identifier(id, closure_reg)?;
         }
 
         self.register_allocator.release(closure_reg);
@@ -931,6 +1036,8 @@ enum ExprDest {
     Any,
     /// Value must be placed in a newly allocated temporary register.
     NewTemporary,
+    /// Value must be placed in a specific register.
+    Fixed(GenRegister),
 }
 
 pub enum JumpOperand {

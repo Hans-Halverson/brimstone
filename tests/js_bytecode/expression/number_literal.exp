@@ -1,15 +1,27 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 03 ff 00                              LoadImmediate r0, 0
-     3: 03 ff 01                              LoadImmediate r0, 1
-     6: 03 ff 7f                              LoadImmediate r0, 127
-     9: 00 00 03 ff ff 80 00                  LoadImmediate (Wide) r0, 128
-    16: 00 03 ff ff ff 7f                     LoadImmediate (Wide) r0, 32767
-    22: 01 03 ff ff ff ff 00 80 00 00         LoadImmediate (ExtraWide) r0, 32768
-    32: 01 00 00 03 ff ff ff ff ff ff ff 7f   LoadImmediate (ExtraWide) r0, 2147483647
-    44: 04 ff 00                              LoadConstant r0, c0
-    47: 05 ff                                 LoadUndefined r0
-    49: 0c ff                                 Ret r0
+      0: 03 ff 00                              LoadImmediate r0, 0
+      3: 03 ff 01                              LoadImmediate r0, 1
+      6: 03 ff ff                              LoadImmediate r0, -1
+      9: 03 ff 7f                              LoadImmediate r0, 127
+     12: 03 ff 80                              LoadImmediate r0, -128
+     15: 00 00 03 ff ff 80 00                  LoadImmediate (Wide) r0, 128
+     22: 00 03 ff ff 7f ff                     LoadImmediate (Wide) r0, -129
+     28: 00 03 ff ff ff 7f                     LoadImmediate (Wide) r0, 32767
+     34: 00 03 ff ff 00 80                     LoadImmediate (Wide) r0, -32768
+     40: 01 00 00 03 ff ff ff ff 00 80 00 00   LoadImmediate (ExtraWide) r0, 32768
+     52: 01 00 00 03 ff ff ff ff ff 7f ff ff   LoadImmediate (ExtraWide) r0, -32769
+     64: 01 00 00 03 ff ff ff ff ff ff ff 7f   LoadImmediate (ExtraWide) r0, 2147483647
+     76: 01 00 00 03 ff ff ff ff 00 00 00 80   LoadImmediate (ExtraWide) r0, -2147483648
+     88: 04 ff 00                              LoadConstant r0, c0
+     91: 04 ff 01                              LoadConstant r0, c1
+     94: 04 ff 02                              LoadConstant r0, c2
+     97: 04 ff 03                              LoadConstant r0, c3
+    100: 05 ff                                 LoadUndefined r0
+    102: 0c ff                                 Ret r0
   Constant Table:
     0: [double: 0.5]
+    1: [double: -0]
+    2: [double: 2147483648]
+    3: [double: -2147483649]
 }

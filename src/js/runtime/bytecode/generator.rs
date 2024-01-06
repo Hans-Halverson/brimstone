@@ -510,9 +510,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match expr {
             ast::Expression::Id(expr) => self.gen_identifier_expression(expr, dest),
             ast::Expression::Null(_) => self.gen_null_literal_expression(),
-            ast::Expression::Number(expr) => self.gen_number_literal_expression(expr),
+            ast::Expression::Number(expr) => self.gen_number_literal(expr.value),
             ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr),
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr),
+            ast::Expression::Unary(expr) => match expr.operator {
+                ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr),
+                ast::UnaryOperator::Void => self.gen_void_expression(expr),
+                _ => unimplemented!("bytecode for unary operator"),
+            },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr),
             ast::Expression::Call(expr) => self.gen_call_expression(expr),
             _ => unimplemented!("bytecode for expression kind"),
@@ -613,14 +618,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
-    fn gen_number_literal_expression(
-        &mut self,
-        expr: &ast::NumberLiteral,
-    ) -> EmitResult<GenRegister> {
+    fn gen_number_literal(&mut self, value: f64) -> EmitResult<GenRegister> {
         let dest = self.register_allocator.allocate()?;
 
         // Smis are inlined as immediate while all other numbers are stored in the constant table
-        let number = Value::number(expr.value);
+        let number = Value::number(value);
         if number.is_smi() {
             self.writer
                 .load_immediate_instruction(dest, SInt::new(number.as_smi()));
@@ -660,6 +662,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.writer
             .load_constant_instruction(dest, ConstantIndex::new(constant_index));
+
+        Ok(dest)
+    }
+
+    fn gen_unary_minus_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+    ) -> EmitResult<GenRegister> {
+        // A unary minus on a number literal is inlined as a negative number literal
+        if let ast::Expression::Number(number_expr) = expr.argument.as_ref() {
+            return self.gen_number_literal(-number_expr.value);
+        }
+
+        unimplemented!("bytecode for unary minus expression")
+    }
+
+    fn gen_void_expression(&mut self, expr: &ast::UnaryExpression) -> EmitResult<GenRegister> {
+        // Void expressions are evaluated for side effects only, so simply evaluate the argument
+        // and return undefined.
+        let result = self.gen_expression(&expr.argument)?;
+        self.register_allocator.release(result);
+
+        let dest = self.register_allocator.allocate()?;
+        self.writer.load_undefined_instruction(dest);
 
         Ok(dest)
     }

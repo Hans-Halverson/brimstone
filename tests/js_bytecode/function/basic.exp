@@ -1,0 +1,30 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: 11 ff 00   NewClosure r0, c0
+     3: 07 ff 01   StoreGlobal r0, c1
+     6: 11 ff 02   NewClosure r0, c2
+     9: 07 ff 03   StoreGlobal r0, c3
+    12: 05 ff      LoadUndefined r0
+    14: 09 ff      Ret r0
+  Constant Table:
+    0: [BytecodeFunction: test1]
+    1: [String: test1]
+    2: [BytecodeFunction: test2]
+    3: [String: test2]
+}
+
+[BytecodeFunction: test1] {
+  Parameters: 2, Registers: 1
+    0: 0a ff 05 06   Add r0, a0, a1
+    4: 09 ff         Ret r0
+}
+
+[BytecodeFunction: test2] {
+  Parameters: 1, Registers: 1
+     0: 0f 05 07   JumpFalse a0, 7 (.L0)
+     3: 05 ff      LoadUndefined r0
+     5: 09 ff      Ret r0
+  .L0:
+     7: 03 ff 02   LoadImmediate r0, 2
+    10: 09 ff      Ret r0
+}

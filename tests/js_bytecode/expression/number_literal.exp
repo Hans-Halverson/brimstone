@@ -1,0 +1,15 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: 03 ff 00                              LoadImmediate r0, 0
+     3: 03 ff 01                              LoadImmediate r0, 1
+     6: 03 ff 7f                              LoadImmediate r0, 127
+     9: 00 00 03 ff ff 80 00                  LoadImmediate (Wide) r0, 128
+    16: 00 03 ff ff ff 7f                     LoadImmediate (Wide) r0, 32767
+    22: 01 03 ff ff ff ff 00 80 00 00         LoadImmediate (ExtraWide) r0, 32768
+    32: 01 00 00 03 ff ff ff ff ff ff ff 7f   LoadImmediate (ExtraWide) r0, 2147483647
+    44: 04 ff 00                              LoadConstant r0, c0
+    47: 05 ff                                 LoadUndefined r0
+    49: 09 ff                                 Ret r0
+  Constant Table:
+    0: [double: 0.5]
+}

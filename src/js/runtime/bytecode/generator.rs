@@ -21,7 +21,7 @@ use crate::js::{
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     instruction::{DecodeInfo, OpCode},
-    operand::{min_width_for_signed, Operand, Register, SInt, UInt},
+    operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
     width::{ExtraWide, Narrow, Wide, Width, WidthEnum},
     writer::BytecodeWriter,
@@ -354,7 +354,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let constant_index = self
                     .constant_table_builder
                     .add_bytecode_offset(relative_offset)?;
-                Ok(JumpOperand::ConstantIndex(UInt::new(constant_index)))
+                Ok(JumpOperand::ConstantIndex(ConstantIndex::new(constant_index)))
             }
         } else {
             // Forwards jump - target block offset is not yet known so reserve an entry in the
@@ -558,7 +558,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let dest = self.register_allocator.allocate()?;
                 self.writer
-                    .load_global_instruction(dest, UInt::new(constant_index));
+                    .load_global_instruction(dest, ConstantIndex::new(constant_index));
 
                 Ok(dest)
             }
@@ -590,7 +590,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
                 let constant_index = self.constant_table_builder.add_string(name_value)?;
                 self.writer
-                    .store_global_instruction(value, UInt::new(constant_index));
+                    .store_global_instruction(value, ConstantIndex::new(constant_index));
             }
             VMLocation::Scope { .. } => unimplemented!("bytecode for storing scope variables"),
         }
@@ -618,7 +618,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             let constant_index = self.constant_table_builder.add_double(number.as_double())?;
             self.writer
-                .load_constant_instruction(dest, UInt::new(constant_index));
+                .load_constant_instruction(dest, ConstantIndex::new(constant_index));
         }
 
         Ok(dest)
@@ -716,7 +716,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Create a new closure
         let closure_reg = self.register_allocator.allocate()?;
         self.writer
-            .new_closure_instruction(closure_reg, UInt::new(func_constant_index));
+            .new_closure_instruction(closure_reg, ConstantIndex::new(func_constant_index));
 
         // And store at the binding's location
         if let Some(id) = &func_decl.id {
@@ -836,6 +836,7 @@ struct ForwardJumpInfo {
 pub type GenRegister = Register<ExtraWide>;
 type GenUInt = UInt<ExtraWide>;
 type GenSInt = SInt<ExtraWide>;
+type GenConstantIndex = ConstantIndex<ExtraWide>;
 
 /// Collection of functions that still need to be generated, along with their index in the
 /// function's constant table.
@@ -868,5 +869,5 @@ enum ExprDest {
 
 pub enum JumpOperand {
     RelativeOffset(GenSInt),
-    ConstantIndex(GenUInt),
+    ConstantIndex(GenConstantIndex),
 }

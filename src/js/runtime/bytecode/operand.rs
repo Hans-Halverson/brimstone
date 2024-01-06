@@ -118,10 +118,14 @@ operand_type!(UInt, UNSIGNED);
 // Signed integers
 operand_type!(SInt, SIGNED);
 
+// An index into the constant table
+operand_type!(ConstantIndex, UNSIGNED);
+
 pub enum OperandType {
     Register,
     UInt,
     SInt,
+    ConstantIndex,
 }
 
 /// Registers may be either registers local to a function or arguments to that function. Registers
@@ -207,11 +211,6 @@ impl<W: Width> fmt::Display for Register<W> {
 
 impl<W: Width> UInt<W> {
     #[inline]
-    pub fn new(value: W::UInt) -> Self {
-        Self::from_unsigned(value)
-    }
-
-    #[inline]
     pub fn value(&self) -> W::UInt {
         self.unsigned()
     }
@@ -238,6 +237,24 @@ impl<W: Width> SInt<W> {
 impl<W: Width> fmt::Display for SInt<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.value())
+    }
+}
+
+impl<W: Width> ConstantIndex<W> {
+    #[inline]
+    pub fn new(value: W::UInt) -> Self {
+        Self::from_unsigned(value)
+    }
+
+    #[inline]
+    pub fn value(&self) -> W::UInt {
+        self.unsigned()
+    }
+}
+
+impl<W: Width> fmt::Display for ConstantIndex<W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "c{}", self.value())
     }
 }
 

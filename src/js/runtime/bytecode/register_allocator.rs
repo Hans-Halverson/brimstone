@@ -17,7 +17,7 @@ pub struct TemporaryRegisterAllocator {
 impl TemporaryRegisterAllocator {
     pub fn new(num_local_registers: u32) -> Self {
         Self {
-            num_allocated: 0,
+            num_allocated: num_local_registers,
             num_local_registers,
             max_allocated: num_local_registers,
         }

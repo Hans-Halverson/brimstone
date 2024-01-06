@@ -1,8 +1,11 @@
-use std::fmt;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use super::{
-    operand::{Operand, OperandType, Register, SInt, UInt},
-    width::{ExtraWide, Narrow, Wide, Width, WidthEnum},
+    operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
+    width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
     writer::BytecodeWriter,
 };
 
@@ -14,6 +17,10 @@ pub trait Instruction: fmt::Display {
     fn num_operands(&self) -> usize;
     fn operand_types(&self) -> &[OperandType];
     fn width(&self) -> WidthEnum;
+
+    /// Return a raw operand at the given index. The operand is extended to a usize, though may
+    /// actually represent a smaller or unsigned integer.
+    fn get_raw_operand(&self, index: usize) -> usize;
 
     /// Total length in bytes of this instruction's operands. Does not include the opcode or width
     /// prefix.
@@ -83,6 +90,11 @@ macro_rules! define_instructions {
                 fn width(&self) -> WidthEnum {
                     W::ENUM
                 }
+
+                #[inline]
+                fn get_raw_operand(&self, index: usize) -> usize {
+                    self.0[index].to_usize()
+                }
             }
 
             /// Instruction printing functions.
@@ -120,7 +132,7 @@ macro_rules! define_instructions {
             }
         )*
 
-        #[derive(Copy, Clone, Debug, PartialEq)]
+        #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
         #[repr(u8)]
         pub enum OpCode {
             $($short_name,)*
@@ -220,7 +232,7 @@ define_instructions!(
     /// Load a constant from the constant table into a register.
     LoadConstant (LoadConstantInstruction, load_constant_instruction) {
         [0] dest: Register,
-        [1] constant_index: UInt,
+        [1] constant_index: ConstantIndex,
     }
 
     /// Load the value `undefined` into a register.
@@ -232,14 +244,14 @@ define_instructions!(
     /// table.
     LoadGlobal (LoadGlobalInstruction, load_global_instruction) {
         [0] dest: Register,
-        [1] constant_index: UInt,
+        [1] constant_index: ConstantIndex,
     }
 
     /// Store a register into a global variable. The global variable's name is stored in the
     /// constant table.
     StoreGlobal (StoreGlobalInstruction, store_global_instruction) {
         [0] value: Register,
-        [1] constant_index: UInt,
+        [1] constant_index: ConstantIndex,
     }
 
     /// Call a function. Arguments are passed in contiguous sequence of registers starting at argv,
@@ -286,7 +298,7 @@ define_instructions!(
     /// Unconditionally jump to the given instruction, specified as an index into the constant table
     /// which holds the byte offset from the start of the current instruction.
     JumpConstant (JumpConstantInstruction, jump_constant_instruction) {
-        [0] constant_index: UInt,
+        [0] constant_index: ConstantIndex,
     }
 
     /// Conditionally jump to the given instruction if the condition is false, using an inline offset.
@@ -299,13 +311,13 @@ define_instructions!(
     /// in the constant table.
     JumpFalseConstant(JumpFalseConstantInstruction, jump_false_constant_instruction) {
         [0] condition: Register,
-        [1] constant_index: UInt,
+        [1] constant_index: ConstantIndex,
     }
 
     /// Create a new closure from the function at the given index in the constant table.
     NewClosure(NewClosureInstruction, new_closure_instruction) {
         [0] dest: Register,
-        [1] function_index: UInt,
+        [1] function_index: ConstantIndex,
     }
 );
 
@@ -408,15 +420,21 @@ impl<'a> Iterator for InstructionIterator<'a> {
 }
 
 pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
-    // Find the max instruction length and max offset in the bytecode to calculate padding
+    // Initial pass to find the max instruction length and max offset in the bytecode to calculate
+    // padding. Also determine the jump targets so that they can be labeled.
     let mut prev_offset = 0;
     let mut max_instr_length = 0;
-    let mut offsets = Vec::new();
+    let mut offsets = vec![];
+    let mut jump_targets = HashSet::new();
 
-    for (_, offset) in InstructionIterator::new(bytecode) {
+    for (instr, offset) in InstructionIterator::new(bytecode) {
         max_instr_length = max_instr_length.max(offset - prev_offset);
         prev_offset = offset;
         offsets.push(offset);
+
+        if let Some(jump_offset) = get_jump_offset(instr) {
+            jump_targets.insert((offset as isize + jump_offset) as usize);
+        }
     }
 
     max_instr_length = max_instr_length.max(bytecode.len() - prev_offset);
@@ -424,9 +442,28 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
 
     let offset_width = prev_offset.ilog10() as usize + 1;
 
+    // Sort jump targets so that the label index is known
+    let mut jump_targets: Vec<usize> = jump_targets.into_iter().collect();
+    jump_targets.sort();
+    let jump_targets: HashMap<usize, usize> = jump_targets
+        .into_iter()
+        .enumerate()
+        .map(|(i, offset)| (offset, i))
+        .collect();
+
+    // Second pass through instructions, this time actually writing them
     for (i, (instr, _)) in InstructionIterator::new(bytecode).enumerate() {
         let offset = offsets[i];
         let next_offset = offsets[i + 1];
+
+        // Print the label on its own line if this is a jump target
+        if let Some(label_index) = jump_targets.get(&offset) {
+            printer.dec_indent();
+            printer.write_indent();
+            printer.inc_indent();
+
+            printer.write(&format!(".L{}:\n", label_index));
+        }
 
         // First print the padded instruction offset
         printer.write_indent();
@@ -441,6 +478,28 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
         printer.write(&"   ".repeat(max_instr_length - (next_offset - offset)));
 
         // Then print the instruction in a readable form
-        printer.write(&format!("  {instr}\n"));
+        printer.write(&format!("  {instr}"));
+
+        // If this is a jump instruction, print the target label following the jump offset
+        if let Some(jump_offset) = get_jump_offset(instr) {
+            let target_offset = (offset as isize + jump_offset) as usize;
+            let target_label = jump_targets[&target_offset];
+
+            printer.write(&format!(" (.L{})", target_label));
+        }
+
+        printer.write("\n");
+    }
+}
+
+fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
+    let opcode = instr.opcode();
+
+    if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
+        Some(instr.get_raw_operand(0) as isize)
+    } else if opcode >= OpCode::JumpFalse && opcode <= OpCode::JumpFalseConstant {
+        Some(instr.get_raw_operand(1) as isize)
+    } else {
+        None
     }
 }

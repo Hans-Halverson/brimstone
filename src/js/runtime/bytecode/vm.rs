@@ -25,7 +25,7 @@ use super::{
         LoadUndefinedInstruction, MovInstruction, NewClosureInstruction, OpCode, RetInstruction,
         StoreGlobalInstruction, SubInstruction,
     },
-    operand::{Register, SInt, UInt},
+    operand::{ConstantIndex, Register, SInt},
     stack_frame::{
         StackSlotValue, ARGC_SLOT_INDEX, FUNCTION_SLOT_INDEX, NUM_STACK_SLOTS,
         RETURN_ADDRESS_SLOT_INDEX, RETURN_VALUE_ADDRESS_INDEX,
@@ -409,7 +409,7 @@ impl VM {
     fn get_constant<W: Width>(
         &self,
         func: HeapPtr<BytecodeFunction>,
-        constant_index: UInt<W>,
+        constant_index: ConstantIndex<W>,
     ) -> Value {
         // If a constant index is referenced the constant table must exist
         let constant_table = unsafe { func.constant_table_ptr().unwrap_unchecked() };
@@ -420,7 +420,7 @@ impl VM {
     fn get_constant_offset<W: Width>(
         &self,
         func: HeapPtr<BytecodeFunction>,
-        constant_index: UInt<W>,
+        constant_index: ConstantIndex<W>,
     ) -> isize {
         // Constant offsets are encoded as a raw isize, not a value
         self.get_constant(func, constant_index).as_raw_bits() as isize
@@ -434,7 +434,7 @@ impl VM {
 
     // Set the PC to the jump target, specified as a relative offset in the constant table.
     #[inline]
-    fn jump_constant<W: Width>(&mut self, constant_index: UInt<W>) {
+    fn jump_constant<W: Width>(&mut self, constant_index: ConstantIndex<W>) {
         let offset = self.get_constant_offset(self.get_function(), constant_index);
         self.pc = unsafe { self.pc.offset(offset) };
     }

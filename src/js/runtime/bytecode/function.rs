@@ -172,22 +172,23 @@ impl HeapPtr<BytecodeFunction> {
     /// Debug print this function and all its child functions.
     pub fn debug_print_recursive(&self) -> String {
         let mut printer = DebugPrinter::new(DebugPrintMode::Verbose);
-        let mut queue = vec![*self];
+        let mut stack = vec![*self];
 
-        while let Some(function) = queue.pop() {
+        while let Some(function) = stack.pop() {
             if !printer.is_empty() {
                 printer.write("\n");
             }
 
             function.debug_format(&mut printer);
 
-            // Constant table contains all child functions in declaration order
+            // Constant table contains all child functions in declaration order. Push them in
+            // reverse order so they are popped in depth-first declaration order.
             if let Some(constant_table) = function.constant_table_ptr() {
-                for constant in constant_table.as_slice() {
+                for constant in constant_table.as_slice().iter().rev() {
                     if constant.is_pointer() {
                         let heap_item = constant.as_pointer();
                         if heap_item.descriptor().kind() == ObjectKind::BytecodeFunction {
-                            queue.push(heap_item.cast::<BytecodeFunction>());
+                            stack.push(heap_item.cast::<BytecodeFunction>());
                         }
                     }
                 }

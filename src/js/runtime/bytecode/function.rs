@@ -184,8 +184,8 @@ impl HeapPtr<BytecodeFunction> {
             // Constant table contains all child functions in declaration order. Push them in
             // reverse order so they are popped in depth-first declaration order.
             if let Some(constant_table) = function.constant_table_ptr() {
-                for constant in constant_table.as_slice().iter().rev() {
-                    if constant.is_pointer() {
+                for (i, constant) in constant_table.as_slice().iter().enumerate().rev() {
+                    if constant_table.is_value(i) && constant.is_pointer() {
                         let heap_item = constant.as_pointer();
                         if heap_item.descriptor().kind() == ObjectKind::BytecodeFunction {
                             stack.push(heap_item.cast::<BytecodeFunction>());

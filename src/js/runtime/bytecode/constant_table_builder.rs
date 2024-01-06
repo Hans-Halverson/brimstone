@@ -22,15 +22,16 @@ enum ConstantTableEntry {
 }
 
 impl ConstantTableEntry {
-    /// Convert this entry to a value that is stored in the constant table.
-    fn to_value(&self, cx: Context) -> Handle<Value> {
+    /// Convert this entry to a value that is stored in the constant table. Return the value that
+    /// is stored, along with whether the entry represents an actual value (e.g. vs raw offset).
+    fn to_value(&self, cx: Context) -> (Handle<Value>, bool) {
         match self {
-            ConstantTableEntry::String(string) => string.cast(),
-            ConstantTableEntry::HeapObject { object, .. } => object.cast(),
-            ConstantTableEntry::Double(double) => double.to_handle(cx),
+            ConstantTableEntry::String(string) => (string.cast(), true),
+            ConstantTableEntry::HeapObject { object, .. } => (object.cast(), true),
+            ConstantTableEntry::Double(double) => (double.to_handle(cx), true),
             // Bytecode offsets are stored directly, not encoded as a value
             ConstantTableEntry::BytecodeOffset(offset) => {
-                Value::from_raw_bits(*offset as u64).to_handle(cx)
+                (Value::from_raw_bits(*offset as u64).to_handle(cx), false)
             }
         }
     }
@@ -313,13 +314,18 @@ impl ConstantTableBuilder {
 
         // Start uninitialized and fill in constants that we have allocated
         let mut constants = vec![Handle::dangling(); num_constants];
+        let mut metadata = vec![0; ConstantTable::calculate_metadata_size(num_constants)];
 
         for (constant, index) in &self.constants {
-            constants[*index as usize] = constant.to_value(cx);
+            let (value, is_value) = constant.to_value(cx);
+            constants[*index as usize] = value;
+            Self::set_metadata(&mut metadata, *index as usize, is_value);
         }
 
         for (constant, index) in &self.duplicates {
-            constants[*index as usize] = constant.to_value(cx);
+            let (value, is_value) = constant.to_value(cx);
+            constants[*index as usize] = value;
+            Self::set_metadata(&mut metadata, *index as usize, is_value);
         }
 
         // There may be holes in the array due to removed reservations or placeholders that will be
@@ -330,6 +336,19 @@ impl ConstantTableBuilder {
             }
         }
 
-        Some(ConstantTable::new(cx, constants))
+        Some(ConstantTable::new(cx, constants, metadata))
+    }
+
+    fn set_metadata(metadata: &mut Vec<u8>, index: usize, is_value: bool) {
+        if is_value {
+            return;
+        }
+
+        // Determine the containing byte and bit
+        let byte_index = index / 8;
+        let bit_mask = 1 << (index % 8);
+
+        // Set the bit in the corresponding byte
+        metadata[byte_index] |= bit_mask;
     }
 }

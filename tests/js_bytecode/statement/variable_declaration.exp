@@ -55,6 +55,8 @@
     16: 0d fe fb fa   Add r1, r4, r5
     20: 02 fd 05      Mov r2, a0
     23: 09 fc 00      LoadGlobal r3, c0
+    26: 05 fb         LoadUndefined r4
+    28: 0c fb         Ret r4
   Constant Table:
     0: [String: y]
 }

@@ -35,6 +35,8 @@
     12: 09 fb 00         LoadGlobal r4, c0
     15: 0b fe fe fd 03   Call r1, r1, r2, 3
     20: 0d ff ff fe      Add r0, r0, r1
+    24: 05 ff            LoadUndefined r0
+    26: 0c ff            Ret r0
   Constant Table:
     0: [String: foo]
 }

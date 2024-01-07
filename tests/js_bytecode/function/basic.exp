@@ -4,13 +4,21 @@
      3: 0a ff 01   StoreGlobal r0, c1
      6: 14 ff 02   NewClosure r0, c2
      9: 0a ff 03   StoreGlobal r0, c3
-    12: 05 ff      LoadUndefined r0
-    14: 0c ff      Ret r0
+    12: 14 ff 04   NewClosure r0, c4
+    15: 0a ff 05   StoreGlobal r0, c5
+    18: 14 ff 06   NewClosure r0, c6
+    21: 0a ff 07   StoreGlobal r0, c7
+    24: 05 ff      LoadUndefined r0
+    26: 0c ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
     2: [BytecodeFunction: test2]
     3: [String: test2]
+    4: [BytecodeFunction: test3]
+    5: [String: test3]
+    6: [BytecodeFunction: test4]
+    7: [String: test4]
 }
 
 [BytecodeFunction: test1] {
@@ -25,6 +33,22 @@
      3: 05 ff      LoadUndefined r0
      5: 0c ff      Ret r0
   .L0:
-     7: 03 ff 02   LoadImmediate r0, 2
-    10: 0c ff      Ret r0
+     7: 12 05 05   JumpFalse a0, 5 (.L1)
+    10: 0c 05      Ret a0
+  .L1:
+    12: 03 ff 02   LoadImmediate r0, 2
+    15: 0c ff      Ret r0
+}
+
+[BytecodeFunction: test3] {
+  Parameters: 0, Registers: 1
+    0: 03 ff 01   LoadImmediate r0, 1
+    3: 05 ff      LoadUndefined r0
+    5: 0c ff      Ret r0
+}
+
+[BytecodeFunction: test4] {
+  Parameters: 0, Registers: 1
+    0: 05 ff   LoadUndefined r0
+    2: 0c ff   Ret r0
 }

@@ -11,7 +11,9 @@
 
 [BytecodeFunction: test1] {
   Parameters: 2, Registers: 1
-    0: 0d ff 05 06   Add r0, a0, a1
-    4: 0e ff 05 06   Sub r0, a0, a1
-    8: 0f ff 05 06   LessThan r0, a0, a1
+     0: 0d ff 05 06   Add r0, a0, a1
+     4: 0e ff 05 06   Sub r0, a0, a1
+     8: 0f ff 05 06   LessThan r0, a0, a1
+    12: 05 ff         LoadUndefined r0
+    14: 0c ff         Ret r0
 }

@@ -81,12 +81,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 generator.gen_toplevel(toplevel)?;
             }
 
-            // Return undefined at end of script function
-            let return_arg = generator.register_allocator.allocate()?;
-            generator.writer.load_undefined_instruction(return_arg);
-            generator.register_allocator.release(return_arg);
-
-            generator.writer.ret_instruction(return_arg);
+            // Implicitly return undefined at end of script function
+            generator.gen_return_undefined()?;
 
             let emit_result = generator.finish();
 
@@ -452,8 +448,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
-                for stmt in &block_body.body {
-                    self.gen_statement(stmt)?;
+                let body_completion = self.gen_statement_list(&block_body.body)?;
+
+                // If the body continues, meaning there was no return statement (or throw, break,
+                // etc.) then implicitly return undefined.
+                if !body_completion.is_abrupt() {
+                    self.gen_return_undefined()?;
                 }
             }
             ast::FunctionBody::Expression(expr_body) => {
@@ -497,12 +497,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_toplevel(&mut self, toplevel: &ast::Toplevel) -> EmitResult<()> {
         match toplevel {
-            ast::Toplevel::Statement(stmt) => self.gen_statement(stmt),
+            ast::Toplevel::Statement(stmt) => {
+                // Ignore completion of toplevel statements, generate later toplevels even if abrupt
+                let _ = self.gen_statement(stmt)?;
+                Ok(())
+            }
             _ => unimplemented!("bytecode for toplevel kind"),
         }
     }
 
-    fn gen_statement(&mut self, stmt: &ast::Statement) -> EmitResult<()> {
+    fn gen_statement(&mut self, stmt: &ast::Statement) -> EmitResult<StmtCompletion> {
         // Every statement is generated with its own temporary register scope
         debug_assert!(self.register_allocator.is_empty());
 
@@ -852,7 +856,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         true
     }
 
-    fn gen_variable_declaration(&mut self, var_decl: &ast::VariableDeclaration) -> EmitResult<()> {
+    fn gen_variable_declaration(
+        &mut self,
+        var_decl: &ast::VariableDeclaration,
+    ) -> EmitResult<StmtCompletion> {
         if var_decl.kind != ast::VarKind::Var {
             unimplemented!("bytecode for const and let declarations");
         }
@@ -872,10 +879,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        Ok(())
+        Ok(StmtCompletion::Normal)
     }
 
-    fn gen_function_declaraton(&mut self, func_decl: &ast::Function) -> EmitResult<()> {
+    fn gen_function_declaraton(&mut self, func_decl: &ast::Function) -> EmitResult<StmtCompletion> {
         let func_constant_index = self.enqueue_function_to_generate(AstPtr::from_ref(func_decl))?;
 
         // Create a new closure, directly into binding location if possible
@@ -896,24 +903,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.register_allocator.release(closure_reg);
 
-        Ok(())
+        Ok(StmtCompletion::Normal)
     }
 
-    fn gen_expression_statement(&mut self, stmt: &ast::ExpressionStatement) -> EmitResult<()> {
+    fn gen_expression_statement(
+        &mut self,
+        stmt: &ast::ExpressionStatement,
+    ) -> EmitResult<StmtCompletion> {
         let result = self.gen_expression(&stmt.expr)?;
         self.register_allocator.release(result);
-        Ok(())
+        Ok(StmtCompletion::Normal)
     }
 
-    fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<()> {
-        for stmt in &stmt.body {
-            self.gen_statement(stmt)?;
+    fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<StmtCompletion> {
+        self.gen_statement_list(&stmt.body)
+    }
+
+    fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {
+        for stmt in stmts {
+            let completion = self.gen_statement(stmt)?;
+
+            // An abrupt completion signals the end of the statement list
+            if completion.is_abrupt() {
+                return Ok(completion);
+            }
         }
 
-        Ok(())
+        Ok(StmtCompletion::Normal)
     }
 
-    fn gen_if_statement(&mut self, stmt: &ast::IfStatement) -> EmitResult<()> {
+    fn gen_if_statement(&mut self, stmt: &ast::IfStatement) -> EmitResult<StmtCompletion> {
         let condition = self.gen_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
@@ -924,6 +943,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.write_jump_false_instruction(condition, join_block)?;
             self.gen_statement(&stmt.conseq)?;
             self.start_block(join_block);
+
+            // If there is no alternative then the statement always can complete normally, with
+            // execution continuing afterwards.
+            Ok(StmtCompletion::Normal)
         } else {
             let altern_block = self.new_block();
             let join_block = self.new_block();
@@ -932,27 +955,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // joining at the join block.
             self.write_jump_false_instruction(condition, altern_block)?;
 
-            self.gen_statement(&stmt.conseq)?;
-            self.write_jump_instruction(join_block)?;
+            let conseq_completion = self.gen_statement(&stmt.conseq)?;
+            if !conseq_completion.is_abrupt() {
+                self.write_jump_instruction(join_block)?;
+            }
 
             self.start_block(altern_block);
-            self.gen_statement(&stmt.altern.as_ref().unwrap())?;
+            let altern_completion = self.gen_statement(&stmt.altern.as_ref().unwrap())?;
 
             self.start_block(join_block);
-        }
 
-        Ok(())
+            Ok(conseq_completion.combine(altern_completion))
+        }
     }
 
-    fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<()> {
-        let return_arg = if let Some(expr) = &stmt.argument {
-            self.gen_expression(expr)?
-        } else {
-            let return_arg = self.register_allocator.allocate()?;
-            self.writer.load_undefined_instruction(return_arg);
-            return_arg
-        };
+    fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<StmtCompletion> {
+        if stmt.argument.is_none() {
+            self.gen_return_undefined()?;
+            return Ok(StmtCompletion::Abrupt);
+        }
 
+        let return_arg = self.gen_expression(stmt.argument.as_ref().unwrap())?;
+        self.writer.ret_instruction(return_arg);
+        self.register_allocator.release(return_arg);
+
+        Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_return_undefined(&mut self) -> EmitResult<()> {
+        let return_arg = self.register_allocator.allocate()?;
+        self.writer.load_undefined_instruction(return_arg);
         self.writer.ret_instruction(return_arg);
         self.register_allocator.release(return_arg);
 
@@ -1043,4 +1075,27 @@ enum ExprDest {
 pub enum JumpOperand {
     RelativeOffset(GenSInt),
     ConstantIndex(GenConstantIndex),
+}
+
+#[derive(PartialEq)]
+enum StmtCompletion {
+    /// Continue normally to the next statement in at least one path through this function.
+    Normal,
+    /// Do not continue to the next statement in any paths through this statement, e.g. due to a
+    /// return, throw, break, continue, etc.
+    Abrupt,
+}
+
+impl StmtCompletion {
+    fn is_abrupt(&self) -> bool {
+        *self == StmtCompletion::Abrupt
+    }
+
+    /// When two completions are joined, the result is only abrupt if all paths are abrupt.
+    fn combine(&self, other: StmtCompletion) -> StmtCompletion {
+        match (self, other) {
+            (StmtCompletion::Abrupt, StmtCompletion::Abrupt) => StmtCompletion::Abrupt,
+            _ => StmtCompletion::Normal,
+        }
+    }
 }

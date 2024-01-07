@@ -11,7 +11,9 @@ use crate::{
         },
         eval::expression::{eval_add, eval_less_than, eval_subtract},
         gc::HandleScope,
-        get, Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+        get,
+        type_utilities::to_boolean,
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
 };
@@ -20,7 +22,8 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         AddInstruction, CallInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction, LessThanInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
         LoadConstantInstruction, LoadFalseInstruction, LoadGlobalInstruction,
         LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, MovInstruction, NewClosureInstruction, OpCode, RetInstruction,
@@ -257,6 +260,34 @@ impl VM {
             }};
         }
 
+        // Execute a conditional jump if ToBoolean false instruction
+        macro_rules! execute_jump_to_boolean_false {
+            ($get_instr:ident) => {{
+                let instr = $get_instr!(JumpToBooleanFalseInstruction);
+
+                let condition = self.read_register(instr.condition());
+                if to_boolean(condition) {
+                    self.set_pc_after(instr);
+                } else {
+                    self.jump_immediate(instr.offset());
+                }
+            }};
+        }
+
+        // Execute a conditional jump if ToBoolean false constant instruction
+        macro_rules! execute_jump_to_boolean_false_constant {
+            ($get_instr:ident) => {{
+                let instr = $get_instr!(JumpToBooleanFalseConstantInstruction);
+
+                let condition = self.read_register(instr.condition());
+                if to_boolean(condition) {
+                    self.set_pc_after(instr);
+                } else {
+                    self.jump_constant(instr.constant_index());
+                }
+            }};
+        }
+
         macro_rules! create_dispatch_table {
             ($width:ident, $opcode:ident, $opcode_pc:ident) => {
                 create_dispatch_macros!($width, $opcode_pc);
@@ -294,6 +325,10 @@ impl VM {
                     OpCode::JumpConstant => execute_jump_constant!(get_instr),
                     OpCode::JumpFalse => execute_jump_false!(get_instr),
                     OpCode::JumpFalseConstant => execute_jump_false_constant!(get_instr),
+                    OpCode::JumpToBooleanFalse => execute_jump_to_boolean_false!(get_instr),
+                    OpCode::JumpToBooleanFalseConstant => {
+                        execute_jump_to_boolean_false_constant!(get_instr)
+                    }
                     OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
                 }
             };

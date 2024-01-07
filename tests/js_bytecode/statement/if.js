@@ -51,3 +51,15 @@ function testIfElseNoCatchAll(x, y) {
 
   return 3;
 }
+
+function testIfNoToBoolean(x) {
+  if (x < x) {
+    return 1;
+  }
+
+  if (x < x) {
+    return 2;
+  } else {
+    return 3;
+  }
+}

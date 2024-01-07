@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     error::Error,
-    fmt,
+    fmt::{self},
 };
 
 use crate::js::{
@@ -417,6 +417,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             JumpOperand::ConstantIndex(constant_index) => self
                 .writer
                 .jump_false_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
+    fn write_jump_to_boolean_false_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_to_boolean_false_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_to_boolean_false_constant_instruction(condition, constant_index),
         }
 
         Ok(())
@@ -936,11 +953,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let condition = self.gen_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
+        let condition_is_boolean = self.evaluates_to_boolean(&stmt.test);
+
         if stmt.altern.is_none() {
             let join_block = self.new_block();
 
             // If there is no alternative, branch between consequent and join block
-            self.write_jump_false_instruction(condition, join_block)?;
+            if condition_is_boolean {
+                self.write_jump_false_instruction(condition, join_block)?;
+            } else {
+                self.write_jump_to_boolean_false_instruction(condition, join_block)?;
+            }
+
             self.gen_statement(&stmt.conseq)?;
             self.start_block(join_block);
 
@@ -953,7 +977,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // If there is an alternative, branch between consequent and alternative blocks before
             // joining at the join block.
-            self.write_jump_false_instruction(condition, altern_block)?;
+            if condition_is_boolean {
+                self.write_jump_false_instruction(condition, altern_block)?;
+            } else {
+                self.write_jump_to_boolean_false_instruction(condition, altern_block)?;
+            }
 
             let conseq_completion = self.gen_statement(&stmt.conseq)?;
             if !conseq_completion.is_abrupt() {
@@ -966,6 +994,34 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.start_block(join_block);
 
             Ok(conseq_completion.combine(altern_completion))
+        }
+    }
+
+    /// Return whether this expression is guaranteed to evaluate to a boolean. Used to elide
+    /// unnecessary ToBoolean conversions.
+    fn evaluates_to_boolean(&mut self, expr: &ast::Expression) -> bool {
+        match expr {
+            ast::Expression::Boolean(_) => true,
+            ast::Expression::Unary(unary) => unary.operator == ast::UnaryOperator::LogicalNot,
+            ast::Expression::Binary(binary) => match binary.operator {
+                ast::BinaryOperator::EqEq
+                | ast::BinaryOperator::NotEq
+                | ast::BinaryOperator::EqEqEq
+                | ast::BinaryOperator::NotEqEq
+                | ast::BinaryOperator::LessThan
+                | ast::BinaryOperator::LessThanOrEqual
+                | ast::BinaryOperator::GreaterThan
+                | ast::BinaryOperator::GreaterThanOrEqual => true,
+                _ => false,
+            },
+            ast::Expression::Logical(logical) => match logical.operator {
+                ast::LogicalOperator::And | ast::LogicalOperator::Or => {
+                    self.evaluates_to_boolean(&logical.left)
+                        && self.evaluates_to_boolean(&logical.right)
+                }
+                ast::LogicalOperator::NullishCoalesce => false,
+            },
+            _ => false,
         }
     }
 

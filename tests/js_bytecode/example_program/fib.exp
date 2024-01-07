@@ -1,6 +1,6 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: 14 ff 00         NewClosure r0, c0
+     0: 16 ff 00         NewClosure r0, c0
      3: 0a ff 01         StoreGlobal r0, c1
      6: 09 ff 01         LoadGlobal r0, c1
      9: 03 fe 14         LoadImmediate r1, 20

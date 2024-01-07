@@ -1,16 +1,16 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 14 ff 00   NewClosure r0, c0
+     0: 16 ff 00   NewClosure r0, c0
      3: 0a ff 01   StoreGlobal r0, c1
-     6: 14 ff 02   NewClosure r0, c2
+     6: 16 ff 02   NewClosure r0, c2
      9: 0a ff 03   StoreGlobal r0, c3
-    12: 14 ff 04   NewClosure r0, c4
+    12: 16 ff 04   NewClosure r0, c4
     15: 0a ff 05   StoreGlobal r0, c5
-    18: 14 ff 06   NewClosure r0, c6
+    18: 16 ff 06   NewClosure r0, c6
     21: 0a ff 07   StoreGlobal r0, c7
-    24: 14 ff 08   NewClosure r0, c8
+    24: 16 ff 08   NewClosure r0, c8
     27: 0a ff 09   StoreGlobal r0, c9
-    30: 14 ff 0a   NewClosure r0, c10
+    30: 16 ff 0a   NewClosure r0, c10
     33: 0a ff 0b   StoreGlobal r0, c11
     36: 05 ff      LoadUndefined r0
     38: 0c ff      Ret r0

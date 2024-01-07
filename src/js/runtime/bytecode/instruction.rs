@@ -316,15 +316,31 @@ define_instructions!(
         [0] constant_index: ConstantIndex,
     }
 
-    /// Conditionally jump to the given instruction if the condition is false, using an inline offset.
+    /// Conditionally jump to the given instruction if the condition is false, using an inline
+    /// offset. Does not convert its operand to a boolean first, only checks for `false ``exactly.
     JumpFalse(JumpFalseInstruction, jump_false_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
 
     /// Conditionally jump to the given instruction if the condition is false, with offset stored
-    /// in the constant table.
+    /// in the constant table. Does not convert its operand to a boolean first, only checks for
+    /// `false` exactly.
     JumpFalseConstant(JumpFalseConstantInstruction, jump_false_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
+    /// Conditionally jump to the given instruction if ToBoolean(condition) is false, using an
+    /// inline ofset.
+    JumpToBooleanFalse(JumpToBooleanFalseInstruction, jump_to_boolean_false_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if ToBoolean(condition) is false, with offset
+    /// stored in the constant table.
+    JumpToBooleanFalseConstant(JumpToBooleanFalseConstantInstruction, jump_to_boolean_false_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,
     }
@@ -512,7 +528,7 @@ fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
 
     if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
         Some(instr.get_raw_operand(0) as isize)
-    } else if opcode >= OpCode::JumpFalse && opcode <= OpCode::JumpFalseConstant {
+    } else if opcode >= OpCode::JumpFalse && opcode <= OpCode::JumpToBooleanFalseConstant {
         Some(instr.get_raw_operand(1) as isize)
     } else {
         None

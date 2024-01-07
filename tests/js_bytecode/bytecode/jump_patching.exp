@@ -1,14 +1,14 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 14 ff 00   NewClosure r0, c0
+     0: 16 ff 00   NewClosure r0, c0
      3: 0a ff 01   StoreGlobal r0, c1
-     6: 14 ff 02   NewClosure r0, c2
+     6: 16 ff 02   NewClosure r0, c2
      9: 0a ff 03   StoreGlobal r0, c3
-    12: 14 ff 04   NewClosure r0, c4
+    12: 16 ff 04   NewClosure r0, c4
     15: 0a ff 05   StoreGlobal r0, c5
-    18: 14 ff 06   NewClosure r0, c6
+    18: 16 ff 06   NewClosure r0, c6
     21: 0a ff 07   StoreGlobal r0, c7
-    24: 14 ff 08   NewClosure r0, c8
+    24: 16 ff 08   NewClosure r0, c8
     27: 0a ff 07   StoreGlobal r0, c7
     30: 05 ff      LoadUndefined r0
     32: 0c ff      Ret r0
@@ -32,7 +32,7 @@
 
 [BytecodeFunction: testShortPatchCondJump] {
   Parameters: 1, Registers: 1
-     0: 12 05 08   JumpFalse a0, 8 (.L0)
+     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
      3: 03 ff 01   LoadImmediate r0, 1
      6: 0c ff      Ret r0
   .L0:
@@ -42,7 +42,7 @@
 
 [BytecodeFunction: testLongPatchCondJump] {
   Parameters: 1, Registers: 11
-      0: 13 05 01         JumpFalseConstant a0, c1 (.L0)
+      0: 15 05 01         JumpToBooleanFalseConstant a0, c1 (.L0)
       3: 09 ff 00         LoadGlobal r0, c0
       6: 03 fe 01         LoadImmediate r1, 1
       9: 03 fd 02         LoadImmediate r2, 2
@@ -138,7 +138,7 @@
 
 [BytecodeFunction: testShortPatchJump] {
   Parameters: 1, Registers: 1
-     0: 12 05 08   JumpFalse a0, 8 (.L0)
+     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
      3: 03 ff 01   LoadImmediate r0, 1
      6: 10 05      Jump 5 (.L1)
   .L0:
@@ -150,7 +150,7 @@
 
 [BytecodeFunction: testShortPatchJump] {
   Parameters: 1, Registers: 11
-      0: 12 05 08         JumpFalse a0, 8 (.L1)
+      0: 14 05 08         JumpToBooleanFalse a0, 8 (.L1)
       3: 03 ff 01         LoadImmediate r0, 1
       6: 11 01            JumpConstant c1 (.L0)
   .L1:

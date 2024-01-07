@@ -1,9 +1,9 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: 14 fe 00   NewClosure r1, c0
+     0: 16 fe 00   NewClosure r1, c0
      3: 0a fe 01   StoreGlobal r1, c1
-     6: 14 ff 02   NewClosure r0, c2
-     9: 14 fe 03   NewClosure r1, c3
+     6: 16 ff 02   NewClosure r0, c2
+     9: 16 fe 03   NewClosure r1, c3
     12: 0a fe 04   StoreGlobal r1, c4
     15: 05 fe      LoadUndefined r1
     17: 0c fe      Ret r1
@@ -29,7 +29,7 @@
 
 [BytecodeFunction: test3] {
   Parameters: 0, Registers: 2
-    0: 14 ff 00   NewClosure r0, c0
+    0: 16 ff 00   NewClosure r0, c0
     3: 05 fe      LoadUndefined r1
     5: 0c fe      Ret r1
   Constant Table:

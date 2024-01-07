@@ -9,10 +9,14 @@ use crate::{
             },
             stack_frame::FIRST_ARGUMENT_SLOT_INDEX,
         },
-        eval::expression::{eval_add, eval_less_than, eval_subtract},
+        eval::expression::{
+            eval_add, eval_divide, eval_exponentiation, eval_greater_than,
+            eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
+            eval_remainder, eval_subtract,
+        },
         gc::HandleScope,
         get,
-        type_utilities::to_boolean,
+        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
@@ -21,13 +25,15 @@ use crate::{
 use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
-        AddInstruction, CallInstruction, Instruction, JumpConstantInstruction,
+        AddInstruction, CallInstruction, DivInstruction, ExpInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
-        LoadConstantInstruction, LoadFalseInstruction, LoadGlobalInstruction,
-        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, MovInstruction, NewClosureInstruction, OpCode, RetInstruction,
-        StoreGlobalInstruction, SubInstruction,
+        LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
+        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
+        MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
+        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{
@@ -320,7 +326,33 @@ impl VM {
                     OpCode::Ret => execute_ret!(get_instr),
                     OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
                     OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
+                    OpCode::Mul => dispatch_or_throw!(MulInstruction, execute_mul),
+                    OpCode::Div => dispatch_or_throw!(DivInstruction, execute_div),
+                    OpCode::Rem => dispatch_or_throw!(RemInstruction, execute_rem),
+                    OpCode::Exp => dispatch_or_throw!(ExpInstruction, execute_exp),
+                    OpCode::LooseEqual => {
+                        dispatch_or_throw!(LooseEqualInstruction, execute_loose_equal)
+                    }
+                    OpCode::LooseNotEqual => {
+                        dispatch_or_throw!(LooseNotEqualInstruction, execute_loose_not_equal)
+                    }
+                    OpCode::StrictEqual => {
+                        dispatch!(StrictEqualInstruction, execute_strict_equal)
+                    }
+                    OpCode::StrictNotEqual => {
+                        dispatch!(StrictNotEqualInstruction, execute_strict_not_equal)
+                    }
                     OpCode::LessThan => dispatch_or_throw!(LessThanInstruction, execute_less_than),
+                    OpCode::LessThanOrEqual => {
+                        dispatch_or_throw!(LessThanOrEqualInstruction, execute_less_than_or_equal)
+                    }
+                    OpCode::GreaterThan => {
+                        dispatch_or_throw!(GreaterThanInstruction, execute_greater_than)
+                    }
+                    OpCode::GreaterThanOrEqual => dispatch_or_throw!(
+                        GreaterThanOrEqualInstruction,
+                        execute_greater_than_or_equal
+                    ),
                     OpCode::Jump => execute_jump!(get_instr),
                     OpCode::JumpConstant => execute_jump_constant!(get_instr),
                     OpCode::JumpFalse => execute_jump_false!(get_instr),
@@ -634,6 +666,124 @@ impl VM {
     }
 
     #[inline]
+    fn execute_mul<W: Width>(&mut self, instr: &MulInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_multiply(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_div<W: Width>(&mut self, instr: &DivInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_divide(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_rem<W: Width>(&mut self, instr: &RemInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_remainder(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_exp<W: Width>(&mut self, instr: &ExpInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_exponentiation(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_loose_equal<W: Width>(
+        &mut self,
+        instr: &LooseEqualInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
+        let result = self.cx.bool(result);
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_loose_not_equal<W: Width>(
+        &mut self,
+        instr: &LooseNotEqualInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
+        let result = self.cx.bool(!result);
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_strict_equal<W: Width>(&mut self, instr: &StrictEqualInstruction<W>) {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = is_strictly_equal(self.h1, self.h2);
+        let result = self.cx.bool(result);
+        self.write_register(instr.dest(), result.get());
+    }
+
+    #[inline]
+    fn execute_strict_not_equal<W: Width>(&mut self, instr: &StrictNotEqualInstruction<W>) {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = is_strictly_equal(self.h1, self.h2);
+        let result = self.cx.bool(!result);
+        self.write_register(instr.dest(), result.get());
+    }
+
+    #[inline]
     fn execute_less_than<W: Width>(&mut self, instr: &LessThanInstruction<W>) -> EvalResult<()> {
         let left_value = self.read_register(instr.left());
         self.h1.replace(left_value);
@@ -642,6 +792,57 @@ impl VM {
         self.h2.replace(right_value);
 
         let result = maybe!(eval_less_than(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_less_than_or_equal<W: Width>(
+        &mut self,
+        instr: &LessThanOrEqualInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_less_than_or_equal(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_greater_than<W: Width>(
+        &mut self,
+        instr: &GreaterThanInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_greater_than(self.cx, self.h1, self.h2));
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_greater_than_or_equal<W: Width>(
+        &mut self,
+        instr: &GreaterThanOrEqualInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let result = maybe!(eval_greater_than_or_equal(self.cx, self.h1, self.h2));
         self.write_register(instr.dest(), result.get());
 
         ().into()

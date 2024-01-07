@@ -1121,7 +1121,7 @@ pub fn eval_subtract(
     }
 }
 
-fn eval_multiply(
+pub fn eval_multiply(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1144,7 +1144,7 @@ fn eval_multiply(
     }
 }
 
-fn eval_divide(
+pub fn eval_divide(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1172,7 +1172,7 @@ fn eval_divide(
     }
 }
 
-fn eval_remainder(
+pub fn eval_remainder(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1205,7 +1205,7 @@ fn eval_remainder(
     }
 }
 
-fn eval_exponentiation(
+pub fn eval_exponentiation(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1258,7 +1258,7 @@ pub fn eval_less_than(
     }
 }
 
-fn eval_greater_than(
+pub fn eval_greater_than(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1275,7 +1275,7 @@ fn eval_greater_than(
     }
 }
 
-fn eval_less_than_or_equal(
+pub fn eval_less_than_or_equal(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1288,7 +1288,7 @@ fn eval_less_than_or_equal(
     cx.bool(result.is_false()).into()
 }
 
-fn eval_greater_than_or_equal(
+pub fn eval_greater_than_or_equal(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,

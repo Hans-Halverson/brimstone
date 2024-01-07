@@ -297,8 +297,91 @@ define_instructions!(
         [2] right: Register,
     }
 
+    /// Multiply one value with another, storing the result in dest.
+    Mul (MulInstruction, mul_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Divide one value with another, storing the result in dest.
+    Div (DivInstruction, div_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Find the remainder from dividing the left value with the right value, storing the result in
+    /// dest.
+    Rem (RemInstruction, rem_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Raise the left value to the power of the right value, storing the result in dest.
+    Exp (ExpInstruction, exp_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the two operands are loosely equal to each other (`==`), storing the result in dest.
+    LooseEqual (LooseEqualInstruction, loose_equal_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the two operands are loosely not equal to each other (`!=`), storing the result in
+    /// dest.
+    LooseNotEqual (LooseNotEqualInstruction, loose_not_equal_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the two operands are strictly equal to each other (`===`), storing the result in
+    /// dest.
+    StrictEqual (StrictEqualInstruction, strict_equal_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the two operands are strictly not equal to each other (`!==`), storing the result in
+    /// dest.
+    StrictNotEqual (StrictNotEqualInstruction, strict_not_equal_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
     /// Test if the left operand is less than the right operand, storing the result in dest.
     LessThan (LessThanInstruction, less_than_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the left operand is less than or equal to the right operand, storing the result in
+    /// dest.
+    LessThanOrEqual (LessThanOrEqualInstruction, less_than_or_equal_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the left operand is greater than the right operand, storing the result in dest.
+    GreaterThan (GreaterThanInstruction, greater_than_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Test if the left operand is greater than or equal to the right operand, storing the result
+    /// in dest.
+    GreaterThanOrEqual (GreaterThanOrEqualInstruction, greater_than_or_equal_instruction) {
         [0] dest: Register,
         [1] left: Register,
         [2] right: Register,

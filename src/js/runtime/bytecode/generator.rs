@@ -794,7 +794,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match expr.operator {
             ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right),
             ast::BinaryOperator::Subtract => self.writer.sub_instruction(dest, left, right),
+            ast::BinaryOperator::Multiply => self.writer.mul_instruction(dest, left, right),
+            ast::BinaryOperator::Divide => self.writer.div_instruction(dest, left, right),
+            ast::BinaryOperator::Remainder => self.writer.rem_instruction(dest, left, right),
+            ast::BinaryOperator::Exponent => self.writer.exp_instruction(dest, left, right),
+            ast::BinaryOperator::EqEq => self.writer.loose_equal_instruction(dest, left, right),
+            ast::BinaryOperator::NotEq => {
+                self.writer.loose_not_equal_instruction(dest, left, right)
+            }
+            ast::BinaryOperator::EqEqEq => self.writer.strict_equal_instruction(dest, left, right),
+            ast::BinaryOperator::NotEqEq => {
+                self.writer.strict_not_equal_instruction(dest, left, right)
+            }
             ast::BinaryOperator::LessThan => self.writer.less_than_instruction(dest, left, right),
+            ast::BinaryOperator::LessThanOrEqual => self
+                .writer
+                .less_than_or_equal_instruction(dest, left, right),
+            ast::BinaryOperator::GreaterThan => {
+                self.writer.greater_than_instruction(dest, left, right)
+            }
+            ast::BinaryOperator::GreaterThanOrEqual => self
+                .writer
+                .greater_than_or_equal_instruction(dest, left, right),
             _ => unimplemented!("Cannot generate bytecode for binary operator"),
         }
 

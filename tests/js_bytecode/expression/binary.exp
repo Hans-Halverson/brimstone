@@ -13,7 +13,18 @@
   Parameters: 2, Registers: 1
      0: Add r0, a0, a1
      4: Sub r0, a0, a1
-     8: LessThan r0, a0, a1
-    12: LoadUndefined r0
-    14: Ret r0
+     8: Mul r0, a0, a1
+    12: Div r0, a0, a1
+    16: Rem r0, a0, a1
+    20: Exp r0, a0, a1
+    24: LooseEqual r0, a0, a1
+    28: LooseNotEqual r0, a0, a1
+    32: StrictEqual r0, a0, a1
+    36: StrictNotEqual r0, a0, a1
+    40: LessThan r0, a0, a1
+    44: LessThanOrEqual r0, a0, a1
+    48: GreaterThan r0, a0, a1
+    52: GreaterThanOrEqual r0, a0, a1
+    56: LoadUndefined r0
+    58: Ret r0
 }

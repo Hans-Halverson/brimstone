@@ -11,16 +11,54 @@
 
 [BytecodeFunction: test] {
   Parameters: 2, Registers: 1
-     0: LoadFalse r0
-     2: JumpFalse r0, 8 (.L0)
-     5: LoadImmediate r0, 1
-     8: Ret r0
+      0: LoadFalse r0
+      2: JumpFalse r0, 8 (.L0)
+      5: LoadImmediate r0, 1
+      8: Ret r0
   .L0:
-    10: LessThan r0, a0, a1
-    14: JumpFalse r0, 8 (.L1)
-    17: LoadImmediate r0, 2
-    20: Ret r0
+     10: LooseEqual r0, a0, a1
+     14: JumpFalse r0, 8 (.L1)
+     17: LoadImmediate r0, 2
+     20: Ret r0
   .L1:
-    22: LoadUndefined r0
-    24: Ret r0
+     22: LooseNotEqual r0, a0, a1
+     26: JumpFalse r0, 8 (.L2)
+     29: LoadImmediate r0, 3
+     32: Ret r0
+  .L2:
+     34: StrictEqual r0, a0, a1
+     38: JumpFalse r0, 8 (.L3)
+     41: LoadImmediate r0, 4
+     44: Ret r0
+  .L3:
+     46: StrictNotEqual r0, a0, a1
+     50: JumpFalse r0, 8 (.L4)
+     53: LoadImmediate r0, 5
+     56: Ret r0
+  .L4:
+     58: LessThan r0, a0, a1
+     62: JumpFalse r0, 8 (.L5)
+     65: LoadImmediate r0, 6
+     68: Ret r0
+  .L5:
+     70: LoadImmediate r0, 2
+     73: LessThanOrEqual r0, a0, r0
+     77: JumpFalse r0, 8 (.L6)
+     80: LoadImmediate r0, 7
+     83: Ret r0
+  .L6:
+     85: LoadImmediate r0, 3
+     88: GreaterThan r0, a0, r0
+     92: JumpFalse r0, 8 (.L7)
+     95: LoadImmediate r0, 8
+     98: Ret r0
+  .L7:
+    100: LoadImmediate r0, 4
+    103: GreaterThanOrEqual r0, a0, r0
+    107: JumpFalse r0, 8 (.L8)
+    110: LoadImmediate r0, 9
+    113: Ret r0
+  .L8:
+    115: LoadUndefined r0
+    117: Ret r0
 }

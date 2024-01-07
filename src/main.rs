@@ -36,9 +36,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     }
 
     if options.bytecode {
-        use js::runtime::bytecode::{
-            function::Closure, generator::BytecodeProgramGenerator, vm::VM,
-        };
+        use js::runtime::bytecode::{function::Closure, generator::BytecodeProgramGenerator};
 
         // Use the bytecode interpreter
         let bytecode_program =
@@ -48,10 +46,9 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
             println!("{}", bytecode_program.debug_print_recursive(false));
         }
 
-        cx.execute_then_drop(|cx| {
-            let mut vm = VM::new(cx);
+        cx.execute_then_drop(|mut cx| {
             let closure = Closure::new(cx, bytecode_program);
-            vm.execute(closure, &[]);
+            cx.execute_bytecode(closure, &[]);
         });
     } else {
         // Use the tree walk interpreter

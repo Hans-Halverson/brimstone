@@ -3,18 +3,12 @@ use std::ops::Deref;
 use crate::{
     js::runtime::{
         abstract_operations::set,
-        bytecode::{
-            instruction::{
-                extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
-            },
-            stack_frame::FIRST_ARGUMENT_SLOT_INDEX,
-        },
         eval::expression::{
             eval_add, eval_divide, eval_exponentiation, eval_greater_than,
             eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
             eval_remainder, eval_subtract,
         },
-        gc::HandleScope,
+        gc::{HandleScope, HeapVisitor},
         get,
         type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
@@ -25,7 +19,8 @@ use crate::{
 use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
-        AddInstruction, CallInstruction, DivInstruction, ExpInstruction, GreaterThanInstruction,
+        extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
+        CallInstruction, DivInstruction, ExpInstruction, GreaterThanInstruction,
         GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
@@ -36,10 +31,7 @@ use super::{
         StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
-    stack_frame::{
-        StackSlotValue, ARGC_SLOT_INDEX, FUNCTION_SLOT_INDEX, NUM_STACK_SLOTS,
-        RETURN_ADDRESS_SLOT_INDEX, RETURN_VALUE_ADDRESS_INDEX,
-    },
+    stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
     width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width},
 };
 
@@ -47,18 +39,22 @@ use super::{
 pub struct VM {
     cx: Context,
 
-    // The program counter (instruction pointer)
+    /// The program counter (instruction pointer)
     pc: *const u8,
 
-    // The stack pointer
+    /// The stack pointer
     sp: *mut StackSlotValue,
 
-    // The frame pointer
+    /// The frame pointer
     fp: *mut StackSlotValue,
 
-    // Handle pool
+    /// Handle pool
     h1: Handle<Value>,
     h2: Handle<Value>,
+
+    /// Whether the VM is currently executing bytecode. VM is only walked for GC roots when this
+    /// is true.
+    is_executing: bool,
 
     stack: Vec<StackSlotValue>,
 }
@@ -79,6 +75,7 @@ impl VM {
             h1: Handle::empty(cx),
             h2: Handle::empty(cx),
 
+            is_executing: false,
             stack,
         }
     }
@@ -88,6 +85,8 @@ impl VM {
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
     ) -> Handle<Value> {
+        self.is_executing = true;
+
         let func = closure.function_ptr();
         self.pc = func.bytecode().as_ptr();
         self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
@@ -116,6 +115,8 @@ impl VM {
 
         // Start the dispatch loop
         self.dispatch_loop();
+
+        self.is_executing = false;
 
         return_value.to_handle(self.cx)
     }
@@ -440,25 +441,22 @@ impl VM {
 
     #[inline]
     fn get_return_address(&self) -> *const u8 {
-        unsafe { *self.fp_offset(RETURN_ADDRESS_SLOT_INDEX as isize) as *const u8 }
+        StackFrame::for_fp(self.fp).return_address()
     }
 
     #[inline]
     fn get_return_value_address(&self) -> *mut Value {
-        unsafe { *self.fp_offset(RETURN_VALUE_ADDRESS_INDEX as isize) as *mut Value }
+        StackFrame::for_fp(self.fp).return_value_address()
     }
 
     #[inline]
     fn get_function(&self) -> HeapPtr<BytecodeFunction> {
-        unsafe {
-            let ptr = *self.fp_offset(FUNCTION_SLOT_INDEX as isize) as *mut BytecodeFunction;
-            HeapPtr::from_ptr(ptr)
-        }
+        StackFrame::for_fp(self.fp).bytecode_function()
     }
 
     #[inline]
     fn get_argc(&self) -> usize {
-        unsafe { *self.fp_offset(ARGC_SLOT_INDEX as isize) as usize }
+        StackFrame::for_fp(self.fp).argc()
     }
 
     #[inline]
@@ -733,8 +731,7 @@ impl VM {
         self.h2.replace(right_value);
 
         let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
-        let result = self.cx.bool(result);
-        self.write_register(instr.dest(), result.get());
+        self.write_register(instr.dest(), Value::bool(result));
 
         ().into()
     }
@@ -751,8 +748,7 @@ impl VM {
         self.h2.replace(right_value);
 
         let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
-        let result = self.cx.bool(!result);
-        self.write_register(instr.dest(), result.get());
+        self.write_register(instr.dest(), Value::bool(!result));
 
         ().into()
     }
@@ -766,8 +762,7 @@ impl VM {
         self.h2.replace(right_value);
 
         let result = is_strictly_equal(self.h1, self.h2);
-        let result = self.cx.bool(result);
-        self.write_register(instr.dest(), result.get());
+        self.write_register(instr.dest(), Value::bool(result));
     }
 
     #[inline]
@@ -779,8 +774,7 @@ impl VM {
         self.h2.replace(right_value);
 
         let result = is_strictly_equal(self.h1, self.h2);
-        let result = self.cx.bool(!result);
-        self.write_register(instr.dest(), result.get());
+        self.write_register(instr.dest(), Value::bool(!result));
     }
 
     #[inline]
@@ -855,5 +849,67 @@ impl VM {
 
         let closure = Closure::new_ptr(self.cx, self.h1.cast::<BytecodeFunction>());
         self.write_register(instr.dest(), Value::object(closure.cast()))
+    }
+
+    /// Visit all heap roots in the VM during GC root collection. Rewrites the stack in place,
+    /// taking care to rewrite the current PC and return addresses.
+    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        if !self.is_executing {
+            return;
+        }
+
+        let mut stack_frame = StackFrame::for_fp(self.fp);
+
+        // The current PC points into the current stack frame's BytecodeFunction. Rewrite both.
+        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, &mut self.pc);
+
+        // Walk the stack, visiting all pointers in each frame
+        loop {
+            // Visit all args and registers in stack frame
+            for arg in stack_frame.args_mut() {
+                visitor.visit_value(arg);
+            }
+
+            for register in stack_frame.registers_mut() {
+                visitor.visit_value(register);
+            }
+
+            // Move to the parent's stack frame
+            if let Some(caller_stack_frame) = stack_frame.previous_frame() {
+                // This stack frame's return address points into the caller stack frame's
+                // BytecodeFunction. Rewrite both.
+                Self::rewrite_bytecode_function_and_address(
+                    visitor,
+                    caller_stack_frame,
+                    stack_frame.return_address_mut(),
+                );
+                stack_frame = caller_stack_frame;
+            } else {
+                return;
+            }
+        }
+    }
+
+    /// Visit a BytecodeFunction during GC stack walking, potentially moving the BytecodeFunction in
+    /// the heap. Also rewrite a pointer into the function's instructions with this move, since this
+    /// is an internal pointer into a moved heap object.
+    ///
+    /// The pointer to rewrite may be either the current PC or the return adress
+    fn rewrite_bytecode_function_and_address(
+        visitor: &mut impl HeapVisitor,
+        mut stack_frame: StackFrame,
+        instruction_address: &mut *const u8,
+    ) {
+        // Find the offset of the instruction in the BytecodeFunction
+        let function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
+        let offset = unsafe { (*instruction_address).offset_from(function_start) };
+
+        // Visit the caller's BytecodeFunction, moving it in the heap
+        visitor.visit_pointer(stack_frame.bytecode_function_mut());
+
+        // Rewrite the instruction address using the new location of the BytecodeFunction
+        let new_function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
+        let new_instruction_address = unsafe { new_function_start.offset(offset) };
+        *instruction_address = new_instruction_address;
     }
 }

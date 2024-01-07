@@ -17,6 +17,7 @@ use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
+    bytecode::{function::Closure, vm::VM},
     collections::{BsHashMap, BsHashMapField},
     environment::{
         declarative_environment::DeclarativeEnvironment, environment::HeapDynEnvironment,
@@ -58,6 +59,9 @@ pub struct ContextCell {
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
     pub base_descriptors: BaseDescriptors,
+
+    /// The virtual machine used to execute bytecode.
+    pub vm: Option<Box<VM>>,
 
     // Canonical values
     undefined: Value,
@@ -108,6 +112,7 @@ impl Context {
             names: BuiltinNames::uninit(),
             well_known_symbols: BuiltinSymbols::uninit(),
             base_descriptors: BaseDescriptors::uninit(),
+            vm: None,
             undefined: Value::undefined(),
             null: Value::null(),
             empty: Value::empty(),
@@ -127,6 +132,7 @@ impl Context {
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
 
         cx.heap.info().set_context(cx);
+        cx.vm = Some(Box::new(VM::new(cx)));
 
         HandleScope::new(cx, |mut cx| {
             // Initialize all uninitialized fields
@@ -165,6 +171,14 @@ impl Context {
 
     pub fn drop(self) {
         unsafe { drop(Box::from_raw(self.ptr.as_ptr())) }
+    }
+
+    pub fn execute_bytecode(
+        &mut self,
+        closure: Handle<Closure>,
+        arguments: &[Handle<Value>],
+    ) -> Handle<Value> {
+        self.vm.as_deref_mut().unwrap().execute(closure, arguments)
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
@@ -311,6 +325,10 @@ impl Context {
         for finalizer_callback in self.finalizer_callbacks.iter_mut() {
             visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);
             visitor.visit_value(&mut finalizer_callback.held_value);
+        }
+
+        if let Some(vm) = &mut self.vm {
+            vm.visit_roots(visitor);
         }
 
         // The following fields must be in the permanent semispace so they do not need to be visited

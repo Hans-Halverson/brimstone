@@ -1,19 +1,19 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 16 ff 00   NewClosure r0, c0
-     3: 0a ff 01   StoreGlobal r0, c1
-     6: 16 ff 02   NewClosure r0, c2
-     9: 0a ff 03   StoreGlobal r0, c3
-    12: 16 ff 04   NewClosure r0, c4
-    15: 0a ff 05   StoreGlobal r0, c5
-    18: 16 ff 06   NewClosure r0, c6
-    21: 0a ff 07   StoreGlobal r0, c7
-    24: 16 ff 08   NewClosure r0, c8
-    27: 0a ff 09   StoreGlobal r0, c9
-    30: 16 ff 0a   NewClosure r0, c10
-    33: 0a ff 0b   StoreGlobal r0, c11
-    36: 05 ff      LoadUndefined r0
-    38: 0c ff      Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
     0: [BytecodeFunction: testIfNoAlternate]
     1: [String: testIfNoAlternate]
@@ -31,93 +31,93 @@
 
 [BytecodeFunction: testIfNoAlternate] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 08   JumpFalse r0, 8 (.L0)
-     5: 03 ff 01   LoadImmediate r0, 1
-     8: 0c ff      Ret r0
+     0: LoadTrue r0
+     2: JumpFalse r0, 8 (.L0)
+     5: LoadImmediate r0, 1
+     8: Ret r0
   .L0:
-    10: 05 ff      LoadUndefined r0
-    12: 0c ff      Ret r0
+    10: LoadUndefined r0
+    12: Ret r0
 }
 
 [BytecodeFunction: TestIfNormalAlternate] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 08   JumpFalse r0, 8 (.L0)
-     5: 03 ff 01   LoadImmediate r0, 1
-     8: 0c ff      Ret r0
+     0: LoadTrue r0
+     2: JumpFalse r0, 8 (.L0)
+     5: LoadImmediate r0, 1
+     8: Ret r0
   .L0:
-    10: 03 ff 02   LoadImmediate r0, 2
-    13: 05 ff      LoadUndefined r0
-    15: 0c ff      Ret r0
+    10: LoadImmediate r0, 2
+    13: LoadUndefined r0
+    15: Ret r0
 }
 
 [BytecodeFunction: testIfNormalConseq] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 08   JumpFalse r0, 8 (.L0)
-     5: 03 ff 01   LoadImmediate r0, 1
-     8: 10 07      Jump 7 (.L1)
+     0: LoadTrue r0
+     2: JumpFalse r0, 8 (.L0)
+     5: LoadImmediate r0, 1
+     8: Jump 7 (.L1)
   .L0:
-    10: 03 ff 02   LoadImmediate r0, 2
-    13: 0c ff      Ret r0
+    10: LoadImmediate r0, 2
+    13: Ret r0
   .L1:
-    15: 05 ff      LoadUndefined r0
-    17: 0c ff      Ret r0
+    15: LoadUndefined r0
+    17: Ret r0
 }
 
 [BytecodeFunction: testIfBothAbrupt] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 08   JumpFalse r0, 8 (.L0)
-     5: 03 ff 01   LoadImmediate r0, 1
-     8: 0c ff      Ret r0
+     0: LoadTrue r0
+     2: JumpFalse r0, 8 (.L0)
+     5: LoadImmediate r0, 1
+     8: Ret r0
   .L0:
-    10: 03 ff 02   LoadImmediate r0, 2
-    13: 0c ff      Ret r0
+    10: LoadImmediate r0, 2
+    13: Ret r0
 }
 
 [BytecodeFunction: testIfNestedOneNormalBranch] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 1c   JumpFalse r0, 28 (.L2)
-     5: 07 ff      LoadTrue r0
-     7: 12 ff 08   JumpFalse r0, 8 (.L0)
-    10: 03 ff 01   LoadImmediate r0, 1
-    13: 0c ff      Ret r0
+     0: LoadTrue r0
+     2: JumpFalse r0, 28 (.L2)
+     5: LoadTrue r0
+     7: JumpFalse r0, 8 (.L0)
+    10: LoadImmediate r0, 1
+    13: Ret r0
   .L0:
-    15: 07 ff      LoadTrue r0
-    17: 12 ff 08   JumpFalse r0, 8 (.L1)
-    20: 03 ff 02   LoadImmediate r0, 2
-    23: 0c ff      Ret r0
+    15: LoadTrue r0
+    17: JumpFalse r0, 8 (.L1)
+    20: LoadImmediate r0, 2
+    23: Ret r0
   .L1:
-    25: 03 ff 03   LoadImmediate r0, 3
-    28: 10 07      Jump 7 (.L3)
+    25: LoadImmediate r0, 3
+    28: Jump 7 (.L3)
   .L2:
-    30: 03 ff 04   LoadImmediate r0, 4
-    33: 0c ff      Ret r0
+    30: LoadImmediate r0, 4
+    33: Ret r0
   .L3:
-    35: 05 ff      LoadUndefined r0
-    37: 0c ff      Ret r0
+    35: LoadUndefined r0
+    37: Ret r0
 }
 
 [BytecodeFunction: testIfNestedNoNormalBranches] {
   Parameters: 0, Registers: 1
-     0: 07 ff      LoadTrue r0
-     2: 12 ff 1c   JumpFalse r0, 28 (.L2)
-     5: 07 ff      LoadTrue r0
-     7: 12 ff 08   JumpFalse r0, 8 (.L0)
-    10: 03 ff 01   LoadImmediate r0, 1
-    13: 0c ff      Ret r0
+     0: LoadTrue r0
+     2: JumpFalse r0, 28 (.L2)
+     5: LoadTrue r0
+     7: JumpFalse r0, 8 (.L0)
+    10: LoadImmediate r0, 1
+    13: Ret r0
   .L0:
-    15: 07 ff      LoadTrue r0
-    17: 12 ff 08   JumpFalse r0, 8 (.L1)
-    20: 03 ff 02   LoadImmediate r0, 2
-    23: 0c ff      Ret r0
+    15: LoadTrue r0
+    17: JumpFalse r0, 8 (.L1)
+    20: LoadImmediate r0, 2
+    23: Ret r0
   .L1:
-    25: 03 ff 03   LoadImmediate r0, 3
-    28: 0c ff      Ret r0
+    25: LoadImmediate r0, 3
+    28: Ret r0
   .L2:
-    30: 03 ff 04   LoadImmediate r0, 4
-    33: 0c ff      Ret r0
+    30: LoadImmediate r0, 4
+    33: Ret r0
 }

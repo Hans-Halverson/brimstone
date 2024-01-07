@@ -170,8 +170,10 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
 
 impl HeapPtr<BytecodeFunction> {
     /// Debug print this function and all its child functions.
-    pub fn debug_print_recursive(&self) -> String {
+    pub fn debug_print_recursive(&self, ignore_raw_bytes: bool) -> String {
         let mut printer = DebugPrinter::new(DebugPrintMode::Verbose);
+        printer.set_ignore_raw_bytes(ignore_raw_bytes);
+
         let mut stack = vec![*self];
 
         while let Some(function) = stack.pop() {

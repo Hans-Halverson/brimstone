@@ -45,7 +45,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
             BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result)?;
 
         if options.print_bytecode {
-            println!("{}", bytecode_program.debug_print_recursive());
+            println!("{}", bytecode_program.debug_print_recursive(false));
         }
 
         cx.execute_then_drop(|cx| {

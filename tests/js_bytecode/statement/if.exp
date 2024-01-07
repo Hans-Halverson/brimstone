@@ -1,19 +1,19 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 16 ff 00   NewClosure r0, c0
-     3: 0a ff 01   StoreGlobal r0, c1
-     6: 16 ff 02   NewClosure r0, c2
-     9: 0a ff 03   StoreGlobal r0, c3
-    12: 16 ff 04   NewClosure r0, c4
-    15: 0a ff 05   StoreGlobal r0, c5
-    18: 16 ff 06   NewClosure r0, c6
-    21: 0a ff 07   StoreGlobal r0, c7
-    24: 16 ff 08   NewClosure r0, c8
-    27: 0a ff 09   StoreGlobal r0, c9
-    30: 16 ff 0a   NewClosure r0, c10
-    33: 0a ff 0b   StoreGlobal r0, c11
-    36: 05 ff      LoadUndefined r0
-    38: 0c ff      Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNoAlternate]
     1: [String: testNoAlternate]
@@ -31,86 +31,86 @@
 
 [BytecodeFunction: testNoAlternate] {
   Parameters: 1, Registers: 1
-     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
-     3: 03 ff 01   LoadImmediate r0, 1
-     6: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 8 (.L0)
+     3: LoadImmediate r0, 1
+     6: Ret r0
   .L0:
-     8: 03 ff 02   LoadImmediate r0, 2
-    11: 0c ff      Ret r0
+     8: LoadImmediate r0, 2
+    11: Ret r0
 }
 
 [BytecodeFunction: testAlternate] {
   Parameters: 1, Registers: 1
-     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
-     3: 03 ff 01   LoadImmediate r0, 1
-     6: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 8 (.L0)
+     3: LoadImmediate r0, 1
+     6: Ret r0
   .L0:
-     8: 03 ff 02   LoadImmediate r0, 2
-    11: 0c ff      Ret r0
+     8: LoadImmediate r0, 2
+    11: Ret r0
 }
 
 [BytecodeFunction: testNested] {
   Parameters: 2, Registers: 1
-     0: 14 05 10   JumpToBooleanFalse a0, 16 (.L1)
-     3: 14 06 08   JumpToBooleanFalse a1, 8 (.L0)
-     6: 03 ff 01   LoadImmediate r0, 1
-     9: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 16 (.L1)
+     3: JumpToBooleanFalse a1, 8 (.L0)
+     6: LoadImmediate r0, 1
+     9: Ret r0
   .L0:
-    11: 03 ff 02   LoadImmediate r0, 2
-    14: 0c ff      Ret r0
+    11: LoadImmediate r0, 2
+    14: Ret r0
   .L1:
-    16: 14 06 08   JumpToBooleanFalse a1, 8 (.L2)
-    19: 03 ff 03   LoadImmediate r0, 3
-    22: 0c ff      Ret r0
+    16: JumpToBooleanFalse a1, 8 (.L2)
+    19: LoadImmediate r0, 3
+    22: Ret r0
   .L2:
-    24: 03 ff 04   LoadImmediate r0, 4
-    27: 0c ff      Ret r0
+    24: LoadImmediate r0, 4
+    27: Ret r0
 }
 
 [BytecodeFunction: testIfElse] {
   Parameters: 3, Registers: 1
-     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
-     3: 03 ff 01   LoadImmediate r0, 1
-     6: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 8 (.L0)
+     3: LoadImmediate r0, 1
+     6: Ret r0
   .L0:
-     8: 14 06 08   JumpToBooleanFalse a1, 8 (.L1)
-    11: 03 ff 02   LoadImmediate r0, 2
-    14: 0c ff      Ret r0
+     8: JumpToBooleanFalse a1, 8 (.L1)
+    11: LoadImmediate r0, 2
+    14: Ret r0
   .L1:
-    16: 14 07 08   JumpToBooleanFalse a2, 8 (.L2)
-    19: 03 ff 03   LoadImmediate r0, 3
-    22: 0c ff      Ret r0
+    16: JumpToBooleanFalse a2, 8 (.L2)
+    19: LoadImmediate r0, 3
+    22: Ret r0
   .L2:
-    24: 03 ff 04   LoadImmediate r0, 4
-    27: 0c ff      Ret r0
+    24: LoadImmediate r0, 4
+    27: Ret r0
 }
 
 [BytecodeFunction: testIfElseNoCatchAll] {
   Parameters: 2, Registers: 1
-     0: 14 05 08   JumpToBooleanFalse a0, 8 (.L0)
-     3: 03 ff 01   LoadImmediate r0, 1
-     6: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 8 (.L0)
+     3: LoadImmediate r0, 1
+     6: Ret r0
   .L0:
-     8: 14 06 08   JumpToBooleanFalse a1, 8 (.L1)
-    11: 03 ff 02   LoadImmediate r0, 2
-    14: 0c ff      Ret r0
+     8: JumpToBooleanFalse a1, 8 (.L1)
+    11: LoadImmediate r0, 2
+    14: Ret r0
   .L1:
-    16: 03 ff 03   LoadImmediate r0, 3
-    19: 0c ff      Ret r0
+    16: LoadImmediate r0, 3
+    19: Ret r0
 }
 
 [BytecodeFunction: testIfNoToBoolean] {
   Parameters: 1, Registers: 1
-     0: 0f ff 05 05   LessThan r0, a0, a0
-     4: 12 ff 08      JumpFalse r0, 8 (.L0)
-     7: 03 ff 01      LoadImmediate r0, 1
-    10: 0c ff         Ret r0
+     0: LessThan r0, a0, a0
+     4: JumpFalse r0, 8 (.L0)
+     7: LoadImmediate r0, 1
+    10: Ret r0
   .L0:
-    12: 0f ff 05 05   LessThan r0, a0, a0
-    16: 12 ff 08      JumpFalse r0, 8 (.L1)
-    19: 03 ff 02      LoadImmediate r0, 2
-    22: 0c ff         Ret r0
+    12: LessThan r0, a0, a0
+    16: JumpFalse r0, 8 (.L1)
+    19: LoadImmediate r0, 2
+    22: Ret r0
   .L1:
-    24: 03 ff 03      LoadImmediate r0, 3
-    27: 0c ff         Ret r0
+    24: LoadImmediate r0, 3
+    27: Ret r0
 }

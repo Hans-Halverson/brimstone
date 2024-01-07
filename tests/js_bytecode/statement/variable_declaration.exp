@@ -1,21 +1,21 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 03 ff 01   LoadImmediate r0, 1
-     3: 0a ff 00   StoreGlobal r0, c0
-     6: 03 ff 01   LoadImmediate r0, 1
-     9: 0a ff 00   StoreGlobal r0, c0
-    12: 03 ff 02   LoadImmediate r0, 2
-    15: 0a ff 01   StoreGlobal r0, c1
-    18: 03 ff 03   LoadImmediate r0, 3
-    21: 0a ff 02   StoreGlobal r0, c2
-    24: 16 ff 03   NewClosure r0, c3
-    27: 0a ff 04   StoreGlobal r0, c4
-    30: 16 ff 05   NewClosure r0, c5
-    33: 0a ff 06   StoreGlobal r0, c6
-    36: 16 ff 07   NewClosure r0, c7
-    39: 0a ff 08   StoreGlobal r0, c8
-    42: 05 ff      LoadUndefined r0
-    44: 0c ff      Ret r0
+     0: LoadImmediate r0, 1
+     3: StoreGlobal r0, c0
+     6: LoadImmediate r0, 1
+     9: StoreGlobal r0, c0
+    12: LoadImmediate r0, 2
+    15: StoreGlobal r0, c1
+    18: LoadImmediate r0, 3
+    21: StoreGlobal r0, c2
+    24: NewClosure r0, c3
+    27: StoreGlobal r0, c4
+    30: NewClosure r0, c5
+    33: StoreGlobal r0, c6
+    36: NewClosure r0, c7
+    39: StoreGlobal r0, c8
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -30,33 +30,33 @@
 
 [BytecodeFunction: testLocals] {
   Parameters: 0, Registers: 3
-     0: 03 fd 03      LoadImmediate r2, 3
-     3: 03 ff 01      LoadImmediate r0, 1
-     6: 03 fe 02      LoadImmediate r1, 2
-     9: 0d fd ff fe   Add r2, r0, r1
-    13: 0c fd         Ret r2
+     0: LoadImmediate r2, 3
+     3: LoadImmediate r0, 1
+     6: LoadImmediate r1, 2
+     9: Add r2, r0, r1
+    13: Ret r2
 }
 
 [BytecodeFunction: testDuplicates] {
   Parameters: 0, Registers: 2
-    0: 03 fe 03   LoadImmediate r1, 3
-    3: 03 ff 01   LoadImmediate r0, 1
-    6: 03 ff 02   LoadImmediate r0, 2
-    9: 0c ff      Ret r0
+    0: LoadImmediate r1, 3
+    3: LoadImmediate r0, 1
+    6: LoadImmediate r0, 2
+    9: Ret r0
 }
 
 [BytecodeFunction: testLoadFrom] {
   Parameters: 1, Registers: 6
-     0: 03 ff 01      LoadImmediate r0, 1
-     3: 03 fb 01      LoadImmediate r4, 1
-     6: 03 fa 02      LoadImmediate r5, 2
-     9: 0d fb fb fa   Add r4, r4, r5
-    13: 03 fa 03      LoadImmediate r5, 3
-    16: 0d fe fb fa   Add r1, r4, r5
-    20: 02 fd 05      Mov r2, a0
-    23: 09 fc 00      LoadGlobal r3, c0
-    26: 05 fb         LoadUndefined r4
-    28: 0c fb         Ret r4
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r4, 1
+     6: LoadImmediate r5, 2
+     9: Add r4, r4, r5
+    13: LoadImmediate r5, 3
+    16: Add r1, r4, r5
+    20: Mov r2, a0
+    23: LoadGlobal r3, c0
+    26: LoadUndefined r4
+    28: Ret r4
   Constant Table:
     0: [String: y]
 }

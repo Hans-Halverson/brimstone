@@ -33,6 +33,8 @@ pub struct DebugPrinter {
     current_indent: usize,
     /// Stack of print modes, top of stack is the current mode.
     mode_stack: Vec<DebugPrintMode>,
+    /// Whether to ignore raw bytes when printing bytecode
+    ignore_raw_bytes: bool,
 }
 
 impl DebugPrinter {
@@ -41,6 +43,7 @@ impl DebugPrinter {
             mode_stack: vec![mode],
             result: String::new(),
             current_indent: 0,
+            ignore_raw_bytes: false,
         }
     }
 
@@ -62,6 +65,14 @@ impl DebugPrinter {
 
     pub fn is_short_mode(&self) -> bool {
         self.mode_stack.last() == Some(&DebugPrintMode::Short)
+    }
+
+    pub fn set_ignore_raw_bytes(&mut self, ignore: bool) {
+        self.ignore_raw_bytes = ignore;
+    }
+
+    pub fn ignore_raw_bytes(&self) -> bool {
+        self.ignore_raw_bytes
     }
 
     pub fn inc_indent(&mut self) {

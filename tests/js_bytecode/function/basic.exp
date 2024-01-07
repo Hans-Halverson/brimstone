@@ -1,15 +1,15 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: 16 ff 00   NewClosure r0, c0
-     3: 0a ff 01   StoreGlobal r0, c1
-     6: 16 ff 02   NewClosure r0, c2
-     9: 0a ff 03   StoreGlobal r0, c3
-    12: 16 ff 04   NewClosure r0, c4
-    15: 0a ff 05   StoreGlobal r0, c5
-    18: 16 ff 06   NewClosure r0, c6
-    21: 0a ff 07   StoreGlobal r0, c7
-    24: 05 ff      LoadUndefined r0
-    26: 0c ff      Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -23,32 +23,32 @@
 
 [BytecodeFunction: test1] {
   Parameters: 2, Registers: 1
-    0: 0d ff 05 06   Add r0, a0, a1
-    4: 0c ff         Ret r0
+    0: Add r0, a0, a1
+    4: Ret r0
 }
 
 [BytecodeFunction: test2] {
   Parameters: 1, Registers: 1
-     0: 14 05 07   JumpToBooleanFalse a0, 7 (.L0)
-     3: 05 ff      LoadUndefined r0
-     5: 0c ff      Ret r0
+     0: JumpToBooleanFalse a0, 7 (.L0)
+     3: LoadUndefined r0
+     5: Ret r0
   .L0:
-     7: 14 05 05   JumpToBooleanFalse a0, 5 (.L1)
-    10: 0c 05      Ret a0
+     7: JumpToBooleanFalse a0, 5 (.L1)
+    10: Ret a0
   .L1:
-    12: 03 ff 02   LoadImmediate r0, 2
-    15: 0c ff      Ret r0
+    12: LoadImmediate r0, 2
+    15: Ret r0
 }
 
 [BytecodeFunction: test3] {
   Parameters: 0, Registers: 1
-    0: 03 ff 01   LoadImmediate r0, 1
-    3: 05 ff      LoadUndefined r0
-    5: 0c ff      Ret r0
+    0: LoadImmediate r0, 1
+    3: LoadUndefined r0
+    5: Ret r0
 }
 
 [BytecodeFunction: test4] {
   Parameters: 0, Registers: 1
-    0: 05 ff   LoadUndefined r0
-    2: 0c ff   Ret r0
+    0: LoadUndefined r0
+    2: Ret r0
 }

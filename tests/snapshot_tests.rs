@@ -46,7 +46,7 @@ fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
     let bytecode_program =
         BytecodeProgramGenerator::generate_from_program_parse_result(cx, &Rc::new(parse_result))?;
 
-    Ok(bytecode_program.debug_print_recursive())
+    Ok(bytecode_program.debug_print_recursive(true))
 }
 
 fn parse_script_or_module(path: &str) -> GenericResult<parser::parser::ParseProgramResult> {

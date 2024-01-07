@@ -1,12 +1,12 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: 16 fe 00   NewClosure r1, c0
-     3: 0a fe 01   StoreGlobal r1, c1
-     6: 16 ff 02   NewClosure r0, c2
-     9: 16 fe 03   NewClosure r1, c3
-    12: 0a fe 04   StoreGlobal r1, c4
-    15: 05 fe      LoadUndefined r1
-    17: 0c fe      Ret r1
+     0: NewClosure r1, c0
+     3: StoreGlobal r1, c1
+     6: NewClosure r0, c2
+     9: NewClosure r1, c3
+    12: StoreGlobal r1, c4
+    15: LoadUndefined r1
+    17: Ret r1
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -17,27 +17,27 @@
 
 [BytecodeFunction: test1] {
   Parameters: 0, Registers: 1
-    0: 05 ff   LoadUndefined r0
-    2: 0c ff   Ret r0
+    0: LoadUndefined r0
+    2: Ret r0
 }
 
 [BytecodeFunction: test2] {
   Parameters: 0, Registers: 1
-    0: 05 ff   LoadUndefined r0
-    2: 0c ff   Ret r0
+    0: LoadUndefined r0
+    2: Ret r0
 }
 
 [BytecodeFunction: test3] {
   Parameters: 0, Registers: 2
-    0: 16 ff 00   NewClosure r0, c0
-    3: 05 fe      LoadUndefined r1
-    5: 0c fe      Ret r1
+    0: NewClosure r0, c0
+    3: LoadUndefined r1
+    5: Ret r1
   Constant Table:
     0: [BytecodeFunction: test4]
 }
 
 [BytecodeFunction: test4] {
   Parameters: 0, Registers: 1
-    0: 05 ff   LoadUndefined r0
-    2: 0c ff   Ret r0
+    0: LoadUndefined r0
+    2: Ret r0
 }

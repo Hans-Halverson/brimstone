@@ -500,16 +500,21 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
         printer.write_indent();
         printer.write(&format!("{offset:>offset_width$}: "));
 
-        // Then print the raw bytes of the instruction
-        for byte in &bytecode[offset..next_offset] {
-            printer.write(&format!("{:02x} ", byte));
+        if !printer.ignore_raw_bytes() {
+            // Then print the raw bytes of the instruction
+            for byte in &bytecode[offset..next_offset] {
+                printer.write(&format!("{:02x} ", byte));
+            }
+
+            // Pad the raw bytes to the max instruction length
+            printer.write(&"   ".repeat(max_instr_length - (next_offset - offset)));
+
+            // Print separator between the raw bytes and the instruction
+            printer.write("  ");
         }
 
-        // Pad the raw bytes to the max instruction length
-        printer.write(&"   ".repeat(max_instr_length - (next_offset - offset)));
-
         // Then print the instruction in a readable form
-        printer.write(&format!("  {instr}"));
+        printer.write(&instr.to_string());
 
         // If this is a jump instruction, print the target label following the jump offset
         if let Some(jump_offset) = get_jump_offset(instr) {

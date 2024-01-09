@@ -560,6 +560,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
+            ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             _ => unimplemented!("bytecode for expression kind"),
         }
     }
@@ -576,7 +577,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if id.scope.is_none() {
-            unimplemented!("bytecode for unresolved identifier expression");
+            // TODO: Generate dynamic lookup from current scope if in eval or with
+            return self.gen_load_global_identifier(id, dest);
         }
 
         let scope = id.scope.unwrap();
@@ -608,23 +610,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
             // Global variables must first be loaded to a register
-            VMLocation::Global => {
-                let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
-                let constant_index = self.constant_table_builder.add_string(name_value)?;
-
-                let dest = self.allocate_destination(dest)?;
-                self.writer
-                    .load_global_instruction(dest, ConstantIndex::new(constant_index));
-
-                Ok(dest)
-            }
+            VMLocation::Global => self.gen_load_global_identifier(id, dest),
             VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
         }
     }
 
+    fn gen_load_global_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
+        let constant_index = self.constant_table_builder.add_string(name_value)?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .load_global_instruction(dest, ConstantIndex::new(constant_index));
+
+        Ok(dest)
+    }
+
     fn gen_store_identifier(&mut self, id: &ast::Identifier, value: GenRegister) -> EmitResult<()> {
         if id.scope.is_none() {
-            unimplemented!("bytecode for unresolved identifier expression");
+            // TODO: Generate dynamic lookup from current scope if in eval or with
+            return self.gen_store_global_identifier(id, value);
         }
 
         let scope = id.scope.unwrap();
@@ -642,14 +651,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.write_mov_instruction(local_reg, value);
             }
             // Globals must be stored with name appearing in the constant table
-            VMLocation::Global => {
-                let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
-                let constant_index = self.constant_table_builder.add_string(name_value)?;
-                self.writer
-                    .store_global_instruction(value, ConstantIndex::new(constant_index));
-            }
+            VMLocation::Global => self.gen_store_global_identifier(id, value)?,
             VMLocation::Scope { .. } => unimplemented!("bytecode for storing scope variables"),
         }
+
+        Ok(())
+    }
+
+    fn gen_store_global_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
+        let constant_index = self.constant_table_builder.add_string(name_value)?;
+        self.writer
+            .store_global_instruction(value, ConstantIndex::new(constant_index));
 
         Ok(())
     }
@@ -892,6 +909,38 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         true
+    }
+
+    fn gen_member_expression(
+        &mut self,
+        expr: &ast::MemberExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let object = self.gen_expression(&expr.object)?;
+
+        if expr.is_computed {
+            unimplemented!("bytecode for computed member expressions");
+        } else if expr.is_private {
+            unimplemented!("bytecode for private member expressions");
+        }
+
+        // Must be a named access
+        let name = expr.property.to_id();
+
+        // All string literals are loaded from the constant table
+        let string = InternedStrings::get_str(self.cx, &name.name).as_flat();
+        let constant_index = self.constant_table_builder.add_string(string)?;
+
+        self.register_allocator.release(object);
+        let dest = self.allocate_destination(dest)?;
+
+        self.writer.get_named_property_instruction(
+            dest,
+            object,
+            ConstantIndex::new(constant_index),
+        );
+
+        Ok(dest)
     }
 
     fn gen_variable_declaration(

@@ -433,6 +433,14 @@ define_instructions!(
         [0] dest: Register,
         [1] function_index: ConstantIndex,
     }
+
+    /// Get a named property from an object, storing the result in dest. The name must be a string
+    /// literal in the constant table.
+    GetNamedProperty(GetNamedPropertyInstruction, get_named_property_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] name_constant_index: ConstantIndex,
+    }
 );
 
 impl OpCode {

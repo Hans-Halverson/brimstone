@@ -10,7 +10,7 @@ use crate::{
         },
         gc::{HandleScope, HeapVisitor},
         get,
-        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean},
+        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_object},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
@@ -20,15 +20,16 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        CallInstruction, DivInstruction, ExpInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
-        LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
-        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
-        MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
-        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        CallInstruction, DivInstruction, ExpInstruction, GetNamedPropertyInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, Instruction,
+        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        LessThanInstruction, LessThanOrEqualInstruction, LoadConstantInstruction,
+        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
+        LoadTrueInstruction, LoadUndefinedInstruction, LooseEqualInstruction,
+        LooseNotEqualInstruction, MovInstruction, MulInstruction, NewClosureInstruction, OpCode,
+        RemInstruction, RetInstruction, StoreGlobalInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -363,6 +364,9 @@ impl VM {
                         execute_jump_to_boolean_false_constant!(get_instr)
                     }
                     OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                    OpCode::GetNamedProperty => {
+                        dispatch_or_throw!(GetNamedPropertyInstruction, execute_get_named_property)
+                    }
                 }
             };
         }
@@ -849,6 +853,28 @@ impl VM {
 
         let closure = Closure::new_ptr(self.cx, self.h1.cast::<BytecodeFunction>());
         self.write_register(instr.dest(), Value::object(closure.cast()))
+    }
+
+    #[inline]
+    fn execute_get_named_property<W: Width>(
+        &mut self,
+        instr: &GetNamedPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        self.h1.replace(object);
+
+        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        self.h2.replace(key);
+
+        let key = PropertyKey::string(self.cx, self.h2.as_string());
+        self.h2.replace(key.as_string().into());
+
+        let object = maybe!(to_object(self.cx, self.h1));
+        let result = maybe!(get(self.cx, object, self.h2.cast()));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
     }
 
     /// Visit all heap roots in the VM during GC root collection. Rewrites the stack in place,

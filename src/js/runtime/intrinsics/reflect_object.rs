@@ -64,7 +64,7 @@ impl ReflectObject {
     }
 
     // 28.1.1 Reflect.apply
-    fn apply(
+    pub fn apply(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -83,7 +83,7 @@ impl ReflectObject {
     }
 
     // 28.1.2 Reflect.construct
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -114,7 +114,7 @@ impl ReflectObject {
     }
 
     // 28.1.3 Reflect.defineProperty
-    fn define_property(
+    pub fn define_property(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -138,7 +138,7 @@ impl ReflectObject {
     }
 
     // 28.1.4 Reflect.deleteProperty
-    fn delete_property(
+    pub fn delete_property(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -158,7 +158,7 @@ impl ReflectObject {
     }
 
     // 28.1.5 Reflect.get
-    fn get(
+    pub fn get(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -182,7 +182,7 @@ impl ReflectObject {
     }
 
     // 28.1.6 Reflect.getOwnPropertyDescriptor
-    fn get_own_property_descriptor(
+    pub fn get_own_property_descriptor(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -205,7 +205,7 @@ impl ReflectObject {
     }
 
     // 28.1.7 Reflect.getPrototypeOf
-    fn get_prototype_of(
+    pub fn get_prototype_of(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -225,7 +225,7 @@ impl ReflectObject {
     }
 
     // 28.1.8 Reflect.has
-    fn has(
+    pub fn has(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -245,7 +245,7 @@ impl ReflectObject {
     }
 
     // 28.1.9 Reflect.isExtensible
-    fn is_extensible(
+    pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -261,7 +261,7 @@ impl ReflectObject {
     }
 
     // 28.1.10 Reflect.ownKeys
-    fn own_keys(
+    pub fn own_keys(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -278,7 +278,7 @@ impl ReflectObject {
     }
 
     // 28.1.11 Reflect.preventExtensions
-    fn prevent_extensions(
+    pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -294,7 +294,7 @@ impl ReflectObject {
     }
 
     // 28.1.12 Reflect.set
-    fn set(
+    pub fn set(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -320,7 +320,7 @@ impl ReflectObject {
     }
 
     // 28.1.13 Reflect.setPrototypeOf
-    fn set_prototype_of(
+    pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

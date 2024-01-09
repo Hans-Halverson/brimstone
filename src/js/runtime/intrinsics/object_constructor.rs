@@ -31,18 +31,16 @@ pub struct ObjectConstructor;
 
 impl ObjectConstructor {
     // 20.1.2 Properties of the Object Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.object(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -100,7 +98,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.1.1 Object
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -132,7 +130,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.1 Object.assign
-    fn assign(
+    pub fn assign(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -170,7 +168,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.2 Object.create
-    fn create(
+    pub fn create(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -198,7 +196,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.3 Object.defineProperties
-    fn define_properties(
+    pub fn define_properties(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -214,7 +212,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.3.1 ObjectDefineProperties
-    fn object_define_properties(
+    pub fn object_define_properties(
         cx: Context,
         object: Handle<ObjectValue>,
         properties: Handle<Value>,
@@ -246,7 +244,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.4 Object.defineProperty
-    fn define_property(
+    pub fn define_property(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -269,7 +267,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.5 Object.entries
-    fn entries(
+    pub fn entries(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -282,7 +280,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.6 Object.freeze
-    fn freeze(
+    pub fn freeze(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -301,7 +299,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.7 Object.fromEntries
-    fn from_entries(
+    pub fn from_entries(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -320,7 +318,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.8 Object.getOwnPropertyDescriptor
-    fn get_own_property_descriptor(
+    pub fn get_own_property_descriptor(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -339,7 +337,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.9 Object.getOwnPropertyDescriptors
-    fn get_own_property_descriptors(
+    pub fn get_own_property_descriptors(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -368,7 +366,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.10 Object.getOwnPropertyNames
-    fn get_own_property_names(
+    pub fn get_own_property_names(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -380,7 +378,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.11 Object.getOwnPropertySymbols
-    fn get_own_property_symbols(
+    pub fn get_own_property_symbols(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -392,7 +390,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.11.1 GetOwnPropertyKeys
-    fn get_own_property_keys(
+    pub fn get_own_property_keys(
         cx: Context,
         object: Handle<Value>,
         string_keys: bool,
@@ -415,7 +413,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.12 Object.getPrototypeOf
-    fn get_prototype_of(
+    pub fn get_prototype_of(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -432,7 +430,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.13 Object.hasOwn
-    fn has_own(
+    pub fn has_own(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -449,7 +447,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.14 Object.is
-    fn is(
+    pub fn is(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -460,7 +458,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.15 Object.isExtensible
-    fn is_extensible(
+    pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -476,7 +474,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.16 Object.isFrozen
-    fn is_frozen(
+    pub fn is_frozen(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -492,7 +490,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.17 Object.isSealed
-    fn is_sealed(
+    pub fn is_sealed(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -508,7 +506,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.18 Object.keys
-    fn keys(
+    pub fn keys(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -521,7 +519,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.19 Object.preventExtensions
-    fn prevent_extensions(
+    pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -540,7 +538,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.21 Object.seal
-    fn seal(
+    pub fn seal(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -559,7 +557,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.22 Object.setPrototypeOf
-    fn set_prototype_of(
+    pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -590,7 +588,7 @@ impl ObjectConstructor {
     }
 
     // 20.1.2.23 Object.values
-    fn values(
+    pub fn values(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

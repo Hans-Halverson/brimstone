@@ -110,7 +110,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.1 String.prototype.at
-    fn at(
+    pub fn at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -143,7 +143,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.2 String.prototype.charAt
-    fn char_at(
+    pub fn char_at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -165,7 +165,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.3 String.prototype.charCodeAt
-    fn char_code_at(
+    pub fn char_code_at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -186,7 +186,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.4 String.prototype.codePointAt
-    fn code_point_at(
+    pub fn code_point_at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -207,7 +207,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.5 String.prototype.concat
-    fn concat(
+    pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -225,7 +225,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.7 String.prototype.endsWith
-    fn ends_with(
+    pub fn ends_with(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -266,7 +266,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.8 String.prototype.includes
-    fn includes(
+    pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -295,7 +295,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.9 String.prototype.indexOf
-    fn index_of(
+    pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -322,7 +322,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.10 String.prototype.isWellFormed
-    fn is_well_formed(
+    pub fn is_well_formed(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -335,7 +335,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.11 String.prototype.lastIndexOf
-    fn last_index_of(
+    pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -365,7 +365,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.12 String.prototype.localeCompare
-    fn locale_compare(
+    pub fn locale_compare(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -393,7 +393,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.13 String.prototype.match
-    fn match_(
+    pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -422,7 +422,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.14 String.prototype.matchAll
-    fn match_all(
+    pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -471,7 +471,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.15 String.prototype.normalize
-    fn normalize(
+    pub fn normalize(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -520,7 +520,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.16 String.prototype.padEnd
-    fn pad_end(
+    pub fn pad_end(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -533,7 +533,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.17 String.prototype.padStart
-    fn pad_start(
+    pub fn pad_start(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -545,7 +545,7 @@ impl StringPrototype {
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true)
     }
 
-    fn pad_string(
+    pub fn pad_string(
         cx: Context,
         this_value: Handle<Value>,
         max_length_arg: Handle<Value>,
@@ -600,7 +600,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.18 String.prototype.repeat
-    fn repeat(
+    pub fn repeat(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -621,7 +621,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.19 String.prototype.replace
-    fn replace(
+    pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -700,7 +700,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.20 String.prototype.replaceAll
-    fn replace_all(
+    pub fn replace_all(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -815,7 +815,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.21 String.prototype.search
-    fn search(
+    pub fn search(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -846,7 +846,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.22 String.prototype.slice
-    fn slice(
+    pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -895,7 +895,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.23 String.prototype.split
-    fn split(
+    pub fn split(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -990,7 +990,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.24 String.prototype.startsWith
-    fn starts_with(
+    pub fn starts_with(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1038,7 +1038,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.25 String.prototype.substring
-    fn substring(
+    pub fn substring(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1070,7 +1070,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.26 String.prototype.toLocaleLowerCase
-    fn to_locale_lower_case(
+    pub fn to_locale_lower_case(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1083,7 +1083,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.27 String.prototype.toLocaleUpperCase
-    fn to_locale_upper_case(
+    pub fn to_locale_upper_case(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1096,7 +1096,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.28 String.prototype.toLowerCase
-    fn to_lower_case(
+    pub fn to_lower_case(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1109,7 +1109,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.29 String.prototype.toString
-    fn to_string(
+    pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1119,7 +1119,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.30 String.prototype.toUpperCase
-    fn to_upper_case(
+    pub fn to_upper_case(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1132,7 +1132,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.31 String.prototype.toWellFormed
-    fn to_well_formed(
+    pub fn to_well_formed(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1145,7 +1145,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.32 String.prototype.trim
-    fn trim(
+    pub fn trim(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1158,7 +1158,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.33 String.prototype.trimEnd
-    fn trim_end(
+    pub fn trim_end(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1171,7 +1171,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.34 String.prototype.trimStart
-    fn trim_start(
+    pub fn trim_start(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1184,7 +1184,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.35 String.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1194,7 +1194,7 @@ impl StringPrototype {
     }
 
     // 22.1.3.36 String.prototype [ @@iterator ]
-    fn iterator(
+    pub fn iterator(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

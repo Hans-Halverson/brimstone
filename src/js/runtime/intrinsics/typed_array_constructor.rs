@@ -23,17 +23,15 @@ pub struct TypedArrayConstructor;
 
 impl TypedArrayConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
-        let mut func = BuiltinFunction::create(
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             0,
             cx.names.typed_array(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -51,7 +49,7 @@ impl TypedArrayConstructor {
     }
 
     // 23.2.1.1 %TypedArray%
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
@@ -61,7 +59,7 @@ impl TypedArrayConstructor {
     }
 
     // 23.2.2.1 %TypedArray%.from
-    fn from(
+    pub fn from(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -162,7 +160,7 @@ impl TypedArrayConstructor {
     }
 
     // 23.2.2.2 %TypedArray%.of
-    fn of(
+    pub fn of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -192,7 +190,7 @@ impl TypedArrayConstructor {
     }
 
     // 23.2.2.4 get %TypedArray% [ @@species ]
-    fn get_species(
+    pub fn get_species(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -508,19 +506,17 @@ macro_rules! create_typed_array_constructor {
 
         impl $constructor {
             // 23.2.6 Properties of the TypedArray Constructors
-            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let prototype = realm.get_intrinsic(Intrinsic::TypedArrayConstructor);
-                let mut func = BuiltinFunction::create(
+                let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
                     Self::construct,
                     3,
                     cx.names.$rust_name(),
                     Some(realm),
                     Some(prototype),
-                    None,
                 );
 
-                func.set_is_constructor();
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.prototype(),
@@ -538,7 +534,7 @@ macro_rules! create_typed_array_constructor {
             }
 
             // 23.2.5.1 TypedArray
-            fn construct(
+            pub fn construct(
                 cx: Context,
                 _: Handle<Value>,
                 arguments: &[Handle<Value>],

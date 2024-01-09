@@ -132,18 +132,16 @@ pub struct RegExpConstructor;
 
 impl RegExpConstructor {
     // 22.2.5 Properties of the RegExp Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             2,
             cx.names.regexp(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -158,7 +156,7 @@ impl RegExpConstructor {
     }
 
     // 22.2.4.1 RegExp
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -221,7 +219,7 @@ impl RegExpConstructor {
     }
 
     // 22.2.5.2 get RegExp [ @@species ]
-    fn get_species(
+    pub fn get_species(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

@@ -94,7 +94,7 @@ impl SetIteratorPrototype {
 
     // 24.2.5.2.1 %SetIteratorPrototype%.next
     // Adapted from the abstract closure in 24.2.5.1 CreateSetIterator
-    fn next(
+    pub fn next(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

@@ -156,20 +156,21 @@ pub fn set_default_global_bindings(
     })
 }
 
-pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-    BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None)
+pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
+    BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None).into()
 }
 
-pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
+pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
     BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), Some(realm), None, None)
+        .into()
 }
 
-pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), Some(realm), None, None)
+pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
+    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), Some(realm), None, None).into()
 }
 
 // 19.2.1 eval
-fn eval(
+pub fn eval(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -180,7 +181,7 @@ fn eval(
 }
 
 // 19.2.2 isFinite
-fn is_finite(
+pub fn is_finite(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -192,7 +193,7 @@ fn is_finite(
 }
 
 // 19.2.3 isNaN
-fn is_nan(
+pub fn is_nan(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -204,7 +205,7 @@ fn is_nan(
 }
 
 // 19.2.4 parseFloat
-fn parse_float(
+pub fn parse_float(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -227,7 +228,7 @@ fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
 }
 
 // 19.2.5 parseInt
-fn parse_int(
+pub fn parse_int(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -341,7 +342,7 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
 }
 
 // 19.2.6.1 decodeURI
-fn decode_uri(
+pub fn decode_uri(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -354,7 +355,7 @@ fn decode_uri(
 }
 
 // 19.2.6.2 decodeURIComponent
-fn decode_uri_component(
+pub fn decode_uri_component(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -471,7 +472,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 }
 
 // 19.2.6.3 encodeURI
-fn encode_uri(
+pub fn encode_uri(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -484,7 +485,7 @@ fn encode_uri(
 }
 
 // 19.2.6.4 encodeURIComponent
-fn encode_uri_component(
+pub fn encode_uri_component(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],

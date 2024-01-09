@@ -54,7 +54,7 @@ impl JSONObject {
     }
 
     // 25.5.1 JSON.parse
-    fn parse(
+    pub fn parse(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -142,7 +142,7 @@ impl JSONObject {
     }
 
     // 25.5.2 JSON.stringify
-    fn stringify(
+    pub fn stringify(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

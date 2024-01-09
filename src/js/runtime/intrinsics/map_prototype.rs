@@ -70,7 +70,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.1 Map.prototype.clear
-    fn clear(
+    pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -88,7 +88,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.3 Map.prototype.delete
-    fn delete(
+    pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -107,7 +107,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.4 Map.prototype.entries
-    fn entries(
+    pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -123,7 +123,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.5 Map.prototype.forEach
-    fn for_each(
+    pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -161,7 +161,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.6 Map.prototype.get
-    fn get(
+    pub fn get(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -182,7 +182,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.7 Map.prototype.has
-    fn has(
+    pub fn has(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -201,7 +201,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.8 Map.prototype.keys
-    fn keys(
+    pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -217,7 +217,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.9 Map.prototype.set
-    fn set(
+    pub fn set(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -245,7 +245,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.10 get Map.prototype.size
-    fn size(
+    pub fn size(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -263,7 +263,7 @@ impl MapPrototype {
     }
 
     // 24.1.3.11 Map.prototype.values
-    fn values(
+    pub fn values(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

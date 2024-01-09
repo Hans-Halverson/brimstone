@@ -32,7 +32,7 @@ impl WeakSetPrototype {
     }
 
     // 24.4.3.1 WeakSet.prototype.add
-    fn add(
+    pub fn add(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -58,7 +58,7 @@ impl WeakSetPrototype {
     }
 
     // 24.4.3.3 WeakSet.prototype.delete
-    fn delete(
+    pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -81,7 +81,7 @@ impl WeakSetPrototype {
     }
 
     // 24.4.3.4 WeakSet.prototype.has
-    fn has(
+    pub fn has(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

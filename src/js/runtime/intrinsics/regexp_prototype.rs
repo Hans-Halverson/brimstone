@@ -70,7 +70,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.2 RegExp.prototype.exec
-    fn exec(
+    pub fn exec(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -92,7 +92,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.3 get RegExp.prototype.dotAll
-    fn dot_all(
+    pub fn dot_all(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -102,7 +102,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.4 get RegExp.prototype.flags
-    fn flags(
+    pub fn flags(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -166,7 +166,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.5 get RegExp.prototype.global
-    fn global(
+    pub fn global(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -176,7 +176,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.6 get RegExp.prototype.hasIndices
-    fn has_indices(
+    pub fn has_indices(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -186,7 +186,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.7 get RegExp.prototype.ignoreCase
-    fn ignore_case(
+    pub fn ignore_case(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -196,7 +196,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.8 RegExp.prototype [ @@match ]
-    fn match_(
+    pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -267,7 +267,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.9 RegExp.prototype [ @@matchAll ]
-    fn match_all(
+    pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -304,7 +304,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.10 get RegExp.prototype.multiline
-    fn multiline(
+    pub fn multiline(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -314,7 +314,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.11 RegExp.prototype [ @@replace ]
-    fn replace(
+    pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -505,7 +505,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.12 RegExp.prototype [ @@search ]
-    fn search(
+    pub fn search(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -544,7 +544,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.13 get RegExp.prototype.source
-    fn source(
+    pub fn source(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -569,7 +569,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.14 RegExp.prototype [ @@split ]
-    fn split(
+    pub fn split(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -717,7 +717,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.15 get RegExp.prototype.sticky
-    fn sticky(
+    pub fn sticky(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -727,7 +727,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.16 RegExp.prototype.test
-    fn test(
+    pub fn test(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -748,7 +748,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.17 RegExp.prototype.toString
-    fn to_string(
+    pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -773,7 +773,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.18 get RegExp.prototype.unicode
-    fn unicode(
+    pub fn unicode(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -783,7 +783,7 @@ impl RegExpPrototype {
     }
 
     // 22.2.6.19 get RegExp.prototype.unicodeSets
-    fn unicode_sets(
+    pub fn unicode_sets(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

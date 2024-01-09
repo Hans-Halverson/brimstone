@@ -84,18 +84,16 @@ pub struct NumberConstructor;
 
 impl NumberConstructor {
     // 21.1.2 Properties of the Number Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.number(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -141,7 +139,7 @@ impl NumberConstructor {
     }
 
     // 21.1.1.1 Number
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -169,7 +167,7 @@ impl NumberConstructor {
     }
 
     // 21.1.2.2 Number.isFinite
-    fn is_finite(
+    pub fn is_finite(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -184,7 +182,7 @@ impl NumberConstructor {
     }
 
     // 21.1.2.3 Number.isInteger
-    fn is_integer(
+    pub fn is_integer(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -195,7 +193,7 @@ impl NumberConstructor {
     }
 
     // 21.1.2.4 Number.isNaN
-    fn is_nan(
+    pub fn is_nan(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -210,7 +208,7 @@ impl NumberConstructor {
     }
 
     // 21.1.2.5 Number.isSafeInteger
-    fn is_safe_integer(
+    pub fn is_safe_integer(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

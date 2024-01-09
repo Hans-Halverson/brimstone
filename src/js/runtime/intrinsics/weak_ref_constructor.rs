@@ -69,18 +69,16 @@ pub struct WeakRefConstructor;
 
 impl WeakRefConstructor {
     // 26.1.2 Properties of the WeakRef Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.weak_ref(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -91,7 +89,7 @@ impl WeakRefConstructor {
     }
 
     // 26.1.1.1 WeakRef
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -52,7 +52,7 @@ impl SymbolPrototype {
     }
 
     // 20.4.3.2 get Symbol.prototype.description
-    fn get_description(
+    pub fn get_description(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -66,7 +66,7 @@ impl SymbolPrototype {
     }
 
     // 20.4.3.3 Symbol.prototype.toString
-    fn to_string(
+    pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -77,7 +77,7 @@ impl SymbolPrototype {
     }
 
     // 20.4.3.4 Symbol.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -87,7 +87,7 @@ impl SymbolPrototype {
     }
 
     // 20.4.3.5 Symbol.prototype [ @@toPrimitive ]
-    fn to_primitive(
+    pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

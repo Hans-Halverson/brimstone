@@ -53,18 +53,16 @@ pub struct BigIntConstructor;
 
 impl BigIntConstructor {
     // 21.2.1 The BigInt Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.bigint(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -78,7 +76,7 @@ impl BigIntConstructor {
     }
 
     // 21.2.1.1 BigInt
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -109,7 +107,7 @@ impl BigIntConstructor {
     }
 
     // 21.2.2.1 BigInt.asIntN
-    fn as_int_n(
+    pub fn as_int_n(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -144,7 +142,7 @@ impl BigIntConstructor {
     }
 
     // 21.2.2.2 BigInt.asUintN
-    fn as_uint_n(
+    pub fn as_uint_n(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

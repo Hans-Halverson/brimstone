@@ -29,18 +29,16 @@ pub struct DateConstructor;
 
 impl DateConstructor {
     // 21.4.2 The Date Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             7,
             cx.names.date(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -55,7 +53,7 @@ impl DateConstructor {
     }
 
     // 21.4.2.1 Date
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -152,7 +150,7 @@ impl DateConstructor {
     }
 
     // 21.4.3.1 Date.now
-    fn now(
+    pub fn now(
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
@@ -162,7 +160,7 @@ impl DateConstructor {
     }
 
     // 21.4.3.2 Date.parse
-    fn parse(
+    pub fn parse(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -179,7 +177,7 @@ impl DateConstructor {
     }
 
     // 21.4.3.4 Date.UTC
-    fn utc(
+    pub fn utc(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

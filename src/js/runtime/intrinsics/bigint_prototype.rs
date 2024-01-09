@@ -39,7 +39,7 @@ impl BigIntPrototype {
     }
 
     // 21.2.3.3 BigInt.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -64,7 +64,7 @@ impl BigIntPrototype {
     }
 
     // 21.2.3.4 BigInt.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

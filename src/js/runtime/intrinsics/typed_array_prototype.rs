@@ -113,7 +113,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.1 %TypedArray%.prototype.at
-    fn at(
+    pub fn at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -144,7 +144,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.2 get %TypedArray%.prototype.buffer
-    fn buffer(
+    pub fn buffer(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -155,7 +155,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.3 get %TypedArray%.prototype.byteLength
-    fn byte_length(
+    pub fn byte_length(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -171,7 +171,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.4 get %TypedArray%.prototype.byteOffset
-    fn byte_offset(
+    pub fn byte_offset(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -187,7 +187,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.6 %TypedArray%.prototype.copyWithin
-    fn copy_within(
+    pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -293,7 +293,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.7 %TypedArray%.prototype.entries
-    fn entries(
+    pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -304,7 +304,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.8 %TypedArray%.prototype.every
-    fn every(
+    pub fn every(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -343,7 +343,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.9 %TypedArray%.prototype.fill
-    fn fill(
+    pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -404,7 +404,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.10 %TypedArray%.prototype.filter
-    fn filter(
+    pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -465,7 +465,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.11 %TypedArray%.prototype.find
-    fn find(
+    pub fn find(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -493,7 +493,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.12 %TypedArray%.prototype.findIndex
-    fn find_index(
+    pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -521,7 +521,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.13 %TypedArray%.prototype.findLast
-    fn find_last(
+    pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -549,7 +549,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.14 %TypedArray%.prototype.findLastIndex
-    fn find_last_index(
+    pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -577,7 +577,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.15 %TypedArray%.prototype.forEach
-    fn for_each(
+    pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -613,7 +613,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.16 %TypedArray%.prototype.includes
-    fn includes(
+    pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -659,7 +659,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.17 %TypedArray%.prototype.indexOf
-    fn index_of(
+    pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -706,7 +706,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.18 %TypedArray%.prototype.join
-    fn join(
+    pub fn join(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -746,7 +746,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.19 %TypedArray%.prototype.keys
-    fn keys(
+    pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -757,7 +757,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.20 %TypedArray%.prototype.lastIndexOf
-    fn last_index_of(
+    pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -812,7 +812,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.21 get %TypedArray%.prototype.length
-    fn length(
+    pub fn length(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -828,7 +828,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.22 %TypedArray%.prototype.map
-    fn map(
+    pub fn map(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -873,7 +873,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.23 %TypedArray%.prototype.reduce
-    fn reduce(
+    pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -919,7 +919,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.24 %TypedArray%.prototype.reduceRight
-    fn reduce_right(
+    pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -965,7 +965,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.25 %TypedArray%.prototype.reverse
-    fn reverse(
+    pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1002,7 +1002,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.26 %TypedArray%.prototype.set
-    fn set(
+    pub fn set(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1032,7 +1032,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.26.1 SetTypedArrayFromTypedArray
-    fn set_typed_array_from_typed_array(
+    pub fn set_typed_array_from_typed_array(
         cx: Context,
         target: DynTypedArray,
         offset: f64,
@@ -1151,7 +1151,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.27 %TypedArray%.prototype.slice
-    fn slice(
+    pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1253,7 +1253,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.28 %TypedArray%.prototype.some
-    fn some(
+    pub fn some(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1292,7 +1292,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.29 %TypedArray%.prototype.sort
-    fn sort(
+    pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1328,7 +1328,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.30 %TypedArray%.prototype.subarray
-    fn subarray(
+    pub fn subarray(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1386,7 +1386,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.31 %TypedArray%.prototype.toLocaleString
-    fn to_locale_string(
+    pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1419,7 +1419,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.32 %TypedArray%.prototype.toReversed
-    fn to_reversed(
+    pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1447,7 +1447,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.33 %TypedArray%.prototype.toSorted
-    fn to_sorted(
+    pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1485,7 +1485,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.35 %TypedArray%.prototype.values
-    fn values(
+    pub fn values(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1496,7 +1496,7 @@ impl TypedArrayPrototype {
     }
 
     // 23.2.3.36 %TypedArray%.prototype.with
-    fn with(
+    pub fn with(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

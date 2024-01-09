@@ -71,7 +71,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.2 Object.prototype.hasOwnProperty
-    fn has_own_property(
+    pub fn has_own_property(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -86,7 +86,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.3 Object.prototype.isPrototypeOf
-    fn is_prototype_of(
+    pub fn is_prototype_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -116,7 +116,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.4 Object.prototype.propertyIsEnumerable
-    fn property_is_enumerable(
+    pub fn property_is_enumerable(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -133,7 +133,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.5 Object.prototype.toLocaleString
-    fn to_locale_string(
+    pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -143,7 +143,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.6 Object.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -194,7 +194,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.7 Object.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -204,7 +204,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.8.1 get Object.prototype.__proto__
-    fn get_proto(
+    pub fn get_proto(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -218,7 +218,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.8.2 set Object.prototype.__proto__
-    fn set_proto(
+    pub fn set_proto(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -247,7 +247,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.9.1 Object.prototype.__defineGetter__
-    fn define_getter(
+    pub fn define_getter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -270,7 +270,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.9.2 Object.prototype.__defineSetter__
-    fn define_setter(
+    pub fn define_setter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -293,7 +293,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.9.3 Object.prototype.__lookupGetter__
-    fn lookup_getter(
+    pub fn lookup_getter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -326,7 +326,7 @@ impl ObjectPrototype {
     }
 
     // 20.1.3.9.4 Object.prototype.__lookupSetter__
-    fn lookup_setter(
+    pub fn lookup_setter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

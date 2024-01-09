@@ -22,18 +22,15 @@ pub struct ProxyConstructor;
 
 impl ProxyConstructor {
     // 28.2.2 Properties of the Proxy Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             2,
             cx.names.proxy(),
             Some(realm),
             None,
-            None,
         );
-
-        func.set_is_constructor();
 
         func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm);
 
@@ -41,7 +38,7 @@ impl ProxyConstructor {
     }
 
     // 28.2.1.1 Proxy
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -58,7 +55,7 @@ impl ProxyConstructor {
     }
 
     // 28.2.2.1 Proxy.revocable
-    fn revocable(
+    pub fn revocable(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -71,7 +68,7 @@ impl ProxyConstructor {
         let revoke_environment = RevokeProxyClosureEnvironment::new(cx, Some(proxy));
 
         let mut revoker =
-            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), None, None, None);
+            BuiltinFunction::intrinsic_closure(cx, revoke, 0, cx.names.empty_string());
         revoker.set_closure_environment(revoke_environment);
 
         let result = ordinary_object_create(cx);
@@ -84,7 +81,7 @@ impl ProxyConstructor {
 }
 
 // The revoker abstract closure
-fn revoke(
+pub fn revoke(
     cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],

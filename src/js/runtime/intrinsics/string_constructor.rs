@@ -25,18 +25,16 @@ pub struct StringConstructor;
 
 impl StringConstructor {
     // 22.1.2 Properties of the String Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.string(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -51,7 +49,7 @@ impl StringConstructor {
     }
 
     // 22.1.1.1 String
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -79,7 +77,7 @@ impl StringConstructor {
     }
 
     // 22.1.2.1 String.fromCharCode
-    fn from_char_code(
+    pub fn from_char_code(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -103,7 +101,7 @@ impl StringConstructor {
     }
 
     // 22.1.2.2 String.fromCodePoint
-    fn from_code_point(
+    pub fn from_code_point(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -151,7 +149,7 @@ impl StringConstructor {
     }
 
     // 22.1.2.4 String.raw
-    fn raw(
+    pub fn raw(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -69,7 +69,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.1 get DataView.prototype.buffer
-    fn get_buffer(
+    pub fn get_buffer(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -80,7 +80,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.2 get DataView.prototype.byteLength
-    fn get_byte_length(
+    pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -96,7 +96,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.3 get DataView.prototype.byteOffset
-    fn get_byte_offset(
+    pub fn get_byte_offset(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -112,7 +112,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.5 DataView.prototype.getBigInt64
-    fn get_big_int64(
+    pub fn get_big_int64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -122,7 +122,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.6 DataView.prototype.getBigUint64
-    fn get_big_uint64(
+    pub fn get_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -132,7 +132,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.7 DataView.prototype.getFloat32
-    fn get_float32(
+    pub fn get_float32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -145,7 +145,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.8 DataView.prototype.getFloat64
-    fn get_float64(
+    pub fn get_float64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -158,7 +158,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.9 DataView.prototype.getInt8
-    fn get_int8(
+    pub fn get_int8(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -168,7 +168,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.10 DataView.prototype.getInt16
-    fn get_int16(
+    pub fn get_int16(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -178,7 +178,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.11 DataView.prototype.getInt32
-    fn get_int32(
+    pub fn get_int32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -188,7 +188,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.12 DataView.prototype.getUint8
-    fn get_uint8(
+    pub fn get_uint8(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -198,7 +198,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.13 DataView.prototype.getUint16
-    fn get_uint16(
+    pub fn get_uint16(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -208,7 +208,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.14 DataView.prototype.getUint32
-    fn get_uint32(
+    pub fn get_uint32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -218,7 +218,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.15 DataView.prototype.setBigInt64
-    fn set_big_int64(
+    pub fn set_big_int64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -235,7 +235,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.16 DataView.prototype.setBigUint64
-    fn set_big_uint64(
+    pub fn set_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -252,7 +252,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.17 DataView.prototype.setFloat32
-    fn set_float32(
+    pub fn set_float32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -272,7 +272,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.18 DataView.prototype.setFloat64
-    fn set_float64(
+    pub fn set_float64(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -292,7 +292,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.19 DataView.prototype.setInt8
-    fn set_int8(
+    pub fn set_int8(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -304,7 +304,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.20 DataView.prototype.setInt16
-    fn set_int16(
+    pub fn set_int16(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -321,7 +321,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.21 DataView.prototype.setInt32
-    fn set_int32(
+    pub fn set_int32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -338,7 +338,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.22 DataView.prototype.setUint8
-    fn set_uint8(
+    pub fn set_uint8(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -355,7 +355,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.23 DataView.prototype.setUint16
-    fn set_uint16(
+    pub fn set_uint16(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -372,7 +372,7 @@ impl DataViewPrototype {
     }
 
     // 25.3.4.24 DataView.prototype.setUint32
-    fn set_uint32(
+    pub fn set_uint32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

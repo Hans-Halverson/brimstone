@@ -103,7 +103,7 @@ impl Handle<FunctionPrototype> {
 
 impl FunctionPrototype {
     // 20.2.3.1 Function.prototype.apply
-    fn apply(
+    pub fn apply(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -125,7 +125,7 @@ impl FunctionPrototype {
     }
 
     // 20.2.3.2 Function.prototype.bind
-    fn bind(
+    pub fn bind(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -183,7 +183,7 @@ impl FunctionPrototype {
     }
 
     // 20.2.3.3 Function.prototype.call
-    fn call_intrinsic(
+    pub fn call_intrinsic(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -202,7 +202,7 @@ impl FunctionPrototype {
     }
 
     // 20.2.3.5 Function.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -248,7 +248,7 @@ impl FunctionPrototype {
     }
 
     // 20.2.3.6 Function.prototype [ @@hasInstance ]
-    fn has_instance(
+    pub fn has_instance(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

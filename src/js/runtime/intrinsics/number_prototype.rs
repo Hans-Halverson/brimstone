@@ -38,7 +38,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.2 Number.prototype.toExponential
-    fn to_exponential(
+    pub fn to_exponential(
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -118,7 +118,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.3 Number.prototype.toFixed
-    fn to_fixed(
+    pub fn to_fixed(
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -167,7 +167,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.4 Number.prototype.toLocaleString
-    fn to_locale_string(
+    pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -177,7 +177,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.5 Number.prototype.toPrecision
-    fn to_precision(
+    pub fn to_precision(
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -262,7 +262,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.6 Number.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -369,7 +369,7 @@ impl NumberPrototype {
     }
 
     // 21.1.3.7 Number.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

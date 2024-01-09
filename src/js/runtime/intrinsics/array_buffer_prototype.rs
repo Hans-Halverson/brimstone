@@ -38,7 +38,7 @@ impl ArrayBufferPrototype {
     }
 
     // 25.1.5.3 ArrayBuffer.prototype.slice
-    fn slice(
+    pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -133,7 +133,7 @@ impl ArrayBufferPrototype {
     }
 
     // 25.1.5.1 get ArrayBuffer.prototype.byteLength
-    fn get_byte_length(
+    pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

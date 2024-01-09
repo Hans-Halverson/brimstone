@@ -69,7 +69,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.1 Set.prototype.add
-    fn add(
+    pub fn add(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -95,7 +95,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.2 Set.prototype.clear
-    fn clear(
+    pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -113,7 +113,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.4 Set.prototype.delete
-    fn delete(
+    pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -132,7 +132,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.5 Set.prototype.entries
-    fn entries(
+    pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -148,7 +148,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.6 Set.prototype.forEach
-    fn for_each(
+    pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -184,7 +184,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.7 Set.prototype.has
-    fn has(
+    pub fn has(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -203,7 +203,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.9 get Set.prototype.size
-    fn size(
+    pub fn size(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -221,7 +221,7 @@ impl SetPrototype {
     }
 
     // 24.2.3.10 Set.prototype.values
-    fn values(
+    pub fn values(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

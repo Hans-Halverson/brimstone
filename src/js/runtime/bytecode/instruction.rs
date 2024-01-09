@@ -278,6 +278,18 @@ define_instructions!(
         [3] argc: UInt,
     }
 
+    /// Call a function in the Rust runtime. Does not pass arguments directly, instead uses the
+    /// arguments from the caller function.
+    ///
+    /// The rust function runtime id is passed in two registers, the first of which contains the
+    /// first byte (high byte) of the 16-byte id and the second of which contains the second byte
+    /// (low byte) of the 16-byte id.
+    CallRustRuntime (CallRustRuntimeInstruction, call_rust_runtime_instruction) {
+        [0] dest: Register,
+        [1] func_id1: UInt,
+        [2] func_id2: UInt,
+    }
+
     /// Return from a function, producing a value.
     Ret (RetInstruction, ret_instruction) {
         [0] return_value: Register,

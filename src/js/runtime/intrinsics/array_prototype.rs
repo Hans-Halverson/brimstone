@@ -109,7 +109,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.1 Array.prototype.at
-    fn at(
+    pub fn at(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -139,7 +139,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.2 Array.prototype.concat
-    fn concat(
+    pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -163,7 +163,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.2.1 IsConcatSpreadable
-    fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
+    pub fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
             return false.into();
         }
@@ -226,7 +226,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.4 Array.prototype.copyWithin
-    fn copy_within(
+    pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -332,7 +332,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.5 Array.prototype.entries
-    fn entries(
+    pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -343,7 +343,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.6 Array.prototype.every
-    fn every(
+    pub fn every(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -383,7 +383,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.7 Array.prototype.fill
-    fn fill(
+    pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -435,7 +435,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.8 Array.prototype.filter
-    fn filter(
+    pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -486,7 +486,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.9 Array.prototype.find
-    fn find(
+    pub fn find(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -513,7 +513,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.10 Array.prototype.findIndex
-    fn find_index(
+    pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -540,7 +540,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.11 Array.prototype.findLast
-    fn find_last(
+    pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -567,7 +567,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.12 Array.prototype.findLastIndex
-    fn find_last_index(
+    pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -594,7 +594,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.13 Array.prototype.flat
-    fn flat(
+    pub fn flat(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -628,7 +628,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.13.1 FlattenIntoArray
-    fn flatten_into_array(
+    pub fn flatten_into_array(
         cx: Context,
         target: Handle<ObjectValue>,
         source: Handle<ObjectValue>,
@@ -698,7 +698,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.14 Array.prototype.flatMap
-    fn flat_map(
+    pub fn flat_map(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -731,7 +731,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.15 Array.prototype.forEach
-    fn for_each(
+    pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -768,7 +768,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.16 Array.prototype.includes
-    fn includes(
+    pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -813,7 +813,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.17 Array.prototype.indexOf
-    fn index_of(
+    pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -859,7 +859,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.18 Array.prototype.join
-    fn join(
+    pub fn join(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -898,7 +898,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.19 Array.prototype.keys
-    fn keys(
+    pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -909,7 +909,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.20 Array.prototype.lastIndexOf
-    fn last_index_of(
+    pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -963,7 +963,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.21 Array.prototype.map
-    fn map(
+    pub fn map(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1003,7 +1003,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.22 Array.prototype.pop
-    fn pop(
+    pub fn pop(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1031,7 +1031,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.23 Array.prototype.push
-    fn push(
+    pub fn push(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1060,7 +1060,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.24 Array.prototype.reduce
-    fn reduce(
+    pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1121,7 +1121,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.25 Array.prototype.reduceRight
-    fn reduce_right(
+    pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1181,7 +1181,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.26 Array.prototype.reverse
-    fn reverse(
+    pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1239,7 +1239,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.27 Array.prototype.shift
-    fn shift(
+    pub fn shift(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1283,7 +1283,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.28 Array.prototype.slice
-    fn slice(
+    pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1351,7 +1351,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.29 Array.prototype.some
-    fn some(
+    pub fn some(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1391,7 +1391,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.30 Array.prototype.sort
-    fn sort(
+    pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1431,7 +1431,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.31 Array.prototype.splice
-    fn splice(
+    pub fn splice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1533,7 +1533,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.32 Array.prototype.toLocaleString
-    fn to_locale_string(
+    pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1569,7 +1569,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.33 Array.prototype.toReversed
-    fn to_reversed(
+    pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1596,7 +1596,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.34 Array.prototype.toSorted
-    fn to_sorted(
+    pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1632,7 +1632,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.35 Array.prototype.toSpliced
-    fn to_spliced(
+    pub fn to_spliced(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1705,7 +1705,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.36 Array.prototype.toString
-    fn to_string(
+    pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1724,7 +1724,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.37 Array.prototype.unshift
-    fn unshift(
+    pub fn unshift(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1768,7 +1768,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.38 Array.prototype.values
-    fn values(
+    pub fn values(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1779,7 +1779,7 @@ impl ArrayPrototype {
     }
 
     // 23.1.3.39 Array.prototype.with
-    fn with(
+    pub fn with(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -15,7 +15,7 @@ impl GcObject {
         object.to_handle()
     }
 
-    fn run(
+    pub fn run(
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],

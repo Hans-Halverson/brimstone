@@ -66,7 +66,7 @@ impl StringIteratorPrototype {
     }
 
     // 22.1.5.1.1 %StringIteratorPrototype%.next
-    fn next(
+    pub fn next(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

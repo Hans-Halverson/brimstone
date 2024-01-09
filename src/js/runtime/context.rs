@@ -25,7 +25,10 @@ use super::{
     execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
-    intrinsics::{finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic},
+    intrinsics::{
+        finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic,
+        rust_runtime::RustRuntimeFunctionRegistry,
+    },
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
@@ -59,6 +62,7 @@ pub struct ContextCell {
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
     pub base_descriptors: BaseDescriptors,
+    pub rust_runtime_functions: RustRuntimeFunctionRegistry,
 
     /// The virtual machine used to execute bytecode.
     pub vm: Option<Box<VM>>,
@@ -112,6 +116,7 @@ impl Context {
             names: BuiltinNames::uninit(),
             well_known_symbols: BuiltinSymbols::uninit(),
             base_descriptors: BaseDescriptors::uninit(),
+            rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
             undefined: Value::undefined(),
             null: Value::null(),

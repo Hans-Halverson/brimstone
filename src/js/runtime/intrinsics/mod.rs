@@ -40,6 +40,7 @@ mod reflect_object;
 pub mod regexp_constructor;
 mod regexp_prototype;
 pub mod regexp_string_iterator;
+pub mod rust_runtime;
 pub mod set_constructor;
 pub mod set_iterator;
 pub mod set_object;

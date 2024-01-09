@@ -23,18 +23,16 @@ pub struct MapConstructor;
 
 impl MapConstructor {
     // 24.1.1 The Map Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             0,
             cx.names.map(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -48,7 +46,7 @@ impl MapConstructor {
     }
 
     // 24.1.1.1 Map
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -80,7 +78,7 @@ impl MapConstructor {
     }
 
     // 24.1.2.2 get Map [ @@species ]
-    fn get_species(
+    pub fn get_species(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

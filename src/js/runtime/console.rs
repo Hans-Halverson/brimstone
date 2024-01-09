@@ -22,7 +22,7 @@ impl ConsoleObject {
         object.to_handle()
     }
 
-    fn log(
+    pub fn log(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -285,11 +285,11 @@ pub fn create_mapped_arguments_object(
             ArgAccessorClosureEnvironment::new(cx, parameter_name.as_string(), env);
 
         let mut getter =
-            BuiltinFunction::create(cx, arg_getter, 0, cx.names.empty_string(), None, None, None);
+            BuiltinFunction::intrinsic_closure(cx, arg_getter, 0, cx.names.empty_string());
         getter.set_closure_environment(arg_accessor_environment);
 
         let mut setter =
-            BuiltinFunction::create(cx, arg_setter, 1, cx.names.empty_string(), None, None, None);
+            BuiltinFunction::intrinsic_closure(cx, arg_setter, 1, cx.names.empty_string());
         setter.set_closure_environment(arg_accessor_environment);
 
         let desc =
@@ -348,7 +348,7 @@ impl ArgAccessorClosureEnvironment {
 }
 
 // 10.4.4.7.1 MakeArgGetter
-fn arg_getter(
+pub fn arg_getter(
     cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
@@ -362,7 +362,7 @@ fn arg_getter(
 }
 
 // 10.4.4.7.2 MakeArgSetter
-fn arg_setter(
+pub fn arg_setter(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],

@@ -98,7 +98,7 @@ impl MapIteratorPrototype {
 
     // 24.1.5.2.1 %MapIteratorPrototype%.next
     // Adapted from the abstract closure in 24.1.5.1 CreateMapIterator
-    fn next(
+    pub fn next(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

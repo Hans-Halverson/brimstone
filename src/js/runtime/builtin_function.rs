@@ -2,7 +2,11 @@ use std::mem::size_of;
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, maybe, set_uninit};
+use crate::{
+    extend_object,
+    js::runtime::bytecode::{function::Closure, generator::BytecodeFunctionGenerator},
+    maybe, set_uninit,
+};
 
 use super::{
     completion::EvalResult,
@@ -44,7 +48,6 @@ pub type BuiltinFunctionPtr = fn(
 pub struct ClosureEnvironment {}
 
 impl BuiltinFunction {
-    // 10.3.3 CreateBuiltinFunction
     pub fn create(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
@@ -53,16 +56,113 @@ impl BuiltinFunction {
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
-    ) -> Handle<BuiltinFunction> {
-        let func = BuiltinFunction::create_without_properties(cx, builtin_func, realm, prototype);
+    ) -> Handle<ObjectValue> {
+        if cx.options.bytecode {
+            Self::create_builtin_bytecode_function(
+                cx,
+                builtin_func,
+                length,
+                name,
+                realm,
+                prototype,
+                prefix,
+            )
+            .into()
+        } else {
+            Self::create_builtin_legacy_function(
+                cx,
+                builtin_func,
+                length,
+                name,
+                realm,
+                prototype,
+                prefix,
+            )
+            .into()
+        }
+    }
 
-        set_function_length(cx, func.into(), length);
-        set_function_name(cx, func.into(), name, prefix);
+    pub fn create_builtin_function_without_properties(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
+    ) -> Handle<ObjectValue> {
+        if cx.options.bytecode {
+            Self::create_builtin_bytecode_function_without_properties(
+                cx,
+                builtin_func,
+                length,
+                realm,
+                prototype,
+            )
+            .into()
+        } else {
+            Self::create_builtin_legacy_function_without_properties(
+                cx,
+                builtin_func,
+                realm,
+                prototype,
+            )
+            .into()
+        }
+    }
+
+    // 10.3.3 CreateBuiltinFunction
+    fn create_builtin_legacy_function(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        name: Handle<PropertyKey>,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
+        prefix: Option<&str>,
+    ) -> Handle<BuiltinFunction> {
+        let func = Self::create_builtin_legacy_function_without_properties(
+            cx,
+            builtin_func,
+            realm,
+            prototype,
+        );
+        Self::install_common_properties(cx, func.into(), length, name, prefix);
 
         func
     }
 
-    pub fn create_without_properties(
+    fn create_builtin_bytecode_function(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        name: Handle<PropertyKey>,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
+        prefix: Option<&str>,
+    ) -> Handle<Closure> {
+        let func = Self::create_builtin_bytecode_function_without_properties(
+            cx,
+            builtin_func,
+            length,
+            realm,
+            prototype,
+        );
+        Self::install_common_properties(cx, func.into(), length, name, prefix);
+
+        func
+    }
+
+    fn install_common_properties(
+        cx: Context,
+        func: Handle<ObjectValue>,
+        length: i32,
+        name: Handle<PropertyKey>,
+        prefix: Option<&str>,
+    ) {
+        set_function_length(cx, func, length);
+        set_function_name(cx.into(), func, name, prefix);
+    }
+
+    fn create_builtin_legacy_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Handle<Realm>>,
@@ -84,6 +184,80 @@ impl BuiltinFunction {
         object.to_handle()
     }
 
+    fn create_builtin_bytecode_function_without_properties(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
+    ) -> Handle<Closure> {
+        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
+        let bytecode_function = BytecodeFunctionGenerator::generate_rust_runtime_function(
+            cx,
+            function_id,
+            length as u32,
+        )
+        .unwrap();
+
+        // TOOD: Use global object scope from realm
+        let realm = realm.unwrap_or_else(|| cx.current_realm());
+        let prototype =
+            prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
+
+        Closure::new_builtin(cx, bytecode_function, prototype)
+    }
+
+    /// Create the constructor function for an intrinsic.
+    pub fn intrinsic_constructor(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        name: Handle<PropertyKey>,
+        realm: Option<Handle<Realm>>,
+        prototype: Option<Handle<ObjectValue>>,
+    ) -> Handle<ObjectValue> {
+        if cx.options.bytecode {
+            // TODO: Mark as a constructor
+            Self::create_builtin_bytecode_function(
+                cx,
+                builtin_func,
+                length,
+                name,
+                realm,
+                prototype,
+                None,
+            )
+            .into()
+        } else {
+            let mut constructor_function = Self::create_builtin_legacy_function(
+                cx,
+                builtin_func,
+                length,
+                name,
+                realm,
+                prototype,
+                None,
+            );
+            constructor_function.set_is_constructor();
+            constructor_function.into()
+        }
+    }
+
+    /// Intrinsic closures are builtins that use a rust closure environment. Can not yet be emitted
+    /// as bytecode.
+    pub fn intrinsic_closure(
+        cx: Context,
+        builtin_func: BuiltinFunctionPtr,
+        length: i32,
+        name: Handle<PropertyKey>,
+    ) -> Handle<BuiltinFunction> {
+        if cx.options.bytecode {
+            unimplemented!("Intrinsic closures can not yet be emitted as bytecode");
+        }
+
+        Self::create_builtin_legacy_function(cx, builtin_func, length, name, None, None, None)
+    }
+
     fn realm(&self) -> Handle<Realm> {
         self.realm.to_handle()
     }
@@ -102,47 +276,6 @@ impl BuiltinFunction {
 
     pub fn set_initial_name(&mut self, initial_name: Option<Handle<StringValue>>) {
         self.initial_name = initial_name.map(|s| s.get_());
-    }
-}
-
-impl Handle<BuiltinFunction> {
-    pub fn intrinsic_data_prop(
-        &mut self,
-        cx: Context,
-        key: Handle<PropertyKey>,
-        value: Handle<Value>,
-    ) {
-        self.object().intrinsic_data_prop(cx, key, value);
-    }
-
-    pub fn intrinsic_frozen_property(
-        &mut self,
-        cx: Context,
-        key: Handle<PropertyKey>,
-        value: Handle<Value>,
-    ) {
-        self.object().intrinsic_frozen_property(cx, key, value);
-    }
-
-    pub fn intrinsic_func(
-        &mut self,
-        cx: Context,
-        name: Handle<PropertyKey>,
-        func: BuiltinFunctionPtr,
-        length: i32,
-        realm: Handle<Realm>,
-    ) {
-        self.object().intrinsic_func(cx, name, func, length, realm);
-    }
-
-    pub fn intrinsic_getter(
-        &mut self,
-        cx: Context,
-        name: Handle<PropertyKey>,
-        func: BuiltinFunctionPtr,
-        realm: Handle<Realm>,
-    ) {
-        self.object().intrinsic_getter(cx, name, func, realm)
     }
 }
 

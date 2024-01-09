@@ -33,7 +33,7 @@ impl WeakMapPrototype {
     }
 
     // 24.3.3.2 WeakMap.prototype.delete
-    fn delete(
+    pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -56,7 +56,7 @@ impl WeakMapPrototype {
     }
 
     // 24.3.3.3 WeakMap.prototype.get
-    fn get(
+    pub fn get(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -81,7 +81,7 @@ impl WeakMapPrototype {
     }
 
     // 24.3.3.4 WeakMap.prototype.has
-    fn has(
+    pub fn has(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -104,7 +104,7 @@ impl WeakMapPrototype {
     }
 
     // 24.3.3.5 WeakMap.prototype.set
-    fn set(
+    pub fn set(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -49,18 +49,16 @@ pub struct SymbolConstructor;
 
 impl SymbolConstructor {
     // 20.4.2 Properties of the Symbol Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             0,
             cx.names.symbol(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -118,7 +116,7 @@ impl SymbolConstructor {
     }
 
     // 20.4.1.1 Symbol
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -139,7 +137,7 @@ impl SymbolConstructor {
     }
 
     // 20.4.2.2 Symbol.for
-    fn for_(
+    pub fn for_(
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -160,7 +158,7 @@ impl SymbolConstructor {
     }
 
     // 20.4.2.6 Symbol.keyFor
-    fn key_for(
+    pub fn key_for(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

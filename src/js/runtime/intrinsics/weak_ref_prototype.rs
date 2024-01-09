@@ -28,7 +28,7 @@ impl WeakRefPrototype {
     }
 
     // 26.1.3.2 WeakRef.prototype.deref
-    fn deref(
+    pub fn deref(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

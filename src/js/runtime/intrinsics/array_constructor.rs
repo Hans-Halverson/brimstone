@@ -26,18 +26,16 @@ pub struct ArrayConstructor;
 
 impl ArrayConstructor {
     // 23.1.2 Properties of the Array Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
             cx.names.array(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -56,7 +54,7 @@ impl ArrayConstructor {
     }
 
     // 23.1.1.1 Array
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -109,7 +107,7 @@ impl ArrayConstructor {
     }
 
     // 23.1.2.1 Array.from
-    fn from(
+    pub fn from(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -220,7 +218,7 @@ impl ArrayConstructor {
     }
 
     // 23.1.2.2 Array.isArray
-    fn is_array(
+    pub fn is_array(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -232,7 +230,7 @@ impl ArrayConstructor {
     }
 
     // 23.1.2.3 Array.of
-    fn of(
+    pub fn of(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -262,7 +260,7 @@ impl ArrayConstructor {
     }
 
     // 23.1.2.5 get Array [ @@species ]
-    fn get_species(
+    pub fn get_species(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

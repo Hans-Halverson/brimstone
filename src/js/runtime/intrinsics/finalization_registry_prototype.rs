@@ -35,7 +35,7 @@ impl FinalizationRegistryPrototype {
     }
 
     // 26.2.3.2 FinalizationRegistry.prototype.register
-    fn register(
+    pub fn register(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -85,7 +85,7 @@ impl FinalizationRegistryPrototype {
     }
 
     // 26.2.3.3 FinalizationRegistry.prototype.unregister
-    fn unregister(
+    pub fn unregister(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

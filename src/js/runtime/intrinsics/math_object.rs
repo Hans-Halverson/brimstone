@@ -99,7 +99,7 @@ impl MathObject {
     }
 
     // 21.3.2.1 Math.abs
-    fn abs(
+    pub fn abs(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -116,7 +116,7 @@ impl MathObject {
     }
 
     // 21.3.2.2 Math.acos
-    fn acos(
+    pub fn acos(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -128,7 +128,7 @@ impl MathObject {
     }
 
     // 21.3.2.3 Math.acosh
-    fn acosh(
+    pub fn acosh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -142,7 +142,7 @@ impl MathObject {
     }
 
     // 21.3.2.4 Math.asin
-    fn asin(
+    pub fn asin(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -154,7 +154,7 @@ impl MathObject {
     }
 
     // 21.3.2.5 Math.asinh
-    fn asinh(
+    pub fn asinh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -168,7 +168,7 @@ impl MathObject {
     }
 
     // 21.3.2.6 Math.atan
-    fn atan(
+    pub fn atan(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -180,7 +180,7 @@ impl MathObject {
     }
 
     // 21.3.2.7 Math.atanh
-    fn atanh(
+    pub fn atanh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -194,7 +194,7 @@ impl MathObject {
     }
 
     // 21.3.2.8 Math.atan2
-    fn atan2(
+    pub fn atan2(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -212,7 +212,7 @@ impl MathObject {
     }
 
     // 21.3.2.9 Math.cbrt
-    fn cbrt(
+    pub fn cbrt(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -224,7 +224,7 @@ impl MathObject {
     }
 
     // 21.3.2.10 Math.ceil
-    fn ceil(
+    pub fn ceil(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -241,7 +241,7 @@ impl MathObject {
     }
 
     // 21.3.2.11 Math.clz32
-    fn clz32(
+    pub fn clz32(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -253,7 +253,7 @@ impl MathObject {
     }
 
     // 21.3.2.12 Math.cos
-    fn cos(
+    pub fn cos(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -265,7 +265,7 @@ impl MathObject {
     }
 
     // 21.3.2.13 Math.cosh
-    fn cosh(
+    pub fn cosh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -277,7 +277,7 @@ impl MathObject {
     }
 
     // 21.3.2.14 Math.exp
-    fn exp(
+    pub fn exp(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -289,7 +289,7 @@ impl MathObject {
     }
 
     // 21.3.2.15 Math.expm1
-    fn expm1(
+    pub fn expm1(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -303,7 +303,7 @@ impl MathObject {
     }
 
     // 21.3.2.16 Math.floor
-    fn floor(
+    pub fn floor(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -322,7 +322,7 @@ impl MathObject {
     }
 
     // 21.3.2.17 Math.fround
-    fn fround(
+    pub fn fround(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -336,7 +336,7 @@ impl MathObject {
     }
 
     // 21.3.2.18 Math.hypot
-    fn hypot(
+    pub fn hypot(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -383,7 +383,7 @@ impl MathObject {
     }
 
     // 21.3.2.19 Math.imul
-    fn imul(
+    pub fn imul(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -401,7 +401,7 @@ impl MathObject {
     }
 
     // 21.3.2.20 Math.log
-    fn log(
+    pub fn log(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -413,7 +413,7 @@ impl MathObject {
     }
 
     // 21.3.2.21 Math.log1p
-    fn log1p(
+    pub fn log1p(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -427,7 +427,7 @@ impl MathObject {
     }
 
     // 21.3.2.22 Math.log10
-    fn log10(
+    pub fn log10(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -441,7 +441,7 @@ impl MathObject {
     }
 
     // 21.3.2.23 Math.log2
-    fn log2(
+    pub fn log2(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -453,7 +453,7 @@ impl MathObject {
     }
 
     // 21.3.2.24 Math.max
-    fn max(
+    pub fn max(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -487,7 +487,7 @@ impl MathObject {
     }
 
     // 21.3.2.25 Math.min
-    fn min(
+    pub fn min(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -521,7 +521,7 @@ impl MathObject {
     }
 
     // 21.3.2.26 Math.pow
-    fn pow(
+    pub fn pow(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -539,7 +539,7 @@ impl MathObject {
     }
 
     // 21.3.2.27 Math.random
-    fn random(
+    pub fn random(
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
@@ -550,7 +550,7 @@ impl MathObject {
     }
 
     // 21.3.2.28 Math.round
-    fn round(
+    pub fn round(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -576,7 +576,7 @@ impl MathObject {
     }
 
     // 21.3.2.29 Math.sign
-    fn sign(
+    pub fn sign(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -610,7 +610,7 @@ impl MathObject {
     }
 
     // 21.3.2.30 Math.sin
-    fn sin(
+    pub fn sin(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -622,7 +622,7 @@ impl MathObject {
     }
 
     // 21.3.2.31 Math.sinh
-    fn sinh(
+    pub fn sinh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -634,7 +634,7 @@ impl MathObject {
     }
 
     // 21.3.2.32 Math.sqrt
-    fn sqrt(
+    pub fn sqrt(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -646,7 +646,7 @@ impl MathObject {
     }
 
     // 21.3.2.33 Math.tan
-    fn tan(
+    pub fn tan(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -658,7 +658,7 @@ impl MathObject {
     }
 
     // 21.3.2.34 Math.tanh
-    fn tanh(
+    pub fn tanh(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -670,7 +670,7 @@ impl MathObject {
     }
 
     // 21.3.2.35 Math.trunc
-    fn trunc(
+    pub fn trunc(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

@@ -374,7 +374,7 @@ impl Intrinsics {
     }
 }
 
-fn throw_type_error(
+pub fn throw_type_error(
     cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
@@ -384,15 +384,20 @@ fn throw_type_error(
 }
 
 // 10.2.4.1 %ThrowTypeError%
-fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-    let throw_type_error_func =
-        BuiltinFunction::create_without_properties(cx, throw_type_error, Some(realm), None);
+fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
+    let throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
+        cx,
+        throw_type_error,
+        0,
+        Some(realm),
+        None,
+    );
 
     let zero_value = Value::smi(0).to_handle(cx);
     let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
     must!(define_property_or_throw(
         cx,
-        throw_type_error_func.into(),
+        throw_type_error_func,
         cx.names.length(),
         length_desc,
     ));
@@ -411,7 +416,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
         .cast::<ObjectValue>()
         .prevent_extensions(cx));
 
-    throw_type_error_func
+    throw_type_error_func.into()
 }
 
 // 10.2.4 AddRestrictedFunctionProperties

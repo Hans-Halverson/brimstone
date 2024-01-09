@@ -131,7 +131,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.2 Date.prototype.getDate
-    fn get_date(
+    pub fn get_date(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -153,7 +153,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.3 Date.prototype.getDay
-    fn get_day(
+    pub fn get_day(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -175,7 +175,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.4 Date.prototype.getFullYear
-    fn get_full_year(
+    pub fn get_full_year(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -200,7 +200,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.5 Date.prototype.getHours
-    fn get_hours(
+    pub fn get_hours(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -222,7 +222,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.6 Date.prototype.getMilliseconds
-    fn get_milliseconds(
+    pub fn get_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -247,7 +247,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.7 Date.prototype.getMinutes
-    fn get_minutes(
+    pub fn get_minutes(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -272,7 +272,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.8 Date.prototype.getMonth
-    fn get_month(
+    pub fn get_month(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -294,7 +294,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.9 Date.prototype.getSeconds
-    fn get_seconds(
+    pub fn get_seconds(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -319,7 +319,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.10 Date.prototype.getTime
-    fn get_time(
+    pub fn get_time(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -333,7 +333,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.11 Date.prototype.getTimezoneOffset
-    fn get_timezone_offset(
+    pub fn get_timezone_offset(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -355,7 +355,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.12 Date.prototype.getUTCDate
-    fn get_utc_date(
+    pub fn get_utc_date(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -377,7 +377,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.13 Date.prototype.getUTCDay
-    fn get_utc_day(
+    pub fn get_utc_day(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -399,7 +399,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.14 Date.prototype.getUTCFullYear
-    fn get_utc_full_year(
+    pub fn get_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -421,7 +421,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.15 Date.prototype.getUTCHours
-    fn get_utc_hours(
+    pub fn get_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -443,7 +443,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.16 Date.prototype.getUTCMilliseconds
-    fn get_utc_milliseconds(
+    pub fn get_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -468,7 +468,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.17 Date.prototype.getUTCMinutes
-    fn get_utc_minutes(
+    pub fn get_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -493,7 +493,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.18 Date.prototype.getUTCMonth
-    fn get_utc_month(
+    pub fn get_utc_month(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -518,7 +518,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.19 Date.prototype.getUTCSeconds
-    fn get_utc_seconds(
+    pub fn get_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -543,7 +543,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.20 Date.prototype.setDate
-    fn set_date(
+    pub fn set_date(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -575,7 +575,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.21 Date.prototype.setFullYear
-    fn set_full_year(
+    pub fn set_full_year(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -622,7 +622,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.22 Date.prototype.setHours
-    fn set_hours(
+    pub fn set_hours(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -690,7 +690,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.23 Date.prototype.setMilliseconds
-    fn set_milliseconds(
+    pub fn set_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -730,7 +730,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.24 Date.prototype.setMinutes
-    fn set_minutes(
+    pub fn set_minutes(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -789,7 +789,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.25 Date.prototype.setMonth
-    fn set_month(
+    pub fn set_month(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -833,7 +833,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.26 Date.prototype.setSeconds
-    fn set_seconds(
+    pub fn set_seconds(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -885,7 +885,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.27 Date.prototype.setTime
-    fn set_time(
+    pub fn set_time(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -904,7 +904,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.28 Date.prototype.setUTCDate
-    fn set_utc_date(
+    pub fn set_utc_date(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -937,7 +937,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.29 Date.prototype.setUTCFullYear
-    fn set_utc_full_year(
+    pub fn set_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -982,7 +982,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.30 Date.prototype.setUTCHours
-    fn set_utc_hours(
+    pub fn set_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1049,7 +1049,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.31 Date.prototype.setUTCMilliseconds
-    fn set_utc_milliseconds(
+    pub fn set_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1087,7 +1087,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.32 Date.prototype.setUTCMinutes
-    fn set_utc_minutes(
+    pub fn set_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1144,7 +1144,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.33 Date.prototype.setUTCMonth
-    fn set_utc_month(
+    pub fn set_utc_month(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1189,7 +1189,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.34 Date.prototype.setUTCSeconds
-    fn set_utc_seconds(
+    pub fn set_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1239,7 +1239,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.35 Date.prototype.toDateString
-    fn to_date_string(
+    pub fn to_date_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1271,7 +1271,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.36 Date.prototype.toISOString
-    fn to_iso_string(
+    pub fn to_iso_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1314,7 +1314,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.37 Date.prototype.toJSON
-    fn to_json(
+    pub fn to_json(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1332,7 +1332,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.38 Date.prototype.toLocaleDateString
-    fn to_locale_date_string(
+    pub fn to_locale_date_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1351,7 +1351,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.39 Date.prototype.toLocaleString
-    fn to_locale_string(
+    pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1370,7 +1370,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.40 Date.prototype.toLocaleTimeString
-    fn to_locale_time_string(
+    pub fn to_locale_time_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1389,7 +1389,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.41 Date.prototype.toString
-    fn to_string(
+    pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1405,7 +1405,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.42 Date.prototype.toTimeString
-    fn to_time_string(
+    pub fn to_time_string(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1439,7 +1439,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.43 Date.prototype.toUTCString
-    fn to_utc_string(
+    pub fn to_utc_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1476,7 +1476,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.44 Date.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -1492,7 +1492,7 @@ impl DatePrototype {
     }
 
     // 21.4.4.45 Date.prototype [ @@toPrimitive ]
-    fn to_primitive(
+    pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],

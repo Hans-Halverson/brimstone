@@ -28,7 +28,7 @@ impl BooleanPrototype {
     }
 
     // 20.3.3.2 Boolean.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
@@ -41,7 +41,7 @@ impl BooleanPrototype {
     }
 
     // 20.3.3.3 Boolean.prototype.valueOf
-    fn value_of(
+    pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

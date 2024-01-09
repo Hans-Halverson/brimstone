@@ -30,7 +30,7 @@ impl ErrorPrototype {
     }
 
     // 20.5.3.4 Error.prototype.toString
-    fn to_string(
+    pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

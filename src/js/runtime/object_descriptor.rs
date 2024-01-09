@@ -324,7 +324,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::Realm);
         other_heap_object_descriptor!(ObjectKind::Script);
 
-        other_heap_object_descriptor!(ObjectKind::Closure);
+        ordinary_object_descriptor!(ObjectKind::Closure);
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
         other_heap_object_descriptor!(ObjectKind::ConstantTable);
 

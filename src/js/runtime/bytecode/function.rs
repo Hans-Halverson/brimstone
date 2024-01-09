@@ -9,7 +9,8 @@ use crate::{
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::{ObjectDescriptor, ObjectKind},
-        ordinary_object::object_create,
+        object_value::ObjectValue,
+        ordinary_object::{object_create, object_create_with_proto},
         string_value::StringValue,
         Context, Handle, HeapPtr,
     },
@@ -40,6 +41,18 @@ impl Closure {
         set_uninit!(object.function, function.get_());
 
         object
+    }
+
+    pub fn new_builtin(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        prototype: Handle<ObjectValue>,
+    ) -> Handle<Closure> {
+        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
+
+        set_uninit!(object.function, function.get_());
+
+        object.to_handle()
     }
 
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {

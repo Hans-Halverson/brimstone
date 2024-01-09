@@ -15,18 +15,16 @@ pub struct SetConstructor;
 
 impl SetConstructor {
     // 24.2.1 The Set Constructor
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<BuiltinFunction> {
-        let mut func = BuiltinFunction::create(
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             0,
             cx.names.set(),
             Some(realm),
             None,
-            None,
         );
 
-        func.set_is_constructor();
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
@@ -40,7 +38,7 @@ impl SetConstructor {
     }
 
     // 24.2.1.1 Set
-    fn construct(
+    pub fn construct(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -82,7 +80,7 @@ impl SetConstructor {
     }
 
     // 24.2.2.2 get Set [ @@species ]
-    fn get_species(
+    pub fn get_species(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

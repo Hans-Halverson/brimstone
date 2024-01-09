@@ -19,7 +19,7 @@ impl IteratorPrototype {
     }
 
     // 27.1.2.1 %IteratorPrototype% [ @@iterator ]
-    fn iterator(
+    pub fn iterator(
         _: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

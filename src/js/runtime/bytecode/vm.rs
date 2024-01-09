@@ -10,6 +10,7 @@ use crate::{
         },
         gc::{HandleScope, HeapVisitor},
         get,
+        intrinsics::rust_runtime::decode_rust_runtime_id,
         type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_object},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
@@ -20,9 +21,9 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        CallInstruction, DivInstruction, ExpInstruction, GetNamedPropertyInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, Instruction,
-        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        CallInstruction, CallRustRuntimeInstruction, DivInstruction, ExpInstruction,
+        GetNamedPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
         JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         LessThanInstruction, LessThanOrEqualInstruction, LoadConstantInstruction,
         LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
@@ -170,8 +171,9 @@ impl VM {
                 let argc = instr.argc().value().to_usize();
 
                 // Push arguments and argc
+                // TODO: Push receiver and remove argc != 0 check
                 let args_slice =
-                    unsafe { std::slice::from_raw_parts(argv.sub(argc - 1) as *const Value, argc) };
+                    unsafe { std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc) };
                 self.push_call_arguments(func, args_slice.iter(), argc);
 
                 // Push the function
@@ -193,6 +195,52 @@ impl VM {
 
                 // Set the PC to the start of the callee function's bytecode
                 self.pc = func.bytecode().as_ptr();
+            }};
+        }
+
+        // Execute a call into the Rust runtime
+        macro_rules! execute_call_rust_runtime {
+            ($get_instr:ident) => {{
+                let instr = $get_instr!(CallRustRuntimeInstruction);
+
+                // Decode function id and use it to fetch function
+                let id_high_byte = instr.func_id1().value().to_usize() as u8;
+                let id_low_byte = instr.func_id2().value().to_usize() as u8;
+                let function_id = decode_rust_runtime_id(id_high_byte, id_low_byte);
+                let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
+
+                // Runtime call is wrapped in its own handle scope
+                HandleScope::new(self.cx, |cx| {
+                    // Use the same arguments as the caller function
+                    let argv = self.register_address(Register::<Narrow>::argument(0));
+                    let argc = self.get_argc();
+                    let args_slice =
+                        unsafe { std::slice::from_raw_parts(argv as *const Value, argc) };
+
+                    // All arguments must be placed behind handles before calling into Rust
+                    let mut arguments = vec![];
+                    for arg in args_slice {
+                        arguments.push(arg.to_handle(cx));
+                    }
+
+                    // TODO: Handle receiver
+                    self.h1.replace(Value::undefined());
+                    let receiver = self.h1;
+
+                    // Call rust function
+                    // TODO: Handle new target
+                    let result = rust_function(cx, receiver, &arguments, None);
+
+                    // Check if result was successful or threw
+                    match result {
+                        EvalResult::Ok(result) => {
+                            // Write return register
+                            self.write_register(instr.dest(), result.get());
+                            self.set_pc_after(instr);
+                        }
+                        EvalResult::Throw(_) => unimplemented!("Throwing in VM"),
+                    }
+                });
             }};
         }
 
@@ -325,6 +373,7 @@ impl VM {
                         dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
                     }
                     OpCode::Call => execute_call!(get_instr),
+                    OpCode::CallRustRuntime => execute_call_rust_runtime!(get_instr),
                     OpCode::Ret => execute_ret!(get_instr),
                     OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
                     OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),

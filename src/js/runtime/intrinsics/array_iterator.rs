@@ -113,7 +113,7 @@ impl ArrayIteratorPrototype {
 
     // 23.1.5.2.1 %ArrayIteratorPrototype%.next
     // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
-    fn next(
+    pub fn next(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

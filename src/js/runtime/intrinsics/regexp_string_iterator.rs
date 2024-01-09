@@ -95,7 +95,7 @@ impl RegExpStringIteratorPrototype {
     }
 
     // 22.2.9.2.1 %RegExpStringIteratorPrototype%.next
-    fn next(
+    pub fn next(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

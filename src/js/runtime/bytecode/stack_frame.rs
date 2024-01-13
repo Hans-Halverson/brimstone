@@ -11,9 +11,9 @@ use super::function::BytecodeFunction;
 ///     +------------------+
 ///     |       ...        |
 ///     +------------------+
-///     |       arg1       |  (first arg)
-///     +------------------+                     ^                ^
-///     |       arg0       |  (receiver)         | caller's frame |
+///     |       arg0       |  (first arg)
+/// +48 +------------------+                     ^                ^
+///     |     receiver     |  (receiver)         | caller's frame |
 /// +40 +------------------+                     +----------------+
 ///     |       argc       |                     | callee's frame |
 /// +32 +------------------+                     v                v
@@ -90,19 +90,26 @@ impl StackFrame {
         unsafe { &mut *(self.fp.add(FUNCTION_SLOT_INDEX) as *mut HeapPtr<BytecodeFunction>) }
     }
 
-    /// The number of arguments in this stack frame, including the receiver.
+    /// The number of arguments in this stack frame, not including the receiver.
     #[inline]
     pub fn argc(&self) -> usize {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
-    /// Mutable slice over args portion of frame, starting at first argument
+    /// The receiver value for this stack frame.
     #[inline]
-    pub fn args_mut(&self) -> &mut [Value] {
+    pub fn receiver(&self) -> Value {
+        unsafe { *self.fp.add(RECEIVER_SLOT_INDEX).cast::<Value>() }
+    }
+
+    /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
+    /// the first argument.
+    #[inline]
+    pub fn args_with_receiver_mut(&self) -> &mut [Value] {
         unsafe {
-            let argc = self.argc();
-            let first_arg_ptr = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX) as *mut Value;
-            std::slice::from_raw_parts_mut(first_arg_ptr, argc)
+            let argc_with_receiver = self.argc() + 1;
+            let receiver_ptr = self.fp.add(RECEIVER_SLOT_INDEX) as *mut Value;
+            std::slice::from_raw_parts_mut(receiver_ptr, argc_with_receiver)
         }
     }
 
@@ -135,4 +142,6 @@ const FUNCTION_SLOT_INDEX: usize = 3;
 
 const ARGC_SLOT_INDEX: usize = 4;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 5;
+pub const RECEIVER_SLOT_INDEX: usize = 5;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 6;

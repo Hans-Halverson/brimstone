@@ -21,16 +21,16 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        CallInstruction, CallRustRuntimeInstruction, DivInstruction, ExpInstruction,
-        GetNamedPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
-        LessThanInstruction, LessThanOrEqualInstruction, LoadConstantInstruction,
-        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
-        LoadTrueInstruction, LoadUndefinedInstruction, LooseEqualInstruction,
-        LooseNotEqualInstruction, MovInstruction, MulInstruction, NewClosureInstruction, OpCode,
-        RemInstruction, RetInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction,
+        CallInstruction, CallRustRuntimeInstruction, CallWithReceiverInstruction, DivInstruction,
+        ExpInstruction, GetNamedPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
+        LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
+        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
+        MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
+        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -96,8 +96,19 @@ impl VM {
 
         // Create the initial stack frame
 
-        // Push arguments and argc
-        self.push_call_arguments(func, arguments.iter().rev().map(Handle::deref), arguments.len());
+        // Push arguments
+        let argc = self.push_call_arguments(
+            func,
+            arguments.iter().rev().map(Handle::deref),
+            arguments.len(),
+        );
+
+        // Push the initial receiver
+        let receiver = self.default_receiver(func.is_strict());
+        self.push(receiver.as_raw_bits() as StackSlotValue);
+
+        // Push argc
+        self.push(argc);
 
         // Push the function
         self.push(func.as_ptr() as StackSlotValue);
@@ -158,8 +169,8 @@ impl VM {
 
         // Execute a call instruction
         macro_rules! execute_call {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(CallInstruction);
+            ($get_instr:ident, $instr:ident, $receiver_fn:expr) => {{
+                let instr = $get_instr!($instr);
 
                 let closure = self
                     .read_register(instr.function())
@@ -170,11 +181,26 @@ impl VM {
                 let argv = self.register_address(instr.argv());
                 let argc = instr.argc().value().to_usize();
 
-                // Push arguments and argc
-                // TODO: Push receiver and remove argc != 0 check
-                let args_slice =
-                    unsafe { std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc) };
-                self.push_call_arguments(func, args_slice.iter(), argc);
+                // Push arguments
+                let args_slice = unsafe {
+                    std::slice::from_raw_parts(
+                        argv.sub(argc.saturating_sub(1)) as *const Value,
+                        argc,
+                    )
+                };
+                let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
+
+                // Push the receiver if one is supplied, otherwise push undefined
+                let receiver = if let Some(receiver_fn) = $receiver_fn {
+                    let receiver = self.read_register(receiver_fn(instr));
+                    self.coerce_receiver(receiver, func.is_strict())
+                } else {
+                    self.default_receiver(func.is_strict())
+                };
+                self.push(receiver.as_raw_bits() as StackSlotValue);
+
+                // Push argc
+                self.push(argc_to_push);
 
                 // Push the function
                 self.push(func.as_ptr() as StackSlotValue);
@@ -211,7 +237,7 @@ impl VM {
 
                 // Runtime call is wrapped in its own handle scope
                 HandleScope::new(self.cx, |cx| {
-                    // Use the same arguments as the caller function
+                    // Use the same arguments and receiver as the caller function
                     let argv = self.register_address(Register::<Narrow>::argument(0));
                     let argc = self.get_argc();
                     let args_slice =
@@ -223,8 +249,8 @@ impl VM {
                         arguments.push(arg.to_handle(cx));
                     }
 
-                    // TODO: Handle receiver
-                    self.h1.replace(Value::undefined());
+                    // Receiver must be placed behind handle and passed separately from arguments
+                    self.h1.replace(self.get_receiver());
                     let receiver = self.h1;
 
                     // Call rust function
@@ -372,7 +398,17 @@ impl VM {
                     OpCode::StoreGlobal => {
                         dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
                     }
-                    OpCode::Call => execute_call!(get_instr),
+                    OpCode::Call => {
+                        let receiver_fn: Option<fn(_) -> Register<$width>> = None;
+                        execute_call!(get_instr, CallInstruction, receiver_fn)
+                    }
+                    OpCode::CallWithReceiver => {
+                        let receiver_fn =
+                            |instr: &CallWithReceiverInstruction<$width>| -> Register<$width> {
+                                instr.receiver()
+                            };
+                        execute_call!(get_instr, CallWithReceiverInstruction, Some(receiver_fn))
+                    }
                     OpCode::CallRustRuntime => execute_call_rust_runtime!(get_instr),
                     OpCode::Ret => execute_ret!(get_instr),
                     OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
@@ -513,6 +549,11 @@ impl VM {
     }
 
     #[inline]
+    fn get_receiver(&self) -> Value {
+        StackFrame::for_fp(self.fp).receiver()
+    }
+
+    #[inline]
     fn register_address<W: Width>(&self, reg: Register<W>) -> *mut Value {
         self.fp_offset(reg.value().to_isize()) as *mut Value
     }
@@ -561,15 +602,17 @@ impl VM {
         self.pc = unsafe { self.pc.offset(offset) };
     }
 
-    /// Push call arguments onto the stack, followed by argc. Takes an iterator over the arguments
-    /// in reverse order.
+    /// Push call arguments onto the stack, returning the argc which the caller should push onto
+    /// the stack. Takes an iterator over the arguments in reverse order.
+    ///
+    /// Does not push the receiver.
     #[inline]
     fn push_call_arguments<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
         func: HeapPtr<BytecodeFunction>,
         args_rev_iter: I,
         argc: usize,
-    ) {
+    ) -> usize {
         let mut sp = self.sp;
 
         // Handle under application of arguments, pushing undefined for missing arguments
@@ -597,8 +640,35 @@ impl VM {
 
         self.sp = sp;
 
-        // Push argc
-        self.push(num_arguments);
+        num_arguments
+    }
+
+    /// Return the default receiver used for a function call when no receiver is provided.
+    #[inline]
+    fn default_receiver(&self, is_strict: bool) -> Value {
+        if is_strict {
+            Value::undefined()
+        } else {
+            self.cx.get_global_object_ptr().into()
+        }
+    }
+
+    /// Return the coerced receiver that should be passed to a function call. No coercion is
+    /// necessary in strict mode, otherwise receiver must be coerced to an object, using the
+    /// global object if the receiver is nullish.
+    #[inline]
+    fn coerce_receiver(&mut self, receiver: Value, is_strict: bool) -> Value {
+        if is_strict {
+            receiver
+        } else if receiver.is_nullish() {
+            self.cx.get_global_object_ptr().into()
+        } else {
+            self.h1.replace(receiver);
+            match to_object(self.cx, self.h1) {
+                EvalResult::Ok(receiver) => receiver.get_().into(),
+                EvalResult::Throw(_) => unimplemented!("Throwing in VM"),
+            }
+        }
     }
 
     /// Allocate space for local registers, initializing to undefined
@@ -941,7 +1011,7 @@ impl VM {
         // Walk the stack, visiting all pointers in each frame
         loop {
             // Visit all args and registers in stack frame
-            for arg in stack_frame.args_mut() {
+            for arg in stack_frame.args_with_receiver_mut() {
                 visitor.visit_value(arg);
             }
 

@@ -270,12 +270,22 @@ define_instructions!(
     }
 
     /// Call a function. Arguments are passed in contiguous sequence of registers starting at argv,
-    /// of length argc. The first argument is the receiver.
+    /// of length argc. The receiver is undefined.
     Call (CallInstruction, call_instruction) {
         [0] dest: Register,
         [1] function: Register,
         [2] argv: Register,
         [3] argc: UInt,
+    }
+
+    /// Call a function, specifying the receiver to be used. All other arguments are passed in a
+    /// contiguous sequence of registers starting at argv, of length argc.
+    CallWithReceiver (CallWithReceiverInstruction, call_with_receiver_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] receiver: Register,
+        [3] argv: Register,
+        [4] argc: UInt,
     }
 
     /// Call a function in the Rust runtime. Does not pass arguments directly, instead uses the

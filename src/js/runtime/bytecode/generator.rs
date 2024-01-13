@@ -180,6 +180,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Number of toplevel parameters to this function, not counting the rest parameter.
     num_parameters: u32,
 
+    /// Whether this function is in strict mode.
+    is_strict: bool,
+
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
 
@@ -194,6 +197,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         debug_name: Option<String>,
         num_parameters: u32,
         num_local_registers: u32,
+        is_strict: bool,
     ) -> Self {
         Self {
             writer: BytecodeWriter::new(),
@@ -204,6 +208,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
             num_parameters,
+            is_strict,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             pending_functions_queue: Vec::new(),
@@ -243,6 +248,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             debug_name,
             num_parameters as u32,
             num_local_registers as u32,
+            func.is_strict_mode,
         ))
     }
 
@@ -265,6 +271,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some("<global>".to_owned()),
             0,
             num_local_registers as u32,
+            program.is_strict_mode,
         ))
     }
 
@@ -275,7 +282,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         num_parameters: u32,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let mut generator =
-            Self::new(cx, None, None, num_parameters, /* num_local_registers */ 0);
+            Self::new(cx, None, None, num_parameters, /* num_local_registers */ 0, true);
 
         let (func_id1, func_id2) = encode_rust_runtime_id(function_id);
 
@@ -529,6 +536,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             constant_table,
             num_registers,
             self.num_parameters,
+            self.is_strict,
             debug_name,
         );
 
@@ -579,6 +587,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr, dest),
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
+            ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
                 ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
                 ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
@@ -615,25 +624,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Make sure to load to a new temporary if necessary.
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
-                match dest {
-                    ExprDest::Any => Ok(arg_reg),
-                    ExprDest::NewTemporary => self.gen_mov_to_new_temporary(arg_reg),
-                    ExprDest::Fixed(dest) => {
-                        self.write_mov_instruction(dest, arg_reg);
-                        Ok(dest)
-                    }
-                }
+                self.gen_mov_reg_to_dest(arg_reg, dest)
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
-                match dest {
-                    ExprDest::Any => Ok(local_reg),
-                    ExprDest::NewTemporary => self.gen_mov_to_new_temporary(local_reg),
-                    ExprDest::Fixed(dest) => {
-                        self.write_mov_instruction(dest, local_reg);
-                        Ok(dest)
-                    }
-                }
+                self.gen_mov_reg_to_dest(local_reg, dest)
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => self.gen_load_global_identifier(id, dest),
@@ -731,10 +726,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_mov_to_new_temporary(&mut self, src: GenRegister) -> EmitResult<GenRegister> {
-        let dest = self.register_allocator.allocate()?;
-        self.write_mov_instruction(dest, src);
-        Ok(dest)
+    /// Move a src register to the expression destination if necessary.
+    fn gen_mov_reg_to_dest(&mut self, src: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+        match dest {
+            ExprDest::Any => Ok(src),
+            ExprDest::NewTemporary => {
+                let dest = self.register_allocator.allocate()?;
+                self.write_mov_instruction(dest, src);
+                Ok(dest)
+            }
+            ExprDest::Fixed(dest) => {
+                self.write_mov_instruction(dest, src);
+                Ok(dest)
+            }
+        }
     }
 
     fn gen_null_literal_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
@@ -791,6 +796,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .load_constant_instruction(dest, ConstantIndex::new(constant_index));
 
         Ok(dest)
+    }
+
+    fn gen_this_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
+        self.gen_mov_reg_to_dest(Register::this(), dest)
     }
 
     fn gen_unary_minus_expression(
@@ -870,7 +879,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::CallExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let callee = self.gen_expression(&expr.callee)?;
+        // Calls on a property accesses must pass the object's value as the this value
+        let (callee, this_value) = if let ast::Expression::Member(
+            member_expr @ ast::MemberExpression { is_optional: false, object, .. },
+        ) = expr.callee.as_ref()
+        {
+            let object = self.gen_expression(object)?;
+            let callee = self.gen_member_property(member_expr, object, ExprDest::Any)?;
+            (callee, Some(object))
+        } else {
+            let callee = self.gen_expression(&expr.callee)?;
+            (callee, None)
+        };
 
         if expr
             .arguments
@@ -911,13 +931,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let argc = GenUInt::try_from_unsigned(expr.arguments.len())
             .ok_or(EmitError::TooManyCallArguments)?;
 
+        // Release all call registers
         for arg_reg in arg_regs.iter().rev() {
             self.register_allocator.release(*arg_reg);
         }
         self.register_allocator.release(callee);
+        if let Some(this_value) = this_value {
+            self.register_allocator.release(this_value);
+        }
+
         let dest = self.allocate_destination(dest)?;
 
-        self.writer.call_instruction(dest, callee, argv, argc);
+        if let Some(this_value) = this_value {
+            self.writer
+                .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+        } else {
+            self.writer.call_instruction(dest, callee, argv, argc);
+        }
 
         Ok(dest)
     }
@@ -944,6 +974,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         let object = self.gen_expression(&expr.object)?;
 
+        self.register_allocator.release(object);
+        let result = self.gen_member_property(expr, object, dest)?;
+
+        Ok(result)
+    }
+
+    fn gen_member_property(
+        &mut self,
+        expr: &ast::MemberExpression,
+        object: GenRegister,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         if expr.is_computed {
             unimplemented!("bytecode for computed member expressions");
         } else if expr.is_private {
@@ -957,7 +999,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let string = InternedStrings::get_str(self.cx, &name.name).as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
 
-        self.register_allocator.release(object);
         let dest = self.allocate_destination(dest)?;
 
         self.writer.get_named_property_instruction(

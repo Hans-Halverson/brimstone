@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::{
-    stack_frame::FIRST_ARGUMENT_SLOT_INDEX,
+    stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX},
     width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum},
 };
 
@@ -158,9 +158,20 @@ impl<W: Width> Register<W> {
         Self::from_signed(W::SInt::from_isize(encoded_value))
     }
 
+    /// Construct a register referencing the current `this` value.
     #[inline]
-    pub fn is_argument(&self) -> bool {
-        self.signed().to_isize() > 0
+    pub fn this() -> Self {
+        Self::from_unsigned(W::UInt::from_usize(RECEIVER_SLOT_INDEX))
+    }
+
+    #[inline]
+    pub fn is_local(&self) -> bool {
+        self.signed().to_isize() < 0
+    }
+
+    #[inline]
+    fn is_this(&self) -> bool {
+        self.unsigned().to_usize() == RECEIVER_SLOT_INDEX
     }
 
     #[inline]
@@ -201,10 +212,12 @@ const fn decode_local_register(encoded_value: isize) -> usize {
 
 impl<W: Width> fmt::Display for Register<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_argument() {
-            write!(f, "a{}", self.argument_index())
-        } else {
+        if self.is_local() {
             write!(f, "r{}", self.local_index())
+        } else if self.is_this() {
+            write!(f, "<this>")
+        } else {
+            write!(f, "a{}", self.argument_index())
         }
     }
 }

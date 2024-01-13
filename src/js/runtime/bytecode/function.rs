@@ -83,6 +83,8 @@ pub struct BytecodeFunction {
     num_registers: u32,
     /// Number of parameters to the function, not counting the rest parameter.
     num_parameters: u32,
+    /// Whether this function is in strict mode.
+    is_strict: bool,
     /// Name of the function, used for debugging.
     debug_name: Option<HeapPtr<StringValue>>,
     /// Inlined bytecode array for the function.
@@ -96,6 +98,7 @@ impl BytecodeFunction {
         constant_table: Option<Handle<ConstantTable>>,
         num_registers: u32,
         num_parameters: u32,
+        is_strict: bool,
         debug_name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
@@ -105,6 +108,7 @@ impl BytecodeFunction {
         set_uninit!(object.constant_table, constant_table.map(|c| c.get_()));
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
+        set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.debug_name, debug_name.map(|n| n.get_()));
         object.bytecode.init_from_vec(bytecode);
 
@@ -135,6 +139,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn num_registers(&self) -> u32 {
         self.num_registers
+    }
+
+    #[inline]
+    pub fn is_strict(&self) -> bool {
+        self.is_strict
     }
 }
 

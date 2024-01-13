@@ -40,7 +40,7 @@ impl TemporaryRegisterAllocator {
     ///
     /// If the given register is a local or argument register this function is a noop.
     pub fn release(&mut self, register: GenRegister) {
-        if register.is_argument() {
+        if !register.is_local() {
             return;
         }
 

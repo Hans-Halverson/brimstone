@@ -170,7 +170,7 @@ impl<W: Width> Register<W> {
     }
 
     #[inline]
-    fn is_this(&self) -> bool {
+    pub fn is_this(&self) -> bool {
         self.unsigned().to_usize() == RECEIVER_SLOT_INDEX
     }
 

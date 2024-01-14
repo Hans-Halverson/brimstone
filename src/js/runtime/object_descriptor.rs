@@ -112,6 +112,7 @@ pub enum ObjectKind {
     Closure,
     BytecodeFunction,
     ConstantTable,
+    ExceptionHandlers,
 
     DeclarativeEnvironment,
     FunctionEnvironment,
@@ -327,6 +328,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::Closure);
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
         other_heap_object_descriptor!(ObjectKind::ConstantTable);
+        other_heap_object_descriptor!(ObjectKind::ExceptionHandlers);
 
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
         other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);

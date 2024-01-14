@@ -1,5 +1,8 @@
 use super::{
-    bytecode::{constant_table::ConstantTable, function::BytecodeFunction},
+    bytecode::{
+        constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
+        function::BytecodeFunction,
+    },
     gc::HeapItem,
     object_descriptor::ObjectKind,
     string_value::StringValue,
@@ -116,6 +119,7 @@ impl DebugPrint for HeapPtr<HeapItem> {
             ObjectKind::BigInt => self.cast::<BigIntValue>().debug_format(printer),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().debug_format(printer),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().debug_format(printer),
+            ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().debug_format(printer),
             _ => printer.write_heap_item_default(*self),
         }
     }

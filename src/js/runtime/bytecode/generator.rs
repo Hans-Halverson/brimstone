@@ -21,6 +21,7 @@ use crate::js::{
 
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
+    exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
     instruction::{DecodeInfo, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
@@ -185,6 +186,7 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
+    exception_handler_builder: ExceptionHandlersBuilder,
 
     /// Queue of functions that still need to be generated.
     pending_functions_queue: PendingFunctions,
@@ -211,7 +213,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_strict,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
-            pending_functions_queue: Vec::new(),
+            exception_handler_builder: ExceptionHandlersBuilder::new(),
+            pending_functions_queue: vec![],
         }
     }
 
@@ -523,6 +526,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         debug_assert!(self.register_allocator.is_empty());
 
         let constant_table = self.constant_table_builder.finish(self.cx);
+        let exception_handlers = self.exception_handler_builder.finish(self.cx);
+
         let num_registers = self.register_allocator.max_allocated();
         let debug_name = self
             .debug_name
@@ -534,6 +539,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.cx,
             bytecode,
             constant_table,
+            exception_handlers,
             num_registers,
             self.num_parameters,
             self.is_strict,
@@ -568,6 +574,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
             ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
+            ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
             _ => unimplemented!("bytecode for statement kind"),
         };
 
@@ -1182,6 +1189,103 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(return_arg);
 
         Ok(())
+    }
+
+    fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+        // Generate the body of the try statement, marking the range of instructions that should
+        // be covered by the body handler.
+        let body_handler_start = self.writer.current_offset();
+        let body_completion = self.gen_block_statement(&stmt.block)?;
+        let body_handler_end = self.writer.current_offset();
+
+        let join_block = self.new_block();
+        let catch_block = stmt.handler.as_ref().map(|_| self.new_block());
+        let finally_block = stmt.finalizer.as_ref().map(|_| self.new_block());
+
+        // Body continues to finalizer if one exists, otherwise it continues to the join block.
+        // Only need to write a jump if catch is present, otherwise will directly continue to
+        // finally block.
+        if !body_completion.is_abrupt() && catch_block.is_some() {
+            let after_body_block = finally_block.unwrap_or(join_block);
+            self.write_jump_instruction(after_body_block)?;
+        }
+
+        let mut body_handler = ExceptionHandlerBuilder::new(body_handler_start, body_handler_end);
+        let mut catch_handler = None;
+        let mut result_completion = body_completion;
+
+        // Emit the catch clause
+        if let Some(catch_clause) = &stmt.handler {
+            body_handler.handler = self.writer.current_offset();
+
+            // If there is a catch parameter, mark the register in the handler
+            if let Some(param) = catch_clause.param.as_deref() {
+                if param.is_id() {
+                    let id = param.to_id();
+                    let scope = id.scope.unwrap();
+                    let binding = scope.as_ref().get_binding(&id.name);
+
+                    match binding.vm_location().unwrap() {
+                        VMLocation::LocalRegister(index) => {
+                            body_handler.error_register = Some(Register::local(index))
+                        }
+                        VMLocation::Scope { .. } => {
+                            unimplemented!("bytcode for captured catch parameters")
+                        }
+                        _ => unreachable!("catch parameters must be in a register or VM scope"),
+                    }
+                } else {
+                    unimplemented!("bytecode for catch parameter destructuring");
+                }
+            }
+
+            // Emit the catch block's body. No need to write a jump from catch to next block, since
+            // either the finally or join block will be emitted directly after the catch.
+            self.start_block(catch_block.unwrap());
+
+            let catch_handler_start = self.writer.current_offset();
+            let catch_completion = self.gen_block_statement(&catch_clause.body)?;
+            let catch_handler_end = self.writer.current_offset();
+
+            // If there is a finally block then the catch block must be wrapped in an exception
+            // handler.
+            if stmt.finalizer.is_some() {
+                let handler = ExceptionHandlerBuilder::new(catch_handler_start, catch_handler_end);
+                catch_handler = Some(handler)
+            } else {
+                // Without a finally block, result completion is abrupt if both body and catch
+                // blocks have an abrupt completion.
+                result_completion = result_completion.combine(catch_completion);
+            }
+        }
+
+        // Emit the finally block
+        if let Some(finally) = &stmt.finalizer {
+            // The finally block is the target handler for either the body or the catch block if
+            // one is present.
+            if let Some(catch_handler) = &mut catch_handler {
+                catch_handler.handler = self.writer.current_offset();
+            } else {
+                body_handler.handler = self.writer.current_offset();
+            }
+
+            // Emit the finally block's body. No need to write a jump from finally to join block
+            // since it immediately follows.
+            self.start_block(finally_block.unwrap());
+            let finally_completion = self.gen_block_statement(finally)?;
+
+            // Finally completion used as result completion since all paths go through finally block
+            result_completion = finally_completion;
+        }
+
+        // Save the exception handlers
+        self.exception_handler_builder.add(body_handler);
+        if let Some(catch_handler) = catch_handler {
+            self.exception_handler_builder.add(catch_handler);
+        }
+
+        self.start_block(join_block);
+        Ok(result_completion)
     }
 }
 

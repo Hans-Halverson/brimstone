@@ -1,5 +1,6 @@
 pub mod constant_table;
 mod constant_table_builder;
+pub mod exception_handlers;
 pub mod function;
 pub mod generator;
 pub mod instruction;

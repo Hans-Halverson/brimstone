@@ -3,7 +3,6 @@ use std::mem::size_of;
 use crate::{
     extend_object, field_offset,
     js::runtime::{
-        bytecode::instruction::debug_format_instructions,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapObject, HeapVisitor},
@@ -17,7 +16,10 @@ use crate::{
     set_uninit,
 };
 
-use super::constant_table::ConstantTable;
+use super::{
+    constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
+    instruction::debug_format_instructions,
+};
 
 // A closure is a pair of a function and it's scope. Represents the instantiation of a function's
 // bytecode "template" in a particular scope, and is the callable object.
@@ -79,6 +81,8 @@ pub struct BytecodeFunction {
     descriptor: HeapPtr<ObjectDescriptor>,
     /// Constants referenced by the function (or raw jump offsets)
     constant_table: Option<HeapPtr<ConstantTable>>,
+    /// Exception handlers in this function.
+    exception_handlers: Option<HeapPtr<ExceptionHandlers>>,
     /// Number of local registers (and temporaries) needed by the function.
     num_registers: u32,
     /// Number of parameters to the function, not counting the rest parameter.
@@ -96,6 +100,7 @@ impl BytecodeFunction {
         cx: Context,
         bytecode: Vec<u8>,
         constant_table: Option<Handle<ConstantTable>>,
+        exception_handlers: Option<Handle<ExceptionHandlers>>,
         num_registers: u32,
         num_parameters: u32,
         is_strict: bool,
@@ -106,6 +111,7 @@ impl BytecodeFunction {
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| c.get_()));
+        set_uninit!(object.exception_handlers, exception_handlers.map(|h| h.get_()));
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
@@ -129,6 +135,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn constant_table_ptr(&self) -> Option<HeapPtr<ConstantTable>> {
         self.constant_table
+    }
+
+    #[inline]
+    pub fn exception_handlers_ptr(&self) -> Option<HeapPtr<ExceptionHandlers>> {
+        self.exception_handlers
     }
 
     #[inline]
@@ -185,6 +196,12 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
             constant_table.debug_format(printer);
         }
 
+        // Followed by the exception handlers if present
+        if let Some(exception_handlers) = self.exception_handlers_ptr() {
+            printer.write_indent();
+            exception_handlers.debug_format(printer);
+        }
+
         printer.dec_indent();
         printer.write("}\n");
     }
@@ -232,6 +249,7 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
         visitor.visit_pointer(&mut self.descriptor);
 
         visitor.visit_pointer_opt(&mut self.constant_table);
+        visitor.visit_pointer_opt(&mut self.exception_handlers);
         visitor.visit_pointer_opt(&mut self.debug_name);
     }
 }

@@ -8,6 +8,7 @@ use crate::js::runtime::{
     builtin_function::BuiltinFunction,
     bytecode::{
         constant_table::ConstantTable,
+        exception_handlers::ExceptionHandlers,
         function::{BytecodeFunction, Closure},
     },
     context::GlobalSymbolRegistryField,
@@ -142,6 +143,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Closure => self.cast::<Closure>().byte_size(),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().byte_size(),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().byte_size(),
+            ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().byte_size(),
             ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
             ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
@@ -262,6 +264,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Closure => self.cast::<Closure>().visit_pointers(visitor),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().visit_pointers(visitor),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().visit_pointers(visitor),
+            ObjectKind::ExceptionHandlers => {
+                self.cast::<ExceptionHandlers>().visit_pointers(visitor)
+            }
             ObjectKind::DeclarativeEnvironment => self
                 .cast::<DeclarativeEnvironment>()
                 .visit_pointers(visitor),

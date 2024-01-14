@@ -1,0 +1,70 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: logicalAndBoolean]
+    1: [String: logicalAndBoolean]
+    2: [BytecodeFunction: logicalAndNotBoolean]
+    3: [String: logicalAndNotBoolean]
+    4: [BytecodeFunction: logicalOrBoolean]
+    5: [String: logicalOrBoolean]
+    6: [BytecodeFunction: logicalOrNotBoolean]
+    7: [String: logicalOrNotBoolean]
+}
+
+[BytecodeFunction: logicalAndBoolean] {
+  Parameters: 0, Registers: 3
+     0: LoadTrue r0
+     2: JumpFalse r0, 13 (.L0)
+     5: LoadImmediate r1, 1
+     8: LoadImmediate r2, 2
+    11: Add r0, r1, r2
+  .L0:
+    15: Ret r0
+}
+
+[BytecodeFunction: logicalAndNotBoolean] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r1, 1
+     3: LoadImmediate r2, 2
+     6: Add r0, r1, r2
+    10: JumpToBooleanFalse r0, 13 (.L0)
+    13: LoadImmediate r1, 3
+    16: LoadImmediate r2, 4
+    19: Add r0, r1, r2
+  .L0:
+    23: Ret r0
+}
+
+[BytecodeFunction: logicalOrBoolean] {
+  Parameters: 0, Registers: 3
+     0: LoadTrue r0
+     2: JumpTrue r0, 13 (.L0)
+     5: LoadImmediate r1, 1
+     8: LoadImmediate r2, 2
+    11: Add r0, r1, r2
+  .L0:
+    15: Ret r0
+}
+
+[BytecodeFunction: logicalOrNotBoolean] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r1, 1
+     3: LoadImmediate r2, 2
+     6: Add r0, r1, r2
+    10: JumpToBooleanTrue r0, 13 (.L0)
+    13: LoadImmediate r1, 3
+    16: LoadImmediate r2, 4
+    19: Add r0, r1, r2
+  .L0:
+    23: Ret r0
+}

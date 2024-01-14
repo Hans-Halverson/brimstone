@@ -441,6 +441,40 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn write_jump_true_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_true_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_true_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
+    fn write_jump_to_boolean_true_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_to_boolean_true_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_to_boolean_true_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
     fn write_jump_false_instruction(
         &mut self,
         condition: GenRegister,
@@ -602,6 +636,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 _ => unimplemented!("bytecode for unary operator"),
             },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
+            ast::Expression::Logical(expr) => match expr.operator {
+                ast::LogicalOperator::And => self.gen_logical_and_expression(expr, dest),
+                ast::LogicalOperator::Or => self.gen_logical_or_expression(expr, dest),
+                ast::LogicalOperator::NullishCoalesce => {
+                    unimplemented!("bytecode for nullish coalescing operator")
+                }
+            },
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             _ => unimplemented!("bytecode for expression kind"),
@@ -879,6 +920,52 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             _ => unimplemented!("Cannot generate bytecode for binary operator"),
         }
 
+        Ok(dest)
+    }
+
+    fn gen_logical_and_expression(
+        &mut self,
+        expr: &ast::LogicalExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+        let join_block = self.new_block();
+
+        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
+        let left_is_boolean = self.evaluates_to_boolean(&expr.left);
+
+        if left_is_boolean {
+            self.write_jump_false_instruction(dest, join_block)?;
+        } else {
+            self.write_jump_to_boolean_false_instruction(dest, join_block)?;
+        }
+
+        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+
+        self.start_block(join_block);
+        Ok(dest)
+    }
+
+    fn gen_logical_or_expression(
+        &mut self,
+        expr: &ast::LogicalExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+        let join_block = self.new_block();
+
+        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
+        let left_is_boolean = self.evaluates_to_boolean(&expr.left);
+
+        if left_is_boolean {
+            self.write_jump_true_instruction(dest, join_block)?;
+        } else {
+            self.write_jump_to_boolean_true_instruction(dest, join_block)?;
+        }
+
+        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+
+        self.start_block(join_block);
         Ok(dest)
     }
 

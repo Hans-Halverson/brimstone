@@ -421,6 +421,35 @@ define_instructions!(
         [0] constant_index: ConstantIndex,
     }
 
+    /// Conditionally jump to the given instruction if the condition is true, using an inline
+    /// offset. Does not convert its operand to a boolean first, only checks for `false ``exactly.
+    JumpTrue(JumpTrueInstruction, jump_true_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if the condition is true, with offset stored
+    /// in the constant table. Does not convert its operand to a boolean first, only checks for
+    /// `false` exactly.
+    JumpTrueConstant(JumpTrueConstantInstruction, jump_true_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
+    /// Conditionally jump to the given instruction if ToBoolean(condition) is true, using an
+    /// inline ofset.
+    JumpToBooleanTrue(JumpToBooleanTrueInstruction, jump_to_boolean_true_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if ToBoolean(condition) is true, with offset
+    /// stored in the constant table.
+    JumpToBooleanTrueConstant(JumpToBooleanTrueConstantInstruction, jump_to_boolean_true_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
     /// Conditionally jump to the given instruction if the condition is false, using an inline
     /// offset. Does not convert its operand to a boolean first, only checks for `false ``exactly.
     JumpFalse(JumpFalseInstruction, jump_false_instruction) {
@@ -651,7 +680,7 @@ fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
 
     if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
         Some(instr.get_raw_operand(0) as isize)
-    } else if opcode >= OpCode::JumpFalse && opcode <= OpCode::JumpToBooleanFalseConstant {
+    } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpToBooleanFalseConstant {
         Some(instr.get_raw_operand(1) as isize)
     } else {
         None

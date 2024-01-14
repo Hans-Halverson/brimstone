@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, Not};
 
 use crate::{
     js::runtime::{
@@ -25,7 +25,9 @@ use super::{
         ExpInstruction, GetNamedPropertyInstruction, GreaterThanInstruction,
         GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction, LessThanInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
+        JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
         LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
@@ -366,13 +368,13 @@ impl VM {
                 }};
             }
 
-            // Execute a conditional jump if false instruction
-            macro_rules! execute_jump_false {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpFalseInstruction);
+            // Execute a conditional jump if true/false instruction
+            macro_rules! execute_jump_boolean {
+                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
+                    let instr = $get_instr!($instr);
 
                     let condition = self.read_register(instr.condition());
-                    if condition.is_false() {
+                    if $cond_fn(&condition) {
                         self.jump_immediate(instr.offset());
                     } else {
                         self.set_pc_after(instr);
@@ -381,12 +383,12 @@ impl VM {
             }
 
             // Execute a conditional jump if false constant instruction
-            macro_rules! execute_jump_false_constant {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpFalseConstantInstruction);
+            macro_rules! execute_jump_boolean_constant {
+                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
+                    let instr = $get_instr!($instr);
 
                     let condition = self.read_register(instr.condition());
-                    if condition.is_false() {
+                    if $cond_fn(&condition) {
                         self.jump_constant(instr.constant_index());
                     } else {
                         self.set_pc_after(instr);
@@ -395,12 +397,12 @@ impl VM {
             }
 
             // Execute a conditional jump if ToBoolean false instruction
-            macro_rules! execute_jump_to_boolean_false {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpToBooleanFalseInstruction);
+            macro_rules! execute_jump_to_boolean {
+                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
+                    let instr = $get_instr!($instr);
 
                     let condition = self.read_register(instr.condition());
-                    if to_boolean(condition) {
+                    if $cond_fn(to_boolean(condition)) {
                         self.set_pc_after(instr);
                     } else {
                         self.jump_immediate(instr.offset());
@@ -409,12 +411,12 @@ impl VM {
             }
 
             // Execute a conditional jump if ToBoolean false constant instruction
-            macro_rules! execute_jump_to_boolean_false_constant {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpToBooleanFalseConstantInstruction);
+            macro_rules! execute_jump_to_boolean_constant {
+                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
+                    let instr = $get_instr!($instr);
 
                     let condition = self.read_register(instr.condition());
-                    if to_boolean(condition) {
+                    if $cond_fn(to_boolean(condition)) {
                         self.set_pc_after(instr);
                     } else {
                         self.jump_constant(instr.constant_index());
@@ -501,11 +503,45 @@ impl VM {
                         ),
                         OpCode::Jump => execute_jump!(get_instr),
                         OpCode::JumpConstant => execute_jump_constant!(get_instr),
-                        OpCode::JumpFalse => execute_jump_false!(get_instr),
-                        OpCode::JumpFalseConstant => execute_jump_false_constant!(get_instr),
-                        OpCode::JumpToBooleanFalse => execute_jump_to_boolean_false!(get_instr),
+                        OpCode::JumpTrue => {
+                            execute_jump_boolean!(get_instr, JumpTrueInstruction, Value::is_true)
+                        }
+                        OpCode::JumpTrueConstant => execute_jump_boolean_constant!(
+                            get_instr,
+                            JumpTrueConstantInstruction,
+                            Value::is_true
+                        ),
+                        OpCode::JumpToBooleanTrue => execute_jump_to_boolean!(
+                            get_instr,
+                            JumpToBooleanTrueInstruction,
+                            bool::not
+                        ),
+                        OpCode::JumpToBooleanTrueConstant => {
+                            execute_jump_to_boolean_constant!(
+                                get_instr,
+                                JumpToBooleanTrueConstantInstruction,
+                                bool::not
+                            )
+                        }
+                        OpCode::JumpFalse => {
+                            execute_jump_boolean!(get_instr, JumpFalseInstruction, Value::is_false)
+                        }
+                        OpCode::JumpFalseConstant => execute_jump_boolean_constant!(
+                            get_instr,
+                            JumpFalseConstantInstruction,
+                            Value::is_false
+                        ),
+                        OpCode::JumpToBooleanFalse => execute_jump_to_boolean!(
+                            get_instr,
+                            JumpToBooleanFalseInstruction,
+                            |b| b
+                        ),
                         OpCode::JumpToBooleanFalseConstant => {
-                            execute_jump_to_boolean_false_constant!(get_instr)
+                            execute_jump_to_boolean_constant!(
+                                get_instr,
+                                JumpToBooleanFalseConstantInstruction,
+                                |b| b
+                            )
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
                         OpCode::GetNamedProperty => {

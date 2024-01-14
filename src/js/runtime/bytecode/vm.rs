@@ -31,6 +31,7 @@ use super::{
         LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
         MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
         StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -86,7 +87,7 @@ impl VM {
         &mut self,
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
-    ) -> Handle<Value> {
+    ) -> Result<Handle<Value>, Handle<Value>> {
         self.is_executing = true;
 
         let func = closure.function_ptr();
@@ -127,336 +128,397 @@ impl VM {
         self.allocate_local_registers(func.num_registers());
 
         // Start the dispatch loop
-        self.dispatch_loop();
+        if let Err(error_value) = self.dispatch_loop() {
+            return Err(error_value.to_handle(self.cx));
+        }
 
         self.is_executing = false;
 
-        return_value.to_handle(self.cx)
+        Ok(return_value.to_handle(self.cx))
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
-    fn dispatch_loop(&mut self) {
-        macro_rules! create_dispatch_macros {
-            ($width:ident, $opcode_pc:expr) => {
-                // Get the current $width instruction
-                macro_rules! get_instr {
-                    ($instr:ident) => {{
-                        // Instruction operands begin after the one byte opcode
-                        unsafe { &*$opcode_pc.add(1).cast::<$instr<$width>>() }
-                    }};
-                }
-
-                // Dispatch a $width instruction
-                macro_rules! dispatch {
-                    ($instr:ident, $func:ident) => {{
-                        let instr = get_instr!($instr);
-                        self.$func::<$width>(instr);
-                        self.set_pc_after(instr);
-                    }};
-                }
-
-                macro_rules! dispatch_or_throw {
-                    ($instr:ident, $func:ident) => {{
-                        let instr = get_instr!($instr);
-                        match self.$func::<$width>(instr) {
-                            EvalResult::Ok(_) => self.set_pc_after(instr),
-                            EvalResult::Throw(_) => unimplemented!("Throwing in VM"),
-                        }
-                    }};
-                }
-            };
-        }
-
-        // Execute a call instruction
-        macro_rules! execute_call {
-            ($get_instr:ident, $instr:ident, $receiver_fn:expr) => {{
-                let instr = $get_instr!($instr);
-
-                let closure = self
-                    .read_register(instr.function())
-                    .as_object()
-                    .cast::<Closure>();
-                let func = closure.function_ptr();
-
-                let argv = self.register_address(instr.argv());
-                let argc = instr.argc().value().to_usize();
-
-                // Push arguments
-                let args_slice = unsafe {
-                    std::slice::from_raw_parts(
-                        argv.sub(argc.saturating_sub(1)) as *const Value,
-                        argc,
-                    )
-                };
-                let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
-
-                // Push the receiver if one is supplied, otherwise push undefined
-                let receiver = if let Some(receiver_fn) = $receiver_fn {
-                    let receiver = self.read_register(receiver_fn(instr));
-                    self.coerce_receiver(receiver, func.is_strict())
-                } else {
-                    self.default_receiver(func.is_strict())
-                };
-                self.push(receiver.as_raw_bits() as StackSlotValue);
-
-                // Push argc
-                self.push(argc_to_push);
-
-                // Push the function
-                self.push(func.as_ptr() as StackSlotValue);
-
-                // Push the address of the return value register
-                let return_value_address = self.register_address(instr.dest());
-                self.push(return_value_address as StackSlotValue);
-
-                // Push the address of the next instruction as the return address
-                let return_address = self.get_pc_after(instr);
-                self.push(return_address as StackSlotValue);
-
-                // Push the frame pointer, creating a new frame pointer
-                self.push_fp();
-
-                // Make room for function locals
-                self.allocate_local_registers(func.num_registers());
-
-                // Set the PC to the start of the callee function's bytecode
-                self.pc = func.bytecode().as_ptr();
-            }};
-        }
-
-        // Execute a call into the Rust runtime
-        macro_rules! execute_call_rust_runtime {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(CallRustRuntimeInstruction);
-
-                // Decode function id and use it to fetch function
-                let id_high_byte = instr.func_id1().value().to_usize() as u8;
-                let id_low_byte = instr.func_id2().value().to_usize() as u8;
-                let function_id = decode_rust_runtime_id(id_high_byte, id_low_byte);
-                let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
-
-                // Runtime call is wrapped in its own handle scope
-                HandleScope::new(self.cx, |cx| {
-                    // Use the same arguments and receiver as the caller function
-                    let argv = self.register_address(Register::<Narrow>::argument(0));
-                    let argc = self.get_argc();
-                    let args_slice =
-                        unsafe { std::slice::from_raw_parts(argv as *const Value, argc) };
-
-                    // All arguments must be placed behind handles before calling into Rust
-                    let mut arguments = vec![];
-                    for arg in args_slice {
-                        arguments.push(arg.to_handle(cx));
+    fn dispatch_loop(&mut self) -> Result<(), Value> {
+        'dispatch: loop {
+            macro_rules! create_dispatch_macros {
+                ($width:ident, $opcode_pc:expr) => {
+                    // Get the current $width instruction
+                    macro_rules! get_instr {
+                        ($instr:ident) => {{
+                            // Instruction operands begin after the one byte opcode
+                            unsafe { &*$opcode_pc.add(1).cast::<$instr<$width>>() }
+                        }};
                     }
 
-                    // Receiver must be placed behind handle and passed separately from arguments
-                    self.h1.replace(self.get_receiver());
-                    let receiver = self.h1;
-
-                    // Call rust function
-                    // TODO: Handle new target
-                    let result = rust_function(cx, receiver, &arguments, None);
-
-                    // Check if result was successful or threw
-                    match result {
-                        EvalResult::Ok(result) => {
-                            // Write return register
-                            self.write_register(instr.dest(), result.get());
+                    // Dispatch a $width instruction
+                    macro_rules! dispatch {
+                        ($instr:ident, $func:ident) => {{
+                            let instr = get_instr!($instr);
+                            self.$func::<$width>(instr);
                             self.set_pc_after(instr);
+                        }};
+                    }
+
+                    macro_rules! dispatch_or_throw {
+                        ($instr:ident, $func:ident) => {{
+                            let instr = get_instr!($instr);
+                            maybe_throw!(self.$func::<$width>(instr));
+                            self.set_pc_after(instr)
+                        }};
+                    }
+                };
+            }
+
+            // Execute a call instruction
+            macro_rules! execute_call {
+                ($get_instr:ident, $instr:ident, $receiver_fn:expr) => {{
+                    let instr = $get_instr!($instr);
+
+                    let closure = self
+                        .read_register(instr.function())
+                        .as_object()
+                        .cast::<Closure>();
+                    let func = closure.function_ptr();
+
+                    let argv = self.register_address(instr.argv());
+                    let argc = instr.argc().value().to_usize();
+
+                    // Push arguments
+                    let args_slice = unsafe {
+                        std::slice::from_raw_parts(
+                            argv.sub(argc.saturating_sub(1)) as *const Value,
+                            argc,
+                        )
+                    };
+                    let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
+
+                    // Push the receiver if one is supplied, otherwise push undefined
+                    let receiver = if let Some(receiver_fn) = $receiver_fn {
+                        let receiver = self.read_register(receiver_fn(instr));
+                        maybe_throw!(self.coerce_receiver(receiver, func.is_strict()))
+                    } else {
+                        self.default_receiver(func.is_strict())
+                    };
+                    self.push(receiver.as_raw_bits() as StackSlotValue);
+
+                    // Push argc
+                    self.push(argc_to_push);
+
+                    // Push the function
+                    self.push(func.as_ptr() as StackSlotValue);
+
+                    // Push the address of the return value register
+                    let return_value_address = self.register_address(instr.dest());
+                    self.push(return_value_address as StackSlotValue);
+
+                    // Push the address of the next instruction as the return address
+                    let return_address = self.get_pc_after(instr);
+                    self.push(return_address as StackSlotValue);
+
+                    // Push the frame pointer, creating a new frame pointer
+                    self.push_fp();
+
+                    // Make room for function locals
+                    self.allocate_local_registers(func.num_registers());
+
+                    // Set the PC to the start of the callee function's bytecode
+                    self.pc = func.bytecode().as_ptr();
+                }};
+            }
+
+            // Execute a call into the Rust runtime
+            macro_rules! execute_call_rust_runtime {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(CallRustRuntimeInstruction);
+
+                    // Decode function id and use it to fetch function
+                    let id_high_byte = instr.func_id1().value().to_usize() as u8;
+                    let id_low_byte = instr.func_id2().value().to_usize() as u8;
+                    let function_id = decode_rust_runtime_id(id_high_byte, id_low_byte);
+                    let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
+
+                    // Runtime call is wrapped in its own handle scope
+                    maybe_throw!(HandleScope::new(self.cx, |cx| {
+                        // Use the same arguments and receiver as the caller function
+                        let argv = self.register_address(Register::<Narrow>::argument(0));
+                        let argc = self.get_argc();
+                        let args_slice =
+                            unsafe { std::slice::from_raw_parts(argv as *const Value, argc) };
+
+                        // All arguments must be placed behind handles before calling into Rust
+                        let mut arguments = vec![];
+                        for arg in args_slice {
+                            arguments.push(arg.to_handle(cx));
                         }
-                        EvalResult::Throw(_) => unimplemented!("Throwing in VM"),
+
+                        // Receiver must be placed behind handle and passed separately from
+                        // arguments.
+                        self.h1.replace(self.get_receiver());
+                        let receiver = self.h1;
+
+                        // Call rust function
+                        // TODO: Handle new target
+                        let result = maybe!(rust_function(cx, receiver, &arguments, None));
+
+                        // Write return register
+                        self.write_register(instr.dest(), result.get());
+                        self.set_pc_after(instr);
+
+                        ().into()
+                    }));
+                }};
+            }
+
+            // Execute a ret instruction
+            macro_rules! execute_ret {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(RetInstruction);
+
+                    // Store the return value at the return value address
+                    let return_value = self.read_register(instr.return_value());
+                    let return_value_address = self.get_return_value_address();
+                    unsafe { *return_value_address = return_value };
+
+                    // Next instruction to execute is the saved return address
+                    self.pc = self.get_return_address();
+
+                    let argc = self.get_argc();
+
+                    // Destroy the stack frame
+                    unsafe {
+                        self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + argc);
+                        self.fp = *self.fp as *mut StackSlotValue;
                     }
-                });
-            }};
-        }
 
-        // Execute a ret instruction
-        macro_rules! execute_ret {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(RetInstruction);
+                    // A null FP indicates that we have reached the top of the stack
+                    if self.fp.is_null() {
+                        return Ok(());
+                    }
+                }};
+            }
 
-                // Store the return value at the return value address
-                let return_value = self.read_register(instr.return_value());
-                let return_value_address = self.get_return_value_address();
-                unsafe { *return_value_address = return_value };
+            macro_rules! throw {
+                ($error_value:expr) => {{
+                    let error_value = $error_value;
 
-                // Next instruction to execute is the saved return address
-                self.pc = self.get_return_address();
+                    // Walk the stack, looking for an exception handler that covers the current
+                    // address.
+                    let mut stack_frame = StackFrame::for_fp(self.fp);
+                    if self.visit_frame_for_exception_unwinding(
+                        stack_frame,
+                        self.pc,
+                        error_value,
+                        true,
+                    ) {
+                        continue 'dispatch;
+                    }
 
-                let argc = self.get_argc();
+                    while let Some(caller_stack_frame) = stack_frame.previous_frame() {
+                        if self.visit_frame_for_exception_unwinding(
+                            caller_stack_frame,
+                            stack_frame.return_address(),
+                            error_value,
+                            false,
+                        ) {
+                            continue 'dispatch;
+                        }
 
-                // Destroy the stack frame
-                unsafe {
-                    self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + argc);
-                    self.fp = *self.fp as *mut StackSlotValue;
-                }
+                        stack_frame = caller_stack_frame;
+                    }
 
-                // A null FP indicates that we have reached the top of the stack
-                if self.fp.is_null() {
-                    return;
-                }
-            }};
-        }
+                    // Exception has unwound the entire stack, finish VM execution returning the
+                    // thrown error.
+                    // TODO: Check for throwing out of re-entrant VM call
+                    return Err(error_value);
+                }};
+            }
 
-        // Execute an unconditional jump instruction
-        macro_rules! execute_jump {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpInstruction);
-                self.jump_immediate(instr.offset());
-            }};
-        }
+            macro_rules! execute_throw {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(ThrowInstruction);
+                    let error_value = self.read_register(instr.error());
+                    throw!(error_value)
+                }};
+            }
 
-        // Execute an unconditional jump constant instruction
-        macro_rules! execute_jump_constant {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpConstantInstruction);
-                self.jump_constant(instr.constant_index());
-            }};
-        }
+            macro_rules! maybe_throw {
+                ($expr:expr) => {
+                    match $expr {
+                        EvalResult::Ok(result) => result,
+                        EvalResult::Throw(error) => throw!(error.get()),
+                    }
+                };
+            }
 
-        // Execute a conditional jump if false instruction
-        macro_rules! execute_jump_false {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpFalseInstruction);
-
-                let condition = self.read_register(instr.condition());
-                if condition.is_false() {
+            // Execute an unconditional jump instruction
+            macro_rules! execute_jump {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpInstruction);
                     self.jump_immediate(instr.offset());
-                } else {
-                    self.set_pc_after(instr);
-                }
-            }};
-        }
+                }};
+            }
 
-        // Execute a conditional jump if false constant instruction
-        macro_rules! execute_jump_false_constant {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpFalseConstantInstruction);
-
-                let condition = self.read_register(instr.condition());
-                if condition.is_false() {
+            // Execute an unconditional jump constant instruction
+            macro_rules! execute_jump_constant {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpConstantInstruction);
                     self.jump_constant(instr.constant_index());
-                } else {
-                    self.set_pc_after(instr);
-                }
-            }};
-        }
+                }};
+            }
 
-        // Execute a conditional jump if ToBoolean false instruction
-        macro_rules! execute_jump_to_boolean_false {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpToBooleanFalseInstruction);
+            // Execute a conditional jump if false instruction
+            macro_rules! execute_jump_false {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpFalseInstruction);
 
-                let condition = self.read_register(instr.condition());
-                if to_boolean(condition) {
-                    self.set_pc_after(instr);
-                } else {
-                    self.jump_immediate(instr.offset());
-                }
-            }};
-        }
+                    let condition = self.read_register(instr.condition());
+                    if condition.is_false() {
+                        self.jump_immediate(instr.offset());
+                    } else {
+                        self.set_pc_after(instr);
+                    }
+                }};
+            }
 
-        // Execute a conditional jump if ToBoolean false constant instruction
-        macro_rules! execute_jump_to_boolean_false_constant {
-            ($get_instr:ident) => {{
-                let instr = $get_instr!(JumpToBooleanFalseConstantInstruction);
+            // Execute a conditional jump if false constant instruction
+            macro_rules! execute_jump_false_constant {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpFalseConstantInstruction);
 
-                let condition = self.read_register(instr.condition());
-                if to_boolean(condition) {
-                    self.set_pc_after(instr);
-                } else {
-                    self.jump_constant(instr.constant_index());
-                }
-            }};
-        }
+                    let condition = self.read_register(instr.condition());
+                    if condition.is_false() {
+                        self.jump_constant(instr.constant_index());
+                    } else {
+                        self.set_pc_after(instr);
+                    }
+                }};
+            }
 
-        macro_rules! create_dispatch_table {
-            ($width:ident, $opcode:ident, $opcode_pc:ident) => {
-                create_dispatch_macros!($width, $opcode_pc);
+            // Execute a conditional jump if ToBoolean false instruction
+            macro_rules! execute_jump_to_boolean_false {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpToBooleanFalseInstruction);
 
-                match $opcode {
-                    // A prefix cannot follow the initial wide prefix
-                    OpCode::WidePrefix => panic!("A prefix cannot appear at this position"),
-                    OpCode::ExtraWidePrefix => panic!("A prefix cannot appear at this position"),
-                    // Dispatch the instruction
-                    OpCode::Mov => dispatch!(MovInstruction, execute_mov),
-                    OpCode::LoadImmediate => {
-                        dispatch!(LoadImmediateInstruction, execute_load_immediate)
+                    let condition = self.read_register(instr.condition());
+                    if to_boolean(condition) {
+                        self.set_pc_after(instr);
+                    } else {
+                        self.jump_immediate(instr.offset());
                     }
-                    OpCode::LoadUndefined => {
-                        dispatch!(LoadUndefinedInstruction, execute_load_undefined)
-                    }
-                    OpCode::LoadNull => dispatch!(LoadNullInstruction, execute_load_null),
-                    OpCode::LoadTrue => dispatch!(LoadTrueInstruction, execute_load_true),
-                    OpCode::LoadFalse => dispatch!(LoadFalseInstruction, execute_load_false),
-                    OpCode::LoadConstant => {
-                        dispatch!(LoadConstantInstruction, execute_load_constant)
-                    }
-                    OpCode::LoadGlobal => {
-                        dispatch_or_throw!(LoadGlobalInstruction, execute_load_global)
-                    }
-                    OpCode::StoreGlobal => {
-                        dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
-                    }
-                    OpCode::Call => {
-                        let receiver_fn: Option<fn(_) -> Register<$width>> = None;
-                        execute_call!(get_instr, CallInstruction, receiver_fn)
-                    }
-                    OpCode::CallWithReceiver => {
-                        let receiver_fn =
-                            |instr: &CallWithReceiverInstruction<$width>| -> Register<$width> {
-                                instr.receiver()
-                            };
-                        execute_call!(get_instr, CallWithReceiverInstruction, Some(receiver_fn))
-                    }
-                    OpCode::CallRustRuntime => execute_call_rust_runtime!(get_instr),
-                    OpCode::Ret => execute_ret!(get_instr),
-                    OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
-                    OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
-                    OpCode::Mul => dispatch_or_throw!(MulInstruction, execute_mul),
-                    OpCode::Div => dispatch_or_throw!(DivInstruction, execute_div),
-                    OpCode::Rem => dispatch_or_throw!(RemInstruction, execute_rem),
-                    OpCode::Exp => dispatch_or_throw!(ExpInstruction, execute_exp),
-                    OpCode::LooseEqual => {
-                        dispatch_or_throw!(LooseEqualInstruction, execute_loose_equal)
-                    }
-                    OpCode::LooseNotEqual => {
-                        dispatch_or_throw!(LooseNotEqualInstruction, execute_loose_not_equal)
-                    }
-                    OpCode::StrictEqual => {
-                        dispatch!(StrictEqualInstruction, execute_strict_equal)
-                    }
-                    OpCode::StrictNotEqual => {
-                        dispatch!(StrictNotEqualInstruction, execute_strict_not_equal)
-                    }
-                    OpCode::LessThan => dispatch_or_throw!(LessThanInstruction, execute_less_than),
-                    OpCode::LessThanOrEqual => {
-                        dispatch_or_throw!(LessThanOrEqualInstruction, execute_less_than_or_equal)
-                    }
-                    OpCode::GreaterThan => {
-                        dispatch_or_throw!(GreaterThanInstruction, execute_greater_than)
-                    }
-                    OpCode::GreaterThanOrEqual => dispatch_or_throw!(
-                        GreaterThanOrEqualInstruction,
-                        execute_greater_than_or_equal
-                    ),
-                    OpCode::Jump => execute_jump!(get_instr),
-                    OpCode::JumpConstant => execute_jump_constant!(get_instr),
-                    OpCode::JumpFalse => execute_jump_false!(get_instr),
-                    OpCode::JumpFalseConstant => execute_jump_false_constant!(get_instr),
-                    OpCode::JumpToBooleanFalse => execute_jump_to_boolean_false!(get_instr),
-                    OpCode::JumpToBooleanFalseConstant => {
-                        execute_jump_to_boolean_false_constant!(get_instr)
-                    }
-                    OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
-                    OpCode::GetNamedProperty => {
-                        dispatch_or_throw!(GetNamedPropertyInstruction, execute_get_named_property)
-                    }
-                }
-            };
-        }
+                }};
+            }
 
-        loop {
+            // Execute a conditional jump if ToBoolean false constant instruction
+            macro_rules! execute_jump_to_boolean_false_constant {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(JumpToBooleanFalseConstantInstruction);
+
+                    let condition = self.read_register(instr.condition());
+                    if to_boolean(condition) {
+                        self.set_pc_after(instr);
+                    } else {
+                        self.jump_constant(instr.constant_index());
+                    }
+                }};
+            }
+
+            macro_rules! create_dispatch_table {
+                ($width:ident, $opcode:ident, $opcode_pc:ident) => {
+                    create_dispatch_macros!($width, $opcode_pc);
+
+                    match $opcode {
+                        // A prefix cannot follow the initial wide prefix
+                        OpCode::WidePrefix => panic!("A prefix cannot appear at this position"),
+                        OpCode::ExtraWidePrefix => {
+                            panic!("A prefix cannot appear at this position")
+                        }
+                        // Dispatch the instruction
+                        OpCode::Mov => dispatch!(MovInstruction, execute_mov),
+                        OpCode::LoadImmediate => {
+                            dispatch!(LoadImmediateInstruction, execute_load_immediate)
+                        }
+                        OpCode::LoadUndefined => {
+                            dispatch!(LoadUndefinedInstruction, execute_load_undefined)
+                        }
+                        OpCode::LoadNull => dispatch!(LoadNullInstruction, execute_load_null),
+                        OpCode::LoadTrue => dispatch!(LoadTrueInstruction, execute_load_true),
+                        OpCode::LoadFalse => dispatch!(LoadFalseInstruction, execute_load_false),
+                        OpCode::LoadConstant => {
+                            dispatch!(LoadConstantInstruction, execute_load_constant)
+                        }
+                        OpCode::LoadGlobal => {
+                            dispatch_or_throw!(LoadGlobalInstruction, execute_load_global)
+                        }
+                        OpCode::StoreGlobal => {
+                            dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
+                        }
+                        OpCode::Call => {
+                            let receiver_fn: Option<fn(_) -> Register<$width>> = None;
+                            execute_call!(get_instr, CallInstruction, receiver_fn)
+                        }
+                        OpCode::CallWithReceiver => {
+                            let receiver_fn =
+                                |instr: &CallWithReceiverInstruction<$width>| -> Register<$width> {
+                                    instr.receiver()
+                                };
+                            execute_call!(get_instr, CallWithReceiverInstruction, Some(receiver_fn))
+                        }
+                        OpCode::CallRustRuntime => execute_call_rust_runtime!(get_instr),
+                        OpCode::Ret => execute_ret!(get_instr),
+                        OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
+                        OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
+                        OpCode::Mul => dispatch_or_throw!(MulInstruction, execute_mul),
+                        OpCode::Div => dispatch_or_throw!(DivInstruction, execute_div),
+                        OpCode::Rem => dispatch_or_throw!(RemInstruction, execute_rem),
+                        OpCode::Exp => dispatch_or_throw!(ExpInstruction, execute_exp),
+                        OpCode::LooseEqual => {
+                            dispatch_or_throw!(LooseEqualInstruction, execute_loose_equal)
+                        }
+                        OpCode::LooseNotEqual => {
+                            dispatch_or_throw!(LooseNotEqualInstruction, execute_loose_not_equal)
+                        }
+                        OpCode::StrictEqual => {
+                            dispatch!(StrictEqualInstruction, execute_strict_equal)
+                        }
+                        OpCode::StrictNotEqual => {
+                            dispatch!(StrictNotEqualInstruction, execute_strict_not_equal)
+                        }
+                        OpCode::LessThan => {
+                            dispatch_or_throw!(LessThanInstruction, execute_less_than)
+                        }
+                        OpCode::LessThanOrEqual => {
+                            dispatch_or_throw!(
+                                LessThanOrEqualInstruction,
+                                execute_less_than_or_equal
+                            )
+                        }
+                        OpCode::GreaterThan => {
+                            dispatch_or_throw!(GreaterThanInstruction, execute_greater_than)
+                        }
+                        OpCode::GreaterThanOrEqual => dispatch_or_throw!(
+                            GreaterThanOrEqualInstruction,
+                            execute_greater_than_or_equal
+                        ),
+                        OpCode::Jump => execute_jump!(get_instr),
+                        OpCode::JumpConstant => execute_jump_constant!(get_instr),
+                        OpCode::JumpFalse => execute_jump_false!(get_instr),
+                        OpCode::JumpFalseConstant => execute_jump_false_constant!(get_instr),
+                        OpCode::JumpToBooleanFalse => execute_jump_to_boolean_false!(get_instr),
+                        OpCode::JumpToBooleanFalseConstant => {
+                            execute_jump_to_boolean_false_constant!(get_instr)
+                        }
+                        OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::GetNamedProperty => {
+                            dispatch_or_throw!(
+                                GetNamedPropertyInstruction,
+                                execute_get_named_property
+                            )
+                        }
+                        OpCode::Throw => execute_throw!(get_instr),
+                    }
+                };
+            }
+
             // PC starts pointing to the next opcode to execute
             let opcode_pc = self.pc;
             let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
@@ -657,18 +719,18 @@ impl VM {
     /// necessary in strict mode, otherwise receiver must be coerced to an object, using the
     /// global object if the receiver is nullish.
     #[inline]
-    fn coerce_receiver(&mut self, receiver: Value, is_strict: bool) -> Value {
-        if is_strict {
+    fn coerce_receiver(&mut self, receiver: Value, is_strict: bool) -> EvalResult<Value> {
+        let value = if is_strict {
             receiver
         } else if receiver.is_nullish() {
             self.cx.get_global_object_ptr().into()
         } else {
             self.h1.replace(receiver);
-            match to_object(self.cx, self.h1) {
-                EvalResult::Ok(receiver) => receiver.get_().into(),
-                EvalResult::Throw(_) => unimplemented!("Throwing in VM"),
-            }
-        }
+            let receiver = maybe!(to_object(self.cx, self.h1));
+            receiver.get_().into()
+        };
+
+        value.into()
     }
 
     /// Allocate space for local registers, initializing to undefined
@@ -994,6 +1056,59 @@ impl VM {
         self.write_register(instr.dest(), result.get());
 
         ().into()
+    }
+
+    /// Visit a stack frame while unwinding the stack for an exception.
+    #[inline]
+    fn visit_frame_for_exception_unwinding(
+        &mut self,
+        stack_frame: StackFrame,
+        instr_addr: *const u8,
+        error_value: Value,
+        is_current_frame: bool,
+    ) -> bool {
+        let func = stack_frame.bytecode_function();
+        if func.exception_handlers_ptr().is_none() {
+            return false;
+        }
+
+        // Find the offset of the instruction in the instruction stream
+        let instr_offset = unsafe { instr_addr.offset_from(func.bytecode().as_ptr()) as usize };
+
+        for handler in func.exception_handlers_ptr().unwrap().iter() {
+            // In the current frame the PC is set to the start of the current instruction so treat
+            // the handler bounds as [inclusive, exclusive).
+            //
+            // In caller frames the saved return address points to the start of the next
+            // instruction, so treat the handler bounds as (exclusive, inclusive].
+            let instr_in_range = if is_current_frame {
+                handler.start() <= instr_offset && instr_offset < handler.end()
+            } else {
+                handler.start() < instr_offset && instr_offset <= handler.end()
+            };
+
+            if instr_in_range {
+                // Find the absolute address of the start of the handler block and start executing
+                // instructions from this address.
+                let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
+                self.pc = handler_addr;
+
+                // Unwind the stack to the frame that contains the exception handler
+                if !is_current_frame {
+                    self.fp = stack_frame.fp();
+                    self.sp = stack_frame.sp();
+                }
+
+                // Write the error into the appropriate register in the new stack frame
+                if let Some(error_register) = handler.error_register() {
+                    self.write_register(error_register, error_value);
+                }
+
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Visit all heap roots in the VM during GC root collection. Rewrites the stack in place,

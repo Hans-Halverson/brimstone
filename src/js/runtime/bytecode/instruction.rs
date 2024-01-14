@@ -463,6 +463,11 @@ define_instructions!(
         [1] object: Register,
         [2] name_constant_index: ConstantIndex,
     }
+
+    /// Throw an error.
+    Throw(ThrowInstruction, throw_instruction) {
+        [0] error: Register,
+    }
 );
 
 impl OpCode {

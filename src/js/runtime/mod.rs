@@ -8,7 +8,7 @@ mod builtin_names;
 pub mod bytecode;
 mod collections;
 pub mod completion;
-mod console;
+pub mod console;
 mod context;
 mod debug_print;
 mod environment;

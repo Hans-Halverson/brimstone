@@ -125,21 +125,23 @@ impl ExceptionHandlers {
         Self::HANDLERS_BYTE_OFFSET + InlineArray::<u8>::calculate_size_in_bytes(handlers_len)
     }
 
-    fn iter(&self) -> ExceptionHandlersIterator {
+    /// A zero-copy GC-unsafe iterator over the exception handlers.
+    pub fn iter(&self) -> ExceptionHandlersIterator {
         let range = self.handlers.as_slice().as_ptr_range();
         ExceptionHandlersIterator { current: range.start, end: range.end, width: self.width }
     }
 }
 
 /// A zero-copy GC-unsafe iterator over the exception handlers.
-struct ExceptionHandlersIterator {
+pub struct ExceptionHandlersIterator {
     current: *const u8,
     end: *const u8,
     width: WidthEnum,
 }
 
 /// A view of an exception handler entry in the exception handler table.
-struct ExceptionHandler {
+#[derive(Clone, Copy)]
+pub struct ExceptionHandler {
     /// Pointer to the start of the exception handler entry.
     ptr: *const u8,
     /// Byte width of the values in this entry.
@@ -157,19 +159,19 @@ impl ExceptionHandler {
         }
     }
 
-    fn start(&self) -> usize {
+    pub fn start(&self) -> usize {
         self.get_value_at(0)
     }
 
-    fn end(&self) -> usize {
+    pub fn end(&self) -> usize {
         self.get_value_at(1)
     }
 
-    fn handler(&self) -> usize {
+    pub fn handler(&self) -> usize {
         self.get_value_at(2)
     }
 
-    fn error_register(&self) -> Option<Register<ExtraWide>> {
+    pub fn error_register(&self) -> Option<Register<ExtraWide>> {
         let raw_value = unsafe {
             match self.width {
                 WidthEnum::Narrow => *self.ptr.add(3).cast::<i8>() as isize,

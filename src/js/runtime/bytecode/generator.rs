@@ -575,6 +575,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
             ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
             ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
+            ast::Statement::Throw(stmt) => self.gen_throw_statement(stmt),
             _ => unimplemented!("bytecode for statement kind"),
         };
 
@@ -1286,6 +1287,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.start_block(join_block);
         Ok(result_completion)
+    }
+
+    fn gen_throw_statement(&mut self, stmt: &ast::ThrowStatement) -> EmitResult<StmtCompletion> {
+        let error = self.gen_expression(&stmt.argument)?;
+        self.writer.throw_instruction(error);
+        self.register_allocator.release(error);
+
+        Ok(StmtCompletion::Abrupt)
     }
 }
 

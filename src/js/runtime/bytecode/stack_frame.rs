@@ -57,6 +57,19 @@ impl StackFrame {
         Some(StackFrame::for_fp(prev_fp))
     }
 
+    /// Return the frame pointer for this stack frame.
+    #[inline]
+    pub fn fp(&self) -> *mut StackSlotValue {
+        self.fp.cast_mut()
+    }
+
+    /// Return the stack pointer for this stack frame.
+    #[inline]
+    pub fn sp(&self) -> *mut StackSlotValue {
+        let num_registers = self.bytecode_function().num_registers() as usize;
+        unsafe { self.fp.offset(-1 - num_registers as isize).cast_mut() }
+    }
+
     /// The return address stored within this stack frame. This return address points to the next
     /// instruction to execute within the caller function.
     #[inline]

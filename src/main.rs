@@ -36,7 +36,10 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     }
 
     if options.bytecode {
-        use js::runtime::bytecode::{function::Closure, generator::BytecodeProgramGenerator};
+        use js::runtime::{
+            bytecode::{function::Closure, generator::BytecodeProgramGenerator},
+            console::to_console_string,
+        };
 
         // Use the bytecode interpreter
         let bytecode_program =
@@ -48,7 +51,10 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
         cx.execute_then_drop(|mut cx| {
             let closure = Closure::new(cx, bytecode_program);
-            cx.execute_bytecode(closure, &[]);
+            if let Err(err) = cx.execute_bytecode(closure, &[]) {
+                let error_string = to_console_string(cx, err);
+                print_error_message_and_exit(&error_string);
+            }
         });
     } else {
         // Use the tree walk interpreter
@@ -58,13 +64,15 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
     return Ok(());
 }
 
+fn print_error_message_and_exit(message: &str) {
+    eprintln!("{}", message);
+    std::process::exit(1);
+}
+
 /// Wrapper to pretty print errors
 fn main() -> () {
     match main_impl() {
         Ok(_) => (),
-        Err(err) => {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        }
+        Err(err) => print_error_message_and_exit(&err.to_string()),
     }
 }

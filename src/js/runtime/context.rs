@@ -182,7 +182,7 @@ impl Context {
         &mut self,
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
-    ) -> Handle<Value> {
+    ) -> Result<Handle<Value>, Handle<Value>> {
         self.vm.as_deref_mut().unwrap().execute(closure, arguments)
     }
 

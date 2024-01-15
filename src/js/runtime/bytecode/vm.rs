@@ -32,8 +32,8 @@ use super::{
         LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
         MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
-        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction,
+        SetNamedPropertyInstruction, StoreGlobalInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -56,6 +56,7 @@ pub struct VM {
     /// Handle pool
     h1: Handle<Value>,
     h2: Handle<Value>,
+    h3: Handle<Value>,
 
     /// Whether the VM is currently executing bytecode. VM is only walked for GC roots when this
     /// is true.
@@ -79,6 +80,7 @@ impl VM {
             // Setup handle pool
             h1: Handle::empty(cx),
             h2: Handle::empty(cx),
+            h3: Handle::empty(cx),
 
             is_executing: false,
             stack,
@@ -548,6 +550,12 @@ impl VM {
                             dispatch_or_throw!(
                                 GetNamedPropertyInstruction,
                                 execute_get_named_property
+                            )
+                        }
+                        OpCode::SetNamedProperty => {
+                            dispatch_or_throw!(
+                                SetNamedPropertyInstruction,
+                                execute_set_named_property
                             )
                         }
                         OpCode::Throw => execute_throw!(get_instr),
@@ -1092,6 +1100,30 @@ impl VM {
         self.write_register(instr.dest(), result.get());
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_set_named_property<W: Width>(
+        &mut self,
+        instr: &SetNamedPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        // Object may still be h1, so cannot reuse handle
+        let object = self.read_register(instr.object());
+        self.h1.replace(object);
+        let object = maybe!(to_object(self.cx, self.h1));
+
+        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        self.h2.replace(key);
+
+        let key = PropertyKey::string(self.cx, self.h2.as_string());
+        self.h2.replace(key.as_string().into());
+
+        let value = self.read_register(instr.value());
+        self.h3.replace(value);
+
+        let is_strict = self.get_function().is_strict();
+
+        set(self.cx, object, self.h2.cast(), self.h3, is_strict)
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

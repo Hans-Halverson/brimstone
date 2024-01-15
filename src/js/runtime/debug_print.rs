@@ -29,6 +29,10 @@ pub trait DebugPrint {
         self.debug_format(&mut printer);
         printer.finish()
     }
+
+    fn debug_print_short(&self) -> String {
+        self.debug_print(DebugPrintMode::Short)
+    }
 }
 
 pub struct DebugPrinter {

@@ -493,6 +493,14 @@ define_instructions!(
         [2] name_constant_index: ConstantIndex,
     }
 
+    /// Set a named property on an object to the given value. The name must be a string literal in
+    /// the constant table.
+    SetNamedProperty(SetNamedPropertyInstruction, set_named_property_instruction) {
+        [0] object: Register,
+        [1] name_constant_index: ConstantIndex,
+        [2] value: Register,
+    }
+
     /// Throw an error.
     Throw(ThrowInstruction, throw_instruction) {
         [0] error: Register,

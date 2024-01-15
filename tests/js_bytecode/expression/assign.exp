@@ -1,0 +1,93 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: StoreGlobal r0, c0
+     6: NewClosure r0, c1
+     9: StoreGlobal r0, c2
+    12: NewClosure r0, c3
+    15: StoreGlobal r0, c4
+    18: NewClosure r0, c5
+    21: StoreGlobal r0, c6
+    24: NewClosure r0, c7
+    27: StoreGlobal r0, c8
+    30: LoadUndefined r0
+    32: Ret r0
+  Constant Table:
+    0: [String: global]
+    1: [BytecodeFunction: use]
+    2: [String: use]
+    3: [BytecodeFunction: testIdAssign]
+    4: [String: testIdAssign]
+    5: [BytecodeFunction: testIdAssignReturnValue]
+    6: [String: testIdAssignReturnValue]
+    7: [BytecodeFunction: testMemberAssign]
+    8: [String: testMemberAssign]
+}
+
+[BytecodeFunction: use] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: testIdAssign] {
+  Parameters: 1, Registers: 2
+     0: LoadImmediate r0, 2
+     3: LoadImmediate a0, 3
+     6: LoadImmediate r0, 4
+     9: LoadImmediate r1, 5
+    12: StoreGlobal r1, c0
+    15: LoadUndefined r1
+    17: Ret r1
+  Constant Table:
+    0: [String: global]
+}
+
+[BytecodeFunction: testIdAssignReturnValue] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 2
+     3: LoadGlobal r1, c0
+     6: LoadImmediate a0, 3
+     9: Mov r2, a0
+    12: Call r1, r1, r2, 1
+    17: LoadGlobal r1, c0
+    20: LoadImmediate r0, 4
+    23: Mov r2, r0
+    26: Call r1, r1, r2, 1
+    31: LoadGlobal r1, c0
+    34: LoadImmediate r2, 5
+    37: StoreGlobal r2, c1
+    40: Call r1, r1, r2, 1
+    45: LoadImmediate r1, 6
+    48: StoreGlobal r1, c1
+    51: Mov a0, r1
+    54: Mov r0, a0
+    57: LoadUndefined r1
+    59: Ret r1
+  Constant Table:
+    0: [String: use]
+    1: [String: global]
+}
+
+[BytecodeFunction: testMemberAssign] {
+  Parameters: 1, Registers: 2
+     0: LoadImmediate r0, 1
+     3: SetNamedProperty a0, c0, r0
+     7: LoadGlobal r0, c1
+    10: LoadImmediate r1, 2
+    13: SetNamedProperty a0, c0, r1
+    17: Call r0, r0, r1, 1
+    22: LoadImmediate r0, 3
+    25: SetNamedProperty a0, c2, r0
+    29: SetNamedProperty a0, c0, r0
+    33: LoadGlobal r0, c1
+    36: Mov r1, a0
+    39: SetNamedProperty a0, c0, r1
+    43: Call r0, r0, r1, 1
+    48: LoadUndefined r0
+    50: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: use]
+    2: [String: bar]
+}

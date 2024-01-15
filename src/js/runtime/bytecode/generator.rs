@@ -518,6 +518,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.mov_instruction(dest, src);
     }
 
+    fn add_string_constant(&mut self, str: &str) -> EmitResult<GenConstantIndex> {
+        let string = InternedStrings::get_str(self.cx, str).as_flat();
+        let constant_index = self.constant_table_builder.add_string(string)?;
+        Ok(ConstantIndex::new(constant_index))
+    }
+
     fn enqueue_function_to_generate(
         &mut self,
         function: AstPtr<ast::Function>,
@@ -645,6 +651,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             },
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
+            ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
             _ => unimplemented!("bytecode for expression kind"),
         }
     }
@@ -775,16 +782,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    /// Move a src register to the expression destination if necessary.
+    /// Move a src register to the expression destination if necessary. Releases the source register
+    /// if it was moved.
     fn gen_mov_reg_to_dest(&mut self, src: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
         match dest {
             ExprDest::Any => Ok(src),
             ExprDest::NewTemporary => {
+                self.register_allocator.release(src);
                 let dest = self.register_allocator.allocate()?;
                 self.write_mov_instruction(dest, src);
                 Ok(dest)
             }
             ExprDest::Fixed(dest) => {
+                self.register_allocator.release(src);
                 self.write_mov_instruction(dest, src);
                 Ok(dest)
             }
@@ -1089,20 +1099,66 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Must be a named access
         let name = expr.property.to_id();
-
-        // All string literals are loaded from the constant table
-        let string = InternedStrings::get_str(self.cx, &name.name).as_flat();
-        let constant_index = self.constant_table_builder.add_string(string)?;
+        let name_constant_index = self.add_string_constant(&name.name)?;
 
         let dest = self.allocate_destination(dest)?;
 
-        self.writer.get_named_property_instruction(
-            dest,
-            object,
-            ConstantIndex::new(constant_index),
-        );
+        self.writer
+            .get_named_property_instruction(dest, object, name_constant_index);
 
         Ok(dest)
+    }
+
+    fn gen_assignment_expression(
+        &mut self,
+        expr: &ast::AssignmentExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        match expr.left.as_ref() {
+            ast::Pattern::Id(id) => {
+                let right_value_dest = self.expr_dest_for_id(id);
+                let right_value = self.gen_expression_with_dest(&expr.right, right_value_dest)?;
+
+                self.gen_store_identifier(id, right_value)?;
+                self.gen_mov_reg_to_dest(right_value, dest)
+            }
+            ast::Pattern::Reference(ast::Expression::Member(
+                member @ ast::MemberExpression { object, .. },
+            )) => {
+                if member.is_computed {
+                    unimplemented!("bytecode for assigning computed members");
+                } else if member.is_private {
+                    unimplemented!("bytecode for assigning private members");
+                }
+
+                // The right value should be placed in the destination register, since the right
+                // value is returned as the value of the entire assignment expression.
+                let dest = self.allocate_destination(dest)?;
+
+                let object = self.gen_expression(&object)?;
+                let right_value =
+                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+
+                // Must be a named access
+                let name = member.property.to_id();
+                let name_constant_index = self.add_string_constant(&name.name)?;
+
+                self.writer.set_named_property_instruction(
+                    object,
+                    name_constant_index,
+                    right_value,
+                );
+                self.register_allocator.release(object);
+
+                Ok(dest)
+            }
+            ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
+                unimplemented!("bytecode for assignment expression destructuring")
+            }
+            ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                unreachable!("invalid assigment left hand side")
+            }
+        }
     }
 
     fn gen_variable_declaration(

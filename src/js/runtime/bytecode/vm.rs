@@ -1,4 +1,4 @@
-use std::ops::{Deref, Not};
+use std::ops::Deref;
 
 use crate::{
     js::runtime::{
@@ -34,6 +34,11 @@ use super::{
         MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
         SetNamedPropertyInstruction, StoreGlobalInstruction, StrictEqualInstruction,
         StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+    },
+    instruction_traits::{
+        GenericCallInstruction, GenericJumpBooleanConstantInstruction,
+        GenericJumpBooleanInstruction, GenericJumpToBooleanConstantInstruction,
+        GenericJumpToBooleanInstruction,
     },
     operand::{ConstantIndex, Register, SInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -173,106 +178,6 @@ impl VM {
                 };
             }
 
-            // Execute a call instruction
-            macro_rules! execute_call {
-                ($get_instr:ident, $instr:ident, $receiver_fn:expr) => {{
-                    let instr = $get_instr!($instr);
-
-                    let closure = self
-                        .read_register(instr.function())
-                        .as_object()
-                        .cast::<Closure>();
-                    let func = closure.function_ptr();
-
-                    let argv = self.register_address(instr.argv());
-                    let argc = instr.argc().value().to_usize();
-
-                    // Push arguments
-                    let args_slice = unsafe {
-                        std::slice::from_raw_parts(
-                            argv.sub(argc.saturating_sub(1)) as *const Value,
-                            argc,
-                        )
-                    };
-                    let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
-
-                    // Push the receiver if one is supplied, otherwise push undefined
-                    let receiver = if let Some(receiver_fn) = $receiver_fn {
-                        let receiver = self.read_register(receiver_fn(instr));
-                        maybe_throw!(self.coerce_receiver(receiver, func.is_strict()))
-                    } else {
-                        self.default_receiver(func.is_strict())
-                    };
-                    self.push(receiver.as_raw_bits() as StackSlotValue);
-
-                    // Push argc
-                    self.push(argc_to_push);
-
-                    // Push the function
-                    self.push(func.as_ptr() as StackSlotValue);
-
-                    // Push the address of the return value register
-                    let return_value_address = self.register_address(instr.dest());
-                    self.push(return_value_address as StackSlotValue);
-
-                    // Push the address of the next instruction as the return address
-                    let return_address = self.get_pc_after(instr);
-                    self.push(return_address as StackSlotValue);
-
-                    // Push the frame pointer, creating a new frame pointer
-                    self.push_fp();
-
-                    // Make room for function locals
-                    self.allocate_local_registers(func.num_registers());
-
-                    // Set the PC to the start of the callee function's bytecode
-                    self.pc = func.bytecode().as_ptr();
-                }};
-            }
-
-            // Execute a call into the Rust runtime
-            macro_rules! execute_call_rust_runtime {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(CallRustRuntimeInstruction);
-
-                    // Decode function id and use it to fetch function
-                    let id_high_byte = instr.func_id1().value().to_usize() as u8;
-                    let id_low_byte = instr.func_id2().value().to_usize() as u8;
-                    let function_id = decode_rust_runtime_id(id_high_byte, id_low_byte);
-                    let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
-
-                    // Runtime call is wrapped in its own handle scope
-                    maybe_throw!(HandleScope::new(self.cx, |cx| {
-                        // Use the same arguments and receiver as the caller function
-                        let argv = self.register_address(Register::<Narrow>::argument(0));
-                        let argc = self.get_argc();
-                        let args_slice =
-                            unsafe { std::slice::from_raw_parts(argv as *const Value, argc) };
-
-                        // All arguments must be placed behind handles before calling into Rust
-                        let mut arguments = vec![];
-                        for arg in args_slice {
-                            arguments.push(arg.to_handle(cx));
-                        }
-
-                        // Receiver must be placed behind handle and passed separately from
-                        // arguments.
-                        self.h1.replace(self.get_receiver());
-                        let receiver = self.h1;
-
-                        // Call rust function
-                        // TODO: Handle new target
-                        let result = maybe!(rust_function(cx, receiver, &arguments, None));
-
-                        // Write return register
-                        self.write_register(instr.dest(), result.get());
-                        self.set_pc_after(instr);
-
-                        ().into()
-                    }));
-                }};
-            }
-
             // Execute a ret instruction
             macro_rules! execute_ret {
                 ($get_instr:ident) => {{
@@ -354,78 +259,6 @@ impl VM {
                 };
             }
 
-            // Execute an unconditional jump instruction
-            macro_rules! execute_jump {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpInstruction);
-                    self.jump_immediate(instr.offset());
-                }};
-            }
-
-            // Execute an unconditional jump constant instruction
-            macro_rules! execute_jump_constant {
-                ($get_instr:ident) => {{
-                    let instr = $get_instr!(JumpConstantInstruction);
-                    self.jump_constant(instr.constant_index());
-                }};
-            }
-
-            // Execute a conditional jump if true/false instruction
-            macro_rules! execute_jump_boolean {
-                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
-                    let instr = $get_instr!($instr);
-
-                    let condition = self.read_register(instr.condition());
-                    if $cond_fn(&condition) {
-                        self.jump_immediate(instr.offset());
-                    } else {
-                        self.set_pc_after(instr);
-                    }
-                }};
-            }
-
-            // Execute a conditional jump if false constant instruction
-            macro_rules! execute_jump_boolean_constant {
-                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
-                    let instr = $get_instr!($instr);
-
-                    let condition = self.read_register(instr.condition());
-                    if $cond_fn(&condition) {
-                        self.jump_constant(instr.constant_index());
-                    } else {
-                        self.set_pc_after(instr);
-                    }
-                }};
-            }
-
-            // Execute a conditional jump if ToBoolean false instruction
-            macro_rules! execute_jump_to_boolean {
-                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
-                    let instr = $get_instr!($instr);
-
-                    let condition = self.read_register(instr.condition());
-                    if $cond_fn(to_boolean(condition)) {
-                        self.set_pc_after(instr);
-                    } else {
-                        self.jump_immediate(instr.offset());
-                    }
-                }};
-            }
-
-            // Execute a conditional jump if ToBoolean false constant instruction
-            macro_rules! execute_jump_to_boolean_constant {
-                ($get_instr:ident, $instr:ident, $cond_fn:expr) => {{
-                    let instr = $get_instr!($instr);
-
-                    let condition = self.read_register(instr.condition());
-                    if $cond_fn(to_boolean(condition)) {
-                        self.set_pc_after(instr);
-                    } else {
-                        self.jump_constant(instr.constant_index());
-                    }
-                }};
-            }
-
             macro_rules! create_dispatch_table {
                 ($width:ident, $opcode:ident, $opcode_pc:ident) => {
                     create_dispatch_macros!($width, $opcode_pc);
@@ -457,17 +290,17 @@ impl VM {
                             dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
                         }
                         OpCode::Call => {
-                            let receiver_fn: Option<fn(_) -> Register<$width>> = None;
-                            execute_call!(get_instr, CallInstruction, receiver_fn)
+                            let instr = get_instr!(CallInstruction);
+                            maybe_throw!(self.execute_generic_call(instr))
                         }
                         OpCode::CallWithReceiver => {
-                            let receiver_fn =
-                                |instr: &CallWithReceiverInstruction<$width>| -> Register<$width> {
-                                    instr.receiver()
-                                };
-                            execute_call!(get_instr, CallWithReceiverInstruction, Some(receiver_fn))
+                            let instr = get_instr!(CallWithReceiverInstruction);
+                            maybe_throw!(self.execute_generic_call(instr))
                         }
-                        OpCode::CallRustRuntime => execute_call_rust_runtime!(get_instr),
+                        OpCode::CallRustRuntime => {
+                            let instr = get_instr!(CallRustRuntimeInstruction);
+                            maybe_throw!(self.execute_call_rust_runtime(instr))
+                        }
                         OpCode::Ret => execute_ret!(get_instr),
                         OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
                         OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
@@ -503,47 +336,39 @@ impl VM {
                             GreaterThanOrEqualInstruction,
                             execute_greater_than_or_equal
                         ),
-                        OpCode::Jump => execute_jump!(get_instr),
-                        OpCode::JumpConstant => execute_jump_constant!(get_instr),
-                        OpCode::JumpTrue => {
-                            execute_jump_boolean!(get_instr, JumpTrueInstruction, Value::is_true)
+                        OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
+                        OpCode::JumpConstant => {
+                            self.execute_jump_constant(get_instr!(JumpConstantInstruction))
                         }
-                        OpCode::JumpTrueConstant => execute_jump_boolean_constant!(
-                            get_instr,
-                            JumpTrueConstantInstruction,
-                            Value::is_true
-                        ),
-                        OpCode::JumpToBooleanTrue => execute_jump_to_boolean!(
-                            get_instr,
-                            JumpToBooleanTrueInstruction,
-                            bool::not
-                        ),
+                        OpCode::JumpTrue => {
+                            self.execute_jump_boolean(get_instr!(JumpTrueInstruction))
+                        }
+                        OpCode::JumpTrueConstant => {
+                            let instr = get_instr!(JumpTrueConstantInstruction);
+                            self.execute_jump_boolean_constant(instr)
+                        }
+                        OpCode::JumpToBooleanTrue => {
+                            let instr = get_instr!(JumpToBooleanTrueInstruction);
+                            self.execute_jump_to_boolean(instr)
+                        }
                         OpCode::JumpToBooleanTrueConstant => {
-                            execute_jump_to_boolean_constant!(
-                                get_instr,
-                                JumpToBooleanTrueConstantInstruction,
-                                bool::not
-                            )
+                            let instr = get_instr!(JumpToBooleanTrueConstantInstruction);
+                            self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::JumpFalse => {
-                            execute_jump_boolean!(get_instr, JumpFalseInstruction, Value::is_false)
+                            self.execute_jump_boolean(get_instr!(JumpFalseInstruction))
                         }
-                        OpCode::JumpFalseConstant => execute_jump_boolean_constant!(
-                            get_instr,
-                            JumpFalseConstantInstruction,
-                            Value::is_false
-                        ),
-                        OpCode::JumpToBooleanFalse => execute_jump_to_boolean!(
-                            get_instr,
-                            JumpToBooleanFalseInstruction,
-                            |b| b
-                        ),
+                        OpCode::JumpFalseConstant => {
+                            let instr = get_instr!(JumpFalseConstantInstruction);
+                            self.execute_jump_boolean_constant(instr)
+                        }
+                        OpCode::JumpToBooleanFalse => {
+                            let instr = get_instr!(JumpToBooleanFalseInstruction);
+                            self.execute_jump_to_boolean(instr)
+                        }
                         OpCode::JumpToBooleanFalseConstant => {
-                            execute_jump_to_boolean_constant!(
-                                get_instr,
-                                JumpToBooleanFalseConstantInstruction,
-                                |b| b
-                            )
+                            let instr = get_instr!(JumpToBooleanFalseConstantInstruction);
+                            self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
                         OpCode::GetNamedProperty => {
@@ -708,6 +533,122 @@ impl VM {
         self.pc = unsafe { self.pc.offset(offset) };
     }
 
+    /// Execute an unconditional jump instruction
+    #[inline]
+    fn execute_jump<W: Width>(&mut self, instr: &JumpInstruction<W>) {
+        self.jump_immediate(instr.offset());
+    }
+
+    /// Execute an unconditional jump constant instruction
+    #[inline]
+    fn execute_jump_constant<W: Width>(&mut self, instr: &JumpConstantInstruction<W>) {
+        self.jump_constant(instr.constant_index());
+    }
+
+    /// Execute a conditional jump if true/false instruction
+    fn execute_jump_boolean<W: Width, I: GenericJumpBooleanInstruction<W>>(&mut self, instr: &I) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
+            self.jump_immediate(instr.offset());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if true/false constant instruction
+    fn execute_jump_boolean_constant<W: Width, I: GenericJumpBooleanConstantInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
+            self.jump_constant(instr.constant_index());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if ToBoolean true/false instruction
+    fn execute_jump_to_boolean<W: Width, I: GenericJumpToBooleanInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(to_boolean(condition)) {
+            self.jump_immediate(instr.offset());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if ToBoolean true/false constant instruction
+    fn execute_jump_to_boolean_constant<W: Width, I: GenericJumpToBooleanConstantInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(to_boolean(condition)) {
+            self.jump_constant(instr.constant_index());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    #[inline]
+    fn execute_generic_call<W: Width>(
+        &mut self,
+        instr: &impl GenericCallInstruction<W>,
+    ) -> EvalResult<()> {
+        let closure = self
+            .read_register(instr.function())
+            .as_object()
+            .cast::<Closure>();
+        let func = closure.function_ptr();
+
+        let argv = self.register_address(instr.argv());
+        let argc = instr.argc().value().to_usize();
+
+        // Push arguments
+        let args_slice = unsafe {
+            std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
+        };
+        let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
+
+        // Push the receiver if one is supplied, otherwise push undefined
+        let receiver = if let Some(receiver) = instr.receiver() {
+            let receiver = self.read_register(receiver);
+            maybe!(self.coerce_receiver(receiver, func.is_strict()))
+        } else {
+            self.default_receiver(func.is_strict())
+        };
+        self.push(receiver.as_raw_bits() as StackSlotValue);
+
+        // Push argc
+        self.push(argc_to_push);
+
+        // Push the function
+        self.push(func.as_ptr() as StackSlotValue);
+
+        // Push the address of the return value register
+        let return_value_address = self.register_address(instr.dest());
+        self.push(return_value_address as StackSlotValue);
+
+        // Push the address of the next instruction as the return address
+        let return_address = self.get_pc_after(instr);
+        self.push(return_address as StackSlotValue);
+
+        // Push the frame pointer, creating a new frame pointer
+        self.push_fp();
+
+        // Make room for function locals
+        self.allocate_local_registers(func.num_registers());
+
+        // Set the PC to the start of the callee function's bytecode
+        self.pc = func.bytecode().as_ptr();
+
+        ().into()
+    }
+
     /// Push call arguments onto the stack, returning the argc which the caller should push onto
     /// the stack. Takes an iterator over the arguments in reverse order.
     ///
@@ -783,6 +724,47 @@ impl VM {
         self.sp = unsafe { self.sp.sub(num_registers) };
         let slice = unsafe { std::slice::from_raw_parts_mut(self.sp as *mut Value, num_registers) };
         slice.fill(Value::undefined());
+    }
+
+    #[inline]
+    fn execute_call_rust_runtime<W: Width>(
+        &mut self,
+        instr: &CallRustRuntimeInstruction<W>,
+    ) -> EvalResult<()> {
+        // Decode function id and use it to fetch function
+        let id_high_byte = instr.func_id1().value().to_usize() as u8;
+        let id_low_byte = instr.func_id2().value().to_usize() as u8;
+        let function_id = decode_rust_runtime_id(id_high_byte, id_low_byte);
+        let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
+
+        // Runtime call is wrapped in its own handle scope
+        HandleScope::new(self.cx, |cx| {
+            // Use the same arguments and receiver as the caller function
+            let argv = self.register_address(Register::<Narrow>::argument(0));
+            let argc = self.get_argc();
+            let args_slice = unsafe { std::slice::from_raw_parts(argv as *const Value, argc) };
+
+            // All arguments must be placed behind handles before calling into Rust
+            let mut arguments = vec![];
+            for arg in args_slice {
+                arguments.push(arg.to_handle(cx));
+            }
+
+            // Receiver must be placed behind handle and passed separately from
+            // arguments.
+            self.h1.replace(self.get_receiver());
+            let receiver = self.h1;
+
+            // Call rust function
+            // TODO: Handle new target
+            let result = maybe!(rust_function(cx, receiver, &arguments, None));
+
+            // Write return register
+            self.write_register(instr.dest(), result.get());
+            self.set_pc_after(instr);
+
+            ().into()
+        })
     }
 
     #[inline]

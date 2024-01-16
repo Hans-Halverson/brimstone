@@ -4,6 +4,7 @@ pub mod exception_handlers;
 pub mod function;
 pub mod generator;
 pub mod instruction;
+mod instruction_traits;
 mod operand;
 mod register_allocator;
 mod stack_frame;

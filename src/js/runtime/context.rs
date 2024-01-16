@@ -178,12 +178,16 @@ impl Context {
         unsafe { drop(Box::from_raw(self.ptr.as_ptr())) }
     }
 
+    pub fn vm(&mut self) -> &mut VM {
+        self.vm.as_mut().unwrap()
+    }
+
     pub fn execute_bytecode(
         &mut self,
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
-        self.vm.as_deref_mut().unwrap().execute(closure, arguments)
+        self.vm().execute(closure, arguments)
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {

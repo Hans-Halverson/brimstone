@@ -122,6 +122,15 @@ pub enum EvalResult<T> {
     Throw(Handle<Value>),
 }
 
+impl<T> EvalResult<T> {
+    pub fn to_rust_result(self) -> Result<T, Handle<Value>> {
+        match self {
+            EvalResult::Ok(value) => Ok(value),
+            EvalResult::Throw(value) => Err(value),
+        }
+    }
+}
+
 impl<T> From<T> for EvalResult<T> {
     #[inline]
     fn from(value: T) -> Self {

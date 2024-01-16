@@ -3,6 +3,7 @@ use std::ops::Deref;
 use crate::{
     js::runtime::{
         abstract_operations::set,
+        error::type_error_,
         eval::expression::{
             eval_add, eval_divide, eval_exponentiation, eval_greater_than,
             eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
@@ -11,7 +12,7 @@ use crate::{
         gc::{HandleScope, HeapVisitor},
         get,
         intrinsics::rust_runtime::decode_rust_runtime_id,
-        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_object},
+        type_utilities::{is_callable, is_loosely_equal, is_strictly_equal, to_boolean, to_object},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
@@ -92,58 +93,26 @@ impl VM {
         }
     }
 
+    /// Execute a function with the provided arguments. Starts a new execution of the VM,
+    /// initializing stack from scratch.
     pub fn execute(
         &mut self,
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
-        self.is_executing = true;
-
-        let func = closure.function_ptr();
-        self.pc = func.bytecode().as_ptr();
+        // Initialize stack
         self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
         self.fp = std::ptr::null_mut();
 
-        // Create the initial stack frame
+        // Evaluate in the global scope
+        let receiver = self.cx.get_global_object().into();
 
-        // Push arguments
-        let argc = self.push_call_arguments(
-            func,
-            arguments.iter().rev().map(Handle::deref),
-            arguments.len(),
-        );
-
-        // Push the initial receiver
-        let receiver = self.default_receiver(func.is_strict());
-        self.push(receiver.as_raw_bits() as StackSlotValue);
-
-        // Push argc
-        self.push(argc);
-
-        // Push the function
-        self.push(func.as_ptr() as StackSlotValue);
-
-        // Push the address of the return value
-        let mut return_value = Value::undefined();
-        self.push(&mut return_value as *mut _ as StackSlotValue);
-
-        // Push a dummy return address
-        self.push(0);
-
-        // Create the frame pointer, pointing to null initial FP which marks the top of the stack
-        self.push_fp();
-
-        // Make room for function locals
-        self.allocate_local_registers(func.num_registers());
-
-        // Start the dispatch loop
-        if let Err(error_value) = self.dispatch_loop() {
-            return Err(error_value.to_handle(self.cx));
-        }
-
+        // Evaluate the provided function
+        self.is_executing = true;
+        let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
         self.is_executing = false;
 
-        Ok(return_value.to_handle(self.cx))
+        eval_result.to_rust_result()
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
@@ -191,6 +160,7 @@ impl VM {
                     // Next instruction to execute is the saved return address
                     self.pc = self.get_return_address();
 
+                    let is_rust_caller = StackFrame::for_fp(self.fp).is_rust_caller();
                     let argc = self.get_argc();
 
                     // Destroy the stack frame
@@ -199,8 +169,8 @@ impl VM {
                         self.fp = *self.fp as *mut StackSlotValue;
                     }
 
-                    // A null FP indicates that we have reached the top of the stack
-                    if self.fp.is_null() {
+                    // If the caller was rust then return instead of executing next instruction
+                    if is_rust_caller {
                         return Ok(());
                     }
                 }};
@@ -223,6 +193,11 @@ impl VM {
                     }
 
                     while let Some(caller_stack_frame) = stack_frame.previous_frame() {
+                        // If the caller is the Rust runtime then return the thrown error
+                        if stack_frame.is_rust_caller() {
+                            return Err(error_value);
+                        }
+
                         if self.visit_frame_for_exception_unwinding(
                             caller_stack_frame,
                             stack_frame.return_address(),
@@ -237,7 +212,6 @@ impl VM {
 
                     // Exception has unwound the entire stack, finish VM execution returning the
                     // thrown error.
-                    // TODO: Check for throwing out of re-entrant VM call
                     return Err(error_value);
                 }};
             }
@@ -594,29 +568,98 @@ impl VM {
         }
     }
 
+    /// Call a function from the Rust runtime. Used for the initial function call, as well as any
+    /// re-entrant function calls from within the Rust runtime.
+    ///
+    /// Assumes that the current PC is the return address after this call completes.
+    pub fn call_from_rust(
+        &mut self,
+        function: Handle<Value>,
+        receiver: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let args_rev_iter = arguments.iter().rev().map(Handle::deref);
+
+        let return_address_slot = StackFrame::return_address_from_rust(self.pc);
+
+        // Push the address of the return value
+        let mut return_value = Value::undefined();
+        let return_value_address = (&mut return_value) as *mut Value;
+
+        maybe!(self.call_function_impl(
+            function.get(),
+            Some(receiver.get()),
+            args_rev_iter,
+            arguments.len(),
+            return_address_slot,
+            return_value_address,
+        ));
+
+        // Start the dispatch loop
+        if let Err(error_value) = self.dispatch_loop() {
+            return EvalResult::Throw(error_value.to_handle(self.cx));
+        }
+
+        return_value.to_handle(self.cx).into()
+    }
+
     #[inline]
     fn execute_generic_call<W: Width>(
         &mut self,
         instr: &impl GenericCallInstruction<W>,
     ) -> EvalResult<()> {
-        let closure = self
-            .read_register(instr.function())
-            .as_object()
-            .cast::<Closure>();
-        let func = closure.function_ptr();
+        let function = self.read_register(instr.function());
+        let receiver = instr.receiver().map(|reg| self.read_register(reg));
 
+        // Find slice over the arguments, starting with last argument
         let argv = self.register_address(instr.argv());
         let argc = instr.argc().value().to_usize();
 
-        // Push arguments
-        let args_slice = unsafe {
+        let args_rev_slice = unsafe {
             std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
         };
-        let argc_to_push = self.push_call_arguments(func, args_slice.iter(), argc);
+
+        // Use the address of the next instruction as the return address
+        let return_address = self.get_pc_after(instr);
+        let return_address_slot = StackFrame::return_address_from_vm(return_address);
+
+        // Find address of the return value register
+        let return_value_address = self.register_address(instr.dest());
+
+        self.call_function_impl(
+            function,
+            receiver,
+            args_rev_slice.iter(),
+            argc,
+            return_address_slot,
+            return_value_address,
+        )
+    }
+
+    #[inline]
+    fn call_function_impl<'a, I: Iterator<Item = &'a Value>>(
+        &mut self,
+        function: Value,
+        receiver: Option<Value>,
+        args_rev_iter: I,
+        argc: usize,
+        return_address_slot: usize,
+        return_value_address: *mut Value,
+    ) -> EvalResult<()> {
+        // Check if the function is a callable object
+        self.h1.replace(function);
+        if !is_callable(self.h1) {
+            return type_error_(self.cx, "value is not a function");
+        }
+
+        let closure = function.as_object().cast::<Closure>();
+        let func = closure.function_ptr();
+
+        // Push arguments
+        let argc_to_push = self.push_call_arguments(func, args_rev_iter, argc);
 
         // Push the receiver if one is supplied, otherwise push undefined
-        let receiver = if let Some(receiver) = instr.receiver() {
-            let receiver = self.read_register(receiver);
+        let receiver = if let Some(receiver) = receiver {
             maybe!(self.coerce_receiver(receiver, func.is_strict()))
         } else {
             self.default_receiver(func.is_strict())
@@ -630,12 +673,10 @@ impl VM {
         self.push(func.as_ptr() as StackSlotValue);
 
         // Push the address of the return value register
-        let return_value_address = self.register_address(instr.dest());
         self.push(return_value_address as StackSlotValue);
 
         // Push the address of the next instruction as the return address
-        let return_address = self.get_pc_after(instr);
-        self.push(return_address as StackSlotValue);
+        self.push(return_address_slot as StackSlotValue);
 
         // Push the frame pointer, creating a new frame pointer
         self.push_fp();
@@ -751,9 +792,12 @@ impl VM {
             }
 
             // Receiver must be placed behind handle and passed separately from
-            // arguments.
-            self.h1.replace(self.get_receiver());
-            let receiver = self.h1;
+            // arguments. Be sure not to use handle pool since rust function call may re-enter VM.
+            let receiver = self.get_receiver().to_handle(self.cx);
+
+            // Make sure PC is set to next instruction before calling into Rust, as Rust may call
+            // back into the VM and use the current PC as the return address.
+            self.set_pc_after(instr);
 
             // Call rust function
             // TODO: Handle new target
@@ -761,7 +805,6 @@ impl VM {
 
             // Write return register
             self.write_register(instr.dest(), result.get());
-            self.set_pc_after(instr);
 
             ().into()
         })
@@ -1171,7 +1214,9 @@ impl VM {
         let mut stack_frame = StackFrame::for_fp(self.fp);
 
         // The current PC points into the current stack frame's BytecodeFunction. Rewrite both.
-        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, &mut self.pc);
+        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, self.pc, |addr| {
+            self.pc = addr
+        });
 
         // Walk the stack, visiting all pointers in each frame
         loop {
@@ -1191,7 +1236,8 @@ impl VM {
                 Self::rewrite_bytecode_function_and_address(
                     visitor,
                     caller_stack_frame,
-                    stack_frame.return_address_mut(),
+                    stack_frame.return_address(),
+                    |addr| stack_frame.set_return_address(addr),
                 );
                 stack_frame = caller_stack_frame;
             } else {
@@ -1208,11 +1254,12 @@ impl VM {
     fn rewrite_bytecode_function_and_address(
         visitor: &mut impl HeapVisitor,
         mut stack_frame: StackFrame,
-        instruction_address: &mut *const u8,
+        instruction_address: *const u8,
+        set_instruction_address: impl FnOnce(*const u8),
     ) {
         // Find the offset of the instruction in the BytecodeFunction
         let function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
-        let offset = unsafe { (*instruction_address).offset_from(function_start) };
+        let offset = unsafe { instruction_address.offset_from(function_start) };
 
         // Visit the caller's BytecodeFunction, moving it in the heap
         visitor.visit_pointer(stack_frame.bytecode_function_mut());
@@ -1220,6 +1267,6 @@ impl VM {
         // Rewrite the instruction address using the new location of the BytecodeFunction
         let new_function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
         let new_instruction_address = unsafe { new_function_start.offset(offset) };
-        *instruction_address = new_instruction_address;
+        set_instruction_address(new_instruction_address);
     }
 }

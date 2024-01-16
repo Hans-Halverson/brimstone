@@ -70,18 +70,53 @@ impl StackFrame {
         unsafe { self.fp.offset(-1 - num_registers as isize).cast_mut() }
     }
 
+    /// Highest bit of the return address slot indicates whether the caller is the Rust runtime.
+    const IS_RUST_CALLER_TAG: usize = 1 << (usize::BITS - 1);
+
+    /// The return address slot holds both the return address and a flag (in the topmost bit)
+    /// indicating whether the caller is the Rust runtime.
+    #[inline]
+    fn encode_return_address_slot(return_address: *const u8, is_rust_caller: bool) -> usize {
+        if is_rust_caller {
+            (return_address as usize) | Self::IS_RUST_CALLER_TAG
+        } else {
+            return_address as usize
+        }
+    }
+
+    /// Encode the return address slot for a call from Rust.
+    #[inline]
+    pub fn return_address_from_rust(return_address: *const u8) -> usize {
+        Self::encode_return_address_slot(return_address, true)
+    }
+
+    /// Encode the return addres slot for a call from the JS VM.
+    #[inline]
+    pub fn return_address_from_vm(return_address: *const u8) -> usize {
+        Self::encode_return_address_slot(return_address, false)
+    }
+
+    /// Whether the caller of the function in the current stack frame is the Rust runtime.
+    #[inline]
+    pub fn is_rust_caller(&self) -> bool {
+        let encoded_value = unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) };
+        (encoded_value & Self::IS_RUST_CALLER_TAG) != 0
+    }
+
     /// The return address stored within this stack frame. This return address points to the next
     /// instruction to execute within the caller function.
     #[inline]
     pub fn return_address(&self) -> *const u8 {
-        unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) as *const u8 }
+        let encoded_value = unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) };
+        ((encoded_value as usize) & !Self::IS_RUST_CALLER_TAG) as *const u8
     }
 
-    /// A mutable reference to the return address stored within this stack frame. This return
-    /// address points to the next instruction to execute within the caller function.
+    /// Set the return address, preserving the Rust caller flag.
     #[inline]
-    pub fn return_address_mut(&mut self) -> &mut *const u8 {
-        unsafe { &mut *(self.fp.add(RETURN_ADDRESS_SLOT_INDEX) as *mut *const u8) }
+    pub fn set_return_address(&mut self, addr: *const u8) {
+        let is_rust_caller = self.is_rust_caller();
+        let encoded_address = Self::encode_return_address_slot(addr, is_rust_caller);
+        unsafe { *(self.fp.add(RETURN_ADDRESS_SLOT_INDEX).cast_mut()) = encoded_address }
     }
 
     /// Address where the return value should be stored.

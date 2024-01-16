@@ -3,7 +3,7 @@ use std::mem::size_of;
 use bitflags::bitflags;
 
 use crate::{
-    js::runtime::{ordinary_object::OrdinaryObject, Value},
+    js::runtime::{bytecode::function::Closure, ordinary_object::OrdinaryObject, Value},
     set_uninit,
 };
 
@@ -325,7 +325,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::Realm);
         other_heap_object_descriptor!(ObjectKind::Script);
 
-        ordinary_object_descriptor!(ObjectKind::Closure);
+        register_descriptor!(ObjectKind::Closure, Closure, DescFlags::IS_OBJECT);
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
         other_heap_object_descriptor!(ObjectKind::ConstantTable);
         other_heap_object_descriptor!(ObjectKind::ExceptionHandlers);

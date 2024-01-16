@@ -1,5 +1,7 @@
 use std::mem::size_of;
 
+use wrap_ordinary_object::wrap_ordinary_object;
+
 use crate::{
     extend_object, field_offset,
     js::runtime::{
@@ -8,10 +10,10 @@ use crate::{
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::{ObjectDescriptor, ObjectKind},
-        object_value::ObjectValue,
+        object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create, object_create_with_proto},
         string_value::StringValue,
-        Context, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     set_uninit,
 };
@@ -59,6 +61,13 @@ impl Closure {
 
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.function
+    }
+}
+
+#[wrap_ordinary_object]
+impl VirtualObject for Handle<Closure> {
+    fn is_callable(&self) -> bool {
+        true
     }
 }
 

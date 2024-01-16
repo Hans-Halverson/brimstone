@@ -179,29 +179,37 @@ pub fn has_own_property(
 
 // 7.3.14 Call
 pub fn call(
-    cx: Context,
+    mut cx: Context,
     func: Handle<Value>,
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    if !is_callable(func) {
-        return type_error_(cx, "value is not a function");
-    }
+    if cx.options.bytecode {
+        cx.vm().call_from_rust(func, receiver, arguments)
+    } else {
+        if !is_callable(func) {
+            return type_error_(cx, "value is not a function");
+        }
 
-    func.as_object().call(cx, receiver, arguments)
+        func.as_object().call(cx, receiver, arguments)
+    }
 }
 
 pub fn call_object(
-    cx: Context,
+    mut cx: Context,
     func: Handle<ObjectValue>,
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    if !is_callable_object(func) {
-        return type_error_(cx, "value is not a function");
-    }
+    if cx.options.bytecode {
+        cx.vm().call_from_rust(func.into(), receiver, arguments)
+    } else {
+        if !is_callable_object(func) {
+            return type_error_(cx, "value is not a function");
+        }
 
-    func.call(cx, receiver, arguments)
+        func.call(cx, receiver, arguments)
+    }
 }
 
 // 7.3.15 Construct

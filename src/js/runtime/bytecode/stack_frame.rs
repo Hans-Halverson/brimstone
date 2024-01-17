@@ -144,12 +144,6 @@ impl StackFrame {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
-    /// The receiver value for this stack frame.
-    #[inline]
-    pub fn receiver(&self) -> Value {
-        unsafe { *self.fp.add(RECEIVER_SLOT_INDEX).cast::<Value>() }
-    }
-
     /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
     /// the first argument.
     #[inline]

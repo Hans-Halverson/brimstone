@@ -8,7 +8,7 @@ use crate::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapObject, HeapVisitor},
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create, object_create_with_proto},
@@ -100,6 +100,9 @@ pub struct BytecodeFunction {
     is_strict: bool,
     /// Name of the function, used for debugging.
     debug_name: Option<HeapPtr<StringValue>>,
+    /// This function may be a stub function back into the Rust runtime. If this is set then this
+    /// function has an empty bytecode array and default values for many other fields.
+    rust_runtime_function_id: Option<RustRuntimeFunctionId>,
     /// Inlined bytecode array for the function.
     bytecode: InlineArray<u8>,
 }
@@ -125,7 +128,27 @@ impl BytecodeFunction {
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.debug_name, debug_name.map(|n| n.get_()));
+        set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_vec(bytecode);
+
+        object.to_handle()
+    }
+
+    pub fn new_rust_runtime_function(
+        cx: Context,
+        function_id: RustRuntimeFunctionId,
+    ) -> Handle<BytecodeFunction> {
+        let size = Self::calculate_size_in_bytes(0);
+        let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
+
+        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
+        set_uninit!(object.constant_table, None);
+        set_uninit!(object.exception_handlers, None);
+        set_uninit!(object.num_registers, 0);
+        set_uninit!(object.num_parameters, 0);
+        set_uninit!(object.is_strict, true);
+        set_uninit!(object.debug_name, None);
+        set_uninit!(object.rust_runtime_function_id, Some(function_id));
 
         object.to_handle()
     }
@@ -164,6 +187,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn is_strict(&self) -> bool {
         self.is_strict
+    }
+
+    #[inline]
+    pub fn rust_runtime_function_id(&self) -> Option<RustRuntimeFunctionId> {
+        self.rust_runtime_function_id
     }
 }
 

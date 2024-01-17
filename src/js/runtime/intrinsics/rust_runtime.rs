@@ -87,19 +87,6 @@ pub type RustRuntimeFunctionId = u16;
 // Check that the number of runtime functions fits in the RustRuntimeFunctionId type.
 static_assert!(NUM_RUST_RUNTIME_FUNCTIONS <= (1 << (8 * size_of::<RustRuntimeFunctionId>())));
 
-/// Encode a Rust runtime function id into a byte pair (high byte, low byte).
-#[inline]
-pub fn encode_rust_runtime_id(id: RustRuntimeFunctionId) -> (u8, u8) {
-    let bytes = u16::to_ne_bytes(id);
-    (bytes[0], bytes[1])
-}
-
-/// Encode a Rust runtime function id into a byte pair (high byte, low byte).
-#[inline]
-pub fn decode_rust_runtime_id(high_byte: u8, low_byte: u8) -> u16 {
-    u16::from_ne_bytes([high_byte, low_byte])
-}
-
 type RustRuntimeFunction = fn(
     cx: Context,
     this_value: Handle<Value>,

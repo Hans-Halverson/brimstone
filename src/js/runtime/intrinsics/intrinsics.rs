@@ -388,7 +388,6 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     let throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
         cx,
         throw_type_error,
-        0,
         Some(realm),
         None,
     );

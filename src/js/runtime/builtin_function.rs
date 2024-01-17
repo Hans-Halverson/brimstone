@@ -2,13 +2,10 @@ use std::mem::size_of;
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{
-    extend_object,
-    js::runtime::bytecode::{function::Closure, generator::BytecodeFunctionGenerator},
-    maybe, set_uninit,
-};
+use crate::{extend_object, js::runtime::bytecode::function::Closure, maybe, set_uninit};
 
 use super::{
+    bytecode::function::BytecodeFunction,
     completion::EvalResult,
     execution_context::ExecutionContext,
     function::{set_function_length, set_function_name},
@@ -85,7 +82,6 @@ impl BuiltinFunction {
     pub fn create_builtin_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<ObjectValue> {
@@ -93,7 +89,6 @@ impl BuiltinFunction {
             Self::create_builtin_bytecode_function_without_properties(
                 cx,
                 builtin_func,
-                length,
                 realm,
                 prototype,
             )
@@ -142,7 +137,6 @@ impl BuiltinFunction {
         let func = Self::create_builtin_bytecode_function_without_properties(
             cx,
             builtin_func,
-            length,
             realm,
             prototype,
         );
@@ -187,17 +181,11 @@ impl BuiltinFunction {
     fn create_builtin_bytecode_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<Closure> {
         let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
-        let bytecode_function = BytecodeFunctionGenerator::generate_rust_runtime_function(
-            cx,
-            function_id,
-            length as u32,
-        )
-        .unwrap();
+        let bytecode_function = BytecodeFunction::new_rust_runtime_function(cx, function_id);
 
         // TOOD: Use global object scope from realm
         let realm = realm.unwrap_or_else(|| cx.current_realm());

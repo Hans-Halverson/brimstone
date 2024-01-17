@@ -14,7 +14,6 @@ use crate::js::{
         bytecode::function::BytecodeFunction,
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
-        intrinsics::rust_runtime::{encode_rust_runtime_id, RustRuntimeFunctionId},
         Context, Handle, Value,
     },
 };
@@ -276,31 +275,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_local_registers as u32,
             program.is_strict_mode,
         ))
-    }
-
-    /// Generate a function that consists of a single call to a Rust runtime function.
-    pub fn generate_rust_runtime_function(
-        cx: Context,
-        function_id: RustRuntimeFunctionId,
-        num_parameters: u32,
-    ) -> EmitResult<Handle<BytecodeFunction>> {
-        let mut generator =
-            Self::new(cx, None, None, num_parameters, /* num_local_registers */ 0, true);
-
-        let (func_id1, func_id2) = encode_rust_runtime_id(function_id);
-
-        let dest = generator.register_allocator.allocate()?;
-        generator.writer.call_rust_runtime_instruction(
-            dest,
-            UInt::new(func_id1 as u32),
-            UInt::new(func_id2 as u32),
-        );
-
-        generator.writer.ret_instruction(dest);
-        generator.register_allocator.release(dest);
-
-        let emit_result = generator.finish();
-        Ok(emit_result.bytecode_function)
     }
 
     fn new_block(&mut self) -> BlockId {

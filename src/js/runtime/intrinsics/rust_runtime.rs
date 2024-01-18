@@ -116,9 +116,15 @@ macro_rules! rust_runtime_functions {
                 let mut function_to_id: HashMap<RustRuntimeFunction, RustRuntimeFunctionId> =
                     HashMap::with_capacity(NUM_RUST_RUNTIME_FUNCTIONS);
 
+                let mut id = 0;
+
                 $(
-                    let id = function_to_id.len() as RustRuntimeFunctionId;
                     function_to_id.insert($rust_function, id);
+                    
+                    #[allow(unused_assignments)]
+                    {
+                        id += 1;
+                    }
                 )*
 
                 Self {

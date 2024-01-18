@@ -132,16 +132,20 @@ impl VM {
                     macro_rules! dispatch {
                         ($instr:ident, $func:ident) => {{
                             let instr = get_instr!($instr);
-                            self.$func::<$width>(instr);
+                            // Set PC before calling function, as function may allocate which would
+                            // invalidate the $instr pointer.
                             self.set_pc_after(instr);
+                            self.$func::<$width>(instr);
                         }};
                     }
 
                     macro_rules! dispatch_or_throw {
                         ($instr:ident, $func:ident) => {{
                             let instr = get_instr!($instr);
+                            // Set PC before calling function, as function may allocate which would
+                            // invalidate the $instr pointer.
+                            self.set_pc_after(instr);
                             maybe_throw!(self.$func::<$width>(instr));
-                            self.set_pc_after(instr)
                         }};
                     }
                 };
@@ -158,8 +162,6 @@ impl VM {
                     unsafe { *return_value_address = return_value };
 
                     // Next instruction to execute is the saved return address
-                    self.pc = self.get_return_address();
-
                     let is_rust_caller = StackFrame::for_fp(self.fp).is_rust_caller();
 
                     // Destroy the stack frame
@@ -565,27 +567,27 @@ impl VM {
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        // Check that the value is callable
-        let function = maybe!(self.check_value_is_closure(function.get()));
+        // Check that the value is callable. Only allocates when throwing.
+        let function_handle = maybe!(self.check_value_is_closure(function.get())).to_handle();
 
-        // Get the receiver to use
-        let receiver = maybe!(self.generate_receiver(Some(receiver.get()), function.is_strict()));
+        // Get the receiver to use. May allocate.
+        let receiver =
+            maybe!(self.generate_receiver(Some(receiver.get()), function_handle.is_strict()));
+        let function_ptr = function_handle.get_();
 
         // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = function.rust_runtime_function_id() {
-            // Be sure not to use handle pool since rust function call may re-enter VM.
-            let receiver = receiver.to_handle(self.cx);
+        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            // Reuse function handle for receiver
+            let mut receiver_handle = function_handle.cast::<Value>();
+            receiver_handle.replace(receiver);
 
             // Call rust runtime function directly in its own handle scope
             HandleScope::new(self.cx, |_| {
-                self.call_rust_runtime(function, function_id, receiver, arguments)
+                self.call_rust_runtime(function_ptr, function_id, receiver_handle, arguments)
             })
         } else {
             // Otherwise this is a call to a JS function in the VM
             let args_rev_iter = arguments.iter().rev().map(Handle::deref);
-
-            // Start executing from the current PC when this function returns
-            let return_address_slot = StackFrame::return_address_from_rust(self.pc);
 
             // Push the address of the return value
             let mut return_value = Value::undefined();
@@ -593,18 +595,16 @@ impl VM {
 
             // Push a stack frame for the function call, with return address set to return to Rust
             self.push_stack_frame(
-                function,
+                function_ptr,
                 receiver,
                 args_rev_iter,
                 arguments.len(),
-                return_address_slot,
+                /* return_to_rust_runtime */ true,
                 return_value_address,
             );
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
-            self.pc = function.bytecode().as_ptr();
-
             if let Err(error_value) = self.dispatch_loop() {
                 return EvalResult::Throw(error_value.to_handle(self.cx));
             }
@@ -618,7 +618,7 @@ impl VM {
         &mut self,
         instr: &impl GenericCallInstruction<W>,
     ) -> EvalResult<()> {
-        let function = self.read_register(instr.function());
+        let function_value = self.read_register(instr.function());
         let receiver = instr.receiver().map(|reg| self.read_register(reg));
 
         // Find slice over the arguments, starting with last argument
@@ -632,29 +632,32 @@ impl VM {
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
 
-        // Check that the value is callable
-        let function = maybe!(self.check_value_is_closure(function));
-
-        // Get the receiver to use
-        let receiver = maybe!(self.generate_receiver(receiver, function.is_strict()));
+        // Check that the value is callable. Only allocates when throwing.
+        let function_ptr = maybe!(self.check_value_is_closure(function_value));
 
         // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = function.rust_runtime_function_id() {
+        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             // Make sure PC is set to next instruction before calling into Rust, as Rust may call
             // back into the VM and use the current PC as the return address.
             self.set_pc_after(instr);
 
-            // Be sure not to use handle pool since rust function call may re-enter VM.
-            let receiver = receiver.to_handle(self.cx);
-
-            // All arguments must be placed behind handles before calling into Rust
-            let mut arguments = vec![];
-            for arg in args_rev_slice.iter().rev() {
-                arguments.push(arg.to_handle(self.cx));
-            }
-
             let return_value = maybe!(HandleScope::new(self.cx, |_| {
-                self.call_rust_runtime(function, function_id, receiver, &arguments)
+                // Get the receiver to use. May allocate.
+                let function_handle = function_ptr.to_handle();
+                let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
+                let function_ptr = function_handle.get_();
+
+                // Reuse function handle for receiver
+                let mut receiver_handle = function_handle.cast::<Value>();
+                receiver_handle.replace(receiver);
+
+                // All arguments must be placed behind handles before calling into Rust
+                let mut arguments = vec![];
+                for arg in args_rev_slice.iter().rev() {
+                    arguments.push(arg.to_handle(self.cx));
+                }
+
+                self.call_rust_runtime(function_ptr, function_id, receiver_handle, &arguments)
             }));
 
             // Set the return value from the Rust runtime call
@@ -662,22 +665,27 @@ impl VM {
         } else {
             // Otherwise this is a call to a JS function in the VM.
 
-            // Use the address of the next instruction as the return address
-            let return_address = self.get_pc_after(instr);
-            let return_address_slot = StackFrame::return_address_from_vm(return_address);
+            // The address of the next instruction will be the return address. Must calculate and
+            // place in PC before potentially allocating below, that way if a GC occurs the address
+            // will be correctly rewritten.
+            self.set_pc_after(instr);
+
+            // Get the receiver to use. May allocate.
+            let function_handle = function_ptr.to_handle();
+            let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
+            let function_ptr = function_handle.get_();
 
             // Set up the stack frame for the function call
             self.push_stack_frame(
-                function,
+                function_ptr,
                 receiver,
                 args_rev_slice.iter(),
                 argc,
-                return_address_slot,
+                /* return_to_rust_runtime */ false,
                 return_value_address,
             );
 
-            // Continue the dispatch loop, executing the first instruction of the function
-            self.pc = function.bytecode().as_ptr();
+            // Continue in dispatch loop, executing the first instruction of the function
         }
 
         ().into()
@@ -685,6 +693,8 @@ impl VM {
 
     /// Check that a value is a closure (aka the only callable value), returning the inner
     /// BytecodeFunction.
+    ///
+    /// Only allocates when throwing.
     #[inline]
     fn check_value_is_closure(&self, value: Value) -> EvalResult<HeapPtr<BytecodeFunction>> {
         if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
@@ -694,6 +704,10 @@ impl VM {
         value.as_pointer().cast::<Closure>().function_ptr().into()
     }
 
+    /// Create a new stack frame constructed for the following arguments.
+    ///
+    /// Also saves the current PC on the stack frame as the return address, setting the PC to the
+    /// first instruction in the function.
     #[inline]
     fn push_stack_frame<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
@@ -701,7 +715,7 @@ impl VM {
         receiver: Value,
         args_rev_iter: I,
         argc: usize,
-        return_address_slot: usize,
+        return_to_rust_runtime: bool,
         return_value_address: *mut Value,
     ) {
         // Push arguments
@@ -720,6 +734,11 @@ impl VM {
         self.push(return_value_address as StackSlotValue);
 
         // Push the address of the next instruction as the return address
+        let return_address_slot = if return_to_rust_runtime {
+            StackFrame::return_address_from_rust(self.pc)
+        } else {
+            StackFrame::return_address_from_vm(self.pc)
+        };
         self.push(return_address_slot as StackSlotValue);
 
         // Push the frame pointer, creating a new frame pointer
@@ -727,11 +746,16 @@ impl VM {
 
         // Make room for function locals
         self.allocate_local_registers(func.num_registers());
+
+        // Start executing from the first instruction of the function
+        self.pc = func.bytecode().as_ptr();
     }
 
+    /// Pop the current stack frame, restoring the previous frame pointer and PC.
     #[inline]
     fn pop_stack_frame(&mut self) {
         unsafe {
+            self.pc = self.get_return_address();
             self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + self.get_argc());
             self.fp = *self.fp as *mut StackSlotValue;
         }
@@ -836,21 +860,17 @@ impl VM {
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        // Create a valid return address slot
-        let return_address_slot =
-            StackFrame::return_address_from_rust(function.bytecode().as_ptr());
-
         // Push a minimal stack frame for the Rust runtime function. No arguments are pushed in.
         self.push_stack_frame(
             function,
             /* receiver */ Value::undefined(),
             /* arguments */ [].iter(),
             /* argc */ 0,
-            return_address_slot,
+            /* return_to_rust_runtiem */ true,
             /* return value address */ std::ptr::null_mut(),
         );
 
-        // Perform the runtime call
+        // Perform the runtime call. May allocate.
         let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
         let result = rust_function(self.cx, receiver, &arguments, None);
 
@@ -907,11 +927,15 @@ impl VM {
         self.h1.replace(name);
         let name = self.h1.cast();
 
+        let dest = instr.dest();
+
         // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
+            // May allocate
             let key = PropertyKey::string(cx, name).to_handle(cx);
             let value = maybe!(get(cx, cx.get_global_object(), key));
-            self.write_register(instr.dest(), value.get());
+
+            self.write_register(dest, value.get());
 
             ().into()
         })
@@ -932,6 +956,7 @@ impl VM {
 
         // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
+            // May allocate
             let key = PropertyKey::string(cx, name).to_handle(cx);
             maybe!(set(cx, cx.get_global_object(), key, value, false));
 
@@ -947,8 +972,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_add(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -961,8 +990,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_subtract(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -975,8 +1008,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_multiply(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -989,8 +1026,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_divide(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1003,8 +1044,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_remainder(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1017,8 +1062,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_exponentiation(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1034,8 +1083,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), Value::bool(result));
+
+        self.write_register(dest, Value::bool(result));
 
         ().into()
     }
@@ -1051,8 +1104,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), Value::bool(!result));
+
+        self.write_register(dest, Value::bool(!result));
 
         ().into()
     }
@@ -1089,8 +1146,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_less_than(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1106,8 +1167,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_less_than_or_equal(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1123,8 +1188,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_greater_than(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1140,8 +1209,12 @@ impl VM {
         let right_value = self.read_register(instr.right());
         self.h2.replace(right_value);
 
+        let dest = instr.dest();
+
+        // May allocate
         let result = maybe!(eval_greater_than_or_equal(self.cx, self.h1, self.h2));
-        self.write_register(instr.dest(), result.get());
+
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1151,8 +1224,12 @@ impl VM {
         let func = self.get_constant(self.get_function(), instr.function_index());
         self.h1.replace(func);
 
+        let dest = instr.dest();
+
+        // Allocates
         let closure = Closure::new_ptr(self.cx, self.h1.cast::<BytecodeFunction>());
-        self.write_register(instr.dest(), Value::object(closure.cast()))
+
+        self.write_register(dest, Value::object(closure.cast()));
     }
 
     #[inline]
@@ -1166,13 +1243,16 @@ impl VM {
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
         self.h2.replace(key);
 
+        let dest = instr.dest();
+
+        // May allocate
         let key = PropertyKey::string(self.cx, self.h2.as_string());
         self.h2.replace(key.as_string().into());
 
         let object = maybe!(to_object(self.cx, self.h1));
         let result = maybe!(get(self.cx, object, self.h2.cast()));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1190,11 +1270,12 @@ impl VM {
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
         self.h2.replace(key);
 
-        let key = PropertyKey::string(self.cx, self.h2.as_string());
-        self.h2.replace(key.as_string().into());
-
         let value = self.read_register(instr.value());
         self.h3.replace(value);
+
+        // May allocate
+        let key = PropertyKey::string(self.cx, self.h2.as_string());
+        self.h2.replace(key.as_string().into());
 
         let is_strict = self.get_function().is_strict();
 

@@ -149,6 +149,7 @@ impl BytecodeFunction {
         set_uninit!(object.is_strict, true);
         set_uninit!(object.debug_name, None);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
+        object.bytecode.init_from_vec(vec![]);
 
         object.to_handle()
     }

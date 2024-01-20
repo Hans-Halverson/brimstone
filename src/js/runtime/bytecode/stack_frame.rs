@@ -161,7 +161,7 @@ impl StackFrame {
     pub fn registers_mut(&self) -> &mut [Value] {
         unsafe {
             let num_registers = self.bytecode_function().num_registers() as usize;
-            let last_register_ptr = self.fp.offset(-1 - num_registers as isize) as *mut Value;
+            let last_register_ptr = self.fp.sub(num_registers) as *mut Value;
             std::slice::from_raw_parts_mut(last_register_ptr, num_registers)
         }
     }

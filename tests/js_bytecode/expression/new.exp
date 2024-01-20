@@ -1,0 +1,42 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 4
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: LoadGlobal r0, c1
+     9: Construct r0, r0, r0, r0, 0
+    15: LoadGlobal r0, c1
+    18: LoadImmediate r1, 1
+    21: LoadImmediate r2, 2
+    24: LoadImmediate r3, 3
+    27: Construct r0, r0, r0, r1, 3
+    33: NewClosure r0, c2
+    36: StoreGlobal r0, c3
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: foo]
+    1: [String: foo]
+    2: [BytecodeFunction: bar]
+    3: [String: bar]
+}
+
+[BytecodeFunction: foo] {
+  Parameters: 3, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: bar] {
+  Parameters: 1, Registers: 5
+     0: LoadImmediate r0, 2
+     3: LoadGlobal r1, c0
+     6: LoadImmediate r2, 1
+     9: Mov r3, a0
+    12: LoadGlobal r4, c0
+    15: Construct r1, r1, r1, r2, 3
+    21: Add r0, r0, r1
+    25: LoadUndefined r0
+    27: Ret r0
+  Constant Table:
+    0: [String: foo]
+}

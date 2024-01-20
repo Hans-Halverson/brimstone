@@ -557,6 +557,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_registers,
             self.num_parameters,
             self.is_strict,
+            // TODO: Some generated functions are not constructors (e.g. arrow functions)
+            /* is_constructor */
+            true,
             debug_name,
         );
 
@@ -624,6 +627,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             },
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
+            ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
             _ => unimplemented!("bytecode for expression kind"),
@@ -971,49 +975,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             (callee, None)
         };
 
-        if expr
-            .arguments
-            .iter()
-            .any(|arg| matches!(arg, ast::CallArgument::Spread(_)))
-        {
-            unimplemented!("bytecode for spread arguments");
-        } else if expr.is_optional {
+        if expr.is_optional {
             unimplemented!("bytecode for optional call");
         }
 
-        // Generate code for each argument, loading each into a new temporary register forming a
-        // contiguous range of registers.
-        let mut arg_regs = Vec::with_capacity(expr.arguments.len());
-        for argument in &expr.arguments {
-            match argument {
-                ast::CallArgument::Expression(expr) => {
-                    let arg_reg = self.gen_expression_with_dest(expr, ExprDest::NewTemporary)?;
-                    arg_regs.push(arg_reg);
-                }
-                ast::CallArgument::Spread(_) => unimplemented!("bytecode for spread arguments"),
-            }
-        }
+        // Generate arguments into a contiguous argc + argv slice
+        let (argv, argc) = self.gen_call_arguments(&expr.arguments, callee)?;
 
-        // Find first argument register, or use callee register as a placeholder if there are no
-        // arguments (meaning the choice of argv register is arbitrary).
-        let argv = if arg_regs.is_empty() {
-            callee
-        } else {
-            arg_regs[0]
-        };
-
-        // Check that the argument registers are contiguous. This is guaranteed by the register
-        // allocation strategy.
-        debug_assert!(Self::are_registers_contiguous(&arg_regs));
-
-        // Allocate a range of registers for the arguments
-        let argc = GenUInt::try_from_unsigned(expr.arguments.len())
-            .ok_or(EmitError::TooManyCallArguments)?;
-
-        // Release all call registers
-        for arg_reg in arg_regs.iter().rev() {
-            self.register_allocator.release(*arg_reg);
-        }
+        // Release all remaining call registers
         self.register_allocator.release(callee);
         if let Some(this_value) = this_value {
             self.register_allocator.release(this_value);
@@ -1031,6 +1000,61 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    /// Generate the bytecode for all call arguments in a contiguous range, returning the
+    /// (argv, argc) pair representing the first register and the number of registers.
+    ///
+    /// Also takes a default argv register to use if there are no arguments.
+    ///
+    /// Releases all registers in the argv + argc slice before returning.
+    fn gen_call_arguments(
+        &mut self,
+        arguments: &[ast::CallArgument],
+        default_argv: GenRegister,
+    ) -> EmitResult<(GenRegister, GenUInt)> {
+        if arguments
+            .iter()
+            .any(|arg| matches!(arg, ast::CallArgument::Spread(_)))
+        {
+            unimplemented!("bytecode for spread arguments");
+        }
+
+        // Generate code for each argument, loading each into a new temporary register forming a
+        // contiguous range of registers.
+        let mut arg_regs = Vec::with_capacity(arguments.len());
+        for argument in arguments {
+            match argument {
+                ast::CallArgument::Expression(expr) => {
+                    let arg_reg = self.gen_expression_with_dest(expr, ExprDest::NewTemporary)?;
+                    arg_regs.push(arg_reg);
+                }
+                ast::CallArgument::Spread(_) => unimplemented!("bytecode for spread arguments"),
+            }
+        }
+
+        // Find first argument register, or use callee register as a placeholder if there are no
+        // arguments (meaning the choice of argv register is arbitrary).
+        let argv = if arg_regs.is_empty() {
+            default_argv
+        } else {
+            arg_regs[0]
+        };
+
+        // Check that the argument registers are contiguous. This is guaranteed by the register
+        // allocation strategy.
+        debug_assert!(Self::are_registers_contiguous(&arg_regs));
+
+        // Allocate a range of registers for the arguments
+        let argc =
+            GenUInt::try_from_unsigned(arguments.len()).ok_or(EmitError::TooManyCallArguments)?;
+
+        // Release all call registers
+        for arg_reg in arg_regs.iter().rev() {
+            self.register_allocator.release(*arg_reg);
+        }
+
+        Ok((argv, argc))
+    }
+
     fn are_registers_contiguous(registers: &[GenRegister]) -> bool {
         if registers.is_empty() {
             return true;
@@ -1044,6 +1068,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         true
+    }
+
+    fn gen_new_expresssion(
+        &mut self,
+        expr: &ast::NewExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let callee = self.gen_expression(&expr.callee)?;
+
+        // Generate arguments into a contiguous argc + argv slice
+        let (argv, argc) = self.gen_call_arguments(&expr.arguments, callee)?;
+
+        // Release remaining call registers before allocating dest
+        self.register_allocator.release(callee);
+        let dest = self.allocate_destination(dest)?;
+
+        // For new expressions, new.target is set to the callee
+        self.writer
+            .construct_instruction(dest, callee, callee, argv, argc);
+
+        Ok(dest)
     }
 
     fn gen_member_expression(

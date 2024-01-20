@@ -288,6 +288,16 @@ define_instructions!(
         [4] argc: UInt,
     }
 
+    /// Call a constructor. Arguments are passed in contiguous sequence of registers starting at
+    /// argv, of length argc. The new target is passed in its own register.
+    Construct (ConstructInstruction, construct_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] new_target: Register,
+        [3] argv: Register,
+        [4] argc: UInt,
+    }
+
     /// Return from a function, producing a value.
     Ret (RetInstruction, ret_instruction) {
         [0] return_value: Register,

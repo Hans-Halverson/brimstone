@@ -11,8 +11,10 @@ use crate::{
         },
         gc::{HandleScope, HeapVisitor},
         get,
-        intrinsics::rust_runtime::RustRuntimeFunctionId,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
         object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create_from_constructor,
         type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_object},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
@@ -23,10 +25,11 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        CallInstruction, CallWithReceiverInstruction, DivInstruction, ExpInstruction,
-        GetNamedPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        CallInstruction, CallWithReceiverInstruction, ConstructInstruction, DivInstruction,
+        ExpInstruction, GetNamedPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
@@ -41,7 +44,7 @@ use super::{
         GenericJumpBooleanInstruction, GenericJumpToBooleanConstantInstruction,
         GenericJumpToBooleanInstruction,
     },
-    operand::{ConstantIndex, Register, SInt},
+    operand::{ConstantIndex, Register, SInt, UInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
     width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width},
 };
@@ -261,13 +264,12 @@ impl VM {
                         OpCode::StoreGlobal => {
                             dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
                         }
-                        OpCode::Call => {
-                            let instr = get_instr!(CallInstruction);
-                            maybe_throw!(self.execute_generic_call(instr))
-                        }
+                        OpCode::Call => dispatch_or_throw!(CallInstruction, execute_generic_call),
                         OpCode::CallWithReceiver => {
-                            let instr = get_instr!(CallWithReceiverInstruction);
-                            maybe_throw!(self.execute_generic_call(instr))
+                            dispatch_or_throw!(CallWithReceiverInstruction, execute_generic_call)
+                        }
+                        OpCode::Construct => {
+                            dispatch_or_throw!(ConstructInstruction, execute_construct)
                         }
                         OpCode::Ret => execute_ret!(get_instr),
                         OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
@@ -583,7 +585,7 @@ impl VM {
 
             // Call rust runtime function directly in its own handle scope
             HandleScope::new(self.cx, |_| {
-                self.call_rust_runtime(function_ptr, function_id, receiver_handle, arguments)
+                self.call_rust_runtime(function_ptr, function_id, receiver_handle, arguments, None)
             })
         } else {
             // Otherwise this is a call to a JS function in the VM
@@ -613,6 +615,74 @@ impl VM {
         }
     }
 
+    /// Call a function from the Rust runtime. Used for re-entrant constructor calls from within the
+    /// Rust runtime.
+    ///
+    /// Assumes that the current PC is the instruction to be executed after this call completes.
+    pub fn construct_from_rust(
+        &mut self,
+        function: Handle<Value>,
+        arguments: &[Handle<Value>],
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<ObjectValue>> {
+        // Check that the value is callable. Only allocates when throwing.
+        let function_handle = maybe!(self.check_value_is_constructor(function.get())).to_handle();
+
+        // Create the receiver to use. Allocates.
+        let receiver = maybe!(self.generate_constructor_receiver(new_target));
+
+        // Reuse function handle for receiver
+        let function_ptr = function_handle.get_();
+        let mut receiver_handle = function_handle.cast::<ObjectValue>();
+        receiver_handle.replace(receiver.into());
+
+        // Check if this is a call to a function in the Rust runtime
+        let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            // Call rust runtime function directly in its own handle scope
+            maybe!(HandleScope::new(self.cx, |_| {
+                self.call_rust_runtime(
+                    function_ptr,
+                    function_id,
+                    receiver_handle.cast(),
+                    arguments,
+                    Some(new_target),
+                )
+            }))
+        } else {
+            // Otherwise this is a call to a JS function in the VM
+            let args_rev_iter = arguments.iter().rev().map(Handle::deref);
+
+            // Push the address of the return value
+            let mut return_value = Value::undefined();
+            let return_value_address = (&mut return_value) as *mut Value;
+
+            // Push a stack frame for the function call, with return address set to return to Rust
+            self.push_stack_frame(
+                function_ptr,
+                receiver.into(),
+                args_rev_iter,
+                arguments.len(),
+                /* return_to_rust_runtime */ true,
+                return_value_address,
+            );
+
+            // Start executing the dispatch loop from the start of the function, returning out of
+            // dispatch loop when the marked return address is encountered. May allocate.
+            if let Err(error_value) = self.dispatch_loop() {
+                return EvalResult::Throw(error_value.to_handle(self.cx));
+            }
+
+            return_value.to_handle(self.cx)
+        };
+
+        // Use the function's return value, otherwise fall back to the reciever
+        if return_value.is_object() {
+            return_value.as_object().into()
+        } else {
+            receiver_handle.into()
+        }
+    }
+
     #[inline]
     fn execute_generic_call<W: Width>(
         &mut self,
@@ -622,12 +692,7 @@ impl VM {
         let receiver = instr.receiver().map(|reg| self.read_register(reg));
 
         // Find slice over the arguments, starting with last argument
-        let argv = self.register_address(instr.argv());
-        let argc = instr.argc().value().to_usize();
-
-        let args_rev_slice = unsafe {
-            std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
-        };
+        let args_rev_slice = self.get_args_rev_slice(instr.argv(), instr.argc());
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
@@ -637,10 +702,6 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            // Make sure PC is set to next instruction before calling into Rust, as Rust may call
-            // back into the VM and use the current PC as the return address.
-            self.set_pc_after(instr);
-
             let return_value = maybe!(HandleScope::new(self.cx, |_| {
                 // Get the receiver to use. May allocate.
                 let function_handle = function_ptr.to_handle();
@@ -657,18 +718,13 @@ impl VM {
                     arguments.push(arg.to_handle(self.cx));
                 }
 
-                self.call_rust_runtime(function_ptr, function_id, receiver_handle, &arguments)
+                self.call_rust_runtime(function_ptr, function_id, receiver_handle, &arguments, None)
             }));
 
             // Set the return value from the Rust runtime call
             unsafe { *return_value_address = return_value.get() };
         } else {
             // Otherwise this is a call to a JS function in the VM.
-
-            // The address of the next instruction will be the return address. Must calculate and
-            // place in PC before potentially allocating below, that way if a GC occurs the address
-            // will be correctly rewritten.
-            self.set_pc_after(instr);
 
             // Get the receiver to use. May allocate.
             let function_handle = function_ptr.to_handle();
@@ -680,13 +736,118 @@ impl VM {
                 function_ptr,
                 receiver,
                 args_rev_slice.iter(),
-                argc,
+                args_rev_slice.len(),
                 /* return_to_rust_runtime */ false,
                 return_value_address,
             );
 
             // Continue in dispatch loop, executing the first instruction of the function
         }
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_construct<W: Width>(&mut self, instr: &ConstructInstruction<W>) -> EvalResult<()> {
+        // Find slice over the arguments, starting with last argument
+        let args_rev_slice = self.get_args_rev_slice(instr.argv(), instr.argc());
+
+        // Find address of the return value register
+        let return_value_address = self.register_address(instr.dest());
+
+        // Check that the value is callable. Only allocates when throwing.
+        let function_value = self.read_register(instr.function());
+        let function_ptr = maybe!(self.check_value_is_closure(function_value)).to_handle();
+
+        // Check if this is a call to a function in the Rust runtime
+        let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx, |_| {
+                let function_handle = function_ptr.to_handle();
+
+                // TODO: Check if this cast is safe
+                let new_target = self
+                    .read_register(instr.new_target())
+                    .to_handle(self.cx)
+                    .cast();
+
+                // Create the receiver to use. Allocates.
+                let receiver = maybe!(self.generate_constructor_receiver(new_target));
+
+                // Reuse function handle for receiver
+                let function_ptr = function_handle.get_();
+                let mut receiver_handle = function_handle.cast::<ObjectValue>();
+                receiver_handle.replace(receiver);
+
+                // All arguments must be placed behind handles before calling into Rust
+                let mut arguments = vec![];
+                for arg in args_rev_slice.iter().rev() {
+                    arguments.push(arg.to_handle(self.cx));
+                }
+
+                let return_value = maybe!(self.call_rust_runtime(
+                    function_ptr,
+                    function_id,
+                    receiver_handle.cast(),
+                    &arguments,
+                    Some(new_target)
+                ));
+
+                // Use the function's return value, otherwise fall back to the reciever
+                if return_value.is_object() {
+                    return_value.as_object().into()
+                } else {
+                    receiver_handle.into()
+                }
+            }));
+
+            return_value.get_()
+        } else {
+            // Otherwise this is a call to a JS function in the VM.
+            let function_handle = function_ptr.to_handle();
+
+            // TODO: Check if this cast is safe
+            let new_target = self
+                .read_register(instr.new_target())
+                .to_handle(self.cx)
+                .cast();
+
+            // Create the receiver to use. Allocates.
+            let receiver = maybe!(self.generate_constructor_receiver(new_target));
+
+            let function_ptr = function_handle.get_();
+            let mut receiver_handle = function_handle.cast::<ObjectValue>();
+            receiver_handle.replace(receiver);
+
+            // Push the address of the return value
+            let mut return_value = Value::undefined();
+            let inner_call_return_value_address = (&mut return_value) as *mut Value;
+
+            // Set up the stack frame for the function call
+            self.push_stack_frame(
+                function_ptr,
+                receiver.into(),
+                args_rev_slice.iter(),
+                args_rev_slice.len(),
+                /* return_to_rust_runtime */ true,
+                inner_call_return_value_address,
+            );
+
+            // Start executing the dispatch loop from the start of the function, returning out of
+            // dispatch loop when the marked return address is encountered.
+            if let Err(error_value) = self.dispatch_loop() {
+                return EvalResult::Throw(error_value.to_handle(self.cx));
+            }
+
+            // Use the function's return value, otherwise fall back to the reciever
+            if return_value.is_object() {
+                return_value.as_object()
+            } else {
+                receiver_handle.get_()
+            }
+        };
+
+        // Set the return value from the Rust runtime call
+        unsafe { *return_value_address = return_value.into() };
 
         ().into()
     }
@@ -702,6 +863,23 @@ impl VM {
         }
 
         value.as_pointer().cast::<Closure>().function_ptr().into()
+    }
+
+    /// Check that a value is a constructor, returning the inner BytecodeFunction.
+    ///
+    /// Only allocates when throwing.
+    #[inline]
+    fn check_value_is_constructor(&self, value: Value) -> EvalResult<HeapPtr<BytecodeFunction>> {
+        if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
+            return type_error_(self.cx, "value is not a constructor");
+        }
+
+        let func = value.as_pointer().cast::<Closure>().function_ptr();
+        if !func.is_constructor() {
+            return type_error_(self.cx, "value is not a constructor");
+        }
+
+        func.into()
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -758,6 +936,21 @@ impl VM {
             self.pc = self.get_return_address();
             self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + self.get_argc());
             self.fp = *self.fp as *mut StackSlotValue;
+        }
+    }
+
+    /// Find slice over the arguments given argv and argc, starting with last argument/
+    #[inline]
+    fn get_args_rev_slice<'a, 'b, W: Width>(
+        &'a self,
+        argv: Register<W>,
+        argc: UInt<W>,
+    ) -> &'b [Value] {
+        let argv = self.register_address(argv);
+        let argc = argc.value().to_usize();
+
+        unsafe {
+            std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
         }
     }
 
@@ -823,6 +1016,20 @@ impl VM {
         }
     }
 
+    /// Generate the receiver to be used for a constructor call.
+    #[inline]
+    fn generate_constructor_receiver(
+        &mut self,
+        new_target: Handle<ObjectValue>,
+    ) -> EvalResult<HeapPtr<ObjectValue>> {
+        object_create_from_constructor::<ObjectValue>(
+            self.cx,
+            new_target,
+            ObjectKind::OrdinaryObject,
+            Intrinsic::ObjectPrototype,
+        )
+    }
+
     /// Return the coerced receiver that should be passed to a function call. No coercion is
     /// necessary in strict mode, otherwise receiver must be coerced to an object, using the
     /// global object if the receiver is nullish.
@@ -853,12 +1060,14 @@ impl VM {
     ///
     /// Sets up a minimal VM stack frame for the Rust runtime function that can be used when
     /// collecting a stack trace.
+    #[inline]
     fn call_rust_runtime(
         &mut self,
         function: HeapPtr<BytecodeFunction>,
         function_id: RustRuntimeFunctionId,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
+        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Push a minimal stack frame for the Rust runtime function. No arguments are pushed in.
         self.push_stack_frame(
@@ -872,7 +1081,7 @@ impl VM {
 
         // Perform the runtime call. May allocate.
         let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx, receiver, &arguments, None);
+        let result = rust_function(self.cx, receiver, &arguments, new_target);
 
         // Clean up the stack frame
         self.pop_stack_frame();

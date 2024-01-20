@@ -98,6 +98,8 @@ pub struct BytecodeFunction {
     num_parameters: u32,
     /// Whether this function is in strict mode.
     is_strict: bool,
+    /// Whether this function is a constructor
+    is_constructor: bool,
     /// Name of the function, used for debugging.
     debug_name: Option<HeapPtr<StringValue>>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
@@ -116,6 +118,7 @@ impl BytecodeFunction {
         num_registers: u32,
         num_parameters: u32,
         is_strict: bool,
+        is_constructor: bool,
         debug_name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
@@ -127,6 +130,7 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
+        set_uninit!(object.is_strict, is_constructor);
         set_uninit!(object.debug_name, debug_name.map(|n| n.get_()));
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_vec(bytecode);
@@ -137,6 +141,7 @@ impl BytecodeFunction {
     pub fn new_rust_runtime_function(
         cx: Context,
         function_id: RustRuntimeFunctionId,
+        is_constructor: bool,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
@@ -147,6 +152,7 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.is_strict, true);
+        set_uninit!(object.is_strict, is_constructor);
         set_uninit!(object.debug_name, None);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
         object.bytecode.init_from_vec(vec![]);
@@ -188,6 +194,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn is_strict(&self) -> bool {
         self.is_strict
+    }
+
+    #[inline]
+    pub fn is_constructor(&self) -> bool {
+        self.is_constructor
     }
 
     #[inline]

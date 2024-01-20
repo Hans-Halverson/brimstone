@@ -120,7 +120,7 @@ macro_rules! rust_runtime_functions {
 
                 $(
                     function_to_id.insert($rust_function, id);
-                    
+
                     #[allow(unused_assignments)]
                     {
                         id += 1;

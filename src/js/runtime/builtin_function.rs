@@ -45,6 +45,7 @@ pub type BuiltinFunctionPtr = fn(
 pub struct ClosureEnvironment {}
 
 impl BuiltinFunction {
+    /// Create a new builtin function. Function is not a constructor.
     pub fn create(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
@@ -63,6 +64,7 @@ impl BuiltinFunction {
                 realm,
                 prototype,
                 prefix,
+                /* is_constructor */ false,
             )
             .into()
         } else {
@@ -84,6 +86,7 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
+        is_constructor: bool,
     ) -> Handle<ObjectValue> {
         if cx.options.bytecode {
             Self::create_builtin_bytecode_function_without_properties(
@@ -91,6 +94,7 @@ impl BuiltinFunction {
                 builtin_func,
                 realm,
                 prototype,
+                is_constructor,
             )
             .into()
         } else {
@@ -133,12 +137,14 @@ impl BuiltinFunction {
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
+        is_constructor: bool,
     ) -> Handle<Closure> {
         let func = Self::create_builtin_bytecode_function_without_properties(
             cx,
             builtin_func,
             realm,
             prototype,
+            is_constructor,
         );
         Self::install_common_properties(cx, func.into(), length, name, prefix);
 
@@ -183,9 +189,11 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
+        is_constructor: bool,
     ) -> Handle<Closure> {
         let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
-        let bytecode_function = BytecodeFunction::new_rust_runtime_function(cx, function_id);
+        let bytecode_function =
+            BytecodeFunction::new_rust_runtime_function(cx, function_id, is_constructor);
 
         // TOOD: Use global object scope from realm
         let realm = realm.unwrap_or_else(|| cx.current_realm());
@@ -214,6 +222,7 @@ impl BuiltinFunction {
                 realm,
                 prototype,
                 None,
+                /* is_constructor */ true,
             )
             .into()
         } else {

@@ -390,6 +390,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
         throw_type_error,
         Some(realm),
         None,
+        /* is_constructor */ false,
     );
 
     let zero_value = Value::smi(0).to_handle(cx);

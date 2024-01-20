@@ -214,13 +214,19 @@ pub fn call_object(
 
 // 7.3.15 Construct
 pub fn construct(
-    cx: Context,
+    mut cx: Context,
     func: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
     new_target: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);
-    func.construct(cx, arguments, new_target)
+
+    if cx.options.bytecode {
+        cx.vm()
+            .construct_from_rust(func.into(), arguments, new_target)
+    } else {
+        func.construct(cx, arguments, new_target)
+    }
 }
 
 #[derive(PartialEq)]

@@ -5,17 +5,19 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     extend_object, field_offset,
     js::runtime::{
+        abstract_operations::define_property_or_throw,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
+        function::{set_function_length, set_function_name},
         gc::{HeapObject, HeapVisitor},
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{object_create, object_create_with_proto},
+        ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
         string_value::StringValue,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
-    set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -34,17 +36,16 @@ extend_object! {
 
 impl Closure {
     pub fn new(cx: Context, function: Handle<BytecodeFunction>) -> Handle<Closure> {
-        Self::new_ptr(cx, function).to_handle()
-    }
-
-    pub fn new_ptr(cx: Context, function: Handle<BytecodeFunction>) -> HeapPtr<Closure> {
         // TODO: Handle different function prototypes
         let mut object =
             object_create::<Closure>(cx, ObjectKind::Closure, Intrinsic::FunctionPrototype);
 
         set_uninit!(object.function, function.get_());
 
-        object
+        let closure = object.to_handle();
+        Self::init_common_properties(cx, closure, function);
+
+        closure
     }
 
     pub fn new_builtin(
@@ -56,11 +57,41 @@ impl Closure {
 
         set_uninit!(object.function, function.get_());
 
+        // Does not need to the `name` and `length` properties as these will be set by caller
         object.to_handle()
     }
 
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.function
+    }
+
+    /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
+    /// this is a constructor.
+    fn init_common_properties(
+        cx: Context,
+        closure: Handle<Closure>,
+        function: Handle<BytecodeFunction>,
+    ) {
+        set_function_length(cx, closure.into(), function.num_parameters());
+
+        // Default to the empty string if a name was not provided
+        let name = if let Some(name) = function.name {
+            PropertyKey::string(cx, name.to_handle()).to_handle(cx)
+        } else {
+            cx.names.empty_string()
+        };
+        set_function_name(cx, closure.into(), name, None);
+
+        // 10.2.5 MakeConstructor
+        if function.is_constructor() {
+            let prototype = ordinary_object_create(cx);
+
+            let desc = PropertyDescriptor::data(closure.into(), true, false, true);
+            must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
+
+            let desc = PropertyDescriptor::data(prototype.into(), true, false, false);
+            must!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
+        }
     }
 }
 
@@ -77,7 +108,7 @@ impl HeapObject for HeapPtr<Closure> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
+        self.cast::<ObjectValue>().visit_pointers(visitor);
         visitor.visit_pointer(&mut self.function);
     }
 }
@@ -100,8 +131,8 @@ pub struct BytecodeFunction {
     is_strict: bool,
     /// Whether this function is a constructor
     is_constructor: bool,
-    /// Name of the function, used for debugging.
-    debug_name: Option<HeapPtr<StringValue>>,
+    /// Name of the function, used for debugging and the `name` property of non-runtime functions.
+    name: Option<HeapPtr<StringValue>>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
     /// function has an empty bytecode array and default values for many other fields.
     rust_runtime_function_id: Option<RustRuntimeFunctionId>,
@@ -119,7 +150,7 @@ impl BytecodeFunction {
         num_parameters: u32,
         is_strict: bool,
         is_constructor: bool,
-        debug_name: Option<Handle<StringValue>>,
+        name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
@@ -130,8 +161,8 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
-        set_uninit!(object.is_strict, is_constructor);
-        set_uninit!(object.debug_name, debug_name.map(|n| n.get_()));
+        set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_vec(bytecode);
 
@@ -152,8 +183,8 @@ impl BytecodeFunction {
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.is_strict, true);
-        set_uninit!(object.is_strict, is_constructor);
-        set_uninit!(object.debug_name, None);
+        set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.name, None);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
         object.bytecode.init_from_vec(vec![]);
 
@@ -210,7 +241,7 @@ impl BytecodeFunction {
 impl DebugPrint for HeapPtr<BytecodeFunction> {
     /// Debug print this function only.
     fn debug_format(&self, printer: &mut DebugPrinter) {
-        let name = if let Some(name) = self.debug_name {
+        let name = if let Some(name) = self.name {
             name.to_string()
         } else {
             "<anonymous>".to_owned()
@@ -299,6 +330,6 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
 
         visitor.visit_pointer_opt(&mut self.constant_table);
         visitor.visit_pointer_opt(&mut self.exception_handlers);
-        visitor.visit_pointer_opt(&mut self.debug_name);
+        visitor.visit_pointer_opt(&mut self.name);
     }
 }

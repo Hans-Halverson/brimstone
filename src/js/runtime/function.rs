@@ -620,7 +620,7 @@ pub fn ordinary_function_create_special_kind(
     func_node: FuncKind,
     is_lexical_this: bool,
     is_strict: bool,
-    argument_count: i32,
+    argument_count: u32,
     environment: DynEnvironment,
     private_environment: Option<Handle<PrivateEnvironment>>,
 ) -> Handle<Function> {
@@ -735,8 +735,8 @@ pub fn set_function_name(
 }
 
 // 10.2.10 SetFunctionLength
-pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: i32) {
-    let length_value = Value::smi(length).to_handle(cx);
+pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) {
+    let length_value = Value::from(length).to_handle(cx);
     let desc = PropertyDescriptor::data(length_value, false, false, true);
     must!(define_property_or_throw(cx, func, cx.names.length(), desc))
 }
@@ -773,7 +773,7 @@ pub fn instantiate_function_object(
 
 // 15.1.5 ExpectedArgumentCount
 // Count is the number of parameters to the left of the first initializer or rest parameter.
-fn expected_argument_count(func_node: &ast::Function) -> i32 {
+fn expected_argument_count(func_node: &ast::Function) -> u32 {
     let mut count = 0;
     for param in &func_node.params {
         match param {

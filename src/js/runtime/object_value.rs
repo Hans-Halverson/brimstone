@@ -509,7 +509,7 @@ impl Handle<ObjectValue> {
         cx: Context,
         name: Handle<PropertyKey>,
         func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         realm: Handle<Realm>,
     ) {
         let func = BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into();

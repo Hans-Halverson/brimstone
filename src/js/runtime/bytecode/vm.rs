@@ -757,7 +757,7 @@ impl VM {
 
         // Check that the value is callable. Only allocates when throwing.
         let function_value = self.read_register(instr.function());
-        let function_ptr = maybe!(self.check_value_is_closure(function_value)).to_handle();
+        let function_ptr = maybe!(self.check_value_is_constructor(function_value)).to_handle();
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
@@ -1436,9 +1436,9 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let closure = Closure::new_ptr(self.cx, self.h1.cast::<BytecodeFunction>());
+        let closure = Closure::new(self.cx, self.h1.cast::<BytecodeFunction>());
 
-        self.write_register(dest, Value::object(closure.cast()));
+        self.write_register(dest, Value::object(closure.get_().cast()));
     }
 
     #[inline]

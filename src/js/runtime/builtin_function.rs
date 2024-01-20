@@ -49,7 +49,7 @@ impl BuiltinFunction {
     pub fn create(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
@@ -112,7 +112,7 @@ impl BuiltinFunction {
     fn create_builtin_legacy_function(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
@@ -132,7 +132,7 @@ impl BuiltinFunction {
     fn create_builtin_bytecode_function(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
@@ -154,7 +154,7 @@ impl BuiltinFunction {
     fn install_common_properties(
         cx: Context,
         func: Handle<ObjectValue>,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
         prefix: Option<&str>,
     ) {
@@ -207,7 +207,7 @@ impl BuiltinFunction {
     pub fn intrinsic_constructor(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
         realm: Option<Handle<Realm>>,
         prototype: Option<Handle<ObjectValue>>,
@@ -245,7 +245,7 @@ impl BuiltinFunction {
     pub fn intrinsic_closure(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        length: i32,
+        length: u32,
         name: Handle<PropertyKey>,
     ) -> Handle<BuiltinFunction> {
         if cx.options.bytecode {

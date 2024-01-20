@@ -87,7 +87,7 @@ pub struct HandleScope {
 
 impl HandleScope {
     #[inline]
-    pub fn new<F: FnMut(Context) -> R, R: Escapable>(cx: Context, mut f: F) -> R {
+    pub fn new<F: FnOnce(Context) -> R, R: Escapable>(cx: Context, f: F) -> R {
         let handle_scope = Self::enter(cx);
         let result = f(cx);
         handle_scope.escape(cx, result)

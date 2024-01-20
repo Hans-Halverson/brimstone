@@ -30,3 +30,13 @@ function testMemberAssign(x) {
 
   use(x.foo = x);
 }
+
+function named() {
+  var x = 1;
+  
+  // Named
+  x = () => {};
+
+  // Not named
+  (x) = () => {};
+}

@@ -1,0 +1,81 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: basic]
+    1: [String: basic]
+    2: [BytecodeFunction: named]
+    3: [String: named]
+}
+
+[BytecodeFunction: basic] {
+  Parameters: 0, Registers: 3
+     0: NewClosure r1, c0
+     3: LoadImmediate r2, 2
+     6: Add r1, r1, r2
+    10: NewClosure r1, c1
+    13: LoadImmediate r2, 4
+    16: Add r1, r1, r2
+    20: NewClosure r0, c2
+    23: LoadUndefined r1
+    25: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: foo]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: x]
+}
+
+[BytecodeFunction: foo] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 3
+    3: Ret r0
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 5
+    3: Ret r0
+}
+
+[BytecodeFunction: named] {
+  Parameters: 0, Registers: 4
+     0: NewClosure r0, c0
+     3: LoadImmediate r1, 1
+     6: NewClosure r1, c1
+     9: NewClosure r2, c2
+    12: LoadUndefined r3
+    14: Ret r3
+  Constant Table:
+    0: [BytecodeFunction: x]
+    1: [BytecodeFunction: y]
+    2: [BytecodeFunction: fnName]
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: y] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: fnName] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

@@ -91,10 +91,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // remain valid.
             bytecode_function_handle.replace(emit_result.bytecode_function.get_());
 
-            self.enqueue_pending_functions(
-                bytecode_function_handle,
-                &emit_result.pending_functions,
-            );
+            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
 
             Ok(())
         })?;
@@ -113,22 +110,17 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
 
         HandleScope::new(self.cx, |_| {
-            let generator = BytecodeFunctionGenerator::new_for_function(
-                self.cx,
-                func_node.as_ref(),
-                &self.scope_tree,
-            )?;
+            let ast_node = func_node.ast_ptr();
+            let generator =
+                BytecodeFunctionGenerator::new_for_function(self.cx, func_node, &self.scope_tree)?;
 
-            let emit_result = generator.generate(func_node.as_ref())?;
+            let emit_result = generator.generate(ast_node.as_ref())?;
 
             // Store the generated function into the parent handle scope so the enqueued references
             // remain valid.
             bytecode_function_handle.replace(emit_result.bytecode_function.get_());
 
-            self.enqueue_pending_functions(
-                bytecode_function_handle,
-                &emit_result.pending_functions,
-            );
+            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
 
             // Patch function into parent function's constant table
             let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
@@ -144,15 +136,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
     fn enqueue_pending_functions(
         &mut self,
         parent_function: Handle<BytecodeFunction>,
-        pending_functions: &PendingFunctions,
+        pending_functions: PendingFunctions,
     ) {
         for (func_node, constant_index) in pending_functions {
             self.pending_functions_queue
-                .push_back(PatchablePendingFunction {
-                    func_node: *func_node,
-                    parent_function,
-                    constant_index: *constant_index,
-                });
+                .push_back(PatchablePendingFunction { func_node, parent_function, constant_index });
         }
     }
 }
@@ -183,6 +171,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Whether this function is in strict mode.
     is_strict: bool,
 
+    // Whether this function is a constructor
+    is_constructor: bool,
+
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
     exception_handler_builder: ExceptionHandlersBuilder,
@@ -199,6 +190,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         num_parameters: u32,
         num_local_registers: u32,
         is_strict: bool,
+        is_constructor: bool,
     ) -> Self {
         Self {
             writer: BytecodeWriter::new(),
@@ -210,6 +202,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unresolved_forward_jumps: HashMap::new(),
             num_parameters,
             is_strict,
+            is_constructor,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
@@ -219,9 +212,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn new_for_function(
         cx: Context,
-        func: &'a ast::Function,
+        pending_function: PendingFunctionNode,
         scope_tree: &'a ScopeTree,
     ) -> EmitResult<Self> {
+        let is_constructor = pending_function.is_constructor();
+        let func_ptr = pending_function.ast_ptr();
+        let func = func_ptr.as_ref();
+
         // Number of arguments does not count the rest parameter
         let num_parameters = if let Some(ast::FunctionParam::Rest(_)) = func.params.last() {
             func.params.len() - 1
@@ -242,7 +239,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Err(EmitError::TooManyRegisters);
         }
 
-        let debug_name = func.id.as_ref().map(|id| id.name.clone());
+        let anonymous_name = pending_function.name();
+        let debug_name = func
+            .id
+            .as_ref()
+            .map(|id| id.name.clone())
+            .or(anonymous_name);
 
         Ok(Self::new(
             cx,
@@ -251,6 +253,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_parameters as u32,
             num_local_registers as u32,
             func.is_strict_mode,
+            is_constructor,
         ))
     }
 
@@ -274,6 +277,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             0,
             num_local_registers as u32,
             program.is_strict_mode,
+            /* is_constructor */ false,
         ))
     }
 
@@ -500,7 +504,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn enqueue_function_to_generate(
         &mut self,
-        function: AstPtr<ast::Function>,
+        function: PendingFunctionNode,
     ) -> EmitResult<ConstantTableIndex> {
         let constant_index = self
             .constant_table_builder
@@ -526,6 +530,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::FunctionBody::Expression(expr_body) => {
                 let return_value_reg = self.gen_expression(expr_body)?;
                 self.writer.ret_instruction(return_value_reg);
+                self.register_allocator.release(return_value_reg);
             }
         }
 
@@ -557,9 +562,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_registers,
             self.num_parameters,
             self.is_strict,
-            // TODO: Some generated functions are not constructors (e.g. arrow functions)
-            /* is_constructor */
-            true,
+            self.is_constructor,
             debug_name,
         );
 
@@ -630,6 +633,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
+            ast::Expression::Function(expr) => self.gen_function_expression(expr, None, dest),
+            ast::Expression::ArrowFunction(expr) => {
+                self.gen_arrow_function_expression(expr, None, dest)
+            }
             _ => unimplemented!("bytecode for expression kind"),
         }
     }
@@ -1135,8 +1142,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         match expr.left.as_ref() {
             ast::Pattern::Id(id) => {
+                // Right side expression is only named (meaning name is used for anonymous functions
+                // and classes) if the id is simple and not parenthesized.
+                let is_non_parenthesized_id_predicate = || id.loc.start == expr.loc.start;
+
                 let right_value_dest = self.expr_dest_for_id(id);
-                let right_value = self.gen_expression_with_dest(&expr.right, right_value_dest)?;
+                let right_value = self.gen_named_expression_if(
+                    id,
+                    &expr.right,
+                    right_value_dest,
+                    is_non_parenthesized_id_predicate,
+                )?;
 
                 self.gen_store_identifier(id, right_value)?;
                 self.gen_mov_reg_to_dest(right_value, dest)
@@ -1180,6 +1196,69 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
+    fn gen_named_expression(
+        &mut self,
+        name: &ast::Identifier,
+        expr: &ast::Expression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        self.gen_named_expression_if(name, expr, dest, || true)
+    }
+
+    fn gen_named_expression_if(
+        &mut self,
+        name: &ast::Identifier,
+        expr: &ast::Expression,
+        dest: ExprDest,
+        if_predicate: impl Fn() -> bool,
+    ) -> EmitResult<GenRegister> {
+        if !if_predicate() {
+            return self.gen_expression_with_dest(expr, dest);
+        }
+
+        match expr {
+            ast::Expression::Function(func) if func.id.is_none() => {
+                self.gen_function_expression(func, Some(name.name.clone()), dest)
+            }
+            ast::Expression::ArrowFunction(func) => {
+                self.gen_arrow_function_expression(func, Some(name.name.clone()), dest)
+            }
+            _ => self.gen_expression_with_dest(expr, dest),
+        }
+    }
+
+    fn gen_function_expression(
+        &mut self,
+        func: &ast::Function,
+        name: Option<String>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let pending_node = PendingFunctionNode::Expression { node: AstPtr::from_ref(func), name };
+        let func_constant_index = self.enqueue_function_to_generate(pending_node)?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
+
+        Ok(dest)
+    }
+
+    fn gen_arrow_function_expression(
+        &mut self,
+        func: &ast::Function,
+        name: Option<String>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let pending_node = PendingFunctionNode::Arrow { node: AstPtr::from_ref(func), name };
+        let func_constant_index = self.enqueue_function_to_generate(pending_node)?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
+
+        Ok(dest)
+    }
+
     fn gen_variable_declaration(
         &mut self,
         var_decl: &ast::VariableDeclaration,
@@ -1193,7 +1272,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match decl.id.as_ref() {
                     ast::Pattern::Id(id) => {
                         let init_value_dest = self.expr_dest_for_id(id);
-                        let init_value = self.gen_expression_with_dest(init, init_value_dest)?;
+                        let init_value = self.gen_named_expression(id, init, init_value_dest)?;
 
                         self.gen_store_identifier(id, init_value)?;
                         self.register_allocator.release(init_value);
@@ -1207,7 +1286,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_function_declaraton(&mut self, func_decl: &ast::Function) -> EmitResult<StmtCompletion> {
-        let func_constant_index = self.enqueue_function_to_generate(AstPtr::from_ref(func_decl))?;
+        let func_constant_index = self.enqueue_function_to_generate(
+            PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl)),
+        )?;
 
         // Create a new closure, directly into binding location if possible
         let closure_dest = if let Some(id) = func_decl.id.as_ref() {
@@ -1509,15 +1590,47 @@ type GenUInt = UInt<ExtraWide>;
 type GenSInt = SInt<ExtraWide>;
 type GenConstantIndex = ConstantIndex<ExtraWide>;
 
+enum PendingFunctionNode {
+    Declaration(AstPtr<ast::Function>),
+    Expression { node: AstPtr<ast::Function>, name: Option<String> },
+    Arrow { node: AstPtr<ast::Function>, name: Option<String> },
+}
+
+impl PendingFunctionNode {
+    fn ast_ptr(&self) -> AstPtr<ast::Function> {
+        match self {
+            PendingFunctionNode::Declaration(node)
+            | PendingFunctionNode::Expression { node, .. }
+            | PendingFunctionNode::Arrow { node, .. } => *node,
+        }
+    }
+
+    fn is_constructor(&self) -> bool {
+        match self {
+            PendingFunctionNode::Declaration(_) | PendingFunctionNode::Expression { .. } => true,
+            PendingFunctionNode::Arrow { .. } => false,
+        }
+    }
+
+    /// Named given to this unnamed function (an anonymous expression or arrow function)
+    fn name(self) -> Option<String> {
+        match self {
+            PendingFunctionNode::Declaration(_) => None,
+            PendingFunctionNode::Expression { name, .. }
+            | PendingFunctionNode::Arrow { name, .. } => name,
+        }
+    }
+}
+
 /// Collection of functions that still need to be generated, along with their index in the
 /// function's constant table.
-type PendingFunctions = Vec<(AstPtr<ast::Function>, ConstantTableIndex)>;
+type PendingFunctions = Vec<(PendingFunctionNode, ConstantTableIndex)>;
 
 /// A function that still needs to be generated, along with the information needed to patch it's
 /// creation into the parent function.
 struct PatchablePendingFunction {
     /// This pending function's AST node
-    func_node: AstPtr<ast::Function>,
+    func_node: PendingFunctionNode,
     /// The already generated parent function which creates this function
     parent_function: Handle<BytecodeFunction>,
     /// The index into the parent function's constant table that needs to be patched with the

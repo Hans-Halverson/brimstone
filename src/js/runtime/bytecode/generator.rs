@@ -617,6 +617,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
             ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
+                ast::UnaryOperator::Plus => self.gen_unary_plus_expression(expr, dest),
                 ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
                 ast::UnaryOperator::TypeOf => self.gen_typeof_expression(expr, dest),
                 ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
@@ -857,7 +858,34 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return self.gen_number_literal(-number_expr.value, dest);
         }
 
-        unimplemented!("bytecode for unary minus expression")
+        // Otherwise generate a negate instruction
+        let argument = self.gen_expression(&expr.argument)?;
+        self.register_allocator.release(argument);
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer.neg_instruction(dest, argument);
+
+        Ok(dest)
+    }
+
+    fn gen_unary_plus_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // A unary plus on a number literal is inlined as that number literal
+        if let ast::Expression::Number(number_expr) = expr.argument.as_ref() {
+            return self.gen_number_literal(number_expr.value, dest);
+        }
+
+        // Otherwis generate a ToNumber instruction
+        let argument = self.gen_expression(&expr.argument)?;
+        self.register_allocator.release(argument);
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer.to_number_instruction(dest, argument);
+
+        Ok(dest)
     }
 
     fn gen_typeof_expression(

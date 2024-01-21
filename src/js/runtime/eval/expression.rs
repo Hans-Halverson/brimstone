@@ -913,6 +913,10 @@ fn eval_unary_plus(cx: Context, expr: &ast::UnaryExpression) -> EvalResult<Handl
 // 13.5.5.1 Unary Minus Evaluation
 fn eval_unary_minus(cx: Context, expr: &ast::UnaryExpression) -> EvalResult<Handle<Value>> {
     let value = maybe!(eval_expression(cx, &expr.argument));
+    eval_negate(cx, value)
+}
+
+pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     let value = maybe!(to_numeric(cx, value));
 
     if value.is_bigint() {

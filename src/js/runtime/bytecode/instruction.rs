@@ -407,8 +407,20 @@ define_instructions!(
         [2] right: Register,
     }
 
-    /// Return the type of a value as a string.
+    /// Negate a value, storing the result in dest.
+    Neg (NegInstruction, neg_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
+    /// Find the type of a value as a string, storing the result in dest.
     TypeOf (TypeOfInstruction, type_of_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
+    /// Apply the ToNumber abstract operation to a value, storing the result in dest.
+    ToNumber (ToNumberInstruction, to_number_instruction) {
         [0] dest: Register,
         [1] value: Register,
     }

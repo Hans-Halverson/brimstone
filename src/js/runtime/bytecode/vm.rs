@@ -7,7 +7,7 @@ use crate::{
         eval::expression::{
             eval_add, eval_divide, eval_exponentiation, eval_greater_than,
             eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
-            eval_remainder, eval_subtract, eval_typeof,
+            eval_negate, eval_remainder, eval_subtract, eval_typeof,
         },
         gc::{HandleScope, HeapVisitor},
         get,
@@ -15,7 +15,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_object},
+        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object},
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
@@ -35,9 +35,10 @@ use super::{
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
         LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
-        MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
-        SetNamedPropertyInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, TypeOfInstruction,
+        MulInstruction, NegInstruction, NewClosureInstruction, OpCode, RemInstruction,
+        RetInstruction, SetNamedPropertyInstruction, StoreGlobalInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -306,7 +307,11 @@ impl VM {
                             GreaterThanOrEqualInstruction,
                             execute_greater_than_or_equal
                         ),
+                        OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
+                        OpCode::ToNumber => {
+                            dispatch_or_throw!(ToNumberInstruction, execute_to_number)
+                        }
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
                             self.execute_jump_constant(get_instr!(JumpConstantInstruction))
@@ -1430,6 +1435,21 @@ impl VM {
     }
 
     #[inline]
+    fn execute_neg<W: Width>(&mut self, instr: &NegInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+        self.h1.replace(value);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(eval_negate(self.cx, self.h1));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
         let value = self.read_register(instr.value());
         self.h1.replace(value);
@@ -1440,6 +1460,21 @@ impl VM {
         let result = eval_typeof(self.cx, self.h1);
 
         self.write_register(dest, result.cast::<Value>().get());
+    }
+
+    #[inline]
+    fn execute_to_number<W: Width>(&mut self, instr: &ToNumberInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+        self.h1.replace(value);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(to_number(self.cx, self.h1));
+
+        self.write_register(dest, result.get());
+
+        ().into()
     }
 
     #[inline]

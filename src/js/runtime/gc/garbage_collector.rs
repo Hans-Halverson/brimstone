@@ -113,6 +113,18 @@ impl GarbageCollector {
         let finalizer_callbacks = gc.fix_finalization_registries();
         cx.add_finalizer_callbacks(finalizer_callbacks);
 
+        // In GC stress test mode, overwrite the old heap with 0x01 bytes to try to catch reads from
+        // pointesr to the old heap.
+        #[cfg(feature = "gc_stress_test")]
+        {
+            if cx.heap.gc_stress_test {
+                let (start, _) = cx.heap.current_heap_bounds();
+                unsafe {
+                    std::ptr::write_bytes(start.cast_mut(), 0x01, cx.heap.bytes_allocated());
+                }
+            }
+        }
+
         cx.heap.swap_heaps(gc.alloc_ptr);
     }
 

@@ -407,6 +407,12 @@ define_instructions!(
         [2] right: Register,
     }
 
+    /// Return the type of a value as a string.
+    TypeOf (TypeOfInstruction, type_of_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
     /// Unconditionally jump to the given instruction, specified inline as a byte offset from the
     /// start of the current instruction.
     Jump (JumpInstruction, jump_instruction) {

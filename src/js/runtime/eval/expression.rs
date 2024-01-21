@@ -872,6 +872,10 @@ fn eval_typeof_expression(
         None => maybe!(eval_expression(cx, expr.argument.as_ref())),
     };
 
+    eval_typeof(cx, value).into()
+}
+
+pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue> {
     let type_string = if value.is_pointer() {
         let kind = value.as_pointer().descriptor().kind();
         match kind {
@@ -897,7 +901,7 @@ fn eval_typeof_expression(
         }
     };
 
-    cx.alloc_string(type_string).into()
+    cx.alloc_string(type_string)
 }
 
 // 13.5.4.1 Unary Plus Evaluation

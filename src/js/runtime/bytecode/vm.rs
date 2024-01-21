@@ -7,7 +7,7 @@ use crate::{
         eval::expression::{
             eval_add, eval_divide, eval_exponentiation, eval_greater_than,
             eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
-            eval_remainder, eval_subtract,
+            eval_remainder, eval_subtract, eval_typeof,
         },
         gc::{HandleScope, HeapVisitor},
         get,
@@ -37,7 +37,7 @@ use super::{
         LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
         MulInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
         SetNamedPropertyInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -306,6 +306,7 @@ impl VM {
                             GreaterThanOrEqualInstruction,
                             execute_greater_than_or_equal
                         ),
+                        OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
                             self.execute_jump_constant(get_instr!(JumpConstantInstruction))
@@ -1426,6 +1427,19 @@ impl VM {
         self.write_register(dest, result.get());
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
+        let value = self.read_register(instr.value());
+        self.h1.replace(value);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let result = eval_typeof(self.cx, self.h1);
+
+        self.write_register(dest, result.cast::<Value>().get());
     }
 
     #[inline]

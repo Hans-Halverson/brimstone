@@ -618,6 +618,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
                 ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
+                ast::UnaryOperator::TypeOf => self.gen_typeof_expression(expr, dest),
                 ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
                 _ => unimplemented!("bytecode for unary operator"),
             },
@@ -857,6 +858,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         unimplemented!("bytecode for unary minus expression")
+    }
+
+    fn gen_typeof_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let argument = self.gen_expression(&expr.argument)?;
+        self.register_allocator.release(argument);
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer.type_of_instruction(dest, argument);
+
+        Ok(dest)
     }
 
     fn gen_void_expression(

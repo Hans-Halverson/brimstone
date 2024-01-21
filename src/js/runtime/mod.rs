@@ -36,6 +36,7 @@ mod regexp;
 mod string_object;
 mod string_parsing;
 mod string_value;
+pub mod test_262_object;
 mod type_utilities;
 mod value;
 

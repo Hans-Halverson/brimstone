@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem::size_of};
 use crate::{
     js::runtime::{
         arguments_object, console::ConsoleObject, gc_object::GcObject, object_value::ObjectValue,
-        Context, EvalResult, Handle, Value,
+        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
     },
     static_assert,
 };
@@ -555,4 +555,8 @@ rust_runtime_functions!(
     // Non-standard functions
     ConsoleObject::log,
     GcObject::run,
+    Test262Object::create_realm,
+    Test262Object::detach_array_buffer,
+    Test262Object::eval_script,
+    Test262Object::print,
 );

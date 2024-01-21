@@ -81,7 +81,7 @@ impl VM {
         let mut stack = Vec::<StackSlotValue>::with_capacity(NUM_STACK_SLOTS);
         unsafe { stack.set_len(NUM_STACK_SLOTS) };
 
-        VM {
+        let mut vm = VM {
             cx,
             pc: std::ptr::null(),
             sp: std::ptr::null_mut(),
@@ -94,7 +94,10 @@ impl VM {
 
             is_executing: false,
             stack,
-        }
+        };
+
+        vm.reset_stack();
+        vm
     }
 
     /// Execute a function with the provided arguments. Starts a new execution of the VM,
@@ -104,10 +107,6 @@ impl VM {
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
-        // Initialize stack
-        self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
-        self.fp = std::ptr::null_mut();
-
         // Evaluate in the global scope
         let receiver = self.cx.get_global_object().into();
 
@@ -117,6 +116,12 @@ impl VM {
         self.is_executing = false;
 
         eval_result.to_rust_result()
+    }
+
+    fn reset_stack(&mut self) {
+        // Reset stack
+        self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
+        self.fp = std::ptr::null_mut();
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
@@ -197,6 +202,11 @@ impl VM {
                     while let Some(caller_stack_frame) = stack_frame.previous_frame() {
                         // If the caller is the Rust runtime then return the thrown error
                         if stack_frame.is_rust_caller() {
+                            // Unwind the stack to the caller's frame
+                            self.pc = stack_frame.return_address();
+                            self.fp = caller_stack_frame.fp();
+                            self.sp = caller_stack_frame.sp();
+
                             return Err(error_value);
                         }
 
@@ -214,6 +224,7 @@ impl VM {
 
                     // Exception has unwound the entire stack, finish VM execution returning the
                     // thrown error.
+                    self.reset_stack();
                     return Err(error_value);
                 }};
             }

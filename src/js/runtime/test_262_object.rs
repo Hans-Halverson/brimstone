@@ -1,24 +1,25 @@
 use std::rc::Rc;
 
-use brimstone::{
-    js::{
-        parser::{analyze::analyze, parse_script, source::Source},
-        runtime::{
-            completion::CompletionKind,
-            error::{syntax_error_, type_error_},
-            eval::script::eval_script,
-            function::get_argument,
-            intrinsics::{
-                array_buffer_constructor::ArrayBufferObject,
-                global_object::set_default_global_bindings, intrinsics::Intrinsic,
-            },
-            object_value::ObjectValue,
-            to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
-        },
-    },
+use crate::{
+    js::parser::{analyze::analyze, parse_script, source::Source},
     maybe,
 };
 
+use super::{
+    completion::CompletionKind,
+    error::{syntax_error_, type_error_},
+    eval::script::eval_script,
+    function::get_argument,
+    intrinsics::{
+        array_buffer_constructor::ArrayBufferObject, global_object::set_default_global_bindings,
+        intrinsics::Intrinsic,
+    },
+    object_value::ObjectValue,
+    to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
+};
+
+/// Utility functions used in test262 tests. Must be included in the main library for now so that
+/// builtin functions can be registered.
 pub struct Test262Object;
 
 impl Test262Object {
@@ -62,7 +63,7 @@ impl Test262Object {
             .intrinsic_func(cx, print_key, Self::print, 1, realm);
     }
 
-    fn print(
+    pub fn print(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -74,7 +75,7 @@ impl Test262Object {
         cx.undefined().into()
     }
 
-    fn create_realm(
+    pub fn create_realm(
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
@@ -92,7 +93,7 @@ impl Test262Object {
         test_262_object.into()
     }
 
-    fn eval_script(
+    pub fn eval_script(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -132,7 +133,7 @@ impl Test262Object {
         }
     }
 
-    fn detach_array_buffer(
+    pub fn detach_array_buffer(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],

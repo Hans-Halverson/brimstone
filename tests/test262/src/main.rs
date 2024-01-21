@@ -13,6 +13,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     all: bool,
 
+    /// Run tests using the bytecode VM
+    #[arg(long, default_value_t = false)]
+    bytecode: bool,
+
     /// Path to the test262 repo
     #[arg(long, default_value_t = String::from("test262"))]
     test262_path: String,
@@ -92,7 +96,8 @@ fn main_impl() -> GenericResult {
         args.ignore_annex_b,
     )?;
 
-    let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
+    let mut runner =
+        TestRunner::new(index, ignored, args.threads, args.filter, args.feature, args.bytecode);
     let results = runner.run(args.verbose);
 
     results.print_to_console(&test262_root);

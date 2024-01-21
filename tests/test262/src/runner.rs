@@ -12,7 +12,6 @@ use std::{
 use crate::{
     ignored::IgnoredIndex,
     index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
-    test_262_object::Test262Object,
     utils::GenericResult,
 };
 
@@ -20,8 +19,11 @@ use brimstone::js::{
     self,
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
-        eval_module, eval_script, get, initialize_host_defined_realm, to_console_string, to_string,
-        Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
+        bytecode::{function::Closure, generator::BytecodeProgramGenerator},
+        eval_module, eval_script, get, initialize_host_defined_realm,
+        test_262_object::Test262Object,
+        to_console_string, to_string, Completion, CompletionKind, Context, EvalResult, Handle,
+        Realm, Value,
     },
 };
 
@@ -31,6 +33,7 @@ pub struct TestRunner {
     thread_pool: ThreadPool,
     filter: Option<String>,
     feature: Option<String>,
+    bytecode: bool,
 }
 
 // Runner threads have an 8MB stack
@@ -43,18 +46,20 @@ impl TestRunner {
         num_threads: u8,
         filter: Option<String>,
         feature: Option<String>,
+        bytecode: bool,
     ) -> TestRunner {
         let thread_pool = threadpool::Builder::new()
             .num_threads(num_threads.into())
             .thread_stack_size(RUNNER_THREAD_STACK_SIZE)
             .build();
-        TestRunner { index, ignored, thread_pool, filter, feature }
+        TestRunner { index, ignored, thread_pool, filter, feature, bytecode }
     }
 
     pub fn run(&mut self, verbose: bool) -> TestResults {
         let (sender, receiver) = channel::<TestResult>();
         let mut num_jobs = 0;
         let mut num_skipped = 0;
+        let bytecode = self.bytecode;
 
         let all_tests_start_timestamp = SystemTime::now();
 
@@ -79,7 +84,7 @@ impl TestRunner {
                         println!("{i}: {}", test.path);
                     }
 
-                    run_full_test(&test, &test262_root, start_timestamp)
+                    run_full_test(&test, &test262_root, start_timestamp, bytecode)
                 });
 
                 let duration = start_timestamp.elapsed().unwrap();
@@ -134,17 +139,25 @@ impl TestRunner {
     }
 }
 
-fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -> TestResult {
+fn run_full_test(
+    test: &Test,
+    test262_root: &str,
+    start_timestamp: SystemTime,
+    bytecode: bool,
+) -> TestResult {
     match test.mode {
-        TestMode::StrictScript => run_single_test(test, test262_root, true, start_timestamp),
+        TestMode::StrictScript => {
+            run_single_test(test, test262_root, true, start_timestamp, bytecode)
+        }
         TestMode::NonStrictScript | TestMode::Module | TestMode::Raw => {
-            run_single_test(test, test262_root, false, start_timestamp)
+            run_single_test(test, test262_root, false, start_timestamp, bytecode)
         }
         // Run in both strict and non strict mode, both must pass for this test to be successful
         TestMode::Script => {
-            let non_strict_result = run_single_test(test, test262_root, false, start_timestamp);
+            let non_strict_result =
+                run_single_test(test, test262_root, false, start_timestamp, bytecode);
             if let TestResultCompletion::Success = non_strict_result.result {
-                run_single_test(test, test262_root, true, start_timestamp)
+                run_single_test(test, test262_root, true, start_timestamp, bytecode)
             } else {
                 non_strict_result
             }
@@ -157,9 +170,16 @@ fn run_single_test(
     test262_root: &str,
     force_strict_mode: bool,
     start_timestamp: SystemTime,
+    bytecode: bool,
 ) -> TestResult {
+    // Set up options
+    let options = {
+        let mut options = Options::default();
+        options.bytecode = bytecode;
+        Rc::new(options)
+    };
+
     // Each test is executed in its own realm
-    let options = Rc::new(Options::default());
     let (cx, realm) = Context::new(options, |cx| {
         // Allocate the realm's built-ins in the permanent heap
         initialize_host_defined_realm(cx, false)
@@ -237,10 +257,14 @@ fn run_single_test(
             }
         }
 
-        let completion = if test.mode == TestMode::Module {
-            eval_module(cx, Rc::new(ast_and_source.0), realm)
+        let completion = if bytecode {
+            execute_as_bytecode(cx, &ast_and_source.0)
         } else {
-            eval_script(cx, Rc::new(ast_and_source.0), realm)
+            if test.mode == TestMode::Module {
+                eval_module(cx, Rc::new(ast_and_source.0), realm)
+            } else {
+                eval_script(cx, Rc::new(ast_and_source.0), realm)
+            }
         };
 
         let duration = start_timestamp.elapsed().unwrap();
@@ -290,7 +314,11 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
     js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)
         .expect(&format!("Failed to prse test harness file {}", full_path.display()));
 
-    let eval_result = eval_script(cx, Rc::new(ast_and_source.0), realm);
+    let eval_result = if cx.options.bytecode {
+        execute_as_bytecode(cx, &ast_and_source.0)
+    } else {
+        eval_script(cx, Rc::new(ast_and_source.0), realm)
+    };
 
     match eval_result.kind() {
         CompletionKind::Normal => {}
@@ -301,6 +329,27 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
             "Unexpected abnormal completion when evaluating test harness file {}",
             full_path.display()
         ),
+    }
+}
+
+fn execute_as_bytecode(
+    mut cx: Context,
+    parse_result: &js::parser::parser::ParseProgramResult,
+) -> Completion {
+    let bytecode_program =
+        match BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result) {
+            Ok(bytecode_program) => bytecode_program,
+            Err(err) => {
+                let err_string = cx.alloc_string(&err.to_string());
+                return Completion::throw(err_string.into());
+            }
+        };
+
+    let closure = Closure::new(cx, bytecode_program);
+
+    match cx.execute_bytecode(closure, &[]) {
+        Ok(value) => Completion::normal(value),
+        Err(error_value) => Completion::throw(error_value),
     }
 }
 

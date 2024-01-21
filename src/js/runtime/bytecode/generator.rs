@@ -610,7 +610,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         match expr {
-            ast::Expression::Id(expr) => self.gen_identifier_expression(expr, dest),
+            ast::Expression::Id(expr) => self.gen_load_identifier(expr, dest),
             ast::Expression::Null(_) => self.gen_null_literal_expression(dest),
             ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr, dest),
@@ -649,7 +649,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_expression_with_dest(expr, ExprDest::Any)
     }
 
-    fn gen_identifier_expression(
+    fn gen_load_identifier(
         &mut self,
         id: &ast::Identifier,
         dest: ExprDest,
@@ -878,7 +878,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return self.gen_number_literal(number_expr.value, dest);
         }
 
-        // Otherwis generate a ToNumber instruction
+        // Otherwise generate a ToNumber instruction
         let argument = self.gen_expression(&expr.argument)?;
         self.register_allocator.release(argument);
 
@@ -1186,19 +1186,50 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match expr.left.as_ref() {
             ast::Pattern::Id(id) => {
                 // Right side expression is only named (meaning name is used for anonymous functions
-                // and classes) if the id is simple and not parenthesized.
-                let is_non_parenthesized_id_predicate = || id.loc.start == expr.loc.start;
+                // and classes) if it is a simple id assignment and id is not parenthesized.
+                let is_non_parenthesized_id_predicate = || {
+                    id.loc.start == expr.loc.start
+                        && expr.operator == ast::AssignmentOperator::Equals
+                };
 
-                let right_value_dest = self.expr_dest_for_id(id);
-                let right_value = self.gen_named_expression_if(
-                    id,
-                    &expr.right,
-                    right_value_dest,
-                    is_non_parenthesized_id_predicate,
-                )?;
+                let stored_value_dest = self.expr_dest_for_id(id);
 
-                self.gen_store_identifier(id, right_value)?;
-                self.gen_mov_reg_to_dest(right_value, dest)
+                let stored_value = if expr.operator == ast::AssignmentOperator::Equals {
+                    // For simple assignments, right hand side is placed directly in the dest
+                    // register.
+                    self.gen_named_expression_if(
+                        id,
+                        &expr.right,
+                        stored_value_dest,
+                        is_non_parenthesized_id_predicate,
+                    )?
+                } else {
+                    // For operator assignments the old value and right value are loaded to
+                    // temporary registers, with only the result placed in the dest.
+                    let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+                    let right_value = self.gen_named_expression_if(
+                        id,
+                        &expr.right,
+                        ExprDest::Any,
+                        is_non_parenthesized_id_predicate,
+                    )?;
+
+                    self.register_allocator.release(right_value);
+                    self.register_allocator.release(old_value);
+                    let stored_value = self.allocate_destination(stored_value_dest)?;
+
+                    self.gen_assignment_operator(
+                        expr.operator,
+                        stored_value,
+                        old_value,
+                        right_value,
+                    );
+
+                    stored_value
+                };
+
+                self.gen_store_identifier(id, stored_value)?;
+                self.gen_mov_reg_to_dest(stored_value, dest)
             }
             ast::Pattern::Reference(ast::Expression::Member(
                 member @ ast::MemberExpression { object, .. },
@@ -1214,18 +1245,29 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let dest = self.allocate_destination(dest)?;
 
                 let object = self.gen_expression(&object)?;
-                let right_value =
-                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
 
                 // Must be a named access
                 let name = member.property.to_id();
                 let name_constant_index = self.add_string_constant(&name.name)?;
 
-                self.writer.set_named_property_instruction(
-                    object,
-                    name_constant_index,
-                    right_value,
-                );
+                if expr.operator == ast::AssignmentOperator::Equals {
+                    // For simple assignments, right hand side is placed directly in the dest
+                    // register.
+                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+                } else {
+                    // For operator assignments the old value is placed in the dest register, then
+                    // overwritten with the result of the operator.
+                    self.writer
+                        .get_named_property_instruction(dest, object, name_constant_index);
+                    let right_value = self.gen_expression(&expr.right)?;
+
+                    self.gen_assignment_operator(expr.operator, dest, dest, right_value);
+
+                    self.register_allocator.release(right_value);
+                }
+
+                self.writer
+                    .set_named_property_instruction(object, name_constant_index, dest);
                 self.register_allocator.release(object);
 
                 Ok(dest)
@@ -1236,6 +1278,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
             }
+        }
+    }
+
+    fn gen_assignment_operator(
+        &mut self,
+        operator: ast::AssignmentOperator,
+        dest: GenRegister,
+        left: GenRegister,
+        right: GenRegister,
+    ) {
+        match operator {
+            ast::AssignmentOperator::Add => self.writer.add_instruction(dest, left, right),
+            ast::AssignmentOperator::Subtract => self.writer.sub_instruction(dest, left, right),
+            ast::AssignmentOperator::Multiply => self.writer.mul_instruction(dest, left, right),
+            ast::AssignmentOperator::Divide => self.writer.div_instruction(dest, left, right),
+            ast::AssignmentOperator::Remainder => self.writer.rem_instruction(dest, left, right),
+            ast::AssignmentOperator::Exponent => self.writer.exp_instruction(dest, left, right),
+            _ => unimplemented!("bytecode for assignment operator"),
         }
     }
 

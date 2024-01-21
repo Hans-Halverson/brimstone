@@ -12,8 +12,18 @@
     27: StoreGlobal r0, c8
     30: NewClosure r0, c9
     33: StoreGlobal r0, c10
-    36: LoadUndefined r0
-    38: Ret r0
+    36: NewClosure r0, c11
+    39: StoreGlobal r0, c12
+    42: NewClosure r0, c13
+    45: StoreGlobal r0, c14
+    48: NewClosure r0, c15
+    51: StoreGlobal r0, c16
+    54: NewClosure r0, c17
+    57: StoreGlobal r0, c18
+    60: NewClosure r0, c19
+    63: StoreGlobal r0, c20
+    66: LoadUndefined r0
+    68: Ret r0
   Constant Table:
     0: [String: global]
     1: [BytecodeFunction: use]
@@ -26,6 +36,16 @@
     8: [String: testMemberAssign]
     9: [BytecodeFunction: named]
     10: [String: named]
+    11: [BytecodeFunction: operatorIdAssign]
+    12: [String: operatorIdAssign]
+    13: [BytecodeFunction: operatorIdAssignReturnValue]
+    14: [String: operatorIdAssignReturnValue]
+    15: [BytecodeFunction: operatorIdAllOperators]
+    16: [String: operatorIdAllOperators]
+    17: [BytecodeFunction: operatorMemberAssign]
+    18: [String: operatorMemberAssign]
+    19: [BytecodeFunction: operatorMemberAllOperators]
+    20: [String: operatorMemberAllOperators]
 }
 
 [BytecodeFunction: use] {
@@ -101,11 +121,18 @@
      0: LoadImmediate r0, 1
      3: NewClosure r0, c0
      6: NewClosure r0, c1
-     9: LoadUndefined r1
-    11: Ret r1
+     9: NewClosure r1, c3
+    12: SetNamedProperty r0, c2, r1
+    16: NewClosure r1, c4
+    19: Add r0, r0, r1
+    23: LoadUndefined r1
+    25: Ret r1
   Constant Table:
     0: [BytecodeFunction: x]
     1: [BytecodeFunction: <anonymous>]
+    2: [String: foo]
+    3: [BytecodeFunction: <anonymous>]
+    4: [BytecodeFunction: <anonymous>]
 }
 
 [BytecodeFunction: x] {
@@ -118,4 +145,147 @@
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: operatorIdAssign] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 2
+     3: LoadImmediate r1, 3
+     6: Add a0, a0, r1
+    10: LoadImmediate r1, 4
+    13: Add r0, r0, r1
+    17: LoadGlobal r1, c0
+    20: LoadImmediate r2, 5
+    23: Add r1, r1, r2
+    27: StoreGlobal r1, c0
+    30: LoadUndefined r1
+    32: Ret r1
+  Constant Table:
+    0: [String: global]
+}
+
+[BytecodeFunction: operatorIdAssignReturnValue] {
+  Parameters: 1, Registers: 4
+     0: LoadImmediate r0, 2
+     3: LoadGlobal r1, c0
+     6: LoadImmediate r2, 3
+     9: Add a0, a0, r2
+    13: Mov r2, a0
+    16: Call r1, r1, r2, 1
+    21: LoadGlobal r1, c0
+    24: LoadImmediate r2, 4
+    27: Add r0, r0, r2
+    31: Mov r2, r0
+    34: Call r1, r1, r2, 1
+    39: LoadGlobal r1, c0
+    42: LoadGlobal r2, c1
+    45: LoadImmediate r3, 5
+    48: Add r2, r2, r3
+    52: StoreGlobal r2, c1
+    55: Call r1, r1, r2, 1
+    60: LoadGlobal r1, c1
+    63: LoadImmediate r2, 6
+    66: Add r1, r1, r2
+    70: StoreGlobal r1, c1
+    73: Add a0, a0, r1
+    77: Add r0, r0, a0
+    81: LoadUndefined r1
+    83: Ret r1
+  Constant Table:
+    0: [String: use]
+    1: [String: global]
+}
+
+[BytecodeFunction: operatorIdAllOperators] {
+  Parameters: 1, Registers: 1
+     0: LoadImmediate r0, 1
+     3: Add a0, a0, r0
+     7: LoadImmediate r0, 2
+    10: Sub a0, a0, r0
+    14: LoadImmediate r0, 3
+    17: Mul a0, a0, r0
+    21: LoadImmediate r0, 4
+    24: Div a0, a0, r0
+    28: LoadImmediate r0, 5
+    31: Rem a0, a0, r0
+    35: LoadImmediate r0, 6
+    38: Exp a0, a0, r0
+    42: LoadUndefined r0
+    44: Ret r0
+}
+
+[BytecodeFunction: operatorMemberAssign] {
+  Parameters: 1, Registers: 3
+     0: GetNamedProperty r0, a0, c0
+     4: LoadImmediate r1, 1
+     7: Add r0, r0, r1
+    11: SetNamedProperty a0, c0, r0
+    15: LoadGlobal r0, c1
+    18: GetNamedProperty r1, a0, c0
+    22: LoadImmediate r2, 2
+    25: Add r1, r1, r2
+    29: SetNamedProperty a0, c0, r1
+    33: Call r0, r0, r1, 1
+    38: GetNamedProperty r0, a0, c0
+    42: GetNamedProperty r1, a0, c2
+    46: LoadImmediate r2, 3
+    49: Add r1, r1, r2
+    53: SetNamedProperty a0, c2, r1
+    57: Add r0, r0, r1
+    61: SetNamedProperty a0, c0, r0
+    65: LoadGlobal r0, c1
+    68: GetNamedProperty r1, a0, c0
+    72: Add r1, r1, a0
+    76: SetNamedProperty a0, c0, r1
+    80: Call r0, r0, r1, 1
+    85: LoadUndefined r0
+    87: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: use]
+    2: [String: bar]
+}
+
+[BytecodeFunction: operatorMemberAllOperators] {
+  Parameters: 1, Registers: 2
+     0: GetNamedProperty r0, a0, c0
+     4: LoadImmediate r1, 1
+     7: Add r0, r0, r1
+    11: SetNamedProperty a0, c0, r0
+    15: GetNamedProperty r0, a0, c0
+    19: LoadImmediate r1, 2
+    22: Sub r0, r0, r1
+    26: SetNamedProperty a0, c0, r0
+    30: GetNamedProperty r0, a0, c0
+    34: LoadImmediate r1, 3
+    37: Mul r0, r0, r1
+    41: SetNamedProperty a0, c0, r0
+    45: GetNamedProperty r0, a0, c0
+    49: LoadImmediate r1, 4
+    52: Div r0, r0, r1
+    56: SetNamedProperty a0, c0, r0
+    60: GetNamedProperty r0, a0, c0
+    64: LoadImmediate r1, 5
+    67: Rem r0, r0, r1
+    71: SetNamedProperty a0, c0, r0
+    75: GetNamedProperty r0, a0, c0
+    79: LoadImmediate r1, 6
+    82: Exp r0, r0, r1
+    86: SetNamedProperty a0, c0, r0
+    90: LoadUndefined r0
+    92: Ret r0
+  Constant Table:
+    0: [String: foo]
 }

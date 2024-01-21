@@ -59,6 +59,12 @@
     110: LoadImmediate r0, 9
     113: Ret r0
   .L8:
-    115: LoadUndefined r0
-    117: Ret r0
+    115: LoadImmediate r0, 1
+    118: LogNot r0, r0
+    121: JumpFalse r0, 8 (.L9)
+    124: LoadImmediate r0, 10
+    127: Ret r0
+  .L9:
+    129: LoadUndefined r0
+    131: Ret r0
 }

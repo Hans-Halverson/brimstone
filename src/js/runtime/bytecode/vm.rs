@@ -34,11 +34,11 @@ use super::{
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
         LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, LooseEqualInstruction, LooseNotEqualInstruction, MovInstruction,
-        MulInstruction, NegInstruction, NewClosureInstruction, OpCode, RemInstruction,
-        RetInstruction, SetNamedPropertyInstruction, StoreGlobalInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, TypeOfInstruction,
+        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
+        NewClosureInstruction, OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
+        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction, ToNumberInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -308,6 +308,7 @@ impl VM {
                             execute_greater_than_or_equal
                         ),
                         OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
+                        OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
                         OpCode::ToNumber => {
                             dispatch_or_throw!(ToNumberInstruction, execute_to_number)
@@ -1447,6 +1448,13 @@ impl VM {
         self.write_register(dest, result.get());
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_log_not<W: Width>(&mut self, instr: &LogNotInstruction<W>) {
+        let value = self.read_register(instr.value());
+        let result = Value::bool(!to_boolean(value));
+        self.write_register(instr.dest(), result);
     }
 
     #[inline]

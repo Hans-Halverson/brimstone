@@ -407,8 +407,15 @@ define_instructions!(
         [2] right: Register,
     }
 
-    /// Negate a value, storing the result in dest.
+    /// Negate a value with number converstion `-ToNumber(value)`, storing the result in dest.
     Neg (NegInstruction, neg_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
+    /// Logical not of a value with boolean conversion `!ToBoolean(value)`, storing the result in
+    /// dest.
+    LogNot (LogNotInstruction, log_not_instruction) {
         [0] dest: Register,
         [1] value: Register,
     }

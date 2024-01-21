@@ -24,4 +24,8 @@ function test(x, y) {
   } else if (x >= 4) {
     return 9;
   }
+
+  if (!1) {
+    return 10;
+  }
 }

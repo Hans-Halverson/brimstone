@@ -1,23 +1,68 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: LoadImmediate r0, -1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: unaryMinus]
+    1: [String: unaryMinus]
+    2: [BytecodeFunction: unaryPlus]
+    3: [String: unaryPlus]
+    4: [BytecodeFunction: logicalNot]
+    5: [String: logicalNot]
+    6: [BytecodeFunction: _void]
+    7: [String: _void]
+}
+
+[BytecodeFunction: unaryMinus] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r1, -1
      3: LoadImmediate r0, 1
-     6: StoreGlobal r0, c0
+     6: Neg r1, r0
+     9: Neg r1, r0
+    12: Neg r1, r1
+    15: LoadUndefined r1
+    17: Ret r1
+}
+
+[BytecodeFunction: unaryPlus] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: LoadGlobal r0, c0
+     6: ToNumber r0, r0
      9: LoadGlobal r0, c0
-    12: Neg r0, r0
-    15: LoadGlobal r0, c0
-    18: Neg r0, r0
-    21: Neg r0, r0
-    24: LoadImmediate r0, 1
-    27: LoadGlobal r0, c0
-    30: ToNumber r0, r0
-    33: LoadGlobal r0, c0
-    36: ToNumber r0, r0
-    39: ToNumber r0, r0
-    42: LoadImmediate r0, 1
-    45: LoadUndefined r0
-    47: LoadUndefined r0
-    49: Ret r0
+    12: ToNumber r0, r0
+    15: ToNumber r0, r0
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
     0: [String: x]
+}
+
+[BytecodeFunction: logicalNot] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: LogNot r0, r0
+     6: LoadTrue r0
+     8: LogNot r0, r0
+    11: LoadFalse r0
+    13: LogNot r0, r0
+    16: LogNot r0, r0
+    19: LoadUndefined r0
+    21: Ret r0
+}
+
+[BytecodeFunction: _void] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: LoadUndefined r0
+    5: LoadUndefined r0
+    7: Ret r0
 }

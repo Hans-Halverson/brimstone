@@ -1,0 +1,42 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: testBasic]
+    1: [String: testBasic]
+    2: [BytecodeFunction: testBooleanTest]
+    3: [String: testBooleanTest]
+}
+
+[BytecodeFunction: testBasic] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+  .L0:
+     3: LoadImmediate r0, 2
+     6: JumpToBooleanFalse r0, 8 (.L1)
+     9: LoadImmediate r0, 3
+    12: Jump -9 (.L0)
+  .L1:
+    14: LoadImmediate r0, 4
+    17: LoadUndefined r0
+    19: Ret r0
+}
+
+[BytecodeFunction: testBooleanTest] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+  .L0:
+     3: LoadTrue r0
+     5: JumpFalse r0, 8 (.L1)
+     8: LoadImmediate r0, 2
+    11: Jump -8 (.L0)
+  .L1:
+    13: LoadImmediate r0, 3
+    16: LoadUndefined r0
+    18: Ret r0
+}

@@ -453,6 +453,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn write_jump_true_for_expression(
+        &mut self,
+        condition_expr: &ast::Expression,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        if self.evaluates_to_boolean(condition_expr) {
+            self.write_jump_true_instruction(condition, target_block)
+        } else {
+            self.write_jump_to_boolean_true_instruction(condition, target_block)
+        }
+    }
+
     fn write_jump_false_instruction(
         &mut self,
         condition: GenRegister,
@@ -485,6 +498,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(())
+    }
+
+    fn write_jump_false_for_expression(
+        &mut self,
+        condition_expr: &ast::Expression,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        if self.evaluates_to_boolean(condition_expr) {
+            self.write_jump_false_instruction(condition, target_block)
+        } else {
+            self.write_jump_to_boolean_false_instruction(condition, target_block)
+        }
     }
 
     fn write_mov_instruction(&mut self, dest: GenRegister, src: GenRegister) {
@@ -604,8 +630,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Switch(_) => unimplemented!("bytecode for switch statement"),
             ast::Statement::For(_) => unimplemented!("bytecode for for statement"),
             ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
-            ast::Statement::While(_) => unimplemented!("bytecode for while statement"),
-            ast::Statement::DoWhile(_) => unimplemented!("bytecode for do-while statement"),
+            ast::Statement::While(stmt) => self.gen_while_statement(stmt),
+            ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt),
             ast::Statement::With(_) => unimplemented!("bytecode for with statement"),
             ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
             ast::Statement::Throw(stmt) => self.gen_throw_statement(stmt),
@@ -1054,13 +1080,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let join_block = self.new_block();
 
         self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
-        let left_is_boolean = self.evaluates_to_boolean(&expr.left);
 
-        if left_is_boolean {
-            self.write_jump_false_instruction(dest, join_block)?;
-        } else {
-            self.write_jump_to_boolean_false_instruction(dest, join_block)?;
-        }
+        self.write_jump_false_for_expression(&expr.left, dest, join_block)?;
 
         self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
 
@@ -1077,13 +1098,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let join_block = self.new_block();
 
         self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
-        let left_is_boolean = self.evaluates_to_boolean(&expr.left);
 
-        if left_is_boolean {
-            self.write_jump_true_instruction(dest, join_block)?;
-        } else {
-            self.write_jump_to_boolean_true_instruction(dest, join_block)?;
-        }
+        self.write_jump_true_for_expression(&expr.left, dest, join_block)?;
 
         self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
 
@@ -1101,13 +1117,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Emit test expression and proceed to the correct block
         let test = self.gen_expression(&expr.test)?;
-        let test_is_boolean = self.evaluates_to_boolean(&expr.test);
-
-        if test_is_boolean {
-            self.write_jump_false_instruction(test, altern_block)?;
-        } else {
-            self.write_jump_to_boolean_false_instruction(test, altern_block)?;
-        }
+        self.write_jump_false_for_expression(&expr.test, test, altern_block)?;
 
         // Both branches place their result in the same destination register
         self.register_allocator.release(test);
@@ -1597,17 +1607,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let condition = self.gen_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
-        let condition_is_boolean = self.evaluates_to_boolean(&stmt.test);
-
         if stmt.altern.is_none() {
             let join_block = self.new_block();
 
             // If there is no alternative, branch between consequent and join block
-            if condition_is_boolean {
-                self.write_jump_false_instruction(condition, join_block)?;
-            } else {
-                self.write_jump_to_boolean_false_instruction(condition, join_block)?;
-            }
+            self.write_jump_false_for_expression(&stmt.test, condition, join_block)?;
 
             self.gen_statement(&stmt.conseq)?;
             self.start_block(join_block);
@@ -1621,11 +1625,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // If there is an alternative, branch between consequent and alternative blocks before
             // joining at the join block.
-            if condition_is_boolean {
-                self.write_jump_false_instruction(condition, altern_block)?;
-            } else {
-                self.write_jump_to_boolean_false_instruction(condition, altern_block)?;
-            }
+            self.write_jump_false_for_expression(&stmt.test, condition, altern_block)?;
 
             let conseq_completion = self.gen_statement(&stmt.conseq)?;
             if !conseq_completion.is_abrupt() {
@@ -1689,6 +1689,51 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(return_arg);
 
         Ok(())
+    }
+
+    fn gen_while_statement(&mut self, stmt: &ast::WhileStatement) -> EmitResult<StmtCompletion> {
+        let loop_start_block = self.new_block();
+        let join_block = self.new_block();
+
+        // Evaluate test and either continue to body or break out of loop
+        self.start_block(loop_start_block);
+        let test = self.gen_expression(&stmt.test)?;
+        self.register_allocator.release(test);
+
+        self.write_jump_false_for_expression(&stmt.test, test, join_block)?;
+
+        self.gen_statement(&stmt.body)?;
+
+        // Always jump back to the condition at the start of the loop
+        self.write_jump_instruction(loop_start_block)?;
+
+        self.start_block(join_block);
+
+        // Normal completion since there is always the test false path that skips the loop entirely
+        Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_do_while_statement(
+        &mut self,
+        stmt: &ast::DoWhileStatement,
+    ) -> EmitResult<StmtCompletion> {
+        let loop_start_block = self.new_block();
+        let join_block = self.new_block();
+
+        // Execute the body at the start of the loop
+        self.start_block(loop_start_block);
+        self.gen_statement(&stmt.body)?;
+
+        // Then evaluate test and either break out of loop or continue to next iteration
+        let test = self.gen_expression(&stmt.test)?;
+        self.register_allocator.release(test);
+        self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
+
+        self.start_block(join_block);
+
+        // Normal completion since even with an abnormal body there might be a continue statement
+        // that proceeds past the loop.
+        Ok(StmtCompletion::Normal)
     }
 
     fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {

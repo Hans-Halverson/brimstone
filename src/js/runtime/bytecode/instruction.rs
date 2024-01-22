@@ -5,7 +5,7 @@ use std::{
 
 use super::{
     operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
-    width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
+    width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum},
     writer::BytecodeWriter,
 };
 
@@ -20,7 +20,7 @@ pub trait Instruction: fmt::Display {
 
     /// Return a raw operand at the given index. The operand is extended to a usize, though may
     /// actually represent a smaller or unsigned integer.
-    fn get_raw_operand(&self, index: usize) -> usize;
+    fn get_raw_operand_signed(&self, index: usize) -> isize;
 
     /// Total length in bytes of this instruction's operands. Does not include the opcode or width
     /// prefix.
@@ -92,8 +92,8 @@ macro_rules! define_instructions {
                 }
 
                 #[inline]
-                fn get_raw_operand(&self, index: usize) -> usize {
-                    self.0[index].to_usize()
+                fn get_raw_operand_signed(&self, index: usize) -> isize {
+                    self.0[index].as_signed().to_isize()
                 }
             }
 
@@ -761,9 +761,9 @@ fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
     let opcode = instr.opcode();
 
     if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
-        Some(instr.get_raw_operand(0) as isize)
+        Some(instr.get_raw_operand_signed(0))
     } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpToBooleanFalseConstant {
-        Some(instr.get_raw_operand(1) as isize)
+        Some(instr.get_raw_operand_signed(1))
     } else {
         None
     }

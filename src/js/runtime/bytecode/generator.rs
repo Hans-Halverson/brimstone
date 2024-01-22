@@ -628,7 +628,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
             ast::Statement::Switch(_) => unimplemented!("bytecode for switch statement"),
-            ast::Statement::For(_) => unimplemented!("bytecode for for statement"),
+            ast::Statement::For(stmt) => self.gen_for_statement(stmt),
             ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
             ast::Statement::While(stmt) => self.gen_while_statement(stmt),
             ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt),
@@ -1680,6 +1680,49 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(return_arg);
 
         Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_for_statement(&mut self, stmt: &ast::ForStatement) -> EmitResult<StmtCompletion> {
+        let loop_start_block = self.new_block();
+        let join_block = self.new_block();
+
+        // Evaluate the init expression once before loop starts
+        match stmt.init.as_deref() {
+            Some(ast::ForInit::VarDecl(var_decl)) => {
+                self.gen_variable_declaration(var_decl)?;
+            }
+            Some(ast::ForInit::Expression(expr)) => {
+                let result = self.gen_expression(expr)?;
+                self.register_allocator.release(result);
+            }
+            None => {}
+        }
+
+        self.start_block(loop_start_block);
+
+        // Evaluate the test expression and either continue to body or break out of loop
+        if let Some(test_expr) = stmt.test.as_deref() {
+            let test = self.gen_expression(test_expr)?;
+            self.register_allocator.release(test);
+
+            self.write_jump_false_for_expression(test_expr, test, join_block)?;
+        }
+
+        // Evaluate the loop body
+        self.gen_statement(&stmt.body)?;
+
+        // Evaluate the update expression and return to the beginning of the loop
+        if let Some(update_expr) = stmt.update.as_deref() {
+            let update = self.gen_expression(update_expr)?;
+            self.register_allocator.release(update);
+        }
+
+        self.write_jump_instruction(loop_start_block)?;
+
+        self.start_block(join_block);
+
+        // Normal completion since there is always the test false path that skips the loop entirely
+        Ok(StmtCompletion::Normal)
     }
 
     fn gen_return_undefined(&mut self) -> EmitResult<()> {

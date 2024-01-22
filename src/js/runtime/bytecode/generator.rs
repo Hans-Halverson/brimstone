@@ -662,7 +662,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
-            ast::Expression::Sequence(_) => unimplemented!("bytecode for sequence expressions"),
+            ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
             ast::Expression::Array(_) => unimplemented!("bytecode for array literals"),
             ast::Expression::Object(_) => unimplemented!("bytecode for object literals"),
             ast::Expression::Function(expr) => self.gen_function_expression(expr, None, dest),
@@ -1225,6 +1225,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .construct_instruction(dest, callee, callee, argv, argc);
 
         Ok(dest)
+    }
+
+    fn gen_sequence_expression(
+        &mut self,
+        expr: &ast::SequenceExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // All expressions except the last are evaluated for side effects only
+        for i in 0..expr.expressions.len() - 1 {
+            let result = self.gen_expression(&expr.expressions[i])?;
+            self.register_allocator.release(result);
+        }
+
+        // Value of the last expression is value of the entire sequence expression
+        self.gen_expression_with_dest(expr.expressions.last().unwrap(), dest)
     }
 
     fn gen_member_expression(

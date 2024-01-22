@@ -517,6 +517,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
+        if func.is_async || func.is_generator {
+            unimplemented!("bytecode for async and generator functions")
+        }
+
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
                 let body_completion = self.gen_statement_list(&block_body.body)?;
@@ -579,7 +583,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let _ = self.gen_statement(stmt)?;
                 Ok(())
             }
-            _ => unimplemented!("bytecode for toplevel kind"),
+            ast::Toplevel::Import(_) => unimplemented!("bytecode for import declarations"),
+            ast::Toplevel::ExportDefault(_)
+            | ast::Toplevel::ExportNamed(_)
+            | ast::Toplevel::ExportAll(_) => unimplemented!("bytecode for export declarations"),
         }
     }
 
@@ -590,13 +597,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let result = match stmt {
             ast::Statement::VarDecl(var_decl) => self.gen_variable_declaration(var_decl),
             ast::Statement::FuncDecl(func_decl) => self.gen_function_declaraton(func_decl.as_ref()),
+            ast::Statement::ClassDecl(_) => unimplemented!("bytecode for class declaration"),
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
-            ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
+            ast::Statement::Switch(_) => unimplemented!("bytecode for switch statement"),
+            ast::Statement::For(_) => unimplemented!("bytecode for for statement"),
+            ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
+            ast::Statement::While(_) => unimplemented!("bytecode for while statement"),
+            ast::Statement::DoWhile(_) => unimplemented!("bytecode for do-while statement"),
+            ast::Statement::With(_) => unimplemented!("bytecode for with statement"),
             ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
             ast::Statement::Throw(stmt) => self.gen_throw_statement(stmt),
-            _ => unimplemented!("bytecode for statement kind"),
+            ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
+            ast::Statement::Break(_) => unimplemented!("bytecode for break statement"),
+            ast::Statement::Continue(_) => unimplemented!("bytecode for continue statement"),
+            ast::Statement::Labeled(_) => unimplemented!("bytecode for labeled statement"),
+            // Intentionally ignored as there is no runtime effect
+            ast::Statement::Empty(_) | ast::Statement::Debugger(_) => Ok(StmtCompletion::Normal),
         };
 
         debug_assert!(self.register_allocator.is_empty());
@@ -612,9 +630,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match expr {
             ast::Expression::Id(expr) => self.gen_load_identifier(expr, dest),
             ast::Expression::Null(_) => self.gen_null_literal_expression(dest),
-            ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr, dest),
+            ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
+            ast::Expression::BigInt(_) => unimplemented!("bytecode for bigint literals"),
+            ast::Expression::RegExp(_) => unimplemented!("bytecode for regexp literals"),
             ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
                 ast::UnaryOperator::Plus => self.gen_unary_plus_expression(expr, dest),
@@ -633,15 +653,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     unimplemented!("bytecode for nullish coalescing operator")
                 }
             },
+            ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
+            ast::Expression::Update(_) => unimplemented!("bytecode for update expressions"),
+            ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
+            ast::Expression::Chain(_) => unimplemented!("bytecode for optional chain expressions"),
+            ast::Expression::Conditional(_) => {
+                unimplemented!("bytecode for conditional expressions")
+            }
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
-            ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
-            ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
+            ast::Expression::Sequence(_) => unimplemented!("bytecode for sequence expressions"),
+            ast::Expression::Array(_) => unimplemented!("bytecode for array literals"),
+            ast::Expression::Object(_) => unimplemented!("bytecode for object literals"),
             ast::Expression::Function(expr) => self.gen_function_expression(expr, None, dest),
             ast::Expression::ArrowFunction(expr) => {
                 self.gen_arrow_function_expression(expr, None, dest)
             }
-            _ => unimplemented!("bytecode for expression kind"),
+            ast::Expression::Class(_) => unimplemented!("bytecode for class expressions"),
+            ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
+            ast::Expression::Yield(_) => unimplemented!("bytecode for yield expressions"),
+            ast::Expression::SuperMember(_) => {
+                unimplemented!("bytecode for super member expressions")
+            }
+            ast::Expression::SuperCall(_) => unimplemented!("bytecode for super call expressions"),
+            ast::Expression::Template(_) => unimplemented!("bytecode for template literals"),
+            ast::Expression::TaggedTemplate(_) => {
+                unimplemented!("bytecode for tagged template expressions")
+            }
+            ast::Expression::MetaProperty(_) => unimplemented!("bytecode for meta property"),
+            ast::Expression::Import(_) => unimplemented!("bytecode for import expressions"),
         }
     }
 
@@ -995,7 +1035,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::BinaryOperator::ShiftRightLogical => self
                 .writer
                 .shift_right_logical_instruction(dest, left, right),
-            _ => unimplemented!("Cannot generate bytecode for binary operator"),
+            ast::BinaryOperator::In => unimplemented!("bytecode for `in` expression"),
+            ast::BinaryOperator::InPrivate => {
+                unimplemented!("bytecode for private `in` expression")
+            }
+            ast::BinaryOperator::InstanceOf => {
+                unimplemented!("bytecode for `instanceof` expression")
+            }
         }
 
         Ok(dest)

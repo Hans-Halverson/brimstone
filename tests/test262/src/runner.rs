@@ -100,7 +100,8 @@ impl TestRunner {
                         };
 
                         let result = if ignore_async_generator
-                            && message == "not implemented: async and generator functions"
+                            && (message == "not implemented: async and generator functions"
+                             || message == "not implemented: bytecode for async and generator functions")
                         {
                             TestResult::skipped(&test)
                         } else {
@@ -258,7 +259,11 @@ fn run_single_test(
         }
 
         let completion = if bytecode {
-            execute_as_bytecode(cx, &ast_and_source.0)
+            if test.mode == TestMode::Module {
+                unimplemented!("module evaluation")
+            } else {
+                execute_as_bytecode(cx, &ast_and_source.0)
+            }
         } else {
             if test.mode == TestMode::Module {
                 eval_module(cx, Rc::new(ast_and_source.0), realm)

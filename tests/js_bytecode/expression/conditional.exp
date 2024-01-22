@@ -1,0 +1,70 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: testBasic]
+    1: [String: testBasic]
+    2: [BytecodeFunction: testBooleanCondition]
+    3: [String: testBooleanCondition]
+}
+
+[BytecodeFunction: testBasic] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r0, 1
+     3: JumpToBooleanFalse r0, 8 (.L0)
+     6: LoadImmediate r0, 2
+     9: Jump 5 (.L1)
+  .L0:
+    11: LoadImmediate r0, 3
+  .L1:
+    14: LoadImmediate r0, 1
+    17: LoadImmediate r1, 2
+    20: Add r0, r0, r1
+    24: JumpToBooleanFalse r0, 15 (.L2)
+    27: LoadImmediate r1, 3
+    30: LoadImmediate r2, 4
+    33: Add r0, r1, r2
+    37: Jump 12 (.L3)
+  .L2:
+    39: LoadImmediate r1, 5
+    42: LoadImmediate r2, 6
+    45: Add r0, r1, r2
+  .L3:
+    49: LoadGlobal r0, c0
+    52: LoadImmediate r1, 1
+    55: JumpToBooleanFalse r1, 15 (.L4)
+    58: LoadImmediate r2, 2
+    61: LoadImmediate r3, 3
+    64: Add r1, r2, r3
+    68: Jump 19 (.L5)
+  .L4:
+    70: LoadImmediate r2, 4
+    73: LoadImmediate r3, 5
+    76: Add r2, r2, r3
+    80: LoadImmediate r3, 6
+    83: Add r1, r2, r3
+  .L5:
+    87: Call r0, r0, r1, 1
+    92: LoadUndefined r0
+    94: Ret r0
+  Constant Table:
+    0: [String: use]
+}
+
+[BytecodeFunction: testBooleanCondition] {
+  Parameters: 0, Registers: 1
+     0: LoadTrue r0
+     2: JumpFalse r0, 8 (.L0)
+     5: LoadImmediate r0, 1
+     8: Jump 5 (.L1)
+  .L0:
+    10: LoadImmediate r0, 2
+  .L1:
+    13: LoadUndefined r0
+    15: Ret r0
+}

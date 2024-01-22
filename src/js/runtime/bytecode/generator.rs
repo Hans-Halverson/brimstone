@@ -657,9 +657,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Update(_) => unimplemented!("bytecode for update expressions"),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             ast::Expression::Chain(_) => unimplemented!("bytecode for optional chain expressions"),
-            ast::Expression::Conditional(_) => {
-                unimplemented!("bytecode for conditional expressions")
-            }
+            ast::Expression::Conditional(expr) => self.gen_conditional_expression(expr, dest),
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
@@ -1090,6 +1088,39 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
 
         self.start_block(join_block);
+        Ok(dest)
+    }
+
+    fn gen_conditional_expression(
+        &mut self,
+        expr: &ast::ConditionalExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let join_block = self.new_block();
+        let altern_block = self.new_block();
+
+        // Emit test expression and proceed to the correct block
+        let test = self.gen_expression(&expr.test)?;
+        let test_is_boolean = self.evaluates_to_boolean(&expr.test);
+
+        if test_is_boolean {
+            self.write_jump_false_instruction(test, altern_block)?;
+        } else {
+            self.write_jump_to_boolean_false_instruction(test, altern_block)?;
+        }
+
+        // Both branches place their result in the same destination register
+        self.register_allocator.release(test);
+        let dest = self.allocate_destination(dest)?;
+
+        self.gen_expression_with_dest(&expr.conseq, ExprDest::Fixed(dest))?;
+        self.write_jump_instruction(join_block)?;
+
+        self.start_block(altern_block);
+        self.gen_expression_with_dest(&expr.altern, ExprDest::Fixed(dest))?;
+
+        self.start_block(join_block);
+
         Ok(dest)
     }
 

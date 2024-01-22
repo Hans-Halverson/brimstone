@@ -346,6 +346,50 @@ define_instructions!(
         [2] right: Register,
     }
 
+    /// Bitwise and the two operands, storing the result in dest.
+    BitAnd (BitAndInstruction, bit_and_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Bitwise or the two operands, storing the result in dest.
+    BitOr (BitOrInstruction, bit_or_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Bitwise xor the two operands, storing the result in dest.
+    BitXor (BitXorInstruction, bit_xor_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Shift the left operand left by the right operand, storing the result in dest.
+    ShiftLeft (ShiftLeftInstruction, shift_left_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Shift the left operand right by the right operand, storing the result in dest. Extends the
+    /// highest bit of the left operand, preserving the sign of the left operand.
+    ShiftRightArithmetic (ShiftRightArithmeticInstruction, shift_right_arithmetic_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
+    /// Shift the left operand right by the right operand, storing the result in dest. New bits are
+    /// filled with zeroes.
+    ShiftRightLogical (ShiftRightLogicalInstruction, shift_right_logical_instruction) {
+        [0] dest: Register,
+        [1] left: Register,
+        [2] right: Register,
+    }
+
     /// Test if the two operands are loosely equal to each other (`==`), storing the result in dest.
     LooseEqual (LooseEqualInstruction, loose_equal_instruction) {
         [0] dest: Register,
@@ -416,6 +460,13 @@ define_instructions!(
     /// Logical not of a value with boolean conversion `!ToBoolean(value)`, storing the result in
     /// dest.
     LogNot (LogNotInstruction, log_not_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
+    /// Bitwise not of a value with integer conversion `~ToNumeric(value)`, storing the result in
+    /// dest.
+    BitNot (BitNotInstruction, bit_not_instruction) {
         [0] dest: Register,
         [1] value: Register,
     }

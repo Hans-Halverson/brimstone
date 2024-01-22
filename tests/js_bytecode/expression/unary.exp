@@ -8,8 +8,10 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadUndefined r0
-    26: Ret r0
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadUndefined r0
+    32: Ret r0
   Constant Table:
     0: [BytecodeFunction: unaryMinus]
     1: [String: unaryMinus]
@@ -17,8 +19,10 @@
     3: [String: unaryPlus]
     4: [BytecodeFunction: logicalNot]
     5: [String: logicalNot]
-    6: [BytecodeFunction: _void]
-    7: [String: _void]
+    6: [BytecodeFunction: bitwiseNot]
+    7: [String: bitwiseNot]
+    8: [BytecodeFunction: _void]
+    9: [String: _void]
 }
 
 [BytecodeFunction: unaryMinus] {
@@ -57,6 +61,17 @@
     16: LogNot r0, r0
     19: LoadUndefined r0
     21: Ret r0
+}
+
+[BytecodeFunction: bitwiseNot] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: BitNot r0, r0
+     6: LoadImmediate r0, 2
+     9: BitNot r0, r0
+    12: BitNot r0, r0
+    15: LoadUndefined r0
+    17: Ret r0
 }
 
 [BytecodeFunction: _void] {

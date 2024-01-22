@@ -5,9 +5,11 @@ use crate::{
         abstract_operations::set,
         error::type_error_,
         eval::expression::{
-            eval_add, eval_divide, eval_exponentiation, eval_greater_than,
-            eval_greater_than_or_equal, eval_less_than, eval_less_than_or_equal, eval_multiply,
-            eval_negate, eval_remainder, eval_subtract, eval_typeof,
+            eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
+            eval_divide, eval_exponentiation, eval_greater_than, eval_greater_than_or_equal,
+            eval_less_than, eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder,
+            eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
+            eval_typeof,
         },
         gc::{HandleScope, HeapVisitor},
         get,
@@ -25,11 +27,11 @@ use super::{
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        CallInstruction, CallWithReceiverInstruction, ConstructInstruction, DivInstruction,
-        ExpInstruction, GetNamedPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
+        CallWithReceiverInstruction, ConstructInstruction, DivInstruction, ExpInstruction,
+        GetNamedPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
@@ -37,6 +39,7 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewClosureInstruction, OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
         StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
         ThrowInstruction, ToNumberInstruction, TypeOfInstruction,
     },
@@ -290,6 +293,20 @@ impl VM {
                         OpCode::Div => dispatch_or_throw!(DivInstruction, execute_div),
                         OpCode::Rem => dispatch_or_throw!(RemInstruction, execute_rem),
                         OpCode::Exp => dispatch_or_throw!(ExpInstruction, execute_exp),
+                        OpCode::BitAnd => dispatch_or_throw!(BitAndInstruction, execute_bit_and),
+                        OpCode::BitOr => dispatch_or_throw!(BitOrInstruction, execute_bit_or),
+                        OpCode::BitXor => dispatch_or_throw!(BitXorInstruction, execute_bit_xor),
+                        OpCode::ShiftLeft => {
+                            dispatch_or_throw!(ShiftLeftInstruction, execute_shift_left)
+                        }
+                        OpCode::ShiftRightArithmetic => dispatch_or_throw!(
+                            ShiftRightArithmeticInstruction,
+                            execute_shift_right_arithmetic
+                        ),
+                        OpCode::ShiftRightLogical => dispatch_or_throw!(
+                            ShiftRightLogicalInstruction,
+                            execute_shift_right_logical
+                        ),
                         OpCode::LooseEqual => {
                             dispatch_or_throw!(LooseEqualInstruction, execute_loose_equal)
                         }
@@ -320,6 +337,7 @@ impl VM {
                         ),
                         OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
                         OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
+                        OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
                         OpCode::ToNumber => {
                             dispatch_or_throw!(ToNumberInstruction, execute_to_number)
@@ -1300,6 +1318,110 @@ impl VM {
     }
 
     #[inline]
+    fn execute_bit_and<W: Width>(&mut self, instr: &BitAndInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(eval_bitwise_and(self.cx, self.h1, self.h2));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_bit_or<W: Width>(&mut self, instr: &BitOrInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        // May allocate
+        let result = maybe!(eval_bitwise_or(self.cx, self.h1, self.h2));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_bit_xor<W: Width>(&mut self, instr: &BitXorInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        // May allocate
+        let result = maybe!(eval_bitwise_xor(self.cx, self.h1, self.h2));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_shift_left<W: Width>(&mut self, instr: &ShiftLeftInstruction<W>) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        // May allocate
+        let result = maybe!(eval_shift_left(self.cx, self.h1, self.h2));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_shift_right_arithmetic<W: Width>(
+        &mut self,
+        instr: &ShiftRightArithmeticInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        // May allocate
+        let result = maybe!(eval_shift_right_arithmetic(self.cx, self.h1, self.h2));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_shift_right_logical<W: Width>(
+        &mut self,
+        instr: &ShiftRightLogicalInstruction<W>,
+    ) -> EvalResult<()> {
+        let left_value = self.read_register(instr.left());
+        self.h1.replace(left_value);
+
+        let right_value = self.read_register(instr.right());
+        self.h2.replace(right_value);
+
+        // May allocate
+        let result = maybe!(eval_shift_right_logical(self.cx, self.h1, self.h2));
+
+        self.write_register(instr.dest(), result.get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_loose_equal<W: Width>(
         &mut self,
         instr: &LooseEqualInstruction<W>,
@@ -1466,6 +1588,21 @@ impl VM {
         let value = self.read_register(instr.value());
         let result = Value::bool(!to_boolean(value));
         self.write_register(instr.dest(), result);
+    }
+
+    #[inline]
+    fn execute_bit_not<W: Width>(&mut self, instr: &BitNotInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+        self.h1.replace(value);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(eval_bitwise_not(self.cx, self.h1));
+
+        self.write_register(dest, result.get());
+
+        ().into()
     }
 
     #[inline]

@@ -222,8 +222,20 @@
     31: Rem a0, a0, r0
     35: LoadImmediate r0, 6
     38: Exp a0, a0, r0
-    42: LoadUndefined r0
-    44: Ret r0
+    42: LoadImmediate r0, 7
+    45: BitAnd a0, a0, r0
+    49: LoadImmediate r0, 8
+    52: BitOr a0, a0, r0
+    56: LoadImmediate r0, 9
+    59: BitXor a0, a0, r0
+    63: LoadImmediate r0, 10
+    66: ShiftLeft a0, a0, r0
+    70: LoadImmediate r0, 11
+    73: ShiftRightArithmetic a0, a0, r0
+    77: LoadImmediate r0, 12
+    80: ShiftRightLogical a0, a0, r0
+    84: LoadUndefined r0
+    86: Ret r0
 }
 
 [BytecodeFunction: operatorMemberAssign] {
@@ -260,32 +272,56 @@
 
 [BytecodeFunction: operatorMemberAllOperators] {
   Parameters: 1, Registers: 2
-     0: GetNamedProperty r0, a0, c0
-     4: LoadImmediate r1, 1
-     7: Add r0, r0, r1
-    11: SetNamedProperty a0, c0, r0
-    15: GetNamedProperty r0, a0, c0
-    19: LoadImmediate r1, 2
-    22: Sub r0, r0, r1
-    26: SetNamedProperty a0, c0, r0
-    30: GetNamedProperty r0, a0, c0
-    34: LoadImmediate r1, 3
-    37: Mul r0, r0, r1
-    41: SetNamedProperty a0, c0, r0
-    45: GetNamedProperty r0, a0, c0
-    49: LoadImmediate r1, 4
-    52: Div r0, r0, r1
-    56: SetNamedProperty a0, c0, r0
-    60: GetNamedProperty r0, a0, c0
-    64: LoadImmediate r1, 5
-    67: Rem r0, r0, r1
-    71: SetNamedProperty a0, c0, r0
-    75: GetNamedProperty r0, a0, c0
-    79: LoadImmediate r1, 6
-    82: Exp r0, r0, r1
-    86: SetNamedProperty a0, c0, r0
-    90: LoadUndefined r0
-    92: Ret r0
+      0: GetNamedProperty r0, a0, c0
+      4: LoadImmediate r1, 1
+      7: Add r0, r0, r1
+     11: SetNamedProperty a0, c0, r0
+     15: GetNamedProperty r0, a0, c0
+     19: LoadImmediate r1, 2
+     22: Sub r0, r0, r1
+     26: SetNamedProperty a0, c0, r0
+     30: GetNamedProperty r0, a0, c0
+     34: LoadImmediate r1, 3
+     37: Mul r0, r0, r1
+     41: SetNamedProperty a0, c0, r0
+     45: GetNamedProperty r0, a0, c0
+     49: LoadImmediate r1, 4
+     52: Div r0, r0, r1
+     56: SetNamedProperty a0, c0, r0
+     60: GetNamedProperty r0, a0, c0
+     64: LoadImmediate r1, 5
+     67: Rem r0, r0, r1
+     71: SetNamedProperty a0, c0, r0
+     75: GetNamedProperty r0, a0, c0
+     79: LoadImmediate r1, 6
+     82: Exp r0, r0, r1
+     86: SetNamedProperty a0, c0, r0
+     90: GetNamedProperty r0, a0, c0
+     94: LoadImmediate r1, 7
+     97: BitAnd r0, r0, r1
+    101: SetNamedProperty a0, c0, r0
+    105: GetNamedProperty r0, a0, c0
+    109: LoadImmediate r1, 8
+    112: BitOr r0, r0, r1
+    116: SetNamedProperty a0, c0, r0
+    120: GetNamedProperty r0, a0, c0
+    124: LoadImmediate r1, 9
+    127: BitXor r0, r0, r1
+    131: SetNamedProperty a0, c0, r0
+    135: GetNamedProperty r0, a0, c0
+    139: LoadImmediate r1, 10
+    142: ShiftLeft r0, r0, r1
+    146: SetNamedProperty a0, c0, r0
+    150: GetNamedProperty r0, a0, c0
+    154: LoadImmediate r1, 11
+    157: ShiftRightArithmetic r0, r0, r1
+    161: SetNamedProperty a0, c0, r0
+    165: GetNamedProperty r0, a0, c0
+    169: LoadImmediate r1, 12
+    172: ShiftRightLogical r0, r0, r1
+    176: SetNamedProperty a0, c0, r0
+    180: LoadUndefined r0
+    182: Ret r0
   Constant Table:
     0: [String: foo]
 }

@@ -70,6 +70,12 @@ function operatorIdAllOperators(x) {
   x /= 4;
   x %= 5;
   x **= 6;
+  x &= 7;
+  x |= 8;
+  x ^= 9;
+  x <<= 10;
+  x >>= 11;
+  x >>>= 12;
 }
 
 function operatorMemberAssign(x) {
@@ -88,4 +94,10 @@ function operatorMemberAllOperators(x) {
   x.foo /= 4;
   x.foo %= 5;
   x.foo **= 6;
+  x.foo &= 7;
+  x.foo |= 8;
+  x.foo ^= 9;
+  x.foo <<= 10;
+  x.foo >>= 11;
+  x.foo >>>= 12;
 }

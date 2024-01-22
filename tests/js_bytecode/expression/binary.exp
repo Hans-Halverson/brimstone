@@ -25,6 +25,12 @@
     44: LessThanOrEqual r0, a0, a1
     48: GreaterThan r0, a0, a1
     52: GreaterThanOrEqual r0, a0, a1
-    56: LoadUndefined r0
-    58: Ret r0
+    56: BitAnd r0, a0, a1
+    60: BitOr r0, a0, a1
+    64: BitXor r0, a0, a1
+    68: ShiftLeft r0, a0, a1
+    72: ShiftRightArithmetic r0, a0, a1
+    76: ShiftRightLogical r0, a0, a1
+    80: LoadUndefined r0
+    82: Ret r0
 }

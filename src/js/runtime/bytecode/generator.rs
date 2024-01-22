@@ -620,9 +620,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::UnaryOperator::Plus => self.gen_unary_plus_expression(expr, dest),
                 ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
                 ast::UnaryOperator::LogicalNot => self.gen_logical_not_expression(expr, dest),
+                ast::UnaryOperator::BitwiseNot => self.gen_bitwise_not_expression(expr, dest),
                 ast::UnaryOperator::TypeOf => self.gen_typeof_expression(expr, dest),
                 ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
-                _ => unimplemented!("bytecode for unary operator"),
+                ast::UnaryOperator::Delete => unimplemented!("bytecode for delete expressions"),
             },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
             ast::Expression::Logical(expr) => match expr.operator {
@@ -903,6 +904,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    fn gen_bitwise_not_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let argument = self.gen_expression(&expr.argument)?;
+        self.register_allocator.release(argument);
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer.bit_not_instruction(dest, argument);
+
+        Ok(dest)
+    }
+
     fn gen_typeof_expression(
         &mut self,
         expr: &ast::UnaryExpression,
@@ -970,6 +985,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::BinaryOperator::GreaterThanOrEqual => self
                 .writer
                 .greater_than_or_equal_instruction(dest, left, right),
+            ast::BinaryOperator::And => self.writer.bit_and_instruction(dest, left, right),
+            ast::BinaryOperator::Or => self.writer.bit_or_instruction(dest, left, right),
+            ast::BinaryOperator::Xor => self.writer.bit_xor_instruction(dest, left, right),
+            ast::BinaryOperator::ShiftLeft => self.writer.shift_left_instruction(dest, left, right),
+            ast::BinaryOperator::ShiftRightArithmetic => self
+                .writer
+                .shift_right_arithmetic_instruction(dest, left, right),
+            ast::BinaryOperator::ShiftRightLogical => self
+                .writer
+                .shift_right_logical_instruction(dest, left, right),
             _ => unimplemented!("Cannot generate bytecode for binary operator"),
         }
 
@@ -1310,7 +1335,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::AssignmentOperator::Divide => self.writer.div_instruction(dest, left, right),
             ast::AssignmentOperator::Remainder => self.writer.rem_instruction(dest, left, right),
             ast::AssignmentOperator::Exponent => self.writer.exp_instruction(dest, left, right),
-            _ => unimplemented!("bytecode for assignment operator"),
+            ast::AssignmentOperator::And => self.writer.bit_and_instruction(dest, left, right),
+            ast::AssignmentOperator::Or => self.writer.bit_or_instruction(dest, left, right),
+            ast::AssignmentOperator::Xor => self.writer.bit_xor_instruction(dest, left, right),
+            ast::AssignmentOperator::ShiftLeft => {
+                self.writer.shift_left_instruction(dest, left, right)
+            }
+            ast::AssignmentOperator::ShiftRightArithmetic => self
+                .writer
+                .shift_right_arithmetic_instruction(dest, left, right),
+            ast::AssignmentOperator::ShiftRightLogical => self
+                .writer
+                .shift_right_logical_instruction(dest, left, right),
+            ast::AssignmentOperator::LogicalAnd => {
+                unimplemented!("bytecode for logical and assignment")
+            }
+            ast::AssignmentOperator::LogicalOr => {
+                unimplemented!("bytecode for logical or assignment")
+            }
+            ast::AssignmentOperator::NullishCoalesce => {
+                unimplemented!("bytecode for nullish coalescing assignment")
+            }
+            ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
         }
     }
 

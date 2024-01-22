@@ -71,7 +71,7 @@ pub fn eval_expression(cx: Context, expr: &ast::Expression) -> EvalResult<Handle
             ast::UnaryOperator::Plus => eval_unary_plus(cx, expr),
             ast::UnaryOperator::Minus => eval_unary_minus(cx, expr),
             ast::UnaryOperator::LogicalNot => eval_logical_not_expression(cx, expr),
-            ast::UnaryOperator::BitwiseNot => eval_bitwise_not(cx, expr),
+            ast::UnaryOperator::BitwiseNot => eval_bitwise_not_expression(cx, expr),
             ast::UnaryOperator::TypeOf => eval_typeof_expression(cx, expr),
             ast::UnaryOperator::Delete => eval_delete_expression(cx, expr),
             ast::UnaryOperator::Void => eval_void_expression(cx, expr),
@@ -928,8 +928,15 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
 }
 
 // 13.5.6.1 Bitwise Not Evaluation
-fn eval_bitwise_not(cx: Context, expr: &ast::UnaryExpression) -> EvalResult<Handle<Value>> {
+fn eval_bitwise_not_expression(
+    cx: Context,
+    expr: &ast::UnaryExpression,
+) -> EvalResult<Handle<Value>> {
     let value = maybe!(eval_expression(cx, &expr.argument));
+    eval_bitwise_not(cx, value)
+}
+
+pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     let value = maybe!(to_numeric(cx, value));
 
     if value.is_bigint() {
@@ -1308,7 +1315,7 @@ pub fn eval_greater_than_or_equal(
     cx.bool(result.is_false()).into()
 }
 
-fn eval_bitwise_and(
+pub fn eval_bitwise_and(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1332,7 +1339,7 @@ fn eval_bitwise_and(
     }
 }
 
-fn eval_bitwise_or(
+pub fn eval_bitwise_or(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1356,7 +1363,7 @@ fn eval_bitwise_or(
     }
 }
 
-fn eval_bitwise_xor(
+pub fn eval_bitwise_xor(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1380,7 +1387,7 @@ fn eval_bitwise_xor(
     }
 }
 
-fn eval_shift_left(
+pub fn eval_shift_left(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1412,7 +1419,7 @@ fn eval_shift_left(
     }
 }
 
-fn eval_shift_right_arithmetic(
+pub fn eval_shift_right_arithmetic(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
@@ -1479,7 +1486,7 @@ fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalRes
     }
 }
 
-fn eval_shift_right_logical(
+pub fn eval_shift_right_logical(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,

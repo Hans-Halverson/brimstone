@@ -20,6 +20,11 @@ function logicalNot() {
   !!false;
 }
 
+function bitwiseNot() {
+  ~1;
+  ~~2;
+}
+
 function _void() {
   void 1;
 }

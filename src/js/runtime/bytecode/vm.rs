@@ -17,7 +17,9 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        type_utilities::{is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object},
+        type_utilities::{
+            is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object, to_property_key,
+        },
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe,
@@ -29,9 +31,10 @@ use super::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallWithReceiverInstruction, ConstructInstruction, DivInstruction, ExpInstruction,
-        GetNamedPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
@@ -39,9 +42,10 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewClosureInstruction, OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction, ToNumberInstruction, TypeOfInstruction,
+        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -377,6 +381,12 @@ impl VM {
                             self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::GetProperty => {
+                            dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
+                        }
+                        OpCode::SetProperty => {
+                            dispatch_or_throw!(SetPropertyInstruction, execute_set_property)
+                        }
                         OpCode::GetNamedProperty => {
                             dispatch_or_throw!(
                                 GetNamedPropertyInstruction,
@@ -1647,6 +1657,53 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_property<W: Width>(
+        &mut self,
+        instr: &GetPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        self.h2.replace(object);
+
+        let key = self.read_register(instr.key());
+        self.h1.replace(key);
+
+        let dest = instr.dest();
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, self.h1));
+        let object = maybe!(to_object(self.cx, self.h2));
+
+        let result = maybe!(get(self.cx, object, property_key));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_set_property<W: Width>(
+        &mut self,
+        instr: &SetPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        self.h1.replace(object);
+
+        let key = self.read_register(instr.key());
+        self.h2.replace(key);
+
+        let value = self.read_register(instr.value());
+        self.h3.replace(value);
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, self.h2));
+        let object = maybe!(to_object(self.cx, self.h1));
+
+        let is_strict = self.get_function().is_strict();
+
+        set(self.cx, object, property_key, self.h3, is_strict)
+    }
+
+    #[inline]
     fn execute_get_named_property<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
@@ -1676,10 +1733,8 @@ impl VM {
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        // Object may still be h1, so cannot reuse handle
         let object = self.read_register(instr.object());
         self.h1.replace(object);
-        let object = maybe!(to_object(self.cx, self.h1));
 
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
         self.h2.replace(key);
@@ -1688,6 +1743,8 @@ impl VM {
         self.h3.replace(value);
 
         // May allocate
+        let object = maybe!(to_object(self.cx, self.h1));
+
         let key = PropertyKey::string(self.cx, self.h2.as_string());
         self.h2.replace(key.as_string().into());
 

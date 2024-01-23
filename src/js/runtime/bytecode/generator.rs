@@ -1189,7 +1189,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         ) = expr.callee.as_ref()
         {
             let object = self.gen_expression(object)?;
-            let callee = self.gen_member_property(member_expr, object, ExprDest::Any)?;
+            let callee = self.gen_member_property(
+                member_expr,
+                object,
+                ExprDest::Any,
+                /* release_object */ false,
+            )?;
             (callee, Some(object))
         } else {
             let callee = self.gen_expression(&expr.callee)?;
@@ -1333,9 +1338,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let object = self.gen_expression(&expr.object)?;
-
-        self.register_allocator.release(object);
-        let result = self.gen_member_property(expr, object, dest)?;
+        let result =
+            self.gen_member_property(expr, object, dest, /* release_object */ true)?;
 
         Ok(result)
     }
@@ -1345,21 +1349,39 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::MemberExpression,
         object: GenRegister,
         dest: ExprDest,
+        release_object: bool,
     ) -> EmitResult<GenRegister> {
-        if expr.is_computed {
-            unimplemented!("bytecode for computed member expressions");
-        } else if expr.is_private {
+        if expr.is_private {
             unimplemented!("bytecode for private member expressions");
         }
 
-        // Must be a named access
-        let name = expr.property.to_id();
-        let name_constant_index = self.add_string_constant(&name.name)?;
+        let dest = if expr.is_computed {
+            let key = self.gen_expression(&expr.property)?;
 
-        let dest = self.allocate_destination(dest)?;
+            self.register_allocator.release(key);
+            if release_object {
+                self.register_allocator.release(object);
+            }
 
-        self.writer
-            .get_named_property_instruction(dest, object, name_constant_index);
+            let dest = self.allocate_destination(dest)?;
+            self.writer.get_property_instruction(dest, object, key);
+
+            dest
+        } else {
+            // Must be a named access
+            let name = expr.property.to_id();
+            let name_constant_index = self.add_string_constant(&name.name)?;
+
+            if release_object {
+                self.register_allocator.release(object);
+            }
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer
+                .get_named_property_instruction(dest, object, name_constant_index);
+
+            dest
+        };
 
         Ok(dest)
     }
@@ -1417,24 +1439,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_store_identifier(id, stored_value)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
-            ast::Pattern::Reference(ast::Expression::Member(
-                member @ ast::MemberExpression { object, .. },
-            )) => {
-                if member.is_computed {
-                    unimplemented!("bytecode for assigning computed members");
-                } else if member.is_private {
+            ast::Pattern::Reference(ast::Expression::Member(member)) => {
+                if member.is_private {
                     unimplemented!("bytecode for assigning private members");
+                }
+
+                enum Property {
+                    Computed(GenRegister),
+                    Named(GenConstantIndex),
                 }
 
                 // The right value should be placed in the destination register, since the right
                 // value is returned as the value of the entire assignment expression.
                 let dest = self.allocate_destination(dest)?;
 
-                let object = self.gen_expression(&object)?;
+                let object = self.gen_expression(&member.object)?;
 
-                // Must be a named access
-                let name = member.property.to_id();
-                let name_constant_index = self.add_string_constant(&name.name)?;
+                // Emit the property itself, which may be a computed expression or literal name
+                let property = if member.is_computed {
+                    let key = self.gen_expression(&member.property)?;
+                    Property::Computed(key)
+                } else {
+                    // Must be a named access
+                    let name = member.property.to_id();
+                    let name_constant_index = self.add_string_constant(&name.name)?;
+                    Property::Named(name_constant_index)
+                };
 
                 if expr.operator == ast::AssignmentOperator::Equals {
                     // For simple assignments, right hand side is placed directly in the dest
@@ -1443,8 +1473,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 } else {
                     // For operator assignments the old value is placed in the dest register, then
                     // overwritten with the result of the operator.
-                    self.writer
-                        .get_named_property_instruction(dest, object, name_constant_index);
+                    match property {
+                        Property::Computed(key) => {
+                            self.writer.get_property_instruction(dest, object, key)
+                        }
+                        Property::Named(name_constant_index) => self
+                            .writer
+                            .get_named_property_instruction(dest, object, name_constant_index),
+                    }
+
                     let right_value = self.gen_expression(&expr.right)?;
 
                     self.gen_assignment_operator(expr.operator, dest, dest, right_value);
@@ -1452,8 +1489,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(right_value);
                 }
 
-                self.writer
-                    .set_named_property_instruction(object, name_constant_index, dest);
+                // Write the value back to the property
+                match property {
+                    Property::Computed(key) => {
+                        self.writer.set_property_instruction(object, key, dest);
+                        self.register_allocator.release(key);
+                    }
+                    Property::Named(name_constant_index) => {
+                        self.writer.set_named_property_instruction(
+                            object,
+                            name_constant_index,
+                            dest,
+                        );
+                    }
+                }
+
                 self.register_allocator.release(object);
 
                 Ok(dest)

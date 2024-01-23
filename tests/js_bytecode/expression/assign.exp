@@ -22,8 +22,10 @@
     57: StoreGlobal r0, c18
     60: NewClosure r0, c19
     63: StoreGlobal r0, c20
-    66: LoadUndefined r0
-    68: Ret r0
+    66: NewClosure r0, c21
+    69: StoreGlobal r0, c22
+    72: LoadUndefined r0
+    74: Ret r0
   Constant Table:
     0: [String: global]
     1: [BytecodeFunction: use]
@@ -32,20 +34,22 @@
     4: [String: testIdAssign]
     5: [BytecodeFunction: testIdAssignReturnValue]
     6: [String: testIdAssignReturnValue]
-    7: [BytecodeFunction: testMemberAssign]
-    8: [String: testMemberAssign]
-    9: [BytecodeFunction: named]
-    10: [String: named]
-    11: [BytecodeFunction: operatorIdAssign]
-    12: [String: operatorIdAssign]
-    13: [BytecodeFunction: operatorIdAssignReturnValue]
-    14: [String: operatorIdAssignReturnValue]
-    15: [BytecodeFunction: operatorIdAllOperators]
-    16: [String: operatorIdAllOperators]
-    17: [BytecodeFunction: operatorMemberAssign]
-    18: [String: operatorMemberAssign]
-    19: [BytecodeFunction: operatorMemberAllOperators]
-    20: [String: operatorMemberAllOperators]
+    7: [BytecodeFunction: testNamedMemberAssign]
+    8: [String: testNamedMemberAssign]
+    9: [BytecodeFunction: testComputedMemberAssign]
+    10: [String: testComputedMemberAssign]
+    11: [BytecodeFunction: named]
+    12: [String: named]
+    13: [BytecodeFunction: operatorIdAssign]
+    14: [String: operatorIdAssign]
+    15: [BytecodeFunction: operatorIdAssignReturnValue]
+    16: [String: operatorIdAssignReturnValue]
+    17: [BytecodeFunction: operatorIdAllOperators]
+    18: [String: operatorIdAllOperators]
+    19: [BytecodeFunction: operatorMemberAssign]
+    20: [String: operatorMemberAssign]
+    21: [BytecodeFunction: operatorMemberAllOperators]
+    22: [String: operatorMemberAllOperators]
 }
 
 [BytecodeFunction: use] {
@@ -93,7 +97,7 @@
     1: [String: global]
 }
 
-[BytecodeFunction: testMemberAssign] {
+[BytecodeFunction: testNamedMemberAssign] {
   Parameters: 1, Registers: 2
      0: LoadImmediate r0, 1
      3: SetNamedProperty a0, c0, r0
@@ -110,6 +114,34 @@
     43: Call r0, r0, r1, 1
     48: LoadUndefined r0
     50: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: use]
+    2: [String: bar]
+}
+
+[BytecodeFunction: testComputedMemberAssign] {
+  Parameters: 1, Registers: 3
+     0: LoadConstant r1, c0
+     3: LoadImmediate r0, 1
+     6: SetProperty a0, r1, r0
+    10: LoadGlobal r0, c1
+    13: LoadConstant r2, c0
+    16: LoadImmediate r1, 2
+    19: SetProperty a0, r2, r1
+    23: Call r0, r0, r1, 1
+    28: LoadConstant r1, c0
+    31: LoadConstant r2, c2
+    34: LoadImmediate r0, 3
+    37: SetProperty a0, r2, r0
+    41: SetProperty a0, r1, r0
+    45: LoadGlobal r0, c1
+    48: LoadConstant r2, c0
+    51: Mov r1, a0
+    54: SetProperty a0, r2, r1
+    58: Call r0, r0, r1, 1
+    63: LoadUndefined r0
+    65: Ret r0
   Constant Table:
     0: [String: foo]
     1: [String: use]

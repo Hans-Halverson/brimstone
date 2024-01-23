@@ -1,15 +1,19 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: NewClosure r0, c0
-    3: StoreGlobal r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
   Constant Table:
-    0: [BytecodeFunction: testMemberCall]
-    1: [String: testMemberCall]
+    0: [BytecodeFunction: testNamedMemberCall]
+    1: [String: testNamedMemberCall]
+    2: [BytecodeFunction: testComputedMemberCall]
+    3: [String: testComputedMemberCall]
 }
 
-[BytecodeFunction: testMemberCall] {
+[BytecodeFunction: testNamedMemberCall] {
   Parameters: 1, Registers: 5
      0: GetNamedProperty r1, a0, c0
      4: CallWithReceiver r1, r1, a0, r1, 0
@@ -26,6 +30,33 @@
     46: CallWithReceiver r1, r1, r0, r2, 1
     52: LoadUndefined r1
     54: Ret r1
+  Constant Table:
+    0: [String: foo]
+}
+
+[BytecodeFunction: testComputedMemberCall] {
+  Parameters: 1, Registers: 6
+     0: LoadConstant r1, c0
+     3: GetProperty r1, a0, r1
+     7: CallWithReceiver r1, r1, a0, r1, 0
+    13: LoadImmediate r1, 0
+    16: LoadImmediate r2, 9
+    19: Add r1, r1, r2
+    23: LoadConstant r2, c0
+    26: GetProperty r2, r1, r2
+    30: LoadImmediate r3, 1
+    33: LoadImmediate r4, 2
+    36: LoadImmediate r5, 3
+    39: CallWithReceiver r1, r2, r1, r3, 3
+    45: LoadImmediate r1, 1
+    48: LoadImmediate r2, 2
+    51: Add r0, r1, r2
+    55: LoadConstant r1, c0
+    58: GetProperty r1, r0, r1
+    62: LoadImmediate r2, 4
+    65: CallWithReceiver r1, r1, r0, r2, 1
+    71: LoadUndefined r1
+    73: Ret r1
   Constant Table:
     0: [String: foo]
 }

@@ -559,6 +559,21 @@ define_instructions!(
         [1] function_index: ConstantIndex,
     }
 
+    /// Get a property from an object, storing the result in dest. The property key may be any
+    /// value.
+    GetProperty(GetPropertyInstruction, get_property_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] key: Register,
+    }
+
+    /// Set a property on an object to the given value. The property key may be any value.
+    SetProperty(SetPropertyInstruction, set_property_instruction) {
+        [0] object: Register,
+        [1] key: Register,
+        [2] value: Register,
+    }
+
     /// Get a named property from an object, storing the result in dest. The name must be a string
     /// literal in the constant table.
     GetNamedProperty(GetNamedPropertyInstruction, get_named_property_instruction) {

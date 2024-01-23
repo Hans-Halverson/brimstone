@@ -22,13 +22,23 @@ function testIdAssignReturnValue(param) {
   local = param = global = 6;
 }
 
-function testMemberAssign(x) {
+function testNamedMemberAssign(x) {
   x.foo = 1;
   use(x.foo = 2);
 
   x.foo = x.bar = 3;
 
   use(x.foo = x);
+}
+
+function testComputedMemberAssign(x) {
+  x['foo'] = 1;
+  use(x['foo'] = 2);
+
+  x['foo'] = x['bar'] = 3;
+
+  use(x['foo'] = x);
+
 }
 
 function named() {

@@ -1,12 +1,16 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: NewClosure r0, c0
-    3: StoreGlobal r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNamedMember]
     1: [String: testNamedMember]
+    2: [BytecodeFunction: testComputedMember]
+    3: [String: testComputedMember]
 }
 
 [BytecodeFunction: testNamedMember] {
@@ -18,4 +22,21 @@
   Constant Table:
     0: [String: foo]
     1: [String: x]
+}
+
+[BytecodeFunction: testComputedMember] {
+  Parameters: 1, Registers: 3
+     0: LoadConstant r0, c0
+     3: GetProperty r0, a0, r0
+     7: LoadImmediate r0, 1
+    10: LoadImmediate r1, 2
+    13: Add r0, r0, r1
+    17: LoadImmediate r1, 3
+    20: LoadImmediate r2, 4
+    23: Add r1, r1, r2
+    27: GetProperty r0, r0, r1
+    31: LoadUndefined r0
+    33: Ret r0
+  Constant Table:
+    0: [String: foo]
 }

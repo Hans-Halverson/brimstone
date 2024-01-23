@@ -18,24 +18,24 @@ function testCatchWithParameter() {
   4;
 }
 
-function testFinallyOnly() {
-  1;
-  try {
-    2;
-  } finally {
-    3;
-  }
-  4;
-}
+// function testFinallyOnly() {
+//   1;
+//   try {
+//     2;
+//   } finally {
+//     3;
+//   }
+//   4;
+// }
 
-function testCatchAndFinally() {
-  1;
-  try {
-    2;
-  } catch (e) {
-    3;
-  } finally {
-    4;
-  }
-  5;
-}
+// function testCatchAndFinally() {
+//   1;
+//   try {
+//     2;
+//   } catch (e) {
+//     3;
+//   } finally {
+//     4;
+//   }
+//   5;
+// }

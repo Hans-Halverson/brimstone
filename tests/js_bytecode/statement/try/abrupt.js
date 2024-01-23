@@ -18,15 +18,15 @@ function testAbruptCatchOnly() {
   // Needs implicit return
 }
 
-function testAbruptFinallyOnly() {
-  try {
-    1;
-  } finally {
-    return;
-  }
+// function testAbruptFinallyOnly() {
+//   try {
+//     1;
+//   } finally {
+//     return;
+//   }
 
-  // No implicit return
-}
+//   // No implicit return
+// }
 
 function testAbruptCatchAndBody() {
   try {

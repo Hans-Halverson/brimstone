@@ -12,16 +12,16 @@ try {
   c;
 }
 
-try {
-  a;
-} finally {
-  b;
-}
+// try {
+//   a;
+// } finally {
+//   b;
+// }
 
-try {
-  a;
-} catch {
-  b;
-} finally {
-  c;
-}
+// try {
+//   a;
+// } catch {
+//   b;
+// } finally {
+//   c;
+// }

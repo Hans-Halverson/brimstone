@@ -70,3 +70,28 @@ function testVarDeclInit() {
   }
   6;
 }
+
+function testAbruptBody() {
+  1;
+  for (2; 3; 4) {
+    5;
+    return;
+    6;
+  }
+  7;
+}
+
+function testBreakAndContinue() {
+  1;
+  for (2; 3; 4) {
+    if (5) {
+      break;
+    }
+    6;
+    if (7) {
+      continue;
+    }
+    8;
+  }
+  7;
+}

@@ -13,3 +13,26 @@ function testBooleanTest() {
   } while (true);
   3;
 }
+
+function testAbruptBody() {
+  1;
+  do {
+    2;
+    return;
+    3;
+  } while (true);
+  4;
+}
+
+function testBreakAndContinue() {
+  1;
+  do {
+    if (2) {
+      break;
+    }
+    if (3) {
+      continue;
+    }
+  } while (true);
+  4;
+}

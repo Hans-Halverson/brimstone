@@ -159,11 +159,18 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Map from block id to the offset of that block in the bytecode. Contains an entry for every
     /// block that has been started in the bycode. Used to calculate backwards jump offsets.
+    ///
+    /// Note that not every block that has been allocated has actually been started, e.g. the
+    /// continue block allocated for labeled non-loop statements.
     block_offsets: HashMap<BlockId, usize>,
 
     /// Map from block id to all unresolved forward jumps that target that block. Only contains
     /// entries for blocks that have not yet been started.
     unresolved_forward_jumps: HashMap<BlockId, Vec<ForwardJumpInfo>>,
+
+    /// Stack of jump statement (break and continue) targets that the generator is currently inside.
+    /// The top of the stack is the innermost jump statement target.
+    jump_statement_target_stack: Vec<JumpStatementTarget>,
 
     /// Number of toplevel parameters to this function, not counting the rest parameter.
     num_parameters: u32,
@@ -200,6 +207,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_blocks: 0,
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
+            jump_statement_target_stack: vec![],
             num_parameters,
             is_strict,
             is_constructor,
@@ -628,17 +636,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
             ast::Statement::Switch(_) => unimplemented!("bytecode for switch statement"),
-            ast::Statement::For(stmt) => self.gen_for_statement(stmt),
+            ast::Statement::For(stmt) => self.gen_for_statement(stmt, None),
             ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
-            ast::Statement::While(stmt) => self.gen_while_statement(stmt),
-            ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt),
+            ast::Statement::While(stmt) => self.gen_while_statement(stmt, None),
+            ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt, None),
             ast::Statement::With(_) => unimplemented!("bytecode for with statement"),
             ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
             ast::Statement::Throw(stmt) => self.gen_throw_statement(stmt),
             ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
-            ast::Statement::Break(_) => unimplemented!("bytecode for break statement"),
-            ast::Statement::Continue(_) => unimplemented!("bytecode for continue statement"),
-            ast::Statement::Labeled(_) => unimplemented!("bytecode for labeled statement"),
+            ast::Statement::Break(stmt) => self.gen_break_statement(stmt),
+            ast::Statement::Continue(stmt) => self.gen_continue_statement(stmt),
+            ast::Statement::Labeled(stmt) => self.gen_labeled_statement(stmt),
             // Intentionally ignored as there is no runtime effect
             ast::Statement::Empty(_) | ast::Statement::Debugger(_) => Ok(StmtCompletion::Normal),
         };
@@ -1669,22 +1677,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<StmtCompletion> {
-        if stmt.argument.is_none() {
-            self.gen_return_undefined()?;
-            return Ok(StmtCompletion::Abrupt);
-        }
+    fn gen_for_statement(
+        &mut self,
+        stmt: &ast::ForStatement,
+        jump_targets: Option<JumpStatementTarget>,
+    ) -> EmitResult<StmtCompletion> {
+        let jump_targets =
+            jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
-        let return_arg = self.gen_expression(stmt.argument.as_ref().unwrap())?;
-        self.writer.ret_instruction(return_arg);
-        self.register_allocator.release(return_arg);
-
-        Ok(StmtCompletion::Abrupt)
-    }
-
-    fn gen_for_statement(&mut self, stmt: &ast::ForStatement) -> EmitResult<StmtCompletion> {
         let loop_start_block = self.new_block();
-        let join_block = self.new_block();
+        let update_block = jump_targets.continue_block;
+        let join_block = jump_targets.break_block;
 
         // Evaluate the init expression once before loop starts
         match stmt.init.as_deref() {
@@ -1711,7 +1714,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Evaluate the loop body
         self.gen_statement(&stmt.body)?;
 
-        // Evaluate the update expression and return to the beginning of the loop
+        // Evaluate the update expression and return to the beginning of the loop. Always emitted
+        // even if loop body has an abrupt completion since there may be a continue.
+        self.start_block(update_block);
         if let Some(update_expr) = stmt.update.as_deref() {
             let update = self.gen_expression(update_expr)?;
             self.register_allocator.release(update);
@@ -1725,18 +1730,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_return_undefined(&mut self) -> EmitResult<()> {
-        let return_arg = self.register_allocator.allocate()?;
-        self.writer.load_undefined_instruction(return_arg);
-        self.writer.ret_instruction(return_arg);
-        self.register_allocator.release(return_arg);
+    fn gen_while_statement(
+        &mut self,
+        stmt: &ast::WhileStatement,
+        jump_targets: Option<JumpStatementTarget>,
+    ) -> EmitResult<StmtCompletion> {
+        let jump_targets =
+            jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
-        Ok(())
-    }
-
-    fn gen_while_statement(&mut self, stmt: &ast::WhileStatement) -> EmitResult<StmtCompletion> {
-        let loop_start_block = self.new_block();
-        let join_block = self.new_block();
+        let loop_start_block = jump_targets.continue_block;
+        let join_block = jump_targets.break_block;
 
         // Evaluate test and either continue to body or break out of loop
         self.start_block(loop_start_block);
@@ -1745,10 +1748,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.write_jump_false_for_expression(&stmt.test, test, join_block)?;
 
-        self.gen_statement(&stmt.body)?;
+        let body_completion = self.gen_statement(&stmt.body)?;
 
         // Always jump back to the condition at the start of the loop
-        self.write_jump_instruction(loop_start_block)?;
+        if !body_completion.is_abrupt() {
+            self.write_jump_instruction(loop_start_block)?;
+        }
 
         self.start_block(join_block);
 
@@ -1759,18 +1764,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_do_while_statement(
         &mut self,
         stmt: &ast::DoWhileStatement,
+        jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
-        let loop_start_block = self.new_block();
-        let join_block = self.new_block();
+        let jump_targets =
+            jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
+
+        let loop_start_block = jump_targets.continue_block;
+        let join_block = jump_targets.break_block;
 
         // Execute the body at the start of the loop
         self.start_block(loop_start_block);
-        self.gen_statement(&stmt.body)?;
+        let body_completion = self.gen_statement(&stmt.body)?;
 
         // Then evaluate test and either break out of loop or continue to next iteration
-        let test = self.gen_expression(&stmt.test)?;
-        self.register_allocator.release(test);
-        self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
+        if !body_completion.is_abrupt() {
+            let test = self.gen_expression(&stmt.test)?;
+            self.register_allocator.release(test);
+            self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
+        }
 
         self.start_block(join_block);
 
@@ -1818,7 +1829,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             body_handler.error_register = Some(Register::local(index))
                         }
                         VMLocation::Scope { .. } => {
-                            unimplemented!("bytcode for captured catch parameters")
+                            unimplemented!("bytecode for captured catch parameters")
                         }
                         _ => unreachable!("catch parameters must be in a register or VM scope"),
                     }
@@ -1866,6 +1877,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             result_completion = finally_completion;
         }
 
+        if stmt.finalizer.is_some() {
+            // TODO: Finally blocks must allow multiple entry points and successors, as they may
+            // be visited from the try body, catch body, or any abrupt completions of either.
+            unimplemented!("bytecode for finally blocks");
+        }
+
         // Save the exception handlers
         self.exception_handler_builder.add(body_handler);
         if let Some(catch_handler) = catch_handler {
@@ -1881,6 +1898,126 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.throw_instruction(error);
         self.register_allocator.release(error);
 
+        Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<StmtCompletion> {
+        if stmt.argument.is_none() {
+            self.gen_return_undefined()?;
+            return Ok(StmtCompletion::Abrupt);
+        }
+
+        let return_arg = self.gen_expression(stmt.argument.as_ref().unwrap())?;
+        self.writer.ret_instruction(return_arg);
+        self.register_allocator.release(return_arg);
+
+        Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_return_undefined(&mut self) -> EmitResult<()> {
+        let return_arg = self.register_allocator.allocate()?;
+        self.writer.load_undefined_instruction(return_arg);
+        self.writer.ret_instruction(return_arg);
+        self.register_allocator.release(return_arg);
+
+        Ok(())
+    }
+
+    fn gen_labeled_statement(
+        &mut self,
+        stmt: &ast::LabeledStatement,
+    ) -> EmitResult<StmtCompletion> {
+        // Find the innermost labeled statement
+        let mut inner_stmt = stmt;
+        while let ast::Statement::Labeled(labeled_stmt) = inner_stmt.body.as_ref() {
+            inner_stmt = labeled_stmt;
+        }
+
+        // All nested labels share the same id
+        let label_id = inner_stmt.label.id;
+
+        let completion = match inner_stmt.body.as_ref() {
+            ast::Statement::For(stmt) => {
+                let jump_targets = self.push_jump_statement_target(Some(label_id), true);
+                self.gen_for_statement(stmt, Some(jump_targets))
+            }
+            ast::Statement::ForEach(_) => unimplemented!("bytecode for for each statements"),
+            ast::Statement::While(stmt) => {
+                let jump_targets = self.push_jump_statement_target(Some(label_id), true);
+                self.gen_while_statement(stmt, Some(jump_targets))
+            }
+            ast::Statement::DoWhile(stmt) => {
+                let jump_targets = self.push_jump_statement_target(Some(label_id), true);
+                self.gen_do_while_statement(stmt, Some(jump_targets))
+            }
+            stmt => {
+                // Do not generate a continue block for labeled non-loop statements
+                let jump_targets = self.push_jump_statement_target(Some(label_id), false);
+                let completion = self.gen_statement(stmt);
+
+                // The break target is after the labeled statement
+                self.start_block(jump_targets.break_block);
+
+                completion
+            }
+        };
+
+        self.pop_jump_statement_target();
+
+        completion
+    }
+
+    fn push_jump_statement_target(
+        &mut self,
+        label_id: Option<ast::LabelId>,
+        create_continue_block: bool,
+    ) -> JumpStatementTarget {
+        let break_block = self.new_block();
+        let continue_block = if create_continue_block {
+            self.new_block()
+        } else {
+            0
+        };
+
+        self.jump_statement_target_stack.push(JumpStatementTarget {
+            label_id,
+            break_block,
+            continue_block,
+        });
+
+        self.jump_statement_target_stack.last().unwrap().clone()
+    }
+
+    fn pop_jump_statement_target(&mut self) {
+        self.jump_statement_target_stack.pop();
+    }
+
+    /// Lookup the innermost jump statement target, or the target that matches the label id if one
+    /// is provided.
+    fn lookup_jump_statement_target(&self, label: Option<&ast::Label>) -> &JumpStatementTarget {
+        if let Some(label) = label {
+            self.jump_statement_target_stack
+                .iter()
+                .rev()
+                .find(|target| target.label_id == Some(label.id))
+                .unwrap()
+        } else {
+            self.jump_statement_target_stack.last().unwrap()
+        }
+    }
+
+    fn gen_break_statement(&mut self, stmt: &ast::BreakStatement) -> EmitResult<StmtCompletion> {
+        let target = self.lookup_jump_statement_target(stmt.label.as_ref());
+        self.write_jump_instruction(target.break_block)?;
+        Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_continue_statement(
+        &mut self,
+        stmt: &ast::ContinueStatement,
+    ) -> EmitResult<StmtCompletion> {
+        let target = self.lookup_jump_statement_target(stmt.label.as_ref());
+        self.write_jump_instruction(target.continue_block)?;
         Ok(StmtCompletion::Abrupt)
     }
 }
@@ -2000,6 +2137,17 @@ enum ExprDest {
 pub enum JumpOperand {
     RelativeOffset(GenSInt),
     ConstantIndex(GenConstantIndex),
+}
+
+/// Information about where jump statements (break and continue) should jump to.
+#[derive(Clone)]
+struct JumpStatementTarget {
+    /// Block that breaks jump to.
+    break_block: BlockId,
+    /// Block that continues jump to.
+    continue_block: BlockId,
+    /// Label id if this is a labeled statement, otherwise this is an unlabeled loop.
+    label_id: Option<ast::LabelId>,
 }
 
 #[derive(PartialEq)]

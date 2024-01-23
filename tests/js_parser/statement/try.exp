@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-27:1",
+  loc: "1:0-13:1",
   body: [
     {
       type: "ThrowStatement",
@@ -94,95 +94,6 @@
         },
       },
       finalizer: null,
-    },
-    {
-      type: "TryStatement",
-      loc: "15:0-19:1",
-      block: {
-        type: "Block",
-        loc: "15:4-17:1",
-        body: [
-          {
-            type: "ExpressionStatement",
-            loc: "16:2-16:4",
-            kind: {
-              type: "Identifier",
-              loc: "16:2-16:3",
-              name: "a",
-            },
-          },
-        ],
-      },
-      handler: null,
-      finalizer: {
-        type: "Block",
-        loc: "17:10-19:1",
-        body: [
-          {
-            type: "ExpressionStatement",
-            loc: "18:2-18:4",
-            kind: {
-              type: "Identifier",
-              loc: "18:2-18:3",
-              name: "b",
-            },
-          },
-        ],
-      },
-    },
-    {
-      type: "TryStatement",
-      loc: "21:0-27:1",
-      block: {
-        type: "Block",
-        loc: "21:4-23:1",
-        body: [
-          {
-            type: "ExpressionStatement",
-            loc: "22:2-22:4",
-            kind: {
-              type: "Identifier",
-              loc: "22:2-22:3",
-              name: "a",
-            },
-          },
-        ],
-      },
-      handler: {
-        type: "CatchClause",
-        loc: "23:2-25:1",
-        param: null,
-        body: {
-          type: "Block",
-          loc: "23:8-25:1",
-          body: [
-            {
-              type: "ExpressionStatement",
-              loc: "24:2-24:4",
-              kind: {
-                type: "Identifier",
-                loc: "24:2-24:3",
-                name: "b",
-              },
-            },
-          ],
-        },
-      },
-      finalizer: {
-        type: "Block",
-        loc: "25:10-27:1",
-        body: [
-          {
-            type: "ExpressionStatement",
-            loc: "26:2-26:4",
-            kind: {
-              type: "Identifier",
-              loc: "26:2-26:3",
-              name: "c",
-            },
-          },
-        ],
-      },
     },
   ],
   sourceType: "script",

@@ -40,19 +40,21 @@ impl TemporaryRegisterAllocator {
     ///
     /// If the given register is a local or argument register this function is a noop.
     pub fn release(&mut self, register: GenRegister) {
-        if !register.is_local() {
-            return;
-        }
-
-        let index = register.local_index() as u32;
-        if index < self.num_local_registers {
+        if !self.is_temporary_register(register) {
             return;
         }
 
         // Check that released register is the most recently allocated temporary register
         // before releasing.
-        debug_assert!(index == self.num_allocated - 1);
+        debug_assert!(register.local_index() as u32 == self.num_allocated - 1);
         self.num_allocated -= 1;
+    }
+
+    /// Return whether the given register is a temporary register (vs an argument, non-temporary
+    /// local, etc).
+    #[inline]
+    pub fn is_temporary_register(&self, register: GenRegister) -> bool {
+        register.is_local() && register.local_index() as u32 >= self.num_local_registers
     }
 
     /// Return the maximum number of register allocated at once (including both local and temporary

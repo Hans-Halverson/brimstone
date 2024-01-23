@@ -8,17 +8,35 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadUndefined r0
-    26: Ret r0
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
-    0: [BytecodeFunction: logicalAndBoolean]
-    1: [String: logicalAndBoolean]
-    2: [BytecodeFunction: logicalAndNotBoolean]
-    3: [String: logicalAndNotBoolean]
-    4: [BytecodeFunction: logicalOrBoolean]
-    5: [String: logicalOrBoolean]
-    6: [BytecodeFunction: logicalOrNotBoolean]
-    7: [String: logicalOrNotBoolean]
+    0: [BytecodeFunction: use]
+    1: [String: use]
+    2: [BytecodeFunction: logicalAndBoolean]
+    3: [String: logicalAndBoolean]
+    4: [BytecodeFunction: logicalAndNotBoolean]
+    5: [String: logicalAndNotBoolean]
+    6: [BytecodeFunction: logicalOrBoolean]
+    7: [String: logicalOrBoolean]
+    8: [BytecodeFunction: logicalOrNotBoolean]
+    9: [String: logicalOrNotBoolean]
+    10: [BytecodeFunction: logicalAndWithTemporary]
+    11: [String: logicalAndWithTemporary]
+    12: [BytecodeFunction: localOrWithTemporary]
+    13: [String: localOrWithTemporary]
+}
+
+[BytecodeFunction: use] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
 }
 
 [BytecodeFunction: logicalAndBoolean] {
@@ -67,4 +85,66 @@
     19: Add r0, r1, r2
   .L0:
     23: Ret r0
+}
+
+[BytecodeFunction: logicalAndWithTemporary] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: LoadImmediate r1, 1
+     6: JumpToBooleanFalse r1, 6 (.L0)
+     9: LoadImmediate r1, 2
+  .L0:
+    12: Mov a0, r1
+    15: LoadImmediate r1, 3
+    18: JumpToBooleanFalse r1, 6 (.L1)
+    21: LoadImmediate r1, 4
+  .L1:
+    24: Mov r0, r1
+    27: LoadImmediate r1, 5
+    30: JumpToBooleanFalse r1, 6 (.L2)
+    33: LoadImmediate r1, 6
+  .L2:
+    36: LoadImmediate r2, 10
+    39: Mul r1, r1, r2
+    43: LoadGlobal r1, c0
+    46: LoadImmediate r2, 7
+    49: JumpToBooleanFalse r2, 6 (.L3)
+    52: LoadImmediate r2, 8
+  .L3:
+    55: Call r1, r1, r2, 1
+    60: LoadUndefined r1
+    62: Ret r1
+  Constant Table:
+    0: [String: use]
+}
+
+[BytecodeFunction: localOrWithTemporary] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: LoadImmediate r1, 1
+     6: JumpToBooleanTrue r1, 6 (.L0)
+     9: LoadImmediate r1, 2
+  .L0:
+    12: Mov a0, r1
+    15: LoadImmediate r1, 3
+    18: JumpToBooleanTrue r1, 6 (.L1)
+    21: LoadImmediate r1, 4
+  .L1:
+    24: Mov r0, r1
+    27: LoadImmediate r1, 5
+    30: JumpToBooleanTrue r1, 6 (.L2)
+    33: LoadImmediate r1, 6
+  .L2:
+    36: LoadImmediate r2, 10
+    39: Mul r1, r1, r2
+    43: LoadGlobal r1, c0
+    46: LoadImmediate r2, 7
+    49: JumpToBooleanTrue r2, 6 (.L3)
+    52: LoadImmediate r2, 8
+  .L3:
+    55: Call r1, r1, r2, 1
+    60: LoadUndefined r1
+    62: Ret r1
+  Constant Table:
+    0: [String: use]
 }

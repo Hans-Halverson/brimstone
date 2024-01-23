@@ -1087,13 +1087,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
         let join_block = self.new_block();
 
-        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
+        // If the destination is not a temporary register then we must write intermediate values
+        // to a temporary register, then move that to final destionation at the end. This avoids
+        // clobbering the non-temporary register if the expression throws.
+        let needs_temporary_dest = !self.register_allocator.is_temporary_register(dest);
+        let temporary_dest = if needs_temporary_dest {
+            self.register_allocator.allocate()?
+        } else {
+            dest
+        };
 
-        self.write_jump_false_for_expression(&expr.left, dest, join_block)?;
+        // Generate left expression, storing in (possibly temporary) dest
+        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(temporary_dest))?;
+        self.write_jump_false_for_expression(&expr.left, temporary_dest, join_block)?;
 
-        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+        // Generate right expression, storing in (possibly temporary) dest
+        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temporary_dest))?;
 
         self.start_block(join_block);
+
+        // Move from temporary dest to final dest if necessary
+        if needs_temporary_dest {
+            self.write_mov_instruction(dest, temporary_dest);
+            self.register_allocator.release(temporary_dest);
+        }
+
         Ok(dest)
     }
 
@@ -1105,13 +1123,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
         let join_block = self.new_block();
 
-        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(dest))?;
+        // If the destination is not a temporary register then we must write intermediate values
+        // to a temporary register, then move that to final destionation at the end. This avoids
+        // clobbering the non-temporary register if the expression throws.
+        let needs_temporary_dest = !self.register_allocator.is_temporary_register(dest);
+        let temporary_dest = if needs_temporary_dest {
+            self.register_allocator.allocate()?
+        } else {
+            dest
+        };
 
-        self.write_jump_true_for_expression(&expr.left, dest, join_block)?;
+        // Generate left expression, storing in (possibly temporary) dest
+        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(temporary_dest))?;
+        self.write_jump_true_for_expression(&expr.left, temporary_dest, join_block)?;
 
-        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+        // Generate right expression, storing in (possibly temporary) dest
+        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temporary_dest))?;
 
         self.start_block(join_block);
+
+        // Move from temporary dest to final dest if necessary
+        if needs_temporary_dest {
+            self.write_mov_instruction(dest, temporary_dest);
+            self.register_allocator.release(temporary_dest);
+        }
+
         Ok(dest)
     }
 

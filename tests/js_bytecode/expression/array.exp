@@ -1,0 +1,98 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadUndefined r0
+    32: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: testEmptyArray]
+    1: [String: testEmptyArray]
+    2: [BytecodeFunction: testArrayWithOneElement]
+    3: [String: testArrayWithOneElement]
+    4: [BytecodeFunction: testArrayWithElements]
+    5: [String: testArrayWithElements]
+    6: [BytecodeFunction: testArrayWithHolesAndElements]
+    7: [String: testArrayWithHolesAndElements]
+    8: [BytecodeFunction: testArrayWithOnlyHoles]
+    9: [String: testArrayWithOnlyHoles]
+}
+
+[BytecodeFunction: testEmptyArray] {
+  Parameters: 0, Registers: 1
+    0: NewArray r0
+    2: Ret r0
+}
+
+[BytecodeFunction: testArrayWithOneElement] {
+  Parameters: 0, Registers: 3
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: LoadImmediate r2, 1
+     8: SetProperty r0, r1, r2
+    12: Ret r0
+}
+
+[BytecodeFunction: testArrayWithElements] {
+  Parameters: 0, Registers: 3
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: LoadImmediate r2, 1
+     8: SetProperty r0, r1, r2
+    12: Inc r1
+    14: LoadImmediate r2, 2
+    17: SetProperty r0, r1, r2
+    21: Inc r1
+    23: LoadImmediate r2, 3
+    26: SetProperty r0, r1, r2
+    30: Ret r0
+}
+
+[BytecodeFunction: testArrayWithHolesAndElements] {
+  Parameters: 0, Registers: 3
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: LoadImmediate r2, 1
+     8: SetProperty r0, r1, r2
+    12: Inc r1
+    14: LoadEmpty r2
+    16: SetProperty r0, r1, r2
+    20: Inc r1
+    22: LoadImmediate r2, 2
+    25: SetProperty r0, r1, r2
+    29: Inc r1
+    31: LoadEmpty r2
+    33: SetProperty r0, r1, r2
+    37: Inc r1
+    39: LoadEmpty r2
+    41: SetProperty r0, r1, r2
+    45: Inc r1
+    47: LoadImmediate r2, 3
+    50: SetProperty r0, r1, r2
+    54: Inc r1
+    56: LoadEmpty r2
+    58: SetProperty r0, r1, r2
+    62: Ret r0
+}
+
+[BytecodeFunction: testArrayWithOnlyHoles] {
+  Parameters: 0, Registers: 3
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: LoadEmpty r2
+     7: SetProperty r0, r1, r2
+    11: Inc r1
+    13: LoadEmpty r2
+    15: SetProperty r0, r1, r2
+    19: Inc r1
+    21: LoadEmpty r2
+    23: SetProperty r0, r1, r2
+    27: Ret r0
+}

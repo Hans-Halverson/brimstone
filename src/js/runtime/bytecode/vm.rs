@@ -3,6 +3,7 @@ use std::ops::Deref;
 use crate::{
     js::runtime::{
         abstract_operations::set,
+        array_object::array_create,
         error::type_error_,
         eval::expression::{
             eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
@@ -22,7 +23,7 @@ use crate::{
         },
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{
@@ -32,20 +33,20 @@ use super::{
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallWithReceiverInstruction, ConstructInstruction, DivInstruction, ExpInstruction,
         GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, Instruction, JumpConstantInstruction,
+        GreaterThanOrEqualInstruction, IncInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
-        LessThanOrEqualInstruction, LoadConstantInstruction, LoadFalseInstruction,
-        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
+        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
+        LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewClosureInstruction, OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
-        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        TypeOfInstruction,
+        NewArrayInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -271,6 +272,7 @@ impl VM {
                         OpCode::LoadUndefined => {
                             dispatch!(LoadUndefinedInstruction, execute_load_undefined)
                         }
+                        OpCode::LoadEmpty => dispatch!(LoadEmptyInstruction, execute_load_empty),
                         OpCode::LoadNull => dispatch!(LoadNullInstruction, execute_load_null),
                         OpCode::LoadTrue => dispatch!(LoadTrueInstruction, execute_load_true),
                         OpCode::LoadFalse => dispatch!(LoadFalseInstruction, execute_load_false),
@@ -340,6 +342,7 @@ impl VM {
                             execute_greater_than_or_equal
                         ),
                         OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
+                        OpCode::Inc => dispatch!(IncInstruction, execute_inc),
                         OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
                         OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
@@ -381,6 +384,7 @@ impl VM {
                             self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
                         }
@@ -1153,6 +1157,11 @@ impl VM {
     }
 
     #[inline]
+    fn execute_load_empty<W: Width>(&mut self, instr: &LoadEmptyInstruction<W>) {
+        self.write_register(instr.dest(), Value::empty())
+    }
+
+    #[inline]
     fn execute_load_null<W: Width>(&mut self, instr: &LoadNullInstruction<W>) {
         self.write_register(instr.dest(), Value::null())
     }
@@ -1594,6 +1603,26 @@ impl VM {
     }
 
     #[inline]
+    fn execute_inc<W: Width>(&mut self, instr: &IncInstruction<W>) {
+        let dest = instr.dest();
+        let value = self.read_register(dest);
+
+        let new_value = if value.is_smi() {
+            // Fast path for smis - but check if they would overflow into floats
+            let smi_value = value.as_smi();
+            if smi_value < i32::MAX {
+                Value::smi(smi_value + 1)
+            } else {
+                Value::from(i32::MAX as f64 + 1.0)
+            }
+        } else {
+            Value::number(value.as_number() + 1.0)
+        };
+
+        self.write_register(dest, new_value);
+    }
+
+    #[inline]
     fn execute_log_not<W: Width>(&mut self, instr: &LogNotInstruction<W>) {
         let value = self.read_register(instr.value());
         let result = Value::bool(!to_boolean(value));
@@ -1654,6 +1683,16 @@ impl VM {
         let closure = Closure::new(self.cx, self.h1.cast::<BytecodeFunction>());
 
         self.write_register(dest, Value::object(closure.get_().cast()));
+    }
+
+    #[inline]
+    fn execute_new_array<W: Width>(&mut self, instr: &NewArrayInstruction<W>) {
+        let dest = instr.dest();
+
+        // Allocates
+        let array = must!(array_create(self.cx, 0, None));
+
+        self.write_register(dest, array.cast::<Value>().get());
     }
 
     #[inline]

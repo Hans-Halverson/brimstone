@@ -245,6 +245,11 @@ define_instructions!(
         [0] dest: Register,
     }
 
+    /// Load the empty value into a register.
+    LoadEmpty (LoadEmptyInstruction, load_empty_instruction) {
+        [0] dest: Register,
+    }
+
     /// Load the value `true` into a register.
     LoadTrue (LoadTrueInstruction, load_true_instruction) {
         [0] dest: Register,
@@ -451,10 +456,16 @@ define_instructions!(
         [2] right: Register,
     }
 
-    /// Negate a value with number converstion `-ToNumber(value)`, storing the result in dest.
+    /// Negate a value with number conversion `-ToNumber(value)`, storing the result in dest.
     Neg (NegInstruction, neg_instruction) {
         [0] dest: Register,
         [1] value: Register,
+    }
+
+    /// Increment a register, storing the result in that same register. Does not perform number
+    /// conversion so caller must ensure that the value is a number.
+    Inc (IncInstruction, inc_instruction) {
+        [0] dest: Register,
     }
 
     /// Logical not of a value with boolean conversion `!ToBoolean(value)`, storing the result in
@@ -557,6 +568,11 @@ define_instructions!(
     NewClosure(NewClosureInstruction, new_closure_instruction) {
         [0] dest: Register,
         [1] function_index: ConstantIndex,
+    }
+
+    /// Create a new empty array stored in dest.
+    NewArray(NewArrayInstruction, new_array_instruction) {
+        [0] dest: Register,
     }
 
     /// Get a property from an object, storing the result in dest. The property key may be any

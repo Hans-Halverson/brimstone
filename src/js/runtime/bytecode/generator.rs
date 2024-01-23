@@ -695,7 +695,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
-            ast::Expression::Array(_) => unimplemented!("bytecode for array literals"),
+            ast::Expression::Array(expr) => self.gen_array_literal(expr, dest),
             ast::Expression::Object(_) => unimplemented!("bytecode for object literals"),
             ast::Expression::Function(expr) => self.gen_function_expression(expr, None, dest),
             ast::Expression::ArrowFunction(expr) => {
@@ -1330,6 +1330,59 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Value of the last expression is value of the entire sequence expression
         self.gen_expression_with_dest(expr.expressions.last().unwrap(), dest)
+    }
+
+    fn gen_array_literal(
+        &mut self,
+        expr: &ast::ArrayExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let array = self.allocate_destination(dest)?;
+        self.writer.new_array_instruction(array);
+
+        // Fast path for empty arrays
+        if expr.elements.is_empty() {
+            return Ok(array);
+        }
+
+        // Keep an index register that is incremented for each element (if there is a next element)
+        let num_elements = expr.elements.len();
+        let index = self.register_allocator.allocate()?;
+        self.writer.load_immediate_instruction(index, SInt::new(0));
+
+        for (i, element) in expr.elements.iter().enumerate() {
+            match element {
+                ast::ArrayElement::Expression(expr) => {
+                    let value = self.gen_expression(expr)?;
+                    self.register_allocator.release(value);
+
+                    self.writer.set_property_instruction(array, index, value);
+
+                    if i != num_elements - 1 {
+                        self.writer.inc_instruction(index);
+                    }
+                }
+                ast::ArrayElement::Hole => {
+                    // Holes are represented as storing the empty value
+                    let value = self.register_allocator.allocate()?;
+                    self.writer.load_empty_instruction(value);
+                    self.register_allocator.release(value);
+
+                    self.writer.set_property_instruction(array, index, value);
+
+                    if i != num_elements - 1 {
+                        self.writer.inc_instruction(index);
+                    }
+                }
+                ast::ArrayElement::Spread(_) => {
+                    unimplemented!("bytecode for array spread elements")
+                }
+            }
+        }
+
+        self.register_allocator.release(index);
+
+        Ok(array)
     }
 
     fn gen_member_expression(

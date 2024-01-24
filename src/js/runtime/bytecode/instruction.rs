@@ -570,6 +570,11 @@ define_instructions!(
         [1] function_index: ConstantIndex,
     }
 
+    /// Create a new empty object stored in dest.
+    NewObject(NewObjectInstruction, new_object_instruction) {
+        [0] dest: Register,
+    }
+
     /// Create a new empty array stored in dest.
     NewArray(NewArrayInstruction, new_array_instruction) {
         [0] dest: Register,
@@ -590,6 +595,17 @@ define_instructions!(
         [2] value: Register,
     }
 
+    /// Define a property on an object with the given value. The property key may be any value.
+    ///
+    /// The `is_named` operand is a boolean flag (0 or 1) specifying whether the value is an unnamed
+    /// closure that needs its name set to the key with SetFunctionName.
+    DefineProperty(DefinePropertyInstruction, define_property_instruction) {
+        [0] object: Register,
+        [1] key: Register,
+        [2] value: Register,
+        [3] needs_name: UInt,
+    }
+
     /// Get a named property from an object, storing the result in dest. The name must be a string
     /// literal in the constant table.
     GetNamedProperty(GetNamedPropertyInstruction, get_named_property_instruction) {
@@ -601,6 +617,14 @@ define_instructions!(
     /// Set a named property on an object to the given value. The name must be a string literal in
     /// the constant table.
     SetNamedProperty(SetNamedPropertyInstruction, set_named_property_instruction) {
+        [0] object: Register,
+        [1] name_constant_index: ConstantIndex,
+        [2] value: Register,
+    }
+
+    /// Define a named property on an object with the given value. The name must be a string literal
+    /// in the constant table.
+    DefineNamedProperty(DefineNamedPropertyInstruction, define_named_property_instruction) {
         [0] object: Register,
         [1] name_constant_index: ConstantIndex,
         [2] value: Register,

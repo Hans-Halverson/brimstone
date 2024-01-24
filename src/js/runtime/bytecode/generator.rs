@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::js::{
+    common::wtf_8::Wtf8String,
     parser::{
         ast::{self, AstPtr},
         parser::ParseProgramResult,
@@ -152,7 +153,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     _scope_tree: Option<&'a ScopeTree>,
 
     /// Optional name of the function, used for debugging.
-    debug_name: Option<String>,
+    debug_name: Option<Wtf8String>,
 
     /// Number of blocks currently allocated in the function.
     num_blocks: usize,
@@ -193,7 +194,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new(
         cx: Context,
         scope_tree: Option<&'a ScopeTree>,
-        debug_name: Option<String>,
+        debug_name: Option<Wtf8String>,
         num_parameters: u32,
         num_local_registers: u32,
         is_strict: bool,
@@ -251,7 +252,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let debug_name = func
             .id
             .as_ref()
-            .map(|id| id.name.clone())
+            .map(|id| Wtf8String::from_str(&id.name))
             .or(anonymous_name);
 
         Ok(Self::new(
@@ -281,7 +282,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(Self::new(
             cx,
             Some(scope_tree),
-            Some("<global>".to_owned()),
+            Some(Wtf8String::from_str("<global>")),
             0,
             num_local_registers as u32,
             program.is_strict_mode,
@@ -536,6 +537,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(ConstantIndex::new(constant_index))
     }
 
+    fn add_wtf8_string_constant(&mut self, str: &Wtf8String) -> EmitResult<GenConstantIndex> {
+        let string = InternedStrings::get_wtf8_str(self.cx, str).as_flat();
+        let constant_index = self.constant_table_builder.add_string(string)?;
+        Ok(ConstantIndex::new(constant_index))
+    }
+
     fn enqueue_function_to_generate(
         &mut self,
         function: PendingFunctionNode,
@@ -589,7 +596,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let debug_name = self
             .debug_name
             .as_ref()
-            .map(|name| InternedStrings::get_str(self.cx, name));
+            .map(|name| InternedStrings::get_wtf8_str(self.cx, name));
         let bytecode = self.writer.finish();
 
         let bytecode_function = BytecodeFunction::new(
@@ -696,7 +703,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
             ast::Expression::Array(expr) => self.gen_array_literal(expr, dest),
-            ast::Expression::Object(_) => unimplemented!("bytecode for object literals"),
+            ast::Expression::Object(expr) => self.gen_object_literal(expr, dest),
             ast::Expression::Function(expr) => self.gen_function_expression(expr, None, dest),
             ast::Expression::ArrowFunction(expr) => {
                 self.gen_arrow_function_expression(expr, None, dest)
@@ -909,11 +916,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         // All string literals are loaded from the constant table
-        let string = InternedStrings::get_wtf8_str(self.cx, &expr.value).as_flat();
-        let constant_index = self.constant_table_builder.add_string(string)?;
-
-        self.writer
-            .load_constant_instruction(dest, ConstantIndex::new(constant_index));
+        let constant_index = self.add_wtf8_string_constant(&expr.value)?;
+        self.writer.load_constant_instruction(dest, constant_index);
 
         Ok(dest)
     }
@@ -1385,6 +1389,110 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(array)
     }
 
+    fn gen_object_literal(
+        &mut self,
+        expr: &ast::ObjectExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let object = self.allocate_destination(dest)?;
+        self.writer.new_object_instruction(object);
+
+        for property in &expr.properties {
+            if let ast::PropertyKind::Spread(_) = property.kind {
+                unimplemented!("bytecode for object spread elements")
+            }
+
+            enum Property<'a> {
+                Computed(GenRegister),
+                Named {
+                    constant_index: GenConstantIndex,
+                    name: AnyStr<'a>,
+                    is_proto: bool,
+                },
+            }
+
+            // Evaluate property name
+            let key = if property.is_computed {
+                Property::Computed(self.gen_expression(&property.key)?)
+            } else {
+                match property.key.as_ref() {
+                    ast::Expression::Id(id) => {
+                        let constant_index = self.add_string_constant(&id.name)?;
+                        let name = AnyStr::from_id(id);
+                        let is_proto = id.name == "__proto__";
+
+                        Property::Named { constant_index, name, is_proto }
+                    }
+                    ast::Expression::String(string) => {
+                        let constant_index = self.add_wtf8_string_constant(&string.value)?;
+                        let name = AnyStr::Wtf8(&string.value);
+                        let is_proto = string.value == "__proto__";
+
+                        Property::Named { constant_index, name, is_proto }
+                    }
+                    ast::Expression::Number(_) | ast::Expression::BigInt(_) => {
+                        Property::Computed(self.gen_expression(&property.key)?)
+                    }
+                    _ => unreachable!("invalid property key"),
+                }
+            };
+
+            let mut needs_name = false;
+
+            let value = if property.value.is_none() {
+                // Identifier shorthand properties
+                let value_id = property.key.as_ref().to_id();
+                self.gen_load_identifier(value_id, ExprDest::Any)?
+            } else if property.is_method {
+                // Method properties
+                unimplemented!("bytecode for object literal method properties")
+            } else if let Property::Named { is_proto: true, .. } = &key {
+                unimplemented!("bytecode for __proto__ property");
+            } else {
+                // Regular key-value properties. Value is statically evaluated as named if the key
+                // is statically known, otherwise the DefinePropertyInstruction will handle setting
+                // the name of the value at runtime if necessary.
+                match &key {
+                    Property::Named { name, .. } => self.gen_named_expression(
+                        *name,
+                        property.value.as_ref().unwrap(),
+                        ExprDest::Any,
+                    )?,
+                    Property::Computed(_) => {
+                        let value_expr = property.value.as_ref().unwrap();
+                        needs_name = Self::expression_needs_name(value_expr);
+
+                        self.gen_expression_with_dest(value_expr, ExprDest::Any)?
+                    }
+                }
+            };
+
+            self.register_allocator.release(value);
+
+            // Emit the correct define property instruction depending on whether the property is
+            // a statically known string.
+            match key {
+                Property::Computed(key) => {
+                    let needs_name_flag = if needs_name {
+                        UInt::new(1)
+                    } else {
+                        UInt::new(0)
+                    };
+
+                    self.writer
+                        .define_property_instruction(object, key, value, needs_name_flag);
+                    self.register_allocator.release(key);
+                }
+                Property::Named { constant_index, .. } => {
+                    self.writer
+                        .define_named_property_instruction(object, constant_index, value);
+                }
+            }
+        }
+
+        Ok(object)
+    }
+
     fn gen_member_expression(
         &mut self,
         expr: &ast::MemberExpression,
@@ -1459,7 +1567,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // For simple assignments, right hand side is placed directly in the dest
                     // register.
                     self.gen_named_expression_if(
-                        id,
+                        AnyStr::from_id(id),
                         &expr.right,
                         stored_value_dest,
                         is_non_parenthesized_id_predicate,
@@ -1469,7 +1577,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // temporary registers, with only the result placed in the dest.
                     let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
                     let right_value = self.gen_named_expression_if(
-                        id,
+                        AnyStr::from_id(id),
                         &expr.right,
                         ExprDest::Any,
                         is_non_parenthesized_id_predicate,
@@ -1611,7 +1719,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_named_expression(
         &mut self,
-        name: &ast::Identifier,
+        name: AnyStr,
         expr: &ast::Expression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -1620,7 +1728,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_named_expression_if(
         &mut self,
-        name: &ast::Identifier,
+        name: AnyStr,
         expr: &ast::Expression,
         dest: ExprDest,
         if_predicate: impl Fn() -> bool,
@@ -1631,19 +1739,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match expr {
             ast::Expression::Function(func) if func.id.is_none() => {
-                self.gen_function_expression(func, Some(name.name.clone()), dest)
+                self.gen_function_expression(func, Some(name.to_owned()), dest)
             }
             ast::Expression::ArrowFunction(func) => {
-                self.gen_arrow_function_expression(func, Some(name.name.clone()), dest)
+                self.gen_arrow_function_expression(func, Some(name.to_owned()), dest)
             }
             _ => self.gen_expression_with_dest(expr, dest),
+        }
+    }
+
+    fn expression_needs_name(expr: &ast::Expression) -> bool {
+        match expr {
+            ast::Expression::Function(func) if func.id.is_none() => true,
+            ast::Expression::ArrowFunction(_) => true,
+            ast::Expression::Class(class) if class.id.is_none() => true,
+            _ => false,
         }
     }
 
     fn gen_function_expression(
         &mut self,
         func: &ast::Function,
-        name: Option<String>,
+        name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let pending_node = PendingFunctionNode::Expression { node: AstPtr::from_ref(func), name };
@@ -1659,7 +1776,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_arrow_function_expression(
         &mut self,
         func: &ast::Function,
-        name: Option<String>,
+        name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let pending_node = PendingFunctionNode::Arrow { node: AstPtr::from_ref(func), name };
@@ -1685,7 +1802,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match decl.id.as_ref() {
                     ast::Pattern::Id(id) => {
                         let init_value_dest = self.expr_dest_for_id(id);
-                        let init_value = self.gen_named_expression(id, init, init_value_dest)?;
+                        let init_value =
+                            self.gen_named_expression(AnyStr::from_id(id), init, init_value_dest)?;
 
                         self.gen_store_identifier(id, init_value)?;
                         self.register_allocator.release(init_value);
@@ -2212,8 +2330,8 @@ type GenConstantIndex = ConstantIndex<ExtraWide>;
 
 enum PendingFunctionNode {
     Declaration(AstPtr<ast::Function>),
-    Expression { node: AstPtr<ast::Function>, name: Option<String> },
-    Arrow { node: AstPtr<ast::Function>, name: Option<String> },
+    Expression { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
+    Arrow { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
 }
 
 impl PendingFunctionNode {
@@ -2233,7 +2351,7 @@ impl PendingFunctionNode {
     }
 
     /// Named given to this unnamed function (an anonymous expression or arrow function)
-    fn name(self) -> Option<String> {
+    fn name(self) -> Option<Wtf8String> {
         match self {
             PendingFunctionNode::Declaration(_) => None,
             PendingFunctionNode::Expression { name, .. }
@@ -2287,6 +2405,26 @@ struct JumpStatementTarget {
     continue_block: BlockId,
     /// Label id if this is a labeled statement, otherwise this is an unlabeled loop.
     label_id: Option<ast::LabelId>,
+}
+
+/// A reference to a string that may be either wtf8 or utf8.
+#[derive(Copy, Clone)]
+enum AnyStr<'a> {
+    Wtf8(&'a Wtf8String),
+    Str(&'a str),
+}
+
+impl AnyStr<'_> {
+    fn from_id(id: &ast::Identifier) -> AnyStr {
+        AnyStr::Str(id.name.as_str())
+    }
+
+    fn to_owned(&self) -> Wtf8String {
+        match self {
+            AnyStr::Wtf8(wtf8) => (*wtf8).clone(),
+            AnyStr::Str(str) => Wtf8String::from_str(str),
+        }
+    }
 }
 
 #[derive(PartialEq)]

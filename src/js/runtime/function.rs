@@ -697,11 +697,28 @@ pub fn define_method_property(
 
 // 10.2.9 SetFunctionName
 pub fn set_function_name(
-    mut cx: Context,
+    cx: Context,
     func: Handle<ObjectValue>,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
 ) {
+    let name_string = build_function_name(cx, name, prefix);
+
+    if func.is_builtin_function_object() {
+        // Choose to not add prefix, as this is optional in spec
+        let mut builtin_func = func.cast::<BuiltinFunction>();
+        builtin_func.set_initial_name(Some(name_string));
+    }
+
+    let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
+    must!(define_property_or_throw(cx, func, cx.names.name(), desc))
+}
+
+pub fn build_function_name(
+    mut cx: Context,
+    name: Handle<PropertyKey>,
+    prefix: Option<&str>,
+) -> Handle<StringValue> {
     // Convert name to string value, property formatting symbol name
     let name_string = if name.is_symbol() {
         if let Some(description) = name.as_symbol().description() {
@@ -717,21 +734,12 @@ pub fn set_function_name(
     };
 
     // Add prefix to name
-    let name_string = if let Some(prefix) = prefix {
+    if let Some(prefix) = prefix {
         let prefix_string = cx.alloc_string(&format!("{} ", prefix));
         StringValue::concat(cx, prefix_string, name_string)
     } else {
         name_string
-    };
-
-    if func.is_builtin_function_object() {
-        // Choose to not add prefix, as this is optional in spec
-        let mut builtin_func = func.cast::<BuiltinFunction>();
-        builtin_func.set_initial_name(Some(name_string));
     }
-
-    let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.name(), desc))
 }
 
 // 10.2.10 SetFunctionLength

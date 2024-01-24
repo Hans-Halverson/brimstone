@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::{
     js::runtime::{
-        abstract_operations::set,
+        abstract_operations::{create_data_property_or_throw, set},
         array_object::array_create,
         error::type_error_,
         eval::expression::{
@@ -12,12 +12,14 @@ use crate::{
             eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
             eval_typeof,
         },
+        function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::{object_create_from_constructor, ordinary_object_create},
+        property::Property,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object, to_property_key,
         },
@@ -31,19 +33,20 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallWithReceiverInstruction, ConstructInstruction, DivInstruction, ExpInstruction,
-        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, IncInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
-        JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
-        JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
-        LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
-        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
-        LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        CallWithReceiverInstruction, ConstructInstruction, DefineNamedPropertyInstruction,
+        DefinePropertyInstruction, DivInstruction, ExpInstruction, GetNamedPropertyInstruction,
+        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        IncInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
+        JumpFalseInstruction, JumpInstruction, JumpToBooleanFalseConstantInstruction,
+        JumpToBooleanFalseInstruction, JumpToBooleanTrueConstantInstruction,
+        JumpToBooleanTrueInstruction, JumpTrueConstantInstruction, JumpTrueInstruction,
+        LessThanInstruction, LessThanOrEqualInstruction, LoadConstantInstruction,
+        LoadEmptyInstruction, LoadFalseInstruction, LoadGlobalInstruction,
+        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewArrayInstruction, NewClosureInstruction, OpCode, RemInstruction, RetInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
+        NewArrayInstruction, NewClosureInstruction, NewObjectInstruction, OpCode, RemInstruction,
+        RetInstruction, SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
         ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
         StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
         ToNumberInstruction, TypeOfInstruction,
@@ -384,12 +387,16 @@ impl VM {
                             self.execute_jump_to_boolean_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
                         }
                         OpCode::SetProperty => {
                             dispatch_or_throw!(SetPropertyInstruction, execute_set_property)
+                        }
+                        OpCode::DefineProperty => {
+                            dispatch_or_throw!(DefinePropertyInstruction, execute_define_property)
                         }
                         OpCode::GetNamedProperty => {
                             dispatch_or_throw!(
@@ -401,6 +408,12 @@ impl VM {
                             dispatch_or_throw!(
                                 SetNamedPropertyInstruction,
                                 execute_set_named_property
+                            )
+                        }
+                        OpCode::DefineNamedProperty => {
+                            dispatch_or_throw!(
+                                DefineNamedPropertyInstruction,
+                                execute_define_named_property
                             )
                         }
                         OpCode::Throw => execute_throw!(get_instr),
@@ -1686,6 +1699,16 @@ impl VM {
     }
 
     #[inline]
+    fn execute_new_object<W: Width>(&mut self, instr: &NewObjectInstruction<W>) {
+        let dest = instr.dest();
+
+        // Allocates
+        let object = ordinary_object_create(self.cx);
+
+        self.write_register(dest, object.cast::<Value>().get());
+    }
+
+    #[inline]
     fn execute_new_array<W: Width>(&mut self, instr: &NewArrayInstruction<W>) {
         let dest = instr.dest();
 
@@ -1743,6 +1766,50 @@ impl VM {
     }
 
     #[inline]
+    fn execute_define_property<W: Width>(
+        &mut self,
+        instr: &DefinePropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        self.h1.replace(object);
+
+        let key = self.read_register(instr.key());
+        self.h2.replace(key);
+
+        let value = self.read_register(instr.value());
+        self.h3.replace(value);
+        let value = self.h3;
+
+        let needs_name = instr.needs_name().value().to_usize() == 1;
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, self.h2));
+
+        // Since we did not statically know the key we must perform "named evaluation" here, meaning
+        // we set the function name to the key.
+        if needs_name {
+            // We only set the `needs_name` flag when the value evaluates to a closure
+            debug_assert!(
+                value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Closure
+            );
+            let closure = value.cast::<Closure>();
+            let name = build_function_name(self.cx, property_key, None);
+
+            // Perform a raw set of the property, overwriting the previous value even though it was
+            // not writable. This will preserve the order of the properties, as the function name
+            // was initially added but defaulted to the empty string.
+            let property = Property::data(name.into(), false, false, true);
+            closure
+                .cast::<ObjectValue>()
+                .set_property(self.cx, self.cx.names.name(), property);
+        }
+
+        let object = maybe!(to_object(self.cx, self.h1));
+
+        create_data_property_or_throw(self.cx, object, property_key, self.h3)
+    }
+
+    #[inline]
     fn execute_get_named_property<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
@@ -1790,6 +1857,29 @@ impl VM {
         let is_strict = self.get_function().is_strict();
 
         set(self.cx, object, self.h2.cast(), self.h3, is_strict)
+    }
+
+    #[inline]
+    fn execute_define_named_property<W: Width>(
+        &mut self,
+        instr: &DefineNamedPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register(instr.object());
+        self.h1.replace(object);
+
+        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        self.h2.replace(key);
+
+        let value = self.read_register(instr.value());
+        self.h3.replace(value);
+
+        // May allocate
+        let object = maybe!(to_object(self.cx, self.h1));
+
+        let key = PropertyKey::string(self.cx, self.h2.as_string());
+        self.h2.replace(key.as_string().into());
+
+        create_data_property_or_throw(self.cx, object, self.h2.cast(), self.h3)
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

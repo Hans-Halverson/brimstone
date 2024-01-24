@@ -1,0 +1,122 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: allNamedExpressions]
+    1: [String: allNamedExpressions]
+    2: [BytecodeFunction: stringKey]
+    3: [String: stringKey]
+    4: [BytecodeFunction: computedNeedsName]
+    5: [String: computedNeedsName]
+    6: [BytecodeFunction: computedAlreadyNamed]
+    7: [String: computedAlreadyNamed]
+}
+
+[BytecodeFunction: allNamedExpressions] {
+  Parameters: 0, Registers: 2
+     0: NewObject r0
+     2: NewClosure r1, c1
+     5: DefineNamedProperty r0, c0, r1
+     9: NewClosure r1, c3
+    12: DefineNamedProperty r0, c2, r1
+    16: NewClosure r1, c5
+    19: DefineNamedProperty r0, c4, r1
+    23: Ret r0
+  Constant Table:
+    0: [String: a]
+    1: [BytecodeFunction: a]
+    2: [String: b]
+    3: [BytecodeFunction: b]
+    4: [String: c]
+    5: [BytecodeFunction: alreadyNamed]
+}
+
+[BytecodeFunction: a] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: b] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: alreadyNamed] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: stringKey] {
+  Parameters: 0, Registers: 2
+    0: NewObject r0
+    2: NewClosure r1, c1
+    5: DefineNamedProperty r0, c0, r1
+    9: Ret r0
+  Constant Table:
+    0: [String: test]
+    1: [BytecodeFunction: test]
+}
+
+[BytecodeFunction: test] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: computedNeedsName] {
+  Parameters: 0, Registers: 3
+     0: NewObject r0
+     2: LoadImmediate r1, 1
+     5: LoadImmediate r2, 2
+     8: Add r1, r1, r2
+    12: NewClosure r2, c0
+    15: DefineProperty r0, r1, r2, 1
+    20: LoadImmediate r1, 3
+    23: NewClosure r2, c1
+    26: DefineProperty r0, r1, r2, 1
+    31: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: computedAlreadyNamed] {
+  Parameters: 0, Registers: 3
+     0: NewObject r0
+     2: LoadImmediate r1, 1
+     5: NewClosure r2, c0
+     8: DefineProperty r0, r1, r2, 0
+    13: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: alreadyNamed]
+}
+
+[BytecodeFunction: alreadyNamed] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

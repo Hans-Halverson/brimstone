@@ -224,6 +224,11 @@ impl<W: Width> fmt::Display for Register<W> {
 
 impl<W: Width> UInt<W> {
     #[inline]
+    pub fn new(value: W::UInt) -> Self {
+        Self::from_unsigned(value)
+    }
+
+    #[inline]
     pub fn value(&self) -> W::UInt {
         self.unsigned()
     }

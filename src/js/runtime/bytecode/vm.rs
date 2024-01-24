@@ -136,6 +136,11 @@ impl VM {
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
+    ///
+    /// Invariants:
+    /// - By the time that a throw is possible, PC must be updated to point to the next instruction
+    /// - References to the instruction cannot be held over any allocations, since the instruction
+    ///   points into the managed heap and may be moved by a GC.
     fn dispatch_loop(&mut self) -> Result<(), Value> {
         'dispatch: loop {
             macro_rules! create_dispatch_macros {
@@ -201,12 +206,7 @@ impl VM {
                     // Walk the stack, looking for an exception handler that covers the current
                     // address.
                     let mut stack_frame = StackFrame::for_fp(self.fp);
-                    if self.visit_frame_for_exception_unwinding(
-                        stack_frame,
-                        self.pc,
-                        error_value,
-                        true,
-                    ) {
+                    if self.visit_frame_for_exception_unwinding(stack_frame, self.pc, error_value) {
                         continue 'dispatch;
                     }
 
@@ -225,7 +225,6 @@ impl VM {
                             caller_stack_frame,
                             stack_frame.return_address(),
                             error_value,
-                            false,
                         ) {
                             continue 'dispatch;
                         }
@@ -243,6 +242,7 @@ impl VM {
             macro_rules! execute_throw {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(ThrowInstruction);
+                    self.set_pc_after(instr);
                     let error_value = self.read_register(instr.error());
                     throw!(error_value)
                 }};
@@ -1889,7 +1889,6 @@ impl VM {
         stack_frame: StackFrame,
         instr_addr: *const u8,
         error_value: Value,
-        is_current_frame: bool,
     ) -> bool {
         let func = stack_frame.bytecode_function();
         if func.exception_handlers_ptr().is_none() {
@@ -1900,28 +1899,17 @@ impl VM {
         let instr_offset = unsafe { instr_addr.offset_from(func.bytecode().as_ptr()) as usize };
 
         for handler in func.exception_handlers_ptr().unwrap().iter() {
-            // In the current frame the PC is set to the start of the current instruction so treat
-            // the handler bounds as [inclusive, exclusive).
-            //
-            // In caller frames the saved return address points to the start of the next
-            // instruction, so treat the handler bounds as (exclusive, inclusive].
-            let instr_in_range = if is_current_frame {
-                handler.start() <= instr_offset && instr_offset < handler.end()
-            } else {
-                handler.start() < instr_offset && instr_offset <= handler.end()
-            };
-
-            if instr_in_range {
+            // The saved return address points to the start of the next instruction, so treat the
+            // handler bounds as (exclusive, inclusive].
+            if handler.start() < instr_offset && instr_offset <= handler.end() {
                 // Find the absolute address of the start of the handler block and start executing
                 // instructions from this address.
                 let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
                 self.pc = handler_addr;
 
                 // Unwind the stack to the frame that contains the exception handler
-                if !is_current_frame {
-                    self.fp = stack_frame.fp();
-                    self.sp = stack_frame.sp();
-                }
+                self.fp = stack_frame.fp();
+                self.sp = stack_frame.sp();
 
                 // Write the error into the appropriate register in the new stack frame
                 if let Some(error_register) = handler.error_register() {

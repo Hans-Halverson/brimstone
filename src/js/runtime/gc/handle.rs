@@ -77,6 +77,12 @@ impl<T: ToHandleContents> Handle<T> {
                 .write(T::to_handle_contents(&new_contents))
         }
     }
+
+    pub fn replace_into<U: ToHandleContents>(self, new_contents: U::Impl) -> Handle<U> {
+        let mut handle = self.cast::<U>();
+        handle.replace(new_contents);
+        handle
+    }
 }
 
 impl<T> Handle<T> {

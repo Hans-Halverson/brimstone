@@ -74,11 +74,6 @@ pub struct VM {
     /// The frame pointer
     fp: *mut StackSlotValue,
 
-    /// Handle pool
-    h1: Handle<Value>,
-    h2: Handle<Value>,
-    h3: Handle<Value>,
-
     /// Whether the VM is currently executing bytecode. VM is only walked for GC roots when this
     /// is true.
     is_executing: bool,
@@ -97,11 +92,6 @@ impl VM {
             pc: std::ptr::null(),
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
-
-            // Setup handle pool
-            h1: Handle::empty(cx),
-            h2: Handle::empty(cx),
-            h3: Handle::empty(cx),
 
             is_executing: false,
             stack,
@@ -525,6 +515,11 @@ impl VM {
     #[inline]
     fn write_register<W: Width>(&mut self, reg: Register<W>, value: Value) {
         unsafe { *self.register_address(reg) = value }
+    }
+
+    #[inline]
+    fn read_register_to_handle<W: Width>(&mut self, reg: Register<W>) -> Handle<Value> {
+        self.read_register(reg).to_handle(self.cx)
     }
 
     #[inline]
@@ -1103,9 +1098,9 @@ impl VM {
         } else if receiver.is_nullish() {
             self.cx.get_global_object_ptr().into()
         } else {
-            self.h1.replace(receiver);
-            let receiver = maybe!(to_object(self.cx, self.h1));
-            receiver.get_().into()
+            let receiver = receiver.to_handle(self.cx);
+            let receiver_object = maybe!(to_object(self.cx, receiver));
+            receiver_object.get_().into()
         };
 
         value.into()
@@ -1201,15 +1196,16 @@ impl VM {
         instr: &LoadGlobalInstruction<W>,
     ) -> EvalResult<()> {
         let name = self.get_constant(self.get_function(), instr.constant_index());
-        self.h1.replace(name);
-        let name = self.h1.cast();
+        let name = name.as_string().to_handle();
 
         let dest = instr.dest();
 
         // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
-            // May allocate
-            let key = PropertyKey::string(cx, name).to_handle(cx);
+            // May allocate, reuse name handle
+            let key = PropertyKey::string(cx, name);
+            let key = name.replace_into(key);
+
             let value = maybe!(get(cx, cx.get_global_object(), key));
 
             self.write_register(dest, value.get());
@@ -1223,18 +1219,17 @@ impl VM {
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        let value = self.read_register(instr.value());
-        self.h1.replace(value);
-        let value = self.h1;
+        let value = self.read_register_to_handle(instr.value());
 
         let name = self.get_constant(self.get_function(), instr.constant_index());
-        self.h2.replace(name);
-        let name = self.h2.cast();
+        let name = name.as_string().to_handle();
 
         // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
-            // May allocate
-            let key = PropertyKey::string(cx, name).to_handle(cx);
+            // May allocate, reuse name handle
+            let key = PropertyKey::string(cx, name);
+            let key = name.replace_into(key);
+
             maybe!(set(cx, cx.get_global_object(), key, value, false));
 
             ().into()
@@ -1243,16 +1238,12 @@ impl VM {
 
     #[inline]
     fn execute_add<W: Width>(&mut self, instr: &AddInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_add(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_add(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1261,16 +1252,12 @@ impl VM {
 
     #[inline]
     fn execute_sub<W: Width>(&mut self, instr: &SubInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_subtract(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_subtract(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1279,16 +1266,12 @@ impl VM {
 
     #[inline]
     fn execute_mul<W: Width>(&mut self, instr: &MulInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_multiply(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_multiply(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1297,16 +1280,12 @@ impl VM {
 
     #[inline]
     fn execute_div<W: Width>(&mut self, instr: &DivInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_divide(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_divide(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1315,16 +1294,12 @@ impl VM {
 
     #[inline]
     fn execute_rem<W: Width>(&mut self, instr: &RemInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_remainder(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_remainder(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1333,16 +1308,12 @@ impl VM {
 
     #[inline]
     fn execute_exp<W: Width>(&mut self, instr: &ExpInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_exponentiation(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_exponentiation(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1351,16 +1322,12 @@ impl VM {
 
     #[inline]
     fn execute_bit_and<W: Width>(&mut self, instr: &BitAndInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_and(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_bitwise_and(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1369,48 +1336,42 @@ impl VM {
 
     #[inline]
     fn execute_bit_or<W: Width>(&mut self, instr: &BitOrInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_or(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_bitwise_or(self.cx, left_value, right_value));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
 
     #[inline]
     fn execute_bit_xor<W: Width>(&mut self, instr: &BitXorInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_xor(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_bitwise_xor(self.cx, left_value, right_value));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
 
     #[inline]
     fn execute_shift_left<W: Width>(&mut self, instr: &ShiftLeftInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_left(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_shift_left(self.cx, left_value, right_value));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1420,16 +1381,14 @@ impl VM {
         &mut self,
         instr: &ShiftRightArithmeticInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_right_arithmetic(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_shift_right_arithmetic(self.cx, left_value, right_value));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1439,16 +1398,14 @@ impl VM {
         &mut self,
         instr: &ShiftRightLogicalInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_right_logical(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_shift_right_logical(self.cx, left_value, right_value));
 
-        self.write_register(instr.dest(), result.get());
+        self.write_register(dest, result.get());
 
         ().into()
     }
@@ -1458,16 +1415,12 @@ impl VM {
         &mut self,
         instr: &LooseEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
+        let result = maybe!(is_loosely_equal(self.cx, left_value, right_value));
 
         self.write_register(dest, Value::bool(result));
 
@@ -1479,16 +1432,12 @@ impl VM {
         &mut self,
         instr: &LooseNotEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(is_loosely_equal(self.cx, self.h1, self.h2));
+        let result = maybe!(is_loosely_equal(self.cx, left_value, right_value));
 
         self.write_register(dest, Value::bool(!result));
 
@@ -1497,40 +1446,30 @@ impl VM {
 
     #[inline]
     fn execute_strict_equal<W: Width>(&mut self, instr: &StrictEqualInstruction<W>) {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
 
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
-        let result = is_strictly_equal(self.h1, self.h2);
+        let result = is_strictly_equal(left_value, right_value);
         self.write_register(instr.dest(), Value::bool(result));
     }
 
     #[inline]
     fn execute_strict_not_equal<W: Width>(&mut self, instr: &StrictNotEqualInstruction<W>) {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
 
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
-        let result = is_strictly_equal(self.h1, self.h2);
+        let result = is_strictly_equal(left_value, right_value);
         self.write_register(instr.dest(), Value::bool(!result));
     }
 
     #[inline]
     fn execute_less_than<W: Width>(&mut self, instr: &LessThanInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_less_than(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_less_than(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1542,16 +1481,12 @@ impl VM {
         &mut self,
         instr: &LessThanOrEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_less_than_or_equal(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_less_than_or_equal(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1563,16 +1498,12 @@ impl VM {
         &mut self,
         instr: &GreaterThanInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_greater_than(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_greater_than(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1584,16 +1515,12 @@ impl VM {
         &mut self,
         instr: &GreaterThanOrEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register(instr.left());
-        self.h1.replace(left_value);
-
-        let right_value = self.read_register(instr.right());
-        self.h2.replace(right_value);
-
+        let left_value = self.read_register_to_handle(instr.left());
+        let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_greater_than_or_equal(self.cx, self.h1, self.h2));
+        let result = maybe!(eval_greater_than_or_equal(self.cx, left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -1602,13 +1529,11 @@ impl VM {
 
     #[inline]
     fn execute_neg<W: Width>(&mut self, instr: &NegInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register(instr.value());
-        self.h1.replace(value);
-
+        let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_negate(self.cx, self.h1));
+        let result = maybe!(eval_negate(self.cx, value));
 
         self.write_register(dest, result.get());
 
@@ -1644,13 +1569,11 @@ impl VM {
 
     #[inline]
     fn execute_bit_not<W: Width>(&mut self, instr: &BitNotInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register(instr.value());
-        self.h1.replace(value);
-
+        let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_not(self.cx, self.h1));
+        let result = maybe!(eval_bitwise_not(self.cx, value));
 
         self.write_register(dest, result.get());
 
@@ -1659,26 +1582,22 @@ impl VM {
 
     #[inline]
     fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
-        let value = self.read_register(instr.value());
-        self.h1.replace(value);
-
+        let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
         // May allocate
-        let result = eval_typeof(self.cx, self.h1);
+        let result = eval_typeof(self.cx, value);
 
         self.write_register(dest, result.cast::<Value>().get());
     }
 
     #[inline]
     fn execute_to_number<W: Width>(&mut self, instr: &ToNumberInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register(instr.value());
-        self.h1.replace(value);
-
+        let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_number(self.cx, self.h1));
+        let result = maybe!(to_number(self.cx, value));
 
         self.write_register(dest, result.get());
 
@@ -1688,12 +1607,12 @@ impl VM {
     #[inline]
     fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
         let func = self.get_constant(self.get_function(), instr.function_index());
-        self.h1.replace(func);
+        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
 
         // Allocates
-        let closure = Closure::new(self.cx, self.h1.cast::<BytecodeFunction>());
+        let closure = Closure::new(self.cx, func);
 
         self.write_register(dest, Value::object(closure.get_().cast()));
     }
@@ -1723,17 +1642,13 @@ impl VM {
         &mut self,
         instr: &GetPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h2.replace(object);
-
-        let key = self.read_register(instr.key());
-        self.h1.replace(key);
-
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key());
         let dest = instr.dest();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, self.h1));
-        let object = maybe!(to_object(self.cx, self.h2));
+        let property_key = maybe!(to_property_key(self.cx, key));
+        let object = maybe!(to_object(self.cx, object));
 
         let result = maybe!(get(self.cx, object, property_key));
 
@@ -1747,22 +1662,17 @@ impl VM {
         &mut self,
         instr: &SetPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h1.replace(object);
-
-        let key = self.read_register(instr.key());
-        self.h2.replace(key);
-
-        let value = self.read_register(instr.value());
-        self.h3.replace(value);
-
-        // May allocate
-        let property_key = maybe!(to_property_key(self.cx, self.h2));
-        let object = maybe!(to_object(self.cx, self.h1));
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key());
+        let value = self.read_register_to_handle(instr.value());
 
         let is_strict = self.get_function().is_strict();
 
-        set(self.cx, object, property_key, self.h3, is_strict)
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, key));
+        let object = maybe!(to_object(self.cx, object));
+
+        set(self.cx, object, property_key, value, is_strict)
     }
 
     #[inline]
@@ -1770,20 +1680,14 @@ impl VM {
         &mut self,
         instr: &DefinePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h1.replace(object);
-
-        let key = self.read_register(instr.key());
-        self.h2.replace(key);
-
-        let value = self.read_register(instr.value());
-        self.h3.replace(value);
-        let value = self.h3;
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key());
+        let value = self.read_register_to_handle(instr.value());
 
         let needs_name = instr.needs_name().value().to_usize() == 1;
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, self.h2));
+        let property_key = maybe!(to_property_key(self.cx, key));
 
         // Since we did not statically know the key we must perform "named evaluation" here, meaning
         // we set the function name to the key.
@@ -1804,9 +1708,9 @@ impl VM {
                 .set_property(self.cx, self.cx.names.name(), property);
         }
 
-        let object = maybe!(to_object(self.cx, self.h1));
+        let object = maybe!(to_object(self.cx, object));
 
-        create_data_property_or_throw(self.cx, object, property_key, self.h3)
+        create_data_property_or_throw(self.cx, object, property_key, value)
     }
 
     #[inline]
@@ -1814,20 +1718,19 @@ impl VM {
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h1.replace(object);
+        let object = self.read_register_to_handle(instr.object());
 
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
-        self.h2.replace(key);
+        let key = key.as_string().to_handle();
 
         let dest = instr.dest();
 
-        // May allocate
-        let key = PropertyKey::string(self.cx, self.h2.as_string());
-        self.h2.replace(key.as_string().into());
+        // May allocate, replace handle
+        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = key.replace_into(property_key);
 
-        let object = maybe!(to_object(self.cx, self.h1));
-        let result = maybe!(get(self.cx, object, self.h2.cast()));
+        let object = maybe!(to_object(self.cx, object));
+        let result = maybe!(get(self.cx, object, property_key));
 
         self.write_register(dest, result.get());
 
@@ -1839,24 +1742,22 @@ impl VM {
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h1.replace(object);
+        let object = self.read_register_to_handle(instr.object());
 
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
-        self.h2.replace(key);
+        let key = key.as_string().to_handle();
 
-        let value = self.read_register(instr.value());
-        self.h3.replace(value);
-
-        // May allocate
-        let object = maybe!(to_object(self.cx, self.h1));
-
-        let key = PropertyKey::string(self.cx, self.h2.as_string());
-        self.h2.replace(key.as_string().into());
+        let value = self.read_register_to_handle(instr.value());
 
         let is_strict = self.get_function().is_strict();
 
-        set(self.cx, object, self.h2.cast(), self.h3, is_strict)
+        // May allocate
+        let object = maybe!(to_object(self.cx, object));
+
+        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = key.replace_into(property_key);
+
+        set(self.cx, object, property_key, value, is_strict)
     }
 
     #[inline]
@@ -1864,22 +1765,20 @@ impl VM {
         &mut self,
         instr: &DefineNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register(instr.object());
-        self.h1.replace(object);
+        let object = self.read_register_to_handle(instr.object());
 
         let key = self.get_constant(self.get_function(), instr.name_constant_index());
-        self.h2.replace(key);
+        let key = key.as_string().to_handle();
 
-        let value = self.read_register(instr.value());
-        self.h3.replace(value);
+        let value = self.read_register_to_handle(instr.value());
 
         // May allocate
-        let object = maybe!(to_object(self.cx, self.h1));
+        let object = maybe!(to_object(self.cx, object));
 
-        let key = PropertyKey::string(self.cx, self.h2.as_string());
-        self.h2.replace(key.as_string().into());
+        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = key.replace_into(property_key);
 
-        create_data_property_or_throw(self.cx, object, self.h2.cast(), self.h3)
+        create_data_property_or_throw(self.cx, object, property_key, value)
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

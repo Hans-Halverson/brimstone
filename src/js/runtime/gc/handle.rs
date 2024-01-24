@@ -9,13 +9,19 @@ use crate::js::runtime::{
     object_value::ObjectValue,
     string_value::StringValue,
     value::{AccessorValue, BigIntValue, SymbolValue},
-    Context, PropertyKey, Value,
+    Context, Value,
 };
 
 use super::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapObject};
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
 pub type HandleContents = usize;
+
+pub trait ToHandleContents {
+    type Impl;
+
+    fn to_handle_contents(value: &Self::Impl) -> HandleContents;
+}
 
 /// Handles hold a value or heap pointer behind a pointer. Handles are safe to store on the stack
 /// during a GC, since the handle's pointer does not change but the address of the heap object
@@ -25,7 +31,7 @@ pub struct Handle<T> {
     phantom_data: PhantomData<T>,
 }
 
-impl<T> Handle<T> {
+impl<T: ToHandleContents> Handle<T> {
     #[inline]
     pub fn new(handle_context: &mut HandleContext, contents: HandleContents) -> Handle<T> {
         // Handle scope block is full, so push a new handle scope block onto stack
@@ -48,7 +54,7 @@ impl<T> Handle<T> {
     #[inline]
     pub fn empty(cx: Context) -> Handle<T> {
         let handle_context = cx.heap.info().handle_context();
-        Handle::new(handle_context, Value::empty().to_handle_contents())
+        Handle::new(handle_context, Value::to_handle_contents(&Value::empty()))
     }
 
     #[inline]
@@ -61,6 +67,19 @@ impl<T> Handle<T> {
         self.ptr == NonNull::dangling()
     }
 
+    /// Replace the value stored behind this handle with a new value. Note that all copies of this
+    /// handle will also be changed.
+    #[inline]
+    pub fn replace(&mut self, new_contents: T::Impl) {
+        unsafe {
+            self.ptr
+                .as_ptr()
+                .write(T::to_handle_contents(&new_contents))
+        }
+    }
+}
+
+impl<T> Handle<T> {
     #[inline]
     pub fn cast<U>(&self) -> Handle<U> {
         Handle { ptr: self.ptr, phantom_data: PhantomData }
@@ -75,6 +94,22 @@ impl<T> Clone for Handle<T> {
 }
 
 impl<T> Copy for Handle<T> {}
+
+impl<T: ToHandleContents> Deref for Handle<T> {
+    type Target = T::Impl;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.ptr.cast::<Self::Target>().as_ref() }
+    }
+}
+
+impl<T: ToHandleContents> DerefMut for Handle<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.ptr.cast::<Self::Target>().as_mut() }
+    }
+}
 
 /// Saved handle state that allows restoring to the state right before a handle scope was entered.
 /// Must only be created on the stack.
@@ -306,13 +341,6 @@ impl Handle<Value> {
         unsafe { self.ptr.as_ptr().cast::<Value>().read() }
     }
 
-    /// Replace the value stored behind this handle with a new value. Note that all copies of this
-    /// handle will also be changed.
-    #[inline]
-    pub fn replace(&mut self, value: Value) {
-        unsafe { self.ptr.as_ptr().write(value.to_handle_contents()) }
-    }
-
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &Value) -> Handle<Value> {
         let ptr = unsafe { NonNull::new_unchecked(value_ref as *const Value as *mut Value) };
@@ -351,76 +379,21 @@ impl<T: IsHeapObject> Handle<T> {
     pub fn get_(&self) -> HeapPtr<T> {
         unsafe { self.ptr.as_ptr().cast::<HeapPtr<T>>().read() }
     }
-
-    /// Replace the value stored behind this handle with a new value. Note that all copies of this
-    /// handle will also be changed.
-    #[inline]
-    pub fn replace(&mut self, value: HeapPtr<T>) {
-        unsafe { self.ptr.as_ptr().write(value.to_handle_contents()) }
-    }
 }
 
 impl Value {
     #[inline]
     pub fn to_handle(&self, cx: Context) -> Handle<Value> {
         let handle_context = cx.heap.info().handle_context();
-        Handle::new(handle_context, self.to_handle_contents())
+        Handle::new(handle_context, Value::to_handle_contents(self))
     }
 }
 
-impl<T> HeapPtr<T> {
+impl<T: IsHeapObject> HeapPtr<T> {
     #[inline]
     pub fn to_handle(&self) -> Handle<T> {
         let handle_context = HeapInfo::from_heap_ptr(*self).handle_context();
-        Handle::new(handle_context, self.to_handle_contents())
-    }
-}
-
-impl Deref for Handle<Value> {
-    type Target = Value;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.ptr.cast::<Value>().as_ref() }
-    }
-}
-
-impl DerefMut for Handle<Value> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.ptr.cast::<Value>().as_mut() }
-    }
-}
-
-impl<T: IsHeapObject> Deref for Handle<T> {
-    type Target = HeapPtr<T>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.ptr.cast::<HeapPtr<T>>().as_ref() }
-    }
-}
-
-impl<T: IsHeapObject> DerefMut for Handle<T> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.ptr.cast::<HeapPtr<T>>().as_mut() }
-    }
-}
-
-impl Deref for Handle<PropertyKey> {
-    type Target = PropertyKey;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.ptr.cast::<PropertyKey>().as_ref() }
-    }
-}
-
-impl DerefMut for Handle<PropertyKey> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.ptr.cast::<PropertyKey>().as_mut() }
+        Handle::new(handle_context, T::to_handle_contents(self))
     }
 }
 

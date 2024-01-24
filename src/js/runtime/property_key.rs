@@ -3,10 +3,16 @@ use std::{fmt, hash};
 use crate::maybe;
 
 use super::{
-    gc::Handle, interned_strings::InternedStrings, numeric_constants::MAX_U32_AS_F64,
-    object_descriptor::ObjectKind, string_parsing::parse_string_to_u32, string_value::StringValue,
-    to_string, type_utilities::is_integral_number, value::SymbolValue, Context, EvalResult,
-    HeapPtr, Value,
+    gc::{Handle, HandleContents, ToHandleContents},
+    interned_strings::InternedStrings,
+    numeric_constants::MAX_U32_AS_F64,
+    object_descriptor::ObjectKind,
+    string_parsing::parse_string_to_u32,
+    string_value::StringValue,
+    to_string,
+    type_utilities::is_integral_number,
+    value::SymbolValue,
+    Context, EvalResult, HeapPtr, Value,
 };
 
 /// A property key must be either an interned string or a symbol for named properties,
@@ -215,19 +221,18 @@ impl Handle<PropertyKey> {
         PropertyKey { value: self.cast::<Value>().get() }
     }
 
-    /// Replace the value stored behind this handle with a new value. Note that all copies of this
-    /// handle will also be changed.
-    #[inline]
-    pub fn replace(&mut self, value: PropertyKey) {
-        unsafe {
-            let handle = std::mem::transmute::<&mut Handle<PropertyKey>, &mut Handle<Value>>(self);
-            handle.replace(value.value);
-        }
-    }
-
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &PropertyKey) -> Handle<PropertyKey> {
         Handle::<Value>::from_fixed_non_heap_ptr(&value_ref.value).cast()
+    }
+}
+
+impl ToHandleContents for PropertyKey {
+    type Impl = PropertyKey;
+
+    #[inline]
+    fn to_handle_contents(key: &PropertyKey) -> HandleContents {
+        Value::to_handle_contents(&key.value)
     }
 }
 

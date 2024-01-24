@@ -6,7 +6,7 @@ mod heap_object;
 mod heap_trait_object;
 mod pointer;
 
-pub use handle::{Escapable, Handle, HandleContents, HandleScope};
+pub use handle::{Escapable, Handle, HandleContents, HandleScope, ToHandleContents};
 pub use heap::{Heap, HeapInfo};
 pub use heap_item::HeapItem;
 pub use heap_object::{HeapObject, HeapVisitor, IsHeapObject};

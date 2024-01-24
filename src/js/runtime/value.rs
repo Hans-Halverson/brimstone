@@ -8,7 +8,7 @@ use crate::{field_offset, set_uninit};
 use super::{
     context::Context,
     debug_print::{DebugPrint, DebugPrinter},
-    gc::{Handle, HandleContents, HeapItem, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HandleContents, HeapItem, HeapObject, HeapPtr, HeapVisitor, ToHandleContents},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     string_value::{FlatString, StringValue},
@@ -417,10 +417,14 @@ impl Value {
     pub const fn uninit() -> Value {
         Value::empty()
     }
+}
+
+impl ToHandleContents for Value {
+    type Impl = Value;
 
     #[inline]
-    pub const fn to_handle_contents(&self) -> HandleContents {
-        self.as_raw_bits() as usize
+    fn to_handle_contents(value: &Value) -> HandleContents {
+        value.as_raw_bits() as usize
     }
 }
 

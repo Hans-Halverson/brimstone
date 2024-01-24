@@ -488,6 +488,20 @@ define_instructions!(
         [1] value: Register,
     }
 
+    /// Evaluate an `in` expression, storing the result in dest.
+    In (InInstruction, in_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] key: Register,
+    }
+
+    /// Evaluate an `instanceof` expression, storing the result in dest.
+    InstanceOf (InstanceOfInstruction, instance_of_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] constructor: Register,
+    }
+
     /// Apply the ToNumber abstract operation to a value, storing the result in dest.
     ToNumber (ToNumberInstruction, to_number_instruction) {
         [0] dest: Register,

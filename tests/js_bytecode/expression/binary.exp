@@ -31,6 +31,11 @@
     68: ShiftLeft r0, a0, a1
     72: ShiftRightArithmetic r0, a0, a1
     76: ShiftRightLogical r0, a0, a1
-    80: LoadUndefined r0
-    82: Ret r0
+    80: LoadConstant r0, c0
+    83: In r0, a1, r0
+    87: InstanceOf r0, a0, a1
+    91: LoadUndefined r0
+    93: Ret r0
+  Constant Table:
+    0: [String: x]
 }

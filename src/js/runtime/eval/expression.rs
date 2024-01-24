@@ -1072,7 +1072,8 @@ fn eval_binary_expression(cx: Context, expr: &ast::BinaryExpression) -> EvalResu
         ast::BinaryOperator::In => {
             let left_value = maybe!(eval_expression(cx, &expr.left));
             let right_value = maybe!(eval_expression(cx, &expr.right));
-            eval_in_expression(cx, left_value, right_value)
+            let has_property = maybe!(eval_in_expression(cx, left_value, right_value));
+            cx.bool(has_property).into()
         }
         ast::BinaryOperator::InPrivate => {
             let right_value = maybe!(eval_expression(cx, &expr.right));
@@ -1534,19 +1535,17 @@ pub fn eval_instanceof_expression(
     has_instance.into()
 }
 
-fn eval_in_expression(
+pub fn eval_in_expression(
     cx: Context,
     left_value: Handle<Value>,
     right_value: Handle<Value>,
-) -> EvalResult<Handle<Value>> {
+) -> EvalResult<bool> {
     if !right_value.is_object() {
         return type_error_(cx, "right side of 'in' must be an object");
     }
 
     let property_key = maybe!(to_property_key(cx, left_value));
-
-    let has_property = maybe!(has_property(cx, right_value.as_object(), property_key));
-    cx.bool(has_property).into()
+    has_property(cx, right_value.as_object(), property_key)
 }
 
 fn eval_private_in_expression(

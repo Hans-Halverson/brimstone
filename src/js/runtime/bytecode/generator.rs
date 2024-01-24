@@ -1071,12 +1071,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::BinaryOperator::ShiftRightLogical => self
                 .writer
                 .shift_right_logical_instruction(dest, left, right),
-            ast::BinaryOperator::In => unimplemented!("bytecode for `in` expression"),
+            ast::BinaryOperator::In => self.writer.in_instruction(dest, right, left),
             ast::BinaryOperator::InPrivate => {
                 unimplemented!("bytecode for private `in` expression")
             }
             ast::BinaryOperator::InstanceOf => {
-                unimplemented!("bytecode for `instanceof` expression")
+                self.writer.instance_of_instruction(dest, left, right)
             }
         }
 

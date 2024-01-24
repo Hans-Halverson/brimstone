@@ -8,9 +8,9 @@ use crate::{
         eval::expression::{
             eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
             eval_divide, eval_exponentiation, eval_greater_than, eval_greater_than_or_equal,
-            eval_less_than, eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder,
-            eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
-            eval_typeof,
+            eval_in_expression, eval_instanceof_expression, eval_less_than,
+            eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder, eval_shift_left,
+            eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract, eval_typeof,
         },
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
@@ -36,14 +36,14 @@ use super::{
         CallWithReceiverInstruction, ConstructInstruction, DefineNamedPropertyInstruction,
         DefinePropertyInstruction, DivInstruction, ExpInstruction, GetNamedPropertyInstruction,
         GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        IncInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpInstruction, JumpToBooleanFalseConstantInstruction,
-        JumpToBooleanFalseInstruction, JumpToBooleanTrueConstantInstruction,
-        JumpToBooleanTrueInstruction, JumpTrueConstantInstruction, JumpTrueInstruction,
-        LessThanInstruction, LessThanOrEqualInstruction, LoadConstantInstruction,
-        LoadEmptyInstruction, LoadFalseInstruction, LoadGlobalInstruction,
-        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
+        JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
+        LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
+        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
+        LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewObjectInstruction, OpCode, RemInstruction,
         RetInstruction, SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
@@ -339,6 +339,10 @@ impl VM {
                         OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
                         OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
+                        OpCode::In => dispatch_or_throw!(InInstruction, execute_in),
+                        OpCode::InstanceOf => {
+                            dispatch_or_throw!(InstanceOfInstruction, execute_instance_of)
+                        }
                         OpCode::ToNumber => {
                             dispatch_or_throw!(ToNumberInstruction, execute_to_number)
                         }
@@ -1589,6 +1593,37 @@ impl VM {
         let result = eval_typeof(self.cx, value);
 
         self.write_register(dest, result.cast::<Value>().get());
+    }
+
+    #[inline]
+    fn execute_in<W: Width>(&mut self, instr: &InInstruction<W>) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(eval_in_expression(self.cx, key, object));
+
+        self.write_register(dest, Value::bool(result));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_instance_of<W: Width>(
+        &mut self,
+        instr: &InstanceOfInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let constructor = self.read_register_to_handle(instr.constructor());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(eval_instanceof_expression(self.cx, object, constructor));
+
+        self.write_register(dest, Value::bool(result));
+
+        ().into()
     }
 
     #[inline]

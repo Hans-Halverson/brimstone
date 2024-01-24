@@ -508,6 +508,12 @@ define_instructions!(
         [1] value: Register,
     }
 
+    /// Apply the ToNumber abstract operation to a value, storing the result in dest.
+    ToNumeric (ToNumericInstruction, to_numeric_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
     /// Unconditionally jump to the given instruction, specified inline as a byte offset from the
     /// start of the current instruction.
     Jump (JumpInstruction, jump_instruction) {
@@ -522,7 +528,7 @@ define_instructions!(
 
     /// Conditionally jump to the given instruction if the condition is true, using an inline
     /// offset. Does not convert its operand to a boolean first, only checks for `false ``exactly.
-    JumpTrue(JumpTrueInstruction, jump_true_instruction) {
+    JumpTrue (JumpTrueInstruction, jump_true_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
@@ -530,28 +536,28 @@ define_instructions!(
     /// Conditionally jump to the given instruction if the condition is true, with offset stored
     /// in the constant table. Does not convert its operand to a boolean first, only checks for
     /// `false` exactly.
-    JumpTrueConstant(JumpTrueConstantInstruction, jump_true_constant_instruction) {
+    JumpTrueConstant (JumpTrueConstantInstruction, jump_true_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is true, using an
     /// inline ofset.
-    JumpToBooleanTrue(JumpToBooleanTrueInstruction, jump_to_boolean_true_instruction) {
+    JumpToBooleanTrue (JumpToBooleanTrueInstruction, jump_to_boolean_true_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is true, with offset
     /// stored in the constant table.
-    JumpToBooleanTrueConstant(JumpToBooleanTrueConstantInstruction, jump_to_boolean_true_constant_instruction) {
+    JumpToBooleanTrueConstant (JumpToBooleanTrueConstantInstruction, jump_to_boolean_true_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,
     }
 
     /// Conditionally jump to the given instruction if the condition is false, using an inline
     /// offset. Does not convert its operand to a boolean first, only checks for `false ``exactly.
-    JumpFalse(JumpFalseInstruction, jump_false_instruction) {
+    JumpFalse (JumpFalseInstruction, jump_false_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
@@ -559,38 +565,38 @@ define_instructions!(
     /// Conditionally jump to the given instruction if the condition is false, with offset stored
     /// in the constant table. Does not convert its operand to a boolean first, only checks for
     /// `false` exactly.
-    JumpFalseConstant(JumpFalseConstantInstruction, jump_false_constant_instruction) {
+    JumpFalseConstant (JumpFalseConstantInstruction, jump_false_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is false, using an
     /// inline ofset.
-    JumpToBooleanFalse(JumpToBooleanFalseInstruction, jump_to_boolean_false_instruction) {
+    JumpToBooleanFalse (JumpToBooleanFalseInstruction, jump_to_boolean_false_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
 
     /// Conditionally jump to the given instruction if ToBoolean(condition) is false, with offset
     /// stored in the constant table.
-    JumpToBooleanFalseConstant(JumpToBooleanFalseConstantInstruction, jump_to_boolean_false_constant_instruction) {
+    JumpToBooleanFalseConstant (JumpToBooleanFalseConstantInstruction, jump_to_boolean_false_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,
     }
 
     /// Create a new closure from the function at the given index in the constant table.
-    NewClosure(NewClosureInstruction, new_closure_instruction) {
+    NewClosure (NewClosureInstruction, new_closure_instruction) {
         [0] dest: Register,
         [1] function_index: ConstantIndex,
     }
 
     /// Create a new empty object stored in dest.
-    NewObject(NewObjectInstruction, new_object_instruction) {
+    NewObject (NewObjectInstruction, new_object_instruction) {
         [0] dest: Register,
     }
 
     /// Create a new empty array stored in dest.
-    NewArray(NewArrayInstruction, new_array_instruction) {
+    NewArray (NewArrayInstruction, new_array_instruction) {
         [0] dest: Register,
     }
 
@@ -603,14 +609,14 @@ define_instructions!(
 
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
-    GetProperty(GetPropertyInstruction, get_property_instruction) {
+    GetProperty (GetPropertyInstruction, get_property_instruction) {
         [0] dest: Register,
         [1] object: Register,
         [2] key: Register,
     }
 
     /// Set a property on an object to the given value. The property key may be any value.
-    SetProperty(SetPropertyInstruction, set_property_instruction) {
+    SetProperty (SetPropertyInstruction, set_property_instruction) {
         [0] object: Register,
         [1] key: Register,
         [2] value: Register,
@@ -620,7 +626,7 @@ define_instructions!(
     ///
     /// The `is_named` operand is a boolean flag (0 or 1) specifying whether the value is an unnamed
     /// closure that needs its name set to the key with SetFunctionName.
-    DefineProperty(DefinePropertyInstruction, define_property_instruction) {
+    DefineProperty (DefinePropertyInstruction, define_property_instruction) {
         [0] object: Register,
         [1] key: Register,
         [2] value: Register,
@@ -629,7 +635,7 @@ define_instructions!(
 
     /// Get a named property from an object, storing the result in dest. The name must be a string
     /// literal in the constant table.
-    GetNamedProperty(GetNamedPropertyInstruction, get_named_property_instruction) {
+    GetNamedProperty (GetNamedPropertyInstruction, get_named_property_instruction) {
         [0] dest: Register,
         [1] object: Register,
         [2] name_constant_index: ConstantIndex,
@@ -637,7 +643,7 @@ define_instructions!(
 
     /// Set a named property on an object to the given value. The name must be a string literal in
     /// the constant table.
-    SetNamedProperty(SetNamedPropertyInstruction, set_named_property_instruction) {
+    SetNamedProperty (SetNamedPropertyInstruction, set_named_property_instruction) {
         [0] object: Register,
         [1] name_constant_index: ConstantIndex,
         [2] value: Register,
@@ -645,7 +651,7 @@ define_instructions!(
 
     /// Define a named property on an object with the given value. The name must be a string literal
     /// in the constant table.
-    DefineNamedProperty(DefineNamedPropertyInstruction, define_named_property_instruction) {
+    DefineNamedProperty (DefineNamedPropertyInstruction, define_named_property_instruction) {
         [0] object: Register,
         [1] name_constant_index: ConstantIndex,
         [2] value: Register,

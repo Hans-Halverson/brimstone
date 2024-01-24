@@ -25,7 +25,8 @@ use crate::{
         property::Property,
         regexp::compiled_regexp::CompiledRegExpObject,
         type_utilities::{
-            is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object, to_property_key,
+            is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_numeric, to_object,
+            to_property_key,
         },
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
@@ -54,7 +55,7 @@ use super::{
         SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
         ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
         StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        TypeOfInstruction,
+        ToNumericInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -350,6 +351,9 @@ impl VM {
                         }
                         OpCode::ToNumber => {
                             dispatch_or_throw!(ToNumberInstruction, execute_to_number)
+                        }
+                        OpCode::ToNumeric => {
+                            dispatch_or_throw!(ToNumericInstruction, execute_to_numeric)
                         }
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
@@ -1641,6 +1645,19 @@ impl VM {
 
         // May allocate
         let result = maybe!(to_number(self.cx, value));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_to_numeric<W: Width>(&mut self, instr: &ToNumericInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register_to_handle(instr.value());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(to_numeric(self.cx, value));
 
         self.write_register(dest, result.get());
 

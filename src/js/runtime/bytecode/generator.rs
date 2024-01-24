@@ -696,7 +696,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             },
             ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
-            ast::Expression::Update(_) => unimplemented!("bytecode for update expressions"),
+            ast::Expression::Update(expr) => self.gen_update_expression(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
             ast::Expression::Chain(_) => unimplemented!("bytecode for optional chain expressions"),
             ast::Expression::Conditional(expr) => self.gen_conditional_expression(expr, dest),
@@ -1736,6 +1736,51 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 unimplemented!("bytecode for nullish coalescing assignment")
             }
             ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
+        }
+    }
+
+    fn gen_update_expression(
+        &mut self,
+        expr: &ast::UpdateExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+
+        if let ast::Expression::Member(member_expr) = expr.argument.as_ref() {
+        } else {
+            // Otherwise must be an id assignment
+            let id = expr.argument.to_id();
+        }
+
+        if expr.is_prefix {
+            // Generate result directly into destination register, since it is returned
+            let value = self.gen_expression_with_dest(&expr.argument, ExprDest::Fixed(dest))?;
+            self.writer.to_numeric_instruction(value, value);
+
+            let one = self.gen_number_literal(1.0, ExprDest::Any)?;
+
+            // Either add or subtract one
+            match expr.operator {
+                ast::UpdateOperator::Increment => self.writer.add_instruction(value, value, one),
+                ast::UpdateOperator::Decrement => self.writer.sub_instruction(value, value, one),
+            }
+
+            Ok(value)
+        } else {
+            // Generate result to temporary register to not clobber
+            let old_value = self.gen_expression_with_dest(&expr.argument, ExprDest::Fixed(dest))?;
+
+            let value = self.register_allocator.allocate()?;
+            self.writer.to_numeric_instruction(value, old_value);
+
+            // Either add or subtract one
+            let one = self.gen_number_literal(1.0, ExprDest::Any)?;
+            match expr.operator {
+                ast::UpdateOperator::Increment => self.writer.add_instruction(value, value, one),
+                ast::UpdateOperator::Decrement => self.writer.sub_instruction(value, value, one),
+            }
+
+            Ok(old_value)
         }
     }
 

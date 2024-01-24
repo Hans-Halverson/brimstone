@@ -15,11 +15,15 @@ use crate::{
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
+        intrinsics::{
+            intrinsics::Intrinsic, regexp_constructor::RegExpObject,
+            rust_runtime::RustRuntimeFunctionId,
+        },
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
+        regexp::compiled_regexp::CompiledRegExpObject,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_object, to_property_key,
         },
@@ -45,11 +49,12 @@ use super::{
         LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
         LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewArrayInstruction, NewClosureInstruction, NewObjectInstruction, OpCode, RemInstruction,
-        RetInstruction, SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, TypeOfInstruction,
+        NewArrayInstruction, NewClosureInstruction, NewObjectInstruction, NewRegExpInstruction,
+        OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
+        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -383,6 +388,9 @@ impl VM {
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
                         OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
+                        OpCode::NewRegExp => {
+                            dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
+                        }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
                         }
@@ -1670,6 +1678,23 @@ impl VM {
         let array = must!(array_create(self.cx, 0, None));
 
         self.write_register(dest, array.cast::<Value>().get());
+    }
+
+    #[inline]
+    fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) -> EvalResult<()> {
+        let compiled_regexp = self.get_constant(self.get_function(), instr.regexp_index());
+        let compiled_regexp = compiled_regexp
+            .to_handle(self.cx)
+            .cast::<CompiledRegExpObject>();
+
+        let dest = instr.dest();
+
+        // Allocates
+        let regexp = maybe!(RegExpObject::new_from_compiled_regexp(self.cx, compiled_regexp));
+
+        self.write_register(dest, Value::object(regexp.get_().cast()));
+
+        ().into()
     }
 
     #[inline]

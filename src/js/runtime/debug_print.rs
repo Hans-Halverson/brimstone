@@ -5,6 +5,7 @@ use super::{
     },
     gc::HeapItem,
     object_descriptor::ObjectKind,
+    regexp::compiled_regexp::CompiledRegExpObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
     HeapPtr,
@@ -124,6 +125,9 @@ impl DebugPrint for HeapPtr<HeapItem> {
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().debug_format(printer),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().debug_format(printer),
             ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().debug_format(printer),
+            ObjectKind::CompiledRegExpObject => {
+                self.cast::<CompiledRegExpObject>().debug_format(printer)
+            }
             _ => printer.write_heap_item_default(*self),
         }
     }

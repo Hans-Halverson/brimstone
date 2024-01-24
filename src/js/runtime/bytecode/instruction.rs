@@ -594,6 +594,13 @@ define_instructions!(
         [0] dest: Register,
     }
 
+    /// Create a new RegExp object from the compiled RegExp at the given index in the constant
+    /// table.
+    NewRegExp (NewRegExpInstruction, new_regexp_instruction) {
+        [0] dest: Register,
+        [1] regexp_index: ConstantIndex,
+    }
+
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
     GetProperty(GetPropertyInstruction, get_property_instruction) {

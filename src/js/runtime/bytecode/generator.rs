@@ -15,6 +15,7 @@ use crate::js::{
         bytecode::function::BytecodeFunction,
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
+        regexp::compiler::compile_regexp,
         Context, Handle, Value,
     },
 };
@@ -675,7 +676,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
             ast::Expression::BigInt(_) => unimplemented!("bytecode for bigint literals"),
-            ast::Expression::RegExp(_) => unimplemented!("bytecode for regexp literals"),
+            ast::Expression::RegExp(expr) => self.gen_regexp_literal_expression(expr, dest),
             ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
                 ast::UnaryOperator::Plus => self.gen_unary_plus_expression(expr, dest),
@@ -918,6 +919,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // All string literals are loaded from the constant table
         let constant_index = self.add_wtf8_string_constant(&expr.value)?;
         self.writer.load_constant_instruction(dest, constant_index);
+
+        Ok(dest)
+    }
+
+    fn gen_regexp_literal_expression(
+        &mut self,
+        lit: &ast::RegExpLiteral,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Can use source directly as "escaped" pattern source string
+        let source = InternedStrings::get_wtf8_str(self.cx, &lit.pattern);
+
+        // Compile regexp and store compiled regexp in constant table
+        let compiled_regexp = compile_regexp(self.cx, &lit.regexp, source);
+        let compiled_regexp_index = self
+            .constant_table_builder
+            .add_heap_object(compiled_regexp.cast())?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .new_regexp_instruction(dest, ConstantIndex::new(compiled_regexp_index));
 
         Ok(dest)
     }

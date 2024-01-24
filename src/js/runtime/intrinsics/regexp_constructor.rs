@@ -42,9 +42,6 @@ use super::intrinsics::Intrinsic;
 extend_object! {
     pub struct RegExpObject {
         compiled_regexp: HeapPtr<CompiledRegExpObject>,
-        // The pattern component of the original regexp as a string. Escaped so that it can be
-        // parsed into exactly the same pattern again.
-        escaped_pattern_source: HeapPtr<StringValue>,
     }
 }
 
@@ -63,7 +60,6 @@ impl RegExpObject {
         // Initialize with default values as allocation may occur before real values are set, so
         // we must ensure the RegExpObject is in a valid state.
         set_uninit!(object.compiled_regexp, HeapPtr::uninit());
-        set_uninit!(object.escaped_pattern_source, HeapPtr::uninit());
 
         let object = object.to_handle();
 
@@ -72,14 +68,10 @@ impl RegExpObject {
         object.into()
     }
 
-    pub fn new_from_literal(
+    pub fn new_from_compiled_regexp(
         cx: Context,
-        lit: &ast::RegExpLiteral,
+        compiled_regexp: Handle<CompiledRegExpObject>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        // Can use source directly as "escaped" pattern source since
-        let source = InternedStrings::get_wtf8_str(cx, &lit.pattern);
-        let compiled_regexp = compile_regexp(cx, &lit.regexp);
-
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let mut object = must!(object_create_from_constructor::<RegExpObject>(
             cx,
@@ -89,7 +81,6 @@ impl RegExpObject {
         ));
 
         set_uninit!(object.compiled_regexp, compiled_regexp.get_());
-        set_uninit!(object.escaped_pattern_source, source.get_());
 
         let object = object.to_handle();
 
@@ -100,6 +91,17 @@ impl RegExpObject {
         maybe!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
 
         object.into()
+    }
+
+    pub fn new_from_literal(
+        cx: Context,
+        lit: &ast::RegExpLiteral,
+    ) -> EvalResult<Handle<RegExpObject>> {
+        // Can use source directly as "escaped" pattern source string
+        let source = InternedStrings::get_wtf8_str(cx, &lit.pattern);
+        let compiled_regexp = compile_regexp(cx, &lit.regexp, source);
+
+        Self::new_from_compiled_regexp(cx, compiled_regexp)
     }
 
     fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {
@@ -124,7 +126,7 @@ impl RegExpObject {
 
     #[inline]
     pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
-        self.escaped_pattern_source.to_handle()
+        self.compiled_regexp.escaped_pattern_source()
     }
 }
 
@@ -255,7 +257,6 @@ pub fn regexp_create(
     match regexp_source {
         RegExpSource::RegExpObject(old_regexp_object) => {
             regexp_object.compiled_regexp = old_regexp_object.compiled_regexp;
-            regexp_object.escaped_pattern_source = old_regexp_object.escaped_pattern_source;
         }
         RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
@@ -273,11 +274,11 @@ pub fn regexp_create(
             };
 
             let regexp = maybe!(parse_pattern(cx, pattern_string, flags));
+            let source = escape_pattern_string(cx, pattern_string);
 
-            let compiled_regexp = compile_regexp(cx, &regexp);
+            let compiled_regexp = compile_regexp(cx, &regexp, source);
 
             regexp_object.compiled_regexp = compiled_regexp.get_();
-            regexp_object.escaped_pattern_source = escape_pattern_string(cx, pattern_string).get_();
         }
     }
 
@@ -401,6 +402,5 @@ impl HeapObject for HeapPtr<RegExpObject> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
         visitor.visit_pointer(&mut self.compiled_regexp);
-        visitor.visit_pointer(&mut self.escaped_pattern_source);
     }
 }

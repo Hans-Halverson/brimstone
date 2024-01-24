@@ -247,13 +247,14 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
             "<anonymous>".to_owned()
         };
 
+        // Write the function name and stop if in short mode
+        printer.write_heap_item_with_context(self.cast(), &name);
+
         if printer.is_short_mode() {
-            printer.write_heap_item_with_context(self.cast(), &name);
             return;
         }
 
-        // Write the function name and indent body
-        printer.write_heap_item_with_context(self.cast(), &name);
+        // Entire body is indented
         printer.write(" {\n");
         printer.inc_indent();
 
@@ -283,6 +284,7 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
         }
 
         printer.dec_indent();
+        printer.write_indent();
         printer.write("}\n");
     }
 }

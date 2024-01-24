@@ -6,7 +6,11 @@ use crate::js::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
     },
-    runtime::{Context, Handle},
+    runtime::{
+        debug_print::{DebugPrint, DebugPrintMode},
+        string_value::StringValue,
+        Context, Handle,
+    },
 };
 
 use super::{
@@ -32,6 +36,7 @@ type BlockId = usize;
 struct CompiledRegExpBuilder {
     blocks: Vec<Vec<u32>>,
     flags: RegExpFlags,
+    source: Handle<StringValue>,
     current_block_id: BlockId,
     num_progress_points: u32,
     num_loop_registers: u32,
@@ -73,10 +78,11 @@ impl SubExpressionInfo {
 const MAX_INLINED_REPITITIONS: u64 = 10;
 
 impl CompiledRegExpBuilder {
-    fn new(regexp: &RegExp) -> Self {
+    fn new(regexp: &RegExp, source: Handle<StringValue>) -> Self {
         Self {
             blocks: vec![],
             flags: regexp.flags,
+            source,
             current_block_id: 0,
             num_progress_points: 0,
             num_loop_registers: 0,
@@ -299,6 +305,7 @@ impl CompiledRegExpBuilder {
             cx,
             instructions,
             regexp,
+            self.source,
             self.num_progress_points,
             self.num_loop_registers,
         )
@@ -991,7 +998,17 @@ impl CompiledRegExpBuilder {
     }
 }
 
-pub fn compile_regexp(cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
-    let mut builder = CompiledRegExpBuilder::new(regexp);
-    builder.compile(cx, regexp)
+pub fn compile_regexp(
+    cx: Context,
+    regexp: &RegExp,
+    source: Handle<StringValue>,
+) -> Handle<CompiledRegExpObject> {
+    let mut builder = CompiledRegExpBuilder::new(regexp, source);
+    let compiled_regexp = builder.compile(cx, regexp);
+
+    if cx.options.print_regexp_bytecode {
+        println!("{}", compiled_regexp.debug_print(DebugPrintMode::Verbose));
+    }
+
+    compiled_regexp
 }

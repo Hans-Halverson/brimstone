@@ -6,6 +6,7 @@ use crate::{
         parser::regexp::{RegExp, RegExpFlags},
         runtime::{
             collections::InlineArray,
+            debug_print::{DebugPrint, DebugPrinter},
             gc::{HeapObject, HeapVisitor},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             string_value::StringValue,
@@ -20,6 +21,9 @@ use super::instruction::InstructionIterator;
 #[repr(C)]
 pub struct CompiledRegExpObject {
     descriptor: HeapPtr<ObjectDescriptor>,
+    // The pattern component of the original regexp as a string. Escaped so that it can be
+    // parsed into exactly the same pattern again.
+    escaped_pattern_source: HeapPtr<StringValue>,
     pub flags: RegExpFlags,
     // Whether this regexp has any named capture groups
     pub has_named_capture_groups: bool,
@@ -41,6 +45,7 @@ impl CompiledRegExpObject {
         mut cx: Context,
         instructions: Vec<u32>,
         regexp: &RegExp,
+        escaped_pattern_source: Handle<StringValue>,
         num_progress_points: u32,
         num_loop_registers: u32,
     ) -> Handle<CompiledRegExpObject> {
@@ -64,6 +69,7 @@ impl CompiledRegExpObject {
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::CompiledRegExpObject));
+        set_uninit!(object.escaped_pattern_source, escaped_pattern_source.get_());
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
         set_uninit!(object.num_capture_groups, num_capture_groups);
@@ -88,6 +94,11 @@ impl CompiledRegExpObject {
         INSTRUCTIONS_BYTE_OFFSET
             + InlineArray::<u32>::calculate_size_in_bytes(num_instructions)
             + size_of::<Option<HeapPtr<StringValue>>>() * num_capture_groups as usize
+    }
+
+    #[inline]
+    pub fn escaped_pattern_source(&self) -> Handle<StringValue> {
+        self.escaped_pattern_source.to_handle()
     }
 
     #[inline]
@@ -128,19 +139,32 @@ impl CompiledRegExpObject {
             )
         }
     }
+}
 
-    #[allow(dead_code)]
-    pub fn debug_print_instructions(&self) -> String {
-        let mut string = String::new();
+impl DebugPrint for HeapPtr<CompiledRegExpObject> {
+    fn debug_format(&self, printer: &mut DebugPrinter) {
+        let source = format!("/{}/", self.escaped_pattern_source());
+        printer.write_heap_item_with_context(self.cast(), &source);
+
+        if printer.is_short_mode() {
+            return;
+        }
+
+        printer.write(" {\n");
+        printer.inc_indent();
 
         let mut offset = 0;
 
         for instruction in InstructionIterator::new(self.instructions.as_slice()) {
-            string.push_str(&format!("{:4}: {}\n", offset, instruction.debug_print()));
+            printer.write_indent();
+            printer.write(&format!("{:4}: {}\n", offset, instruction.debug_print()));
+
             offset += instruction.size();
         }
 
-        string
+        printer.dec_indent();
+        printer.write_indent();
+        printer.write("}\n");
     }
 }
 
@@ -154,6 +178,7 @@ impl HeapObject for HeapPtr<CompiledRegExpObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer(&mut self.escaped_pattern_source);
 
         for capture_group in self.capture_groups_as_slice_mut() {
             visitor.visit_pointer_opt(capture_group);

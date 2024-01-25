@@ -16,6 +16,7 @@ use crate::js::{
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
+        value::BigIntValue,
         Context, Handle, Value,
     },
 };
@@ -675,7 +676,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Boolean(expr) => self.gen_boolean_literal_expression(expr, dest),
             ast::Expression::Number(expr) => self.gen_number_literal(expr.value, dest),
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
-            ast::Expression::BigInt(_) => unimplemented!("bytecode for bigint literals"),
+            ast::Expression::BigInt(expr) => self.gen_bigint_literal_expression(expr, dest),
             ast::Expression::RegExp(expr) => self.gen_regexp_literal_expression(expr, dest),
             ast::Expression::This(_) => self.gen_this_expression(dest),
             ast::Expression::Unary(expr) => match expr.operator {
@@ -919,6 +920,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // All string literals are loaded from the constant table
         let constant_index = self.add_wtf8_string_constant(&expr.value)?;
         self.writer.load_constant_instruction(dest, constant_index);
+
+        Ok(dest)
+    }
+
+    fn gen_bigint_literal_expression(
+        &mut self,
+        lit: &ast::BigIntLiteral,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+
+        // BigInts are stored in the constant table, but not deduped
+        let bigint_value = BigIntValue::new(self.cx, lit.value.clone()).to_handle();
+        let constant_index = self
+            .constant_table_builder
+            .add_heap_object(bigint_value.cast())?;
+        self.writer
+            .load_constant_instruction(dest, ConstantIndex::new(constant_index));
 
         Ok(dest)
     }

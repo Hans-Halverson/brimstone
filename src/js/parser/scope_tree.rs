@@ -283,7 +283,9 @@ impl ScopeTree {
         // and all bindings in scope nodes that are forced to be VM scopes.
         let mut bindings = Vec::new();
         for (name, binding) in ast_node.bindings.iter_mut() {
-            if binding.vm_location.is_none() && (binding.is_captured || ast_node.force_vm_scope) {
+            if (binding.is_captured || ast_node.force_vm_scope)
+                && !matches!(binding.vm_location, Some(VMLocation::Global))
+            {
                 // Mark the VM location for the binding
                 binding.set_vm_location(VMLocation::Scope {
                     scope_id: vm_node_id,

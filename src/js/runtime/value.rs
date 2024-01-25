@@ -680,6 +680,10 @@ impl BigIntValue {
     const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
 
     pub fn new(cx: Context, value: BigInt) -> Handle<BigIntValue> {
+        Self::new_ptr(cx, value).to_handle()
+    }
+
+    pub fn new_ptr(cx: Context, value: BigInt) -> HeapPtr<BigIntValue> {
         // Extract sign and digits from BigInt
         let (sign, digits) = value.to_u32_digits();
         let len = digits.len();
@@ -694,7 +698,7 @@ impl BigIntValue {
 
         unsafe { copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
 
-        bigint.to_handle()
+        bigint
     }
 
     pub fn calculate_size_in_bytes(num_u32_digits: usize) -> usize {

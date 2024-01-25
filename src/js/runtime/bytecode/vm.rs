@@ -28,6 +28,7 @@ use crate::{
             is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_numeric, to_object,
             to_property_key,
         },
+        value::BigIntValue,
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     maybe, must,
@@ -38,12 +39,12 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallWithReceiverInstruction, ConstructInstruction, DefineNamedPropertyInstruction,
-        DefinePropertyInstruction, DivInstruction, ExpInstruction, GetNamedPropertyInstruction,
-        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        CallWithReceiverInstruction, ConstructInstruction, DecInstruction,
+        DefineNamedPropertyInstruction, DefinePropertyInstruction, DivInstruction, ExpInstruction,
+        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
@@ -342,6 +343,7 @@ impl VM {
                         ),
                         OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
                         OpCode::Inc => dispatch!(IncInstruction, execute_inc),
+                        OpCode::Dec => dispatch!(DecInstruction, execute_dec),
                         OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
                         OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
                         OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
@@ -1561,6 +1563,9 @@ impl VM {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
+        // Assume that the value is numeric
+        debug_assert!(value.is_number() || value.is_bigint());
+
         let new_value = if value.is_smi() {
             // Fast path for smis - but check if they would overflow into floats
             let smi_value = value.as_smi();
@@ -1569,8 +1574,37 @@ impl VM {
             } else {
                 Value::from(i32::MAX as f64 + 1.0)
             }
-        } else {
+        } else if !value.is_pointer() {
             Value::number(value.as_number() + 1.0)
+        } else {
+            let inc_value = value.as_bigint().bigint() + 1;
+            BigIntValue::new_ptr(self.cx, inc_value).into()
+        };
+
+        self.write_register(dest, new_value);
+    }
+
+    #[inline]
+    fn execute_dec<W: Width>(&mut self, instr: &DecInstruction<W>) {
+        let dest = instr.dest();
+        let value = self.read_register(dest);
+
+        // Assume that the value is numeric
+        debug_assert!(value.is_number() || value.is_bigint());
+
+        let new_value = if value.is_smi() {
+            // Fast path for smis - but check if they would overflow into floats
+            let smi_value = value.as_smi();
+            if smi_value > i32::MIN {
+                Value::smi(smi_value - 1)
+            } else {
+                Value::from(i32::MIN as f64 - 1.0)
+            }
+        } else if !value.is_pointer() {
+            Value::number(value.as_number() - 1.0)
+        } else {
+            let inc_value = value.as_bigint().bigint() - 1;
+            BigIntValue::new_ptr(self.cx, inc_value).into()
         };
 
         self.write_register(dest, new_value);

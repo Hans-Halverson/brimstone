@@ -462,9 +462,15 @@ define_instructions!(
         [1] value: Register,
     }
 
-    /// Increment a register, storing the result in that same register. Does not perform number
-    /// conversion so caller must ensure that the value is a number.
+    /// Increment a register, storing the result in that same register. Assumes the value is numeric
+    /// and does not perform conversion, so caller must ensure that the value is a number or BigInt.
     Inc (IncInstruction, inc_instruction) {
+        [0] dest: Register,
+    }
+
+    /// Decrement a register, storing the result in that same register. Assumes the value is numeric
+    /// and does not perform conversion, so caller must ensure that the value is a number or BigInt.
+    Dec (DecInstruction, dec_instruction) {
         [0] dest: Register,
     }
 

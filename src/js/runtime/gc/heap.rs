@@ -144,7 +144,6 @@ impl Heap {
 
     fn panic_if_out_of_memory(&self, alloc_size: usize) {
         if !self.has_room_for_alloc(alloc_size) {
-            // println!("Heap size: {} {}", self.bytes_allocated(), alloc_size);
             panic!("Ran of out heap memory");
         }
     }

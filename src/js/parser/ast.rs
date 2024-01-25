@@ -720,6 +720,7 @@ pub struct AssignmentExpression {
     pub is_parenthesized: bool,
 }
 
+#[derive(Copy, Clone)]
 pub enum UpdateOperator {
     Increment,
     Decrement,

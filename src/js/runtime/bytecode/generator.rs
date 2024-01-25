@@ -1744,43 +1744,144 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UpdateExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let dest = self.allocate_destination(dest)?;
+        if let ast::Expression::Member(member) = expr.argument.as_ref() {
+            if member.is_private {
+                unimplemented!("bytecode for updating a private member");
+            }
 
-        if let ast::Expression::Member(member_expr) = expr.argument.as_ref() {
+            enum Property {
+                Computed(GenRegister),
+                Named(GenConstantIndex),
+            }
+
+            let return_value = self.allocate_destination(dest)?;
+            let object = self.gen_expression(&member.object)?;
+
+            // Prefix operations can return the result of the conversion and inc/dec so they don't
+            // need a scratch register. Postfix operations must save the old value as the return
+            // value so they need a separate scratch register.
+            let scratch_value = if expr.is_prefix {
+                return_value
+            } else {
+                self.register_allocator.allocate()?
+            };
+
+            // Load the property to the scratch register
+            let property = if member.is_computed {
+                let key = self.gen_expression(&member.property)?;
+                self.writer
+                    .get_property_instruction(scratch_value, object, key);
+
+                Property::Computed(key)
+            } else {
+                // Must be a named access
+                let name = member.property.to_id();
+                let name_constant_index = self.add_string_constant(&name.name)?;
+                self.writer.get_named_property_instruction(
+                    scratch_value,
+                    object,
+                    name_constant_index,
+                );
+
+                Property::Named(name_constant_index)
+            };
+
+            // Perform the converstion and inc/dec operation in place on the scratch register
+            self.writer
+                .to_numeric_instruction(scratch_value, scratch_value);
+
+            // Postfix operations save the old value to be returned later
+            if !expr.is_prefix {
+                self.write_mov_instruction(return_value, scratch_value);
+            }
+
+            self.write_inc_or_dec(expr.operator, scratch_value);
+
+            // Then write scratch register back to the property
+            match property {
+                Property::Computed(key) => {
+                    self.writer
+                        .set_property_instruction(object, key, scratch_value);
+                    self.register_allocator.release(key);
+                }
+                Property::Named(name_constant_index) => {
+                    self.writer.set_named_property_instruction(
+                        object,
+                        name_constant_index,
+                        scratch_value,
+                    );
+                }
+            }
+
+            // Release the scratch register (if separate from the return register)
+            if !expr.is_prefix {
+                self.register_allocator.release(scratch_value);
+            }
+            self.register_allocator.release(object);
+
+            Ok(return_value)
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
+
+            if expr.is_prefix {
+                // Prefix operations return the modified value so we can perform operations in place
+                let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+
+                if self.register_allocator.is_temporary_register(old_value) {
+                    // If the target value is in a temporary register then we can place the numeric
+                    // value directly in the return register and perform operations in place.
+                    self.register_allocator.release(old_value);
+                    let dest = self.allocate_destination(dest)?;
+
+                    self.writer.to_numeric_instruction(dest, old_value);
+                    self.write_inc_or_dec(expr.operator, dest);
+                    self.gen_store_identifier(id, dest)?;
+
+                    Ok(dest)
+                } else {
+                    // If the target value is in a param or non-temporary local register then can
+                    // perform all operations in place.
+                    self.writer.to_numeric_instruction(old_value, old_value);
+                    self.write_inc_or_dec(expr.operator, old_value);
+                    self.gen_mov_reg_to_dest(old_value, dest)
+                }
+            } else {
+                // Postfix operations return the old value, so we must make sure it is saved and
+                // not clobbered.
+                let dest = self.allocate_destination(dest)?;
+                let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+                self.writer.to_numeric_instruction(old_value, old_value);
+
+                // If id is at a fixed register which matches the destination then writing the
+                // modified value to the id's location would clobber the old value. But in this case
+                // the desired behavior is to not actually increment/decrement the value. We just
+                // need to perform tje in-place numeric conversion.
+                if let ExprDest::Fixed(fixed_id_reg) = self.expr_dest_for_id(id) {
+                    if fixed_id_reg == dest {
+                        return Ok(dest);
+                    }
+                }
+
+                // Save the old value to be returned later
+                self.write_mov_instruction(dest, old_value);
+
+                // Otherwise we are guaranteed that writing the modified value to the id's location
+                // will not clobber the old value. Perform the inc/dec at the id's location.
+                self.write_inc_or_dec(expr.operator, old_value);
+
+                self.register_allocator.release(old_value);
+                self.gen_store_identifier(id, old_value)?;
+
+                Ok(dest)
+            }
         }
+    }
 
-        if expr.is_prefix {
-            // Generate result directly into destination register, since it is returned
-            let value = self.gen_expression_with_dest(&expr.argument, ExprDest::Fixed(dest))?;
-            self.writer.to_numeric_instruction(value, value);
-
-            let one = self.gen_number_literal(1.0, ExprDest::Any)?;
-
-            // Either add or subtract one
-            match expr.operator {
-                ast::UpdateOperator::Increment => self.writer.add_instruction(value, value, one),
-                ast::UpdateOperator::Decrement => self.writer.sub_instruction(value, value, one),
-            }
-
-            Ok(value)
-        } else {
-            // Generate result to temporary register to not clobber
-            let old_value = self.gen_expression_with_dest(&expr.argument, ExprDest::Fixed(dest))?;
-
-            let value = self.register_allocator.allocate()?;
-            self.writer.to_numeric_instruction(value, old_value);
-
-            // Either add or subtract one
-            let one = self.gen_number_literal(1.0, ExprDest::Any)?;
-            match expr.operator {
-                ast::UpdateOperator::Increment => self.writer.add_instruction(value, value, one),
-                ast::UpdateOperator::Decrement => self.writer.sub_instruction(value, value, one),
-            }
-
-            Ok(old_value)
+    fn write_inc_or_dec(&mut self, operator: ast::UpdateOperator, value: GenRegister) {
+        match operator {
+            ast::UpdateOperator::Increment => self.writer.inc_instruction(value),
+            ast::UpdateOperator::Decrement => self.writer.dec_instruction(value),
         }
     }
 

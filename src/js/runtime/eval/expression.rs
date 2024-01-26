@@ -597,45 +597,65 @@ fn eval_argument_list(
 
 // 13.3.9.1 Optional Chain Evaluation
 fn eval_chain_expression(cx: Context, expr: &ast::ChainExpression) -> EvalResult<Handle<Value>> {
-    maybe!(eval_chain_expression_part(cx, &expr.expression))
-        .0
-        .into()
+    if let Some((value, _)) = maybe!(eval_chain_expression_part(cx, &expr.expression)) {
+        value.into()
+    } else {
+        cx.undefined().into()
+    }
 }
 
 fn eval_chain_expression_to_reference(
     cx: Context,
     expr: &ast::ChainExpression,
 ) -> EvalResult<Reference> {
-    maybe!(eval_chain_expression_part(cx, &expr.expression))
-        .1
-        .into()
+    if let Some((_, reference)) = maybe!(eval_chain_expression_part(cx, &expr.expression)) {
+        reference.into()
+    } else {
+        Reference::EMPTY.into()
+    }
 }
 
+/// Evaluate one part of a chain expression to it's value and reference. Return None if the chain
+/// expression has short circuited.
 fn eval_chain_expression_part(
     cx: Context,
     expr: &ast::Expression,
-) -> EvalResult<(Handle<Value>, Reference)> {
+) -> EvalResult<Option<(Handle<Value>, Reference)>> {
     match expr {
         ast::Expression::Member(member_expr) => {
-            let base_value = maybe!(eval_chain_expression_part(cx, &member_expr.object)).0;
-            if base_value.is_nullish() {
-                return (cx.undefined(), Reference::EMPTY).into();
+            let base_value = maybe!(eval_chain_expression_part(cx, &member_expr.object));
+
+            // Short circuit if necesary
+            if base_value.is_none() {
+                return None.into();
+            }
+
+            let base_value = base_value.unwrap().0;
+            if member_expr.is_optional && base_value.is_nullish() {
+                return None.into();
             }
 
             let reference =
                 maybe!(eval_member_expression_to_reference_with_base(cx, member_expr, base_value));
             let value = maybe!(reference.get_value(cx));
 
-            (value, reference).into()
+            Some((value, reference)).into()
         }
         // Logic partially duplicated from eval_call_expression, returns early for nullish functions
         ast::Expression::Call(call_expr) => {
             let callee_reference: Option<Reference> = match call_expr.callee.as_ref() {
                 // Check for a member callee so that we can short circuit
                 ast::Expression::Member(expr) => {
-                    let base_value = maybe!(eval_chain_expression_part(cx, &expr.object)).0;
-                    if base_value.is_nullish() {
-                        return (cx.undefined(), Reference::EMPTY).into();
+                    let base_value = maybe!(eval_chain_expression_part(cx, &expr.object));
+
+                    // Short circuit if necessary
+                    if base_value.is_none() {
+                        return None.into();
+                    }
+
+                    let base_value = base_value.unwrap().0;
+                    if expr.is_optional && base_value.is_nullish() {
+                        return None.into();
                     }
 
                     Some(maybe!(eval_member_expression_to_reference_with_base(
@@ -652,8 +672,8 @@ fn eval_chain_expression_part(
             let (func_value, this_value) = match callee_reference {
                 Some(reference) => {
                     let func_value = maybe!(reference.get_value(cx));
-                    if func_value.is_nullish() {
-                        return (cx.undefined(), Reference::EMPTY).into();
+                    if call_expr.is_optional && func_value.is_nullish() {
+                        return None.into();
                     }
 
                     let this_value = match reference.base() {
@@ -668,9 +688,16 @@ fn eval_chain_expression_part(
                     (func_value, this_value)
                 }
                 None => {
-                    let func_value = maybe!(eval_chain_expression_part(cx, &call_expr.callee)).0;
-                    if func_value.is_nullish() {
-                        return (cx.undefined(), Reference::EMPTY).into();
+                    let func_value = maybe!(eval_chain_expression_part(cx, &call_expr.callee));
+
+                    // Short circuit if necessary
+                    if func_value.is_none() {
+                        return None.into();
+                    }
+
+                    let func_value = func_value.unwrap().0;
+                    if call_expr.is_optional && func_value.is_nullish() {
+                        return None.into();
                     }
 
                     (func_value, cx.undefined())
@@ -679,9 +706,9 @@ fn eval_chain_expression_part(
 
             let value = maybe!(eval_call(cx, func_value, this_value, &call_expr.arguments));
 
-            (value, Reference::EMPTY).into()
+            Some((value, Reference::EMPTY)).into()
         }
-        other_expr => (maybe!(eval_expression(cx, other_expr)), Reference::EMPTY).into(),
+        other_expr => Some((maybe!(eval_expression(cx, other_expr)), Reference::EMPTY)).into(),
     }
 }
 

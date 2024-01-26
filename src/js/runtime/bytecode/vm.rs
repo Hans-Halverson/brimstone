@@ -44,7 +44,8 @@ use super::{
         GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
         GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
         Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
@@ -60,7 +61,8 @@ use super::{
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
-        GenericJumpBooleanInstruction, GenericJumpToBooleanConstantInstruction,
+        GenericJumpBooleanInstruction, GenericJumpNullishConstantInstruction,
+        GenericJumpNullishInstruction, GenericJumpToBooleanConstantInstruction,
         GenericJumpToBooleanInstruction,
     },
     operand::{ConstantIndex, Register, SInt, UInt},
@@ -391,6 +393,14 @@ impl VM {
                             let instr = get_instr!(JumpToBooleanFalseConstantInstruction);
                             self.execute_jump_to_boolean_constant(instr)
                         }
+                        OpCode::JumpNotNullish => {
+                            let instr = get_instr!(JumpNotNullishInstruction);
+                            self.execute_jump_nullish(instr)
+                        }
+                        OpCode::JumpNotNullishConstant => {
+                            let instr = get_instr!(JumpNotNullishConstantInstruction);
+                            self.execute_jump_nullish_constant(instr)
+                        }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
                         OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
@@ -629,6 +639,29 @@ impl VM {
     ) {
         let condition = self.read_register(instr.condition());
         if I::cond_function(to_boolean(condition)) {
+            self.jump_constant(instr.constant_index());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if nullish/not nullish instruction
+    fn execute_jump_nullish<W: Width, I: GenericJumpNullishInstruction<W>>(&mut self, instr: &I) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
+            self.jump_immediate(instr.offset());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if nullish/not nullish constant instruction
+    fn execute_jump_nullish_constant<W: Width, I: GenericJumpNullishConstantInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
             self.jump_constant(instr.constant_index());
         } else {
             self.set_pc_after(instr);

@@ -14,8 +14,12 @@
     33: StoreGlobal r0, c11
     36: NewClosure r0, c12
     39: StoreGlobal r0, c13
-    42: LoadUndefined r0
-    44: Ret r0
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -27,10 +31,14 @@
     7: [String: logicalOrBoolean]
     8: [BytecodeFunction: logicalOrNotBoolean]
     9: [String: logicalOrNotBoolean]
-    10: [BytecodeFunction: logicalAndWithTemporary]
-    11: [String: logicalAndWithTemporary]
-    12: [BytecodeFunction: localOrWithTemporary]
-    13: [String: localOrWithTemporary]
+    10: [BytecodeFunction: nullishCoalesce]
+    11: [String: nullishCoalesce]
+    12: [BytecodeFunction: logicalAndWithTemporary]
+    13: [String: logicalAndWithTemporary]
+    14: [BytecodeFunction: localOrWithTemporary]
+    15: [String: localOrWithTemporary]
+    16: [BytecodeFunction: nullishCoalesceWithTemporary]
+    17: [String: nullishCoalesceWithTemporary]
 }
 
 [BytecodeFunction: use] {
@@ -80,6 +88,19 @@
      3: LoadImmediate r2, 2
      6: Add r0, r1, r2
     10: JumpToBooleanTrue r0, 13 (.L0)
+    13: LoadImmediate r1, 3
+    16: LoadImmediate r2, 4
+    19: Add r0, r1, r2
+  .L0:
+    23: Ret r0
+}
+
+[BytecodeFunction: nullishCoalesce] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r1, 1
+     3: LoadImmediate r2, 2
+     6: Add r0, r1, r2
+    10: JumpNotNullish r0, 13 (.L0)
     13: LoadImmediate r1, 3
     16: LoadImmediate r2, 4
     19: Add r0, r1, r2
@@ -140,6 +161,37 @@
     43: LoadGlobal r1, c0
     46: LoadImmediate r2, 7
     49: JumpToBooleanTrue r2, 6 (.L3)
+    52: LoadImmediate r2, 8
+  .L3:
+    55: Call r1, r1, r2, 1
+    60: LoadUndefined r1
+    62: Ret r1
+  Constant Table:
+    0: [String: use]
+}
+
+[BytecodeFunction: nullishCoalesceWithTemporary] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: LoadImmediate r1, 1
+     6: JumpNotNullish r1, 6 (.L0)
+     9: LoadImmediate r1, 2
+  .L0:
+    12: Mov a0, r1
+    15: LoadImmediate r1, 3
+    18: JumpNotNullish r1, 6 (.L1)
+    21: LoadImmediate r1, 4
+  .L1:
+    24: Mov r0, r1
+    27: LoadImmediate r1, 5
+    30: JumpNotNullish r1, 6 (.L2)
+    33: LoadImmediate r1, 6
+  .L2:
+    36: LoadImmediate r2, 10
+    39: Mul r1, r1, r2
+    43: LoadGlobal r1, c0
+    46: LoadImmediate r2, 7
+    49: JumpNotNullish r2, 6 (.L3)
     52: LoadImmediate r2, 8
   .L3:
     55: Call r1, r1, r2, 1

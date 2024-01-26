@@ -511,6 +511,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn write_jump_not_nullish_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_not_nullish_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_not_nullish_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
     fn write_jump_false_for_expression(
         &mut self,
         condition_expr: &ast::Expression,
@@ -689,13 +706,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::UnaryOperator::Delete => unimplemented!("bytecode for delete expressions"),
             },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
-            ast::Expression::Logical(expr) => match expr.operator {
-                ast::LogicalOperator::And => self.gen_logical_and_expression(expr, dest),
-                ast::LogicalOperator::Or => self.gen_logical_or_expression(expr, dest),
-                ast::LogicalOperator::NullishCoalesce => {
-                    unimplemented!("bytecode for nullish coalescing operator")
-                }
-            },
+            ast::Expression::Logical(expr) => self.gen_logical_expression(expr, dest),
             ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
             ast::Expression::Update(expr) => self.gen_update_expression(expr, dest),
             ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
@@ -1124,7 +1135,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
-    fn gen_logical_and_expression(
+    fn gen_logical_expression(
         &mut self,
         expr: &ast::LogicalExpression,
         dest: ExprDest,
@@ -1144,43 +1155,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Generate left expression, storing in (possibly temporary) dest
         self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(temporary_dest))?;
-        self.write_jump_false_for_expression(&expr.left, temporary_dest, join_block)?;
 
-        // Generate right expression, storing in (possibly temporary) dest
-        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temporary_dest))?;
-
-        self.start_block(join_block);
-
-        // Move from temporary dest to final dest if necessary
-        if needs_temporary_dest {
-            self.write_mov_instruction(dest, temporary_dest);
-            self.register_allocator.release(temporary_dest);
+        // Write the appropriate conditional jump for each operator
+        match expr.operator {
+            ast::LogicalOperator::And => {
+                self.write_jump_false_for_expression(&expr.left, temporary_dest, join_block)?
+            }
+            ast::LogicalOperator::Or => {
+                self.write_jump_true_for_expression(&expr.left, temporary_dest, join_block)?;
+            }
+            ast::LogicalOperator::NullishCoalesce => {
+                self.write_jump_not_nullish_instruction(temporary_dest, join_block)?
+            }
         }
-
-        Ok(dest)
-    }
-
-    fn gen_logical_or_expression(
-        &mut self,
-        expr: &ast::LogicalExpression,
-        dest: ExprDest,
-    ) -> EmitResult<GenRegister> {
-        let dest = self.allocate_destination(dest)?;
-        let join_block = self.new_block();
-
-        // If the destination is not a temporary register then we must write intermediate values
-        // to a temporary register, then move that to final destionation at the end. This avoids
-        // clobbering the non-temporary register if the expression throws.
-        let needs_temporary_dest = !self.register_allocator.is_temporary_register(dest);
-        let temporary_dest = if needs_temporary_dest {
-            self.register_allocator.allocate()?
-        } else {
-            dest
-        };
-
-        // Generate left expression, storing in (possibly temporary) dest
-        self.gen_expression_with_dest(&expr.left, ExprDest::Fixed(temporary_dest))?;
-        self.write_jump_true_for_expression(&expr.left, temporary_dest, join_block)?;
 
         // Generate right expression, storing in (possibly temporary) dest
         self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temporary_dest))?;

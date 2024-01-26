@@ -590,6 +590,20 @@ define_instructions!(
         [1] constant_index: ConstantIndex,
     }
 
+    /// Conditionally jump to the given instruction if the condition is nullish, using an inline
+    /// offset.
+    JumpNotNullish (JumpNotNullishInstruction, jump_not_nullish_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if the condition is nullish, with offset stored
+    /// in the constant table.
+    JumpNotNullishConstant (JumpNotNullishConstantInstruction, jump_not_nullish_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
     /// Create a new closure from the function at the given index in the constant table.
     NewClosure (NewClosureInstruction, new_closure_instruction) {
         [0] dest: Register,
@@ -850,7 +864,7 @@ fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
 
     if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
         Some(instr.get_raw_operand_signed(0))
-    } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpToBooleanFalseConstant {
+    } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpNotNullishConstant {
         Some(instr.get_raw_operand_signed(1))
     } else {
         None

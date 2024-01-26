@@ -3,7 +3,8 @@ use crate::js::runtime::Value;
 use super::{
     instruction::{
         CallInstruction, CallWithReceiverInstruction, Instruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+        JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction,
     },
@@ -239,5 +240,53 @@ impl<W: Width> GenericJumpToBooleanConstantInstruction<W>
     #[inline]
     fn cond_function(value: bool) -> bool {
         !value
+    }
+}
+
+/// Generic trait for jump if nullish/not nullish instructions (non-constant).
+pub trait GenericJumpNullishInstruction<W: Width>: Instruction {
+    fn condition(&self) -> Register<W>;
+    fn offset(&self) -> SInt<W>;
+    fn cond_function(value: Value) -> bool;
+}
+
+impl<W: Width> GenericJumpNullishInstruction<W> for JumpNotNullishInstruction<W> {
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn offset(&self) -> SInt<W> {
+        self.offset()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        !value.is_nullish()
+    }
+}
+
+/// Generic trait for jump if nullish/not nullish instructions (constant).
+pub trait GenericJumpNullishConstantInstruction<W: Width>: Instruction {
+    fn condition(&self) -> Register<W>;
+    fn constant_index(&self) -> ConstantIndex<W>;
+    fn cond_function(value: Value) -> bool;
+}
+
+impl<W: Width> GenericJumpNullishConstantInstruction<W> for JumpNotNullishConstantInstruction<W> {
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn constant_index(&self) -> ConstantIndex<W> {
+        self.constant_index()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        !value.is_nullish()
     }
 }

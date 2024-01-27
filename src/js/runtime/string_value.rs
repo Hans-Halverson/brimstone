@@ -231,6 +231,9 @@ impl Handle<StringValue> {
     /// must be make sure to only pass an after index that is less than or equal to the length of
     /// the string.
     pub fn find(&self, search_string: Handle<StringValue>, after: u32) -> Option<u32> {
+        // First flatten so that we do not allocate while iterating
+        search_string.flatten();
+
         let mut string_code_units = self.iter_slice_code_units(after, self.len());
         let mut search_string_code_units = search_string.iter_code_units();
 
@@ -284,6 +287,9 @@ impl Handle<StringValue> {
         if search_string_len > end_index {
             return None;
         }
+
+        // First flatten so that we do not allocate while iterating
+        search_string.flatten();
 
         let mut string_code_units = self.iter_slice_code_units(0, end_index);
         let mut search_string_code_units = search_string.iter_code_units();
@@ -457,20 +463,22 @@ impl Handle<StringValue> {
 
         match code_points_iter.width() {
             StringWidth::OneByte => {
-                let slice = unsafe {
+                // Must copy into a temporary buffer as GC may occur
+                let buf = unsafe {
                     let length = end_ptr.offset_from(start_ptr);
-                    std::slice::from_raw_parts(start_ptr, length as usize)
+                    std::slice::from_raw_parts(start_ptr, length as usize).to_owned()
                 };
 
-                FlatString::new_one_byte(cx, slice).as_string().to_handle()
+                FlatString::new_one_byte(cx, &buf).as_string().to_handle()
             }
             StringWidth::TwoByte => {
-                let slice = unsafe {
+                // Must copy into a temporary buffer as GC may occur
+                let buf = unsafe {
                     let length = (end_ptr as *const u16).offset_from(start_ptr as *const u16);
-                    std::slice::from_raw_parts(start_ptr as *const u16, length as usize)
+                    std::slice::from_raw_parts(start_ptr as *const u16, length as usize).to_owned()
                 };
 
-                FlatString::new_two_byte(cx, slice).as_string().to_handle()
+                FlatString::new_two_byte(cx, &buf).as_string().to_handle()
             }
         }
     }
@@ -491,6 +499,9 @@ impl Handle<StringValue> {
     }
 
     pub fn substring_equals(&self, search: Handle<StringValue>, start_index: u32) -> bool {
+        // First flatten so that we do not allocate while iterating
+        search.flatten();
+
         let mut slice_code_units =
             self.iter_slice_code_units(start_index, start_index + search.len());
         let mut search_code_units = search.iter_code_units();
@@ -972,12 +983,14 @@ impl FlatString {
 
         match self.width() {
             StringWidth::OneByte => {
-                let string_slice = &self.as_one_byte_slice()[start..end];
-                FlatString::new_one_byte(cx, string_slice).to_handle()
+                // Copy substring to new buffer as allocation may trigger a GC
+                let substring_buf = &self.as_one_byte_slice()[start..end].to_owned();
+                FlatString::new_one_byte(cx, &substring_buf).to_handle()
             }
             StringWidth::TwoByte => {
-                let string_slice = &self.as_two_byte_slice()[start..end];
-                FlatString::new_two_byte(cx, string_slice).to_handle()
+                // Copy substring to new buffer as allocation may trigger a GC
+                let substring_buf = &self.as_two_byte_slice()[start..end].to_owned();
+                FlatString::new_two_byte(cx, &substring_buf).to_handle()
             }
         }
     }

@@ -877,7 +877,7 @@ fn regexp_builtin_exec(
     let last_index = last_index as u32;
 
     // Run the matching engine on the regexp and input string
-    let match_ = run_matcher(compiled_regexp.get_(), string_value, last_index);
+    let match_ = run_matcher(compiled_regexp, string_value, last_index);
 
     // Handle match failure, resetting last index under sticky flag
     if match_.is_none() {

@@ -2369,6 +2369,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_instruction(loop_start_block)?;
 
         self.start_block(join_block);
+        self.pop_jump_statement_target();
 
         // Normal completion since there is always the test false path that skips the loop entirely
         Ok(StmtCompletion::Normal)
@@ -2400,6 +2401,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.start_block(join_block);
+        self.pop_jump_statement_target();
 
         // Normal completion since there is always the test false path that skips the loop entirely
         Ok(StmtCompletion::Normal)
@@ -2428,6 +2430,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.start_block(join_block);
+        self.pop_jump_statement_target();
 
         // Normal completion since even with an abnormal body there might be a continue statement
         // that proceeds past the loop.
@@ -2601,12 +2604,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // The break target is after the labeled statement
                 self.start_block(jump_targets.break_block);
+                self.pop_jump_statement_target();
 
                 completion
             }
         };
 
-        self.pop_jump_statement_target();
 
         completion
     }

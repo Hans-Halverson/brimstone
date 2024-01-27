@@ -678,7 +678,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
-            ast::Statement::Switch(_) => unimplemented!("bytecode for switch statement"),
+            ast::Statement::Switch(stmt) => self.gen_switch_statement(stmt),
             ast::Statement::For(stmt) => self.gen_for_statement(stmt, None),
             ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
             ast::Statement::While(stmt) => self.gen_while_statement(stmt, None),
@@ -2253,6 +2253,72 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             },
             _ => false,
         }
+    }
+
+    fn gen_switch_statement(&mut self, stmt: &ast::SwitchStatement) -> EmitResult<StmtCompletion> {
+        let jump_targets = self.push_jump_statement_target(None, false);
+        let join_block = jump_targets.break_block;
+
+        let discriminant = self.gen_expression(&stmt.discriminant)?;
+
+        // Create and jump to the case block ids which will be generated later
+        let mut case_block_ids = Vec::with_capacity(stmt.cases.len());
+        let mut default_case_index = stmt.cases.len();
+
+        for (i, case) in stmt.cases.iter().enumerate() {
+            let case_block_id = self.new_block();
+            case_block_ids.push(case_block_id);
+            // Write the condition for all non-default blocks
+            if let Some(test) = &case.test {
+                let test = self.gen_expression(test)?;
+                self.register_allocator.release(test);
+
+                let is_equal = self.register_allocator.allocate()?;
+                self.writer
+                    .strict_equal_instruction(is_equal, discriminant, test);
+
+                // Jump to the case body if the discriminant is equal to the test value
+                self.register_allocator.release(is_equal);
+                self.write_jump_true_instruction(is_equal, case_block_id)?;
+            } else {
+                default_case_index = i;
+            }
+        }
+
+        self.register_allocator.release(discriminant);
+
+        if default_case_index == stmt.cases.len() {
+            // If there is no default case then jump to the join block
+            self.write_jump_instruction(join_block)?;
+        } else {
+            // Otherwise jump to the default block
+            self.write_jump_instruction(case_block_ids[default_case_index])?;
+        }
+
+        // Write the case block bodies in order
+        for (case, case_block_id) in stmt.cases.iter().zip(&case_block_ids) {
+            if case.test.is_none() {
+                continue;
+            }
+
+            self.start_block(*case_block_id);
+            self.gen_statement_list(&case.body)?;
+
+            // Intentionally fall through to the next case body
+        }
+
+        // Finish with the default case body
+        if default_case_index != stmt.cases.len() {
+            self.start_block(case_block_ids[default_case_index]);
+            self.gen_statement_list(&stmt.cases[default_case_index].body)?;
+        }
+
+        self.start_block(join_block);
+
+        self.pop_jump_statement_target();
+
+        // Switch statements always complete normally since there may be a break
+        Ok(StmtCompletion::Normal)
     }
 
     fn gen_for_statement(

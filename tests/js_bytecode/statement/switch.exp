@@ -1,0 +1,196 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: LoadUndefined r0
+    50: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: empty]
+    1: [String: empty]
+    2: [BytecodeFunction: singleCaseWithFallthrough]
+    3: [String: singleCaseWithFallthrough]
+    4: [BytecodeFunction: singleCaseWithBreak]
+    5: [String: singleCaseWithBreak]
+    6: [BytecodeFunction: multipleCases]
+    7: [String: multipleCases]
+    8: [BytecodeFunction: singleDefaultCase]
+    9: [String: singleDefaultCase]
+    10: [BytecodeFunction: multipleCasesWithDefault]
+    11: [String: multipleCasesWithDefault]
+    12: [BytecodeFunction: multipleCasesWithDefaultInMiddle]
+    13: [String: multipleCasesWithDefaultInMiddle]
+    14: [BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough]
+    15: [String: multipleCasesWithDefaultInMiddleFallthrough]
+}
+
+[BytecodeFunction: empty] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: Jump 2 (.L0)
+  .L0:
+     7: LoadImmediate r0, 2
+    10: LoadUndefined r0
+    12: Ret r0
+}
+
+[BytecodeFunction: singleCaseWithFallthrough] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 5 (.L0)
+    15: Jump 5 (.L1)
+  .L0:
+    17: LoadImmediate r0, 3
+  .L1:
+    20: LoadImmediate r0, 4
+    23: LoadUndefined r0
+    25: Ret r0
+}
+
+[BytecodeFunction: singleCaseWithBreak] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 5 (.L0)
+    15: Jump 7 (.L1)
+  .L0:
+    17: LoadImmediate r0, 3
+    20: Jump 2 (.L1)
+  .L1:
+    22: LoadImmediate r0, 4
+    25: LoadUndefined r0
+    27: Ret r0
+}
+
+[BytecodeFunction: multipleCases] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 25 (.L0)
+    15: LoadImmediate r1, 4
+    18: StrictEqual r1, r0, r1
+    22: JumpTrue r1, 20 (.L1)
+    25: LoadImmediate r1, 6
+    28: StrictEqual r1, r0, r1
+    32: JumpTrue r1, 13 (.L2)
+    35: Jump 15 (.L3)
+  .L0:
+    37: LoadImmediate r0, 3
+    40: Jump 10 (.L3)
+  .L1:
+    42: LoadImmediate r0, 5
+  .L2:
+    45: LoadImmediate r0, 7
+    48: Jump 2 (.L3)
+  .L3:
+    50: LoadImmediate r0, 3
+    53: LoadUndefined r0
+    55: Ret r0
+}
+
+[BytecodeFunction: singleDefaultCase] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: Jump 2 (.L0)
+  .L0:
+     7: LoadImmediate r0, 2
+    10: LoadImmediate r0, 3
+    13: LoadUndefined r0
+    15: Ret r0
+}
+
+[BytecodeFunction: multipleCasesWithDefault] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 15 (.L0)
+    15: LoadImmediate r1, 4
+    18: StrictEqual r1, r0, r1
+    22: JumpTrue r1, 10 (.L1)
+    25: Jump 12 (.L2)
+  .L0:
+    27: LoadImmediate r0, 3
+    30: Jump 12 (.L3)
+  .L1:
+    32: LoadImmediate r0, 5
+    35: Jump 7 (.L3)
+  .L2:
+    37: LoadImmediate r0, 6
+    40: Jump 2 (.L3)
+  .L3:
+    42: LoadImmediate r0, 7
+    45: LoadUndefined r0
+    47: Ret r0
+}
+
+[BytecodeFunction: multipleCasesWithDefaultInMiddle] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 15 (.L0)
+    15: LoadImmediate r1, 5
+    18: StrictEqual r1, r0, r1
+    22: JumpTrue r1, 10 (.L1)
+    25: Jump 12 (.L2)
+  .L0:
+    27: LoadImmediate r0, 3
+    30: Jump 12 (.L3)
+  .L1:
+    32: LoadImmediate r0, 6
+    35: Jump 7 (.L3)
+  .L2:
+    37: LoadImmediate r0, 4
+    40: Jump 2 (.L3)
+  .L3:
+    42: LoadImmediate r0, 7
+    45: LoadUndefined r0
+    47: Ret r0
+}
+
+[BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadTrue r0
+     5: LoadImmediate r1, 2
+     8: StrictEqual r1, r0, r1
+    12: JumpTrue r1, 15 (.L0)
+    15: LoadImmediate r1, 5
+    18: StrictEqual r1, r0, r1
+    22: JumpTrue r1, 8 (.L1)
+    25: Jump 8 (.L2)
+  .L0:
+    27: LoadImmediate r0, 3
+  .L1:
+    30: LoadImmediate r0, 6
+  .L2:
+    33: LoadImmediate r0, 4
+    36: LoadImmediate r0, 7
+    39: LoadUndefined r0
+    41: Ret r0
+}

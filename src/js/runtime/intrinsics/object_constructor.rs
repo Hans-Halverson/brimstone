@@ -99,17 +99,13 @@ impl ObjectConstructor {
 
     // 20.1.1.1 Object
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(new_target) = new_target {
-            if !cx
-                .current_execution_context_ptr()
-                .function()
-                .ptr_eq(&new_target)
-            {
+            if !cx.current_function().ptr_eq(&new_target) {
                 let new_object = maybe!(object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,

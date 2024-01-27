@@ -34,12 +34,12 @@ impl FunctionConstructor {
 
     // 20.2.1.1 Function
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let constructor = cx.current_execution_context_ptr().function();
+        let constructor = cx.current_function();
         maybe!(create_dynamic_function(cx, constructor, new_target, arguments)).into()
     }
 }

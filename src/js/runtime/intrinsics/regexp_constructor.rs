@@ -159,7 +159,7 @@ impl RegExpConstructor {
 
     // 22.2.4.1 RegExp
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -171,7 +171,7 @@ impl RegExpConstructor {
 
         let new_target = match new_target {
             None => {
-                let new_target = cx.current_execution_context().function();
+                let new_target = cx.current_function();
 
                 if pattern_is_regexp && flags_arg.is_undefined() {
                     let pattern_constructor =

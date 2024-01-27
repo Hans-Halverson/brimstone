@@ -235,6 +235,14 @@ impl Context {
             .get_intrinsic(intrinsic)
     }
 
+    pub fn current_function(&mut self) -> Handle<ObjectValue> {
+        if self.options.bytecode {
+            self.vm().closure().to_handle().into()
+        } else {
+            self.current_execution_context_ptr().function().into()
+        }
+    }
+
     /// 9.4.6 GetGlobalObject. Return the global object for the current realm.
     pub fn get_global_object(&self) -> Handle<ObjectValue> {
         self.current_execution_context_ptr().global_object()

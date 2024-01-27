@@ -82,7 +82,7 @@ macro_rules! create_native_error {
 
             // 20.5.6.1.1 NativeError
             pub fn construct(
-                cx: Context,
+                mut cx: Context,
                 _: Handle<Value>,
                 arguments: &[Handle<Value>],
                 new_target: Option<Handle<ObjectValue>>,
@@ -90,7 +90,7 @@ macro_rules! create_native_error {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
-                    cx.current_execution_context_ptr().function()
+                    cx.current_function()
                 };
 
                 let object = maybe!($native_error::new_from_constructor(cx, new_target));

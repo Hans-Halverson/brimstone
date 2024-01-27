@@ -55,13 +55,12 @@ impl ArrayConstructor {
 
     // 23.1.1.1 Array
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target =
-            new_target.unwrap_or_else(|| cx.current_execution_context_ptr().function());
+        let new_target = new_target.unwrap_or_else(|| cx.current_function());
         let proto =
             maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype));
 

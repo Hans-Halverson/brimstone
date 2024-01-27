@@ -69,7 +69,7 @@ impl AggregateErrorConstructor {
 
     // 20.5.7.1.1 AggregateError
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -77,7 +77,7 @@ impl AggregateErrorConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            cx.current_execution_context_ptr().function()
+            cx.current_function()
         };
 
         let object = maybe!(AggregateErrorObject::new_from_constructor(cx, new_target));

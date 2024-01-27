@@ -531,7 +531,7 @@ impl VM {
     }
 
     #[inline]
-    fn closure(&self) -> HeapPtr<Closure> {
+    pub fn closure(&self) -> HeapPtr<Closure> {
         StackFrame::for_fp(self.fp).closure()
     }
 

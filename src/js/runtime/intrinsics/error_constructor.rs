@@ -65,7 +65,7 @@ impl ErrorConstructor {
 
     // 20.5.1.1 Error
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
@@ -73,7 +73,7 @@ impl ErrorConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            cx.current_execution_context_ptr().function()
+            cx.current_function()
         };
 
         let object = maybe!(ErrorObject::new_from_constructor(cx, new_target));

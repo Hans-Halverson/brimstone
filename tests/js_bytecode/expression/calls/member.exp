@@ -4,13 +4,21 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNamedMemberCall]
     1: [String: testNamedMemberCall]
     2: [BytecodeFunction: testComputedMemberCall]
     3: [String: testComputedMemberCall]
+    4: [BytecodeFunction: testOptionalNamedMemberCall]
+    5: [String: testOptionalNamedMemberCall]
+    6: [BytecodeFunction: testOptionalComputedMemberCall]
+    7: [String: testOptionalComputedMemberCall]
 }
 
 [BytecodeFunction: testNamedMemberCall] {
@@ -59,4 +67,59 @@
     73: Ret r1
   Constant Table:
     0: [String: foo]
+}
+
+[BytecodeFunction: testOptionalNamedMemberCall] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: JumpNullish r0, 9 (.L0)
+     6: GetNamedProperty r1, r0, c0
+    10: Jump 6 (.L1)
+  .L0:
+    12: LoadUndefined r1
+    14: LoadUndefined r0
+  .L1:
+    16: CallWithReceiver r0, r1, r0, r1, 0
+    22: JumpNullish a0, 13 (.L2)
+    25: GetNamedProperty r0, a0, c1
+    29: GetNamedProperty r1, r0, c2
+    33: Jump 6 (.L3)
+  .L2:
+    35: LoadUndefined r1
+    37: LoadUndefined r0
+  .L3:
+    39: CallWithReceiver r0, r1, r0, r1, 0
+    45: LoadUndefined r0
+    47: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: a]
+    2: [String: b]
+}
+
+[BytecodeFunction: testOptionalComputedMemberCall] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: JumpNullish r0, 12 (.L0)
+     6: LoadImmediate r1, 1
+     9: GetProperty r1, r0, r1
+    13: Jump 6 (.L1)
+  .L0:
+    15: LoadUndefined r1
+    17: LoadUndefined r0
+  .L1:
+    19: CallWithReceiver r0, r1, r0, r1, 0
+    25: JumpNullish a0, 19 (.L2)
+    28: LoadImmediate r0, 1
+    31: GetProperty r0, a0, r0
+    35: LoadImmediate r1, 2
+    38: GetProperty r1, r0, r1
+    42: Jump 6 (.L3)
+  .L2:
+    44: LoadUndefined r1
+    46: LoadUndefined r0
+  .L3:
+    48: CallWithReceiver r0, r1, r0, r1, 0
+    54: LoadUndefined r0
+    56: Ret r0
 }

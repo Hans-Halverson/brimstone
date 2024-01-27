@@ -592,13 +592,27 @@ define_instructions!(
 
     /// Conditionally jump to the given instruction if the condition is nullish, using an inline
     /// offset.
-    JumpNotNullish (JumpNotNullishInstruction, jump_not_nullish_instruction) {
+    JumpNullish (JumpNullishInstruction, jump_nullish_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
     }
 
     /// Conditionally jump to the given instruction if the condition is nullish, with offset stored
     /// in the constant table.
+    JumpNullishConstant (JumpNullishConstantInstruction, jump_nullish_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
+    /// Conditionally jump to the given instruction if the condition is not nullish, using an inline
+    /// offset.
+    JumpNotNullish (JumpNotNullishInstruction, jump_not_nullish_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if the condition is not nullish, with offset
+    /// stored in the constant table.
     JumpNotNullishConstant (JumpNotNullishConstantInstruction, jump_not_nullish_constant_instruction) {
         [0] condition: Register,
         [1] constant_index: ConstantIndex,

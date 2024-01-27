@@ -511,6 +511,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn write_jump_nullish_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_nullish_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_nullish_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
     fn write_jump_not_nullish_instruction(
         &mut self,
         condition: GenRegister,
@@ -709,10 +726,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Logical(expr) => self.gen_logical_expression(expr, dest),
             ast::Expression::Assign(expr) => self.gen_assignment_expression(expr, dest),
             ast::Expression::Update(expr) => self.gen_update_expression(expr, dest),
-            ast::Expression::Member(expr) => self.gen_member_expression(expr, dest),
-            ast::Expression::Chain(_) => unimplemented!("bytecode for optional chain expressions"),
+            ast::Expression::Member(expr) => self.gen_member_expression(expr, dest, None, None),
+            ast::Expression::Chain(expr) => self.gen_chain_expression(expr, dest, None),
             ast::Expression::Conditional(expr) => self.gen_conditional_expression(expr, dest),
-            ast::Expression::Call(expr) => self.gen_call_expression(expr, dest),
+            ast::Expression::Call(expr) => self.gen_call_expression(expr, dest, None),
             ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
             ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
             ast::Expression::Array(expr) => self.gen_array_literal(expr, dest),
@@ -879,6 +896,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.write_mov_instruction(dest, src);
                 Ok(dest)
             }
+        }
+    }
+
+    fn gen_ensure_reg_is_temporary(&mut self, reg: GenRegister) -> EmitResult<GenRegister> {
+        if self.register_allocator.is_temporary_register(reg) {
+            Ok(reg)
+        } else {
+            let dest = self.register_allocator.allocate()?;
+            self.write_mov_instruction(dest, reg);
+            Ok(dest)
         }
     }
 
@@ -1214,27 +1241,54 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         expr: &ast::CallExpression,
         dest: ExprDest,
+        optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
         // Calls on a property accesses must pass the object's value as the this value
-        let (callee, this_value) = if let ast::Expression::Member(
-            member_expr @ ast::MemberExpression { is_optional: false, object, .. },
-        ) = expr.callee.as_ref()
-        {
-            let object = self.gen_expression(object)?;
-            let callee = self.gen_member_property(
-                member_expr,
-                object,
-                ExprDest::Any,
-                /* release_object */ false,
-            )?;
-            (callee, Some(object))
-        } else {
-            let callee = self.gen_expression(&expr.callee)?;
-            (callee, None)
+        let (callee, this_value) = match expr.callee.as_ref() {
+            // If the callee is a member expression, generate the object expression first and use
+            // as the receiver.
+            ast::Expression::Member(member_expr) => {
+                // Dummy value that will be overwritten when generating member expression
+                let mut call_receiver =
+                    CallReceiver { receiver: Register::this(), is_chain: false };
+
+                let callee = self.gen_member_expression(
+                    member_expr,
+                    ExprDest::Any,
+                    Some(&mut call_receiver),
+                    optional_nullish_block,
+                )?;
+
+                (callee, Some(call_receiver.receiver))
+            }
+            // If the callee is a chain member expression there will either be a receiver or the
+            // chain expression short circuits and the callee is undefined.
+            ast::Expression::Chain(chain_expr)
+                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
+            {
+                // Dummy receiver that will be overwritten when generating member expression
+                let mut call_receiver = CallReceiver { receiver: Register::this(), is_chain: true };
+
+                let callee =
+                    self.gen_chain_expression(chain_expr, ExprDest::Any, Some(&mut call_receiver))?;
+
+                (callee, Some(call_receiver.receiver))
+            }
+            // Otherwise there is no receiver
+            _ => {
+                let callee = self.gen_maybe_chain_part_expression(
+                    &expr.callee,
+                    ExprDest::Any,
+                    None,
+                    optional_nullish_block,
+                )?;
+                (callee, None)
+            }
         };
 
+        // If in an optional chain, jump to the nullish block if the calle is nullish
         if expr.is_optional {
-            unimplemented!("bytecode for optional call");
+            self.write_jump_nullish_instruction(callee, optional_nullish_block.unwrap())?;
         }
 
         // Generate arguments into a contiguous argc + argv slice
@@ -1521,14 +1575,45 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(object)
     }
 
+    /// Generate a member expression. Write the object's register to the `call_receiver` register if
+    /// one is provided, if evaluating a callee. Otherwise release the object's register.
     fn gen_member_expression(
         &mut self,
         expr: &ast::MemberExpression,
         dest: ExprDest,
+        mut call_receiver: Option<&mut CallReceiver>,
+        optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
-        let object = self.gen_expression(&expr.object)?;
-        let result =
-            self.gen_member_property(expr, object, dest, /* release_object */ true)?;
+        let mut object = self.gen_maybe_chain_part_expression(
+            &expr.object,
+            ExprDest::Any,
+            None,
+            optional_nullish_block,
+        )?;
+
+        // Save the object register in the CallReceiver if one is provided
+        if let Some(call_receiver) = call_receiver.as_deref_mut() {
+            // A chain expression could have short circuited and will have undefined written to the
+            // reciever register. Make sure that the receiver is a temporary register to avoid
+            // overwriting a fixed register.
+            if call_receiver.is_chain {
+                object = self.gen_ensure_reg_is_temporary(object)?;
+            }
+
+            call_receiver.receiver = object;
+        }
+
+        // If in an optional chain, check for nullish and jump to the nullish block if necessary
+        if expr.is_optional {
+            self.write_jump_nullish_instruction(object, optional_nullish_block.unwrap())?;
+        }
+
+        let result = self.gen_member_property(
+            expr,
+            object,
+            dest,
+            /* release_object */ call_receiver.is_none(),
+        )?;
 
         Ok(result)
     }
@@ -1573,6 +1658,68 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         Ok(dest)
+    }
+
+    /// Generate an optional expression, writing the result to dest.
+    ///
+    /// Takes an optional `call_receiver` which is where the outermost expression's object register
+    /// will be written if it is a member expression, if evaluating a callee.
+    fn gen_chain_expression(
+        &mut self,
+        expr: &ast::ChainExpression,
+        dest: ExprDest,
+        mut call_receiver: Option<&mut CallReceiver>,
+    ) -> EmitResult<GenRegister> {
+        let join_block = self.new_block();
+        let nullish_block = self.new_block();
+
+        // Generate the inner expression, writing to destination register if successful
+        let result = self.gen_maybe_chain_part_expression(
+            &expr.expression,
+            dest,
+            call_receiver.as_deref_mut(),
+            Some(nullish_block),
+        )?;
+
+        self.write_jump_instruction(join_block)?;
+
+        // If the inner expression ever short circuits due to a nullish value, write undefined to
+        // the destination register.
+        self.start_block(nullish_block);
+        self.writer.load_undefined_instruction(result);
+
+        // If there is a receiver ref, meaning this chain is followed by a call, then write to the
+        // receiver register so that it has a valid value to be passed to the call.
+        if let Some(call_receiver) = call_receiver {
+            self.writer
+                .load_undefined_instruction(call_receiver.receiver);
+        }
+
+        self.start_block(join_block);
+        Ok(result)
+    }
+
+    /// Generate an expression that may be part of an optional chain, propagating the optional
+    /// chaining nullish block to expressions that may short circuit.
+    ///
+    /// Takes an optional `call_receiver` which is where the outermost expression's object register
+    /// will be written if it is a member expression, if evaluating a callee.
+    fn gen_maybe_chain_part_expression(
+        &mut self,
+        expr: &ast::Expression,
+        dest: ExprDest,
+        call_receiver: Option<&mut CallReceiver>,
+        optional_nullish_block: Option<BlockId>,
+    ) -> EmitResult<GenRegister> {
+        match expr {
+            ast::Expression::Member(member_expr) => {
+                self.gen_member_expression(member_expr, dest, call_receiver, optional_nullish_block)
+            }
+            ast::Expression::Call(call_expr) => {
+                self.gen_call_expression(call_expr, dest, optional_nullish_block)
+            }
+            _ => self.gen_expression_with_dest(expr, dest),
+        }
     }
 
     fn gen_assignment_expression(
@@ -2579,6 +2726,13 @@ struct JumpStatementTarget {
     continue_block: BlockId,
     /// Label id if this is a labeled statement, otherwise this is an unlabeled loop.
     label_id: Option<ast::LabelId>,
+}
+
+struct CallReceiver {
+    /// Reference to be filled with the receiver for a call.
+    receiver: GenRegister,
+    /// Whether the receiver is within an optional chain.
+    is_chain: bool,
 }
 
 /// A reference to a string that may be either wtf8 or utf8.

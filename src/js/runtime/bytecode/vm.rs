@@ -45,6 +45,7 @@ use super::{
         GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
         Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
         JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -392,6 +393,14 @@ impl VM {
                         OpCode::JumpToBooleanFalseConstant => {
                             let instr = get_instr!(JumpToBooleanFalseConstantInstruction);
                             self.execute_jump_to_boolean_constant(instr)
+                        }
+                        OpCode::JumpNullish => {
+                            let instr = get_instr!(JumpNullishInstruction);
+                            self.execute_jump_nullish(instr)
+                        }
+                        OpCode::JumpNullishConstant => {
+                            let instr = get_instr!(JumpNullishConstantInstruction);
+                            self.execute_jump_nullish_constant(instr)
                         }
                         OpCode::JumpNotNullish => {
                             let instr = get_instr!(JumpNotNullishInstruction);

@@ -4,6 +4,7 @@ use super::{
     instruction::{
         CallInstruction, CallWithReceiverInstruction, Instruction, JumpFalseConstantInstruction,
         JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction,
@@ -250,6 +251,23 @@ pub trait GenericJumpNullishInstruction<W: Width>: Instruction {
     fn cond_function(value: Value) -> bool;
 }
 
+impl<W: Width> GenericJumpNullishInstruction<W> for JumpNullishInstruction<W> {
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn offset(&self) -> SInt<W> {
+        self.offset()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        value.is_nullish()
+    }
+}
+
 impl<W: Width> GenericJumpNullishInstruction<W> for JumpNotNullishInstruction<W> {
     #[inline]
     fn condition(&self) -> Register<W> {
@@ -272,6 +290,23 @@ pub trait GenericJumpNullishConstantInstruction<W: Width>: Instruction {
     fn condition(&self) -> Register<W>;
     fn constant_index(&self) -> ConstantIndex<W>;
     fn cond_function(value: Value) -> bool;
+}
+
+impl<W: Width> GenericJumpNullishConstantInstruction<W> for JumpNullishConstantInstruction<W> {
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn constant_index(&self) -> ConstantIndex<W> {
+        self.constant_index()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        value.is_nullish()
+    }
 }
 
 impl<W: Width> GenericJumpNullishConstantInstruction<W> for JumpNotNullishConstantInstruction<W> {

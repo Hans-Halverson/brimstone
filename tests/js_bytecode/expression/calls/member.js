@@ -15,3 +15,13 @@ function testComputedMemberCall(x) {
   var z = 1 + 2;
   z['foo'](4);
 }
+
+function testOptionalNamedMemberCall(x) {
+  (x?.foo)();
+  (x?.a.b)();
+}
+
+function testOptionalComputedMemberCall(x) {
+  (x?.[1])();
+  (x?.[1][2])();
+}

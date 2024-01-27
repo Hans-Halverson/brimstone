@@ -1,0 +1,213 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: namedMember]
+    1: [String: namedMember]
+    2: [BytecodeFunction: computedMember]
+    3: [String: computedMember]
+    4: [BytecodeFunction: call]
+    5: [String: call]
+    6: [BytecodeFunction: nested]
+    7: [String: nested]
+}
+
+[BytecodeFunction: namedMember] {
+  Parameters: 1, Registers: 1
+     0: JumpNullish a0, 9 (.L0)
+     3: GetNamedProperty r0, a0, c0
+     7: Jump 4 (.L1)
+  .L0:
+     9: LoadUndefined r0
+  .L1:
+    11: Neg r0, r0
+    14: JumpNullish a0, 16 (.L2)
+    17: GetNamedProperty r0, a0, c0
+    21: JumpNullish r0, 9 (.L2)
+    24: GetNamedProperty r0, r0, c1
+    28: Jump 4 (.L3)
+  .L2:
+    30: LoadUndefined r0
+  .L3:
+    32: Neg r0, r0
+    35: JumpNullish a0, 13 (.L4)
+    38: GetNamedProperty r0, a0, c0
+    42: GetNamedProperty r0, r0, c1
+    46: Jump 4 (.L5)
+  .L4:
+    48: LoadUndefined r0
+  .L5:
+    50: Neg r0, r0
+    53: GetNamedProperty r0, a0, c0
+    57: JumpNullish r0, 9 (.L6)
+    60: GetNamedProperty r0, r0, c1
+    64: Jump 4 (.L7)
+  .L6:
+    66: LoadUndefined r0
+  .L7:
+    68: Neg r0, r0
+    71: LoadUndefined r0
+    73: Ret r0
+  Constant Table:
+    0: [String: b]
+    1: [String: c]
+}
+
+[BytecodeFunction: computedMember] {
+  Parameters: 1, Registers: 2
+     0: JumpNullish a0, 12 (.L0)
+     3: LoadImmediate r0, 1
+     6: GetProperty r0, a0, r0
+    10: Jump 4 (.L1)
+  .L0:
+    12: LoadUndefined r0
+  .L1:
+    14: Neg r0, r0
+    17: JumpNullish a0, 22 (.L2)
+    20: LoadImmediate r0, 1
+    23: GetProperty r0, a0, r0
+    27: JumpNullish r0, 12 (.L2)
+    30: LoadImmediate r1, 2
+    33: GetProperty r0, r0, r1
+    37: Jump 4 (.L3)
+  .L2:
+    39: LoadUndefined r0
+  .L3:
+    41: Neg r0, r0
+    44: JumpNullish a0, 19 (.L4)
+    47: LoadImmediate r0, 1
+    50: GetProperty r0, a0, r0
+    54: LoadImmediate r1, 2
+    57: GetProperty r0, r0, r1
+    61: Jump 4 (.L5)
+  .L4:
+    63: LoadUndefined r0
+  .L5:
+    65: Neg r0, r0
+    68: LoadImmediate r0, 1
+    71: GetProperty r0, a0, r0
+    75: JumpNullish r0, 12 (.L6)
+    78: LoadImmediate r1, 2
+    81: GetProperty r0, r0, r1
+    85: Jump 4 (.L7)
+  .L6:
+    87: LoadUndefined r0
+  .L7:
+    89: Neg r0, r0
+    92: LoadUndefined r0
+    94: Ret r0
+}
+
+[BytecodeFunction: call] {
+  Parameters: 1, Registers: 1
+     0: JumpNullish a0, 10 (.L0)
+     3: Call r0, a0, a0, 0
+     8: Jump 4 (.L1)
+  .L0:
+    10: LoadUndefined r0
+  .L1:
+    12: Neg r0, r0
+    15: JumpNullish a0, 18 (.L2)
+    18: GetNamedProperty r0, a0, c0
+    22: JumpNullish r0, 11 (.L2)
+    25: CallWithReceiver r0, r0, a0, r0, 0
+    31: Jump 4 (.L3)
+  .L2:
+    33: LoadUndefined r0
+  .L3:
+    35: Neg r0, r0
+    38: JumpNullish a0, 15 (.L4)
+    41: GetNamedProperty r0, a0, c0
+    45: CallWithReceiver r0, r0, a0, r0, 0
+    51: Jump 4 (.L5)
+  .L4:
+    53: LoadUndefined r0
+  .L5:
+    55: Neg r0, r0
+    58: GetNamedProperty r0, a0, c0
+    62: JumpNullish r0, 11 (.L6)
+    65: CallWithReceiver r0, r0, a0, r0, 0
+    71: Jump 4 (.L7)
+  .L6:
+    73: LoadUndefined r0
+  .L7:
+    75: Neg r0, r0
+    78: LoadUndefined r0
+    80: Ret r0
+  Constant Table:
+    0: [String: b]
+}
+
+[BytecodeFunction: nested] {
+  Parameters: 1, Registers: 2
+      0: JumpNullish a0, 30 (.L0)
+      3: GetNamedProperty r0, a0, c0
+      7: JumpNullish r0, 23 (.L0)
+     10: GetNamedProperty r0, r0, c1
+     14: JumpNullish r0, 16 (.L0)
+     17: GetNamedProperty r0, r0, c2
+     21: JumpNullish r0, 9 (.L0)
+     24: GetNamedProperty r0, r0, c3
+     28: Jump 4 (.L1)
+  .L0:
+     30: LoadUndefined r0
+  .L1:
+     32: Neg r0, r0
+     35: GetNamedProperty r0, a0, c0
+     39: JumpNullish r0, 20 (.L2)
+     42: GetNamedProperty r0, r0, c1
+     46: GetNamedProperty r0, r0, c2
+     50: JumpNullish r0, 9 (.L2)
+     53: GetNamedProperty r0, r0, c3
+     57: Jump 4 (.L3)
+  .L2:
+     59: LoadUndefined r0
+  .L3:
+     61: Neg r0, r0
+     64: GetNamedProperty r0, a0, c0
+     68: JumpNullish r0, 32 (.L4)
+     71: GetNamedProperty r1, r0, c1
+     75: CallWithReceiver r0, r1, r0, r1, 0
+     81: GetNamedProperty r0, r0, c2
+     85: JumpNullish r0, 15 (.L4)
+     88: GetNamedProperty r1, r0, c3
+     92: CallWithReceiver r0, r1, r0, r1, 0
+     98: Jump 4 (.L5)
+  .L4:
+    100: LoadUndefined r0
+  .L5:
+    102: Neg r0, r0
+    105: JumpNullish a0, 48 (.L6)
+    108: GetNamedProperty r0, a0, c0
+    112: JumpNullish r0, 41 (.L6)
+    115: GetNamedProperty r1, r0, c1
+    119: JumpNullish r1, 34 (.L6)
+    122: CallWithReceiver r0, r1, r0, r1, 0
+    128: JumpNullish r0, 25 (.L6)
+    131: GetNamedProperty r0, r0, c2
+    135: JumpNullish r0, 18 (.L6)
+    138: GetNamedProperty r1, r0, c3
+    142: JumpNullish r1, 11 (.L6)
+    145: CallWithReceiver r0, r1, r0, r1, 0
+    151: Jump 4 (.L7)
+  .L6:
+    153: LoadUndefined r0
+  .L7:
+    155: Neg r0, r0
+    158: LoadUndefined r0
+    160: Ret r0
+  Constant Table:
+    0: [String: b]
+    1: [String: c]
+    2: [String: d]
+    3: [String: e]
+}

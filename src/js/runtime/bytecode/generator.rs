@@ -2610,7 +2610,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         };
 
-
         completion
     }
 

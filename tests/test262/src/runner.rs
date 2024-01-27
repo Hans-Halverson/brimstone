@@ -2,7 +2,8 @@ use serde_json::{self, json};
 use threadpool::ThreadPool;
 
 use std::{
-    fs, panic,
+    fs,
+    panic::{self, AssertUnwindSafe},
     path::Path,
     rc::Rc,
     sync::mpsc::channel,
@@ -186,7 +187,8 @@ fn run_single_test(
         initialize_host_defined_realm(cx, false)
     });
 
-    cx.execute_then_drop(|cx| {
+    // Wrap in catch_unwind so that we can clean up the context in the event of a panic
+    let panic_result = panic::catch_unwind(AssertUnwindSafe(|| {
         // Add $262 object to the realm's global object
         let test_262_object = Test262Object::new(cx, realm);
         Test262Object::install(cx, realm, test_262_object);
@@ -275,7 +277,14 @@ fn run_single_test(
         let duration = start_timestamp.elapsed().unwrap();
 
         check_expected_completion(cx, test, completion, duration)
-    })
+    }));
+
+    cx.drop();
+
+    match panic_result {
+        Ok(test_result) => test_result,
+        Err(err) => panic::resume_unwind(err),
+    }
 }
 
 fn parse_file(
@@ -317,7 +326,7 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
     js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)
-        .expect(&format!("Failed to prse test harness file {}", full_path.display()));
+        .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
     let eval_result = if cx.options.bytecode {
         execute_as_bytecode(cx, &ast_and_source.0)

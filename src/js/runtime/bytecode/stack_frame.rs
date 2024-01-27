@@ -1,6 +1,6 @@
 use crate::js::runtime::{HeapPtr, Value};
 
-use super::function::BytecodeFunction;
+use super::{constant_table::ConstantTable, function::Closure};
 
 /// Stack frame layout:
 ///
@@ -12,12 +12,14 @@ use super::function::BytecodeFunction;
 ///     |       ...        |
 ///     +------------------+
 ///     |       arg0       |  (first arg)
-/// +48 +------------------+                     ^                ^
+/// +56 +------------------+                     ^                ^
 ///     |     receiver     |  (receiver)         | caller's frame |
-/// +40 +------------------+                     +----------------+
+/// +48 +------------------+                     +----------------+
 ///     |       argc       |                     | callee's frame |
-/// +32 +------------------+                     v                v
-///     |   bytecode func  |  (bytecode function of the called closure)
+/// +40 +------------------+                     v                v
+///     |      closure     |  (closure of the caller)
+/// +32 +------------------+
+///     |  constant_table  |  (constant table of the called closure)
 /// +24 +------------------+
 ///     |  return val addr |  (address of the return value)
 /// +16 +------------------+
@@ -66,7 +68,7 @@ impl StackFrame {
     /// Return the stack pointer for this stack frame.
     #[inline]
     pub fn sp(&self) -> *mut StackSlotValue {
-        let num_registers = self.bytecode_function().num_registers() as usize;
+        let num_registers = self.closure().function_ptr().num_registers() as usize;
         unsafe { self.fp.offset(-1 - num_registers as isize).cast_mut() }
     }
 
@@ -125,17 +127,30 @@ impl StackFrame {
         unsafe { *self.fp.add(RETURN_VALUE_ADDRESS_INDEX) as *mut Value }
     }
 
-    /// The BytecodeFunction for the callee function in this stack frame.
+    /// The constant table of the callee function in this stack frame.
     #[inline]
-    pub fn bytecode_function(&self) -> HeapPtr<BytecodeFunction> {
-        let ptr = unsafe { *self.fp.add(FUNCTION_SLOT_INDEX) };
-        HeapPtr::from_ptr(ptr as *mut BytecodeFunction)
+    pub fn constant_table(&self) -> HeapPtr<ConstantTable> {
+        let ptr = unsafe { *self.fp.add(CONSTANT_TABLE_SLOT_INDEX) };
+        HeapPtr::from_ptr(ptr as *mut ConstantTable)
     }
 
-    /// A mutable reference to the BytecodeFunction for the callee function in this stack frame.
+    /// A mutable reference to the constant table of the callee function in this stack frame.
     #[inline]
-    pub fn bytecode_function_mut(&mut self) -> &mut HeapPtr<BytecodeFunction> {
-        unsafe { &mut *(self.fp.add(FUNCTION_SLOT_INDEX) as *mut HeapPtr<BytecodeFunction>) }
+    pub fn constant_table_mut(&mut self) -> &mut HeapPtr<ConstantTable> {
+        unsafe { &mut *(self.fp.add(CONSTANT_TABLE_SLOT_INDEX) as *mut HeapPtr<ConstantTable>) }
+    }
+
+    /// The callee function in this stack frame.
+    #[inline]
+    pub fn closure(&self) -> HeapPtr<Closure> {
+        let ptr = unsafe { *self.fp.add(CLOSURE_SLOT_INDEX) };
+        HeapPtr::from_ptr(ptr as *mut Closure)
+    }
+
+    /// A mutable reference to the callee function in this stack frame.
+    #[inline]
+    pub fn closure_mut(&mut self) -> &mut HeapPtr<Closure> {
+        unsafe { &mut *(self.fp.add(CLOSURE_SLOT_INDEX) as *mut HeapPtr<Closure>) }
     }
 
     /// The number of arguments in this stack frame, not including the receiver.
@@ -160,7 +175,7 @@ impl StackFrame {
     #[inline]
     pub fn registers_mut(&self) -> &mut [Value] {
         unsafe {
-            let num_registers = self.bytecode_function().num_registers() as usize;
+            let num_registers = self.closure().function_ptr().num_registers() as usize;
             let last_register_ptr = self.fp.sub(num_registers) as *mut Value;
             std::slice::from_raw_parts_mut(last_register_ptr, num_registers)
         }
@@ -180,10 +195,12 @@ const RETURN_ADDRESS_SLOT_INDEX: usize = 1;
 
 const RETURN_VALUE_ADDRESS_INDEX: usize = 2;
 
-const FUNCTION_SLOT_INDEX: usize = 3;
+const CONSTANT_TABLE_SLOT_INDEX: usize = 3;
 
-const ARGC_SLOT_INDEX: usize = 4;
+const CLOSURE_SLOT_INDEX: usize = 4;
 
-pub const RECEIVER_SLOT_INDEX: usize = 5;
+const ARGC_SLOT_INDEX: usize = 5;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 6;
+pub const RECEIVER_SLOT_INDEX: usize = 6;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 7;

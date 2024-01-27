@@ -35,6 +35,7 @@ use crate::{
 };
 
 use super::{
+    constant_table::ConstantTable,
     function::{BytecodeFunction, Closure},
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
@@ -530,8 +531,13 @@ impl VM {
     }
 
     #[inline]
-    fn get_function(&self) -> HeapPtr<BytecodeFunction> {
-        StackFrame::for_fp(self.fp).bytecode_function()
+    fn closure(&self) -> HeapPtr<Closure> {
+        StackFrame::for_fp(self.fp).closure()
+    }
+
+    #[inline]
+    fn constant_table(&self) -> HeapPtr<ConstantTable> {
+        StackFrame::for_fp(self.fp).constant_table()
     }
 
     #[inline]
@@ -560,24 +566,15 @@ impl VM {
     }
 
     #[inline]
-    fn get_constant<W: Width>(
-        &self,
-        func: HeapPtr<BytecodeFunction>,
-        constant_index: ConstantIndex<W>,
-    ) -> Value {
-        // If a constant index is referenced the constant table must exist
-        let constant_table = unsafe { func.constant_table_ptr().unwrap_unchecked() };
-        constant_table.get_constant(constant_index.value().to_usize())
+    fn get_constant<W: Width>(&self, constant_index: ConstantIndex<W>) -> Value {
+        self.constant_table()
+            .get_constant(constant_index.value().to_usize())
     }
 
     #[inline]
-    fn get_constant_offset<W: Width>(
-        &self,
-        func: HeapPtr<BytecodeFunction>,
-        constant_index: ConstantIndex<W>,
-    ) -> isize {
+    fn get_constant_offset<W: Width>(&self, constant_index: ConstantIndex<W>) -> isize {
         // Constant offsets are encoded as a raw isize, not a value
-        self.get_constant(func, constant_index).as_raw_bits() as isize
+        self.get_constant(constant_index).as_raw_bits() as isize
     }
 
     /// Set the PC to the jump target, specified as a relative offset immediate.
@@ -589,7 +586,7 @@ impl VM {
     // Set the PC to the jump target, specified as a relative offset in the constant table.
     #[inline]
     fn jump_constant<W: Width>(&mut self, constant_index: ConstantIndex<W>) {
-        let offset = self.get_constant_offset(self.get_function(), constant_index);
+        let offset = self.get_constant_offset(constant_index);
         self.pc = unsafe { self.pc.offset(offset) };
     }
 
@@ -688,22 +685,22 @@ impl VM {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Check that the value is callable. Only allocates when throwing.
-        let function_handle = maybe!(self.check_value_is_closure(function.get())).to_handle();
+        let closure_handle = maybe!(self.check_value_is_closure(function.get())).to_handle();
 
         // Get the receiver to use. May allocate.
-        let receiver =
-            maybe!(self.generate_receiver(Some(receiver.get()), function_handle.is_strict()));
-        let function_ptr = function_handle.get_();
+        let is_strict = closure_handle.function_ptr().is_strict();
+        let receiver = maybe!(self.generate_receiver(Some(receiver.get()), is_strict));
+        let closure_ptr = closure_handle.get_();
 
         // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            // Reuse function handle for receiver
-            let mut receiver_handle = function_handle.cast::<Value>();
+        if let Some(function_id) = closure_ptr.function_ptr().rust_runtime_function_id() {
+            // Reuse closure handle for receiver
+            let mut receiver_handle = closure_handle.cast::<Value>();
             receiver_handle.replace(receiver);
 
             // Call rust runtime function directly in its own handle scope
             HandleScope::new(self.cx, |_| {
-                self.call_rust_runtime(function_ptr, function_id, receiver_handle, arguments, None)
+                self.call_rust_runtime(closure_ptr, function_id, receiver_handle, arguments, None)
             })
         } else {
             // Otherwise this is a call to a JS function in the VM
@@ -715,7 +712,7 @@ impl VM {
 
             // Push a stack frame for the function call, with return address set to return to Rust
             self.push_stack_frame(
-                function_ptr,
+                closure_ptr,
                 receiver,
                 args_rev_iter,
                 arguments.len(),
@@ -744,14 +741,16 @@ impl VM {
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         // Check that the value is callable. Only allocates when throwing.
-        let function_handle = maybe!(self.check_value_is_constructor(function.get())).to_handle();
+        let closure_handle = maybe!(self.check_value_is_constructor(function.get())).to_handle();
 
         // Create the receiver to use. Allocates.
         let receiver = maybe!(self.generate_constructor_receiver(new_target));
 
         // Reuse function handle for receiver
-        let function_ptr = function_handle.get_();
-        let mut receiver_handle = function_handle.cast::<ObjectValue>();
+        let closure_ptr = closure_handle.get_();
+        let function_ptr = closure_ptr.function_ptr();
+
+        let mut receiver_handle = closure_handle.cast::<ObjectValue>();
         receiver_handle.replace(receiver.into());
 
         // Check if this is a call to a function in the Rust runtime
@@ -759,7 +758,7 @@ impl VM {
             // Call rust runtime function directly in its own handle scope
             maybe!(HandleScope::new(self.cx, |_| {
                 self.call_rust_runtime(
-                    function_ptr,
+                    closure_ptr,
                     function_id,
                     receiver_handle.cast(),
                     arguments,
@@ -776,7 +775,7 @@ impl VM {
 
             // Push a stack frame for the function call, with return address set to return to Rust
             self.push_stack_frame(
-                function_ptr,
+                closure_ptr,
                 receiver.into(),
                 args_rev_iter,
                 arguments.len(),
@@ -816,18 +815,19 @@ impl VM {
         let return_value_address = self.register_address(instr.dest());
 
         // Check that the value is callable. Only allocates when throwing.
-        let function_ptr = maybe!(self.check_value_is_closure(function_value));
+        let closure_ptr = maybe!(self.check_value_is_closure(function_value));
+        let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             let return_value = maybe!(HandleScope::new(self.cx, |_| {
                 // Get the receiver to use. May allocate.
-                let function_handle = function_ptr.to_handle();
+                let closure_handle = closure_ptr.to_handle();
                 let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
-                let function_ptr = function_handle.get_();
+                let closure_ptr = closure_handle.get_();
 
                 // Reuse function handle for receiver
-                let mut receiver_handle = function_handle.cast::<Value>();
+                let mut receiver_handle = closure_handle.cast::<Value>();
                 receiver_handle.replace(receiver);
 
                 // All arguments must be placed behind handles before calling into Rust
@@ -836,7 +836,7 @@ impl VM {
                     arguments.push(arg.to_handle(self.cx));
                 }
 
-                self.call_rust_runtime(function_ptr, function_id, receiver_handle, &arguments, None)
+                self.call_rust_runtime(closure_ptr, function_id, receiver_handle, &arguments, None)
             }));
 
             // Set the return value from the Rust runtime call
@@ -845,13 +845,13 @@ impl VM {
             // Otherwise this is a call to a JS function in the VM.
 
             // Get the receiver to use. May allocate.
-            let function_handle = function_ptr.to_handle();
+            let closure_handle = closure_ptr.to_handle();
             let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
-            let function_ptr = function_handle.get_();
+            let closure_ptr = closure_handle.get_();
 
             // Set up the stack frame for the function call
             self.push_stack_frame(
-                function_ptr,
+                closure_ptr,
                 receiver,
                 args_rev_slice.iter(),
                 args_rev_slice.len(),
@@ -875,12 +875,13 @@ impl VM {
 
         // Check that the value is callable. Only allocates when throwing.
         let function_value = self.read_register(instr.function());
-        let function_ptr = maybe!(self.check_value_is_constructor(function_value)).to_handle();
+        let closure_ptr = maybe!(self.check_value_is_constructor(function_value)).to_handle();
+        let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx, |_| {
-                let function_handle = function_ptr.to_handle();
+                let closure_handle = closure_ptr.to_handle();
 
                 // TODO: Check if this cast is safe
                 let new_target = self
@@ -892,8 +893,8 @@ impl VM {
                 let receiver = maybe!(self.generate_constructor_receiver(new_target));
 
                 // Reuse function handle for receiver
-                let function_ptr = function_handle.get_();
-                let mut receiver_handle = function_handle.cast::<ObjectValue>();
+                let closure_ptr = closure_handle.get_();
+                let mut receiver_handle = closure_handle.cast::<ObjectValue>();
                 receiver_handle.replace(receiver);
 
                 // All arguments must be placed behind handles before calling into Rust
@@ -903,7 +904,7 @@ impl VM {
                 }
 
                 let return_value = maybe!(self.call_rust_runtime(
-                    function_ptr,
+                    closure_ptr,
                     function_id,
                     receiver_handle.cast(),
                     &arguments,
@@ -921,7 +922,7 @@ impl VM {
             return_value.get_()
         } else {
             // Otherwise this is a call to a JS function in the VM.
-            let function_handle = function_ptr.to_handle();
+            let closure_handle = closure_ptr.to_handle();
 
             // TODO: Check if this cast is safe
             let new_target = self
@@ -932,8 +933,8 @@ impl VM {
             // Create the receiver to use. Allocates.
             let receiver = maybe!(self.generate_constructor_receiver(new_target));
 
-            let function_ptr = function_handle.get_();
-            let mut receiver_handle = function_handle.cast::<ObjectValue>();
+            let closure_ptr = closure_handle.get_();
+            let mut receiver_handle = closure_handle.cast::<ObjectValue>();
             receiver_handle.replace(receiver);
 
             // Push the address of the return value
@@ -942,7 +943,7 @@ impl VM {
 
             // Set up the stack frame for the function call
             self.push_stack_frame(
-                function_ptr,
+                closure_ptr,
                 receiver.into(),
                 args_rev_slice.iter(),
                 args_rev_slice.len(),
@@ -975,29 +976,29 @@ impl VM {
     ///
     /// Only allocates when throwing.
     #[inline]
-    fn check_value_is_closure(&self, value: Value) -> EvalResult<HeapPtr<BytecodeFunction>> {
+    fn check_value_is_closure(&self, value: Value) -> EvalResult<HeapPtr<Closure>> {
         if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
             return type_error_(self.cx, "value is not a function");
         }
 
-        value.as_pointer().cast::<Closure>().function_ptr().into()
+        value.as_pointer().cast::<Closure>().into()
     }
 
     /// Check that a value is a constructor, returning the inner BytecodeFunction.
     ///
     /// Only allocates when throwing.
     #[inline]
-    fn check_value_is_constructor(&self, value: Value) -> EvalResult<HeapPtr<BytecodeFunction>> {
+    fn check_value_is_constructor(&self, value: Value) -> EvalResult<HeapPtr<Closure>> {
         if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
             return type_error_(self.cx, "value is not a constructor");
         }
 
-        let func = value.as_pointer().cast::<Closure>().function_ptr();
-        if !func.is_constructor() {
+        let closure = value.as_pointer().cast::<Closure>();
+        if !closure.function_ptr().is_constructor() {
             return type_error_(self.cx, "value is not a constructor");
         }
 
-        func.into()
+        closure.into()
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -1007,15 +1008,17 @@ impl VM {
     #[inline]
     fn push_stack_frame<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
-        func: HeapPtr<BytecodeFunction>,
+        closure: HeapPtr<Closure>,
         receiver: Value,
         args_rev_iter: I,
         argc: usize,
         return_to_rust_runtime: bool,
         return_value_address: *mut Value,
     ) {
+        let bytecode_function = closure.function_ptr();
+
         // Push arguments
-        let argc_to_push = self.push_call_arguments(func, args_rev_iter, argc);
+        let argc_to_push = self.push_call_arguments(bytecode_function, args_rev_iter, argc);
 
         // Push the receiver if one is supplied, or the default receiver otherwise
         self.push(receiver.as_raw_bits() as StackSlotValue);
@@ -1024,7 +1027,11 @@ impl VM {
         self.push(argc_to_push);
 
         // Push the function
-        self.push(func.as_ptr() as StackSlotValue);
+        self.push(closure.as_ptr() as StackSlotValue);
+
+        // Push the constant table
+        let constant_table = unsafe { std::mem::transmute(bytecode_function.constant_table_ptr()) };
+        self.push(constant_table);
 
         // Push the address of the return value register
         self.push(return_value_address as StackSlotValue);
@@ -1041,10 +1048,10 @@ impl VM {
         self.push_fp();
 
         // Make room for function locals
-        self.allocate_local_registers(func.num_registers());
+        self.allocate_local_registers(bytecode_function.num_registers());
 
         // Start executing from the first instruction of the function
-        self.pc = func.bytecode().as_ptr();
+        self.pc = bytecode_function.bytecode().as_ptr();
     }
 
     /// Pop the current stack frame, restoring the previous frame pointer and PC.
@@ -1181,7 +1188,7 @@ impl VM {
     #[inline]
     fn call_rust_runtime(
         &mut self,
-        function: HeapPtr<BytecodeFunction>,
+        function: HeapPtr<Closure>,
         function_id: RustRuntimeFunctionId,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
@@ -1246,7 +1253,7 @@ impl VM {
 
     #[inline]
     fn execute_load_constant<W: Width>(&mut self, instr: &LoadConstantInstruction<W>) {
-        let constant = self.get_constant(self.get_function(), instr.constant_index());
+        let constant = self.get_constant(instr.constant_index());
         self.write_register(instr.dest(), constant)
     }
 
@@ -1255,7 +1262,7 @@ impl VM {
         &mut self,
         instr: &LoadGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        let name = self.get_constant(self.get_function(), instr.constant_index());
+        let name = self.get_constant(instr.constant_index());
         let name = name.as_string().to_handle();
 
         let dest = instr.dest();
@@ -1281,7 +1288,7 @@ impl VM {
     ) -> EvalResult<()> {
         let value = self.read_register_to_handle(instr.value());
 
-        let name = self.get_constant(self.get_function(), instr.constant_index());
+        let name = self.get_constant(instr.constant_index());
         let name = name.as_string().to_handle();
 
         // TODO: Use global scope with new scope system
@@ -1742,7 +1749,7 @@ impl VM {
 
     #[inline]
     fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
-        let func = self.get_constant(self.get_function(), instr.function_index());
+        let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
@@ -1775,7 +1782,7 @@ impl VM {
 
     #[inline]
     fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) -> EvalResult<()> {
-        let compiled_regexp = self.get_constant(self.get_function(), instr.regexp_index());
+        let compiled_regexp = self.get_constant(instr.regexp_index());
         let compiled_regexp = compiled_regexp
             .to_handle(self.cx)
             .cast::<CompiledRegExpObject>();
@@ -1819,7 +1826,7 @@ impl VM {
         let key = self.read_register_to_handle(instr.key());
         let value = self.read_register_to_handle(instr.value());
 
-        let is_strict = self.get_function().is_strict();
+        let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
@@ -1873,7 +1880,7 @@ impl VM {
     ) -> EvalResult<()> {
         let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        let key = self.get_constant(instr.name_constant_index());
         let key = key.as_string().to_handle();
 
         let dest = instr.dest();
@@ -1897,12 +1904,12 @@ impl VM {
     ) -> EvalResult<()> {
         let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        let key = self.get_constant(instr.name_constant_index());
         let key = key.as_string().to_handle();
 
         let value = self.read_register_to_handle(instr.value());
 
-        let is_strict = self.get_function().is_strict();
+        let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
         let object = maybe!(to_object(self.cx, object));
@@ -1920,7 +1927,7 @@ impl VM {
     ) -> EvalResult<()> {
         let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(self.get_function(), instr.name_constant_index());
+        let key = self.get_constant(instr.name_constant_index());
         let key = key.as_string().to_handle();
 
         let value = self.read_register_to_handle(instr.value());
@@ -1942,7 +1949,7 @@ impl VM {
         instr_addr: *const u8,
         error_value: Value,
     ) -> bool {
-        let func = stack_frame.bytecode_function();
+        let func = stack_frame.closure().function_ptr();
         if func.exception_handlers_ptr().is_none() {
             return false;
         }
@@ -2000,6 +2007,9 @@ impl VM {
                 visitor.visit_value(register);
             }
 
+            visitor.visit_pointer(stack_frame.closure_mut());
+            visitor.visit_pointer(stack_frame.constant_table_mut());
+
             // Move to the parent's stack frame
             if let Some(caller_stack_frame) = stack_frame.previous_frame() {
                 // This stack frame's return address points into the caller stack frame's
@@ -2024,19 +2034,20 @@ impl VM {
     /// The pointer to rewrite may be either the current PC or the return adress
     fn rewrite_bytecode_function_and_address(
         visitor: &mut impl HeapVisitor,
-        mut stack_frame: StackFrame,
+        stack_frame: StackFrame,
         instruction_address: *const u8,
         set_instruction_address: impl FnOnce(*const u8),
     ) {
         // Find the offset of the instruction in the BytecodeFunction
-        let function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
+        let function_start = stack_frame.closure().function_ptr().as_ptr() as *const u8;
         let offset = unsafe { instruction_address.offset_from(function_start) };
 
         // Visit the caller's BytecodeFunction, moving it in the heap
-        visitor.visit_pointer(stack_frame.bytecode_function_mut());
+        let mut bytecode_function = stack_frame.closure().function_ptr();
+        visitor.visit_pointer(&mut bytecode_function);
 
         // Rewrite the instruction address using the new location of the BytecodeFunction
-        let new_function_start = stack_frame.bytecode_function().as_ptr() as *const u8;
+        let new_function_start = stack_frame.closure().function_ptr().as_ptr() as *const u8;
         let new_instruction_address = unsafe { new_function_start.offset(offset) };
         set_instruction_address(new_instruction_address);
     }

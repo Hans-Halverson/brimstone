@@ -816,7 +816,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
     max_instr_length = max_instr_length.max(bytecode.len() - prev_offset);
     offsets.push(bytecode.len());
 
-    let offset_width = prev_offset.ilog10() as usize + 1;
+    let offset_width = prev_offset.max(1).ilog10() as usize + 1;
 
     // Sort jump targets so that the label index is known
     let mut jump_targets: Vec<usize> = jump_targets.into_iter().collect();

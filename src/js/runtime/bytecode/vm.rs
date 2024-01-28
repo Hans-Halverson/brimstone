@@ -2042,12 +2042,12 @@ impl VM {
         let function_start = stack_frame.closure().function_ptr().as_ptr() as *const u8;
         let offset = unsafe { instruction_address.offset_from(function_start) };
 
-        // Visit the caller's BytecodeFunction, moving it in the heap
+        // Visit the caller's BytecodeFunction, moving it in the heap and rewriting this pointer
         let mut bytecode_function = stack_frame.closure().function_ptr();
         visitor.visit_pointer(&mut bytecode_function);
 
         // Rewrite the instruction address using the new location of the BytecodeFunction
-        let new_function_start = stack_frame.closure().function_ptr().as_ptr() as *const u8;
+        let new_function_start = bytecode_function.as_ptr() as *const u8;
         let new_instruction_address = unsafe { new_function_start.offset(offset) };
         set_instruction_address(new_instruction_address);
     }

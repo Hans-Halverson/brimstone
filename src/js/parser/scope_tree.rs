@@ -214,13 +214,11 @@ impl ScopeTree {
             if scope.bindings.contains_key(name) {
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
-                if let Some(def_function_id) = self.lookup_enclosing_function(scope_id) {
-                    if let Some(use_function_id) = self.lookup_enclosing_function(use_scope_id) {
-                        if def_function_id != use_function_id {
-                            let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
-                            bindings[name].set_is_captured();
-                        }
-                    }
+                if self.lookup_enclosing_function(scope_id)
+                    != self.lookup_enclosing_function(use_scope_id)
+                {
+                    let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
+                    bindings[name].set_is_captured();
                 }
 
                 return Some(self.get_ast_node_ptr(scope_id));

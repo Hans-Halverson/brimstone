@@ -1514,18 +1514,24 @@ impl VM {
     fn execute_strict_equal<W: Width>(&mut self, instr: &StrictEqualInstruction<W>) {
         let left_value = self.read_register_to_handle(instr.left());
         let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
+        // May allocate
         let result = is_strictly_equal(left_value, right_value);
-        self.write_register(instr.dest(), Value::bool(result));
+
+        self.write_register(dest, Value::bool(result));
     }
 
     #[inline]
     fn execute_strict_not_equal<W: Width>(&mut self, instr: &StrictNotEqualInstruction<W>) {
         let left_value = self.read_register_to_handle(instr.left());
         let right_value = self.read_register_to_handle(instr.right());
+        let dest = instr.dest();
 
+        // May allocate
         let result = is_strictly_equal(left_value, right_value);
-        self.write_register(instr.dest(), Value::bool(!result));
+
+        self.write_register(dest, Value::bool(!result));
     }
 
     #[inline]

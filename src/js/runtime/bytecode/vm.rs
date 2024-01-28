@@ -85,10 +85,6 @@ pub struct VM {
     /// The frame pointer
     fp: *mut StackSlotValue,
 
-    /// Whether the VM is currently executing bytecode. VM is only walked for GC roots when this
-    /// is true.
-    is_executing: bool,
-
     stack: Vec<StackSlotValue>,
 }
 
@@ -104,7 +100,6 @@ impl VM {
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
 
-            is_executing: false,
             stack,
         };
 
@@ -123,9 +118,7 @@ impl VM {
         let receiver = self.cx.get_global_object().into();
 
         // Evaluate the provided function
-        self.is_executing = true;
         let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
-        self.is_executing = false;
 
         eval_result.to_rust_result()
     }
@@ -134,6 +127,12 @@ impl VM {
         // Reset stack
         self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
         self.fp = std::ptr::null_mut();
+    }
+
+    /// An empty frame pointer indicates that the stack is empty, no bytecode is currently
+    /// executing, and the VM stack does not need to be walked for GC roots.
+    fn is_executing(&self) -> bool {
+        self.fp != std::ptr::null_mut()
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
@@ -1985,7 +1984,7 @@ impl VM {
     /// Visit all heap roots in the VM during GC root collection. Rewrites the stack in place,
     /// taking care to rewrite the current PC and return addresses.
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-        if !self.is_executing {
+        if !self.is_executing() {
             return;
         }
 

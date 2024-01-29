@@ -154,8 +154,8 @@ pub struct BytecodeFunctionGenerator<'a> {
     cx: Context,
     _scope_tree: Option<&'a ScopeTree>,
 
-    /// Optional name of the function, used for debugging.
-    debug_name: Option<Wtf8String>,
+    /// Optional name of the function, used for the name property.
+    name: Option<Wtf8String>,
 
     /// Number of blocks currently allocated in the function.
     num_blocks: usize,
@@ -196,7 +196,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new(
         cx: Context,
         scope_tree: Option<&'a ScopeTree>,
-        debug_name: Option<Wtf8String>,
+        name: Option<Wtf8String>,
         num_parameters: u32,
         num_local_registers: u32,
         is_strict: bool,
@@ -206,7 +206,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             writer: BytecodeWriter::new(),
             cx,
             _scope_tree: scope_tree,
-            debug_name,
+            name,
             num_blocks: 0,
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
@@ -251,7 +251,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         let anonymous_name = pending_function.name();
-        let debug_name = func
+        let name = func
             .id
             .as_ref()
             .map(|id| Wtf8String::from_str(&id.name))
@@ -260,7 +260,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(Self::new(
             cx,
             Some(scope_tree),
-            debug_name,
+            name,
             num_parameters as u32,
             num_local_registers as u32,
             func.is_strict_mode,
@@ -629,8 +629,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let exception_handlers = self.exception_handler_builder.finish(self.cx);
 
         let num_registers = self.register_allocator.max_allocated();
-        let debug_name = self
-            .debug_name
+        let name = self
+            .name
             .as_ref()
             .map(|name| InternedStrings::get_wtf8_str(self.cx, name));
         let bytecode = self.writer.finish();
@@ -644,7 +644,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.num_parameters,
             self.is_strict,
             self.is_constructor,
-            debug_name,
+            name,
         );
 
         EmitFunctionResult {
@@ -1527,7 +1527,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_load_identifier(value_id, ExprDest::Any)?
             } else if property.is_method {
                 // Method properties
-                unimplemented!("bytecode for object literal method properties")
+                if matches!(property.kind, ast::PropertyKind::Get | ast::PropertyKind::Set) {
+                    unimplemented!("bytecode for object getter or setter properties");
+                }
+
+                // Name and function node are added to pending functions queue
+                let name = match &key {
+                    Property::Named { name, .. } => Some(name.to_owned()),
+                    Property::Computed(_) => None,
+                };
+
+                let func_node = if let ast::Expression::Function(func_node) =
+                    &property.value.as_ref().unwrap().as_ref()
+                {
+                    func_node
+                } else {
+                    unreachable!("method property value is guaranteed to be a function");
+                };
+
+                let pending_node =
+                    PendingFunctionNode::Method { node: AstPtr::from_ref(func_node), name };
+                let method_constant_index = self.enqueue_function_to_generate(pending_node)?;
+
+                // Method itself is loaded from the constant table
+                let method_value = self.register_allocator.allocate()?;
+                self.writer.load_constant_instruction(
+                    method_value,
+                    ConstantIndex::new(method_constant_index),
+                );
+                method_value
             } else if let Property::Named { is_proto: true, .. } = &key {
                 unimplemented!("bytecode for __proto__ property");
             } else {
@@ -2721,6 +2749,7 @@ enum PendingFunctionNode {
     Declaration(AstPtr<ast::Function>),
     Expression { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
     Arrow { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
+    Method { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
 }
 
 impl PendingFunctionNode {
@@ -2728,14 +2757,15 @@ impl PendingFunctionNode {
         match self {
             PendingFunctionNode::Declaration(node)
             | PendingFunctionNode::Expression { node, .. }
-            | PendingFunctionNode::Arrow { node, .. } => *node,
+            | PendingFunctionNode::Arrow { node, .. }
+            | PendingFunctionNode::Method { node, .. } => *node,
         }
     }
 
     fn is_constructor(&self) -> bool {
         match self {
             PendingFunctionNode::Declaration(_) | PendingFunctionNode::Expression { .. } => true,
-            PendingFunctionNode::Arrow { .. } => false,
+            PendingFunctionNode::Arrow { .. } | PendingFunctionNode::Method { .. } => false,
         }
     }
 
@@ -2744,7 +2774,8 @@ impl PendingFunctionNode {
         match self {
             PendingFunctionNode::Declaration(_) => None,
             PendingFunctionNode::Expression { name, .. }
-            | PendingFunctionNode::Arrow { name, .. } => name,
+            | PendingFunctionNode::Arrow { name, .. }
+            | PendingFunctionNode::Method { name, .. } => name,
         }
     }
 }

@@ -2612,34 +2612,33 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // All nested labels share the same id
         let label_id = inner_stmt.label.id;
 
-        let completion = match inner_stmt.body.as_ref() {
+        match inner_stmt.body.as_ref() {
             ast::Statement::For(stmt) => {
                 let jump_targets = self.push_jump_statement_target(Some(label_id), true);
-                self.gen_for_statement(stmt, Some(jump_targets))
+                self.gen_for_statement(stmt, Some(jump_targets))?;
             }
             ast::Statement::ForEach(_) => unimplemented!("bytecode for for each statements"),
             ast::Statement::While(stmt) => {
                 let jump_targets = self.push_jump_statement_target(Some(label_id), true);
-                self.gen_while_statement(stmt, Some(jump_targets))
+                self.gen_while_statement(stmt, Some(jump_targets))?;
             }
             ast::Statement::DoWhile(stmt) => {
                 let jump_targets = self.push_jump_statement_target(Some(label_id), true);
-                self.gen_do_while_statement(stmt, Some(jump_targets))
+                self.gen_do_while_statement(stmt, Some(jump_targets))?;
             }
             stmt => {
                 // Do not generate a continue block for labeled non-loop statements
                 let jump_targets = self.push_jump_statement_target(Some(label_id), false);
-                let completion = self.gen_statement(stmt);
+                self.gen_statement(stmt)?;
 
                 // The break target is after the labeled statement
                 self.start_block(jump_targets.break_block);
                 self.pop_jump_statement_target();
-
-                completion
             }
-        };
+        }
 
-        completion
+        // Always completes normally as there could have been a break at label statement
+        Ok(StmtCompletion::Normal)
     }
 
     fn push_jump_statement_target(

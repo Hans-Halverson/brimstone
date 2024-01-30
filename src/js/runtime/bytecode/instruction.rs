@@ -691,6 +691,12 @@ define_instructions!(
         [2] value: Register,
     }
 
+    DeleteProperty (DeletePropertyInstruction, delete_property_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] key: Register,
+    }
+
     /// Throw an error.
     Throw(ThrowInstruction, throw_instruction) {
         [0] error: Register,

@@ -7,10 +7,11 @@ use crate::{
         error::{reference_error_, type_error_},
         eval::expression::{
             eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
-            eval_divide, eval_exponentiation, eval_greater_than, eval_greater_than_or_equal,
-            eval_in_expression, eval_instanceof_expression, eval_less_than,
-            eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder, eval_shift_left,
-            eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract, eval_typeof,
+            eval_delete_property, eval_divide, eval_exponentiation, eval_greater_than,
+            eval_greater_than_or_equal, eval_in_expression, eval_instanceof_expression,
+            eval_less_than, eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder,
+            eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
+            eval_typeof,
         },
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
@@ -41,12 +42,12 @@ use super::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction, DecInstruction,
-        DefineNamedPropertyInstruction, DefinePropertyInstruction, DivInstruction, ExpInstruction,
-        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
-        JumpNullishConstantInstruction, JumpNullishInstruction,
+        DefineNamedPropertyInstruction, DefinePropertyInstruction, DeletePropertyInstruction,
+        DivInstruction, ExpInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
+        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
+        JumpNotNullishInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -442,6 +443,9 @@ impl VM {
                                 DefineNamedPropertyInstruction,
                                 execute_define_named_property
                             )
+                        }
+                        OpCode::DeleteProperty => {
+                            dispatch_or_throw!(DeletePropertyInstruction, execute_delete_property)
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::CheckTdz => {
@@ -1947,6 +1951,25 @@ impl VM {
         let property_key = key.replace_into(property_key);
 
         create_data_property_or_throw(self.cx, object, property_key, value)
+    }
+
+    #[inline]
+    fn execute_delete_property<W: Width>(
+        &mut self,
+        instr: &DeletePropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key());
+        let dest = instr.dest();
+        let is_strict = self.closure().function_ptr().is_strict();
+
+        // May allocate
+        let key = maybe!(to_property_key(self.cx, key));
+        let delete_status = maybe!(eval_delete_property(self.cx, object, key, is_strict));
+
+        self.write_register(dest, Value::bool(delete_status));
+
+        ().into()
     }
 
     #[inline]

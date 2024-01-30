@@ -424,7 +424,9 @@ fn maybe_eval_expression_to_reference(
         ast::Expression::SuperMember(expr) => {
             Some(maybe!(eval_super_member_expression_to_reference(cx, &expr))).into()
         }
-        ast::Expression::Chain(expr) => {
+        ast::Expression::Chain(expr)
+            if matches!(expr.expression.as_ref(), ast::Expression::Member(_)) =>
+        {
             Some(maybe!(eval_chain_expression_to_reference(cx, expr))).into()
         }
         _ => None.into(),
@@ -862,12 +864,8 @@ fn eval_delete_expression(cx: Context, expr: &ast::UnaryExpression) -> EvalResul
                 return reference_error_(cx, "cannot delete super");
             }
 
-            let mut base_object = maybe!(to_object(cx, *object));
-            let delete_status = maybe!(base_object.delete(cx, *property));
-            if !delete_status && reference.is_strict() {
-                return type_error_(cx, "cannot delete property");
-            }
-
+            let delete_status =
+                maybe!(eval_delete_property(cx, *object, *property, reference.is_strict()));
             cx.bool(delete_status).into()
         }
         ReferenceBase::Env { mut env, name } => {
@@ -875,6 +873,22 @@ fn eval_delete_expression(cx: Context, expr: &ast::UnaryExpression) -> EvalResul
             cx.bool(delete_status).into()
         }
     }
+}
+
+pub fn eval_delete_property(
+    cx: Context,
+    object: Handle<Value>,
+    key: Handle<PropertyKey>,
+    is_strict: bool,
+) -> EvalResult<bool> {
+    let mut base_object = maybe!(to_object(cx, object));
+    let delete_status = maybe!(base_object.delete(cx, key));
+
+    if !delete_status && is_strict {
+        return type_error_(cx, "cannot delete property");
+    }
+
+    delete_status.into()
 }
 
 // 13.5.2.1 Void Expression Evaluation

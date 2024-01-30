@@ -726,7 +726,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::UnaryOperator::BitwiseNot => self.gen_bitwise_not_expression(expr, dest),
                 ast::UnaryOperator::TypeOf => self.gen_typeof_expression(expr, dest),
                 ast::UnaryOperator::Void => self.gen_void_expression(expr, dest),
-                ast::UnaryOperator::Delete => unimplemented!("bytecode for delete expressions"),
+                ast::UnaryOperator::Delete => self.gen_delete_expression(expr, dest),
             },
             ast::Expression::Binary(expr) => self.gen_binary_expression(expr, dest),
             ast::Expression::Logical(expr) => self.gen_logical_expression(expr, dest),
@@ -1141,6 +1141,109 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.load_undefined_instruction(dest);
 
         Ok(dest)
+    }
+
+    fn gen_delete_expression(
+        &mut self,
+        expr: &ast::UnaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        match expr.argument.as_ref() {
+            ast::Expression::Member(member_expr) => {
+                let object = self.gen_maybe_chain_part_expression(
+                    &member_expr.object,
+                    ExprDest::Any,
+                    None,
+                    None,
+                )?;
+
+                // Generate the key
+                let key = self.gen_load_property_to_value(member_expr)?;
+
+                // Write the delete property instruction
+                self.register_allocator.release(key);
+                self.register_allocator.release(object);
+                let dest = self.allocate_destination(dest)?;
+
+                self.writer.delete_property_instruction(dest, object, key);
+
+                Ok(dest)
+            }
+            ast::Expression::Chain(chain_expr)
+                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
+            {
+                let member_expr = match chain_expr.expression.as_ref() {
+                    ast::Expression::Member(member_expr) => member_expr,
+                    _ => unreachable!(),
+                };
+
+                let nullish_block = self.new_block();
+                let join_block = self.new_block();
+
+                // Generate the inner chain expression that evaluates to the object
+                // the object register.
+                let object = self.gen_maybe_chain_part_expression(
+                    &member_expr.object,
+                    ExprDest::Any,
+                    None,
+                    Some(nullish_block),
+                )?;
+
+                // If in an optional chain, check for nullish and jump to its block if necessary
+                if member_expr.is_optional {
+                    self.write_jump_nullish_instruction(object, nullish_block)?;
+                }
+
+                // Generate the key
+                let key = self.gen_load_property_to_value(member_expr)?;
+
+                self.register_allocator.release(key);
+                self.register_allocator.release(object);
+                let dest = self.allocate_destination(dest)?;
+
+                // Write the delete property instruction
+                self.writer.delete_property_instruction(dest, object, key);
+                self.write_jump_instruction(join_block)?;
+
+                // If object is nullish (or short circuits), then entire delete will evaluate to
+                // true.
+                self.start_block(nullish_block);
+                self.writer.load_true_instruction(dest);
+
+                self.start_block(join_block);
+
+                Ok(dest)
+            }
+            ast::Expression::Id(_) => unimplemented!("bytecode for deleting identifiers"),
+            ast::Expression::SuperMember(_) => {
+                unimplemented!("bytecode for deleting super member expressions")
+            }
+            _ => {
+                // Otherwise evaluate argument but discard value, always returning true
+                let argument_value = self.gen_expression(&expr.argument)?;
+                self.register_allocator.release(argument_value);
+
+                let dest = self.allocate_destination(dest)?;
+                self.writer.load_true_instruction(dest);
+
+                Ok(dest)
+            }
+        }
+    }
+
+    fn gen_load_property_to_value(
+        &mut self,
+        member_expr: &ast::MemberExpression,
+    ) -> EmitResult<GenRegister> {
+        if member_expr.is_computed {
+            self.gen_expression(&member_expr.property)
+        } else {
+            let key = self.register_allocator.allocate()?;
+            let name_id = member_expr.property.to_id();
+            let constant_index = self.add_string_constant(&name_id.name)?;
+            self.writer.load_constant_instruction(key, constant_index);
+            Ok(key)
+        }
     }
 
     fn gen_binary_expression(

@@ -2443,19 +2443,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
-        let loop_start_block = jump_targets.continue_block;
+        let loop_start_block = self.new_block();
+        let test_block = jump_targets.continue_block;
         let join_block = jump_targets.break_block;
 
         // Execute the body at the start of the loop
         self.start_block(loop_start_block);
-        let body_completion = self.gen_statement(&stmt.body)?;
+        self.gen_statement(&stmt.body)?;
 
-        // Then evaluate test and either break out of loop or continue to next iteration
-        if !body_completion.is_abrupt() {
-            let test = self.gen_expression(&stmt.test)?;
-            self.register_allocator.release(test);
-            self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
-        }
+        // Then evaluate test and either break out of loop or continue to next iteration. Test is
+        // always evaluated regardless of body completion since a continue could appear.
+        self.start_block(test_block);
+        let test = self.gen_expression(&stmt.test)?;
+        self.register_allocator.release(test);
+        self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
 
         self.start_block(join_block);
         self.pop_jump_statement_target();

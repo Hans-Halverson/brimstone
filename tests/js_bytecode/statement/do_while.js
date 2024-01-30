@@ -20,6 +20,7 @@ function testAbruptBody() {
     2;
     return;
     3;
+    // Test is still emitted
   } while (true);
   4;
 }

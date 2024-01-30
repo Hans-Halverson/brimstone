@@ -48,12 +48,15 @@
 [BytecodeFunction: testAbruptBody] {
   Parameters: 0, Registers: 1
      0: LoadImmediate r0, 1
+  .L0:
      3: LoadImmediate r0, 2
      6: LoadUndefined r0
      8: Ret r0
-    10: LoadImmediate r0, 4
-    13: LoadUndefined r0
-    15: Ret r0
+    10: LoadTrue r0
+    12: JumpTrue r0, -9 (.L0)
+    15: LoadImmediate r0, 4
+    18: LoadUndefined r0
+    20: Ret r0
 }
 
 [BytecodeFunction: testBreakAndContinue] {
@@ -66,7 +69,7 @@
   .L1:
     11: LoadImmediate r0, 3
     14: JumpToBooleanFalse r0, 5 (.L2)
-    17: Jump -14 (.L0)
+    17: Jump 2 (.L2)
   .L2:
     19: LoadTrue r0
     21: JumpTrue r0, -18 (.L0)

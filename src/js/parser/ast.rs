@@ -15,7 +15,7 @@ use crate::{
 use super::{
     loc::{Loc, EMPTY_LOC},
     regexp::RegExp,
-    scope_tree::{AstScopeNode, BindingKind},
+    scope_tree::{AstScopeNode, Binding},
     source::Source,
 };
 
@@ -141,6 +141,14 @@ impl Identifier {
     pub fn new(loc: Loc, name: String) -> Identifier {
         Identifier { loc, name, scope: None }
     }
+
+    pub fn get_binding(&self) -> &Binding {
+        self.scope
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .get_binding(&self.name)
+    }
 }
 
 pub enum Statement {
@@ -171,16 +179,6 @@ pub enum VarKind {
     Var,
     Let,
     Const,
-}
-
-impl VarKind {
-    pub fn binding_kind(&self) -> BindingKind {
-        match self {
-            VarKind::Var => BindingKind::Var,
-            VarKind::Let => BindingKind::Let,
-            VarKind::Const => BindingKind::Const,
-        }
-    }
 }
 
 pub struct VariableDeclaration {

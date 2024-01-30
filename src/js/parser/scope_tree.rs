@@ -1,9 +1,10 @@
-use std::collections::HashSet;
+use std::{cell::Cell, collections::HashSet};
 
 use indexmap::IndexMap;
 
 use super::{
-    ast::{self, AstPtr, FunctionId},
+    ast::{self, AstPtr, FunctionId, Identifier},
+    loc::Pos,
     ParseError,
 };
 
@@ -141,7 +142,7 @@ impl ScopeTree {
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
         if let Some(binding) = node.bindings.get(name) {
-            return Err(ParseError::NameRedeclaration(name.to_owned(), binding.kind));
+            return Err(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
         }
 
         // Then check for conflicting child var scoped bindings
@@ -154,7 +155,14 @@ impl ScopeTree {
             ));
         }
 
-        node.add_binding(name, kind, None);
+        // Lexical bindings in the global scope are immediately known to be global
+        let vm_location = if node.kind == ScopeNodeKind::Global {
+            Some(VMLocation::Global)
+        } else {
+            None
+        };
+
+        node.add_binding(name, kind, vm_location);
 
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
@@ -169,7 +177,10 @@ impl ScopeTree {
             // scoped bindings with the same name are allowed.
             if let Some(binding) = node.bindings.get(name) {
                 if binding.kind.is_lexically_scoped() {
-                    return Err(ParseError::NameRedeclaration(name.to_owned(), binding.kind));
+                    return Err(ParseError::NameRedeclaration(
+                        name.to_owned(),
+                        binding.kind.clone(),
+                    ));
                 }
             }
 
@@ -205,20 +216,34 @@ impl ScopeTree {
     pub fn resolve_use(
         &mut self,
         use_scope_id: ScopeNodeId,
-        name: &str,
+        id: &Identifier,
     ) -> Option<AstPtr<AstScopeNode>> {
         let mut scope_id = use_scope_id;
         loop {
             let scope = self.get_ast_node(scope_id);
 
-            if scope.bindings.contains_key(name) {
+            if scope.bindings.contains_key(&id.name) {
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
                 if self.lookup_enclosing_function(scope_id)
                     != self.lookup_enclosing_function(use_scope_id)
                 {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
-                    bindings[name].set_is_captured();
+                    let binding = bindings.get_mut(&id.name).unwrap();
+                    binding.is_captured = true;
+                } else {
+                    let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
+                    let binding = bindings.get_mut(&id.name).unwrap();
+
+                    // For const and let bindings in the same scope, check if the use is before the
+                    // end of the binding's initialization. If so we need to check for the TDZ.
+                    if let BindingKind::Const { init_pos } | BindingKind::Let { init_pos } =
+                        binding.kind()
+                    {
+                        if id.loc.start < init_pos.get() {
+                            binding.needs_tdz_check = true;
+                        }
+                    }
                 }
 
                 return Some(self.get_ast_node_ptr(scope_id));
@@ -281,16 +306,27 @@ impl ScopeTree {
         // and all bindings in scope nodes that are forced to be VM scopes.
         let mut bindings = Vec::new();
         for (name, binding) in ast_node.bindings.iter_mut() {
-            if (binding.is_captured || ast_node.force_vm_scope)
-                && !matches!(binding.vm_location, Some(VMLocation::Global))
-            {
-                // Mark the VM location for the binding
-                binding.set_vm_location(VMLocation::Scope {
-                    scope_id: vm_node_id,
-                    index: bindings.len(),
-                });
+            let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
+            if binding.is_captured || ast_node.force_vm_scope {
+                // Bindings that are captured by another scope must be placed in a VM scope node
+                if !is_global {
+                    // Mark the VM location for the binding
+                    binding.set_vm_location(VMLocation::Scope {
+                        scope_id: vm_node_id,
+                        index: bindings.len(),
+                    });
 
-                bindings.push(name.clone());
+                    bindings.push(name.clone());
+                }
+
+                // All bindings in VM scope nodes need a TDZ check as we do not analyze whether
+                // they are guaranteed to be initialized before use.
+                binding.needs_tdz_check = true;
+            }
+
+            // All globals need a TDZ check as they could be captured by any function
+            if is_global {
+                binding.needs_tdz_check = true;
             }
         }
 
@@ -438,8 +474,8 @@ impl AstScopeNode {
         self.bindings
             .iter()
             .filter(|(_, binding)| match binding.kind {
-                BindingKind::Const
-                | BindingKind::Let
+                BindingKind::Const { .. }
+                | BindingKind::Let { .. }
                 | BindingKind::Class
                 | BindingKind::Function { is_lexical: true, .. } => true,
                 _ => false,
@@ -447,11 +483,17 @@ impl AstScopeNode {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BindingKind {
     Var,
-    Const,
-    Let,
+    Const {
+        // The source position after which this constant has been initialized, inclusive.
+        init_pos: Cell<Pos>,
+    },
+    Let {
+        // The source position after which this constant has been initialized, inclusive.
+        init_pos: Cell<Pos>,
+    },
     Function {
         /// Whether this is a LexicallyScopedDeclaration or a VarScopedDeclaration from the spec.
         /// Only is a VarScopedDeclaration if this is a toplevel function declaration within a
@@ -471,22 +513,23 @@ impl BindingKind {
         match self {
             BindingKind::Var | BindingKind::FunctionParameter => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
-            BindingKind::Const
-            | BindingKind::Let
+            BindingKind::Const { .. }
+            | BindingKind::Let { .. }
             | BindingKind::Class
             | BindingKind::CatchParameter => true,
         }
     }
 
     pub fn is_const(&self) -> bool {
-        *self == BindingKind::Const
+        matches!(self, BindingKind::Const { .. })
     }
 
     pub fn is_function(&self) -> bool {
-        match self {
-            BindingKind::Function { .. } => true,
-            _ => false,
-        }
+        matches!(self, BindingKind::Function { .. })
+    }
+
+    pub fn has_tdz(&self) -> bool {
+        matches!(self, BindingKind::Const { .. } | BindingKind::Let { .. } | BindingKind::Class)
     }
 }
 
@@ -497,13 +540,21 @@ pub struct Binding {
     index: usize,
     /// Whether this binding is captured by a nested function. Set during use analysis.
     is_captured: bool,
+    /// If this is a const or let declaration, whether there is some use that requires a TDZ check.
+    needs_tdz_check: bool,
     /// Location of the binding in the VM, must be set before bytecode generation.
     vm_location: Option<VMLocation>,
 }
 
 impl Binding {
     fn new(kind: BindingKind, index: usize, vm_location: Option<VMLocation>) -> Binding {
-        Binding { kind, index, is_captured: false, vm_location }
+        Binding {
+            kind,
+            index,
+            is_captured: false,
+            needs_tdz_check: false,
+            vm_location,
+        }
     }
 
     pub fn kind(&self) -> &BindingKind {
@@ -514,16 +565,16 @@ impl Binding {
         self.kind.is_const()
     }
 
-    pub fn set_is_captured(&mut self) {
-        self.is_captured = true;
-    }
-
     pub fn vm_location(&self) -> Option<VMLocation> {
         self.vm_location
     }
 
     pub fn set_vm_location(&mut self, location: VMLocation) {
         self.vm_location = Some(location);
+    }
+
+    pub fn needs_tdz_check(&self) -> bool {
+        self.needs_tdz_check
     }
 }
 

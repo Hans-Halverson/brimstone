@@ -9,7 +9,7 @@ use crate::js::{
     parser::{
         ast::{self, AstPtr},
         parser::ParseProgramResult,
-        scope_tree::{ScopeTree, VMLocation},
+        scope_tree::{AstScopeNode, ScopeTree, VMLocation},
     },
     runtime::{
         bytecode::function::BytecodeFunction,
@@ -79,6 +79,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
         HandleScope::new(self.cx, |_| {
             let mut generator =
                 BytecodeFunctionGenerator::new_for_program(self.cx, program, &self.scope_tree)?;
+
+            // Start the global scope
+            generator.gen_scope_start(program.scope.as_ref())?;
 
             // Script function consists of toplevel statements
             for toplevel in &program.toplevels {
@@ -598,6 +601,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unimplemented!("bytecode for async and generator functions")
         }
 
+        // Entire function body is in its own scope
+        self.gen_scope_start(func.scope.as_ref())?;
+
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
                 let body_completion = self.gen_statement_list(&block_body.body)?;
@@ -770,22 +776,68 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return self.gen_load_global_identifier(id, dest);
         }
 
-        let scope = id.scope.unwrap();
-        let binding = scope.as_ref().get_binding(&id.name);
+        let binding = id.get_binding();
+
+        // For bindings that could be accessed during their TDZ we must generate a TDZ check. Must
+        // ensure that TDZ check occurs before writing to a non-temporary register.
+        let add_tdz_check = binding.kind().has_tdz() && binding.needs_tdz_check();
 
         match binding.vm_location().unwrap() {
             // Variables in arguments and registers can be encoded directly as register operands.
-            // Make sure to load to a new temporary if necessary.
+            // TDZ check is performed directly on the source register itself.
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
+
+                if add_tdz_check {
+                    let name_constant_index = self.add_string_constant(&id.name)?;
+                    self.writer
+                        .check_tdz_instruction(arg_reg, name_constant_index);
+                }
+
                 self.gen_mov_reg_to_dest(arg_reg, dest)
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
+
+                if add_tdz_check {
+                    let name_constant_index = self.add_string_constant(&id.name)?;
+                    self.writer
+                        .check_tdz_instruction(local_reg, name_constant_index);
+                }
+
                 self.gen_mov_reg_to_dest(local_reg, dest)
             }
             // Global variables must first be loaded to a register
-            VMLocation::Global => self.gen_load_global_identifier(id, dest),
+            VMLocation::Global => {
+                if add_tdz_check {
+                    let name_constant_index = self.add_string_constant(&id.name)?;
+
+                    // Check if destination register is a fixed non-temporary. If so we must first
+                    // load to a temporary and perform the TDZ check, so that we guarantee that the
+                    // TDZ check occurs before the destination is written (which may be observable).
+                    if let ExprDest::Fixed(dest_reg) = dest {
+                        if !self.register_allocator.is_temporary_register(dest_reg) {
+                            let temporary_reg =
+                                self.gen_load_global_identifier(id, ExprDest::Any)?;
+                            self.writer
+                                .check_tdz_instruction(temporary_reg, name_constant_index);
+
+                            return self.gen_mov_reg_to_dest(temporary_reg, dest);
+                        }
+                    }
+
+                    // Otherwise load the value and then perform the TDZ check directly on the
+                    // loaded value.
+                    let value = self.gen_load_global_identifier(id, dest)?;
+                    self.writer
+                        .check_tdz_instruction(value, name_constant_index);
+
+                    return Ok(value);
+                }
+
+                // Without a TDZ check a simple load is performed
+                self.gen_load_global_identifier(id, dest)
+            }
             VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
         }
     }
@@ -795,12 +847,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         id: &ast::Identifier,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
-        let constant_index = self.constant_table_builder.add_string(name_value)?;
-
         let dest = self.allocate_destination(dest)?;
-        self.writer
-            .load_global_instruction(dest, ConstantIndex::new(constant_index));
+        let constant_index = self.add_string_constant(&id.name)?;
+
+        self.writer.load_global_instruction(dest, constant_index);
 
         Ok(dest)
     }
@@ -808,11 +858,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_store_identifier(&mut self, id: &ast::Identifier, value: GenRegister) -> EmitResult<()> {
         if id.scope.is_none() {
             // TODO: Generate dynamic lookup from current scope if in eval or with
-            return self.gen_store_global_identifier(id, value);
+            return self.gen_store_global_identifier(&id.name, value);
         }
 
-        let scope = id.scope.unwrap();
-        let binding = scope.as_ref().get_binding(&id.name);
+        let binding = id.get_binding();
 
         match binding.vm_location().unwrap() {
             // Variables in arguments and registers are be encoded directly as register operands,
@@ -826,22 +875,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.write_mov_instruction(local_reg, value);
             }
             // Globals must be stored with name appearing in the constant table
-            VMLocation::Global => self.gen_store_global_identifier(id, value)?,
+            VMLocation::Global => self.gen_store_global_identifier(&id.name, value)?,
             VMLocation::Scope { .. } => unimplemented!("bytecode for storing scope variables"),
         }
 
         Ok(())
     }
 
-    fn gen_store_global_identifier(
-        &mut self,
-        id: &ast::Identifier,
-        value: GenRegister,
-    ) -> EmitResult<()> {
-        let name_value = InternedStrings::get_str(self.cx, &id.name).as_flat();
-        let constant_index = self.constant_table_builder.add_string(name_value)?;
-        self.writer
-            .store_global_instruction(value, ConstantIndex::new(constant_index));
+    fn gen_store_global_identifier(&mut self, name: &str, value: GenRegister) -> EmitResult<()> {
+        let constant_index = self.add_string_constant(name)?;
+        self.writer.store_global_instruction(value, constant_index);
 
         Ok(())
     }
@@ -857,10 +900,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return ExprDest::Any;
         }
 
-        let scope = id.scope.unwrap();
-        let binding = scope.as_ref().get_binding(&id.name);
-
-        match binding.vm_location().unwrap() {
+        match id.get_binding().vm_location().unwrap() {
             // Variables in arguments and registers can be encoded directly as register operands.
             // Make sure to load to a new temporary if necessary.
             VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),
@@ -2142,10 +2182,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         var_decl: &ast::VariableDeclaration,
     ) -> EmitResult<StmtCompletion> {
-        if var_decl.kind != ast::VarKind::Var {
-            unimplemented!("bytecode for const and let declarations");
-        }
-
         for decl in &var_decl.declarations {
             if let Some(init) = decl.init.as_deref() {
                 match decl.id.as_ref() {
@@ -2159,6 +2195,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                     _ => unimplemented!("bytecode for variable destructuring patterns"),
                 }
+            } else if var_decl.kind == ast::VarKind::Let {
+                // Let declarations without an initializer are initialized to undefined
+                let id = decl.id.to_id();
+                let init_value_dest = self.expr_dest_for_id(id);
+                let init_value = self.allocate_destination(init_value_dest)?;
+
+                self.writer.load_undefined_instruction(init_value);
+                self.gen_store_identifier(id, init_value)?;
+                self.register_allocator.release(init_value);
             }
         }
 
@@ -2201,7 +2246,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<StmtCompletion> {
+        // Block body forms a new scope
+        self.gen_scope_start(stmt.scope.as_ref())?;
         self.gen_statement_list(&stmt.body)
+    }
+
+    fn gen_scope_start(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+        // Set all bindings that need a TDZ check to empty
+        for (name, binding) in scope.iter_bindings() {
+            if binding.kind().has_tdz() && binding.needs_tdz_check() {
+                match binding.vm_location().unwrap() {
+                    // Bindings that are stored directly in registers can have undefined loaded
+                    // directly to them.
+                    VMLocation::Argument(index) => {
+                        let arg_reg = Register::argument(index);
+                        self.writer.load_empty_instruction(arg_reg);
+                    }
+                    VMLocation::LocalRegister(index) => {
+                        let local_reg = Register::local(index);
+                        self.writer.load_empty_instruction(local_reg);
+                    }
+                    // Bindings stored as globals must first load empty to a temporary register
+                    VMLocation::Global => {
+                        let temporary_reg = self.register_allocator.allocate()?;
+                        self.writer.load_empty_instruction(temporary_reg);
+                        self.gen_store_global_identifier(name, temporary_reg)?;
+                        self.register_allocator.release(temporary_reg)
+                    }
+                    VMLocation::Scope { .. } => {
+                        unimplemented!("bytecode for storing scope variables")
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {
@@ -2289,6 +2368,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let discriminant = self.gen_expression(&stmt.discriminant)?;
 
+        // Start the switch body which forms a new scope
+        self.gen_scope_start(stmt.scope.as_ref())?;
+
         // Create and jump to the case block ids which will be generated later
         let mut case_block_ids = Vec::with_capacity(stmt.cases.len());
         let mut default_case_index = stmt.cases.len();
@@ -2360,6 +2442,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let loop_start_block = self.new_block();
         let update_block = jump_targets.continue_block;
         let join_block = jump_targets.break_block;
+
+        // Entire for statement forms a new scope
+        self.gen_scope_start(stmt.scope.as_ref())?;
 
         // Evaluate the init expression once before loop starts
         match stmt.init.as_deref() {
@@ -2497,10 +2582,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if let Some(param) = catch_clause.param.as_deref() {
                 if param.is_id() {
                     let id = param.to_id();
-                    let scope = id.scope.unwrap();
-                    let binding = scope.as_ref().get_binding(&id.name);
 
-                    match binding.vm_location().unwrap() {
+                    match id.get_binding().vm_location().unwrap() {
                         VMLocation::LocalRegister(index) => {
                             body_handler.error_register = Some(Register::local(index))
                         }

@@ -154,7 +154,7 @@ fn block_declaration_instantiation<'a>(
         let name_value = InternedStrings::get_str(cx, name);
 
         match binding.kind() {
-            BindingKind::Const => {
+            BindingKind::Const { .. } => {
                 must!(env.create_immutable_binding(cx, name_value, true));
             }
             BindingKind::Function { func_node, .. } => {

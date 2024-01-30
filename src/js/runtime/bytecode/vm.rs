@@ -4,7 +4,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_data_property_or_throw, set},
         array_object::array_create,
-        error::type_error_,
+        error::{reference_error_, type_error_},
         eval::expression::{
             eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
             eval_divide, eval_exponentiation, eval_greater_than, eval_greater_than_or_equal,
@@ -40,7 +40,7 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallWithReceiverInstruction, ConstructInstruction, DecInstruction,
+        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyInstruction, DivInstruction, ExpInstruction,
         GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
         GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
@@ -444,6 +444,9 @@ impl VM {
                             )
                         }
                         OpCode::Throw => execute_throw!(get_instr),
+                        OpCode::CheckTdz => {
+                            dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
+                        }
                     }
                 };
             }
@@ -1944,6 +1947,20 @@ impl VM {
         let property_key = key.replace_into(property_key);
 
         create_data_property_or_throw(self.cx, object, property_key, value)
+    }
+
+    #[inline]
+    fn execute_check_tdz<W: Width>(&mut self, instr: &CheckTdzInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+
+        // Binding in TDZ represented as an empty value
+        if !value.is_empty() {
+            return ().into();
+        }
+
+        let name = self.get_constant(instr.name_constant_index()).as_string();
+
+        reference_error_(self.cx, &format!("can't access `{}` before initialization", name))
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::rc::Rc;
 
 use bitflags::bitflags;
@@ -568,7 +569,16 @@ impl<'a> Parser<'a> {
         let mut declarations = vec![];
         loop {
             let start_pos = self.current_start_pos();
-            let id = self.parse_pattern(kind.binding_kind())?;
+
+            // Let and const declarations must keep track of the ending position of the initializer.
+            // But this will only be known after parsing initializer.
+            let binding_kind = match kind {
+                VarKind::Var => BindingKind::Var,
+                VarKind::Let => BindingKind::Let { init_pos: Cell::new(0) },
+                VarKind::Const => BindingKind::Const { init_pos: Cell::new(0) },
+            };
+
+            let id = self.parse_pattern(binding_kind)?;
 
             let init = match self.token {
                 Token::Equals => {
@@ -579,6 +589,20 @@ impl<'a> Parser<'a> {
             };
 
             let loc = self.mark_loc(start_pos);
+
+            // Mark the end of the initializer now that it is known
+            if kind != VarKind::Var {
+                let _ = id.iter_bound_names(&mut |id| {
+                    let binding = id.scope.as_ref().unwrap().as_ref().get_binding(&id.name);
+                    match binding.kind() {
+                        BindingKind::Const { init_pos } | BindingKind::Let { init_pos } => {
+                            init_pos.set(loc.end)
+                        }
+                        _ => {}
+                    }
+                    ().into()
+                });
+            }
 
             declarations.push(VariableDeclarator { loc, id: p(id), init });
 
@@ -3386,7 +3410,8 @@ impl<'a> Parser<'a> {
                     }
                 }
                 _ => {
-                    let pattern = self.parse_pattern_including_assignment_pattern(binding_kind)?;
+                    let pattern =
+                        self.parse_pattern_including_assignment_pattern(binding_kind.clone())?;
                     elements.push(ArrayPatternElement::Pattern(pattern));
                     if self.token == Token::Comma {
                         self.advance()?;
@@ -3436,7 +3461,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            properties.push(self.parse_object_pattern_property(binding_kind)?);
+            properties.push(self.parse_object_pattern_property(binding_kind.clone())?);
 
             if self.token == Token::RightBrace {
                 break;

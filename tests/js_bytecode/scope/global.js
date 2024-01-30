@@ -1,5 +1,9 @@
 var x = 1;
 
+// Initialize const and let to empty at scope start
+const c1 = 2;
+let l1 = 3;
+
 function test1() {
   // Load from global var
   x;

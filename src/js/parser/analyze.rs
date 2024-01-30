@@ -1169,7 +1169,7 @@ impl Analyzer<'_> {
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        if let Some(def_scope) = self.scope_tree.resolve_use(current_scope, &id.name) {
+        if let Some(def_scope) = self.scope_tree.resolve_use(current_scope, id) {
             id.scope = Some(def_scope);
         }
     }

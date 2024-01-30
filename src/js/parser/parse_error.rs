@@ -185,8 +185,8 @@ impl fmt::Display for ParseError {
             ParseError::NameRedeclaration(name, kind) => {
                 let kind_string = match kind {
                     BindingKind::Var => "var",
-                    BindingKind::Const => "const",
-                    BindingKind::Let => "let",
+                    BindingKind::Const { .. } => "const",
+                    BindingKind::Let { .. } => "let",
                     BindingKind::Function { .. } => "function",
                     BindingKind::FunctionParameter => "function parameter",
                     BindingKind::Class => "class",

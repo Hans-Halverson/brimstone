@@ -1,0 +1,78 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: startScopeNoTDZInOuter]
+    1: [String: startScopeNoTDZInOuter]
+    2: [BytecodeFunction: startScopeTDZInOuter]
+    3: [String: startScopeTDZInOuter]
+}
+
+[BytecodeFunction: startScopeNoTDZInOuter] {
+  Parameters: 0, Registers: 5
+     0: LoadImmediate r2, 1
+  .L0:
+     3: LoadImmediate r4, 10
+     6: LessThan r4, r2, r4
+    10: JumpFalse r4, 25 (.L1)
+    13: LoadEmpty r3
+    15: CheckTdz r3, c0
+    18: Add r4, r2, r3
+    22: LoadImmediate r3, 0
+    25: ToNumeric r2, r2
+    28: Mov r4, r2
+    31: Inc r2
+    33: Jump -30 (.L0)
+  .L1:
+    35: LoadImmediate r0, 1
+  .L2:
+    38: LoadImmediate r4, 10
+    41: LessThan r4, r0, r4
+    45: JumpFalse r4, 25 (.L3)
+    48: LoadEmpty r1
+    50: CheckTdz r1, c0
+    53: Add r4, r0, r1
+    57: LoadImmediate r1, 0
+    60: ToNumeric r0, r0
+    63: Mov r4, r0
+    66: Inc r0
+    68: Jump -30 (.L2)
+  .L3:
+    70: LoadUndefined r4
+    72: Ret r4
+  Constant Table:
+    0: [String: inner]
+}
+
+[BytecodeFunction: startScopeTDZInOuter] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r0
+     2: CheckTdz r0, c0
+  .L0:
+     5: CheckTdz r0, c0
+     8: LoadImmediate r2, 10
+    11: LessThan r2, r0, r2
+    15: JumpFalse r2, 33 (.L1)
+    18: LoadEmpty r1
+    20: LoadImmediate r2, 1
+    23: CheckTdz r1, c1
+    26: LoadImmediate r2, 2
+    29: LoadImmediate r1, 0
+    32: LoadImmediate r2, 3
+    35: CheckTdz r0, c0
+    38: ToNumeric r0, r0
+    41: Mov r2, r0
+    44: Inc r0
+    46: Jump -41 (.L0)
+  .L1:
+    48: LoadUndefined r2
+    50: Ret r2
+  Constant Table:
+    0: [String: x]
+    1: [String: inner]
+}

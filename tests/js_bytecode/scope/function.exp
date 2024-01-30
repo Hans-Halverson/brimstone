@@ -1,0 +1,26 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: startScope]
+    1: [String: startScope]
+}
+
+[BytecodeFunction: startScope] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r0
+     2: LoadEmpty r1
+     4: CheckTdz r0, c0
+     7: CheckTdz r1, c1
+    10: Add r2, r0, r1
+    14: LoadImmediate r0, 1
+    17: LoadImmediate r1, 2
+    20: LoadUndefined r2
+    22: Ret r2
+  Constant Table:
+    0: [String: x]
+    1: [String: y]
+}

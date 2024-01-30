@@ -695,6 +695,16 @@ define_instructions!(
     Throw(ThrowInstruction, throw_instruction) {
         [0] error: Register,
     }
+
+    /// Check if a binding is being accessed in the Temporal Dead Zone (TDZ), meaning the time
+    /// where it is in scope but not yet initialized. If so, throw a ReferenceError.
+    ///
+    /// A value in the TDZ is represented by the empty value. A constant index for the name of the
+    /// binding is provided as the second operand.
+    CheckTdz(CheckTdzInstruction, check_tdz_instruction) {
+        [0] value: Register,
+        [1] name_constant_index: ConstantIndex,
+    }
 );
 
 impl OpCode {

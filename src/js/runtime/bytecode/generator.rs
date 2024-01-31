@@ -674,8 +674,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_statement(&mut self, stmt: &ast::Statement) -> EmitResult<StmtCompletion> {
-        // Every statement is generated with its own temporary register scope
-        debug_assert!(self.register_allocator.is_empty());
+        // Every statement is generated with its own temporary register scope. Check that the number
+        // of registers allocated before and after has not changed, meaning all registers in the
+        // statement were released.
+        let num_allocated_before = self.register_allocator.num_allocated();
 
         let result = match stmt {
             ast::Statement::VarDecl(var_decl) => self.gen_variable_declaration(var_decl),
@@ -686,7 +688,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
             ast::Statement::Switch(stmt) => self.gen_switch_statement(stmt),
             ast::Statement::For(stmt) => self.gen_for_statement(stmt, None),
-            ast::Statement::ForEach(_) => unimplemented!("bytecode for for-each statement"),
+            ast::Statement::ForEach(stmt) => match stmt.kind {
+                ast::ForEachKind::In => self.gen_for_in_statement(stmt, None),
+                ast::ForEachKind::Of => unimplemented!("bytecode for for-of statement"),
+            },
             ast::Statement::While(stmt) => self.gen_while_statement(stmt, None),
             ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt, None),
             ast::Statement::With(_) => unimplemented!("bytecode for with statement"),
@@ -700,7 +705,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::Empty(_) | ast::Statement::Debugger(_) => Ok(StmtCompletion::Normal),
         };
 
-        debug_assert!(self.register_allocator.is_empty());
+        debug_assert!(num_allocated_before == self.register_allocator.num_allocated());
 
         result
     }
@@ -2591,6 +2596,111 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
+    fn gen_for_in_statement(
+        &mut self,
+        stmt: &ast::ForEachStatement,
+        jump_targets: Option<JumpStatementTarget>,
+    ) -> EmitResult<StmtCompletion> {
+        let jump_targets =
+            jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
+
+        let iteration_start_block = jump_targets.continue_block;
+        let join_block = jump_targets.break_block;
+
+        // Entire for-in statement forms a new scope
+        self.gen_scope_start(stmt.scope.as_ref())?;
+
+        // Entire for-in statement is skipped if right hand side is nullish
+        let object = self.gen_expression(&stmt.right)?;
+        self.write_jump_nullish_instruction(object, join_block)?;
+
+        // Otherwise create new for-in iterator object
+        self.register_allocator.release(object);
+        let iterator = self.register_allocator.allocate()?;
+        self.writer
+            .new_for_in_iterator_instruction(iterator, object);
+
+        // Each iteration starts by calling the for-in iterator's `next` method
+        self.start_block(iteration_start_block);
+        let next_result = self.gen_for_each_next_result_dest(stmt)?;
+        self.writer.for_in_next_instruction(next_result, iterator);
+
+        // An undefined result from `next` means there are no more keys, jump out of the loop
+        self.write_jump_nullish_instruction(next_result, join_block)?;
+
+        // Otherwise `next` returned a key, so store the key to the pattern
+        self.gen_for_each_store_next_result(stmt, next_result)?;
+
+        // Otherwise proceed to the body of the loop then start a new iteration
+        self.gen_statement(&stmt.body)?;
+        self.write_jump_instruction(iteration_start_block)?;
+
+        self.register_allocator.release(next_result);
+        self.register_allocator.release(iterator);
+
+        self.start_block(join_block);
+
+        // Normal completion since the loop could always be avoided entirely
+        Ok(StmtCompletion::Normal)
+    }
+
+    /// Determine register in which to place the iterator's `next` result
+    fn gen_for_each_next_result_dest(
+        &mut self,
+        stmt: &ast::ForEachStatement,
+    ) -> EmitResult<GenRegister> {
+        match stmt.left.pattern() {
+            // If storing to an id we attempt to store directly
+            ast::Pattern::Id(id) => {
+                let dest = self.expr_dest_for_id(id);
+                self.allocate_destination(dest)
+            }
+            // Otherwise we store to a temporary register
+            _ => self.register_allocator.allocate(),
+        }
+    }
+
+    /// Store the iterator's `next` result to the pattern
+    fn gen_for_each_store_next_result(
+        &mut self,
+        stmt: &ast::ForEachStatement,
+        next_result: GenRegister,
+    ) -> EmitResult<()> {
+        match stmt.left.pattern() {
+            ast::Pattern::Id(id) => self.gen_store_identifier(id, next_result),
+            ast::Pattern::Reference(ast::Expression::Member(member)) => {
+                let object = self.gen_expression(&member.object)?;
+
+                // Store named property when possible, otherwise store generic property
+                if member.is_computed {
+                    let key = self.gen_expression(&member.property)?;
+                    self.writer
+                        .set_property_instruction(object, key, next_result);
+                    self.register_allocator.release(key);
+                } else {
+                    let name = member.property.to_id();
+                    let name_constant_index = self.add_string_constant(&name.name)?;
+                    self.writer.set_named_property_instruction(
+                        object,
+                        name_constant_index,
+                        next_result,
+                    );
+                }
+
+                self.register_allocator.release(object);
+
+                Ok(())
+            }
+            ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
+                unimplemented!("bytecode for for-in destructuring")
+            }
+            ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
+                unimplemented!("bytecode for for-in super member expressions")
+            }
+            _ => unreachable!("invalid for-in left hand side"),
+        }
+    }
+
     fn gen_while_statement(
         &mut self,
         stmt: &ast::WhileStatement,
@@ -2803,7 +2913,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let jump_targets = self.push_jump_statement_target(Some(label_id), true);
                 self.gen_for_statement(stmt, Some(jump_targets))?;
             }
-            ast::Statement::ForEach(_) => unimplemented!("bytecode for for each statements"),
+            ast::Statement::ForEach(stmt) => match stmt.kind {
+                ast::ForEachKind::In => {
+                    let jump_targets = self.push_jump_statement_target(Some(label_id), true);
+                    self.gen_for_in_statement(stmt, Some(jump_targets))?;
+                }
+                ast::ForEachKind::Of => unimplemented!("bytecode for for-of statements"),
+            },
             ast::Statement::While(stmt) => {
                 let jump_targets = self.push_jump_statement_target(Some(label_id), true);
                 self.gen_while_statement(stmt, Some(jump_targets))?;

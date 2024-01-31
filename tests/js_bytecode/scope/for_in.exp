@@ -1,0 +1,30 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: startScope]
+    1: [String: startScope]
+}
+
+[BytecodeFunction: startScope] {
+  Parameters: 0, Registers: 4
+     0: NewObject r2
+     2: JumpNullish r2, 26 (.L1)
+     5: NewForInIterator r2, r2
+  .L0:
+     8: ForInNext r0, r2
+    11: JumpNullish r0, 17 (.L1)
+    14: LoadEmpty r1
+    16: CheckTdz r1, c0
+    19: Add r3, r0, r1
+    23: LoadImmediate r1, 0
+    26: Jump -18 (.L0)
+  .L1:
+    28: LoadUndefined r2
+    30: Ret r2
+  Constant Table:
+    0: [String: inner]
+}

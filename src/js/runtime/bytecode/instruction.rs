@@ -711,6 +711,21 @@ define_instructions!(
         [0] value: Register,
         [1] name_constant_index: ConstantIndex,
     }
+
+    /// Create a new for-in iterator for the given object, storing in dest. Gathers all the iterable
+    /// keys of the object and its prototype chain, storing them in the iterator. Expects that the
+    /// object value is not nullish, all other values will be coerced with ToObject.
+    NewForInIterator (NewForInIteratorInstruction, new_for_in_iterator_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+    }
+
+    /// Call the `next` method on a for-in iterator, storing the result in dest. Returns either the
+    /// next string key or undefined if there are no more keys.
+    ForInNext(ForInNextInstruction, for_in_next_instruction) {
+        [0] dest: Register,
+        [1] iterator: Register,
+    }
 );
 
 impl OpCode {

@@ -13,6 +13,7 @@ use crate::{
             eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
             eval_typeof,
         },
+        for_in_iterator::ForInIterator,
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
@@ -43,11 +44,12 @@ use super::{
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyInstruction, DeletePropertyInstruction,
-        DivInstruction, ExpInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
-        JumpNotNullishInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
+        DivInstruction, ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction,
+        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -55,12 +57,12 @@ use super::{
         LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
         LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewArrayInstruction, NewClosureInstruction, NewObjectInstruction, NewRegExpInstruction,
-        OpCode, RemInstruction, RetInstruction, SetNamedPropertyInstruction,
-        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, TypeOfInstruction,
+        NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
+        NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction, RetInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -450,6 +452,15 @@ impl VM {
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
+                        }
+                        OpCode::NewForInIterator => {
+                            dispatch_or_throw!(
+                                NewForInIteratorInstruction,
+                                execute_new_for_in_iterator
+                            )
+                        }
+                        OpCode::ForInNext => {
+                            dispatch_or_throw!(ForInNextInstruction, execute_for_in_next)
                         }
                     }
                 };
@@ -1984,6 +1995,38 @@ impl VM {
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
         reference_error_(self.cx, &format!("can't access `{}` before initialization", name))
+    }
+
+    #[inline]
+    fn execute_new_for_in_iterator<W: Width>(
+        &mut self,
+        instr: &NewForInIteratorInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let dest = instr.dest();
+
+        // May allocate
+        let object = maybe!(to_object(self.cx, object));
+        let iterator = maybe!(ForInIterator::new_for_object(self.cx, object));
+
+        self.write_register(dest, iterator.cast::<ObjectValue>().into());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_for_in_next<W: Width>(&mut self, instr: &ForInNextInstruction<W>) -> EvalResult<()> {
+        let mut iterator = self
+            .read_register_to_handle(instr.iterator())
+            .cast::<ForInIterator>();
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(iterator.next(self.cx));
+
+        self.write_register(dest, result);
+
+        ().into()
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

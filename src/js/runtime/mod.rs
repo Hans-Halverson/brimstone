@@ -15,6 +15,7 @@ mod environment;
 pub mod error;
 pub mod eval;
 mod execution_context;
+pub mod for_in_iterator;
 pub mod function;
 pub mod gc;
 mod gc_object;

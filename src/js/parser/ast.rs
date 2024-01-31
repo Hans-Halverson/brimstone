@@ -475,6 +475,15 @@ pub enum ForEachInit {
     Pattern(Pattern),
 }
 
+impl ForEachInit {
+    pub fn pattern(&self) -> &Pattern {
+        match self {
+            ForEachInit::VarDecl(decl) => &decl.declarations[0].id,
+            ForEachInit::Pattern(pattern) => pattern,
+        }
+    }
+}
+
 pub struct WhileStatement {
     pub loc: Loc,
     pub test: P<Expression>,

@@ -68,4 +68,10 @@ impl TemporaryRegisterAllocator {
     pub fn is_empty(&self) -> bool {
         self.num_allocated == self.num_local_registers
     }
+
+    /// Return the total number of registers allocated, including both locals and temporaries.
+    #[inline]
+    pub fn num_allocated(&self) -> u32 {
+        self.num_allocated
+    }
 }

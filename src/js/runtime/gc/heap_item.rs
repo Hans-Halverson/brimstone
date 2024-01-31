@@ -22,6 +22,7 @@ use crate::js::runtime::{
     },
     eval::script::Script,
     execution_context::ExecutionContext,
+    for_in_iterator::ForInIterator,
     function::{Function, FunctionFieldsArray, FunctionPrivateMethodsArray},
     interned_strings::{InternedStringsMapField, InternedStringsSetField},
     intrinsics::{
@@ -131,6 +132,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::SetIterator => self.cast::<SetIterator>().byte_size(),
             ObjectKind::MapIterator => self.cast::<MapIterator>().byte_size(),
             ObjectKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
+            ObjectKind::ForInIterator => self.cast::<ForInIterator>().byte_size(),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
             ObjectKind::FunctionPrototype => self.cast::<FunctionPrototype>().byte_size(),
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
@@ -250,6 +252,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::RegExpStringIterator => {
                 self.cast::<RegExpStringIterator>().visit_pointers(visitor)
             }
+            ObjectKind::ForInIterator => self.cast::<ForInIterator>().visit_pointers(visitor),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
             ObjectKind::FunctionPrototype => {
                 self.cast::<FunctionPrototype>().visit_pointers(visitor)

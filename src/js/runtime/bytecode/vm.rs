@@ -26,6 +26,7 @@ use crate::{
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
         regexp::compiled_regexp::CompiledRegExpObject,
+        to_string,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_numeric, to_object,
             to_property_key,
@@ -62,7 +63,7 @@ use super::{
         SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
         ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
         StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, TypeOfInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -362,6 +363,9 @@ impl VM {
                         }
                         OpCode::ToNumeric => {
                             dispatch_or_throw!(ToNumericInstruction, execute_to_numeric)
+                        }
+                        OpCode::ToString => {
+                            dispatch_or_throw!(ToStringInstruction, execute_to_string)
                         }
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
@@ -1766,6 +1770,19 @@ impl VM {
         let result = maybe!(to_numeric(self.cx, value));
 
         self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_to_string<W: Width>(&mut self, instr: &ToStringInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register_to_handle(instr.value());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(to_string(self.cx, value));
+
+        self.write_register(dest, result.get_().into());
 
         ().into()
     }

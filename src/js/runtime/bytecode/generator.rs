@@ -756,11 +756,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 unimplemented!("bytecode for super member expressions")
             }
             ast::Expression::SuperCall(_) => unimplemented!("bytecode for super call expressions"),
-            ast::Expression::Template(_) => unimplemented!("bytecode for template literals"),
+            ast::Expression::Template(expr) => self.gen_template_literal_expression(expr, dest),
             ast::Expression::TaggedTemplate(_) => {
                 unimplemented!("bytecode for tagged template expressions")
             }
-            ast::Expression::MetaProperty(_) => unimplemented!("bytecode for meta property"),
+            ast::Expression::MetaProperty(meta_property) => match meta_property.kind {
+                ast::MetaPropertyKind::NewTarget => {
+                    unimplemented!("bytecode for new.target expression")
+                }
+                ast::MetaPropertyKind::ImportMeta => {
+                    unimplemented!("bytecode for import.meta expression")
+                }
+            },
             ast::Expression::Import(_) => unimplemented!("bytecode for import expressions"),
         }
     }
@@ -2296,6 +2303,96 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
 
         Ok(dest)
+    }
+
+    fn gen_template_literal_expression(
+        &mut self,
+        template: &ast::TemplateLiteral,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Special case if there is only one quasi, load string directly to destination
+        if template.quasis.len() == 1 {
+            let dest = self.allocate_destination(dest)?;
+            let constant_index =
+                self.add_wtf8_string_constant(template.quasis[0].cooked.as_ref().unwrap())?;
+            self.writer.load_constant_instruction(dest, constant_index);
+
+            return Ok(dest);
+        }
+
+        // Special case if there is one expression and both quasis are empty
+        if template.quasis.len() == 2
+            && template.quasis[0].cooked.as_ref().unwrap().is_empty()
+            && template.quasis[1].cooked.as_ref().unwrap().is_empty()
+        {
+            let expression = self.gen_expression(&template.expressions[0])?;
+            self.register_allocator.release(expression);
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer.to_string_instruction(dest, expression);
+
+            return Ok(dest);
+        }
+
+        // Otherwise we must concatenate strings. Make sure to that accumulator is a temporary so
+        // that it is not observably clobbered if ToString fails.
+        let acc_dest = self.gen_ensure_dest_is_temporary(dest);
+        let acc = self.allocate_destination(acc_dest)?;
+
+        let mut is_first_part = true;
+
+        for (i, quasi) in template.quasis.iter().enumerate() {
+            // Cooked strings are guaranteed to exist for template literals
+            let cooked = quasi.cooked.as_ref().unwrap();
+
+            // Each quasi but the first is preceded by an expression
+            if i > 0 {
+                let expression = self.gen_expression(&template.expressions[i - 1])?;
+
+                if is_first_part {
+                    // If this is the first non-empty string, load it directly into the accumulator
+                    // and mark all later elements to be added via a temporary.
+                    self.writer.to_string_instruction(acc, expression);
+                    self.register_allocator.release(expression);
+                    is_first_part = false;
+                } else {
+                    // The expression value must be converted to a string and added to the
+                    // accumulator. Make sure not to clobber the expression's register if it
+                    // is a non-temporary.
+                    let temp = if self.register_allocator.is_temporary_register(expression) {
+                        expression
+                    } else {
+                        self.register_allocator.allocate()?
+                    };
+
+                    self.writer.to_string_instruction(temp, expression);
+                    self.writer.add_instruction(acc, acc, temp);
+
+                    self.register_allocator.release(temp);
+                }
+            }
+
+            // Ignore empty cooked strings (unless there is only one quasi)
+            if cooked.is_empty() && !(i == 0 && template.quasis.len() == 1) {
+                continue;
+            }
+
+            let constant_index = self.add_wtf8_string_constant(cooked)?;
+            if is_first_part {
+                // If this is the first non-empty string, load it directly into the accumulator
+                self.writer.load_constant_instruction(acc, constant_index);
+                is_first_part = false;
+            } else {
+                // Load the cooked string to a temporary register and add to accumulator
+                let temp = self.register_allocator.allocate()?;
+                self.register_allocator.release(temp);
+
+                self.writer.load_constant_instruction(temp, constant_index);
+                self.writer.add_instruction(acc, acc, temp);
+            }
+        }
+
+        self.gen_mov_reg_to_dest(acc, dest)
     }
 
     fn gen_variable_declaration(

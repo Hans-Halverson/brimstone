@@ -865,6 +865,7 @@ pub struct TemplateLiteral {
 pub struct TemplateElement {
     pub loc: Loc,
     pub raw: Wtf8String,
+    /// Guaranteed to exist for template literals. Tagged templates allow this to be None.
     pub cooked: Option<Wtf8String>,
 }
 
@@ -879,6 +880,7 @@ pub struct MetaProperty {
     pub kind: MetaPropertyKind,
 }
 
+#[derive(Clone, Copy)]
 pub enum MetaPropertyKind {
     NewTarget,
     ImportMeta,

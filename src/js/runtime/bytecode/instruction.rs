@@ -520,6 +520,12 @@ define_instructions!(
         [1] value: Register,
     }
 
+    /// Apply the ToString abstract operation to a value, storing the result in dest.
+    ToString (ToStringInstruction, to_string_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
     /// Unconditionally jump to the given instruction, specified inline as a byte offset from the
     /// start of the current instruction.
     Jump (JumpInstruction, jump_instruction) {

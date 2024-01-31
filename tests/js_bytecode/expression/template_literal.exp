@@ -1,0 +1,132 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: emptySingleQuasi]
+    1: [String: emptySingleQuasi]
+    2: [BytecodeFunction: emptySingleExpression]
+    3: [String: emptySingleExpression]
+    4: [BytecodeFunction: emptyFollowedByExpression]
+    5: [String: emptyFollowedByExpression]
+    6: [BytecodeFunction: expressionFollowedByEmpty]
+    7: [String: expressionFollowedByEmpty]
+    8: [BytecodeFunction: expressionsAndEmptyLiterals]
+    9: [String: expressionsAndEmptyLiterals]
+    10: [BytecodeFunction: expressionsAndNonEmptyLiterals]
+    11: [String: expressionsAndNonEmptyLiterals]
+    12: [BytecodeFunction: fixedRegisterExpressions]
+    13: [String: fixedRegisterExpressions]
+}
+
+[BytecodeFunction: emptySingleQuasi] {
+  Parameters: 1, Registers: 1
+    0: LoadConstant a0, c0
+    3: LoadConstant r0, c0
+    6: Ret r0
+  Constant Table:
+    0: [String: ]
+}
+
+[BytecodeFunction: emptySingleExpression] {
+  Parameters: 1, Registers: 1
+     0: LoadImmediate r0, 1
+     3: ToString a0, r0
+     6: LoadImmediate r0, 1
+     9: ToString r0, r0
+    12: Ret r0
+}
+
+[BytecodeFunction: emptyFollowedByExpression] {
+  Parameters: 1, Registers: 2
+     0: LoadImmediate r1, 1
+     3: ToString r0, r1
+     6: LoadConstant r1, c0
+     9: Add r0, r0, r1
+    13: Mov a0, r0
+    16: LoadImmediate r1, 1
+    19: ToString r0, r1
+    22: LoadConstant r1, c0
+    25: Add r0, r0, r1
+    29: Ret r0
+  Constant Table:
+    0: [String: test]
+}
+
+[BytecodeFunction: expressionFollowedByEmpty] {
+  Parameters: 0, Registers: 2
+     0: LoadConstant r0, c0
+     3: LoadImmediate r1, 1
+     6: ToString r1, r1
+     9: Add r0, r0, r1
+    13: Ret r0
+  Constant Table:
+    0: [String: test]
+}
+
+[BytecodeFunction: expressionsAndEmptyLiterals] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r1, 1
+     3: ToString r0, r1
+     6: LoadImmediate r1, 2
+     9: ToString r1, r1
+    12: Add r0, r0, r1
+    16: LoadImmediate r1, 3
+    19: ToString r1, r1
+    22: Add r0, r0, r1
+    26: Ret r0
+}
+
+[BytecodeFunction: expressionsAndNonEmptyLiterals] {
+  Parameters: 0, Registers: 2
+     0: LoadConstant r0, c0
+     3: LoadImmediate r1, 1
+     6: ToString r1, r1
+     9: Add r0, r0, r1
+    13: LoadConstant r1, c1
+    16: Add r0, r0, r1
+    20: LoadImmediate r1, 2
+    23: ToString r1, r1
+    26: Add r0, r0, r1
+    30: LoadConstant r1, c2
+    33: Add r0, r0, r1
+    37: Ret r0
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+    2: [String: c]
+}
+
+[BytecodeFunction: fixedRegisterExpressions] {
+  Parameters: 2, Registers: 2
+     0: ToString a1, a0
+     3: ToString a1, a1
+     6: LoadConstant r0, c0
+     9: ToString r1, a0
+    12: Add r0, r0, r1
+    16: LoadConstant r1, c1
+    19: Add r0, r0, r1
+    23: ToString r1, a1
+    26: Add r0, r0, r1
+    30: LoadConstant r1, c2
+    33: Add r0, r0, r1
+    37: Ret r0
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+    2: [String: c]
+}

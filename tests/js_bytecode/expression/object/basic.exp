@@ -1,35 +1,35 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: LoadImmediate r0, 0
-     3: StoreGlobal r0, c0
-     6: NewClosure r0, c1
-     9: StoreGlobal r0, c2
-    12: NewClosure r0, c3
-    15: StoreGlobal r0, c4
-    18: NewClosure r0, c5
-    21: StoreGlobal r0, c6
-    24: NewClosure r0, c7
-    27: StoreGlobal r0, c8
-    30: NewClosure r0, c9
-    33: StoreGlobal r0, c10
-    36: NewClosure r0, c11
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadImmediate r0, 0
     39: StoreGlobal r0, c12
     42: LoadUndefined r0
     44: Ret r0
   Constant Table:
-    0: [String: global]
-    1: [BytecodeFunction: emptyObject]
-    2: [String: emptyObject]
-    3: [BytecodeFunction: shorthandProperties]
-    4: [String: shorthandProperties]
-    5: [BytecodeFunction: initializedProperties]
-    6: [String: initializedProperties]
-    7: [BytecodeFunction: stringPropertyKeys]
-    8: [String: stringPropertyKeys]
-    9: [BytecodeFunction: computedPropertyKeys]
-    10: [String: computedPropertyKeys]
-    11: [BytecodeFunction: spread]
-    12: [String: spread]
+    0: [BytecodeFunction: emptyObject]
+    1: [String: emptyObject]
+    2: [BytecodeFunction: shorthandProperties]
+    3: [String: shorthandProperties]
+    4: [BytecodeFunction: initializedProperties]
+    5: [String: initializedProperties]
+    6: [BytecodeFunction: stringPropertyKeys]
+    7: [String: stringPropertyKeys]
+    8: [BytecodeFunction: computedPropertyKeys]
+    9: [String: computedPropertyKeys]
+    10: [BytecodeFunction: spread]
+    11: [String: spread]
+    12: [String: global]
 }
 
 [BytecodeFunction: emptyObject] {

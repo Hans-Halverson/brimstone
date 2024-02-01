@@ -22,43 +22,43 @@
      47: StoreGlobal r0, c9
      50: LoadEmpty r0
      52: StoreGlobal r0, c10
-     55: LoadImmediate r0, 1
-     58: StoreGlobal r0, c0
-     61: LoadImmediate r0, 1
-     64: StoreGlobal r0, c1
-     67: LoadImmediate r0, 2
-     70: StoreGlobal r0, c2
-     73: LoadImmediate r0, 3
-     76: StoreGlobal r0, c3
-     79: LoadImmediate r0, 1
-     82: StoreGlobal r0, c4
+     55: NewClosure r0, c11
+     58: StoreGlobal r0, c12
+     61: NewClosure r0, c13
+     64: StoreGlobal r0, c14
+     67: NewClosure r0, c15
+     70: StoreGlobal r0, c16
+     73: NewClosure r0, c17
+     76: StoreGlobal r0, c18
+     79: NewClosure r0, c19
+     82: StoreGlobal r0, c20
      85: LoadImmediate r0, 1
-     88: StoreGlobal r0, c5
-     91: LoadImmediate r0, 2
-     94: StoreGlobal r0, c6
-     97: LoadImmediate r0, 3
-    100: StoreGlobal r0, c7
-    103: LoadGlobal r0, c0
-    106: CheckTdz r0, c0
-    109: LoadGlobal r1, c4
-    112: CheckTdz r1, c4
-    115: Add r0, r0, r1
-    119: StoreGlobal r0, c8
-    122: LoadGlobal r0, c10
-    125: CheckTdz r0, c10
-    128: StoreGlobal r0, c9
-    131: LoadImmediate r0, 1
-    134: StoreGlobal r0, c10
-    137: NewClosure r0, c11
-    140: StoreGlobal r0, c12
-    143: NewClosure r0, c13
-    146: StoreGlobal r0, c14
-    149: NewClosure r0, c15
-    152: StoreGlobal r0, c16
-    155: NewClosure r0, c17
-    158: StoreGlobal r0, c18
-    161: NewClosure r0, c19
-    164: StoreGlobal r0, c20
+     88: StoreGlobal r0, c0
+     91: LoadImmediate r0, 1
+     94: StoreGlobal r0, c1
+     97: LoadImmediate r0, 2
+    100: StoreGlobal r0, c2
+    103: LoadImmediate r0, 3
+    106: StoreGlobal r0, c3
+    109: LoadImmediate r0, 1
+    112: StoreGlobal r0, c4
+    115: LoadImmediate r0, 1
+    118: StoreGlobal r0, c5
+    121: LoadImmediate r0, 2
+    124: StoreGlobal r0, c6
+    127: LoadImmediate r0, 3
+    130: StoreGlobal r0, c7
+    133: LoadGlobal r0, c0
+    136: CheckTdz r0, c0
+    139: LoadGlobal r1, c4
+    142: CheckTdz r1, c4
+    145: Add r0, r0, r1
+    149: StoreGlobal r0, c8
+    152: LoadGlobal r0, c10
+    155: CheckTdz r0, c10
+    158: StoreGlobal r0, c9
+    161: LoadImmediate r0, 1
+    164: StoreGlobal r0, c10
     167: LoadUndefined r0
     169: Ret r0
   Constant Table:

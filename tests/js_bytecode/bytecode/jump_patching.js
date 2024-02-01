@@ -38,7 +38,7 @@ function testShortPatchJump(x) {
   return 3;
 }
 
-function testShortPatchJump(x) {
+function testShortPatchJump2(x) {
   // Longer jumps are placed in constant table
   if (x) {
     1;

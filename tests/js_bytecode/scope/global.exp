@@ -4,22 +4,22 @@
      2: StoreGlobal r0, c0
      5: LoadEmpty r0
      7: StoreGlobal r0, c1
-    10: LoadImmediate r0, 1
-    13: StoreGlobal r0, c2
-    16: LoadImmediate r0, 2
-    19: StoreGlobal r0, c0
-    22: LoadImmediate r0, 3
-    25: StoreGlobal r0, c1
-    28: NewClosure r0, c3
-    31: StoreGlobal r0, c4
+    10: NewClosure r0, c2
+    13: StoreGlobal r0, c3
+    16: LoadImmediate r0, 1
+    19: StoreGlobal r0, c4
+    22: LoadImmediate r0, 2
+    25: StoreGlobal r0, c0
+    28: LoadImmediate r0, 3
+    31: StoreGlobal r0, c1
     34: LoadUndefined r0
     36: Ret r0
   Constant Table:
     0: [String: c1]
     1: [String: l1]
-    2: [String: x]
-    3: [BytecodeFunction: test1]
-    4: [String: test1]
+    2: [BytecodeFunction: test1]
+    3: [String: test1]
+    4: [String: x]
 }
 
 [BytecodeFunction: test1] {

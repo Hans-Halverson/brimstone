@@ -2,15 +2,15 @@
   Parameters: 0, Registers: 4
      0: NewClosure r0, c0
      3: StoreGlobal r0, c1
-     6: LoadGlobal r0, c1
-     9: Call r0, r0, r0, 0
-    14: LoadGlobal r0, c1
-    17: LoadImmediate r1, 1
-    20: LoadImmediate r2, 2
-    23: LoadImmediate r3, 3
-    26: Call r0, r0, r1, 3
-    31: NewClosure r0, c2
-    34: StoreGlobal r0, c3
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadGlobal r0, c1
+    15: Call r0, r0, r0, 0
+    20: LoadGlobal r0, c1
+    23: LoadImmediate r1, 1
+    26: LoadImmediate r2, 2
+    29: LoadImmediate r3, 3
+    32: Call r0, r0, r1, 3
     37: LoadUndefined r0
     39: Ret r0
   Constant Table:

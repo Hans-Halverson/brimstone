@@ -9,7 +9,7 @@ use crate::js::{
     parser::{
         ast::{self, AstPtr},
         parser::ParseProgramResult,
-        scope_tree::{AstScopeNode, ScopeTree, VMLocation},
+        scope_tree::{AstScopeNode, BindingKind, ScopeTree, VMLocation},
     },
     runtime::{
         bytecode::function::BytecodeFunction,
@@ -681,7 +681,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let result = match stmt {
             ast::Statement::VarDecl(var_decl) => self.gen_variable_declaration(var_decl),
-            ast::Statement::FuncDecl(func_decl) => self.gen_function_declaraton(func_decl.as_ref()),
+            ast::Statement::FuncDecl(func_decl) => {
+                self.gen_function_declaration(func_decl.as_ref())
+            }
             ast::Statement::ClassDecl(_) => unimplemented!("bytecode for class declaration"),
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
@@ -2424,7 +2426,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_function_declaraton(&mut self, func_decl: &ast::Function) -> EmitResult<StmtCompletion> {
+    fn gen_function_declaration(
+        &mut self,
+        func_decl: &ast::Function,
+    ) -> EmitResult<StmtCompletion> {
+        // Var function definitions are hoisted to the top of the scope
+        if let BindingKind::Function { is_lexical: false, .. } =
+            func_decl.id.as_ref().unwrap().get_binding().kind()
+        {
+            return Ok(StmtCompletion::Normal);
+        }
+
+        self.gen_function_declaration_impl(func_decl)
+    }
+
+    fn gen_function_declaration_impl(
+        &mut self,
+        func_decl: &ast::Function,
+    ) -> EmitResult<StmtCompletion> {
         let func_constant_index = self.enqueue_function_to_generate(
             PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl)),
         )?;
@@ -2491,6 +2510,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         unimplemented!("bytecode for storing scope variables")
                     }
                 }
+            }
+        }
+
+        // Generate var scoped function declarations, hoisted to the top of the scope
+        for (_, binding) in scope.iter_bindings() {
+            if let BindingKind::Function { is_lexical: false, func_node } = binding.kind() {
+                self.gen_function_declaration_impl(func_node.as_ref())?;
             }
         }
 

@@ -937,10 +937,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Ok(dest)
             }
             ExprDest::Fixed(dest) => {
+                if src == dest {
+                    return Ok(dest)
+                }
+
                 self.register_allocator.release(src);
                 self.write_mov_instruction(dest, src);
                 Ok(dest)
             }
+        }
+    }
+
+    fn gen_ensure_dest_is_temporary(&mut self, dest: ExprDest) -> ExprDest {
+        match dest {
+            ExprDest::Fixed(dest) if !self.register_allocator.is_temporary_register(dest) => {
+                ExprDest::NewTemporary
+            }
+            _ => dest,
         }
     }
 
@@ -1961,9 +1974,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Named(GenConstantIndex),
                 }
 
-                // The right value should be placed in the destination register, since the right
-                // value is returned as the value of the entire assignment expression.
-                let dest = self.allocate_destination(dest)?;
+                // Use a temporary register since intermediate values will be written, and we do
+                // not want to clobber an observable dest register. If dest is temporary then use
+                // instead of allocating a new temporary register.
+                let temp_dest = self.gen_ensure_dest_is_temporary(dest);
+                let temp = self.allocate_destination(temp_dest)?;
 
                 let object = self.gen_expression(&member.object)?;
 
@@ -1981,22 +1996,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 if expr.operator == ast::AssignmentOperator::Equals {
                     // For simple assignments, right hand side is placed directly in the dest
                     // register.
-                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(dest))?;
+                    self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temp))?;
                 } else {
                     // For operator assignments the old value is placed in the dest register, then
                     // overwritten with the result of the operator.
                     match property {
                         Property::Computed(key) => {
-                            self.writer.get_property_instruction(dest, object, key)
+                            self.writer.get_property_instruction(temp, object, key)
                         }
                         Property::Named(name_constant_index) => self
                             .writer
-                            .get_named_property_instruction(dest, object, name_constant_index),
+                            .get_named_property_instruction(temp, object, name_constant_index),
                     }
 
                     let right_value = self.gen_expression(&expr.right)?;
 
-                    self.gen_assignment_operator(expr.operator, dest, dest, right_value);
+                    self.gen_assignment_operator(expr.operator, temp, temp, right_value);
 
                     self.register_allocator.release(right_value);
                 }
@@ -2004,21 +2019,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Write the value back to the property
                 match property {
                     Property::Computed(key) => {
-                        self.writer.set_property_instruction(object, key, dest);
+                        self.writer.set_property_instruction(object, key, temp);
                         self.register_allocator.release(key);
                     }
                     Property::Named(name_constant_index) => {
                         self.writer.set_named_property_instruction(
                             object,
                             name_constant_index,
-                            dest,
+                            temp,
                         );
                     }
                 }
 
                 self.register_allocator.release(object);
 
-                Ok(dest)
+                self.gen_mov_reg_to_dest(temp, dest)
             }
             ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
                 unimplemented!("bytecode for assignment expression destructuring")
@@ -3104,6 +3119,7 @@ pub struct EmitFunctionResult {
 }
 
 /// The destination register for an expression's value.
+#[derive(Clone, Copy)]
 enum ExprDest {
     /// Value could be in any register, including locals and arguments.
     Any,

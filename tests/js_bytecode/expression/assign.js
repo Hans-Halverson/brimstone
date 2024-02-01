@@ -22,16 +22,19 @@ function testIdAssignReturnValue(param) {
   local = param = global = 6;
 }
 
-function testNamedMemberAssign(x) {
+function testNamedMemberAssign(x, y) {
   x.foo = 1;
   use(x.foo = 2);
 
   x.foo = x.bar = 3;
 
   use(x.foo = x);
+
+  // Do not clobber destination with intermediate value
+  y = x.foo = 4;
 }
 
-function testComputedMemberAssign(x) {
+function testComputedMemberAssign(x, y) {
   x['foo'] = 1;
   use(x['foo'] = 2);
 
@@ -39,6 +42,8 @@ function testComputedMemberAssign(x) {
 
   use(x['foo'] = x);
 
+  // Do not clobber destination with intermediate value
+  y = x['foo'] = 4;
 }
 
 function named() {
@@ -70,6 +75,7 @@ function operatorIdAssignReturnValue(param) {
   use(local += 4);
   use(global += 5);
 
+  // Do not clobber destination with intermediate value
   local += param += global += 6;
 }
 
@@ -88,13 +94,16 @@ function operatorIdAllOperators(x) {
   x >>>= 12;
 }
 
-function operatorMemberAssign(x) {
+function operatorMemberAssign(x, y) {
   x.foo += 1;
   use(x.foo += 2);
 
   x.foo += x.bar += 3;
 
   use(x.foo += x);
+
+  // Do not clobber destination with intermediate value
+  y = x.foo += 4;
 }
 
 function operatorMemberAllOperators(x) {

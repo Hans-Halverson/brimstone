@@ -20,3 +20,7 @@ function stringPropertyKeys() {
 function computedPropertyKeys() {
   return { ["a"]: 1, 2: 3, [4 + 5]: 6 };
 }
+
+function spread(a) {
+  return { ...a, ...(1 + 2) };
+}

@@ -1,8 +1,8 @@
-use std::ops::Deref;
+use std::{collections::HashSet, ops::Deref};
 
 use crate::{
     js::runtime::{
-        abstract_operations::{create_data_property_or_throw, set},
+        abstract_operations::{copy_data_properties, create_data_property_or_throw, set},
         array_object::array_create,
         error::{reference_error_, type_error_},
         eval::expression::{
@@ -43,14 +43,14 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction, DecInstruction,
-        DefineNamedPropertyInstruction, DefinePropertyInstruction, DeletePropertyInstruction,
-        DivInstruction, ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction,
-        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
-        JumpNullishConstantInstruction, JumpNullishInstruction,
+        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
+        CopyDataPropertiesInstruction, DecInstruction, DefineNamedPropertyInstruction,
+        DefinePropertyInstruction, DeletePropertyInstruction, DivInstruction, ExpInstruction,
+        ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
+        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
+        JumpNotNullishInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -452,6 +452,12 @@ impl VM {
                         }
                         OpCode::DeleteProperty => {
                             dispatch_or_throw!(DeletePropertyInstruction, execute_delete_property)
+                        }
+                        OpCode::CopyDataProperties => {
+                            dispatch_or_throw!(
+                                CopyDataPropertiesInstruction,
+                                execute_copy_data_properties
+                            )
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::CheckTdz => {
@@ -1996,6 +2002,20 @@ impl VM {
         let delete_status = maybe!(eval_delete_property(self.cx, object, key, is_strict));
 
         self.write_register(dest, Value::bool(delete_status));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_copy_data_properties<W: Width>(
+        &mut self,
+        instr: &CopyDataPropertiesInstruction<W>,
+    ) -> EvalResult<()> {
+        let dest = self.read_register_to_handle(instr.dest()).as_object();
+        let source = self.read_register_to_handle(instr.source());
+
+        // May allocate
+        maybe!(copy_data_properties(self.cx, dest, source, &HashSet::new()));
 
         ().into()
     }

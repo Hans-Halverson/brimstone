@@ -1491,13 +1491,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         arguments: &[ast::CallArgument],
         default_argv: GenRegister,
     ) -> EmitResult<(GenRegister, GenUInt)> {
-        if arguments
-            .iter()
-            .any(|arg| matches!(arg, ast::CallArgument::Spread(_)))
-        {
-            unimplemented!("bytecode for spread arguments");
-        }
-
         // Generate code for each argument, loading each into a new temporary register forming a
         // contiguous range of registers.
         let mut arg_regs = Vec::with_capacity(arguments.len());
@@ -1648,8 +1641,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.new_object_instruction(object);
 
         for property in &expr.properties {
+            // Spread elements represented by a CopyDataProperties insruction
             if let ast::PropertyKind::Spread(_) = property.kind {
-                unimplemented!("bytecode for object spread elements")
+                let source = self.gen_expression(&property.key)?;
+                self.writer.copy_data_properties(object, source);
+                self.register_allocator.release(source);
+                continue;
             }
 
             enum Property<'a> {

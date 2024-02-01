@@ -697,10 +697,19 @@ define_instructions!(
         [2] value: Register,
     }
 
+    /// Delete the property with the given key from an object. The property key may be any value
+    /// and will be converted to a property key with ToPropertyKey.
     DeleteProperty (DeletePropertyInstruction, delete_property_instruction) {
         [0] dest: Register,
         [1] object: Register,
         [2] key: Register,
+    }
+
+    /// Copy the data properties from a source object to a destination object. Destination must be
+    /// an object, but source may be any value.
+    CopyDataProperties (CopyDataPropertiesInstruction, copy_data_properties) {
+        [0] dest: Register,
+        [1] source: Register,
     }
 
     /// Throw an error.

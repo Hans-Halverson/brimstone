@@ -938,7 +938,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ExprDest::Fixed(dest) => {
                 if src == dest {
-                    return Ok(dest)
+                    return Ok(dest);
                 }
 
                 self.register_allocator.release(src);
@@ -2098,72 +2098,67 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Named(GenConstantIndex),
             }
 
-            let return_value = self.allocate_destination(dest)?;
+            // We will need a temporary register to hold intermediate values. This temporary
+            // register will eventually hold the value to return, so use the return value directly
+            // if there is no risk of observable clobbering.
+            let temp_dest = self.gen_ensure_dest_is_temporary(dest);
+            let temp = self.allocate_destination(temp_dest)?;
+
             let object = self.gen_expression(&member.object)?;
 
-            // Prefix operations can return the result of the conversion and inc/dec so they don't
-            // need a scratch register. Postfix operations must save the old value as the return
-            // value so they need a separate scratch register.
-            let scratch_value = if expr.is_prefix {
-                return_value
-            } else {
-                self.register_allocator.allocate()?
-            };
-
-            // Load the property to the scratch register
+            // Load the property to the temporary register
             let property = if member.is_computed {
                 let key = self.gen_expression(&member.property)?;
-                self.writer
-                    .get_property_instruction(scratch_value, object, key);
+                self.writer.get_property_instruction(temp, object, key);
 
                 Property::Computed(key)
             } else {
                 // Must be a named access
                 let name = member.property.to_id();
                 let name_constant_index = self.add_string_constant(&name.name)?;
-                self.writer.get_named_property_instruction(
-                    scratch_value,
-                    object,
-                    name_constant_index,
-                );
+                self.writer
+                    .get_named_property_instruction(temp, object, name_constant_index);
 
                 Property::Named(name_constant_index)
             };
 
-            // Perform the converstion and inc/dec operation in place on the scratch register
-            self.writer
-                .to_numeric_instruction(scratch_value, scratch_value);
+            // Perform the converstion and inc/dec operation in place on the temporary register
+            self.writer.to_numeric_instruction(temp, temp);
 
-            // Postfix operations save the old value to be returned later
-            if !expr.is_prefix {
-                self.write_mov_instruction(return_value, scratch_value);
-            }
+            // Get a register to hold the new, modified value.
+            //
+            // Prefix upates return the modified value so we can perform the operation in place.
+            // Postfix updates return the old value, so move it to another temporary.
+            let modified_temp = if expr.is_prefix {
+                temp
+            } else {
+                let modified_temp = self.register_allocator.allocate()?;
+                self.write_mov_instruction(modified_temp, temp);
+                self.register_allocator.release(modified_temp);
+                modified_temp
+            };
 
-            self.write_inc_or_dec(expr.operator, scratch_value);
+            self.write_inc_or_dec(expr.operator, modified_temp);
 
-            // Then write scratch register back to the property
+            // Then write modified value back to the property
             match property {
                 Property::Computed(key) => {
                     self.writer
-                        .set_property_instruction(object, key, scratch_value);
+                        .set_property_instruction(object, key, modified_temp);
                     self.register_allocator.release(key);
                 }
                 Property::Named(name_constant_index) => {
                     self.writer.set_named_property_instruction(
                         object,
                         name_constant_index,
-                        scratch_value,
+                        modified_temp,
                     );
                 }
             }
 
-            // Release the scratch register (if separate from the return register)
-            if !expr.is_prefix {
-                self.register_allocator.release(scratch_value);
-            }
             self.register_allocator.release(object);
 
-            Ok(return_value)
+            self.gen_mov_reg_to_dest(temp, dest)
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
@@ -2174,7 +2169,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 if self.register_allocator.is_temporary_register(old_value) {
                     // If the target value is in a temporary register then we can place the numeric
-                    // value directly in the return register and perform operations in place.
+                    // value directly in the return register and perform operations in place. It is
+                    // safe to write the return register with ToNumeric since inc/dec cannot fail.
                     self.register_allocator.release(old_value);
                     let dest = self.allocate_destination(dest)?;
 
@@ -2185,14 +2181,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Ok(dest)
                 } else {
                     // If the target value is in a param or non-temporary local register then can
-                    // perform all operations in place.
+                    // perform all operations in place. Safe to overwrite with ToNumeric since
+                    // inc/dec cannot fail.
                     self.writer.to_numeric_instruction(old_value, old_value);
                     self.write_inc_or_dec(expr.operator, old_value);
                     self.gen_mov_reg_to_dest(old_value, dest)
                 }
             } else {
                 // Postfix operations return the old value, so we must make sure it is saved and
-                // not clobbered.
+                // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
                 let dest = self.allocate_destination(dest)?;
                 let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
                 self.writer.to_numeric_instruction(old_value, old_value);

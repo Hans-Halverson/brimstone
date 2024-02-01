@@ -56,14 +56,22 @@ function postfixIdNewTemporaryDest(param) {
   use(global++);
 }
 
-function prefixMember(x) {
+function prefixMember(x, y) {
+  // Temporary dest
   -(++x.prop);
   -(++x[0]);
+
+  // Fixed dest
+  y = ++x.prop;
 }
 
-function postfixMember(x) {
+function postfixMember(x, y) {
+  // Temporary dest
   -(x.prop++);
   -(x[0]++);
+
+  // Fixed dest
+  y = x.prop++;
 }
 
 function decrement(param) {

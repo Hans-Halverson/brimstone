@@ -618,8 +618,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unimplemented!("bytecode for async and generator functions")
         }
 
-        // Entire function body is in its own scope
+        // Entire function parameters and body are in their own scope.
+        // TODO: When there are default parameters more scopes are potentially needed, particularly
+        // in the case of a direct eval in a default parameter.
         self.gen_scope_start(func.scope.as_ref())?;
+
+        // Generate function parameters includin destructuring and default value evaluation
+        for (i, param) in func.params.iter().enumerate() {
+            match param {
+                // Emit pattern destructuring, but no need to destructure ids
+                ast::FunctionParam::Pattern(pattern) => {
+                    let argument = Register::argument(i);
+                    if !matches!(pattern, ast::Pattern::Id(_)) {
+                        self.gen_destructuring(pattern, argument)?;
+                    }
+                }
+                ast::FunctionParam::Rest(_) => unimplemented!("function rest parameter"),
+            }
+        }
 
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
@@ -951,7 +967,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match pattern {
             ast::Pattern::Id(id) => self.expr_dest_for_id(id),
             ast::Pattern::Assign(assign) => {
-                self.expr_dest_for_destructuring_assignment(&assign.left)
+                // Make sure not to clobber the dest register if it is fixed, since there will be
+                // multiple assignments to the dest.
+                let dest = self.expr_dest_for_destructuring_assignment(&assign.left);
+                self.gen_ensure_dest_is_temporary(dest)
             }
             // Other patterns are stored via instructions, not directly into a register, so any
             // register will do.
@@ -2492,7 +2511,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Pattern::Object(object) => self.gen_object_destructuring(object, value),
             ast::Pattern::Array(_) => unimplemented!("bytecode for array destructuring"),
-            ast::Pattern::Assign(_) => unimplemented!("bytecode for assignment destructuring"),
+            ast::Pattern::Assign(assign) => self.gen_assignment_pattern(assign, value),
             ast::Pattern::Reference(_) => unreachable!("invalid destructuring pattern"),
         }
     }
@@ -2507,87 +2526,61 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 unimplemented!("bytecode for object destructuring rest properties")
             }
 
-            // Shorthand properties
-            if property.key.is_none() {
+            // Emit property in the best dest register for the pattern
+            let dest = self.expr_dest_for_destructuring_assignment(&property.value);
+
+            let property_value = if property.key.is_none() {
                 // Shorthand properties must have an id pattern, optionally with a default value
-                let (pattern, default_value) = property.value.to_pattern_and_default();
-                let id = pattern.to_id();
+                let id = match property.value.as_ref() {
+                    ast::Pattern::Id(id) => id,
+                    ast::Pattern::Assign(assign) => assign.left.to_id(),
+                    _ => unreachable!("invalid shorthand property pattern"),
+                };
 
-                // Emit property in the best dest register for the pattern. But make sure not to
-                // clobber the dest register if it could be replaced with a default value.
-                let mut dest = self.expr_dest_for_destructuring_assignment(pattern);
-                if default_value.is_some() {
-                    dest = self.gen_ensure_dest_is_temporary(dest);
-                }
-
-                let property_value = self.gen_get_object_named_property(
+                self.gen_get_object_named_property(
                     object_value,
                     id,
                     dest,
                     /* release_object */ false,
-                )?;
+                )?
+            } else {
+                self.gen_get_object_property(
+                    object_value,
+                    property.key.as_ref().unwrap(),
+                    property.is_computed,
+                    dest,
+                    /* release_object */ false,
+                )?
+            };
 
-                // Emit a default value if the property value is undefined. Named evaluation is
-                // performed on the default value.
-                if let Some(default_value) = default_value {
-                    let join_block = self.new_block();
-                    self.write_jump_not_undefined_instruction(property_value, join_block)?;
-                    self.gen_named_expression(
-                        AnyStr::from_id(id),
-                        default_value,
-                        ExprDest::Fixed(property_value),
-                    )?;
-                    self.start_block(join_block);
-                }
-
-                self.gen_destructuring(pattern, property_value)?;
-
-                continue;
-            }
-
-            // Unwrap the pattern and default value
-            let (pattern, default_value) = property.value.to_pattern_and_default();
-
-            // Emit property in the best dest register for the pattern. But make sure not to
-            // clobber the dest register if it could be replaced with a default value.
-            let mut dest = self.expr_dest_for_destructuring_assignment(pattern);
-            if default_value.is_some() {
-                dest = self.gen_ensure_dest_is_temporary(dest);
-            }
-
-            let property_value = self.gen_get_object_property(
-                object_value,
-                property.key.as_ref().unwrap(),
-                property.is_computed,
-                dest,
-                /* release_object */ false,
-            )?;
-
-            // Emit a default value if the property value is undefined
-            if let Some(default_value) = default_value {
-                let join_block = self.new_block();
-                self.write_jump_not_undefined_instruction(property_value, join_block)?;
-
-                // Named evaluation is performed if the pattern is an id
-                if let ast::Pattern::Id(id) = pattern {
-                    self.gen_named_expression(
-                        AnyStr::from_id(id),
-                        default_value,
-                        ExprDest::Fixed(property_value),
-                    )?;
-                } else {
-                    self.gen_expression_with_dest(default_value, ExprDest::Fixed(property_value))?;
-                }
-
-                self.start_block(join_block);
-            }
-
-            self.gen_destructuring(pattern, property_value)?;
+            self.gen_destructuring(&property.value, property_value)?;
         }
 
         self.register_allocator.release(object_value);
 
         Ok(())
+    }
+
+    /// Generate an assignment pattern, placing the right hand side in the `value` register if it
+    /// would otherwise be undefined.
+    fn gen_assignment_pattern(
+        &mut self,
+        pattern: &ast::AssignmentPattern,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        let join_block = self.new_block();
+        self.write_jump_not_undefined_instruction(value, join_block)?;
+
+        // Named evaluation is performed if the pattern is an id
+        if let ast::Pattern::Id(id) = pattern.left.as_ref() {
+            self.gen_named_expression(AnyStr::from_id(id), &pattern.right, ExprDest::Fixed(value))?;
+        } else {
+            self.gen_expression_with_dest(&pattern.right, ExprDest::Fixed(value))?;
+        }
+
+        self.start_block(join_block);
+
+        self.gen_destructuring(&pattern.left, value)
     }
 
     fn gen_function_declaration(

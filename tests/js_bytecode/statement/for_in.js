@@ -50,3 +50,16 @@ function lhsMember(x) {
   }
   5;
 }
+
+function lhsDestructuring(param) {
+  var a, c, e;
+  1;
+  for (var {a, b: c, d: e = 1} in {}) {
+    2;
+  }
+  3;
+  for ({a, b: c, d: e = 1} in {}) {
+    4;
+  }
+  5;
+}

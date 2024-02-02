@@ -2924,7 +2924,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_statement(&stmt.body)?;
         self.write_jump_instruction(iteration_start_block)?;
 
-        self.register_allocator.release(next_result);
         self.register_allocator.release(iterator);
 
         self.start_block(join_block);
@@ -2956,7 +2955,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         next_result: GenRegister,
     ) -> EmitResult<()> {
         match stmt.left.pattern() {
-            ast::Pattern::Id(id) => self.gen_store_identifier(id, next_result),
+            pattern @ (ast::Pattern::Id(_) | ast::Pattern::Array(_) | ast::Pattern::Object(_)) => {
+                self.gen_destructuring(pattern, next_result)
+            }
             ast::Pattern::Reference(ast::Expression::Member(member)) => {
                 let object = self.gen_expression(&member.object)?;
 
@@ -2977,11 +2978,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
 
                 self.register_allocator.release(object);
+                self.register_allocator.release(next_result);
 
                 Ok(())
-            }
-            ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
-                unimplemented!("bytecode for for-in destructuring")
             }
             ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
                 unimplemented!("bytecode for for-in super member expressions")

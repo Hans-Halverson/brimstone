@@ -50,7 +50,8 @@ use super::{
         GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
         InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
         JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
-        JumpNotNullishInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
+        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
+        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -69,7 +70,8 @@ use super::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
         GenericJumpBooleanInstruction, GenericJumpNullishConstantInstruction,
         GenericJumpNullishInstruction, GenericJumpToBooleanConstantInstruction,
-        GenericJumpToBooleanInstruction,
+        GenericJumpToBooleanInstruction, GenericJumpUndefinedConstantInstruction,
+        GenericJumpUndefinedInstruction,
     },
     operand::{ConstantIndex, Register, SInt, UInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -401,6 +403,14 @@ impl VM {
                             let instr = get_instr!(JumpToBooleanFalseConstantInstruction);
                             self.execute_jump_to_boolean_constant(instr)
                         }
+                        OpCode::JumpNotUndefined => {
+                            let instr = get_instr!(JumpNotUndefinedInstruction);
+                            self.execute_jump_undefined(instr)
+                        }
+                        OpCode::JumpNotUndefinedConstant => {
+                            let instr = get_instr!(JumpNotUndefinedConstantInstruction);
+                            self.execute_jump_undefined_constant(instr)
+                        }
                         OpCode::JumpNullish => {
                             let instr = get_instr!(JumpNullishInstruction);
                             self.execute_jump_nullish(instr)
@@ -672,6 +682,32 @@ impl VM {
     ) {
         let condition = self.read_register(instr.condition());
         if I::cond_function(to_boolean(condition)) {
+            self.jump_constant(instr.constant_index());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if not undefined instruction
+    fn execute_jump_undefined<W: Width, I: GenericJumpUndefinedInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
+            self.jump_immediate(instr.offset());
+        } else {
+            self.set_pc_after(instr);
+        }
+    }
+
+    /// Execute a conditional jump if not undefined constant instruction
+    fn execute_jump_undefined_constant<W: Width, I: GenericJumpUndefinedConstantInstruction<W>>(
+        &mut self,
+        instr: &I,
+    ) {
+        let condition = self.read_register(instr.condition());
+        if I::cond_function(condition) {
             self.jump_constant(instr.constant_index());
         } else {
             self.set_pc_after(instr);

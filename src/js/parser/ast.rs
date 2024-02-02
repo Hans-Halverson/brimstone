@@ -923,6 +923,16 @@ impl Pattern {
         }
     }
 
+    /// If this is an assignment pattern, returns the inner pattern and right hand side value.
+    ///
+    /// Otherwise just return the entire pattern.
+    pub fn to_pattern_and_default(&self) -> (&Pattern, Option<&Expression>) {
+        match self {
+            Pattern::Assign(assign) => (assign.left.as_ref(), Some(assign.right.as_ref())),
+            _ => (self, None),
+        }
+    }
+
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
         f(self);
 

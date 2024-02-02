@@ -596,6 +596,20 @@ define_instructions!(
         [1] constant_index: ConstantIndex,
     }
 
+    /// Conditionally jump to the given instruction if the condition is not undefined, using an
+    /// inlin offset.
+    JumpNotUndefined (JumpNotUndefinedInstruction, jump_not_undefined_instruction) {
+        [0] condition: Register,
+        [1] offset: SInt,
+    }
+
+    /// Conditionally jump to the given instruction if the condition is not undefined, with offset
+    /// stored in the constant table.
+    JumpNotUndefinedConstant (JumpNotUndefinedConstantInstruction, jump_not_undefined_constant_instruction) {
+        [0] condition: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
     /// Conditionally jump to the given instruction if the condition is nullish, using an inline
     /// offset.
     JumpNullish (JumpNullishInstruction, jump_nullish_instruction) {

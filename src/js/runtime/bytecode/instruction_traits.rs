@@ -4,6 +4,7 @@ use super::{
     instruction::{
         CallInstruction, CallWithReceiverInstruction, Instruction, JumpFalseConstantInstruction,
         JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
@@ -241,6 +242,56 @@ impl<W: Width> GenericJumpToBooleanConstantInstruction<W>
     #[inline]
     fn cond_function(value: bool) -> bool {
         !value
+    }
+}
+
+/// Generic trait for jump if undefined instructions (non-constant).
+pub trait GenericJumpUndefinedInstruction<W: Width>: Instruction {
+    fn condition(&self) -> Register<W>;
+    fn offset(&self) -> SInt<W>;
+    fn cond_function(value: Value) -> bool;
+}
+
+impl<W: Width> GenericJumpUndefinedInstruction<W> for JumpNotUndefinedInstruction<W> {
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn offset(&self) -> SInt<W> {
+        self.offset()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        !value.is_undefined()
+    }
+}
+
+/// Generic trait for jump if undefined instructions (constant).
+pub trait GenericJumpUndefinedConstantInstruction<W: Width>: Instruction {
+    fn condition(&self) -> Register<W>;
+    fn constant_index(&self) -> ConstantIndex<W>;
+    fn cond_function(value: Value) -> bool;
+}
+
+impl<W: Width> GenericJumpUndefinedConstantInstruction<W>
+    for JumpNotUndefinedConstantInstruction<W>
+{
+    #[inline]
+    fn condition(&self) -> Register<W> {
+        self.condition()
+    }
+
+    #[inline]
+    fn constant_index(&self) -> ConstantIndex<W> {
+        self.constant_index()
+    }
+
+    #[inline]
+    fn cond_function(value: Value) -> bool {
+        !value.is_undefined()
     }
 }
 

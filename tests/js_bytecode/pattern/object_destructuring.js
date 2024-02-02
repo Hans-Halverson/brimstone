@@ -1,0 +1,35 @@
+function shorthand(x) {
+  var { a } = 1;
+  var { b, c, d } = x;
+}
+
+function propertyAliases(x) {
+  var { a: b } = x;
+  var { b: c, d: e, f: g } = x;
+}
+
+function nested(x) {
+  var { a: { b } } = x;
+  var { c: { d, e: { f } } } = x;
+}
+
+function computed(x) {
+  var { [1]: a } = x;
+  var { [2]: { [3]: b } } = x;
+}
+
+function defaultValue(x, y) {
+  var { a = 1 } = x;
+  var { a: b = 1 } = x;
+
+  var { c = y } = x;
+  var { a: d = y } = x;
+
+  var { [1]: a = 2 } = x;
+}
+
+function namedExpression() {
+ var { a } = () => {};
+ var { a = () => {}} = 1;
+ var { a: b = () => {}} = 1;
+}

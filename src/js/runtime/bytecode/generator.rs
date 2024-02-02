@@ -514,6 +514,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn write_jump_not_undefined_instruction(
+        &mut self,
+        condition: GenRegister,
+        target_block: BlockId,
+    ) -> EmitResult<()> {
+        match self.jump_target_operand(target_block)? {
+            JumpOperand::RelativeOffset(relative_offset) => self
+                .writer
+                .jump_not_undefined_instruction(condition, relative_offset),
+            JumpOperand::ConstantIndex(constant_index) => self
+                .writer
+                .jump_not_undefined_constant_instruction(condition, constant_index),
+        }
+
+        Ok(())
+    }
+
     fn write_jump_nullish_instruction(
         &mut self,
         condition: GenRegister,
@@ -922,6 +939,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Global variables can be stored from any register
             VMLocation::Global => ExprDest::Any,
             VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
+        }
+    }
+
+    /// Find the best expression destination in which to place the result of a destructuring
+    /// assignment.
+    ///
+    /// This allows destructuring assignments to store expressions directly into their destination
+    /// register, avoiding unnecessary movs.
+    fn expr_dest_for_destructuring_assignment(&mut self, pattern: &ast::Pattern) -> ExprDest {
+        match pattern {
+            ast::Pattern::Id(id) => self.expr_dest_for_id(id),
+            ast::Pattern::Assign(assign) => {
+                self.expr_dest_for_destructuring_assignment(&assign.left)
+            }
+            // Other patterns are stored via instructions, not directly into a register, so any
+            // register will do.
+            ast::Pattern::Object(_) | ast::Pattern::Array(_) | ast::Pattern::Reference(_) => {
+                ExprDest::Any
+            }
         }
     }
 
@@ -1824,8 +1860,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unimplemented!("bytecode for private member expressions");
         }
 
-        let dest = if expr.is_computed {
-            let key = self.gen_expression(&expr.property)?;
+        self.gen_get_object_property(object, &expr.property, expr.is_computed, dest, release_object)
+    }
+
+    fn gen_get_object_property(
+        &mut self,
+        object: GenRegister,
+        property: &ast::Expression,
+        is_computed: bool,
+        dest: ExprDest,
+        release_object: bool,
+    ) -> EmitResult<GenRegister> {
+        if is_computed {
+            let key = self.gen_expression(property)?;
 
             self.register_allocator.release(key);
             if release_object {
@@ -1835,22 +1882,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let dest = self.allocate_destination(dest)?;
             self.writer.get_property_instruction(dest, object, key);
 
-            dest
+            Ok(dest)
         } else {
             // Must be a named access
-            let name = expr.property.to_id();
-            let name_constant_index = self.add_string_constant(&name.name)?;
+            let name = property.to_id();
+            self.gen_get_object_named_property(object, name, dest, release_object)
+        }
+    }
 
-            if release_object {
-                self.register_allocator.release(object);
-            }
+    fn gen_get_object_named_property(
+        &mut self,
+        object: GenRegister,
+        name: &ast::Identifier,
+        dest: ExprDest,
+        release_object: bool,
+    ) -> EmitResult<GenRegister> {
+        let name_constant_index = self.add_string_constant(&name.name)?;
 
-            let dest = self.allocate_destination(dest)?;
-            self.writer
-                .get_named_property_instruction(dest, object, name_constant_index);
+        if release_object {
+            self.register_allocator.release(object);
+        }
 
-            dest
-        };
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .get_named_property_instruction(dest, object, name_constant_index);
 
         Ok(dest)
     }
@@ -2400,17 +2455,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<StmtCompletion> {
         for decl in &var_decl.declarations {
             if let Some(init) = decl.init.as_deref() {
-                match decl.id.as_ref() {
-                    ast::Pattern::Id(id) => {
-                        let init_value_dest = self.expr_dest_for_id(id);
-                        let init_value =
-                            self.gen_named_expression(AnyStr::from_id(id), init, init_value_dest)?;
+                let init_value_dest = self.expr_dest_for_destructuring_assignment(&decl.id);
 
-                        self.gen_store_identifier(id, init_value)?;
-                        self.register_allocator.release(init_value);
-                    }
-                    _ => unimplemented!("bytecode for variable destructuring patterns"),
-                }
+                let init_value = if let ast::Pattern::Id(id) = decl.id.as_ref() {
+                    self.gen_named_expression(AnyStr::from_id(id), init, init_value_dest)?
+                } else {
+                    self.gen_expression_with_dest(init, init_value_dest)?
+                };
+
+                self.gen_destructuring(&decl.id, init_value)?
             } else if var_decl.kind == ast::VarKind::Let {
                 // Let declarations without an initializer are initialized to undefined
                 let id = decl.id.to_id();
@@ -2424,6 +2477,114 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_destructuring(&mut self, pattern: &ast::Pattern, value: GenRegister) -> EmitResult<()> {
+        match pattern {
+            ast::Pattern::Id(id) => {
+                self.gen_store_identifier(id, value)?;
+                self.register_allocator.release(value);
+
+                Ok(())
+            }
+            ast::Pattern::Object(object) => self.gen_object_destructuring(object, value),
+            ast::Pattern::Array(_) => unimplemented!("bytecode for array destructuring"),
+            ast::Pattern::Assign(_) => unimplemented!("bytecode for assignment destructuring"),
+            ast::Pattern::Reference(_) => unreachable!("invalid destructuring pattern"),
+        }
+    }
+
+    fn gen_object_destructuring(
+        &mut self,
+        pattern: &ast::ObjectPattern,
+        object_value: GenRegister,
+    ) -> EmitResult<()> {
+        for property in &pattern.properties {
+            if property.is_rest {
+                unimplemented!("bytecode for object destructuring rest properties")
+            }
+
+            // Shorthand properties
+            if property.key.is_none() {
+                // Shorthand properties must have an id pattern, optionally with a default value
+                let (pattern, default_value) = property.value.to_pattern_and_default();
+                let id = pattern.to_id();
+
+                // Emit property in the best dest register for the pattern. But make sure not to
+                // clobber the dest register if it could be replaced with a default value.
+                let mut dest = self.expr_dest_for_destructuring_assignment(pattern);
+                if default_value.is_some() {
+                    dest = self.gen_ensure_dest_is_temporary(dest);
+                }
+
+                let property_value = self.gen_get_object_named_property(
+                    object_value,
+                    id,
+                    dest,
+                    /* release_object */ false,
+                )?;
+
+                // Emit a default value if the property value is undefined. Named evaluation is
+                // performed on the default value.
+                if let Some(default_value) = default_value {
+                    let join_block = self.new_block();
+                    self.write_jump_not_undefined_instruction(property_value, join_block)?;
+                    self.gen_named_expression(
+                        AnyStr::from_id(id),
+                        default_value,
+                        ExprDest::Fixed(property_value),
+                    )?;
+                    self.start_block(join_block);
+                }
+
+                self.gen_destructuring(pattern, property_value)?;
+
+                continue;
+            }
+
+            // Unwrap the pattern and default value
+            let (pattern, default_value) = property.value.to_pattern_and_default();
+
+            // Emit property in the best dest register for the pattern. But make sure not to
+            // clobber the dest register if it could be replaced with a default value.
+            let mut dest = self.expr_dest_for_destructuring_assignment(pattern);
+            if default_value.is_some() {
+                dest = self.gen_ensure_dest_is_temporary(dest);
+            }
+
+            let property_value = self.gen_get_object_property(
+                object_value,
+                property.key.as_ref().unwrap(),
+                property.is_computed,
+                dest,
+                /* release_object */ false,
+            )?;
+
+            // Emit a default value if the property value is undefined
+            if let Some(default_value) = default_value {
+                let join_block = self.new_block();
+                self.write_jump_not_undefined_instruction(property_value, join_block)?;
+
+                // Named evaluation is performed if the pattern is an id
+                if let ast::Pattern::Id(id) = pattern {
+                    self.gen_named_expression(
+                        AnyStr::from_id(id),
+                        default_value,
+                        ExprDest::Fixed(property_value),
+                    )?;
+                } else {
+                    self.gen_expression_with_dest(default_value, ExprDest::Fixed(property_value))?;
+                }
+
+                self.start_block(join_block);
+            }
+
+            self.gen_destructuring(pattern, property_value)?;
+        }
+
+        self.register_allocator.release(object_value);
+
+        Ok(())
     }
 
     fn gen_function_declaration(

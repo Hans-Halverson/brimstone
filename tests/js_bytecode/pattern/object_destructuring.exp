@@ -1,0 +1,170 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: shorthand]
+    1: [String: shorthand]
+    2: [BytecodeFunction: propertyAliases]
+    3: [String: propertyAliases]
+    4: [BytecodeFunction: nested]
+    5: [String: nested]
+    6: [BytecodeFunction: computed]
+    7: [String: computed]
+    8: [BytecodeFunction: defaultValue]
+    9: [String: defaultValue]
+    10: [BytecodeFunction: namedExpression]
+    11: [String: namedExpression]
+}
+
+[BytecodeFunction: shorthand] {
+  Parameters: 1, Registers: 5
+     0: LoadImmediate r4, 1
+     3: GetNamedProperty r0, r4, c0
+     7: GetNamedProperty r1, a0, c1
+    11: GetNamedProperty r2, a0, c2
+    15: GetNamedProperty r3, a0, c3
+    19: LoadUndefined r4
+    21: Ret r4
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+    2: [String: c]
+    3: [String: d]
+}
+
+[BytecodeFunction: propertyAliases] {
+  Parameters: 1, Registers: 5
+     0: GetNamedProperty r0, a0, c0
+     4: GetNamedProperty r1, a0, c1
+     8: GetNamedProperty r2, a0, c2
+    12: GetNamedProperty r3, a0, c3
+    16: LoadUndefined r4
+    18: Ret r4
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+    2: [String: d]
+    3: [String: f]
+}
+
+[BytecodeFunction: nested] {
+  Parameters: 1, Registers: 5
+     0: GetNamedProperty r3, a0, c0
+     4: GetNamedProperty r0, r3, c1
+     8: GetNamedProperty r3, a0, c2
+    12: GetNamedProperty r1, r3, c3
+    16: GetNamedProperty r4, r3, c4
+    20: GetNamedProperty r2, r4, c5
+    24: LoadUndefined r3
+    26: Ret r3
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+    2: [String: c]
+    3: [String: d]
+    4: [String: e]
+    5: [String: f]
+}
+
+[BytecodeFunction: computed] {
+  Parameters: 1, Registers: 4
+     0: LoadImmediate r2, 1
+     3: GetProperty r0, a0, r2
+     7: LoadImmediate r2, 2
+    10: GetProperty r2, a0, r2
+    14: LoadImmediate r3, 3
+    17: GetProperty r1, r2, r3
+    21: LoadUndefined r2
+    23: Ret r2
+}
+
+[BytecodeFunction: defaultValue] {
+  Parameters: 2, Registers: 5
+     0: GetNamedProperty r4, a0, c0
+     4: JumpNotUndefined r4, 6 (.L0)
+     7: LoadImmediate r4, 1
+  .L0:
+    10: Mov r0, r4
+    13: GetNamedProperty r4, a0, c0
+    17: JumpNotUndefined r4, 6 (.L1)
+    20: LoadImmediate r4, 1
+  .L1:
+    23: Mov r1, r4
+    26: GetNamedProperty r4, a0, c1
+    30: JumpNotUndefined r4, 6 (.L2)
+    33: Mov r4, a1
+  .L2:
+    36: Mov r2, r4
+    39: GetNamedProperty r4, a0, c0
+    43: JumpNotUndefined r4, 6 (.L3)
+    46: Mov r4, a1
+  .L3:
+    49: Mov r3, r4
+    52: LoadImmediate r4, 1
+    55: GetProperty r4, a0, r4
+    59: JumpNotUndefined r4, 6 (.L4)
+    62: LoadImmediate r4, 2
+  .L4:
+    65: Mov r0, r4
+    68: LoadUndefined r4
+    70: Ret r4
+  Constant Table:
+    0: [String: a]
+    1: [String: c]
+}
+
+[BytecodeFunction: namedExpression] {
+  Parameters: 0, Registers: 4
+     0: NewClosure r2, c0
+     3: GetNamedProperty r0, r2, c1
+     7: LoadImmediate r2, 1
+    10: GetNamedProperty r3, r2, c1
+    14: JumpNotUndefined r3, 6 (.L0)
+    17: NewClosure r3, c2
+  .L0:
+    20: Mov r0, r3
+    23: LoadImmediate r2, 1
+    26: GetNamedProperty r3, r2, c1
+    30: JumpNotUndefined r3, 6 (.L1)
+    33: NewClosure r3, c3
+  .L1:
+    36: Mov r1, r3
+    39: LoadUndefined r2
+    41: Ret r2
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+    1: [String: a]
+    2: [BytecodeFunction: a]
+    3: [BytecodeFunction: b]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: a] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: b] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

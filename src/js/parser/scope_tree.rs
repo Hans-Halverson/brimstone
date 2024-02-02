@@ -237,8 +237,9 @@ impl ScopeTree {
 
                     // For const and let bindings in the same scope, check if the use is before the
                     // end of the binding's initialization. If so we need to check for the TDZ.
-                    if let BindingKind::Const { init_pos } | BindingKind::Let { init_pos } =
-                        binding.kind()
+                    if let BindingKind::Const { init_pos }
+                    | BindingKind::Let { init_pos }
+                    | BindingKind::CatchParameter { init_pos } = binding.kind()
                     {
                         if id.loc.start < init_pos.get() {
                             binding.needs_tdz_check = true;
@@ -491,7 +492,7 @@ pub enum BindingKind {
         init_pos: Cell<Pos>,
     },
     Let {
-        // The source position after which this constant has been initialized, inclusive.
+        // The source position after which this let has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
     Function {
@@ -504,7 +505,10 @@ pub enum BindingKind {
     },
     FunctionParameter,
     Class,
-    CatchParameter,
+    CatchParameter {
+        // The source position after which this parameter has been initialized, inclusive.
+        init_pos: Cell<Pos>,
+    },
 }
 
 impl BindingKind {
@@ -516,7 +520,7 @@ impl BindingKind {
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
             | BindingKind::Class
-            | BindingKind::CatchParameter => true,
+            | BindingKind::CatchParameter { .. } => true,
         }
     }
 
@@ -529,7 +533,13 @@ impl BindingKind {
     }
 
     pub fn has_tdz(&self) -> bool {
-        matches!(self, BindingKind::Const { .. } | BindingKind::Let { .. } | BindingKind::Class)
+        matches!(
+            self,
+            BindingKind::Const { .. }
+                | BindingKind::Let { .. }
+                | BindingKind::Class
+                | BindingKind::CatchParameter { .. }
+        )
     }
 }
 

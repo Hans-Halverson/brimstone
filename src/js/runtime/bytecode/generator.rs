@@ -2096,10 +2096,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_mov_reg_to_dest(temp, dest)
             }
-            ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
-                unimplemented!("bytecode for assignment expression destructuring")
+            ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
+                unimplemented!("bytecode for super member assignment")
             }
-            ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+            ast::Pattern::Object(_)
+            | ast::Pattern::Array(_)
+            | ast::Pattern::Reference(_)
+            | ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
             }
         }
@@ -3084,6 +3087,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(catch_clause) = &stmt.handler {
             body_handler.handler = self.writer.current_offset();
 
+            // Emit the catch clause in its own block, with bounds saved for a finally handler
+            self.start_block(catch_block.unwrap());
+            let catch_handler_start = self.writer.current_offset();
+
+            // Catch scope starts before the parameter is evaluated and potentially destructured
+            self.gen_scope_start(catch_clause.body.scope.as_ref())?;
+
             // If there is a catch parameter, mark the register in the handler
             if let Some(param) = catch_clause.param.as_deref() {
                 if param.is_id() {
@@ -3091,7 +3101,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     match id.get_binding().vm_location().unwrap() {
                         VMLocation::LocalRegister(index) => {
-                            body_handler.error_register = Some(Register::local(index))
+                            body_handler.error_register = Some(Register::local(index));
                         }
                         VMLocation::Scope { .. } => {
                             unimplemented!("bytecode for captured catch parameters")
@@ -3099,16 +3109,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         _ => unreachable!("catch parameters must be in a register or VM scope"),
                     }
                 } else {
-                    unimplemented!("bytecode for catch parameter destructuring");
+                    // Otherwise destructure catch parameter
+                    let error_temp = self.register_allocator.allocate()?;
+                    self.gen_destructuring(param, error_temp)?;
+                    body_handler.error_register = Some(error_temp);
                 }
             }
 
-            // Emit the catch block's body. No need to write a jump from catch to next block, since
-            // either the finally or join block will be emitted directly after the catch.
-            self.start_block(catch_block.unwrap());
-
-            let catch_handler_start = self.writer.current_offset();
-            let catch_completion = self.gen_block_statement(&catch_clause.body)?;
+            // No need to write a jump from catch to next block after body, since either the finally
+            // or join block will be emitted directly after the catch.
+            let catch_completion = self.gen_statement_list(&catch_clause.body.body)?;
             let catch_handler_end = self.writer.current_offset();
 
             // If there is a finally block then the catch block must be wrapped in an exception

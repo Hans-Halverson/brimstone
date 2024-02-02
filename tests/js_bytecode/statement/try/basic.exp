@@ -4,13 +4,17 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
     0: [BytecodeFunction: testCatchNoParameter]
     1: [String: testCatchNoParameter]
     2: [BytecodeFunction: testCatchWithParameter]
     3: [String: testCatchWithParameter]
+    4: [BytecodeFunction: testCatchDestructuring]
+    5: [String: testCatchDestructuring]
 }
 
 [BytecodeFunction: testCatchNoParameter] {
@@ -40,4 +44,27 @@
     20: Ret r1
   Exception Handlers:
     3-6 -> 8 (r0)
+}
+
+[BytecodeFunction: testCatchDestructuring] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r2, 1
+     3: LoadImmediate r2, 2
+     6: Jump 22 (.L1)
+     8: GetNamedProperty r0, r2, c0
+    12: GetNamedProperty r3, r2, c1
+    16: JumpNotUndefined r3, 6 (.L0)
+    19: LoadImmediate r3, 3
+  .L0:
+    22: Mov r1, r3
+    25: LoadImmediate r2, 4
+  .L1:
+    28: LoadImmediate r2, 5
+    31: LoadUndefined r2
+    33: Ret r2
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
+  Exception Handlers:
+    3-6 -> 8 (r2)
 }

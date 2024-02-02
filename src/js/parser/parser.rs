@@ -592,16 +592,7 @@ impl<'a> Parser<'a> {
 
             // Mark the end of the initializer now that it is known
             if kind != VarKind::Var {
-                let _ = id.iter_bound_names(&mut |id| {
-                    let binding = id.scope.as_ref().unwrap().as_ref().get_binding(&id.name);
-                    match binding.kind() {
-                        BindingKind::Const { init_pos } | BindingKind::Let { init_pos } => {
-                            init_pos.set(loc.end)
-                        }
-                        _ => {}
-                    }
-                    ().into()
-                });
+                Self::set_binding_init_pos(&id, loc.end);
             }
 
             declarations.push(VariableDeclarator { loc, id: p(id), init });
@@ -620,6 +611,19 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         Ok(VariableDeclaration { loc, kind, declarations })
+    }
+
+    fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
+        let _ = pattern.iter_bound_names(&mut |id| {
+            let binding = id.scope.as_ref().unwrap().as_ref().get_binding(&id.name);
+            match binding.kind() {
+                BindingKind::Const { init_pos }
+                | BindingKind::Let { init_pos }
+                | BindingKind::CatchParameter { init_pos } => init_pos.set(pos),
+                _ => {}
+            }
+            ().into()
+        });
     }
 
     fn parse_function_declaration(&mut self, flags: FunctionContext) -> ParseResult<P<Function>> {
@@ -1177,9 +1181,17 @@ impl<'a> Parser<'a> {
             let param = if self.token == Token::LeftBrace {
                 None
             } else {
-                // Handler optionally has a single pattern as the parameter
+                // Handler optionally has a single pattern as the parameter. Pattern binding must
+                // track the ending position of the pattern, but this is only known afer parsing.
                 self.expect(Token::LeftParen)?;
-                let param = self.parse_pattern(BindingKind::CatchParameter)?;
+
+                let start_pos = self.current_start_pos();
+                let param =
+                    self.parse_pattern(BindingKind::CatchParameter { init_pos: Cell::new(0) })?;
+                let loc = self.mark_loc(start_pos);
+
+                Self::set_binding_init_pos(&param, loc.end);
+
                 self.expect(Token::RightParen)?;
                 Some(p(param))
             };

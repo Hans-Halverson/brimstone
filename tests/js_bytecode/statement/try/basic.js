@@ -18,6 +18,16 @@ function testCatchWithParameter() {
   4;
 }
 
+function testCatchDestructuring() {
+  1;
+  try {
+    2;
+  } catch ({a, b = 3}) {
+    4;
+  }
+  5;
+}
+
 // function testFinallyOnly() {
 //   1;
 //   try {

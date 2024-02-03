@@ -718,6 +718,17 @@ pub enum AssignmentOperator {
     NullishCoalesce,
 }
 
+impl AssignmentOperator {
+    pub fn is_logical(&self) -> bool {
+        match self {
+            AssignmentOperator::LogicalAnd
+            | AssignmentOperator::LogicalOr
+            | AssignmentOperator::NullishCoalesce => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct AssignmentExpression {
     pub loc: Loc,
     pub operator: AssignmentOperator,

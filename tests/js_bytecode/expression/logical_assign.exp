@@ -1,0 +1,142 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadImmediate r0, 1
+    27: StoreGlobal r0, c8
+    30: LoadUndefined r0
+    32: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: logicalAnd]
+    1: [String: logicalAnd]
+    2: [BytecodeFunction: localOr]
+    3: [String: localOr]
+    4: [BytecodeFunction: nullishCoalesce]
+    5: [String: nullishCoalesce]
+    6: [BytecodeFunction: testAssignDest]
+    7: [String: testAssignDest]
+    8: [String: global]
+}
+
+[BytecodeFunction: logicalAnd] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: JumpToBooleanFalse a0, 6 (.L0)
+     6: LoadImmediate a0, 1
+  .L0:
+     9: JumpToBooleanFalse r0, 6 (.L1)
+    12: LoadImmediate r0, 2
+  .L1:
+    15: LoadGlobal r1, c0
+    18: JumpToBooleanFalse r1, 9 (.L2)
+    21: LoadImmediate r1, 3
+    24: StoreGlobal r1, c0
+  .L2:
+    27: GetNamedProperty r1, a0, c1
+    31: JumpToBooleanFalse r1, 10 (.L3)
+    34: LoadImmediate r1, 4
+    37: SetNamedProperty a0, c1, r1
+  .L3:
+    41: LoadGlobal r1, c2
+    44: JumpToBooleanFalse a0, 6 (.L4)
+    47: LoadImmediate a0, 5
+  .L4:
+    50: Mov r2, a0
+    53: Call r1, r1, r2, 1
+    58: LoadUndefined r1
+    60: Ret r1
+  Constant Table:
+    0: [String: global]
+    1: [String: foo]
+    2: [String: use]
+}
+
+[BytecodeFunction: localOr] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: JumpToBooleanTrue a0, 6 (.L0)
+     6: LoadImmediate a0, 1
+  .L0:
+     9: JumpToBooleanTrue r0, 6 (.L1)
+    12: LoadImmediate r0, 2
+  .L1:
+    15: LoadGlobal r1, c0
+    18: JumpToBooleanTrue r1, 9 (.L2)
+    21: LoadImmediate r1, 3
+    24: StoreGlobal r1, c0
+  .L2:
+    27: GetNamedProperty r1, a0, c1
+    31: JumpToBooleanTrue r1, 10 (.L3)
+    34: LoadImmediate r1, 4
+    37: SetNamedProperty a0, c1, r1
+  .L3:
+    41: LoadGlobal r1, c2
+    44: JumpToBooleanTrue a0, 6 (.L4)
+    47: LoadImmediate a0, 5
+  .L4:
+    50: Mov r2, a0
+    53: Call r1, r1, r2, 1
+    58: LoadUndefined r1
+    60: Ret r1
+  Constant Table:
+    0: [String: global]
+    1: [String: foo]
+    2: [String: use]
+}
+
+[BytecodeFunction: nullishCoalesce] {
+  Parameters: 1, Registers: 3
+     0: LoadImmediate r0, 0
+     3: JumpNotNullish a0, 6 (.L0)
+     6: LoadImmediate a0, 1
+  .L0:
+     9: JumpNotNullish r0, 6 (.L1)
+    12: LoadImmediate r0, 2
+  .L1:
+    15: LoadGlobal r1, c0
+    18: JumpNotNullish r1, 9 (.L2)
+    21: LoadImmediate r1, 3
+    24: StoreGlobal r1, c0
+  .L2:
+    27: GetNamedProperty r1, a0, c1
+    31: JumpNotNullish r1, 10 (.L3)
+    34: LoadImmediate r1, 4
+    37: SetNamedProperty a0, c1, r1
+  .L3:
+    41: LoadGlobal r1, c2
+    44: JumpNotNullish a0, 6 (.L4)
+    47: LoadImmediate a0, 5
+  .L4:
+    50: Mov r2, a0
+    53: Call r1, r1, r2, 1
+    58: LoadUndefined r1
+    60: Ret r1
+  Constant Table:
+    0: [String: global]
+    1: [String: foo]
+    2: [String: use]
+}
+
+[BytecodeFunction: testAssignDest] {
+  Parameters: 1, Registers: 2
+     0: LoadImmediate r0, 0
+     3: JumpToBooleanFalse a0, 6 (.L0)
+     6: LoadImmediate a0, 1
+  .L0:
+     9: Mov r0, a0
+    12: JumpToBooleanFalse a0, 6 (.L1)
+    15: LoadImmediate a0, 2
+  .L1:
+    18: Mov r1, a0
+    21: SetNamedProperty r0, c0, r1
+    25: LoadUndefined r1
+    27: Ret r1
+  Constant Table:
+    0: [String: foo]
+}

@@ -2005,6 +2005,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 };
 
                 let stored_value_dest = self.expr_dest_for_id(id);
+                let mut join_block = 0;
 
                 let stored_value = if expr.operator == ast::AssignmentOperator::Equals {
                     // For simple assignments, right hand side is placed directly in the dest
@@ -2015,10 +2016,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         stored_value_dest,
                         is_non_parenthesized_id_predicate,
                     )?
-                } else {
+                } else if !expr.operator.is_logical() {
                     // For operator assignments the old value and right value are loaded to
                     // temporary registers, with only the result placed in the dest.
                     let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+
                     let right_value = self.gen_named_expression_if(
                         AnyStr::from_id(id),
                         &expr.right,
@@ -2038,9 +2040,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     );
 
                     stored_value
+                } else {
+                    // Logical operator assignments
+                    let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+
+                    // If this is a logical assignment then short circuit if necessary
+                    join_block = self.new_block();
+                    self.gen_logical_assignment_jump(expr.operator, old_value, join_block)?;
+                    self.register_allocator.release(old_value);
+
+                    // If evaluating right side, evaluate directly into dest register
+                    let stored_value = self.gen_named_expression_if(
+                        AnyStr::from_id(id),
+                        &expr.right,
+                        stored_value_dest,
+                        is_non_parenthesized_id_predicate,
+                    )?;
+
+                    stored_value
                 };
 
                 self.gen_store_identifier(id, stored_value)?;
+
+                if expr.operator.is_logical() {
+                    self.start_block(join_block);
+                }
+
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
             ast::Pattern::Reference(ast::Expression::Member(member)) => {
@@ -2072,6 +2097,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Property::Named(name_constant_index)
                 };
 
+                let mut join_block = 0;
+
                 if expr.operator == ast::AssignmentOperator::Equals {
                     // For simple assignments, right hand side is placed directly in the dest
                     // register.
@@ -2088,11 +2115,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             .get_named_property_instruction(temp, object, name_constant_index),
                     }
 
-                    let right_value = self.gen_expression(&expr.right)?;
+                    if !expr.operator.is_logical() {
+                        // If this is an operator assignment, generate right then apply operator
+                        let right_value = self.gen_expression(&expr.right)?;
 
-                    self.gen_assignment_operator(expr.operator, temp, temp, right_value);
+                        self.gen_assignment_operator(expr.operator, temp, temp, right_value);
 
-                    self.register_allocator.release(right_value);
+                        self.register_allocator.release(right_value);
+                    } else {
+                        // If this is a logical assignment, then short circuit if necessary
+                        if expr.operator.is_logical() {
+                            join_block = self.new_block();
+                            self.gen_logical_assignment_jump(expr.operator, temp, join_block)?;
+                        }
+
+                        // If evaluating right side, evaluate directly into dest register
+                        self.gen_expression_with_dest(&expr.right, ExprDest::Fixed(temp))?;
+                    }
                 }
 
                 // Write the value back to the property
@@ -2111,6 +2150,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
 
                 self.register_allocator.release(object);
+
+                if expr.operator.is_logical() {
+                    self.start_block(join_block);
+                }
 
                 self.gen_mov_reg_to_dest(temp, dest)
             }
@@ -2152,16 +2195,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::AssignmentOperator::ShiftRightLogical => self
                 .writer
                 .shift_right_logical_instruction(dest, left, right),
+            ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
+            ast::AssignmentOperator::LogicalAnd
+            | ast::AssignmentOperator::LogicalOr
+            | ast::AssignmentOperator::NullishCoalesce => {
+                unreachable!("logical assignment operator")
+            }
+        }
+    }
+
+    fn gen_logical_assignment_jump(
+        &mut self,
+        operator: ast::AssignmentOperator,
+        left: GenRegister,
+        join_block: BlockId,
+    ) -> EmitResult<()> {
+        match operator {
             ast::AssignmentOperator::LogicalAnd => {
-                unimplemented!("bytecode for logical and assignment")
+                self.write_jump_to_boolean_false_instruction(left, join_block)
             }
             ast::AssignmentOperator::LogicalOr => {
-                unimplemented!("bytecode for logical or assignment")
+                self.write_jump_to_boolean_true_instruction(left, join_block)
             }
             ast::AssignmentOperator::NullishCoalesce => {
-                unimplemented!("bytecode for nullish coalescing assignment")
+                self.write_jump_not_nullish_instruction(left, join_block)
             }
-            ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
+            _ => unreachable!("invalid logical assignment operator"),
         }
     }
 

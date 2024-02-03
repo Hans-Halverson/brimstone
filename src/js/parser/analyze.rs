@@ -445,7 +445,12 @@ impl<'a> AstVisitor for Analyzer<'a> {
             self.visit_private_name_use(&expr.property);
         }
 
-        default_visit_member_expression(self, expr);
+        self.visit_expression(&mut expr.object);
+
+        // Visit computed property expressions, but not id used as named property
+        if expr.is_computed {
+            self.visit_expression(&mut expr.property);
+        }
     }
 
     fn visit_binary_expression(&mut self, expr: &mut BinaryExpression) {
@@ -488,7 +493,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
             self.emit_error(prop.loc, ParseError::InvalidPatternInitializer);
         }
 
-        self.visit_expression(&mut prop.key);
+        // Visit key expression for computed and shorthand properties, but not id of named property
+        if prop.is_computed || prop.value.is_none() {
+            self.visit_expression(&mut prop.key);
+        }
 
         if prop.is_method {
             let func = if let Some(Expression::Function(func)) = prop.value.as_deref_mut() {
@@ -526,6 +534,15 @@ impl<'a> AstVisitor for Analyzer<'a> {
             self.scope_tree
                 .force_vm_scope_for_visible_bindings(self.current_scope_id());
         }
+    }
+
+    fn visit_object_pattern_property(&mut self, prop: &mut ObjectPatternProperty) {
+        // Visit pattern for computed properties, but not id of named property
+        if prop.is_computed {
+            visit_opt!(self, prop.key, visit_expression);
+        }
+
+        self.visit_pattern(&mut prop.value);
     }
 
     fn visit_meta_property(&mut self, expr: &mut MetaProperty) {

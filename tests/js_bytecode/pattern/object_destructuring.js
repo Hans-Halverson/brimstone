@@ -39,3 +39,13 @@ function rest(x) {
   var { a, b, ...e } = x;
   var { a, [1]: b, [2]: c, ...d } = x;
 }
+
+function propertyNamesNotResolved() {
+  // No TDZ check needed
+  const { a, b: { a: c } } = 1;
+}
+
+function tdzWithinDestructuring() {
+  // TDZ check needed
+  const { a, [a]: b } = 1;
+}

@@ -4,13 +4,17 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNamedMember]
     1: [String: testNamedMember]
     2: [BytecodeFunction: testComputedMember]
     3: [String: testComputedMember]
+    4: [BytecodeFunction: propertyNamesNotResolved]
+    5: [String: propertyNamesNotResolved]
 }
 
 [BytecodeFunction: testNamedMember] {
@@ -39,4 +43,13 @@
     33: Ret r0
   Constant Table:
     0: [String: foo]
+}
+
+[BytecodeFunction: propertyNamesNotResolved] {
+  Parameters: 1, Registers: 2
+    0: GetNamedProperty r0, a0, c0
+    4: LoadUndefined r1
+    6: Ret r1
+  Constant Table:
+    0: [String: a]
 }

@@ -33,3 +33,9 @@ function namedExpression() {
  var { a = () => {}} = 1;
  var { a: b = () => {}} = 1;
 }
+
+function rest(x) {
+  var { ...a } = x;
+  var { a, b, ...e } = x;
+  var { a, [1]: b, [2]: c, ...d } = x;
+}

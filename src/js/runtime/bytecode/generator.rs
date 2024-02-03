@@ -1698,10 +1698,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.new_object_instruction(object);
 
         for property in &expr.properties {
-            // Spread elements represented by a CopyDataProperties insruction
+            // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
+            // arbitrary argv, meaning no property keys are excluded.
             if let ast::PropertyKind::Spread(_) = property.kind {
                 let source = self.gen_expression(&property.key)?;
-                self.writer.copy_data_properties(object, source);
+                self.writer
+                    .copy_data_properties(object, source, source, UInt::new(0));
                 self.register_allocator.release(source);
                 continue;
             }
@@ -1905,28 +1907,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = property.to_id();
-            self.gen_get_object_named_property(object, name, dest, release_object)
+            let name_constant_index = self.add_string_constant(&name.name)?;
+
+            if release_object {
+                self.register_allocator.release(object);
+            }
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer
+                .get_named_property_instruction(dest, object, name_constant_index);
+
+            Ok(dest)
         }
-    }
-
-    fn gen_get_object_named_property(
-        &mut self,
-        object: GenRegister,
-        name: &ast::Identifier,
-        dest: ExprDest,
-        release_object: bool,
-    ) -> EmitResult<GenRegister> {
-        let name_constant_index = self.add_string_constant(&name.name)?;
-
-        if release_object {
-            self.register_allocator.release(object);
-        }
-
-        let dest = self.allocate_destination(dest)?;
-        self.writer
-            .get_named_property_instruction(dest, object, name_constant_index);
-
-        Ok(dest)
     }
 
     /// Generate an optional expression, writing the result to dest.
@@ -2521,39 +2513,111 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pattern: &ast::ObjectPattern,
         object_value: GenRegister,
     ) -> EmitResult<()> {
+        enum Property<'a> {
+            Named(&'a ast::Identifier),
+            Computed(&'a ast::Expression),
+        }
+
+        // If there is a rest element all keys must be saved in a contiguous sequence of temporary
+        // registers so they can be passed to the CopyDataProperties instruction.
+        let has_rest_element = pattern.properties.last().map_or(false, |p| p.is_rest);
+        let mut saved_keys = vec![];
+
         for property in &pattern.properties {
             if property.is_rest {
-                unimplemented!("bytecode for object destructuring rest properties")
+                continue;
             }
 
             // Emit property in the best dest register for the pattern
             let dest = self.expr_dest_for_destructuring_assignment(&property.value);
 
-            let property_value = if property.key.is_none() {
+            let key = match property.key.as_deref() {
                 // Shorthand properties must have an id pattern, optionally with a default value
-                let id = match property.value.as_ref() {
-                    ast::Pattern::Id(id) => id,
-                    ast::Pattern::Assign(assign) => assign.left.to_id(),
+                None => match property.value.as_ref() {
+                    ast::Pattern::Id(id) => Property::Named(id),
+                    ast::Pattern::Assign(assign) => Property::Named(assign.left.to_id()),
                     _ => unreachable!("invalid shorthand property pattern"),
-                };
+                },
+                Some(ast::Expression::Id(id)) if !property.is_computed => Property::Named(id),
+                Some(key) => Property::Computed(key),
+            };
 
-                self.gen_get_object_named_property(
-                    object_value,
-                    id,
-                    dest,
-                    /* release_object */ false,
-                )?
-            } else {
-                self.gen_get_object_property(
-                    object_value,
-                    property.key.as_ref().unwrap(),
-                    property.is_computed,
-                    dest,
-                    /* release_object */ false,
-                )?
+            let property_value = match key {
+                Property::Named(id) => {
+                    let name_constant_index = self.add_string_constant(&id.name)?;
+
+                    // If there is a rest element name must be stored in a temporary register. Can
+                    // load directly to the temporary register since name is already a property key.
+                    if has_rest_element {
+                        let saved_key = self.register_allocator.allocate()?;
+                        self.writer
+                            .load_constant_instruction(saved_key, name_constant_index);
+                        saved_keys.push(saved_key);
+                    }
+
+                    // Read named property from object
+                    let property_value = self.allocate_destination(dest)?;
+                    self.writer.get_named_property_instruction(
+                        property_value,
+                        object_value,
+                        name_constant_index,
+                    );
+
+                    property_value
+                }
+                Property::Computed(expr) => {
+                    let key = self.gen_expression(expr)?;
+                    self.register_allocator.release(key);
+
+                    // If there is a rest element the we must ensure key is a property key and store
+                    // in a temporary register.
+                    if has_rest_element {
+                        let saved_key = self.register_allocator.allocate()?;
+                        self.writer.to_property_key_instruction(saved_key, key);
+                        saved_keys.push(saved_key);
+                    }
+
+                    // Read computed property from object
+                    let property_value = self.allocate_destination(dest)?;
+                    self.writer
+                        .get_property_instruction(property_value, object_value, key);
+
+                    property_value
+                }
             };
 
             self.gen_destructuring(&property.value, property_value)?;
+        }
+
+        // Emit the rest element if one was included
+        if has_rest_element {
+            let rest_element_pattern = pattern.properties.last().unwrap().value.as_ref();
+            let rest_element_dest =
+                self.expr_dest_for_destructuring_assignment(rest_element_pattern);
+            let rest_element = self.allocate_destination(rest_element_dest)?;
+
+            // Rest element references the saved property keys on the stack, so they can be excluded
+            // Use an arbitrary value for argv
+            let argv = if saved_keys.is_empty() {
+                object_value
+            } else {
+                saved_keys[0]
+            };
+
+            let argc =
+                GenUInt::try_from_unsigned(saved_keys.len()).ok_or(EmitError::TooManyRegisters)?;
+
+            // Create a new object and copy all data properties, except for the property keys saved
+            // to the stack.
+            self.writer.new_object_instruction(rest_element);
+            self.writer
+                .copy_data_properties(rest_element, object_value, argv, argc);
+
+            self.gen_destructuring(rest_element_pattern, rest_element)?;
+
+            for saved_key in saved_keys.into_iter().rev() {
+                self.register_allocator.release(saved_key);
+            }
         }
 
         self.register_allocator.release(object_value);

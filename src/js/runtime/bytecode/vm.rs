@@ -64,7 +64,8 @@ use super::{
         SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
         ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
         StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToStringInstruction, TypeOfInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -368,6 +369,9 @@ impl VM {
                         }
                         OpCode::ToString => {
                             dispatch_or_throw!(ToStringInstruction, execute_to_string)
+                        }
+                        OpCode::ToPropertyKey => {
+                            dispatch_or_throw!(ToPropertyKeyInstruction, execute_to_property_key)
                         }
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
@@ -1830,6 +1834,22 @@ impl VM {
     }
 
     #[inline]
+    fn execute_to_property_key<W: Width>(
+        &mut self,
+        instr: &ToPropertyKeyInstruction<W>,
+    ) -> EvalResult<()> {
+        let value = self.read_register_to_handle(instr.value());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(to_property_key(self.cx, value));
+
+        self.write_register(dest, result.cast::<Value>().get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
@@ -2049,9 +2069,14 @@ impl VM {
     ) -> EvalResult<()> {
         let dest = self.read_register_to_handle(instr.dest()).as_object();
         let source = self.read_register_to_handle(instr.source());
+        let excluded_property_keys = self
+            .get_args_rev_slice(instr.argv(), instr.argc())
+            .iter()
+            .map(|v| v.to_handle(self.cx).cast::<PropertyKey>())
+            .collect::<HashSet<_>>();
 
         // May allocate
-        maybe!(copy_data_properties(self.cx, dest, source, &HashSet::new()));
+        maybe!(copy_data_properties(self.cx, dest, source, &excluded_property_keys));
 
         ().into()
     }

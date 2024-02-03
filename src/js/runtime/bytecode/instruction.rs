@@ -526,6 +526,12 @@ define_instructions!(
         [1] value: Register,
     }
 
+    /// Apply the ToPropertyKey abstract operation to a value, storing the result in dest.
+    ToPropertyKey (ToPropertyKeyInstruction, to_property_key_instruction) {
+        [0] dest: Register,
+        [1] value: Register,
+    }
+
     /// Unconditionally jump to the given instruction, specified inline as a byte offset from the
     /// start of the current instruction.
     Jump (JumpInstruction, jump_instruction) {
@@ -721,9 +727,14 @@ define_instructions!(
 
     /// Copy the data properties from a source object to a destination object. Destination must be
     /// an object, but source may be any value.
+    ///
+    /// Property keys to exclude are passed in a contiguous sequence of registers starting at
+    /// `argv`, of length `argc`. Caller must ensure that all values are property keys.
     CopyDataProperties (CopyDataPropertiesInstruction, copy_data_properties) {
         [0] dest: Register,
         [1] source: Register,
+        [2] argv: Register,
+        [3] argc: UInt,
     }
 
     /// Throw an error.

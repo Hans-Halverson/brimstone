@@ -12,8 +12,10 @@
     27: StoreGlobal r0, c9
     30: NewClosure r0, c10
     33: StoreGlobal r0, c11
-    36: LoadUndefined r0
-    38: Ret r0
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
     0: [BytecodeFunction: shorthand]
     1: [String: shorthand]
@@ -27,6 +29,8 @@
     9: [String: defaultValue]
     10: [BytecodeFunction: namedExpression]
     11: [String: namedExpression]
+    12: [BytecodeFunction: rest]
+    13: [String: rest]
 }
 
 [BytecodeFunction: shorthand] {
@@ -167,4 +171,31 @@
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: rest] {
+  Parameters: 1, Registers: 8
+     0: NewObject r0
+     2: CopyDataProperties r0, a0, a0, 0
+     7: LoadConstant r5, c0
+    10: GetNamedProperty r0, a0, c0
+    14: LoadConstant r6, c1
+    17: GetNamedProperty r1, a0, c1
+    21: NewObject r2
+    23: CopyDataProperties r2, a0, r5, 2
+    28: LoadConstant r5, c0
+    31: GetNamedProperty r0, a0, c0
+    35: LoadImmediate r6, 1
+    38: ToPropertyKey r6, r6
+    41: GetProperty r1, a0, r6
+    45: LoadImmediate r7, 2
+    48: ToPropertyKey r7, r7
+    51: GetProperty r3, a0, r7
+    55: NewObject r4
+    57: CopyDataProperties r4, a0, r5, 3
+    62: LoadUndefined r5
+    64: Ret r5
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
 }

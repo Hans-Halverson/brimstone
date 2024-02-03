@@ -1,0 +1,48 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 5
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: LoadImmediate r0, 1
+     9: LoadConstant r1, c2
+    12: GetNamedProperty r2, r0, c2
+    16: StoreGlobal r2, c2
+    19: LoadConstant r2, c3
+    22: GetNamedProperty r3, r0, c3
+    26: StoreGlobal r3, c4
+    29: LoadImmediate r3, 2
+    32: ToPropertyKey r3, r3
+    35: GetProperty r4, r0, r3
+    39: StoreGlobal r4, c5
+    42: NewObject r4
+    44: CopyDataProperties r4, r0, r1, 3
+    49: StoreGlobal r4, c6
+    52: LoadUndefined r0
+    54: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: constants]
+    1: [String: constants]
+    2: [String: v1]
+    3: [String: z]
+    4: [String: v2]
+    5: [String: v3]
+    6: [String: v4]
+}
+
+[BytecodeFunction: constants] {
+  Parameters: 0, Registers: 8
+     0: LoadImmediate r4, 1
+     3: LoadConstant r5, c0
+     6: GetNamedProperty r0, r4, c0
+    10: LoadConstant r6, c1
+    13: GetNamedProperty r1, r4, c1
+    17: LoadImmediate r7, 2
+    20: ToPropertyKey r7, r7
+    23: GetProperty r2, r4, r7
+    27: NewObject r3
+    29: CopyDataProperties r3, r4, r5, 3
+    34: LoadUndefined r4
+    36: Ret r4
+  Constant Table:
+    0: [String: a]
+    1: [String: z]
+}

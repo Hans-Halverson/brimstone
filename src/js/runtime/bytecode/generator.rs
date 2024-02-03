@@ -623,7 +623,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // in the case of a direct eval in a default parameter.
         self.gen_scope_start(func.scope.as_ref())?;
 
-        // Generate function parameters includin destructuring and default value evaluation
+        // Generate function parameters including destructuring and default value evaluation
         for (i, param) in func.params.iter().enumerate() {
             match param {
                 // Emit pattern destructuring, but no need to destructure ids
@@ -633,7 +633,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.gen_destructuring(pattern, argument)?;
                     }
                 }
-                ast::FunctionParam::Rest(_) => unimplemented!("function rest parameter"),
+                // Create the rest parameter then destructure
+                ast::FunctionParam::Rest(param) => {
+                    let rest_dest = self.expr_dest_for_destructuring_assignment(&param.argument);
+                    let rest = self.allocate_destination(rest_dest)?;
+
+                    self.writer.rest_parameter_instruction(rest);
+                    self.gen_destructuring(&param.argument, rest)?;
+                }
             }
         }
 

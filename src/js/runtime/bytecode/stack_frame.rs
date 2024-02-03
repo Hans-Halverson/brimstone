@@ -159,6 +159,16 @@ impl StackFrame {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
+    /// Slice over args portion of frame, not including the receiver.
+    #[inline]
+    pub fn args(&self) -> &[Value] {
+        unsafe {
+            let argc = self.argc();
+            let first_arg_ptr = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX) as *const Value;
+            std::slice::from_raw_parts(first_arg_ptr, argc)
+        }
+    }
+
     /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
     /// the first argument.
     #[inline]

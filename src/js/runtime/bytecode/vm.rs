@@ -60,12 +60,12 @@ use super::{
         LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction, RetInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction,
+        RestParameterInstruction, RetInstruction, SetNamedPropertyInstruction,
+        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -474,6 +474,9 @@ impl VM {
                             )
                         }
                         OpCode::Throw => execute_throw!(get_instr),
+                        OpCode::RestParameter => {
+                            dispatch!(RestParameterInstruction, execute_rest_parameter)
+                        }
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
                         }
@@ -1131,7 +1134,7 @@ impl VM {
         }
     }
 
-    /// Find slice over the arguments given argv and argc, starting with last argument/
+    /// Find slice over the arguments given argv and argc, starting with last argument.
     #[inline]
     fn get_args_rev_slice<'a, 'b, W: Width>(
         &'a self,
@@ -2079,6 +2082,35 @@ impl VM {
         maybe!(copy_data_properties(self.cx, dest, source, &excluded_property_keys));
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_rest_parameter<W: Width>(&mut self, instr: &RestParameterInstruction<W>) {
+        let dest = instr.dest();
+
+        // Allocates
+        let rest_array = must!(array_create(self.cx, 0, None));
+
+        // Handles are shared between iterations
+        let mut array_key = PropertyKey::uninit().to_handle(self.cx);
+        let mut value_handle = Value::uninit().to_handle(self.cx);
+
+        // The arguments between the number of formal parameters and the actual argc supplied will
+        // all be added to the rest array.
+        let num_parameters = self.closure().function_ptr().num_parameters() as usize;
+        let stack_frame = StackFrame::for_fp(self.fp);
+
+        for (i, argument) in stack_frame.args()[num_parameters..].iter().enumerate() {
+            array_key.replace(PropertyKey::array_index(self.cx, i as u32));
+            value_handle.replace(*argument);
+
+            let array_property = Property::data(value_handle, true, true, true);
+            rest_array
+                .object()
+                .set_property(self.cx, array_key, array_property);
+        }
+
+        self.write_register(dest, rest_array.cast::<Value>().get());
     }
 
     #[inline]

@@ -742,6 +742,11 @@ define_instructions!(
         [0] error: Register,
     }
 
+    /// Create a rest parameter for the current function and store in dest.
+    RestParameter(RestParameterInstruction, rest_parameter_instruction) {
+        [0] dest: Register,
+    }
+
     /// Check if a binding is being accessed in the Temporal Dead Zone (TDZ), meaning the time
     /// where it is in scope but not yet initialized. If so, throw a ReferenceError.
     ///

@@ -13,6 +13,7 @@ use crate::js::{
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
+        eval::expression::generate_template_object,
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
@@ -799,8 +800,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Expression::SuperCall(_) => unimplemented!("bytecode for super call expressions"),
             ast::Expression::Template(expr) => self.gen_template_literal_expression(expr, dest),
-            ast::Expression::TaggedTemplate(_) => {
-                unimplemented!("bytecode for tagged template expressions")
+            ast::Expression::TaggedTemplate(expr) => {
+                self.gen_tagged_template_expression(expr, dest)
             }
             ast::Expression::MetaProperty(meta_property) => match meta_property.kind {
                 ast::MetaPropertyKind::NewTarget => {
@@ -1475,48 +1476,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
-        // Calls on a property accesses must pass the object's value as the this value
-        let (callee, this_value) = match expr.callee.as_ref() {
-            // If the callee is a member expression, generate the object expression first and use
-            // as the receiver.
-            ast::Expression::Member(member_expr) => {
-                // Dummy value that will be overwritten when generating member expression
-                let mut call_receiver =
-                    CallReceiver { receiver: Register::this(), is_chain: false };
-
-                let callee = self.gen_member_expression(
-                    member_expr,
-                    ExprDest::Any,
-                    Some(&mut call_receiver),
-                    optional_nullish_block,
-                )?;
-
-                (callee, Some(call_receiver.receiver))
-            }
-            // If the callee is a chain member expression there will either be a receiver or the
-            // chain expression short circuits and the callee is undefined.
-            ast::Expression::Chain(chain_expr)
-                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
-            {
-                // Dummy receiver that will be overwritten when generating member expression
-                let mut call_receiver = CallReceiver { receiver: Register::this(), is_chain: true };
-
-                let callee =
-                    self.gen_chain_expression(chain_expr, ExprDest::Any, Some(&mut call_receiver))?;
-
-                (callee, Some(call_receiver.receiver))
-            }
-            // Otherwise there is no receiver
-            _ => {
-                let callee = self.gen_maybe_chain_part_expression(
-                    &expr.callee,
-                    ExprDest::Any,
-                    None,
-                    optional_nullish_block,
-                )?;
-                (callee, None)
-            }
-        };
+        // Find the callee and this value to use for the call
+        let (callee, this_value) =
+            self.gen_callee_and_this_value(&expr.callee, optional_nullish_block)?;
 
         // If in an optional chain, jump to the nullish block if the calle is nullish
         if expr.is_optional {
@@ -1532,6 +1494,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(this_value);
         }
 
+        // Generate the call itself, optionally with receiver
         let dest = self.allocate_destination(dest)?;
 
         if let Some(this_value) = this_value {
@@ -1542,6 +1505,120 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(dest)
+    }
+
+    fn gen_tagged_template_expression(
+        &mut self,
+        expr: &ast::TaggedTemplateExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Find the callee and this value to use for the tagged template call
+        let (callee, this_value) = self.gen_callee_and_this_value(&expr.tag, None)?;
+
+        // Collect call arguments - the template object followed by all expressions
+        let mut arg_regs = Vec::with_capacity(expr.quasi.expressions.len() + 1);
+
+        // Template objects are generated eagerly and stored in constant table
+        let template_object = generate_template_object(self.cx, &expr.quasi);
+        let template_object_index = self
+            .constant_table_builder
+            .add_heap_object(template_object.cast())?;
+
+        // Pass the template argument as the first call argument
+        let template_object_reg = self.register_allocator.allocate()?;
+        self.writer.load_constant_instruction(
+            template_object_reg,
+            ConstantIndex::new(template_object_index),
+        );
+        arg_regs.push(template_object_reg);
+
+        // Generate code for each argument, loading each into a new temporary register forming a
+        // contiguous range of registers.
+        for arg in &expr.quasi.expressions {
+            let arg_reg = self.gen_expression_with_dest(arg, ExprDest::NewTemporary)?;
+            arg_regs.push(arg_reg);
+        }
+
+        // Check that the argument registers are contiguous. This is guaranteed by the register
+        // allocation strategy.
+        debug_assert!(Self::are_registers_contiguous(&arg_regs));
+
+        // Find first argument register and number of arguments - argv and argc for the call
+        let argv = arg_regs[0];
+        let argc =
+            GenUInt::try_from_unsigned(arg_regs.len()).ok_or(EmitError::TooManyCallArguments)?;
+
+        // Release all register allocated for the call
+        for arg_reg in arg_regs.into_iter().rev() {
+            self.register_allocator.release(arg_reg);
+        }
+        self.register_allocator.release(callee);
+        if let Some(this_value) = this_value {
+            self.register_allocator.release(this_value);
+        }
+
+        // Generate the call itself, optionally with receiver
+        let dest = self.allocate_destination(dest)?;
+
+        if let Some(this_value) = this_value {
+            self.writer
+                .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+        } else {
+            self.writer.call_instruction(dest, callee, argv, argc);
+        }
+
+        Ok(dest)
+    }
+
+    /// Given a callee expression, generate the callee itself and the value to use as the this value
+    /// if a this value is bound (e.g. the callee is a member expression).
+    fn gen_callee_and_this_value(
+        &mut self,
+        callee: &ast::Expression,
+        optional_nullish_block: Option<BlockId>,
+    ) -> EmitResult<(GenRegister, Option<GenRegister>)> {
+        // Calls on a property accesses must pass the object's value as the this value
+        match callee {
+            // If the callee is a member expression, generate the object expression first and use
+            // as the receiver.
+            ast::Expression::Member(member_expr) => {
+                // Dummy value that will be overwritten when generating member expression
+                let mut call_receiver =
+                    CallReceiver { receiver: Register::this(), is_chain: false };
+
+                let callee = self.gen_member_expression(
+                    member_expr,
+                    ExprDest::Any,
+                    Some(&mut call_receiver),
+                    optional_nullish_block,
+                )?;
+
+                Ok((callee, Some(call_receiver.receiver)))
+            }
+            // If the callee is a chain member expression there will either be a receiver or the
+            // chain expression short circuits and the callee is undefined.
+            ast::Expression::Chain(chain_expr)
+                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
+            {
+                // Dummy receiver that will be overwritten when generating member expression
+                let mut call_receiver = CallReceiver { receiver: Register::this(), is_chain: true };
+
+                let callee =
+                    self.gen_chain_expression(chain_expr, ExprDest::Any, Some(&mut call_receiver))?;
+
+                Ok((callee, Some(call_receiver.receiver)))
+            }
+            // Otherwise there is no receiver
+            _ => {
+                let callee = self.gen_maybe_chain_part_expression(
+                    callee,
+                    ExprDest::Any,
+                    None,
+                    optional_nullish_block,
+                )?;
+                Ok((callee, None))
+            }
+        }
     }
 
     /// Generate the bytecode for all call arguments in a contiguous range, returning the
@@ -1580,7 +1657,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // allocation strategy.
         debug_assert!(Self::are_registers_contiguous(&arg_regs));
 
-        // Allocate a range of registers for the arguments
         let argc =
             GenUInt::try_from_unsigned(arguments.len()).ok_or(EmitError::TooManyCallArguments)?;
 

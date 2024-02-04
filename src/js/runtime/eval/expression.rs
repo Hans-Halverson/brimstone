@@ -754,7 +754,6 @@ fn eval_tagged_template_expression(
     call(cx, func_value, this_value, &arg_values)
 }
 
-// 13.2.8.3 GetTemplateObject
 fn get_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<ObjectValue> {
     // Template object is cached in realm's template registery
     let mut realm = cx.current_realm();
@@ -762,6 +761,15 @@ fn get_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<Object
         return template_object;
     }
 
+    let template_object = generate_template_object(cx, lit);
+
+    realm.add_template_object(cx, AstPtr::from_ref(lit), template_object);
+
+    template_object
+}
+
+// 13.2.8.3 GetTemplateObject
+pub fn generate_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<ObjectValue> {
     let num_strings = lit.quasis.len();
     let template_object: Handle<ObjectValue> =
         must!(array_create(cx, num_strings as u64, None)).into();
@@ -791,8 +799,6 @@ fn get_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<Object
     must!(define_property_or_throw(cx, template_object, cx.names.raw(), raw_object_desc));
 
     must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
-
-    realm.add_template_object(cx, AstPtr::from_ref(lit), template_object);
 
     template_object
 }

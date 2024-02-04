@@ -1,7 +1,9 @@
 use brimstone::js::{
     common::options::Options,
     parser,
-    runtime::{bytecode::generator::BytecodeProgramGenerator, Context},
+    runtime::{
+        bytecode::generator::BytecodeProgramGenerator, initialize_host_defined_realm, Context,
+    },
 };
 
 use std::cmp::min;
@@ -32,10 +34,14 @@ fn print_ast(path: &str) -> GenericResult<String> {
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
     // Context is shared between all tests
     let options = Rc::new(Options::default());
-    let (cx, _) = Context::new(options, |_| ());
+    let (cx, _) = Context::new(options, |cx| initialize_host_defined_realm(cx, false));
 
     let bytecode_tests_dir = Path::new(file!()).parent().unwrap().join("js_bytecode");
-    run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, path))
+    let result = run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, path));
+
+    cx.drop();
+
+    result
 }
 
 fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {

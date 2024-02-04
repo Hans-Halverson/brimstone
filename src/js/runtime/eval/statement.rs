@@ -599,16 +599,16 @@ fn for_each_body_evaluation_shared(
         ast::ForEachInit::Pattern(pattern) => {
             let mut reference = match pattern {
                 ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, id)),
-                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                ast::Pattern::Member(expr) => {
                     maybe!(eval_member_expression_to_reference(cx, expr))
                 }
-                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                ast::Pattern::SuperMember(expr) => {
                     maybe!(eval_super_member_expression_to_reference(cx, expr))
                 }
                 ast::Pattern::Array(_) | ast::Pattern::Object(_) => {
                     return destructuring_assignment_evaluation(cx, pattern, right_value)
                 }
-                ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                ast::Pattern::Assign(_) => {
                     unreachable!("invalid for left hand side")
                 }
             };

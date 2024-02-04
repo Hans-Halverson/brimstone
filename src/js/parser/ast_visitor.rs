@@ -77,7 +77,8 @@ pub trait AstVisitor: Sized {
             Pattern::Array(patt) => self.visit_array_pattern(patt),
             Pattern::Object(patt) => self.visit_object_pattern(patt),
             Pattern::Assign(patt) => self.visit_assignment_pattern(patt),
-            Pattern::Reference(expr) => self.visit_expression(expr),
+            Pattern::Member(expr) => self.visit_member_expression(expr),
+            Pattern::SuperMember(expr) => self.visit_super_member_expression(expr),
         }
     }
 

@@ -982,9 +982,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             // Other patterns are stored via instructions, not directly into a register, so any
             // register will do.
-            ast::Pattern::Object(_) | ast::Pattern::Array(_) | ast::Pattern::Reference(_) => {
-                ExprDest::Any
-            }
+            ast::Pattern::Object(_)
+            | ast::Pattern::Array(_)
+            | ast::Pattern::Member(_)
+            | ast::Pattern::SuperMember(_) => ExprDest::Any,
         }
     }
 
@@ -2180,7 +2181,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
-            ast::Pattern::Reference(ast::Expression::Member(member)) => {
+            ast::Pattern::Member(member) => {
                 if member.is_private {
                     unimplemented!("bytecode for assigning private members");
                 }
@@ -2277,10 +2278,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_destructuring(pattern, stored_value, /* release_value */ false)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
-            ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
+            ast::Pattern::SuperMember(_) => {
                 unimplemented!("bytecode for super member assignment")
             }
-            ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+            ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
             }
         }
@@ -2696,10 +2697,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_object_destructuring(object, value, release_value)
             }
             ast::Pattern::Array(_) => unimplemented!("bytecode for array destructuring"),
+            ast::Pattern::Member(member) => self.gen_member_pattern(member, value, release_value),
+            ast::Pattern::SuperMember(_) => {
+                unimplemented!("bytecode for super member destructuring")
+            }
             ast::Pattern::Assign(assign) => {
                 self.gen_assignment_pattern(assign, value, release_value)
             }
-            ast::Pattern::Reference(_) => unreachable!("invalid destructuring pattern"),
         }
     }
 
@@ -2848,6 +2852,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(join_block);
 
         self.gen_destructuring(&pattern.left, value, release_value)
+    }
+
+    fn gen_member_pattern(
+        &mut self,
+        member: &ast::MemberExpression,
+        value: GenRegister,
+        release_value: bool,
+    ) -> EmitResult<()> {
+        let object = self.gen_expression(&member.object)?;
+
+        // Store named property when possible, otherwise store generic property
+        if member.is_computed {
+            let key = self.gen_expression(&member.property)?;
+            self.writer.set_property_instruction(object, key, value);
+            self.register_allocator.release(key);
+        } else {
+            let name = member.property.to_id();
+            let name_constant_index = self.add_string_constant(&name.name)?;
+            self.writer
+                .set_named_property_instruction(object, name_constant_index, value);
+        }
+
+        self.register_allocator.release(object);
+
+        if release_value {
+            self.register_allocator.release(value);
+        }
+
+        Ok(())
     }
 
     fn gen_function_declaration(
@@ -3185,7 +3218,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_nullish_instruction(next_result, join_block)?;
 
         // Otherwise `next` returned a key, so store the key to the pattern
-        self.gen_for_each_store_next_result(stmt, next_result)?;
+        self.gen_destructuring(stmt.left.pattern(), next_result, /* release_value */ true)?;
 
         // Otherwise proceed to the body of the loop then start a new iteration
         self.gen_statement(&stmt.body)?;
@@ -3212,47 +3245,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             // Otherwise we store to a temporary register
             _ => self.register_allocator.allocate(),
-        }
-    }
-
-    /// Store the iterator's `next` result to the pattern
-    fn gen_for_each_store_next_result(
-        &mut self,
-        stmt: &ast::ForEachStatement,
-        next_result: GenRegister,
-    ) -> EmitResult<()> {
-        match stmt.left.pattern() {
-            pattern @ (ast::Pattern::Id(_) | ast::Pattern::Array(_) | ast::Pattern::Object(_)) => {
-                self.gen_destructuring(pattern, next_result, /* release_value */ true)
-            }
-            ast::Pattern::Reference(ast::Expression::Member(member)) => {
-                let object = self.gen_expression(&member.object)?;
-
-                // Store named property when possible, otherwise store generic property
-                if member.is_computed {
-                    let key = self.gen_expression(&member.property)?;
-                    self.writer
-                        .set_property_instruction(object, key, next_result);
-                    self.register_allocator.release(key);
-                } else {
-                    let name = member.property.to_id();
-                    let name_constant_index = self.add_string_constant(&name.name)?;
-                    self.writer.set_named_property_instruction(
-                        object,
-                        name_constant_index,
-                        next_result,
-                    );
-                }
-
-                self.register_allocator.release(object);
-                self.register_allocator.release(next_result);
-
-                Ok(())
-            }
-            ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
-                unimplemented!("bytecode for for-in super member expressions")
-            }
-            _ => unreachable!("invalid for-in left hand side"),
         }
     }
 

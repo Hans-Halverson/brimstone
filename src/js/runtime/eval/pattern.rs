@@ -65,7 +65,7 @@ pub fn binding_initialization(
             result
         }
         ast::Pattern::Object(object) => object_binding_initialization(cx, object, value, env),
-        ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+        ast::Pattern::Member(_) | ast::Pattern::SuperMember(_) | ast::Pattern::Assign(_) => {
             unreachable!("invalid pattern for BindingInitialization")
         }
     }
@@ -96,10 +96,10 @@ fn object_binding_initialization(
                     let name_value = id_string_value(cx, id);
                     maybe!(resolve_binding(cx, name_value, env))
                 }
-                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                ast::Pattern::Member(expr) => {
                     maybe!(eval_member_expression_to_reference(cx, &expr))
                 }
-                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                ast::Pattern::SuperMember(expr) => {
                     maybe!(eval_super_member_expression_to_reference(cx, &expr))
                 }
                 _ => unreachable!("invalid rest property pattern"),
@@ -131,10 +131,10 @@ fn object_binding_initialization(
                     let binding_name = id_string_value(cx, id);
                     maybe!(resolve_binding(cx, binding_name, env))
                 }
-                ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                ast::Pattern::Member(expr) => {
                     maybe!(eval_member_expression_to_reference(cx, &expr))
                 }
-                ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                ast::Pattern::SuperMember(expr) => {
                     maybe!(eval_super_member_expression_to_reference(cx, &expr))
                 }
                 binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
@@ -148,7 +148,7 @@ fn object_binding_initialization(
 
                     return binding_initialization(cx, binding_pattern, property_value, env);
                 }
-                ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                ast::Pattern::Assign(_) => {
                     unreachable!("invalid object property pattern")
                 }
             };
@@ -210,11 +210,11 @@ fn iterator_binding_initialization(
                         let reference = maybe!(resolve_binding(cx, name_value, env));
                         ReferenceOrBindingPattern::Reference(reference, initializer)
                     }
-                    ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                    ast::Pattern::Member(expr) => {
                         let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
                         ReferenceOrBindingPattern::Reference(reference, initializer)
                     }
-                    ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                    ast::Pattern::SuperMember(expr) => {
                         let reference =
                             maybe!(eval_super_member_expression_to_reference(cx, &expr));
                         ReferenceOrBindingPattern::Reference(reference, initializer)
@@ -222,7 +222,7 @@ fn iterator_binding_initialization(
                     binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
                         ReferenceOrBindingPattern::Pattern(binding_pattern, initializer)
                     }
-                    ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                    ast::Pattern::Assign(_) => {
                         unreachable!("invalid array element pattern")
                     }
                 }
@@ -234,11 +234,11 @@ fn iterator_binding_initialization(
                         let reference = maybe!(resolve_binding(cx, name_value, env));
                         ReferenceOrBindingPattern::Reference(reference, None)
                     }
-                    ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+                    ast::Pattern::Member(expr) => {
                         let reference = maybe!(eval_member_expression_to_reference(cx, &expr));
                         ReferenceOrBindingPattern::Reference(reference, None)
                     }
-                    ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+                    ast::Pattern::SuperMember(expr) => {
                         let reference =
                             maybe!(eval_super_member_expression_to_reference(cx, &expr));
                         ReferenceOrBindingPattern::Reference(reference, None)
@@ -246,7 +246,7 @@ fn iterator_binding_initialization(
                     binding_pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
                         ReferenceOrBindingPattern::Pattern(binding_pattern, None)
                     }
-                    ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+                    ast::Pattern::Assign(_) => {
                         unreachable!("invalid array element pattern")
                     }
                 }

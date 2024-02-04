@@ -2,30 +2,34 @@
   Parameters: 0, Registers: 5
      0: NewClosure r0, c0
      3: StoreGlobal r0, c1
-     6: LoadImmediate r0, 1
-     9: LoadConstant r1, c2
-    12: GetNamedProperty r2, r0, c2
-    16: StoreGlobal r2, c2
-    19: LoadConstant r2, c3
-    22: GetNamedProperty r3, r0, c3
-    26: StoreGlobal r3, c4
-    29: LoadImmediate r3, 2
-    32: ToPropertyKey r3, r3
-    35: GetProperty r4, r0, r3
-    39: StoreGlobal r4, c5
-    42: NewObject r4
-    44: CopyDataProperties r4, r0, r1, 3
-    49: StoreGlobal r4, c6
-    52: LoadUndefined r0
-    54: Ret r0
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadImmediate r0, 1
+    15: LoadConstant r1, c4
+    18: GetNamedProperty r2, r0, c4
+    22: StoreGlobal r2, c4
+    25: LoadConstant r2, c5
+    28: GetNamedProperty r3, r0, c5
+    32: StoreGlobal r3, c6
+    35: LoadImmediate r3, 2
+    38: ToPropertyKey r3, r3
+    41: GetProperty r4, r0, r3
+    45: StoreGlobal r4, c7
+    48: NewObject r4
+    50: CopyDataProperties r4, r0, r1, 3
+    55: StoreGlobal r4, c8
+    58: LoadUndefined r0
+    60: Ret r0
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]
-    2: [String: v1]
-    3: [String: z]
-    4: [String: v2]
-    5: [String: v3]
-    6: [String: v4]
+    2: [BytecodeFunction: nestedMember]
+    3: [String: nestedMember]
+    4: [String: v1]
+    5: [String: z]
+    6: [String: v2]
+    7: [String: v3]
+    8: [String: v4]
 }
 
 [BytecodeFunction: constants] {
@@ -45,4 +49,16 @@
   Constant Table:
     0: [String: a]
     1: [String: z]
+}
+
+[BytecodeFunction: nestedMember] {
+  Parameters: 1, Registers: 2
+     0: LoadImmediate r0, 1
+     3: GetNamedProperty r1, r0, c0
+     7: SetNamedProperty a0, c1, r1
+    11: LoadUndefined r0
+    13: Ret r0
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
 }

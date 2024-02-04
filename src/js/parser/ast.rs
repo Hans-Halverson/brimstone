@@ -907,9 +907,8 @@ pub enum Pattern {
     Array(ArrayPattern),
     Object(ObjectPattern),
     Assign(AssignmentPattern),
-    // An expression that evaluates to a reference. Can only be a MemberExpression or
-    // SuperMemberExpression.
-    Reference(Expression),
+    Member(MemberExpression),
+    SuperMember(SuperMemberExpression),
 }
 
 impl Pattern {
@@ -954,7 +953,7 @@ impl Pattern {
                 }
             }
             Pattern::Assign(patt) => patt.left.iter_patterns(f),
-            Pattern::Reference(_) => {}
+            Pattern::Member(_) | Pattern::SuperMember(_) => {}
         }
     }
 
@@ -967,7 +966,7 @@ impl Pattern {
             Pattern::Array(patt) => patt.iter_bound_names(f),
             Pattern::Object(patt) => patt.iter_bound_names(f),
             Pattern::Assign(patt) => patt.iter_bound_names(f),
-            Pattern::Reference(_) => ().into(),
+            Pattern::Member(_) | Pattern::SuperMember(_) => ().into(),
         }
     }
 }

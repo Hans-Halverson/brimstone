@@ -948,7 +948,8 @@ impl<'a> Printer<'a> {
             Pattern::Array(patt) => self.print_array_pattern(patt),
             Pattern::Object(patt) => self.print_object_pattern(patt),
             Pattern::Assign(patt) => self.print_assign_pattern(patt),
-            Pattern::Reference(expr) => self.print_expression(expr),
+            Pattern::Member(expr) => self.print_member_expression(expr),
+            Pattern::SuperMember(expr) => self.print_super_member_expression(expr),
         }
     }
 

@@ -1668,10 +1668,10 @@ fn eval_assignment_expression(
 ) -> EvalResult<Handle<Value>> {
     let mut reference = match expr.left.as_ref() {
         ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, &id)),
-        ast::Pattern::Reference(ast::Expression::Member(expr)) => {
+        ast::Pattern::Member(expr) => {
             maybe!(eval_member_expression_to_reference(cx, &expr))
         }
-        ast::Pattern::Reference(ast::Expression::SuperMember(expr)) => {
+        ast::Pattern::SuperMember(expr) => {
             maybe!(eval_super_member_expression_to_reference(cx, &expr))
         }
         ast::Pattern::Object(_) | ast::Pattern::Array(_) => {
@@ -1680,7 +1680,7 @@ fn eval_assignment_expression(
 
             return right_value.into();
         }
-        ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
+        ast::Pattern::Assign(_) => {
             unreachable!("invalid assigment left hand side")
         }
     };

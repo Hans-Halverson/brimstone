@@ -3934,8 +3934,9 @@ impl<'a> Parser<'a> {
                 Some(Pattern::Id(id))
             }
             Expression::Object(object) => self.reparse_object_expression_as_pattern(object),
-            Expression::Array(object) => self.reparse_array_expression_as_pattern(object),
-            Expression::Member(_) | Expression::SuperMember(_) => Some(Pattern::Reference(expr)),
+            Expression::Array(array) => self.reparse_array_expression_as_pattern(array),
+            Expression::Member(expr) => Some(Pattern::Member(expr)),
+            Expression::SuperMember(expr) => Some(Pattern::SuperMember(expr)),
             _ => None,
         }
     }

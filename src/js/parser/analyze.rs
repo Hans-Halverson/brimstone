@@ -881,7 +881,7 @@ impl Analyzer<'_> {
                 Pattern::Assign(_) => {
                     has_parameter_expressions = true;
                 }
-                Pattern::Reference(_) => {}
+                Pattern::Member(_) | Pattern::SuperMember(_) => {}
             });
         }
 

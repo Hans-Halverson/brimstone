@@ -79,6 +79,14 @@ function operatorIdAssignReturnValue(param) {
   local += param += global += 6;
 }
 
+function objectDestructuringAssign(param) {
+  var local, a;
+  ({a} = 1);
+  param = ({a} = 2);
+  local = ({a} = 3);
+  global = ({a} = 4);
+}
+
 function operatorIdAllOperators(x) {
   x += 1;
   x -= 2;

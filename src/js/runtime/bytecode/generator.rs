@@ -631,7 +631,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::FunctionParam::Pattern(pattern) => {
                     let argument = Register::argument(i);
                     if !matches!(pattern, ast::Pattern::Id(_)) {
-                        self.gen_destructuring(pattern, argument)?;
+                        self.gen_destructuring(pattern, argument, /* release_value */ true)?;
                     }
                 }
                 // Create the rest parameter then destructure
@@ -640,7 +640,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let rest = self.allocate_destination(rest_dest)?;
 
                     self.writer.rest_parameter_instruction(rest);
-                    self.gen_destructuring(&param.argument, rest)?;
+                    self.gen_destructuring(&param.argument, rest, /* release_value */ true)?;
                 }
             }
         }
@@ -2269,13 +2269,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_mov_reg_to_dest(temp, dest)
             }
+            // Destructuring assignment
+            pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
+                let stored_value_dest = self.expr_dest_for_destructuring_assignment(pattern);
+                let stored_value = self.gen_expression_with_dest(&expr.right, stored_value_dest)?;
+
+                self.gen_destructuring(pattern, stored_value, /* release_value */ false)?;
+                self.gen_mov_reg_to_dest(stored_value, dest)
+            }
             ast::Pattern::Reference(ast::Expression::SuperMember(_)) => {
                 unimplemented!("bytecode for super member assignment")
             }
-            ast::Pattern::Object(_)
-            | ast::Pattern::Array(_)
-            | ast::Pattern::Reference(_)
-            | ast::Pattern::Assign(_) => {
+            ast::Pattern::Reference(_) | ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
             }
         }
@@ -2655,7 +2660,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_expression_with_dest(init, init_value_dest)?
                 };
 
-                self.gen_destructuring(&decl.id, init_value)?
+                self.gen_destructuring(&decl.id, init_value, /* release_value */ true)?
             } else if var_decl.kind == ast::VarKind::Let {
                 // Let declarations without an initializer are initialized to undefined
                 let id = decl.id.to_id();
@@ -2671,17 +2676,29 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_destructuring(&mut self, pattern: &ast::Pattern, value: GenRegister) -> EmitResult<()> {
+    fn gen_destructuring(
+        &mut self,
+        pattern: &ast::Pattern,
+        value: GenRegister,
+        release_value: bool,
+    ) -> EmitResult<()> {
         match pattern {
             ast::Pattern::Id(id) => {
                 self.gen_store_identifier(id, value)?;
-                self.register_allocator.release(value);
+
+                if release_value {
+                    self.register_allocator.release(value);
+                }
 
                 Ok(())
             }
-            ast::Pattern::Object(object) => self.gen_object_destructuring(object, value),
+            ast::Pattern::Object(object) => {
+                self.gen_object_destructuring(object, value, release_value)
+            }
             ast::Pattern::Array(_) => unimplemented!("bytecode for array destructuring"),
-            ast::Pattern::Assign(assign) => self.gen_assignment_pattern(assign, value),
+            ast::Pattern::Assign(assign) => {
+                self.gen_assignment_pattern(assign, value, release_value)
+            }
             ast::Pattern::Reference(_) => unreachable!("invalid destructuring pattern"),
         }
     }
@@ -2690,6 +2707,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         pattern: &ast::ObjectPattern,
         object_value: GenRegister,
+        release_value: bool,
     ) -> EmitResult<()> {
         enum Property<'a> {
             Named(&'a ast::Identifier),
@@ -2764,7 +2782,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
-            self.gen_destructuring(&property.value, property_value)?;
+            self.gen_destructuring(&property.value, property_value, /* release_value */ true)?;
         }
 
         // Emit the rest element if one was included
@@ -2791,14 +2809,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer
                 .copy_data_properties(rest_element, object_value, argv, argc);
 
-            self.gen_destructuring(rest_element_pattern, rest_element)?;
+            self.gen_destructuring(
+                rest_element_pattern,
+                rest_element,
+                /* release_value */ true,
+            )?;
 
             for saved_key in saved_keys.into_iter().rev() {
                 self.register_allocator.release(saved_key);
             }
         }
 
-        self.register_allocator.release(object_value);
+        if release_value {
+            self.register_allocator.release(object_value);
+        }
 
         Ok(())
     }
@@ -2809,6 +2833,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         pattern: &ast::AssignmentPattern,
         value: GenRegister,
+        release_value: bool,
     ) -> EmitResult<()> {
         let join_block = self.new_block();
         self.write_jump_not_undefined_instruction(value, join_block)?;
@@ -2822,7 +2847,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.start_block(join_block);
 
-        self.gen_destructuring(&pattern.left, value)
+        self.gen_destructuring(&pattern.left, value, release_value)
     }
 
     fn gen_function_declaration(
@@ -3198,7 +3223,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         match stmt.left.pattern() {
             pattern @ (ast::Pattern::Id(_) | ast::Pattern::Array(_) | ast::Pattern::Object(_)) => {
-                self.gen_destructuring(pattern, next_result)
+                self.gen_destructuring(pattern, next_result, /* release_value */ true)
             }
             ast::Pattern::Reference(ast::Expression::Member(member)) => {
                 let object = self.gen_expression(&member.object)?;
@@ -3345,7 +3370,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 } else {
                     // Otherwise destructure catch parameter
                     let error_temp = self.register_allocator.allocate()?;
-                    self.gen_destructuring(param, error_temp)?;
+                    self.gen_destructuring(param, error_temp, /* release_value */ true)?;
                     body_handler.error_register = Some(error_temp);
                 }
             }

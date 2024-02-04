@@ -64,11 +64,11 @@ use super::{
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
         NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction,
         RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -472,6 +472,9 @@ impl VM {
                         }
                         OpCode::SetArrayProperty => {
                             dispatch!(SetArrayPropertyInstruction, execute_set_array_property)
+                        }
+                        OpCode::SetPrototypeOf => {
+                            dispatch!(SetPrototypeOfInstruction, execute_set_prototype_of)
                         }
                         OpCode::CopyDataProperties => {
                             dispatch_or_throw!(
@@ -2102,6 +2105,19 @@ impl VM {
         let index = index.replace_into(must!(PropertyKey::from_value(self.cx, index)));
         let desc = Property::data(value, true, true, true);
         array.object().set_property(self.cx, index, desc);
+    }
+
+    #[inline]
+    fn execute_set_prototype_of<W: Width>(&mut self, instr: &SetPrototypeOfInstruction<W>) {
+        let mut object = self.read_register_to_handle(instr.object()).as_object();
+        let prototype = self.read_register_to_handle(instr.prototype());
+
+        // May allocate
+        if prototype.is_object() {
+            must!(object.set_prototype_of(self.cx, Some(prototype.as_object())));
+        } else if prototype.is_null() {
+            must!(object.set_prototype_of(self.cx, None));
+        }
     }
 
     #[inline]

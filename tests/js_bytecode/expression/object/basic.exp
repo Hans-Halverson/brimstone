@@ -14,10 +14,12 @@
     33: StoreGlobal r0, c11
     36: NewClosure r0, c12
     39: StoreGlobal r0, c13
-    42: LoadImmediate r0, 0
-    45: StoreGlobal r0, c14
-    48: LoadUndefined r0
-    50: Ret r0
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: LoadImmediate r0, 0
+    51: StoreGlobal r0, c16
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
     0: [BytecodeFunction: emptyObject]
     1: [String: emptyObject]
@@ -31,9 +33,11 @@
     9: [String: computedPropertyKeys]
     10: [BytecodeFunction: spread]
     11: [String: spread]
-    12: [BytecodeFunction: propertyNamesNotResolved]
-    13: [String: propertyNamesNotResolved]
-    14: [String: global]
+    12: [BytecodeFunction: proto]
+    13: [String: proto]
+    14: [BytecodeFunction: propertyNamesNotResolved]
+    15: [String: propertyNamesNotResolved]
+    16: [String: global]
 }
 
 [BytecodeFunction: emptyObject] {
@@ -113,6 +117,18 @@
     13: Add r1, r1, r2
     17: CopyDataProperties r0, r1, r1, 0
     22: Ret r0
+}
+
+[BytecodeFunction: proto] {
+  Parameters: 1, Registers: 3
+     0: NewObject r0
+     2: LoadImmediate r1, 1
+     5: LoadImmediate r2, 2
+     8: Add r1, r1, r2
+    12: SetPrototypeOf r0, r1
+    15: Ret r0
+  Constant Table:
+    0: [String: __proto__]
 }
 
 [BytecodeFunction: propertyNamesNotResolved] {

@@ -25,6 +25,10 @@ function spread(a) {
   return { ...a, ...(1 + 2) };
 }
 
+function proto(a) {
+  return { __proto__: (1 + 2) };
+}
+
 function propertyNamesNotResolved() {
   // No TDZ check needed
   const { a } = { a: 1 };

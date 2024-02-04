@@ -734,6 +734,13 @@ define_instructions!(
         [2] value: Register,
     }
 
+    /// Set the prototype of an object to the given value. Assumes the object value is an object.
+    /// Does nothing if the new prototype is not an object or null.
+    SetPrototypeOf (SetPrototypeOfInstruction, set_prototype_of_instruction) {
+        [0] object: Register,
+        [1] prototype: Register,
+    }
+
     /// Copy the data properties from a source object to a destination object. Destination must be
     /// an object, but source may be any value.
     ///

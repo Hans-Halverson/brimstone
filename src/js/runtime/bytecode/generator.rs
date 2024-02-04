@@ -1822,7 +1822,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 method_value
             } else if let Property::Named { is_proto: true, .. } = &key {
-                unimplemented!("bytecode for __proto__ property");
+                // The __proto__ property corresponds to a SetPrototypeOf instruction
+                let prototype = self.gen_expression(property.value.as_ref().unwrap())?;
+                self.writer.set_prototype_of_instruction(object, prototype);
+                self.register_allocator.release(prototype);
+
+                continue;
             } else {
                 // Regular key-value properties. Value is statically evaluated as named if the key
                 // is statically known, otherwise the DefinePropertyInstruction will handle setting

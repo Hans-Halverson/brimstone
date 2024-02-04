@@ -2,7 +2,9 @@ use std::{collections::HashSet, ops::Deref};
 
 use crate::{
     js::runtime::{
-        abstract_operations::{copy_data_properties, create_data_property_or_throw, set},
+        abstract_operations::{
+            copy_data_properties, create_data_property_or_throw, define_property_or_throw, set,
+        },
         array_object::{array_create, ArrayObject},
         error::{reference_error_, type_error_},
         eval::expression::{
@@ -32,7 +34,7 @@ use crate::{
             to_property_key,
         },
         value::BigIntValue,
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     maybe, must,
 };
@@ -45,8 +47,8 @@ use super::{
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
         CopyDataPropertiesInstruction, DecInstruction, DefineNamedPropertyInstruction,
-        DefinePropertyInstruction, DeletePropertyInstruction, DivInstruction, ExpInstruction,
-        ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        DefinePropertyFlags, DefinePropertyInstruction, DeletePropertyInstruction, DivInstruction,
+        ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
         GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
         InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
         JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
@@ -1952,32 +1954,51 @@ impl VM {
         let object = self.read_register_to_handle(instr.object());
         let key = self.read_register_to_handle(instr.key());
         let value = self.read_register_to_handle(instr.value());
-
-        let needs_name = instr.needs_name().value().to_usize() == 1;
+        let flags = DefinePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
 
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
+        let object = maybe!(to_object(self.cx, object));
 
-        // Since we did not statically know the key we must perform "named evaluation" here, meaning
-        // we set the function name to the key.
-        if needs_name {
-            // We only set the `needs_name` flag when the value evaluates to a closure
+        // Uncommon cases when some flags are set, e.g. for accessors or named evaluation"
+        if !flags.is_empty() {
+            // We only set flags when the value evaluates to a closure
             debug_assert!(
                 value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Closure
             );
             let closure = value.cast::<Closure>();
-            let name = build_function_name(self.cx, property_key, None);
 
-            // Perform a raw set of the property, overwriting the previous value even though it was
-            // not writable. This will preserve the order of the properties, as the function name
-            // was initially added but defaulted to the empty string.
-            let property = Property::data(name.into(), false, false, true);
-            closure
-                .cast::<ObjectValue>()
-                .set_property(self.cx, self.cx.names.name(), property);
+            // Since we did not statically know the key we must perform "named evaluation" here, meaning
+            // we set the function name to the key.
+            if flags.contains(DefinePropertyFlags::NEEDS_NAME) {
+                let prefix = if flags.contains(DefinePropertyFlags::GETTER) {
+                    Some("get")
+                } else if flags.contains(DefinePropertyFlags::SETTER) {
+                    Some("set")
+                } else {
+                    None
+                };
+
+                let name = build_function_name(self.cx, property_key, prefix);
+
+                // Perform a raw set of the property, overwriting the previous value even though it was
+                // not writable. This will preserve the order of the properties, as the function name
+                // was initially added but defaulted to the empty string.
+                let property = Property::data(name.into(), false, false, true);
+                closure
+                    .cast::<ObjectValue>()
+                    .set_property(self.cx, self.cx.names.name(), property);
+            }
+
+            // Create special property descriptors for accessors
+            if flags.contains(DefinePropertyFlags::GETTER) {
+                let desc = PropertyDescriptor::get_only(Some(closure.into()), true, true);
+                return define_property_or_throw(self.cx, object, property_key, desc);
+            } else if flags.contains(DefinePropertyFlags::SETTER) {
+                let desc = PropertyDescriptor::set_only(Some(closure.into()), true, true);
+                return define_property_or_throw(self.cx, object, property_key, desc);
+            }
         }
-
-        let object = maybe!(to_object(self.cx, object));
 
         create_data_property_or_throw(self.cx, object, property_key, value)
     }

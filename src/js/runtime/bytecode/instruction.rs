@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -690,7 +692,7 @@ define_instructions!(
         [0] object: Register,
         [1] key: Register,
         [2] value: Register,
-        [3] needs_name: UInt,
+        [3] flags: UInt,
     }
 
     /// Get a named property from an object, storing the result in dest. The name must be a string
@@ -779,6 +781,20 @@ define_instructions!(
         [1] iterator: Register,
     }
 );
+
+bitflags! {
+    /// Flags for the DefineProperty instruction.
+    #[derive(Clone, Copy)]
+    pub struct DefinePropertyFlags: u8 {
+        /// Whether the value is an unnamed closure that needs its name set to the key with
+        /// SetFunctionName.
+        const NEEDS_NAME = 1 << 0;
+        /// Whether to define a getter property.
+        const GETTER = 1 << 1;
+        /// Whether to define a setter property.
+        const SETTER = 1 << 2;
+    }
+}
 
 impl OpCode {
     #[inline]

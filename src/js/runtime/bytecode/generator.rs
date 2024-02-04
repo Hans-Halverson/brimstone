@@ -12,7 +12,7 @@ use crate::js::{
         scope_tree::{AstScopeNode, BindingKind, ScopeTree, VMLocation},
     },
     runtime::{
-        bytecode::function::BytecodeFunction,
+        bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
@@ -1667,7 +1667,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let value = self.gen_expression(expr)?;
                     self.register_allocator.release(value);
 
-                    self.writer.set_array_property_instruction(array, index, value);
+                    self.writer
+                        .set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
                         self.writer.inc_instruction(index);
@@ -1679,7 +1680,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.writer.load_empty_instruction(value);
                     self.register_allocator.release(value);
 
-                    self.writer.set_array_property_instruction(array, index, value);
+                    self.writer
+                        .set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
                         self.writer.inc_instruction(index);
@@ -1725,7 +1727,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             // Evaluate property name
-            let key = if property.is_computed {
+            let mut key = if property.is_computed {
                 Property::Computed(self.gen_expression(&property.key)?)
             } else {
                 match property.key.as_ref() {
@@ -1750,7 +1752,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
-            let mut needs_name = false;
+            let mut flags = DefinePropertyFlags::empty();
 
             let value = if property.value.is_none() {
                 // Identifier shorthand properties
@@ -1758,16 +1760,47 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_load_identifier(value_id, ExprDest::Any)?
             } else if property.is_method {
                 // Method properties
-                if matches!(property.kind, ast::PropertyKind::Get | ast::PropertyKind::Set) {
-                    unimplemented!("bytecode for object getter or setter properties");
-                }
 
-                // Name and function node are added to pending functions queue
-                let name = match &key {
+                // Determine method name from the property
+                let mut name = match &key {
                     Property::Named { name, .. } => Some(name.to_owned()),
                     Property::Computed(_) => None,
                 };
 
+                // Handle getter or setter methods
+                if matches!(property.kind, ast::PropertyKind::Get | ast::PropertyKind::Set) {
+                    // DefineProperty instruction needs a flag noting the accessor
+                    let is_getter = matches!(property.kind, ast::PropertyKind::Get);
+                    if is_getter {
+                        flags |= DefinePropertyFlags::GETTER;
+                    } else {
+                        flags |= DefinePropertyFlags::SETTER;
+                    }
+
+                    // Add accessor prefix to the name if name is known
+                    if let Some(known_name) = &name {
+                        let mut prefixed_name = if is_getter {
+                            Wtf8String::from_str("get ")
+                        } else {
+                            Wtf8String::from_str("set ")
+                        };
+                        prefixed_name.push_wtf8_str(&known_name);
+                        name = Some(prefixed_name);
+                    } else {
+                        flags |= DefinePropertyFlags::NEEDS_NAME;
+                    };
+
+                    // Always use a DefineProperty instruction with flags instead of a
+                    // DefineNamedProperty instruction.
+                    if let Property::Named { constant_index, .. } = &key {
+                        let key_reg = self.register_allocator.allocate()?;
+                        self.writer
+                            .load_constant_instruction(key_reg, *constant_index);
+                        key = Property::Computed(key_reg);
+                    }
+                }
+
+                // Function node is added to the pending functions queue
                 let func_node = if let ast::Expression::Function(func_node) =
                     &property.value.as_ref().unwrap().as_ref()
                 {
@@ -1802,7 +1835,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     )?,
                     Property::Computed(_) => {
                         let value_expr = property.value.as_ref().unwrap();
-                        needs_name = Self::expression_needs_name(value_expr);
+                        if Self::expression_needs_name(value_expr) {
+                            flags |= DefinePropertyFlags::NEEDS_NAME;
+                        }
 
                         self.gen_expression_with_dest(value_expr, ExprDest::Any)?
                     }
@@ -1815,14 +1850,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // a statically known string.
             match key {
                 Property::Computed(key) => {
-                    let needs_name_flag = if needs_name {
-                        UInt::new(1)
-                    } else {
-                        UInt::new(0)
-                    };
-
+                    let flags = UInt::new(flags.bits() as u32);
                     self.writer
-                        .define_property_instruction(object, key, value, needs_name_flag);
+                        .define_property_instruction(object, key, value, flags);
                     self.register_allocator.release(key);
                 }
                 Property::Named { constant_index, .. } => {

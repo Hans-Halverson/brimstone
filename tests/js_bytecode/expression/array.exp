@@ -36,7 +36,7 @@
      0: NewArray r0
      2: LoadImmediate r1, 0
      5: LoadImmediate r2, 1
-     8: SetProperty r0, r1, r2
+     8: SetArrayProperty r0, r1, r2
     12: Ret r0
 }
 
@@ -45,13 +45,13 @@
      0: NewArray r0
      2: LoadImmediate r1, 0
      5: LoadImmediate r2, 1
-     8: SetProperty r0, r1, r2
+     8: SetArrayProperty r0, r1, r2
     12: Inc r1
     14: LoadImmediate r2, 2
-    17: SetProperty r0, r1, r2
+    17: SetArrayProperty r0, r1, r2
     21: Inc r1
     23: LoadImmediate r2, 3
-    26: SetProperty r0, r1, r2
+    26: SetArrayProperty r0, r1, r2
     30: Ret r0
 }
 
@@ -60,25 +60,25 @@
      0: NewArray r0
      2: LoadImmediate r1, 0
      5: LoadImmediate r2, 1
-     8: SetProperty r0, r1, r2
+     8: SetArrayProperty r0, r1, r2
     12: Inc r1
     14: LoadEmpty r2
-    16: SetProperty r0, r1, r2
+    16: SetArrayProperty r0, r1, r2
     20: Inc r1
     22: LoadImmediate r2, 2
-    25: SetProperty r0, r1, r2
+    25: SetArrayProperty r0, r1, r2
     29: Inc r1
     31: LoadEmpty r2
-    33: SetProperty r0, r1, r2
+    33: SetArrayProperty r0, r1, r2
     37: Inc r1
     39: LoadEmpty r2
-    41: SetProperty r0, r1, r2
+    41: SetArrayProperty r0, r1, r2
     45: Inc r1
     47: LoadImmediate r2, 3
-    50: SetProperty r0, r1, r2
+    50: SetArrayProperty r0, r1, r2
     54: Inc r1
     56: LoadEmpty r2
-    58: SetProperty r0, r1, r2
+    58: SetArrayProperty r0, r1, r2
     62: Ret r0
 }
 
@@ -87,12 +87,12 @@
      0: NewArray r0
      2: LoadImmediate r1, 0
      5: LoadEmpty r2
-     7: SetProperty r0, r1, r2
+     7: SetArrayProperty r0, r1, r2
     11: Inc r1
     13: LoadEmpty r2
-    15: SetProperty r0, r1, r2
+    15: SetArrayProperty r0, r1, r2
     19: Inc r1
     21: LoadEmpty r2
-    23: SetProperty r0, r1, r2
+    23: SetArrayProperty r0, r1, r2
     27: Ret r0
 }

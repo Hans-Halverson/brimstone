@@ -725,6 +725,13 @@ define_instructions!(
         [2] key: Register,
     }
 
+    /// Set a property on an array literal to the given value.
+    SetArrayProperty (SetArrayPropertyInstruction, set_array_property_instruction) {
+        [0] array: Register,
+        [1] index: Register,
+        [2] value: Register,
+    }
+
     /// Copy the data properties from a source object to a destination object. Destination must be
     /// an object, but source may be any value.
     ///

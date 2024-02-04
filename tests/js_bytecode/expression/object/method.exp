@@ -16,9 +16,9 @@
 [BytecodeFunction: namedMethod] {
   Parameters: 0, Registers: 2
      0: NewObject r0
-     2: LoadConstant r1, c1
+     2: NewClosure r1, c1
      5: DefineNamedProperty r0, c0, r1
-     9: LoadConstant r1, c3
+     9: NewClosure r1, c3
     12: DefineNamedProperty r0, c2, r1
     16: Ret r0
   Constant Table:
@@ -44,7 +44,7 @@
   Parameters: 0, Registers: 3
      0: NewObject r0
      2: LoadImmediate r1, 1
-     5: LoadConstant r2, c0
+     5: NewClosure r2, c0
      8: DefineProperty r0, r1, r2, 0
     13: Ret r0
   Constant Table:

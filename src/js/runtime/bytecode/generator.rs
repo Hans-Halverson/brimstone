@@ -1667,7 +1667,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let value = self.gen_expression(expr)?;
                     self.register_allocator.release(value);
 
-                    self.writer.set_property_instruction(array, index, value);
+                    self.writer.set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
                         self.writer.inc_instruction(index);
@@ -1679,7 +1679,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.writer.load_empty_instruction(value);
                     self.register_allocator.release(value);
 
-                    self.writer.set_property_instruction(array, index, value);
+                    self.writer.set_array_property_instruction(array, index, value);
 
                     if i != num_elements - 1 {
                         self.writer.inc_instruction(index);
@@ -1782,10 +1782,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Method itself is loaded from the constant table
                 let method_value = self.register_allocator.allocate()?;
-                self.writer.load_constant_instruction(
+                self.writer.new_closure_instruction(
                     method_value,
                     ConstantIndex::new(method_constant_index),
                 );
+
                 method_value
             } else if let Property::Named { is_proto: true, .. } = &key {
                 unimplemented!("bytecode for __proto__ property");

@@ -3,7 +3,7 @@ use std::{collections::HashSet, ops::Deref};
 use crate::{
     js::runtime::{
         abstract_operations::{copy_data_properties, create_data_property_or_throw, set},
-        array_object::array_create,
+        array_object::{array_create, ArrayObject},
         error::{reference_error_, type_error_},
         eval::expression::{
             eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
@@ -61,11 +61,12 @@ use super::{
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
         NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction,
-        RestParameterInstruction, RetInstruction, SetNamedPropertyInstruction,
-        SetPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreGlobalInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
+        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -466,6 +467,9 @@ impl VM {
                         }
                         OpCode::DeleteProperty => {
                             dispatch_or_throw!(DeletePropertyInstruction, execute_delete_property)
+                        }
+                        OpCode::SetArrayProperty => {
+                            dispatch!(SetArrayPropertyInstruction, execute_set_array_property)
                         }
                         OpCode::CopyDataProperties => {
                             dispatch_or_throw!(
@@ -2063,6 +2067,20 @@ impl VM {
         self.write_register(dest, Value::bool(delete_status));
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_set_array_property<W: Width>(&mut self, instr: &SetArrayPropertyInstruction<W>) {
+        let array = self
+            .read_register_to_handle(instr.array())
+            .cast::<ArrayObject>();
+        let index = self.read_register_to_handle(instr.index());
+        let value = self.read_register_to_handle(instr.value());
+
+        // May allocate
+        let index = index.replace_into(must!(PropertyKey::from_value(self.cx, index)));
+        let desc = Property::data(value, true, true, true);
+        array.object().set_property(self.cx, index, desc);
     }
 
     #[inline]

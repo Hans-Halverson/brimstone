@@ -307,14 +307,26 @@ impl ConstantTableBuilder {
     }
 
     pub fn finish(&self, cx: Context) -> Option<Handle<ConstantTable>> {
-        let num_constants = self.constants.len() + self.duplicates.len();
-        if num_constants == 0 {
+        // All reservations must be released once finished generating bytecode
+        debug_assert!(
+            self.narrow_reserved == 0 && self.wide_reserved == 0 && self.extra_wide_reserved == 0
+        );
+
+        // Find the final length of the constant table
+        let num_constants = if self.extra_wide_allocated > 0 {
+            Self::FIRST_EXTRA_WIDE_INDEX + self.extra_wide_allocated
+        } else if self.wide_allocated > 0 {
+            Self::FIRST_WIDE_INDEX + self.wide_allocated
+        } else if self.narrow_allocated > 0 {
+            self.narrow_allocated
+        } else {
+            // No constants were added, no constant table is needed
             return None;
-        }
+        };
 
         // Start uninitialized and fill in constants that we have allocated
-        let mut constants = vec![Handle::dangling(); num_constants];
-        let mut metadata = vec![0; ConstantTable::calculate_metadata_size(num_constants)];
+        let mut constants = vec![Handle::dangling(); num_constants as usize];
+        let mut metadata = vec![0; ConstantTable::calculate_metadata_size(num_constants as usize)];
 
         for (constant, index) in &self.constants {
             let (value, is_value) = constant.to_value(cx);

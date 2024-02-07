@@ -18,7 +18,7 @@ use super::{
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
-    ordinary_object::ordinary_object_create,
+    scope::Scope,
     Context, EvalResult,
 };
 
@@ -28,6 +28,7 @@ pub struct Realm {
     descriptor: HeapPtr<ObjectDescriptor>,
     global_env: HeapPtr<GlobalEnvironment>,
     global_object: HeapPtr<ObjectValue>,
+    global_scope: HeapPtr<Scope>,
     template_map: HeapPtr<TemplateMap>,
     pub intrinsics: Intrinsics,
 }
@@ -49,10 +50,12 @@ impl Realm {
             set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
             set_uninit!(realm.global_env, HeapPtr::uninit());
             set_uninit!(realm.global_object, HeapPtr::uninit());
+            set_uninit!(realm.global_scope, HeapPtr::uninit());
             set_uninit!(realm.template_map, HeapPtr::uninit());
 
             let realm = realm.to_handle();
 
+            // Global object and scope are created here
             Intrinsics::initialize(cx, realm);
 
             realm
@@ -65,18 +68,28 @@ impl Realm {
     }
 
     #[inline]
-    pub fn global_object_ptr(&self) -> HeapPtr<ObjectValue> {
-        self.global_object
-    }
-
-    #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
         self.global_object.to_handle()
     }
 
     #[inline]
+    pub fn set_global_object(&mut self, global_object: HeapPtr<ObjectValue>) {
+        self.global_object = global_object;
+    }
+
+    #[inline]
     pub fn global_env(&self) -> Handle<GlobalEnvironment> {
         self.global_env.to_handle()
+    }
+
+    #[inline]
+    pub fn global_scope(&self) -> Handle<Scope> {
+        self.global_scope.to_handle()
+    }
+
+    #[inline]
+    pub fn set_global_scope(&mut self, global_scope: Handle<Scope>) {
+        self.global_scope = global_scope.get_();
     }
 
     pub fn global_this_value(&self) -> Handle<ObjectValue> {
@@ -119,18 +132,10 @@ impl Handle<Realm> {
 
     // 9.3.3 SetRealmGlobalObject
     // Initializes remaining properties of realm that were not initialized in `new_uninit`.
-    pub fn initialize(
-        &mut self,
-        cx: Context,
-        global_object: Option<Handle<ObjectValue>>,
-        this_value: Option<Handle<ObjectValue>>,
-    ) {
-        let global_object = global_object.unwrap_or_else(|| ordinary_object_create(cx));
-
-        let this_value = this_value.unwrap_or(global_object);
-
-        self.global_object = global_object.get_();
-        self.global_env = GlobalEnvironment::new(cx, global_object, this_value).get_();
+    pub fn initialize(&mut self, cx: Context) {
+        // Global object and scope were created in `Intrinsics::initialize`
+        let global_object = self.global_object();
+        self.global_env = GlobalEnvironment::new(cx, global_object, global_object).get_();
         self.template_map = TemplateMap::new_initial(cx, ObjectKind::RealmTemplateMap);
     }
 }
@@ -147,7 +152,7 @@ pub fn initialize_host_defined_realm(cx: Context, expose_gc: bool) -> Handle<Rea
 
         cx.push_execution_context(exec_ctx);
 
-        realm.initialize(cx, None, None);
+        realm.initialize(cx);
         must!(set_default_global_bindings(cx, realm, expose_gc));
 
         realm

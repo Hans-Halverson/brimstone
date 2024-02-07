@@ -34,6 +34,7 @@ mod proxy_object;
 mod realm;
 mod reference;
 mod regexp;
+pub mod scope;
 mod string_object;
 mod string_parsing;
 mod string_value;

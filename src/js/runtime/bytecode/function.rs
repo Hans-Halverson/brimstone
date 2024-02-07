@@ -14,6 +14,7 @@ use crate::{
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
+        scope::Scope,
         string_value::StringValue,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
@@ -61,8 +62,14 @@ impl Closure {
         object.to_handle()
     }
 
+    #[inline]
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.function
+    }
+
+    #[inline]
+    pub fn global_object(&self) -> Handle<ObjectValue> {
+        self.function_ptr().global_scope_ptr().object()
     }
 
     /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
@@ -123,6 +130,8 @@ pub struct BytecodeFunction {
     constant_table: Option<HeapPtr<ConstantTable>>,
     /// Exception handlers in this function.
     exception_handlers: Option<HeapPtr<ExceptionHandlers>>,
+    /// The global scope this function was defined in (aka the realm).
+    global_scope: HeapPtr<Scope>,
     /// Number of local registers (and temporaries) needed by the function.
     num_registers: u32,
     /// Number of parameters to the function, not counting the rest parameter.
@@ -146,6 +155,7 @@ impl BytecodeFunction {
         bytecode: Vec<u8>,
         constant_table: Option<Handle<ConstantTable>>,
         exception_handlers: Option<Handle<ExceptionHandlers>>,
+        global_scope: Handle<Scope>,
         num_registers: u32,
         num_parameters: u32,
         is_strict: bool,
@@ -158,6 +168,7 @@ impl BytecodeFunction {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| c.get_()));
         set_uninit!(object.exception_handlers, exception_handlers.map(|h| h.get_()));
+        set_uninit!(object.global_scope, global_scope.get_());
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
@@ -172,6 +183,7 @@ impl BytecodeFunction {
     pub fn new_rust_runtime_function(
         cx: Context,
         function_id: RustRuntimeFunctionId,
+        global_scope: Handle<Scope>,
         is_constructor: bool,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(0);
@@ -180,6 +192,7 @@ impl BytecodeFunction {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
+        set_uninit!(object.global_scope, global_scope.get_());
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.is_strict, true);
@@ -210,6 +223,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn exception_handlers_ptr(&self) -> Option<HeapPtr<ExceptionHandlers>> {
         self.exception_handlers
+    }
+
+    #[inline]
+    pub fn global_scope_ptr(&self) -> HeapPtr<Scope> {
+        self.global_scope
     }
 
     #[inline]

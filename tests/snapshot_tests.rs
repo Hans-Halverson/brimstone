@@ -4,6 +4,7 @@ use brimstone::js::{
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, initialize_host_defined_realm, Context,
     },
+    scope::Scope,
 };
 
 use std::cmp::min;
@@ -49,8 +50,11 @@ fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
     let source = parse_result.program.source.clone();
     parser::analyze::analyze(&mut parse_result, source)?;
 
-    let bytecode_program =
-        BytecodeProgramGenerator::generate_from_program_parse_result(cx, &Rc::new(parse_result))?;
+    let bytecode_program = BytecodeProgramGenerator::generate_from_program_parse_result(
+        cx,
+        &Rc::new(parse_result),
+        cx.current_realm(),
+    )?;
 
     Ok(bytecode_program.debug_print_recursive(true))
 }

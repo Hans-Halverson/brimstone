@@ -141,11 +141,6 @@ impl ExecutionContext {
     pub fn global_object(&self) -> Handle<ObjectValue> {
         self.realm.global_object()
     }
-
-    #[inline]
-    pub fn global_object_ptr(&self) -> HeapPtr<ObjectValue> {
-        self.realm.global_object_ptr()
-    }
 }
 
 // 9.4.2 ResolveBinding

@@ -17,8 +17,9 @@ use crate::js::{
         gc::{Escapable, HandleScope},
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
+        scope::Scope,
         value::BigIntValue,
-        Context, Handle, Value,
+        Context, Handle, Realm, Value,
     },
 };
 
@@ -37,6 +38,7 @@ use super::{
 pub struct BytecodeProgramGenerator<'a> {
     cx: Context,
     scope_tree: &'a ScopeTree,
+    global_scope: Handle<Scope>,
 
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
@@ -44,8 +46,13 @@ pub struct BytecodeProgramGenerator<'a> {
 }
 
 impl<'a> BytecodeProgramGenerator<'a> {
-    pub fn new(cx: Context, scope_tree: &'a ScopeTree) -> Self {
-        Self { cx, scope_tree, pending_functions_queue: VecDeque::new() }
+    pub fn new(cx: Context, scope_tree: &'a ScopeTree, global_scope: Handle<Scope>) -> Self {
+        Self {
+            cx,
+            scope_tree,
+            global_scope,
+            pending_functions_queue: VecDeque::new(),
+        }
     }
 
     /// Generate an entire program from a program parse result. Return the toplevel program function
@@ -53,9 +60,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
     pub fn generate_from_program_parse_result(
         cx: Context,
         parse_result: &ParseProgramResult,
+        realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree);
+            let mut generator =
+                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
             generator.generate_program(&parse_result.program)
         })
     }
@@ -78,8 +87,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
 
         HandleScope::new(self.cx, |_| {
-            let mut generator =
-                BytecodeFunctionGenerator::new_for_program(self.cx, program, &self.scope_tree)?;
+            let mut generator = BytecodeFunctionGenerator::new_for_program(
+                self.cx,
+                program,
+                &self.scope_tree,
+                self.global_scope,
+            )?;
 
             // Start the global scope
             generator.gen_scope_start(program.scope.as_ref())?;
@@ -118,8 +131,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         HandleScope::new(self.cx, |_| {
             let ast_node = func_node.ast_ptr();
-            let generator =
-                BytecodeFunctionGenerator::new_for_function(self.cx, func_node, &self.scope_tree)?;
+            let generator = BytecodeFunctionGenerator::new_for_function(
+                self.cx,
+                func_node,
+                &self.scope_tree,
+                self.global_scope,
+            )?;
 
             let emit_result = generator.generate(ast_node.as_ref())?;
 
@@ -157,6 +174,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     pub writer: BytecodeWriter,
     cx: Context,
     _scope_tree: Option<&'a ScopeTree>,
+    global_scope: Handle<Scope>,
 
     /// Optional name of the function, used for the name property.
     name: Option<Wtf8String>,
@@ -200,6 +218,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new(
         cx: Context,
         scope_tree: Option<&'a ScopeTree>,
+        global_scope: Handle<Scope>,
         name: Option<Wtf8String>,
         num_parameters: u32,
         num_local_registers: u32,
@@ -210,6 +229,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             writer: BytecodeWriter::new(),
             cx,
             _scope_tree: scope_tree,
+            global_scope,
             name,
             num_blocks: 0,
             block_offsets: HashMap::new(),
@@ -229,6 +249,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         pending_function: PendingFunctionNode,
         scope_tree: &'a ScopeTree,
+        global_scope: Handle<Scope>,
     ) -> EmitResult<Self> {
         let is_constructor = pending_function.is_constructor();
         let func_ptr = pending_function.ast_ptr();
@@ -264,6 +285,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(Self::new(
             cx,
             Some(scope_tree),
+            global_scope,
             name,
             num_parameters as u32,
             num_local_registers as u32,
@@ -276,6 +298,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         program: &ast::Program,
         scope_tree: &'a ScopeTree,
+        global_scope: Handle<Scope>,
     ) -> EmitResult<Self> {
         // Number of local registers was determined while creating the VM scope tree
         let num_local_registers = program.scope.as_ref().num_local_registers();
@@ -288,6 +311,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(Self::new(
             cx,
             Some(scope_tree),
+            global_scope,
             Some(Wtf8String::from_str("<global>")),
             0,
             num_local_registers as u32,
@@ -687,6 +711,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             bytecode,
             constant_table,
             exception_handlers,
+            self.global_scope,
             num_registers,
             self.num_parameters,
             self.is_strict,

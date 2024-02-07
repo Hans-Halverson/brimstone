@@ -125,7 +125,7 @@ impl VM {
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
         // Evaluate in the global scope
-        let receiver = self.cx.get_global_object().into();
+        let receiver = closure.global_object().into();
 
         // Evaluate the provided function
         let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
@@ -767,8 +767,8 @@ impl VM {
         let closure_handle = maybe!(self.check_value_is_closure(function.get())).to_handle();
 
         // Get the receiver to use. May allocate.
-        let is_strict = closure_handle.function_ptr().is_strict();
-        let receiver = maybe!(self.generate_receiver(Some(receiver.get()), is_strict));
+        let receiver =
+            maybe!(self.generate_receiver(Some(receiver.get()), closure_handle.function_ptr()));
         let closure_ptr = closure_handle.get_();
 
         // Check if this is a call to a function in the Rust runtime
@@ -902,7 +902,7 @@ impl VM {
             let return_value = maybe!(HandleScope::new(self.cx, |_| {
                 // Get the receiver to use. May allocate.
                 let closure_handle = closure_ptr.to_handle();
-                let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
+                let receiver = maybe!(self.generate_receiver(receiver, function_ptr));
                 let closure_ptr = closure_handle.get_();
 
                 // Reuse function handle for receiver
@@ -925,7 +925,7 @@ impl VM {
 
             // Get the receiver to use. May allocate.
             let closure_handle = closure_ptr.to_handle();
-            let receiver = maybe!(self.generate_receiver(receiver, function_ptr.is_strict()));
+            let receiver = maybe!(self.generate_receiver(receiver, function_ptr));
             let closure_ptr = closure_handle.get_();
 
             // Set up the stack frame for the function call
@@ -1199,24 +1199,29 @@ impl VM {
         num_arguments
     }
 
-    /// Generate the receiver to be used given an optional explicit receiver value and whether the
-    /// function is in strict mode.
+    /// Generate the receiver to be used given an optional explicit receiver value and the called
+    /// function.
     #[inline]
-    fn generate_receiver(&mut self, receiver: Option<Value>, is_strict: bool) -> EvalResult<Value> {
+    fn generate_receiver(
+        &mut self,
+        receiver: Option<Value>,
+        function: HeapPtr<BytecodeFunction>,
+    ) -> EvalResult<Value> {
         if let Some(receiver) = receiver {
-            self.coerce_receiver(receiver, is_strict)
+            self.coerce_receiver(receiver, function)
         } else {
-            self.default_receiver(is_strict).into()
+            self.default_receiver(function).into()
         }
     }
 
     /// Return the default receiver used for a function call when no receiver is provided.
     #[inline]
-    fn default_receiver(&self, is_strict: bool) -> Value {
-        if is_strict {
+    fn default_receiver(&self, function: HeapPtr<BytecodeFunction>) -> Value {
+        if function.is_strict() {
             Value::undefined()
         } else {
-            self.cx.get_global_object_ptr().into()
+            // Global object is used
+            function.global_scope_ptr().object_ptr().into()
         }
     }
 
@@ -1238,11 +1243,16 @@ impl VM {
     /// necessary in strict mode, otherwise receiver must be coerced to an object, using the
     /// global object if the receiver is nullish.
     #[inline]
-    fn coerce_receiver(&mut self, receiver: Value, is_strict: bool) -> EvalResult<Value> {
-        let value = if is_strict {
+    fn coerce_receiver(
+        &mut self,
+        receiver: Value,
+        function: HeapPtr<BytecodeFunction>,
+    ) -> EvalResult<Value> {
+        let value = if function.is_strict() {
             receiver
         } else if receiver.is_nullish() {
-            self.cx.get_global_object_ptr().into()
+            // Global object is used if receiver is nullish
+            function.global_scope_ptr().object_ptr().into()
         } else {
             let receiver = receiver.to_handle(self.cx);
             let receiver_object = maybe!(to_object(self.cx, receiver));
@@ -1352,7 +1362,8 @@ impl VM {
             let key = PropertyKey::string(cx, name);
             let key = name.replace_into(key);
 
-            let value = maybe!(get(cx, cx.get_global_object(), key));
+            let global_object = self.closure().global_object();
+            let value = maybe!(get(cx, global_object, key));
 
             self.write_register(dest, value.get());
 
@@ -1376,7 +1387,8 @@ impl VM {
             let key = PropertyKey::string(cx, name);
             let key = name.replace_into(key);
 
-            maybe!(set(cx, cx.get_global_object(), key, value, false));
+            let global_object = self.closure().global_object();
+            maybe!(set(cx, global_object, key, value, false));
 
             ().into()
         })

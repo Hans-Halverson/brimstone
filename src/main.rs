@@ -41,14 +41,15 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
             console::to_console_string,
         };
 
-        // Use the bytecode interpreter
+        // Generate bytecode for the program
         let bytecode_program =
-            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result)?;
+            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm)?;
 
         if options.print_bytecode {
             println!("{}", bytecode_program.debug_print_recursive(false));
         }
 
+        // Execute in the bytecode interpreter
         cx.execute_then_drop(|mut cx| {
             let closure = Closure::new(cx, bytecode_program);
             if let Err(err) = cx.execute_bytecode(closure, &[]) {

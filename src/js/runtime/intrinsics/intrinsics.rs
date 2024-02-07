@@ -73,9 +73,12 @@ use crate::{
             weak_set_constructor::WeakSetConstructor,
             weak_set_prototype::WeakSetPrototype,
         },
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
+        ordinary_object::object_create_with_proto,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
+        scope::Scope,
         Context, Handle, HeapPtr, Value,
     },
     must,
@@ -236,6 +239,18 @@ impl Intrinsics {
 
         register_existing_intrinsic!(ObjectPrototype, object_prototype);
         register_existing_intrinsic!(FunctionPrototype, function_prototype);
+
+        // Initialize the global object and scope. Global object will be referenced when settings
+        // up intrinsics, but needs object prototype set up first.
+        let global_object = object_create_with_proto::<ObjectValue>(
+            cx,
+            ObjectKind::OrdinaryObject,
+            object_prototype.into(),
+        );
+        realm.set_global_object(global_object);
+
+        let global_scope = Scope::new_global(cx, realm.global_object());
+        realm.set_global_scope(global_scope);
 
         ObjectPrototype::initialize(cx, object_prototype, realm);
         function_prototype.initialize(cx, realm);

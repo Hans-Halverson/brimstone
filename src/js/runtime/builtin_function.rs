@@ -191,12 +191,16 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> Handle<Closure> {
-        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
-        let bytecode_function =
-            BytecodeFunction::new_rust_runtime_function(cx, function_id, is_constructor);
-
-        // TOOD: Use global object scope from realm
         let realm = realm.unwrap_or_else(|| cx.current_realm());
+
+        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
+        let bytecode_function = BytecodeFunction::new_rust_runtime_function(
+            cx,
+            function_id,
+            realm.global_scope(),
+            is_constructor,
+        );
+
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 

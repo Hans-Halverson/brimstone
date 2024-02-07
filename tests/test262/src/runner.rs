@@ -350,14 +350,18 @@ fn execute_as_bytecode(
     mut cx: Context,
     parse_result: &js::parser::parser::ParseProgramResult,
 ) -> Completion {
-    let bytecode_program =
-        match BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result) {
-            Ok(bytecode_program) => bytecode_program,
-            Err(err) => {
-                let err_string = cx.alloc_string(&err.to_string());
-                return Completion::throw(err_string.into());
-            }
-        };
+    let generate_result = BytecodeProgramGenerator::generate_from_program_parse_result(
+        cx,
+        parse_result,
+        cx.current_realm(),
+    );
+    let bytecode_program = match generate_result {
+        Ok(bytecode_program) => bytecode_program,
+        Err(err) => {
+            let err_string = cx.alloc_string(&err.to_string());
+            return Completion::throw(err_string.into());
+        }
+    };
 
     let closure = Closure::new(cx, bytecode_program);
 

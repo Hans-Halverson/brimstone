@@ -44,9 +44,7 @@ impl BoundFunctionObject {
 
         // Create with variable size since bound arguments are stored inline
         let byte_size = Self::calculate_size_in_bytes(bound_arguments.len());
-        // println!("heap bounds before BoundFUnctionObject allocation: {:?}", cx.heap.current_heap_bounds());
         let mut object = cx.alloc_uninit_with_size::<BoundFunctionObject>(byte_size);
-        // println!("BoundFUnctionOBject alloced as {:p}", object.as_ptr());
 
         let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
         object_ordinary_init(cx, object.into(), descriptor, proto.map(|p| p.get_()));

@@ -4,7 +4,6 @@ use brimstone::js::{
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, initialize_host_defined_realm, Context,
     },
-    scope::Scope,
 };
 
 use std::cmp::min;

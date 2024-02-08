@@ -203,10 +203,16 @@ impl VariableDeclaration {
 pub struct VariableDeclarator {
     pub loc: Loc,
     pub id: P<Pattern>,
-    pub init: Option<P<Expression>>,
+    pub init: Option<P<OuterExpression>>,
+    /// Whether an assignment expression appears in the pattern.
+    pub id_has_assign_expr: bool,
 }
 
 impl VariableDeclarator {
+    pub fn new(loc: Loc, id: P<Pattern>, init: Option<P<OuterExpression>>) -> VariableDeclarator {
+        VariableDeclarator { loc, id, init, id_has_assign_expr: false }
+    }
+
     pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
@@ -314,15 +320,40 @@ impl Function {
 }
 
 pub enum FunctionParam {
-    Pattern(Pattern),
-    Rest(RestElement),
+    Pattern {
+        pattern: Pattern,
+        /// Whether the pattern has an assignment expression.
+        has_assign_expr: bool,
+    },
+    Rest {
+        rest: RestElement,
+        /// Whether the rest element has an assignment expression.
+        has_assign_expr: bool,
+    },
 }
 
 impl FunctionParam {
+    pub fn new_pattern(pattern: Pattern) -> FunctionParam {
+        FunctionParam::Pattern { pattern, has_assign_expr: false }
+    }
+
+    pub fn new_rest(rest: RestElement) -> FunctionParam {
+        FunctionParam::Rest { rest, has_assign_expr: false }
+    }
+
+    pub fn has_assign_expr(&self) -> bool {
+        match self {
+            FunctionParam::Pattern { has_assign_expr, .. } => *has_assign_expr,
+            FunctionParam::Rest { has_assign_expr, .. } => *has_assign_expr,
+        }
+    }
+
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
         match &self {
-            FunctionParam::Pattern(pattern) => pattern.iter_patterns(f),
-            FunctionParam::Rest(RestElement { argument, .. }) => argument.iter_patterns(f),
+            FunctionParam::Pattern { pattern, .. } => pattern.iter_patterns(f),
+            FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
+                argument.iter_patterns(f)
+            }
         }
     }
 
@@ -331,15 +362,17 @@ impl FunctionParam {
         f: &mut F,
     ) -> EvalResult<()> {
         match &self {
-            FunctionParam::Pattern(pattern) => pattern.iter_bound_names(f),
-            FunctionParam::Rest(RestElement { argument, .. }) => argument.iter_bound_names(f),
+            FunctionParam::Pattern { pattern, .. } => pattern.iter_bound_names(f),
+            FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
+                argument.iter_bound_names(f)
+            }
         }
     }
 }
 
 pub enum FunctionBody {
     Block(FunctionBlockBody),
-    Expression(Expression),
+    Expression(OuterExpression),
 }
 
 pub struct FunctionBlockBody {
@@ -350,7 +383,7 @@ pub struct FunctionBlockBody {
 pub struct Class {
     pub loc: Loc,
     pub id: Option<P<Identifier>>,
-    pub super_class: Option<P<Expression>>,
+    pub super_class: Option<P<OuterExpression>>,
     pub body: Vec<ClassElement>,
 
     pub constructor: Option<AstPtr<ClassMethod>>,
@@ -360,7 +393,7 @@ impl Class {
     pub fn new(
         loc: Loc,
         id: Option<P<Identifier>>,
-        super_class: Option<P<Expression>>,
+        super_class: Option<P<OuterExpression>>,
         body: Vec<ClassElement>,
     ) -> Class {
         Class { loc, id, super_class, body, constructor: None }
@@ -374,7 +407,7 @@ pub enum ClassElement {
 
 pub struct ClassMethod {
     pub loc: Loc,
-    pub key: P<Expression>,
+    pub key: P<OuterExpression>,
     pub value: P<Function>,
     pub kind: ClassMethodKind,
     pub is_computed: bool,
@@ -394,8 +427,8 @@ pub enum ClassMethodKind {
 
 pub struct ClassProperty {
     pub loc: Loc,
-    pub key: P<Expression>,
-    pub value: Option<P<Expression>>,
+    pub key: P<OuterExpression>,
+    pub value: Option<P<OuterExpression>>,
     pub is_computed: bool,
     pub is_static: bool,
     pub is_private: bool,
@@ -403,7 +436,7 @@ pub struct ClassProperty {
 
 pub struct ExpressionStatement {
     pub loc: Loc,
-    pub expr: P<Expression>,
+    pub expr: P<OuterExpression>,
 }
 
 pub struct Block {
@@ -416,14 +449,14 @@ pub struct Block {
 
 pub struct IfStatement {
     pub loc: Loc,
-    pub test: P<Expression>,
+    pub test: P<OuterExpression>,
     pub conseq: P<Statement>,
     pub altern: Option<P<Statement>>,
 }
 
 pub struct SwitchStatement {
     pub loc: Loc,
-    pub discriminant: P<Expression>,
+    pub discriminant: P<OuterExpression>,
     pub cases: Vec<SwitchCase>,
 
     /// Block scope node for the switch statement body.
@@ -432,15 +465,15 @@ pub struct SwitchStatement {
 
 pub struct SwitchCase {
     pub loc: Loc,
-    pub test: Option<P<Expression>>,
+    pub test: Option<P<OuterExpression>>,
     pub body: Vec<Statement>,
 }
 
 pub struct ForStatement {
     pub loc: Loc,
     pub init: Option<P<ForInit>>,
-    pub test: Option<P<Expression>>,
-    pub update: Option<P<Expression>>,
+    pub test: Option<P<OuterExpression>>,
+    pub update: Option<P<OuterExpression>>,
     pub body: P<Statement>,
 
     /// Block scope node that contains the for statement variable declarations and the body.
@@ -448,7 +481,7 @@ pub struct ForStatement {
 }
 
 pub enum ForInit {
-    Expression(Expression),
+    Expression(OuterExpression),
     VarDecl(VariableDeclaration),
 }
 
@@ -456,7 +489,7 @@ pub struct ForEachStatement {
     pub loc: Loc,
     pub kind: ForEachKind,
     pub left: P<ForEachInit>,
-    pub right: P<Expression>,
+    pub right: P<OuterExpression>,
     pub body: P<Statement>,
     pub is_await: bool,
 
@@ -472,33 +505,49 @@ pub enum ForEachKind {
 
 pub enum ForEachInit {
     VarDecl(VariableDeclaration),
-    Pattern(Pattern),
+    Pattern {
+        pattern: Pattern,
+        /// Whether an assignment expression appears in the pattern.
+        has_assign_expr: bool,
+    },
 }
 
 impl ForEachInit {
+    pub fn new_pattern(pattern: Pattern) -> ForEachInit {
+        ForEachInit::Pattern { pattern, has_assign_expr: false }
+    }
+
     pub fn pattern(&self) -> &Pattern {
         match self {
             ForEachInit::VarDecl(decl) => &decl.declarations[0].id,
-            ForEachInit::Pattern(pattern) => pattern,
+            ForEachInit::Pattern { pattern, .. } => pattern,
+        }
+    }
+
+    pub fn has_assign_expr(&self) -> bool {
+        match self {
+            ForEachInit::Pattern { has_assign_expr, .. } => *has_assign_expr,
+            // Not relevant for var decls
+            ForEachInit::VarDecl(_) => false,
         }
     }
 }
 
 pub struct WhileStatement {
     pub loc: Loc,
-    pub test: P<Expression>,
+    pub test: P<OuterExpression>,
     pub body: P<Statement>,
 }
 
 pub struct DoWhileStatement {
     pub loc: Loc,
-    pub test: P<Expression>,
+    pub test: P<OuterExpression>,
     pub body: P<Statement>,
 }
 
 pub struct WithStatement {
     pub loc: Loc,
-    pub object: P<Expression>,
+    pub object: P<OuterExpression>,
     pub body: P<Statement>,
 
     /// Scope node for the with statement body
@@ -517,16 +566,24 @@ pub struct CatchClause {
     pub param: Option<P<Pattern>>,
     /// Body scope node contains the catch clause parameter binding.
     pub body: P<Block>,
+    /// Whether the parameter is a pattern with an assignment expression.
+    pub param_has_assign_expr: bool,
+}
+
+impl CatchClause {
+    pub fn new(loc: Loc, param: Option<P<Pattern>>, body: P<Block>) -> CatchClause {
+        CatchClause { loc, param, body, param_has_assign_expr: false }
+    }
 }
 
 pub struct ThrowStatement {
     pub loc: Loc,
-    pub argument: P<Expression>,
+    pub argument: P<OuterExpression>,
 }
 
 pub struct ReturnStatement {
     pub loc: Loc,
-    pub argument: Option<P<Expression>>,
+    pub argument: Option<P<OuterExpression>>,
 }
 
 pub struct BreakStatement {
@@ -557,6 +614,17 @@ impl Label {
     pub fn new(loc: Loc, name: String) -> Label {
         Label { loc, name, id: 0 }
     }
+}
+
+/// An entire expression held by a statement. Contains additional metadata about the expression.
+///
+/// Only expressions may hold Expressions directly. All other nodes must hold an OuterExpression
+/// so that metadata can be associated with the entire wrapped expression.
+pub struct OuterExpression {
+    /// The entire expression that is being wrapped.
+    pub expr: Expression,
+    /// Whether an assignment expression appears in the expression.
+    pub has_assign_expr: bool,
 }
 
 pub enum Expression {

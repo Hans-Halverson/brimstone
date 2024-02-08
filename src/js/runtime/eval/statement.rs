@@ -13,6 +13,7 @@ use crate::{
                 object_environment::ObjectEnvironment,
             },
             eval::{
+                expression::eval_outer_expression,
                 function::{
                     instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
                 },
@@ -184,11 +185,7 @@ fn eval_lexical_declaration(cx: Context, var_decl: &ast::VariableDeclaration) ->
                 let mut reference = maybe__!(resolve_binding(cx, name_value, None));
 
                 let value = if let Some(init) = &decl.init {
-                    maybe__!(eval_named_anonymous_function_or_expression(
-                        cx,
-                        init.as_ref(),
-                        name_key
-                    ))
+                    maybe__!(eval_named_anonymous_function_or_expression(cx, &init.expr, name_key))
                 } else {
                     cx.undefined()
                 };
@@ -196,7 +193,7 @@ fn eval_lexical_declaration(cx: Context, var_decl: &ast::VariableDeclaration) ->
                 maybe__!(reference.initialize_referenced_binding(cx, value));
             }
             patt => {
-                let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                let value = maybe__!(eval_outer_expression(cx, decl.init.as_deref().unwrap()));
                 let env = cx.current_execution_context_ptr().lexical_env();
                 maybe__!(binding_initialization(cx, patt, value, Some(env))).into()
             }
@@ -216,16 +213,14 @@ fn eval_variable_declaration(cx: Context, var_decl: &ast::VariableDeclaration) -
                     let name_key = PropertyKey::string(cx, name_value).to_handle(cx);
                     let mut id_reference = maybe__!(resolve_binding(cx, name_value, None));
                     let value = maybe__!(eval_named_anonymous_function_or_expression(
-                        cx,
-                        init.as_ref(),
-                        name_key
+                        cx, &init.expr, name_key
                     ));
 
                     maybe__!(id_reference.put_value(cx, value));
                 }
             }
             patt => {
-                let value = maybe__!(eval_expression(cx, decl.init.as_deref().unwrap()));
+                let value = maybe__!(eval_outer_expression(cx, decl.init.as_deref().unwrap()));
                 maybe__!(binding_initialization(cx, patt, value, None));
             }
         }
@@ -284,12 +279,12 @@ fn eval_empty_statement(cx: Context) -> Completion {
 
 // 14.5.1 Expression Statement Evaluation
 fn eval_expression_statement(cx: Context, stmt: &ast::ExpressionStatement) -> Completion {
-    eval_expression(cx, &stmt.expr).into()
+    eval_outer_expression(cx, &stmt.expr).into()
 }
 
 // 14.6.2 If Statement Evaluation
 fn eval_if_statement(cx: Context, stmt: &ast::IfStatement) -> Completion {
-    let test = maybe__!(eval_expression(cx, &stmt.test));
+    let test = maybe__!(eval_outer_expression(cx, &stmt.test));
 
     let completion = if to_boolean(test.get()) {
         eval_statement(cx, &stmt.conseq)
@@ -353,7 +348,7 @@ fn eval_do_while_statement(
             last_value.replace(body_result.value().get());
         }
 
-        let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, &stmt.test));
+        let test_value = maybe_escape__!(cx, handle_scope, eval_outer_expression(cx, &stmt.test));
         if !to_boolean(test_value.get()) {
             return handle_scope.escape(cx, last_value.into());
         }
@@ -376,7 +371,7 @@ fn eval_while_statement(
         // and properly escape last_value shared between iterations.
         let handle_scope = HandleScope::enter(cx);
 
-        let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, &stmt.test));
+        let test_value = maybe_escape__!(cx, handle_scope, eval_outer_expression(cx, &stmt.test));
         if !to_boolean(test_value.get()) {
             return handle_scope.escape(cx, last_value.into());
         }
@@ -413,7 +408,7 @@ fn eval_for_statement(cx: Context, stmt: &ast::ForStatement, stmt_label_id: Labe
     match stmt.init.as_deref() {
         None => for_body_evaluation(cx, stmt, None, stmt_label_id),
         Some(ast::ForInit::Expression(expr)) => {
-            maybe__!(eval_expression(cx, expr));
+            maybe__!(eval_outer_expression(cx, expr));
             for_body_evaluation(cx, stmt, None, stmt_label_id)
         }
         Some(ast::ForInit::VarDecl(
@@ -480,7 +475,7 @@ fn for_body_evaluation(
         let handle_scope = HandleScope::enter(cx);
 
         if let Some(test) = stmt.test.as_deref() {
-            let test_value = maybe_escape__!(cx, handle_scope, eval_expression(cx, test));
+            let test_value = maybe_escape__!(cx, handle_scope, eval_outer_expression(cx, test));
             if !to_boolean(test_value.get()) {
                 return handle_scope.escape(cx, last_value.into());
             }
@@ -518,7 +513,7 @@ fn for_body_evaluation(
         }
 
         if let Some(update) = stmt.update.as_deref() {
-            maybe_escape__!(cx, handle_scope, eval_expression(cx, update));
+            maybe_escape__!(cx, handle_scope, eval_outer_expression(cx, update));
         }
 
         handle_scope.exit();
@@ -555,9 +550,9 @@ fn for_each_head_evaluation_shared(
     stmt: &ast::ForEachStatement,
 ) -> EvalResult<Handle<Value>> {
     match stmt.left.as_ref() {
-        ast::ForEachInit::Pattern(_)
+        ast::ForEachInit::Pattern { .. }
         | ast::ForEachInit::VarDecl(ast::VariableDeclaration { kind: ast::VarKind::Var, .. }) => {
-            eval_expression(cx, &stmt.right)
+            eval_outer_expression(cx, &stmt.right)
         }
         ast::ForEachInit::VarDecl(
             var_decl @ ast::VariableDeclaration {
@@ -576,7 +571,7 @@ fn for_each_head_evaluation_shared(
 
             current_execution_context.set_lexical_env(new_env.into_dyn_env());
 
-            let result = eval_expression(cx, &stmt.right);
+            let result = eval_outer_expression(cx, &stmt.right);
 
             current_execution_context.set_lexical_env(old_env);
 
@@ -596,7 +591,7 @@ fn for_each_body_evaluation_shared(
     let old_env = current_execution_context.lexical_env();
 
     match stmt.left.as_ref() {
-        ast::ForEachInit::Pattern(pattern) => {
+        ast::ForEachInit::Pattern { pattern, .. } => {
             let mut reference = match pattern {
                 ast::Pattern::Id(id) => maybe!(eval_identifier_to_reference(cx, id)),
                 ast::Pattern::Member(expr) => {
@@ -819,7 +814,7 @@ fn eval_break_statement(cx: Context, stmt: &ast::BreakStatement) -> Completion {
 // 14.10.1 Return Statement Evaluation
 fn eval_return_statement(cx: Context, stmt: &ast::ReturnStatement) -> Completion {
     let return_value = if let Some(ref argument) = stmt.argument {
-        maybe__!(eval_expression(cx, argument))
+        maybe__!(eval_outer_expression(cx, argument))
     } else {
         cx.undefined()
     };
@@ -831,7 +826,7 @@ fn eval_return_statement(cx: Context, stmt: &ast::ReturnStatement) -> Completion
 
 // 14.11.2 With Statement Evaluation
 fn eval_with_statement(cx: Context, stmt: &ast::WithStatement) -> Completion {
-    let value = maybe__!(eval_expression(cx, &stmt.object));
+    let value = maybe__!(eval_outer_expression(cx, &stmt.object));
     let object = maybe__!(to_object(cx, value));
 
     let mut current_execution_context = cx.current_execution_context();
@@ -932,10 +927,10 @@ fn eval_case_block(
 // 14.12.3 CaseClauseIsSelected
 fn is_case_clause_selected(
     cx: Context,
-    case_selector_value: &ast::Expression,
+    case_selector_value: &ast::OuterExpression,
     discriminant_value: Handle<Value>,
 ) -> EvalResult<bool> {
-    let case_selector_value = maybe!(eval_expression(cx, case_selector_value));
+    let case_selector_value = maybe!(eval_outer_expression(cx, case_selector_value));
     is_strictly_equal(discriminant_value, case_selector_value).into()
 }
 
@@ -945,7 +940,7 @@ fn eval_switch_statement(
     stmt: &ast::SwitchStatement,
     stmt_label_id: LabelId,
 ) -> Completion {
-    let discriminant_value = maybe__!(eval_expression(cx, &stmt.discriminant));
+    let discriminant_value = maybe__!(eval_outer_expression(cx, &stmt.discriminant));
 
     let mut current_execution_context = cx.current_execution_context();
     let old_env = current_execution_context.lexical_env();
@@ -1009,7 +1004,7 @@ fn eval_labeled_statement(cx: Context, stmt: &ast::LabeledStatement) -> Completi
 
 // 14.14.1 Throw Statement Evaluation
 fn eval_throw_statement(cx: Context, stmt: &ast::ThrowStatement) -> Completion {
-    let value = maybe__!(eval_expression(cx, &stmt.argument));
+    let value = maybe__!(eval_outer_expression(cx, &stmt.argument));
     Completion::throw(value)
 }
 

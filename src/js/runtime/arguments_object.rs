@@ -247,7 +247,9 @@ pub fn create_mapped_arguments_object(
     let parameter_names = param_nodes
         .iter()
         .map(|param| match param {
-            ast::FunctionParam::Pattern(ast::Pattern::Id(id)) => id_string_value(cx, id),
+            ast::FunctionParam::Pattern { pattern: ast::Pattern::Id(id), .. } => {
+                id_string_value(cx, id)
+            }
             _ => unreachable!("parameter must be simple identifier"),
         })
         .collect::<Vec<_>>();

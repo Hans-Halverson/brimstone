@@ -482,11 +482,11 @@ impl<'a> Parser<'a> {
                 }
 
                 let start_pos = self.current_start_pos();
-                let expr = self.parse_expression()?;
+                let expr = self.parse_outer_expression()?;
 
                 // Parse labeled statement
                 if self.token == Token::Colon {
-                    if let Expression::Id(label) = *expr {
+                    if let Expression::Id(label) = expr.expr {
                         self.advance()?;
 
                         // Functions can be labeled items
@@ -583,7 +583,7 @@ impl<'a> Parser<'a> {
             let init = match self.token {
                 Token::Equals => {
                     self.advance()?;
-                    Some(self.parse_assignment_expression()?)
+                    Some(self.parse_assignment_expression()?.to_outer())
                 }
                 _ => None,
             };
@@ -595,7 +595,7 @@ impl<'a> Parser<'a> {
                 Self::set_binding_init_pos(&id, loc.end);
             }
 
-            declarations.push(VariableDeclarator { loc, id: p(id), init });
+            declarations.push(VariableDeclarator::new(loc, p(id), init));
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -742,7 +742,7 @@ impl<'a> Parser<'a> {
         while self.token != terminator {
             if self.token == Token::Spread {
                 let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
-                params.push(FunctionParam::Rest(rest_element));
+                params.push(FunctionParam::new_rest(rest_element));
 
                 // Trailing commas are not allowed after rest elements, nor are any other params
                 if self.token == Token::Comma {
@@ -754,7 +754,7 @@ impl<'a> Parser<'a> {
 
             let pattern =
                 self.parse_pattern_including_assignment_pattern(BindingKind::FunctionParameter)?;
-            params.push(FunctionParam::Pattern(pattern));
+            params.push(FunctionParam::new_pattern(pattern));
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -867,7 +867,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         self.expect(Token::LeftParen)?;
-        let test = self.parse_expression()?;
+        let test = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
         let conseq = p(self.parse_statement()?);
@@ -889,7 +889,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         self.expect(Token::LeftParen)?;
-        let discriminant = self.parse_expression()?;
+        let discriminant = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
         // Switch statements start a new block scope
@@ -906,7 +906,7 @@ impl<'a> Parser<'a> {
                     self.advance()?;
 
                     let test = if is_case {
-                        Some(self.parse_expression()?)
+                        Some(self.parse_outer_expression()?)
                     } else {
                         None
                     };
@@ -992,15 +992,15 @@ impl<'a> Parser<'a> {
 
             // Restrict "in" when parsing for init
             let old_allow_in = swap_and_save(&mut self.allow_in, false);
-            let expr = self.parse_expression()?;
+            let expr = self.parse_outer_expression()?;
             self.allow_in = old_allow_in;
 
-            match (self.token.clone(), *expr) {
+            match (self.token.clone(), expr.expr) {
                 // If this is a for each loop the parsed expression must actually be a pattern
                 (Token::In, expr) | (Token::Of, expr) => {
                     let pattern =
                         self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
-                    let left = p(ForEachInit::Pattern(pattern));
+                    let left = p(ForEachInit::new_pattern(pattern));
                     self.parse_for_each_statement(left, start_pos, is_await, scope)?
                 }
                 // An in expression is actually `for (expr in right)`
@@ -1016,7 +1016,7 @@ impl<'a> Parser<'a> {
                     self.expect(Token::RightParen)?;
                     let pattern =
                         self.reparse_expression_as_for_left_hand_side(*left, expr_start_pos)?;
-                    let left = p(ForEachInit::Pattern(pattern));
+                    let left = p(ForEachInit::new_pattern(pattern));
                     let body = p(self.parse_statement()?);
                     let loc = self.mark_loc(start_pos);
 
@@ -1024,7 +1024,7 @@ impl<'a> Parser<'a> {
                         loc,
                         kind: ForEachKind::In,
                         left,
-                        right,
+                        right: right.to_outer(),
                         body,
                         is_await: false,
                         scope,
@@ -1032,7 +1032,7 @@ impl<'a> Parser<'a> {
                 }
                 // Otherwise this is a regular for loop and the expression is used directly
                 (_, expr) => {
-                    let init = Some(p(ForInit::Expression(expr)));
+                    let init = Some(p(ForInit::Expression(wrap_outer(expr))));
                     self.expect(Token::Semicolon)?;
                     self.parse_for_statement(init, start_pos, scope)?
                 }
@@ -1059,13 +1059,13 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<Statement> {
         let test = match self.token {
             Token::Semicolon => None,
-            _ => Some(self.parse_expression()?),
+            _ => Some(self.parse_outer_expression()?),
         };
         self.expect(Token::Semicolon)?;
 
         let update = match self.token {
             Token::RightParen => None,
-            _ => Some(self.parse_expression()?),
+            _ => Some(self.parse_outer_expression()?),
         };
 
         self.expect(Token::RightParen)?;
@@ -1091,8 +1091,8 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         let right = match kind {
-            ForEachKind::In => self.parse_expression()?,
-            ForEachKind::Of => self.parse_assignment_expression()?,
+            ForEachKind::In => self.parse_outer_expression()?,
+            ForEachKind::Of => self.parse_assignment_expression()?.to_outer(),
         };
 
         self.expect(Token::RightParen)?;
@@ -1115,7 +1115,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         self.expect(Token::LeftParen)?;
-        let test = self.parse_expression()?;
+        let test = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
         let body = p(self.parse_statement()?);
@@ -1133,7 +1133,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::While)?;
         self.expect(Token::LeftParen)?;
-        let test = self.parse_expression()?;
+        let test = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
         // A semicolon is always automatically inserted after a do while statement
@@ -1151,7 +1151,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         self.expect(Token::LeftParen)?;
-        let object = self.parse_expression()?;
+        let object = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
         // With statements start a new special with scope to mark with boundary
@@ -1201,7 +1201,7 @@ impl<'a> Parser<'a> {
 
             self.scope_builder.exit_scope();
 
-            Some(p(CatchClause { loc, param, body }))
+            Some(p(CatchClause::new(loc, param, body)))
         } else {
             None
         };
@@ -1231,7 +1231,7 @@ impl<'a> Parser<'a> {
             return self.error(self.loc, ParseError::ThrowArgumentOnNewLine);
         }
 
-        let argument = self.parse_expression()?;
+        let argument = self.parse_outer_expression()?;
         self.expect_semicolon()?;
         let loc = self.mark_loc(start_pos);
 
@@ -1245,7 +1245,7 @@ impl<'a> Parser<'a> {
         let argument = if self.maybe_expect_semicolon()? {
             None
         } else {
-            let argument = self.parse_expression()?;
+            let argument = self.parse_outer_expression()?;
             self.expect_semicolon()?;
             Some(argument)
         };
@@ -1289,6 +1289,10 @@ impl<'a> Parser<'a> {
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::Continue(ContinueStatement { loc, label }))
+    }
+
+    fn parse_outer_expression(&mut self) -> ParseResult<P<OuterExpression>> {
+        Ok(self.parse_expression()?.to_outer())
     }
 
     /// 13.16 Expression
@@ -1409,7 +1413,7 @@ impl<'a> Parser<'a> {
                 let mut async_id = Identifier::new(async_loc, "async".to_owned());
                 self.add_binding(&mut async_id, BindingKind::FunctionParameter)?;
 
-                let params = vec![FunctionParam::Pattern(Pattern::Id(async_id))];
+                let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
                 let (body, has_use_strict_directive, is_strict_mode) =
                     self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
@@ -1435,7 +1439,7 @@ impl<'a> Parser<'a> {
             Token::LeftParen => self.parse_function_params()?,
             _ => {
                 let id = self.parse_binding_identifier(Some(BindingKind::FunctionParameter))?;
-                vec![FunctionParam::Pattern(Pattern::Id(id))]
+                vec![FunctionParam::new_pattern(Pattern::Id(id))]
             }
         };
 
@@ -1474,7 +1478,7 @@ impl<'a> Parser<'a> {
             Ok((p(FunctionBody::Block(block)), has_use_strict_directive, is_strict_mode))
         } else {
             Ok((
-                p(FunctionBody::Expression(*self.parse_assignment_expression()?)),
+                p(FunctionBody::Expression(wrap_outer(*self.parse_assignment_expression()?))),
                 false,
                 self.in_strict_mode,
             ))
@@ -3156,7 +3160,7 @@ impl<'a> Parser<'a> {
 
         let super_class = if self.token == Token::Extends {
             self.advance()?;
-            Some(self.parse_left_hand_side_expression()?)
+            Some(self.parse_left_hand_side_expression()?.to_outer())
         } else {
             None
         };
@@ -3223,7 +3227,7 @@ impl<'a> Parser<'a> {
                 // the kind and the function's block body are ignored, so put in placeholders.
                 return Ok(ClassElement::Method(ClassMethod {
                     loc,
-                    key: p(Expression::Null(loc)),
+                    key: Expression::Null(loc).to_outer(),
                     value: p(Function::new(
                         loc,
                         None,
@@ -3342,7 +3346,7 @@ impl<'a> Parser<'a> {
 
         ClassMethod {
             loc,
-            key,
+            key: key.to_outer(),
             value: func_value,
             kind,
             is_computed,
@@ -3359,6 +3363,9 @@ impl<'a> Parser<'a> {
         is_private: bool,
     ) -> ClassProperty {
         let Property { key, value, is_computed, .. } = property;
+
+        let key = key.to_outer();
+        let value = value.map(|v| v.to_outer());
 
         ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
@@ -3584,7 +3591,8 @@ impl<'a> Parser<'a> {
             self.expect_semicolon()?;
             let loc = self.mark_loc(start_pos);
 
-            let expr_stmt = Statement::Expr(ExpressionStatement { loc, expr: full_expr });
+            let expr_stmt =
+                Statement::Expr(ExpressionStatement { loc, expr: full_expr.to_outer() });
 
             return Ok(Toplevel::Statement(expr_stmt));
         }
@@ -3826,7 +3834,7 @@ impl<'a> Parser<'a> {
                     // Otherwise default export is an expression
                     _ => {
                         let expr_start_pos = self.current_start_pos();
-                        let expr = self.parse_assignment_expression()?;
+                        let expr = self.parse_assignment_expression()?.to_outer();
 
                         self.expect_semicolon()?;
                         let loc = self.mark_loc(start_pos);
@@ -4088,6 +4096,17 @@ impl<'a> Parser<'a> {
             Expression::Member(_) | Expression::SuperMember(_) => true,
             _ => false,
         }
+    }
+}
+
+#[inline]
+fn wrap_outer(expr: Expression) -> OuterExpression {
+    OuterExpression { expr, has_assign_expr: false }
+}
+
+impl Expression {
+    fn to_outer(self) -> P<OuterExpression> {
+        p(wrap_outer(self))
     }
 }
 

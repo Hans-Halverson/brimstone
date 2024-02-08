@@ -106,6 +106,13 @@ pub fn eval_expression(cx: Context, expr: &ast::Expression) -> EvalResult<Handle
     }
 }
 
+pub fn eval_outer_expression(
+    cx: Context,
+    expr: &ast::OuterExpression,
+) -> EvalResult<Handle<Value>> {
+    eval_expression(cx, &expr.expr)
+}
+
 // 13.1.3 Identifier Evaluation
 pub fn eval_identifier(cx: Context, id: &ast::Identifier) -> EvalResult<Handle<Value>> {
     let name_value = id_string_value(cx, id);

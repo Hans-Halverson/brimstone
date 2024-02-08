@@ -14,7 +14,7 @@ use crate::{
             loc::Loc,
             source::Source,
         },
-        runtime::builtin_function::BuiltinFunction,
+        runtime::{builtin_function::BuiltinFunction, eval::expression::eval_outer_expression},
     },
     maybe, maybe_, maybe__, must, set_uninit,
 };
@@ -31,7 +31,6 @@ use super::{
     error::type_error_,
     eval::{
         class::{ClassFieldDefinition, HeapClassFieldDefinition},
-        expression::eval_expression,
         function::{function_declaration_instantiation, instantiate_ordinary_function_object},
         statement::{eval_named_anonymous_function_or_expression, eval_statement_list},
     },
@@ -512,7 +511,7 @@ impl Handle<Function> {
                 match func_node.body.as_ref() {
                     ast::FunctionBody::Block(block) => eval_statement_list(cx, &block.body),
                     ast::FunctionBody::Expression(expr) => {
-                        let value = maybe__!(eval_expression(cx, expr));
+                        let value = maybe__!(eval_outer_expression(cx, expr));
                         Completion::return_(value)
                     }
                 }
@@ -521,7 +520,8 @@ impl Handle<Function> {
             HeapFuncKind::ClassProperty(prop, name) => {
                 let name = name.to_handle(cx);
                 let expr = prop.as_ref().value.as_ref().unwrap();
-                let value = maybe__!(eval_named_anonymous_function_or_expression(cx, expr, name));
+                let value =
+                    maybe__!(eval_named_anonymous_function_or_expression(cx, &expr.expr, name));
 
                 Completion::return_(value)
             }
@@ -785,9 +785,8 @@ fn expected_argument_count(func_node: &ast::Function) -> u32 {
     let mut count = 0;
     for param in &func_node.params {
         match param {
-            ast::FunctionParam::Pattern(ast::Pattern::Assign(_)) | ast::FunctionParam::Rest(_) => {
-                return count
-            }
+            ast::FunctionParam::Pattern { pattern: ast::Pattern::Assign(_), .. }
+            | ast::FunctionParam::Rest { .. } => return count,
             _ => count += 1,
         }
     }

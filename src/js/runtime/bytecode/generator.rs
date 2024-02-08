@@ -203,8 +203,12 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Whether this function is in strict mode.
     is_strict: bool,
 
-    // Whether this function is a constructor
+    /// Whether this function is a constructor
     is_constructor: bool,
+
+    /// Whether the current expression context has an assignment expression, meaning that we must
+    /// emit conservatively worse code to avoid assignment hazards.
+    has_assign_expr: bool,
 
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
@@ -238,6 +242,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_parameters,
             is_strict,
             is_constructor,
+            has_assign_expr: false,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
@@ -256,7 +261,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let func = func_ptr.as_ref();
 
         // Number of arguments does not count the rest parameter
-        let num_parameters = if let Some(ast::FunctionParam::Rest(_)) = func.params.last() {
+        let num_parameters = if let Some(ast::FunctionParam::Rest { .. }) = func.params.last() {
             func.params.len() - 1
         } else {
             func.params.len()
@@ -318,6 +323,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             program.is_strict_mode,
             /* is_constructor */ false,
         ))
+    }
+
+    fn enter_has_assign_expr_context(&mut self, has_assign_expr: bool) {
+        self.has_assign_expr = has_assign_expr;
+    }
+
+    fn exit_has_assign_expr_context(&mut self) {
+        self.has_assign_expr = false;
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -650,16 +663,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Generate function parameters including destructuring and default value evaluation
         for (i, param) in func.params.iter().enumerate() {
+            // Each parameter is in its own "has assign expression" context
+            self.enter_has_assign_expr_context(param.has_assign_expr());
+
             match param {
                 // Emit pattern destructuring, but no need to destructure ids
-                ast::FunctionParam::Pattern(pattern) => {
+                ast::FunctionParam::Pattern { pattern, .. } => {
                     let argument = Register::argument(i);
                     if !matches!(pattern, ast::Pattern::Id(_)) {
                         self.gen_destructuring(pattern, argument, /* release_value */ true)?;
                     }
                 }
                 // Create the rest parameter then destructure
-                ast::FunctionParam::Rest(param) => {
+                ast::FunctionParam::Rest { rest: param, .. } => {
                     let rest_dest = self.expr_dest_for_destructuring_assignment(&param.argument);
                     let rest = self.allocate_destination(rest_dest)?;
 
@@ -667,6 +683,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_destructuring(&param.argument, rest, /* release_value */ true)?;
                 }
             }
+
+            self.exit_has_assign_expr_context();
         }
 
         match func.body.as_ref() {
@@ -680,7 +698,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
             ast::FunctionBody::Expression(expr_body) => {
-                let return_value_reg = self.gen_expression(expr_body)?;
+                let return_value_reg = self.gen_outer_expression(expr_body)?;
                 self.writer.ret_instruction(return_value_reg);
                 self.register_allocator.release(return_value_reg);
             }
@@ -846,6 +864,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_expression_with_dest(expr, ExprDest::Any)
     }
 
+    #[inline]
+    fn gen_outer_expression(&mut self, expr: &ast::OuterExpression) -> EmitResult<GenRegister> {
+        // Starts a "has assign expression" context
+        self.enter_has_assign_expr_context(expr.has_assign_expr);
+        let result = self.gen_expression(&expr.expr);
+        self.exit_has_assign_expr_context();
+
+        result
+    }
+
+    #[inline]
+    fn gen_outer_expression_with_dest(
+        &mut self,
+        expr: &ast::OuterExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Starts a "has assign expression" context
+        self.enter_has_assign_expr_context(expr.has_assign_expr);
+        let result = self.gen_expression_with_dest(&expr.expr, dest);
+        self.exit_has_assign_expr_context();
+
+        result
+    }
+
     fn gen_load_identifier(
         &mut self,
         id: &ast::Identifier,
@@ -863,29 +905,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let add_tdz_check = binding.kind().has_tdz() && binding.needs_tdz_check();
 
         match binding.vm_location().unwrap() {
-            // Variables in arguments and registers can be encoded directly as register operands.
-            // TDZ check is performed directly on the source register itself.
+            // Fixed registers may directly reference the register
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
-
-                if add_tdz_check {
-                    let name_constant_index = self.add_string_constant(&id.name)?;
-                    self.writer
-                        .check_tdz_instruction(arg_reg, name_constant_index);
-                }
-
-                self.gen_mov_reg_to_dest(arg_reg, dest)
+                self.gen_load_fixed_register_identifier(id, arg_reg, add_tdz_check, dest)
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
-
-                if add_tdz_check {
-                    let name_constant_index = self.add_string_constant(&id.name)?;
-                    self.writer
-                        .check_tdz_instruction(local_reg, name_constant_index);
-                }
-
-                self.gen_mov_reg_to_dest(local_reg, dest)
+                self.gen_load_fixed_register_identifier(id, local_reg, add_tdz_check, dest)
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => {
@@ -933,6 +960,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.load_global_instruction(dest, constant_index);
 
         Ok(dest)
+    }
+
+    /// Variables in arguments and registers can be encoded directly as register operands.
+    /// TDZ check is performed directly on the source register itself.
+    fn gen_load_fixed_register_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        fixed_reg: GenRegister,
+        add_tdz_check: bool,
+        mut dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        if add_tdz_check {
+            let name_constant_index = self.add_string_constant(&id.name)?;
+            self.writer
+                .check_tdz_instruction(fixed_reg, name_constant_index);
+        }
+
+        // Avoid assignment hazards in "has assignment expression" contexts by ensuring that
+        // the fixed register is loaded to a temporary instead of used directly.
+        if self.has_assign_expr {
+            match dest {
+                ExprDest::Any => {
+                    dest = ExprDest::NewTemporary;
+                }
+                // Respect a fixed destination
+                ExprDest::Fixed(_) | ExprDest::NewTemporary => {}
+            }
+        }
+
+        self.gen_mov_reg_to_dest(fixed_reg, dest)
     }
 
     fn gen_store_identifier(&mut self, id: &ast::Identifier, value: GenRegister) -> EmitResult<()> {
@@ -2541,6 +2598,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
+    fn gen_named_outer_expression(
+        &mut self,
+        name: AnyStr,
+        expr: &ast::OuterExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Starts a "has assign expression" context
+        self.enter_has_assign_expr_context(expr.has_assign_expr);
+
+        let may_need_name = match &expr.expr {
+            ast::Expression::Function(func) if func.id.is_none() => true,
+            ast::Expression::ArrowFunction(_) => true,
+            _ => false,
+        };
+
+        let result = if may_need_name {
+            self.gen_named_expression(name, &expr.expr, dest)
+        } else {
+            self.gen_expression_with_dest(&expr.expr, dest)
+        };
+
+        self.exit_has_assign_expr_context();
+
+        result
+    }
+
     fn expression_needs_name(expr: &ast::Expression) -> bool {
         match expr {
             ast::Expression::Function(func) if func.id.is_none() => true,
@@ -2681,12 +2764,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let init_value_dest = self.expr_dest_for_destructuring_assignment(&decl.id);
 
                 let init_value = if let ast::Pattern::Id(id) = decl.id.as_ref() {
-                    self.gen_named_expression(AnyStr::from_id(id), init, init_value_dest)?
+                    self.gen_named_outer_expression(AnyStr::from_id(id), init, init_value_dest)?
                 } else {
-                    self.gen_expression_with_dest(init, init_value_dest)?
+                    self.gen_outer_expression_with_dest(init, init_value_dest)?
                 };
 
-                self.gen_destructuring(&decl.id, init_value, /* release_value */ true)?
+                // Destructuring pattern is in its own "has assign expression" context
+                self.enter_has_assign_expr_context(decl.id_has_assign_expr);
+                let result =
+                    self.gen_destructuring(&decl.id, init_value, /* release_value */ true)?;
+                self.exit_has_assign_expr_context();
+
+                result
             } else if var_decl.kind == ast::VarKind::Let {
                 // Let declarations without an initializer are initialized to undefined
                 let id = decl.id.to_id();
@@ -2955,7 +3044,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         stmt: &ast::ExpressionStatement,
     ) -> EmitResult<StmtCompletion> {
-        let result = self.gen_expression(&stmt.expr)?;
+        let result = self.gen_outer_expression(&stmt.expr)?;
         self.register_allocator.release(result);
         Ok(StmtCompletion::Normal)
     }
@@ -3019,14 +3108,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_if_statement(&mut self, stmt: &ast::IfStatement) -> EmitResult<StmtCompletion> {
-        let condition = self.gen_expression(&stmt.test)?;
+        let condition = self.gen_outer_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
         if stmt.altern.is_none() {
             let join_block = self.new_block();
 
             // If there is no alternative, branch between consequent and join block
-            self.write_jump_false_for_expression(&stmt.test, condition, join_block)?;
+            self.write_jump_false_for_expression(&stmt.test.expr, condition, join_block)?;
 
             self.gen_statement(&stmt.conseq)?;
             self.start_block(join_block);
@@ -3040,7 +3129,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // If there is an alternative, branch between consequent and alternative blocks before
             // joining at the join block.
-            self.write_jump_false_for_expression(&stmt.test, condition, altern_block)?;
+            self.write_jump_false_for_expression(&stmt.test.expr, condition, altern_block)?;
 
             let conseq_completion = self.gen_statement(&stmt.conseq)?;
             if !conseq_completion.is_abrupt() {
@@ -3088,7 +3177,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let jump_targets = self.push_jump_statement_target(None, false);
         let join_block = jump_targets.break_block;
 
-        let discriminant = self.gen_expression(&stmt.discriminant)?;
+        let discriminant = self.gen_outer_expression(&stmt.discriminant)?;
 
         // Start the switch body which forms a new scope
         self.gen_scope_start(stmt.scope.as_ref())?;
@@ -3102,7 +3191,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             case_block_ids.push(case_block_id);
             // Write the condition for all non-default blocks
             if let Some(test) = &case.test {
-                let test = self.gen_expression(test)?;
+                let test = self.gen_outer_expression(test)?;
                 self.register_allocator.release(test);
 
                 let is_equal = self.register_allocator.allocate()?;
@@ -3174,7 +3263,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_variable_declaration(var_decl)?;
             }
             Some(ast::ForInit::Expression(expr)) => {
-                let result = self.gen_expression(expr)?;
+                let result = self.gen_outer_expression(expr)?;
                 self.register_allocator.release(result);
             }
             None => {}
@@ -3184,10 +3273,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Evaluate the test expression and either continue to body or break out of loop
         if let Some(test_expr) = stmt.test.as_deref() {
-            let test = self.gen_expression(test_expr)?;
+            let test = self.gen_outer_expression(test_expr)?;
             self.register_allocator.release(test);
 
-            self.write_jump_false_for_expression(test_expr, test, join_block)?;
+            self.write_jump_false_for_expression(&test_expr.expr, test, join_block)?;
         }
 
         // Evaluate the loop body
@@ -3197,7 +3286,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // even if loop body has an abrupt completion since there may be a continue.
         self.start_block(update_block);
         if let Some(update_expr) = stmt.update.as_deref() {
-            let update = self.gen_expression(update_expr)?;
+            let update = self.gen_outer_expression(update_expr)?;
             self.register_allocator.release(update);
         }
 
@@ -3225,7 +3314,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_scope_start(stmt.scope.as_ref())?;
 
         // Entire for-in statement is skipped if right hand side is nullish
-        let object = self.gen_expression(&stmt.right)?;
+        let object = self.gen_outer_expression(&stmt.right)?;
         self.write_jump_nullish_instruction(object, join_block)?;
 
         // Otherwise create new for-in iterator object
@@ -3243,7 +3332,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_nullish_instruction(next_result, join_block)?;
 
         // Otherwise `next` returned a key, so store the key to the pattern
+        self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
         self.gen_destructuring(stmt.left.pattern(), next_result, /* release_value */ true)?;
+        self.exit_has_assign_expr_context();
 
         // Otherwise proceed to the body of the loop then start a new iteration
         self.gen_statement(&stmt.body)?;
@@ -3286,10 +3377,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Evaluate test and either continue to body or break out of loop
         self.start_block(loop_start_block);
-        let test = self.gen_expression(&stmt.test)?;
+        let test = self.gen_outer_expression(&stmt.test)?;
         self.register_allocator.release(test);
 
-        self.write_jump_false_for_expression(&stmt.test, test, join_block)?;
+        self.write_jump_false_for_expression(&stmt.test.expr, test, join_block)?;
 
         let body_completion = self.gen_statement(&stmt.body)?;
 
@@ -3324,9 +3415,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Then evaluate test and either break out of loop or continue to next iteration. Test is
         // always evaluated regardless of body completion since a continue could appear.
         self.start_block(test_block);
-        let test = self.gen_expression(&stmt.test)?;
+        let test = self.gen_outer_expression(&stmt.test)?;
         self.register_allocator.release(test);
-        self.write_jump_true_for_expression(&stmt.test, test, loop_start_block)?;
+        self.write_jump_true_for_expression(&stmt.test.expr, test, loop_start_block)?;
 
         self.start_block(join_block);
         self.pop_jump_statement_target();
@@ -3385,10 +3476,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         _ => unreachable!("catch parameters must be in a register or VM scope"),
                     }
                 } else {
-                    // Otherwise destructure catch parameter
+                    // Otherwise destructure catch parameter. Destructuring is in its own "has
+                    // assignment expression" context.
+                    self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
+
                     let error_temp = self.register_allocator.allocate()?;
                     self.gen_destructuring(param, error_temp, /* release_value */ true)?;
                     body_handler.error_register = Some(error_temp);
+
+                    self.exit_has_assign_expr_context();
                 }
             }
 
@@ -3445,7 +3541,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_throw_statement(&mut self, stmt: &ast::ThrowStatement) -> EmitResult<StmtCompletion> {
-        let error = self.gen_expression(&stmt.argument)?;
+        let error = self.gen_outer_expression(&stmt.argument)?;
         self.writer.throw_instruction(error);
         self.register_allocator.release(error);
 
@@ -3458,7 +3554,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Ok(StmtCompletion::Abrupt);
         }
 
-        let return_arg = self.gen_expression(stmt.argument.as_ref().unwrap())?;
+        let return_arg = self.gen_outer_expression(stmt.argument.as_ref().unwrap())?;
         self.writer.ret_instruction(return_arg);
         self.register_allocator.release(return_arg);
 

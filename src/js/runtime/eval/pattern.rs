@@ -120,7 +120,7 @@ fn object_binding_initialization(
             // 14.3.3.1 PropertyBindingInitialization
             let name_key = match &property.key {
                 None => id_property_key(cx, binding_value.to_id()),
-                Some(expr) => maybe!(eval_property_name(cx, expr, property.is_computed)),
+                Some(expr) => maybe!(eval_property_name(cx, &expr, property.is_computed)),
             };
 
             bound_names.insert(name_key.clone());

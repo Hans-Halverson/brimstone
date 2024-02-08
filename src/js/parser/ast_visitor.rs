@@ -84,6 +84,10 @@ pub trait AstVisitor: Sized {
 
     fn visit_identifier(&mut self, _: &mut Identifier) {}
 
+    fn visit_outer_expression(&mut self, expr: &mut OuterExpression) {
+        default_visit_outer_expression(self, expr)
+    }
+
     fn visit_variable_declaration(&mut self, var_decl: &mut VariableDeclaration) {
         default_visit_variable_declaration(self, var_decl)
     }
@@ -429,6 +433,10 @@ pub fn default_visit_toplevel<V: AstVisitor>(visitor: &mut V, toplevel: &mut Top
     }
 }
 
+pub fn default_visit_outer_expression<V: AstVisitor>(visitor: &mut V, expr: &mut OuterExpression) {
+    visitor.visit_expression(&mut expr.expr)
+}
+
 pub fn default_visit_variable_declaration<V: AstVisitor>(
     visitor: &mut V,
     decl: &mut VariableDeclaration,
@@ -441,7 +449,7 @@ pub fn default_visit_variable_declarator<V: AstVisitor>(
     decl: &mut VariableDeclarator,
 ) {
     visitor.visit_pattern(&mut decl.id);
-    visit_opt!(visitor, decl.init, visit_expression);
+    visit_opt!(visitor, decl.init, visit_outer_expression);
 }
 
 pub fn default_visit_function_declaration<V: AstVisitor>(visitor: &mut V, func: &mut Function) {
@@ -456,15 +464,15 @@ pub fn default_visit_function<V: AstVisitor>(visitor: &mut V, func: &mut Functio
 
 pub fn default_visit_function_param<V: AstVisitor>(visitor: &mut V, param: &mut FunctionParam) {
     match param {
-        FunctionParam::Pattern(ref mut pattern) => visitor.visit_pattern(pattern),
-        FunctionParam::Rest(ref mut rest) => visitor.visit_rest_element(rest),
+        FunctionParam::Pattern { ref mut pattern, .. } => visitor.visit_pattern(pattern),
+        FunctionParam::Rest { ref mut rest, .. } => visitor.visit_rest_element(rest),
     }
 }
 
 pub fn default_visit_function_body<V: AstVisitor>(visitor: &mut V, body: &mut FunctionBody) {
     match body {
         FunctionBody::Block(ref mut block_body) => visitor.visit_function_block_body(block_body),
-        FunctionBody::Expression(ref mut expr) => visitor.visit_expression(expr),
+        FunctionBody::Expression(ref mut expr) => visitor.visit_outer_expression(expr),
     }
 }
 
@@ -481,7 +489,7 @@ pub fn default_visit_class_declaration<V: AstVisitor>(visitor: &mut V, class: &m
 
 pub fn default_visit_class<V: AstVisitor>(visitor: &mut V, class: &mut Class) {
     visit_opt!(visitor, class.id, visit_identifier);
-    visit_opt!(visitor, class.super_class, visit_expression);
+    visit_opt!(visitor, class.super_class, visit_outer_expression);
     visit_vec!(visitor, class.body, visit_class_element);
 }
 
@@ -493,13 +501,13 @@ pub fn default_visit_class_element<V: AstVisitor>(visitor: &mut V, element: &mut
 }
 
 pub fn default_visit_class_method<V: AstVisitor>(visitor: &mut V, method: &mut ClassMethod) {
-    visitor.visit_expression(&mut method.key);
+    visitor.visit_outer_expression(&mut method.key);
     visitor.visit_function_expression(&mut method.value);
 }
 
 pub fn default_visit_class_property<V: AstVisitor>(visitor: &mut V, prop: &mut ClassProperty) {
-    visitor.visit_expression(&mut prop.key);
-    visit_opt!(visitor, prop.value, visit_expression);
+    visitor.visit_outer_expression(&mut prop.key);
+    visit_opt!(visitor, prop.value, visit_outer_expression);
 }
 
 pub fn default_visit_block<V: AstVisitor>(visitor: &mut V, block: &mut Block) {
@@ -510,35 +518,35 @@ pub fn default_visit_expression_statement<V: AstVisitor>(
     visitor: &mut V,
     stmt: &mut ExpressionStatement,
 ) {
-    visitor.visit_expression(&mut stmt.expr);
+    visitor.visit_outer_expression(&mut stmt.expr);
 }
 
 pub fn default_visit_if_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut IfStatement) {
-    visitor.visit_expression(&mut stmt.test);
+    visitor.visit_outer_expression(&mut stmt.test);
     visitor.visit_statement(&mut stmt.conseq);
     visit_opt!(visitor, stmt.altern, visit_statement);
 }
 
 pub fn default_visit_switch_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut SwitchStatement) {
-    visitor.visit_expression(&mut stmt.discriminant);
+    visitor.visit_outer_expression(&mut stmt.discriminant);
     visit_vec!(visitor, stmt.cases, visit_switch_case);
 }
 
 pub fn default_visit_switch_case<V: AstVisitor>(visitor: &mut V, case: &mut SwitchCase) {
-    visit_opt!(visitor, case.test, visit_expression);
+    visit_opt!(visitor, case.test, visit_outer_expression);
     visit_vec!(visitor, case.body, visit_statement);
 }
 
 pub fn default_visit_for_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut ForStatement) {
     visit_opt!(visitor, stmt.init, visit_for_init);
-    visit_opt!(visitor, stmt.test, visit_expression);
-    visit_opt!(visitor, stmt.update, visit_expression);
+    visit_opt!(visitor, stmt.test, visit_outer_expression);
+    visit_opt!(visitor, stmt.update, visit_outer_expression);
     visitor.visit_statement(&mut stmt.body);
 }
 
 pub fn default_visit_for_init<V: AstVisitor>(visitor: &mut V, init: &mut ForInit) {
     match init {
-        ForInit::Expression(expr) => visitor.visit_expression(expr),
+        ForInit::Expression(expr) => visitor.visit_outer_expression(expr),
         ForInit::VarDecl(decl) => visitor.visit_variable_declaration(decl),
     }
 }
@@ -548,19 +556,19 @@ pub fn default_visit_for_each_statement<V: AstVisitor>(
     stmt: &mut ForEachStatement,
 ) {
     visitor.visit_for_each_init(&mut stmt.left);
-    visitor.visit_expression(&mut stmt.right);
+    visitor.visit_outer_expression(&mut stmt.right);
     visitor.visit_statement(&mut stmt.body);
 }
 
 pub fn default_visit_for_each_init<V: AstVisitor>(visitor: &mut V, init: &mut ForEachInit) {
     match init {
-        ForEachInit::Pattern(patt) => visitor.visit_pattern(patt),
+        ForEachInit::Pattern { pattern, .. } => visitor.visit_pattern(pattern),
         ForEachInit::VarDecl(decl) => visitor.visit_variable_declaration(decl),
     }
 }
 
 pub fn default_visit_while_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut WhileStatement) {
-    visitor.visit_expression(&mut stmt.test);
+    visitor.visit_outer_expression(&mut stmt.test);
     visitor.visit_statement(&mut stmt.body);
 }
 
@@ -568,12 +576,12 @@ pub fn default_visit_do_while_statement<V: AstVisitor>(
     visitor: &mut V,
     stmt: &mut DoWhileStatement,
 ) {
-    visitor.visit_expression(&mut stmt.test);
+    visitor.visit_outer_expression(&mut stmt.test);
     visitor.visit_statement(&mut stmt.body);
 }
 
 pub fn default_visit_with_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut WithStatement) {
-    visitor.visit_expression(&mut stmt.object);
+    visitor.visit_outer_expression(&mut stmt.object);
     visitor.visit_statement(&mut stmt.body);
 }
 
@@ -589,11 +597,11 @@ pub fn default_visit_catch_clause<V: AstVisitor>(visitor: &mut V, catch: &mut Ca
 }
 
 pub fn default_visit_throw_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut ThrowStatement) {
-    visitor.visit_expression(&mut stmt.argument)
+    visitor.visit_outer_expression(&mut stmt.argument)
 }
 
 pub fn default_visit_return_statement<V: AstVisitor>(visitor: &mut V, stmt: &mut ReturnStatement) {
-    visit_opt!(visitor, stmt.argument, visit_expression)
+    visit_opt!(visitor, stmt.argument, visit_outer_expression)
 }
 
 pub fn default_visit_labeled_statement<V: AstVisitor>(

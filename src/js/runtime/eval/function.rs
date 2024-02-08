@@ -145,7 +145,7 @@ pub fn function_declaration_instantiation(
         // For rest parameters create an array holding all the values, then evaluate pattern as
         // normal with this new array as the value.
         let pattern = match param {
-            ast::FunctionParam::Pattern(pattern) => {
+            ast::FunctionParam::Pattern { pattern, .. } => {
                 if arg_index < arguments.len() {
                     let argument = arguments[arg_index];
                     arg_index += 1;
@@ -154,7 +154,7 @@ pub fn function_declaration_instantiation(
 
                 pattern
             }
-            ast::FunctionParam::Rest(rest) => {
+            ast::FunctionParam::Rest { rest, .. } => {
                 let rest_array = must!(array_create(cx, 0, None));
 
                 // Property key is shared between iterations

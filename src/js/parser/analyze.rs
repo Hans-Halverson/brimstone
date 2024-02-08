@@ -51,6 +51,10 @@ pub struct Analyzer<'a> {
     allow_return_stack: Vec<bool>,
     // Whether a super member expression is allowed
     allow_super_member_stack: Vec<bool>,
+    /// Whether the current expression context has an assignment expression. A single value is
+    /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
+    /// around each expression.
+    has_assign_expr: bool,
 }
 
 struct FunctionStackEntry {
@@ -83,6 +87,7 @@ struct AnalyzerSavedState {
     breakable_depth: usize,
     iterable_depth: usize,
     allow_arguments: bool,
+    has_assign_expr: bool,
 }
 
 pub struct PrivateNameUsage {
@@ -115,6 +120,7 @@ impl<'a> Analyzer<'a> {
             allow_arguments: true,
             allow_return_stack: vec![false],
             allow_super_member_stack: vec![false],
+            has_assign_expr: false,
         }
     }
 
@@ -163,6 +169,16 @@ impl<'a> Analyzer<'a> {
         self.iterable_depth > 0
     }
 
+    fn enter_has_assign_expr_context(&mut self) {
+        self.has_assign_expr = false;
+    }
+
+    fn exit_has_assign_expr_context(&mut self) -> bool {
+        let has_assign_expr = self.has_assign_expr;
+        self.has_assign_expr = false;
+        has_assign_expr
+    }
+
     fn is_in_non_arrow_function(&self) -> bool {
         self.enclosing_non_arrow_function().is_some()
     }
@@ -190,6 +206,7 @@ impl<'a> Analyzer<'a> {
             breakable_depth: self.breakable_depth,
             iterable_depth: self.iterable_depth,
             allow_arguments: self.allow_arguments,
+            has_assign_expr: self.has_assign_expr,
         };
 
         std::mem::swap(&mut self.labels, &mut state.labels);
@@ -207,6 +224,7 @@ impl<'a> Analyzer<'a> {
         self.breakable_depth = state.breakable_depth;
         self.iterable_depth = state.iterable_depth;
         self.allow_arguments = state.allow_arguments;
+        self.has_assign_expr = state.has_assign_expr;
     }
 
     fn error_if_strict_eval_or_arguments(&mut self, id: &Identifier) {
@@ -265,12 +283,49 @@ impl<'a> AstVisitor for Analyzer<'a> {
         );
     }
 
+    fn visit_function_param(&mut self, param: &mut FunctionParam) {
+        match param {
+            FunctionParam::Pattern { pattern, has_assign_expr } => {
+                // Pattern is in its own "has assignment expression" context
+                self.enter_has_assign_expr_context();
+                self.visit_pattern(pattern);
+                *has_assign_expr = self.exit_has_assign_expr_context();
+            }
+            FunctionParam::Rest { rest, has_assign_expr } => {
+                // Rest element is in its own "has_assignment_expression context"
+                self.enter_has_assign_expr_context();
+                self.visit_rest_element(rest);
+                *has_assign_expr = self.exit_has_assign_expr_context();
+            }
+        }
+    }
+
+    fn visit_outer_expression(&mut self, expr: &mut OuterExpression) {
+        // Outer expressions are in their own "has assignment expression" context
+        self.enter_has_assign_expr_context();
+        self.visit_expression(&mut expr.expr);
+        expr.has_assign_expr = self.exit_has_assign_expr_context();
+    }
+
+    fn visit_expression_statement(&mut self, stmt: &mut ExpressionStatement) {
+        if let Expression::Assign(assign) = &mut stmt.expr.expr {
+            // Top level assignment expression "has assignment expression" context refers to whether
+            // the left or right side of the assignment expression has an assignment expression, and
+            // is not trivially true.
+            self.enter_has_assign_expr_context();
+            default_visit_assignment_expression(self, assign);
+            stmt.expr.has_assign_expr = self.exit_has_assign_expr_context();
+        } else {
+            default_visit_expression_statement(self, stmt);
+        }
+    }
+
     fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement) {
         self.inc_breakable_depth();
 
         let mut seen_default = false;
 
-        self.visit_expression(&mut stmt.discriminant);
+        self.visit_outer_expression(&mut stmt.discriminant);
 
         // Body of switch statement is in its own scope
         self.enter_scope(stmt.scope);
@@ -352,7 +407,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         self.check_for_labeled_function(&stmt.body);
 
-        self.visit_expression(&mut stmt.object);
+        self.visit_outer_expression(&mut stmt.object);
 
         // Must conservatively use VM scope locations for all visible bindings so that they can be
         // dynamcally looked up from within the with statement.
@@ -416,7 +471,12 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_for_each_init(&mut self, init: &mut ForEachInit) {
         match init {
-            ForEachInit::Pattern(patt) => self.visit_pattern(patt),
+            ForEachInit::Pattern { pattern, has_assign_expr } => {
+                // Pattern is in its own "has assignment expression" context
+                self.enter_has_assign_expr_context();
+                self.visit_pattern(pattern);
+                *has_assign_expr = self.exit_has_assign_expr_context();
+            }
             ForEachInit::VarDecl(decl) => self.visit_variable_declaration_common(decl, true),
         }
     }
@@ -425,7 +485,12 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Catch scope includes the catch parameter
         self.enter_scope(catch.body.scope);
 
-        visit_opt!(self, catch.param, visit_pattern);
+        // Param is in its own "has assignment expression" context
+        if let Some(param) = &mut catch.param {
+            self.enter_has_assign_expr_context();
+            self.visit_pattern(param);
+            catch.param_has_assign_expr = self.exit_has_assign_expr_context();
+        }
 
         // Visit statements in catch body instead of calling visit_block since we have already
         // entered the catch scope.
@@ -459,6 +524,13 @@ impl<'a> AstVisitor for Analyzer<'a> {
         }
 
         default_visit_binary_expression(self, expr);
+    }
+
+    fn visit_assignment_expression(&mut self, expr: &mut AssignmentExpression) {
+        // Mark the current context as having an assignment expression
+        self.has_assign_expr = true;
+
+        default_visit_assignment_expression(self, expr);
     }
 
     fn visit_object_expression(&mut self, expr: &mut ObjectExpression) {
@@ -616,11 +688,17 @@ impl<'a> AstVisitor for Analyzer<'a> {
         default_visit_identifier_pattern(self, id)
     }
 
-    fn visit_class(&mut self, class: &mut Class) {
-        // Save analyzer context before descending into class
-        let saved_state = self.save_state();
+    fn visit_variable_declarator(&mut self, decl: &mut VariableDeclarator) {
+        // Variable declarator pattern is in its own "has assignment expression" context
+        self.enter_has_assign_expr_context();
+        self.visit_pattern(&mut decl.id);
+        decl.id_has_assign_expr = self.exit_has_assign_expr_context();
 
-        // Entire class is in strict mode
+        visit_opt!(self, decl.init, visit_outer_expression);
+    }
+
+    fn visit_class(&mut self, class: &mut Class) {
+        // Entire class is in strict mode, including super class expression
         self.enter_strict_mode_context();
 
         if let Some(class_id) = class.id.as_deref() {
@@ -628,93 +706,13 @@ impl<'a> AstVisitor for Analyzer<'a> {
         }
 
         if let Some(super_class) = class.super_class.as_deref_mut() {
-            self.visit_expression(super_class);
+            self.visit_outer_expression(super_class);
         }
 
-        // Create new private name scope for stack and initialize with defined private names
-        let mut private_names = HashMap::new();
-        for element in &class.body {
-            match element {
-                ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
-                    let private_id = key.to_id();
+        // Save analyzer context before descending into class body
+        let saved_state = self.save_state();
 
-                    // If this name has been used at all so far it is a duplicate name
-                    if private_names.contains_key(&private_id.name) {
-                        self.emit_error(
-                            private_id.loc,
-                            ParseError::DuplicatePrivateName(private_id.name.clone()),
-                        );
-                    } else {
-                        // Create a complete usage that does not allow any other uses of this name
-                        let usage = PrivateNameUsage {
-                            is_static: false,
-                            has_getter: true,
-                            has_setter: true,
-                        };
-                        private_names.insert(private_id.name.clone(), usage);
-                    }
-
-                    if private_id.name == "constructor" {
-                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
-                    }
-                }
-
-                ClassElement::Method(ClassMethod {
-                    is_private: true,
-                    key,
-                    is_static,
-                    kind,
-                    ..
-                }) => {
-                    let private_id = key.to_id();
-
-                    // Check for duplicate name definitions. Only allow multiple definitions if
-                    // there is exactly one getter and setter that have the same static property.
-                    match private_names.get_mut(&private_id.name) {
-                        // Mark usage for private name and its method type
-                        None => {
-                            let is_static = *is_static;
-                            let usage = if *kind == ClassMethodKind::Get {
-                                PrivateNameUsage { is_static, has_getter: true, has_setter: false }
-                            } else if *kind == ClassMethodKind::Set {
-                                PrivateNameUsage { is_static, has_getter: false, has_setter: true }
-                            } else {
-                                PrivateNameUsage { is_static, has_getter: true, has_setter: true }
-                            };
-
-                            private_names.insert(private_id.name.clone(), usage);
-                        }
-                        // This private name has already been seen. Only avoid erroring if this use
-                        // is a getter or setter which has not yet been seen.
-                        Some(usage) => {
-                            let is_duplicate = if *kind == ClassMethodKind::Get {
-                                let had_getter = usage.has_getter;
-                                usage.has_getter = true;
-                                had_getter || *is_static != usage.is_static
-                            } else if *kind == ClassMethodKind::Set {
-                                let had_setter = usage.has_setter;
-                                usage.has_setter = true;
-                                had_setter || *is_static != usage.is_static
-                            } else {
-                                true
-                            };
-
-                            if is_duplicate {
-                                self.emit_error(
-                                    private_id.loc,
-                                    ParseError::DuplicatePrivateName(private_id.name.clone()),
-                                );
-                            }
-                        }
-                    }
-
-                    if private_id.name == "constructor" {
-                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
-                    }
-                }
-                _ => {}
-            }
-        }
+        let private_names = self.collect_class_private_names(class);
 
         self.class_stack
             .push(ClassStackEntry { private_names, is_derived: class.super_class.is_some() });
@@ -747,10 +745,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
         self.allow_super_member_stack.pop();
         self.class_stack.pop();
 
-        self.exit_strict_mode_context();
-
         // Restore analyzer context after visiting class
         self.restore_state(saved_state);
+
+        self.exit_strict_mode_context();
     }
 }
 
@@ -812,8 +810,11 @@ impl Analyzer<'_> {
         for param in &mut func.params {
             // Check if this is a top level id pattern, optionally with a default
             let toplevel_id = match param {
-                FunctionParam::Pattern(Pattern::Id(id)) => Some(id),
-                FunctionParam::Pattern(Pattern::Assign(AssignmentPattern { left, .. })) => {
+                FunctionParam::Pattern { pattern: Pattern::Id(id), .. } => Some(id),
+                FunctionParam::Pattern {
+                    pattern: Pattern::Assign(AssignmentPattern { left, .. }),
+                    ..
+                } => {
                     if let Pattern::Id(id) = left.as_mut() {
                         Some(id)
                     } else {
@@ -845,7 +846,7 @@ impl Analyzer<'_> {
         let mut parameter_names = HashSet::new();
 
         for param in &func.params {
-            if let FunctionParam::Rest(_) = param {
+            if let FunctionParam::Rest { .. } = param {
                 has_rest_parameter = true;
             }
 
@@ -952,11 +953,100 @@ impl Analyzer<'_> {
         self.restore_state(saved_state);
     }
 
+    fn collect_class_private_names(&mut self, class: &Class) -> HashMap<String, PrivateNameUsage> {
+        // Create new private name scope for stack and initialize with defined private names
+        let mut private_names = HashMap::new();
+        for element in &class.body {
+            match element {
+                ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
+                    let private_id = key.expr.to_id();
+
+                    // If this name has been used at all so far it is a duplicate name
+                    if private_names.contains_key(&private_id.name) {
+                        self.emit_error(
+                            private_id.loc,
+                            ParseError::DuplicatePrivateName(private_id.name.clone()),
+                        );
+                    } else {
+                        // Create a complete usage that does not allow any other uses of this name
+                        let usage = PrivateNameUsage {
+                            is_static: false,
+                            has_getter: true,
+                            has_setter: true,
+                        };
+                        private_names.insert(private_id.name.clone(), usage);
+                    }
+
+                    if private_id.name == "constructor" {
+                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
+                    }
+                }
+
+                ClassElement::Method(ClassMethod {
+                    is_private: true,
+                    key,
+                    is_static,
+                    kind,
+                    ..
+                }) => {
+                    let private_id = key.expr.to_id();
+
+                    // Check for duplicate name definitions. Only allow multiple definitions if
+                    // there is exactly one getter and setter that have the same static property.
+                    match private_names.get_mut(&private_id.name) {
+                        // Mark usage for private name and its method type
+                        None => {
+                            let is_static = *is_static;
+                            let usage = if *kind == ClassMethodKind::Get {
+                                PrivateNameUsage { is_static, has_getter: true, has_setter: false }
+                            } else if *kind == ClassMethodKind::Set {
+                                PrivateNameUsage { is_static, has_getter: false, has_setter: true }
+                            } else {
+                                PrivateNameUsage { is_static, has_getter: true, has_setter: true }
+                            };
+
+                            private_names.insert(private_id.name.clone(), usage);
+                        }
+                        // This private name has already been seen. Only avoid erroring if this use
+                        // is a getter or setter which has not yet been seen.
+                        Some(usage) => {
+                            let is_duplicate = if *kind == ClassMethodKind::Get {
+                                let had_getter = usage.has_getter;
+                                usage.has_getter = true;
+                                had_getter || *is_static != usage.is_static
+                            } else if *kind == ClassMethodKind::Set {
+                                let had_setter = usage.has_setter;
+                                usage.has_setter = true;
+                                had_setter || *is_static != usage.is_static
+                            } else {
+                                true
+                            };
+
+                            if is_duplicate {
+                                self.emit_error(
+                                    private_id.loc,
+                                    ParseError::DuplicatePrivateName(private_id.name.clone()),
+                                );
+                            }
+                        }
+                    }
+
+                    if private_id.name == "constructor" {
+                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        private_names
+    }
+
     fn visit_class_method(&mut self, method: &mut ClassMethod) {
         let key_name_bytes = if method.is_computed {
             None
         } else {
-            match method.key.as_ref() {
+            match &method.key.expr {
                 Expression::String(name) => Some(name.value.as_bytes()),
                 Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
@@ -984,7 +1074,7 @@ impl Analyzer<'_> {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }
 
-        self.visit_expression(&mut method.key);
+        self.visit_outer_expression(&mut method.key);
 
         let is_derived_constructor = method.kind == ClassMethodKind::Constructor
             && self.class_stack.last().unwrap().is_derived;
@@ -1002,7 +1092,7 @@ impl Analyzer<'_> {
         let key_name_bytes = if prop.is_computed {
             None
         } else {
-            match prop.key.as_ref() {
+            match &prop.key.expr {
                 Expression::String(name) => Some(name.value.as_bytes()),
                 Expression::Id(id) => Some(id.name.as_bytes()),
                 _ => None,
@@ -1019,13 +1109,13 @@ impl Analyzer<'_> {
             _ => {}
         }
 
-        self.visit_expression(&mut prop.key);
+        self.visit_outer_expression(&mut prop.key);
 
         // "arguments" is not allowed in initializer (but is allowed in key)
         let old_allow_arguments = self.allow_arguments;
         self.allow_arguments = false;
 
-        visit_opt!(self, prop.value, visit_expression);
+        visit_opt!(self, prop.value, visit_outer_expression);
 
         self.allow_arguments = old_allow_arguments;
     }

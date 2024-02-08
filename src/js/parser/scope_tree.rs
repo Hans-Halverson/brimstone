@@ -155,14 +155,24 @@ impl ScopeTree {
             ));
         }
 
-        // Lexical bindings in the global scope are immediately known to be global
-        let vm_location = if node.kind == ScopeNodeKind::Global {
-            Some(VMLocation::Global)
-        } else {
-            None
-        };
+        let mut vm_location = None;
+        let mut needs_tdz_check = false;
 
-        node.add_binding(name, kind, vm_location);
+        match node.kind {
+            // Lexical bindings in the global scope are immediately known to be global
+            ScopeNodeKind::Global => {
+                vm_location = Some(VMLocation::Global);
+            }
+            // Lexical bindings in a switch always need a TDZ check since it hard to analyze when
+            // the check can be elided. (e.g. due to out of order default case, or definitions and
+            // uses in different cases).
+            ScopeNodeKind::Block { is_switch: true } => {
+                needs_tdz_check = true;
+            }
+            _ => {}
+        }
+
+        node.add_binding(name, kind, vm_location, needs_tdz_check);
 
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
@@ -194,7 +204,7 @@ impl ScopeTree {
                         None
                     };
 
-                    node.add_binding(name, kind, vm_location);
+                    node.add_binding(name, kind, vm_location, /* needs_tdz_check */ false);
                 }
 
                 return Ok(self.get_ast_node_ptr(node_id));
@@ -377,15 +387,23 @@ pub type ScopeNodeId = usize;
 pub enum ScopeNodeKind {
     Global,
     Function(FunctionId),
-    Block,
+    Block { is_switch: bool },
     With,
 }
 
 impl ScopeNodeKind {
+    pub fn block() -> ScopeNodeKind {
+        ScopeNodeKind::Block { is_switch: false }
+    }
+
+    pub fn switch() -> ScopeNodeKind {
+        ScopeNodeKind::Block { is_switch: true }
+    }
+
     fn is_hoist_target(&self) -> bool {
         match self {
             ScopeNodeKind::Global | ScopeNodeKind::Function(_) => true,
-            ScopeNodeKind::Block | ScopeNodeKind::With => false,
+            ScopeNodeKind::Block { .. } | ScopeNodeKind::With => false,
         }
     }
 }
@@ -433,10 +451,17 @@ impl AstScopeNode {
         self.num_local_registers
     }
 
-    fn add_binding(&mut self, name: &str, kind: BindingKind, vm_location: Option<VMLocation>) {
-        let insert_result = self
-            .bindings
-            .insert(name.to_owned(), Binding::new(kind, self.num_bindings, vm_location));
+    fn add_binding(
+        &mut self,
+        name: &str,
+        kind: BindingKind,
+        vm_location: Option<VMLocation>,
+        needs_tdz_check: bool,
+    ) {
+        let insert_result = self.bindings.insert(
+            name.to_owned(),
+            Binding::new(kind, self.num_bindings, vm_location, needs_tdz_check),
+        );
 
         if insert_result.is_some() {
             self.has_duplicates = true;
@@ -488,11 +513,11 @@ impl AstScopeNode {
 pub enum BindingKind {
     Var,
     Const {
-        // The source position after which this constant has been initialized, inclusive.
+        /// The source position after which this constant has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
     Let {
-        // The source position after which this let has been initialized, inclusive.
+        /// The source position after which this let has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
     Function {
@@ -506,7 +531,7 @@ pub enum BindingKind {
     FunctionParameter,
     Class,
     CatchParameter {
-        // The source position after which this parameter has been initialized, inclusive.
+        /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
 }
@@ -557,12 +582,17 @@ pub struct Binding {
 }
 
 impl Binding {
-    fn new(kind: BindingKind, index: usize, vm_location: Option<VMLocation>) -> Binding {
+    fn new(
+        kind: BindingKind,
+        index: usize,
+        vm_location: Option<VMLocation>,
+        needs_tdz_check: bool,
+    ) -> Binding {
         Binding {
             kind,
             index,
             is_captured: false,
-            needs_tdz_check: false,
+            needs_tdz_check,
             vm_location,
         }
     }

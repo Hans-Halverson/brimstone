@@ -838,7 +838,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a block with a standard block scope.
     fn parse_block_default_scope(&mut self) -> ParseResult<Block> {
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
         let block = self.parse_block_custom_scope(scope)?;
         self.scope_builder.exit_scope();
 
@@ -893,7 +893,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightParen)?;
 
         // Switch statements start a new block scope
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::switch());
 
         let mut cases = vec![];
         self.expect(Token::LeftBrace)?;
@@ -942,7 +942,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         // For scope must encompass any variables declared in the initializer, as well as the body.
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
 
         // Optional await keyword signifies a for-await-of
         let await_loc = self.loc;
@@ -1173,7 +1173,7 @@ impl<'a> Parser<'a> {
         // Optional handler block
         let handler = if self.token == Token::Catch {
             // Set up block scope before catch parameter is parsed, so it is included in block scope
-            let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+            let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
 
             let catch_start_pos = self.current_start_pos();
             self.advance()?;

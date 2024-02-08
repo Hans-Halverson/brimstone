@@ -1,12 +1,16 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: NewClosure r0, c0
-    3: StoreGlobal r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: startScope]
     1: [String: startScope]
+    2: [BytecodeFunction: alwaysNeedTdzCheck]
+    3: [String: alwaysNeedTdzCheck]
 }
 
 [BytecodeFunction: startScope] {
@@ -38,4 +42,35 @@
   Constant Table:
     0: [String: x]
     1: [String: y]
+}
+
+[BytecodeFunction: alwaysNeedTdzCheck] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r2, 0
+     3: LoadEmpty r1
+     5: LoadImmediate r3, 1
+     8: StrictEqual r3, r2, r3
+    12: JumpTrue r3, 15 (.L0)
+    15: LoadImmediate r3, 2
+    18: StrictEqual r3, r2, r3
+    22: JumpTrue r3, 10 (.L1)
+    25: Jump 10 (.L2)
+  .L0:
+    27: LoadTrue r1
+    29: CheckTdz r1, c0
+  .L1:
+    32: CheckTdz r1, c0
+  .L2:
+    35: LoadImmediate r2, 3
+    38: LoadImmediate r3, 1
+    41: StrictEqual r3, r2, r3
+    45: JumpTrue r3, 5 (.L3)
+    48: Jump 4 (.L4)
+  .L3:
+    50: LoadTrue r0
+  .L4:
+    52: LoadUndefined r2
+    54: Ret r2
+  Constant Table:
+    0: [String: x]
 }

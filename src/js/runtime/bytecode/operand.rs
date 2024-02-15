@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::{
-    stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX},
+    stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX, SCOPE_SLOT_INDEX},
     width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum},
 };
 
@@ -164,6 +164,17 @@ impl<W: Width> Register<W> {
         Self::from_unsigned(W::UInt::from_usize(RECEIVER_SLOT_INDEX))
     }
 
+    /// Construct a register referencing the current scope in the scope chain.
+    #[inline]
+    pub fn scope() -> Self {
+        Self::from_unsigned(W::UInt::from_usize(SCOPE_SLOT_INDEX))
+    }
+
+    #[inline]
+    pub fn is_argument(&self) -> bool {
+        self.signed().to_isize() >= FIRST_ARGUMENT_SLOT_INDEX as isize
+    }
+
     #[inline]
     pub fn is_local(&self) -> bool {
         self.signed().to_isize() < 0
@@ -172,6 +183,11 @@ impl<W: Width> Register<W> {
     #[inline]
     pub fn is_this(&self) -> bool {
         self.unsigned().to_usize() == RECEIVER_SLOT_INDEX
+    }
+
+    #[inline]
+    pub fn is_scope(&self) -> bool {
+        self.unsigned().to_usize() == SCOPE_SLOT_INDEX
     }
 
     #[inline]
@@ -214,10 +230,14 @@ impl<W: Width> fmt::Display for Register<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_local() {
             write!(f, "r{}", self.local_index())
+        } else if self.is_argument() {
+            write!(f, "a{}", self.argument_index())
         } else if self.is_this() {
             write!(f, "<this>")
+        } else if self.is_scope() {
+            write!(f, "<scope>")
         } else {
-            write!(f, "a{}", self.argument_index())
+            unreachable!("Unknown register type")
         }
     }
 }

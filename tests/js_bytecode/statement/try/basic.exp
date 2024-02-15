@@ -18,53 +18,59 @@
 }
 
 [BytecodeFunction: testCatchNoParameter] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
-     3: LoadImmediate r0, 2
-     6: Jump 5 (.L0)
-     8: LoadImmediate r0, 3
+     3: Mov r0, <scope>
+     6: LoadImmediate r1, 2
+     9: Jump 8 (.L0)
+    11: Mov <scope>, r0
+    14: LoadImmediate r1, 3
   .L0:
-    11: LoadImmediate r0, 4
-    14: LoadUndefined r0
-    16: Ret r0
+    17: LoadImmediate r0, 4
+    20: LoadUndefined r0
+    22: Ret r0
   Exception Handlers:
-    3-6 -> 8
+    6-9 -> 11
 }
 
 [BytecodeFunction: testCatchWithParameter] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
-     3: LoadImmediate r1, 2
-     6: Jump 9 (.L0)
-     8: LoadImmediate r1, 3
-    11: Add r1, r1, r0
+     3: Mov r1, <scope>
+     6: LoadImmediate r2, 2
+     9: Jump 12 (.L0)
+    11: Mov <scope>, r1
+    14: LoadImmediate r2, 3
+    17: Add r2, r2, r0
   .L0:
-    15: LoadImmediate r1, 4
-    18: LoadUndefined r1
-    20: Ret r1
+    21: LoadImmediate r1, 4
+    24: LoadUndefined r1
+    26: Ret r1
   Exception Handlers:
-    3-6 -> 8 (r0)
+    6-9 -> 11 (r0)
 }
 
 [BytecodeFunction: testCatchDestructuring] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 5
      0: LoadImmediate r2, 1
-     3: LoadImmediate r2, 2
-     6: Jump 22 (.L1)
-     8: GetNamedProperty r0, r2, c0
-    12: GetNamedProperty r3, r2, c1
-    16: JumpNotUndefined r3, 6 (.L0)
-    19: LoadImmediate r3, 3
+     3: Mov r2, <scope>
+     6: LoadImmediate r3, 2
+     9: Jump 25 (.L1)
+    11: Mov <scope>, r2
+    14: GetNamedProperty r0, r3, c0
+    18: GetNamedProperty r4, r3, c1
+    22: JumpNotUndefined r4, 6 (.L0)
+    25: LoadImmediate r4, 3
   .L0:
-    22: Mov r1, r3
-    25: LoadImmediate r2, 4
+    28: Mov r1, r4
+    31: LoadImmediate r3, 4
   .L1:
-    28: LoadImmediate r2, 5
-    31: LoadUndefined r2
-    33: Ret r2
+    34: LoadImmediate r2, 5
+    37: LoadUndefined r2
+    39: Ret r2
   Constant Table:
     0: [String: a]
     1: [String: b]
   Exception Handlers:
-    3-6 -> 8 (r2)
+    6-9 -> 11 (r3)
 }

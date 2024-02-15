@@ -18,35 +18,41 @@
 }
 
 [BytecodeFunction: testAbruptBodyOnly] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
-    4: LoadImmediate r0, 1
-    7: LoadUndefined r0
-    9: Ret r0
+  Parameters: 0, Registers: 2
+     0: Mov r0, <scope>
+     3: LoadUndefined r1
+     5: Ret r1
+     7: Mov <scope>, r0
+    10: LoadImmediate r1, 1
+    13: LoadUndefined r0
+    15: Ret r0
   Exception Handlers:
-    0-4 -> 4
+    3-7 -> 7
 }
 
 [BytecodeFunction: testAbruptCatchOnly] {
-  Parameters: 0, Registers: 1
-     0: LoadImmediate r0, 1
-     3: Jump 6 (.L0)
-     5: LoadUndefined r0
-     7: Ret r0
+  Parameters: 0, Registers: 2
+     0: Mov r0, <scope>
+     3: LoadImmediate r1, 1
+     6: Jump 9 (.L0)
+     8: Mov <scope>, r0
+    11: LoadUndefined r1
+    13: Ret r1
   .L0:
-     9: LoadUndefined r0
-    11: Ret r0
+    15: LoadUndefined r0
+    17: Ret r0
   Exception Handlers:
-    0-3 -> 5
+    3-6 -> 8
 }
 
 [BytecodeFunction: testAbruptCatchAndBody] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
-    4: LoadUndefined r0
-    6: Ret r0
+  Parameters: 0, Registers: 2
+     0: Mov r0, <scope>
+     3: LoadUndefined r1
+     5: Ret r1
+     7: Mov <scope>, r0
+    10: LoadUndefined r1
+    12: Ret r1
   Exception Handlers:
-    0-4 -> 4
+    3-7 -> 7
 }

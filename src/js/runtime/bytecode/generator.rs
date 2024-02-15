@@ -3589,6 +3589,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+        // Save the scope when entering the try statement so it can be restored when leaving
+        let saved_scope = self.register_allocator.allocate()?;
+        self.write_mov_instruction(saved_scope, Register::scope());
+
         // Generate the body of the try statement, marking the range of instructions that should
         // be covered by the body handler.
         let body_handler_start = self.writer.current_offset();
@@ -3618,6 +3622,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Emit the catch clause in its own block, with bounds saved for a finally handler
             self.start_block(catch_block.unwrap());
             let catch_handler_start = self.writer.current_offset();
+
+            // Restore the scope from before the try statement
+            self.write_mov_instruction(Register::scope(), saved_scope);
 
             // Catch scope starts before the parameter is evaluated and potentially destructured
             let catch_scope = catch_clause.body.scope.as_ref();
@@ -3688,6 +3695,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Emit the finally block's body. No need to write a jump from finally to join block
             // since it immediately follows.
             self.start_block(finally_block.unwrap());
+
+            // Restore the scope from before the try statement
+            self.write_mov_instruction(Register::scope(), saved_scope);
+
             let finally_completion = self.gen_block_statement(finally)?;
 
             // Finally completion used as result completion since all paths go through finally block
@@ -3705,6 +3716,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(catch_handler) = catch_handler {
             self.exception_handler_builder.add(catch_handler);
         }
+
+        self.register_allocator.release(saved_scope);
 
         self.start_block(join_block);
         Ok(result_completion)

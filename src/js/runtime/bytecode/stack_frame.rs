@@ -219,7 +219,7 @@ const RETURN_ADDRESS_SLOT_INDEX: usize = 1;
 
 const RETURN_VALUE_ADDRESS_INDEX: usize = 2;
 
-const SCOPE_SLOT_INDEX: usize = 3;
+pub const SCOPE_SLOT_INDEX: usize = 3;
 
 const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 

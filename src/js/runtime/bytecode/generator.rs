@@ -31,7 +31,7 @@ use super::{
     instruction::{DecodeInfo, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
-    width::{ExtraWide, Narrow, Wide, Width, WidthEnum},
+    width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
     writer::BytecodeWriter,
 };
 
@@ -190,6 +190,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// scope.
     scope: Rc<ScopeStackNode>,
 
+    /// The ScopeNames for each scope in this function. Keys are VM scope ids, and values are the
+    /// constant index of the ScopeNames in the constant table.
+    scope_names_cache: HashMap<usize, GenConstantIndex>,
+
     /// Optional name of the function, used for the name property.
     name: Option<Wtf8String>,
 
@@ -250,6 +254,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             global_scope,
             scope,
+            scope_names_cache: HashMap::new(),
             name,
             num_blocks: 0,
             block_offsets: HashMap::new(),
@@ -331,8 +336,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Err(EmitError::TooManyRegisters);
         }
 
-        // Create a dummy global scope stack node
-        let scope = Rc::new(ScopeStackNode { scope_id: 0, parent: None });
+        // Create a dummy global scope stack node that will not conflict with any real scope id
+        let scope = Rc::new(ScopeStackNode { scope_id: usize::MAX, parent: None });
 
         Ok(Self::new(
             cx,
@@ -3215,15 +3220,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
                 .collect::<Vec<_>>();
 
-            // Store ScopeNames table in the constant table
-            let scope_names = ScopeNames::new(self.cx, &names);
-            let scope_names_index = self
-                .constant_table_builder
-                .add_heap_object(scope_names.cast())?;
+            // Store ScopeNames table in the constant table and cache
+            let scope_names_constant_index =
+                if let Some(constant_index) = self.scope_names_cache.get(&vm_scope_id) {
+                    *constant_index
+                } else {
+                    let scope_names = ScopeNames::new(self.cx, &names);
+                    let scope_names_index = self
+                        .constant_table_builder
+                        .add_heap_object(scope_names.cast())?;
+
+                    let constant_index = ConstantIndex::new(scope_names_index);
+                    self.scope_names_cache.insert(vm_scope_id, constant_index);
+
+                    constant_index
+                };
 
             // Push the new scope onto the stack, making it the current scope
             self.writer
-                .push_lexical_scope_instruction(ConstantIndex::new(scope_names_index));
+                .push_lexical_scope_instruction(scope_names_constant_index);
 
             self.scope =
                 Rc::new(ScopeStackNode { scope_id: vm_scope_id, parent: Some(self.scope.clone()) });
@@ -3233,13 +3248,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_scope_end(&mut self, scope: &AstScopeNode) {
-        self.pop_scope(scope)
+        self.pop_scope(scope, /* unwind */ true)
     }
 
-    fn pop_scope(&mut self, scope: &AstScopeNode) {
+    fn pop_scope(&mut self, scope: &AstScopeNode, unwind: bool) {
         if scope.vm_scope_id().is_some() {
             self.writer.pop_scope_instruction();
-            self.scope = self.scope.parent.clone().unwrap();
+
+            if unwind {
+                self.scope = self.scope.parent.clone().unwrap();
+            }
         }
     }
 
@@ -3403,12 +3421,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
         let loop_start_block = self.new_block();
+        let loop_end_block = self.new_block();
         let update_block = jump_targets.continue_block;
         let join_block = jump_targets.break_block;
 
-        // Entire for statement forms a new scope
+        // Entire for statement forms a new scope. Safe to call `gen_scope_start` only once on init
+        // since the only part of `gen_scope_start` that could be performed for a for statement
+        // is setting up TDZ checks, which only needs to happen on init.
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope)?;
+
+        // Continue statements should only unwind scope chain to for statement's scope, so it can
+        // be duplicated for the next iteration.
+        self.current_jump_statement_target_mut().continue_scope_id = self.scope.scope_id;
 
         // Evaluate the init expression once before loop starts
         match stmt.init.as_deref() {
@@ -3429,15 +3454,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let test = self.gen_outer_expression(test_expr)?;
             self.register_allocator.release(test);
 
-            self.write_jump_false_for_expression(&test_expr.expr, test, join_block)?;
+            self.write_jump_false_for_expression(&test_expr.expr, test, loop_end_block)?;
         }
 
         // Evaluate the loop body
         self.gen_statement(&stmt.body)?;
 
-        // Evaluate the update expression and return to the beginning of the loop. Always emitted
-        // even if loop body has an abrupt completion since there may be a continue.
+        // Start the update block, which is always emitted even if loop body has an abrupt
+        // completion since there may be a continue.
         self.start_block(update_block);
+
+        // If for statement has a scope (meaning the init bindings were captured), duplicate the
+        // scope for the next iteration.
+        if for_scope.vm_scope_id().is_some() {
+            self.writer.dup_scope_instruction();
+        }
+
+        // Evaluate the update expression and return to the beginning of the loop
         if let Some(update_expr) = stmt.update.as_deref() {
             let update = self.gen_outer_expression(update_expr)?;
             self.register_allocator.release(update);
@@ -3445,11 +3478,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.write_jump_instruction(loop_start_block)?;
 
-        self.start_block(join_block);
+        // Start the loop end block, which is run when the loop completes normally and unwinds the
+        // for statement's scope. All other paths need to unwind the scope themselves.
+        self.start_block(loop_end_block);
+        self.gen_scope_end(for_scope);
+
         self.pop_jump_statement_target();
 
-        // End of the for statement's scope
-        self.gen_scope_end(for_scope);
+        // Continues to join block
+        self.start_block(join_block);
 
         // Normal completion since there is always the test false path that skips the loop entirely
         Ok(StmtCompletion::Normal)
@@ -3463,16 +3500,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
+        let loop_end_block = self.new_block();
         let iteration_start_block = jump_targets.continue_block;
         let join_block = jump_targets.break_block;
 
-        // Entire for-in statement forms a new scope
+        // Entire for-in statement forms a new scope. This scope is created around the init to
+        // handle TDZ checks (since the right hand side is evaluated with left hand bindings in
+        // scope but not yet initialized).
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope)?;
 
         // Entire for-in statement is skipped if right hand side is nullish
         let object = self.gen_outer_expression(&stmt.right)?;
-        self.write_jump_nullish_instruction(object, join_block)?;
+        self.write_jump_nullish_instruction(object, loop_end_block)?;
 
         // Otherwise create new for-in iterator object
         self.register_allocator.release(object);
@@ -3480,30 +3520,43 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer
             .new_for_in_iterator_instruction(iterator, object);
 
-        // Each iteration starts by calling the for-in iterator's `next` method
+        // End of scope for evaluating the right hand side
+        self.gen_scope_end(for_scope);
+
+        // Start of a single iteration, which is in the entire for-in statement's scope again
         self.start_block(iteration_start_block);
+        self.gen_scope_start(for_scope)?;
+
+        // Iteration starts by calling the for-in iterator's `next` method
         let next_result = self.gen_for_each_next_result_dest(stmt)?;
         self.writer.for_in_next_instruction(next_result, iterator);
 
         // An undefined result from `next` means there are no more keys, jump out of the loop
-        self.write_jump_nullish_instruction(next_result, join_block)?;
+        self.write_jump_nullish_instruction(next_result, loop_end_block)?;
 
         // Otherwise `next` returned a key, so store the key to the pattern
         self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
         self.gen_destructuring(stmt.left.pattern(), next_result, /* release_value */ true)?;
         self.exit_has_assign_expr_context();
 
-        // Otherwise proceed to the body of the loop then start a new iteration
+        // Otherwise proceed to the body of the loop
         self.gen_statement(&stmt.body)?;
+
+        // Finally end this iteration's scope and start a new iteration
+        self.gen_scope_end(for_scope);
         self.write_jump_instruction(iteration_start_block)?;
 
         self.register_allocator.release(iterator);
 
-        self.start_block(join_block);
+        // Start the loop end block, which is run when the loop completes normally and pops the
+        // for-in statement's scope. All other paths need to unwind the scope themselves.
+        self.start_block(loop_end_block);
+        self.pop_scope(for_scope, /* unwind */ false);
+
         self.pop_jump_statement_target();
 
-        // End of the for-in statement's scope
-        self.gen_scope_end(for_scope);
+        // Continues to join block
+        self.start_block(join_block);
 
         // Normal completion since the loop could always be avoided entirely
         Ok(StmtCompletion::Normal)
@@ -3812,11 +3865,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             0
         };
+        let scope_id = self.scope.scope_id;
 
         self.jump_statement_target_stack.push(JumpStatementTarget {
             label_id,
             break_block,
             continue_block,
+            // Default to breaking and continuing to the current scope. Note that the continue id
+            // may be overwritten to a lower scope in for loops.
+            break_scope_id: scope_id,
+            continue_scope_id: scope_id,
         });
 
         self.jump_statement_target_stack.last().unwrap().clone()
@@ -3824,6 +3882,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn pop_jump_statement_target(&mut self) {
         self.jump_statement_target_stack.pop();
+    }
+
+    fn current_jump_statement_target_mut(&mut self) -> &mut JumpStatementTarget {
+        self.jump_statement_target_stack.last_mut().unwrap()
     }
 
     /// Lookup the innermost jump statement target, or the target that matches the label id if one
@@ -3840,9 +3902,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
+    /// Pop scopes until the current scope equals the provided scope.
+    fn unwind_scope_chain_to_scope(&mut self, scope_id: usize) -> EmitResult<()> {
+        let scope_depth = self.find_scope_depth(scope_id)?.unsigned().to_usize();
+
+        for _ in 0..scope_depth {
+            self.writer.pop_scope_instruction();
+        }
+
+        Ok(())
+    }
+
     fn gen_break_statement(&mut self, stmt: &ast::BreakStatement) -> EmitResult<StmtCompletion> {
         let target = self.lookup_jump_statement_target(stmt.label.as_ref());
-        self.write_jump_instruction(target.break_block)?;
+        let target_scope_id = target.break_scope_id;
+        let target_break_block = target.break_block;
+
+        self.unwind_scope_chain_to_scope(target_scope_id)?;
+        self.write_jump_instruction(target_break_block)?;
+
         Ok(StmtCompletion::Abrupt)
     }
 
@@ -3851,7 +3929,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::ContinueStatement,
     ) -> EmitResult<StmtCompletion> {
         let target = self.lookup_jump_statement_target(stmt.label.as_ref());
-        self.write_jump_instruction(target.continue_block)?;
+        let target_scope_id = target.continue_scope_id;
+        let target_continue_block = target.continue_block;
+
+        self.unwind_scope_chain_to_scope(target_scope_id)?;
+        self.write_jump_instruction(target_continue_block)?;
+
         Ok(StmtCompletion::Abrupt)
     }
 }
@@ -3992,6 +4075,10 @@ struct JumpStatementTarget {
     continue_block: BlockId,
     /// Label id if this is a labeled statement, otherwise this is an unlabeled loop.
     label_id: Option<ast::LabelId>,
+    /// Scope id of the scope to restore on a break.
+    break_scope_id: usize,
+    /// Scope id of the scope to restore on a continue.
+    continue_scope_id: usize,
 }
 
 struct CallReceiver {

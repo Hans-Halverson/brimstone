@@ -22,7 +22,7 @@ function startScopeTDZInOuter() {
 
 function captures() {
   // For initializer in outer scope
-  for (const x = 1;;) {
+  for (const x = 1; x < 10; x += 1) {
     // Body in separate inner scope
     const y = 2;
     function inner() {

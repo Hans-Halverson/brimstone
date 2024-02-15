@@ -92,6 +92,25 @@ impl Scope {
     }
 }
 
+impl Handle<Scope> {
+    /// Create a new scope that is an exact duplicate of this scope.
+    pub fn duplicate(&self, cx: Context) -> HeapPtr<Scope> {
+        let size = Scope::calculate_size_in_bytes(self.slots.len());
+        let new_scope = cx.alloc_uninit_with_size::<Scope>(size);
+
+        // Can copy the memory directly
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                self.as_ptr() as *const u8,
+                new_scope.as_ptr() as *mut u8,
+                size,
+            )
+        }
+
+        new_scope
+    }
+}
+
 impl HeapObject for HeapPtr<Scope> {
     fn byte_size(&self) -> usize {
         Scope::calculate_size_in_bytes(self.slots.len())

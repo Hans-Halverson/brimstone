@@ -50,12 +50,13 @@ use super::{
         CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
         CopyDataPropertiesInstruction, DecInstruction, DefineNamedPropertyInstruction,
         DefinePropertyFlags, DefinePropertyInstruction, DeletePropertyInstruction, DivInstruction,
-        ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
-        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
-        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
+        DupScopeInstruction, ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction,
+        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -490,6 +491,7 @@ impl VM {
                             dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
                         }
                         OpCode::PopScope => dispatch!(PopScopeInstruction, execute_pop_scope),
+                        OpCode::DupScope => dispatch!(DupScopeInstruction, execute_dup_scope),
                         OpCode::LoadFromScope => {
                             dispatch!(LoadFromScopeInstruction, execute_load_from_scope)
                         }
@@ -2196,6 +2198,17 @@ impl VM {
 
         // Write the new scope to the stack
         *StackFrame::for_fp(self.fp).scope_mut() = parent_scope;
+    }
+
+    #[inline]
+    fn execute_dup_scope<W: Width>(&mut self, _: &DupScopeInstruction<W>) {
+        let scope = self.scope().to_handle();
+
+        // Allocates
+        let dup_scope = scope.duplicate(self.cx);
+
+        // Write the new scope to the stack
+        *StackFrame::for_fp(self.fp).scope_mut() = dup_scope;
     }
 
     #[inline]

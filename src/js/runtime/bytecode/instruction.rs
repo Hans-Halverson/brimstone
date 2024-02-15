@@ -764,6 +764,9 @@ define_instructions!(
     /// Pop a scope off the stack, replacing it with its parent scope.
     PopScope (PopScopeInstruction, pop_scope_instruction) {}
 
+    /// Duplicate the current scope and replace the current scope with the duplicate.
+    DupScope (DupScopeInstruction, dup_scope_instruction) {}
+
     /// Load the value at `scope_index` from a scope and store in dest. The scope is found at
     /// `parent_depth` levels up the scope chain. A `parent_depth` of 0 refers to the current scope.
     LoadFromScope (LoadFromScopeInstruction, load_from_scope_instruction) {

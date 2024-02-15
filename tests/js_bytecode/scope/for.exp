@@ -82,28 +82,41 @@
 }
 
 [BytecodeFunction: captures] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
      8: LoadImmediate r1, 1
     11: StoreToScope r1, 0, 0
   .L0:
-    15: PushLexicalScope c1
-    17: LoadEmpty r1
-    19: StoreToScope r1, 0, 0
-    23: LoadImmediate r1, 2
-    26: StoreToScope r1, 0, 0
-    30: NewClosure r0, c2
-    33: PopScope 
-    34: Jump -19 (.L0)
-    36: PopScope 
-    37: LoadUndefined r1
-    39: Ret r1
+    15: LoadFromScope r1, 0, 0
+    19: CheckTdz r1, c1
+    22: LoadImmediate r2, 10
+    25: LessThan r1, r1, r2
+    29: JumpFalse r1, 43 (.L1)
+    32: PushLexicalScope c2
+    34: LoadEmpty r1
+    36: StoreToScope r1, 0, 0
+    40: LoadImmediate r1, 2
+    43: StoreToScope r1, 0, 0
+    47: NewClosure r0, c3
+    50: PopScope 
+    51: DupScope 
+    52: LoadFromScope r1, 0, 0
+    56: CheckTdz r1, c1
+    59: LoadImmediate r2, 1
+    62: Add r1, r1, r2
+    66: StoreToScope r1, 0, 0
+    70: Jump -55 (.L0)
+  .L1:
+    72: PopScope 
+    73: LoadUndefined r1
+    75: Ret r1
   Constant Table:
     0: [ScopeNames]
-    1: [ScopeNames]
-    2: [BytecodeFunction: inner]
+    1: [String: x]
+    2: [ScopeNames]
+    3: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {

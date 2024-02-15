@@ -1095,6 +1095,16 @@ impl<'a> Parser<'a> {
             ForEachKind::Of => self.parse_assignment_expression()?.to_outer(),
         };
 
+        // Mark the end of the right hand side now that it is known, in order to check for TDZ uses
+        // in the right hand side during analysis.
+        if let ForEachInit::VarDecl(var_decl) = left.as_ref() {
+            if var_decl.kind != VarKind::Var {
+                for declarator in &var_decl.declarations {
+                    Self::set_binding_init_pos(&declarator.id, self.prev_loc.end);
+                }
+            }
+        }
+
         self.expect(Token::RightParen)?;
         let body = p(self.parse_statement()?);
         let loc = self.mark_loc(start_pos);

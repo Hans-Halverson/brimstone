@@ -695,9 +695,7 @@ impl<'a> Parser<'a> {
         }
 
         // Function scope node must contain the params and body, but not function name.
-        let scope = self
-            .scope_builder
-            .enter_scope(ScopeNodeKind::Function(start_pos));
+        let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
@@ -713,6 +711,7 @@ impl<'a> Parser<'a> {
             body,
             is_async,
             is_generator,
+            /* is_arrow */ false,
             is_strict_mode,
             has_use_strict_directive,
             scope,
@@ -722,6 +721,26 @@ impl<'a> Parser<'a> {
         self.allow_yield = did_allow_yield;
 
         Ok(func)
+    }
+
+    fn enter_function_scope(
+        &mut self,
+        start_pos: Pos,
+        is_arrow: bool,
+    ) -> ParseResult<AstPtr<AstScopeNode>> {
+        let scope = self
+            .scope_builder
+            .enter_scope(ScopeNodeKind::Function(start_pos));
+
+        // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
+        // when determining if it is captured by an arrow function.
+        if !is_arrow {
+            self.scope_builder
+                .add_binding("this", BindingKind::ImplicitThis { is_global: false })
+                .unwrap();
+        }
+
+        Ok(scope)
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
@@ -1407,9 +1426,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
 
         // Function scope node must contain params and body
-        let scope = self
-            .scope_builder
-            .enter_scope(ScopeNodeKind::Function(start_pos));
+        let scope = self.enter_function_scope(start_pos, /* is_arrow */ true)?;
 
         let is_async = self.token == Token::Async;
         if is_async {
@@ -1437,6 +1454,7 @@ impl<'a> Parser<'a> {
                     body,
                     /* is_async */ false,
                     /* is_generator */ false,
+                    /* is_arrow */ true,
                     is_strict_mode,
                     has_use_strict_directive,
                     scope,
@@ -1475,6 +1493,7 @@ impl<'a> Parser<'a> {
             body,
             is_async,
             /* is_generator */ false,
+            /* is_arrow */ true,
             is_strict_mode,
             has_use_strict_directive,
             scope,
@@ -2346,7 +2365,7 @@ impl<'a> Parser<'a> {
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(p(Expression::This(loc)))
+                Ok(p(Expression::This(ThisExpression { loc, scope: None })))
             }
             Token::LeftParen => {
                 self.advance()?;
@@ -3093,9 +3112,7 @@ impl<'a> Parser<'a> {
         let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
         // Function scope node must contain params and body
-        let scope = self
-            .scope_builder
-            .enter_scope(ScopeNodeKind::Function(start_pos));
+        let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
         let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
@@ -3132,6 +3149,7 @@ impl<'a> Parser<'a> {
                 body,
                 is_async,
                 is_generator,
+                /* is_arrow */ false,
                 is_strict_mode,
                 has_use_strict_directive,
                 scope,
@@ -3225,9 +3243,7 @@ impl<'a> Parser<'a> {
             if self.token == Token::LeftBrace {
                 // Static initializers are functions and are wrapped in a function scope, as vars
                 // cannot be hoisted out of the static initializer.
-                let scope = self
-                    .scope_builder
-                    .enter_scope(ScopeNodeKind::Function(start_pos));
+                let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
                 let (block, _, _) = self.parse_function_block_body()?;
                 self.scope_builder.exit_scope();
 
@@ -3245,6 +3261,7 @@ impl<'a> Parser<'a> {
                         p(FunctionBody::Block(block)),
                         /* is_async */ false,
                         /* is_generator */ false,
+                        /* is_arrow */ false,
                         /* is_strict_mode */ true,
                         /* has_use_strict_directive */ false,
                         scope,

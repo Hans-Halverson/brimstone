@@ -97,7 +97,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
             )?;
 
             // Start the global scope
-            generator.gen_scope_start(program.scope.as_ref())?;
+            let program_scope = program.scope.as_ref();
+            generator.gen_scope_start(program_scope)?;
+
+            // Store the captured `this` right away if necessary
+            generator.gen_store_captured_this(program_scope)?;
 
             // Script function consists of toplevel statements
             for toplevel in &program.toplevels {
@@ -689,6 +693,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let func_scope = func.scope.as_ref();
         self.gen_scope_start(func_scope)?;
 
+        // Store the captured `this` right away if necessary
+        if !func.is_arrow {
+            self.gen_store_captured_this(func_scope)?;
+        }
+
         // Generate function parameters including destructuring, default value evaluation, and
         // captured parameters.
         for (i, param) in func.params.iter().enumerate() {
@@ -841,7 +850,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::String(expr) => self.gen_string_literal_expression(expr, dest),
             ast::Expression::BigInt(expr) => self.gen_bigint_literal_expression(expr, dest),
             ast::Expression::RegExp(expr) => self.gen_regexp_literal_expression(expr, dest),
-            ast::Expression::This(_) => self.gen_this_expression(dest),
+            ast::Expression::This(expr) => self.gen_this_expression(expr, dest),
             ast::Expression::Unary(expr) => match expr.operator {
                 ast::UnaryOperator::Plus => self.gen_unary_plus_expression(expr, dest),
                 ast::UnaryOperator::Minus => self.gen_unary_minus_expression(expr, dest),
@@ -1311,7 +1320,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
-    fn gen_this_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
+    fn gen_store_captured_this(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+        match scope.get_binding("this").vm_location() {
+            // `this` is captured so it must be stored in the scope
+            Some(VMLocation::Scope { scope_id, index }) => {
+                self.gen_store_scope_binding(scope_id, index, Register::this())
+            }
+            // `this` is not captured, so it can be referenced directly everywhere
+            None => Ok(()),
+            _ => unreachable!("`this` must be captured or have no VM location"),
+        }
+    }
+
+    fn gen_this_expression(
+        &mut self,
+        expr: &ast::ThisExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // If scope has been resolved this must be a captured `this`. Load from scope directly to
+        // the dest.
+        if let Some(scope) = expr.scope.as_ref() {
+            let binding = scope.as_ref().get_binding("this");
+            match binding.vm_location().unwrap() {
+                VMLocation::Scope { scope_id, index } => {
+                    return self.gen_load_scope_binding(scope_id, index, dest)
+                }
+                _ => unreachable!("resolved `this` scopes must be a capture"),
+            }
+        }
+
         self.gen_mov_reg_to_dest(Register::this(), dest)
     }
 

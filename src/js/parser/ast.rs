@@ -231,6 +231,7 @@ pub struct Function {
     pub body: P<FunctionBody>,
     pub is_async: bool,
     pub is_generator: bool,
+    pub is_arrow: bool,
 
     pub has_simple_parameter_list: bool,
     pub has_parameter_expressions: bool,
@@ -258,6 +259,7 @@ impl Function {
             body: p(FunctionBody::Block(FunctionBlockBody { loc: EMPTY_LOC, body: vec![] })),
             is_async: false,
             is_generator: false,
+            is_arrow: false,
             is_strict_mode: false,
             has_use_strict_directive: false,
             scope: AstPtr::uninit(),
@@ -277,6 +279,7 @@ impl Function {
         body: P<FunctionBody>,
         is_async: bool,
         is_generator: bool,
+        is_arrow: bool,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
         scope: AstPtr<AstScopeNode>,
@@ -287,6 +290,7 @@ impl Function {
         self.body = body;
         self.is_async = is_async;
         self.is_generator = is_generator;
+        self.is_arrow = is_arrow;
         self.is_strict_mode = is_strict_mode;
         self.has_use_strict_directive = has_use_strict_directive;
         self.scope = scope;
@@ -299,6 +303,7 @@ impl Function {
         body: P<FunctionBody>,
         is_async: bool,
         is_generator: bool,
+        is_arrow: bool,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
         scope: AstPtr<AstScopeNode>,
@@ -311,6 +316,7 @@ impl Function {
             body,
             is_async,
             is_generator,
+            is_arrow,
             is_strict_mode,
             has_use_strict_directive,
             scope,
@@ -651,7 +657,7 @@ pub enum Expression {
     Function(P<Function>),
     ArrowFunction(P<Function>),
     Class(Class),
-    This(Loc),
+    This(ThisExpression),
     Await(AwaitExpression),
     Yield(YieldExpression),
     SuperMember(SuperMemberExpression),
@@ -909,6 +915,16 @@ pub enum PropertyKind {
     // pattern property with an initializer. The single expression argument is the initializer. If
     // a PatternInitializer is found during analysis the analyzer will error.
     PatternInitializer(P<Expression>),
+}
+
+pub struct ThisExpression {
+    pub loc: Loc,
+    /// Reference to the scope that contains the binding for `this`, which may be a parent scope if
+    /// `this` is captured by an arrow function.
+    ///
+    /// Starts out uninitialized during parsing and is set during analysis, but only if resolved to
+    /// a captured `this` binding.
+    pub scope: Option<AstPtr<AstScopeNode>>,
 }
 
 pub struct AwaitExpression {

@@ -3,8 +3,8 @@ use std::{cell::Cell, collections::HashSet};
 use indexmap::IndexMap;
 
 use super::{
-    ast::{self, AstPtr, FunctionId, Identifier},
-    loc::Pos,
+    ast::{self, AstPtr, FunctionId},
+    loc::{Loc, Pos},
     ParseError,
 };
 
@@ -34,6 +34,11 @@ impl ScopeTree {
         let global_scope_node =
             scope_tree.new_ast_scope_node(GLOBAL_SCOPE_ID, ScopeNodeKind::Global, None);
         scope_tree.ast_nodes.push(Box::new(global_scope_node));
+
+        // All global scopes start with an implicit `this` binding
+        scope_tree
+            .add_binding("this", BindingKind::ImplicitThis { is_global: true })
+            .unwrap();
 
         scope_tree
     }
@@ -202,11 +207,12 @@ impl ScopeTree {
                 // Only override existing binding if it is a new function declaration
                 if !node.bindings.contains_key(name) || kind.is_function() {
                     // Var bindings in the global scope are immediately known to be global
-                    let vm_location = if node.kind == ScopeNodeKind::Global {
-                        Some(VMLocation::Global)
-                    } else {
-                        None
-                    };
+                    let vm_location =
+                        if node.kind == ScopeNodeKind::Global && !kind.is_implicit_this() {
+                            Some(VMLocation::Global)
+                        } else {
+                            None
+                        };
 
                     node.add_binding(name, kind, vm_location, /* needs_tdz_check */ false);
                 }
@@ -226,28 +232,32 @@ impl ScopeTree {
     /// with that name is defined. If the name could not be statically resolved to a definition then
     /// return None.
     ///
-    /// Marks the binding as captured if it is used by a nested function.
+    /// Marks the binding as captured if it is used by a nested function. Returns the resolved scope
+    /// and whether the use is a capture.
     pub fn resolve_use(
         &mut self,
         use_scope_id: ScopeNodeId,
-        id: &Identifier,
-    ) -> Option<AstPtr<AstScopeNode>> {
+        name: &str,
+        name_loc: Loc,
+    ) -> Option<(AstPtr<AstScopeNode>, bool)> {
         let mut scope_id = use_scope_id;
         loop {
             let scope = self.get_ast_node(scope_id);
+            let mut is_capture = false;
 
-            if scope.bindings.contains_key(&id.name) {
+            if scope.bindings.contains_key(name) {
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
                 if self.lookup_enclosing_function(scope_id)
                     != self.lookup_enclosing_function(use_scope_id)
                 {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
-                    let binding = bindings.get_mut(&id.name).unwrap();
+                    let binding = bindings.get_mut(name).unwrap();
                     binding.is_captured = true;
+                    is_capture = true;
                 } else {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
-                    let binding = bindings.get_mut(&id.name).unwrap();
+                    let binding = bindings.get_mut(name).unwrap();
 
                     // For const and let bindings in the same scope, check if the use is before the
                     // end of the binding's initialization. If so we need to check for the TDZ.
@@ -255,18 +265,20 @@ impl ScopeTree {
                     | BindingKind::Let { init_pos }
                     | BindingKind::CatchParameter { init_pos } = binding.kind()
                     {
-                        if id.loc.start < init_pos.get() {
+                        if name_loc.start < init_pos.get() {
                             binding.needs_tdz_check = true;
                         }
                     }
                 }
 
-                return Some(self.get_ast_node_ptr(scope_id));
+                return Some((self.get_ast_node_ptr(scope_id), is_capture));
             }
 
             // If we have not yet found the binding when exiting a with scope, the use is not
             // statically resolvable.
-            if scope.kind == ScopeNodeKind::With {
+            //
+            // Note that `this` bindings can still be searched for past `with` scopes.
+            if scope.kind == ScopeNodeKind::With && name != "this" {
                 return None;
             }
 
@@ -324,7 +336,7 @@ impl ScopeTree {
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
             if binding.is_captured || ast_node.force_vm_scope {
                 // Bindings that are captured by another scope must be placed in a VM scope node
-                if !is_global {
+                if !is_global || binding.is_implicit_this() {
                     // Mark the VM location for the binding
                     binding.set_vm_location(VMLocation::Scope {
                         scope_id: vm_node_id,
@@ -369,11 +381,12 @@ impl ScopeTree {
             let mut enclosed_scopes = vec![];
             std::mem::swap(&mut enclosed_scopes, &mut self.ast_nodes[i].enclosed_scopes);
 
-            // All bindings without a location are placed in local registers in the enclosing scope
+            // All bindings without a location are placed in local registers in the enclosing scope.
+            // (Except for implicit this, which is either captured or loaded from the this slot).
             for enclosed_scope in enclosed_scopes.iter().rev() {
                 let enclosed_scope = self.get_ast_node_mut(*enclosed_scope);
                 for (_, binding) in enclosed_scope.bindings.iter_mut() {
-                    if binding.vm_location.is_none() {
+                    if binding.vm_location.is_none() && !binding.is_implicit_this() {
                         binding.set_vm_location(VMLocation::LocalRegister(num_local_registers));
                         num_local_registers += 1;
                     }
@@ -492,7 +505,8 @@ impl AstScopeNode {
     }
 
     /// Iterator over all VarScopedDeclarations in this scope. Note that this does not include
-    /// function parameters, which are var scoped but do not count as a VarScopedDeclaration.
+    /// function parameters or implicit function bindings, which are var scoped but do not count as
+    /// VarScopedDeclarations.
     pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&String, &Binding)> {
         self.bindings
             .iter()
@@ -542,13 +556,20 @@ pub enum BindingKind {
         /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
+    /// An implicit `this` binding introduced in a function or global scope.
+    ImplicitThis {
+        /// Whether this is `this` in the global scope.
+        is_global: bool,
+    },
 }
 
 impl BindingKind {
     /// Whether this is a LexicallyScopedDeclaration or a VarScopedDeclaration from the spec.
     pub fn is_lexically_scoped(&self) -> bool {
         match self {
-            BindingKind::Var | BindingKind::FunctionParameter => false,
+            BindingKind::Var
+            | BindingKind::FunctionParameter
+            | BindingKind::ImplicitThis { .. } => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
@@ -563,6 +584,10 @@ impl BindingKind {
 
     pub fn is_function(&self) -> bool {
         matches!(self, BindingKind::Function { .. })
+    }
+
+    pub fn is_implicit_this(&self) -> bool {
+        matches!(self, BindingKind::ImplicitThis { .. })
     }
 
     pub fn has_tdz(&self) -> bool {
@@ -611,6 +636,10 @@ impl Binding {
 
     pub fn is_const(&self) -> bool {
         self.kind.is_const()
+    }
+
+    pub fn is_implicit_this(&self) -> bool {
+        self.kind.is_implicit_this()
     }
 
     pub fn vm_location(&self) -> Option<VMLocation> {

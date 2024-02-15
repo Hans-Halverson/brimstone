@@ -534,7 +534,7 @@ impl<'a> Printer<'a> {
             Expression::Call(call) => self.print_call_expression(call),
             Expression::New(new) => self.print_new_expression(new),
             Expression::Sequence(seq) => self.print_sequence_expression(seq),
-            Expression::This(loc) => self.print_this_expression(&loc),
+            Expression::This(this) => self.print_this_expression(this),
             Expression::Array(arr) => self.print_array_expression(arr),
             Expression::Object(arr) => self.print_object_expression(arr),
             Expression::Function(func) => self.print_function_expression(func),
@@ -792,8 +792,8 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_this_expression(&mut self, loc: &Loc) {
-        self.start_node("ThisExpression", loc);
+    fn print_this_expression(&mut self, this: &ThisExpression) {
+        self.start_node("ThisExpression", &this.loc);
         self.end_node();
     }
 

@@ -276,7 +276,7 @@ pub trait AstVisitor: Sized {
         default_visit_sequence_expression(self, expr)
     }
 
-    fn visit_this_expression(&mut self, _: &mut Loc) {}
+    fn visit_this_expression(&mut self, _: &mut ThisExpression) {}
 
     fn visit_array_expression(&mut self, expr: &mut ArrayExpression) {
         default_visit_array_expression(self, expr)

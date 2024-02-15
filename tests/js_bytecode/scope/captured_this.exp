@@ -1,0 +1,97 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: PushLexicalScope c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: StoreToScope <this>, 0, 0
+    18: StoreGlobal <this>, c5
+    21: NewClosure r0, c6
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: capturedFunctionThis]
+    2: [String: capturedFunctionThis]
+    3: [BytecodeFunction: noCapture]
+    4: [String: noCapture]
+    5: [String: v1]
+    6: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: capturedFunctionThis] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: Mov r0, <this>
+     9: NewClosure r1, c1
+    12: NewClosure r1, c2
+    15: LoadUndefined r1
+    17: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 2
+     3: LoadFromScope r1, 0, 0
+     7: Add r0, r0, r1
+    11: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 3
+     3: NewClosure r1, c0
+     6: Add r0, r0, r1
+    10: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 4
+     3: NewClosure r1, c0
+     6: Add r0, r0, r1
+    10: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 5
+     3: LoadFromScope r1, 0, 0
+     7: Add r0, r0, r1
+    11: Ret r0
+}
+
+[BytecodeFunction: noCapture] {
+  Parameters: 0, Registers: 3
+    0: NewClosure r1, c0
+    3: Mov r0, <this>
+    6: LoadUndefined r2
+    8: Ret r2
+  Constant Table:
+    0: [BytecodeFunction: inner]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 2
+    0: Mov r0, <this>
+    3: LoadUndefined r1
+    5: Ret r1
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadFromScope r1, 0, 0
+     7: Add r0, r0, r1
+    11: Ret r0
+}

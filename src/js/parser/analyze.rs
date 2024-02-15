@@ -662,6 +662,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
         default_visit_unary_expression(self, expr);
     }
 
+    fn visit_this_expression(&mut self, this: &mut ThisExpression) {
+        self.resolve_this_use(this);
+    }
+
     fn visit_identifier_expression(&mut self, id: &mut Identifier) {
         if id.name == "arguments" && !self.allow_arguments {
             self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
@@ -1276,8 +1280,21 @@ impl Analyzer<'_> {
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        if let Some(def_scope) = self.scope_tree.resolve_use(current_scope, id) {
+        if let Some((def_scope, _)) = self.scope_tree.resolve_use(current_scope, &id.name, id.loc) {
             id.scope = Some(def_scope);
+        }
+    }
+
+    fn resolve_this_use(&mut self, this: &mut ThisExpression) {
+        let current_scope = self.scope_stack.last().unwrap().as_ref().id();
+        let (def_scope, is_capture) = self
+            .scope_tree
+            .resolve_use(current_scope, "this", this.loc)
+            .unwrap();
+
+        // Only set scope is this is a capture of a `this` binding
+        if is_capture {
+            this.scope = Some(def_scope);
         }
     }
 }

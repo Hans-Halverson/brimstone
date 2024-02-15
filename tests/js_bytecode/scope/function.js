@@ -10,3 +10,14 @@ function captures() {
     return x;
   }
 }
+
+function capturedParameters(x, {y}, z = 2, ...rest) {
+  function inner() {
+    return x + y + z + rest;
+  }
+
+  x = 1;
+  y = 2;
+  z = 3;
+  rest = 4;
+}

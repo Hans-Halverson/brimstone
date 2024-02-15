@@ -689,18 +689,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let func_scope = func.scope.as_ref();
         self.gen_scope_start(func_scope)?;
 
-        // Generate function parameters including destructuring and default value evaluation
+        // Generate function parameters including destructuring, default value evaluation, and
+        // captured parameters.
         for (i, param) in func.params.iter().enumerate() {
             // Each parameter is in its own "has assign expression" context
             self.enter_has_assign_expr_context(param.has_assign_expr());
 
             match param {
-                // Emit pattern destructuring, but no need to destructure ids
+                // Emit pattern destructuring
                 ast::FunctionParam::Pattern { pattern, .. } => {
                     let argument = Register::argument(i);
-                    if !matches!(pattern, ast::Pattern::Id(_)) {
-                        self.gen_destructuring(pattern, argument, /* release_value */ true)?;
-                    }
+                    self.gen_destructuring(pattern, argument, /* release_value */ true)?;
                 }
                 // Create the rest parameter then destructure
                 ast::FunctionParam::Rest { rest: param, .. } => {

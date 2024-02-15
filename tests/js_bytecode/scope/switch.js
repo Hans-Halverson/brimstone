@@ -28,3 +28,21 @@ function alwaysNeedTdzCheck() {
     }
   }
 }
+
+function captures() {
+  switch (0) {
+    case 1:
+      const x = 1;
+    case 2:
+      function inner1() {
+        return x;
+      }
+    // Creates a new block context
+    case 3: {
+      const y = 1;
+      function inner2() {
+        return x + y;
+      }
+    }
+  }
+}

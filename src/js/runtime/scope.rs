@@ -5,6 +5,7 @@ use super::{
     gc::{HeapObject, HeapVisitor},
     object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
+    scope_names::ScopeNames,
     Context, Handle, HeapPtr, Value,
 };
 
@@ -13,6 +14,8 @@ pub struct Scope {
     descriptor: HeapPtr<ObjectDescriptor>,
     /// Parent scope, forming a chain of scopes up to the global scope.
     parent: Option<HeapPtr<Scope>>,
+    /// Names of the slots in this scope.
+    scope_names: HeapPtr<ScopeNames>,
     /// Object containing scope bindings if this is a global or with scope.
     object: Option<HeapPtr<ObjectValue>>,
     /// Inline array of slots for variables in this scope.
@@ -21,14 +24,38 @@ pub struct Scope {
 
 impl Scope {
     pub fn new_global(cx: Context, global_object: Handle<ObjectValue>) -> Handle<Scope> {
-        let size = Self::calculate_size_in_bytes(0);
+        // Use an empty set of scope names
+        let scope_names = ScopeNames::new(cx, &[]);
+
+        let num_slots = scope_names.len();
+        let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
         set_uninit!(scope.parent, None);
+        set_uninit!(scope.scope_names, scope_names.get_());
         set_uninit!(scope.object, Some(global_object.get_()));
 
-        scope.slots.init_with_uninit(0);
+        scope.slots.init_with(num_slots, Value::undefined());
+
+        scope.to_handle()
+    }
+
+    pub fn new_lexical(
+        cx: Context,
+        parent: Handle<Scope>,
+        scope_names: Handle<ScopeNames>,
+    ) -> Handle<Scope> {
+        let num_slots = scope_names.len();
+        let size = Self::calculate_size_in_bytes(num_slots);
+        let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
+
+        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
+        set_uninit!(scope.parent, Some(parent.get_()));
+        set_uninit!(scope.scope_names, scope_names.get_());
+        set_uninit!(scope.object, None);
+
+        scope.slots.init_with(num_slots, Value::undefined());
 
         scope.to_handle()
     }
@@ -48,6 +75,21 @@ impl Scope {
     pub fn object(&self) -> Handle<ObjectValue> {
         self.object_ptr().to_handle()
     }
+
+    #[inline]
+    pub fn parent_ptr(&self) -> HeapPtr<Scope> {
+        self.parent.unwrap()
+    }
+
+    #[inline]
+    pub fn get_slot(&self, index: usize) -> Value {
+        self.slots.as_slice()[index]
+    }
+
+    #[inline]
+    pub fn set_slot(&mut self, index: usize, value: Value) {
+        self.slots.as_mut_slice()[index] = value;
+    }
 }
 
 impl HeapObject for HeapPtr<Scope> {
@@ -58,6 +100,7 @@ impl HeapObject for HeapPtr<Scope> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
         visitor.visit_pointer_opt(&mut self.parent);
+        visitor.visit_pointer(&mut self.scope_names);
         visitor.visit_pointer_opt(&mut self.object);
 
         for slot in self.slots.as_mut_slice() {

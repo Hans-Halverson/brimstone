@@ -16,3 +16,11 @@ function test1() {
     unresolved;
   }
 }
+
+{
+  // Block scope can be greated in global scope
+  const c1 = 1;
+  function inner() {
+    return c1;
+  }
+}

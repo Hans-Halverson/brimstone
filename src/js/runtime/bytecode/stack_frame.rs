@@ -1,4 +1,4 @@
-use crate::js::runtime::{HeapPtr, Value};
+use crate::js::runtime::{scope::Scope, HeapPtr, Value};
 
 use super::{constant_table::ConstantTable, function::Closure};
 
@@ -12,14 +12,16 @@ use super::{constant_table::ConstantTable, function::Closure};
 ///     |       ...        |
 ///     +------------------+
 ///     |       arg0       |  (first arg)
-/// +56 +------------------+                     ^                ^
+/// +64 +------------------+                     ^                ^
 ///     |     receiver     |  (receiver)         | caller's frame |
-/// +48 +------------------+                     +----------------+
+/// +56 +------------------+                     +----------------+
 ///     |       argc       |                     | callee's frame |
-/// +40 +------------------+                     v                v
+/// +48 +------------------+                     v                v
 ///     |      closure     |  (closure of the caller)
-/// +32 +------------------+
+/// +40 +------------------+
 ///     |  constant_table  |  (constant table of the called closure)
+/// +32 +------------------+
+///     |       scope      |  (current VM scope)
 /// +24 +------------------+
 ///     |  return val addr |  (address of the return value)
 /// +16 +------------------+
@@ -127,6 +129,18 @@ impl StackFrame {
         unsafe { *self.fp.add(RETURN_VALUE_ADDRESS_INDEX) as *mut Value }
     }
 
+    #[inline]
+    pub fn scope(&self) -> HeapPtr<Scope> {
+        let ptr = unsafe { *self.fp.add(SCOPE_SLOT_INDEX) };
+        HeapPtr::from_ptr(ptr as *mut Scope)
+    }
+
+    /// A mutable reference to the constant table of the callee function in this stack frame.
+    #[inline]
+    pub fn scope_mut(&mut self) -> &mut HeapPtr<Scope> {
+        unsafe { &mut *(self.fp.add(SCOPE_SLOT_INDEX) as *mut HeapPtr<Scope>) }
+    }
+
     /// The constant table of the callee function in this stack frame.
     #[inline]
     pub fn constant_table(&self) -> HeapPtr<ConstantTable> {
@@ -205,12 +219,14 @@ const RETURN_ADDRESS_SLOT_INDEX: usize = 1;
 
 const RETURN_VALUE_ADDRESS_INDEX: usize = 2;
 
-const CONSTANT_TABLE_SLOT_INDEX: usize = 3;
+const SCOPE_SLOT_INDEX: usize = 3;
 
-const CLOSURE_SLOT_INDEX: usize = 4;
+const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 
-const ARGC_SLOT_INDEX: usize = 5;
+const CLOSURE_SLOT_INDEX: usize = 5;
 
-pub const RECEIVER_SLOT_INDEX: usize = 6;
+const ARGC_SLOT_INDEX: usize = 6;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 7;
+pub const RECEIVER_SLOT_INDEX: usize = 7;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 8;

@@ -95,6 +95,10 @@ impl ScopeTree {
         AstPtr::from_ref(self.ast_nodes[node_id].as_ref())
     }
 
+    pub fn get_vm_node(&self, node_id: ScopeNodeId) -> &VMScopeNode {
+        &self.vm_nodes[node_id]
+    }
+
     fn new_ast_scope_node(
         &mut self,
         id: ScopeNodeId,
@@ -343,7 +347,7 @@ impl ScopeTree {
 
         // Only if there are bindings to place in the scope do we need to create a VM scope node
         if !bindings.is_empty() {
-            self.vm_nodes.push(VMScopeNode { _bindings: bindings });
+            self.vm_nodes.push(VMScopeNode { bindings });
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }
 
@@ -449,6 +453,10 @@ impl AstScopeNode {
 
     pub fn num_local_registers(&self) -> usize {
         self.num_local_registers
+    }
+
+    pub fn vm_scope_id(&self) -> Option<ScopeNodeId> {
+        self.vm_scope
     }
 
     fn add_binding(
@@ -631,5 +639,12 @@ pub enum VMLocation {
 }
 
 pub struct VMScopeNode {
-    _bindings: Vec<String>,
+    bindings: Vec<String>,
+}
+
+impl VMScopeNode {
+    #[inline]
+    pub fn bindings(&self) -> &[String] {
+        &self.bindings
+    }
 }

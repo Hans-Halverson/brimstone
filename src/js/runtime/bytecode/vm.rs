@@ -28,6 +28,8 @@ use crate::{
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
         regexp::compiled_regexp::CompiledRegExpObject,
+        scope::Scope,
+        scope_names::ScopeNames,
         to_string,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_numeric, to_object,
@@ -58,17 +60,19 @@ use super::{
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
-        LoadFalseInstruction, LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction,
-        LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        LoadFalseInstruction, LoadFromScopeInstruction, LoadGlobalInstruction,
+        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewObjectInstruction, NewRegExpInstruction, OpCode, RemInstruction,
-        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreGlobalInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction,
+        NewObjectInstruction, NewRegExpInstruction, OpCode, PopScopeInstruction,
+        PushLexicalScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
+        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPropertyInstruction,
+        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -482,6 +486,16 @@ impl VM {
                                 execute_copy_data_properties
                             )
                         }
+                        OpCode::PushLexicalScope => {
+                            dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
+                        }
+                        OpCode::PopScope => dispatch!(PopScopeInstruction, execute_pop_scope),
+                        OpCode::LoadFromScope => {
+                            dispatch!(LoadFromScopeInstruction, execute_load_from_scope)
+                        }
+                        OpCode::StoreToScope => {
+                            dispatch!(StoreToScopeInstruction, execute_store_to_scope)
+                        }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::RestParameter => {
                             dispatch!(RestParameterInstruction, execute_rest_parameter)
@@ -581,6 +595,11 @@ impl VM {
     #[inline]
     fn get_return_value_address(&self) -> *mut Value {
         StackFrame::for_fp(self.fp).return_value_address()
+    }
+
+    #[inline]
+    fn scope(&self) -> HeapPtr<Scope> {
+        StackFrame::for_fp(self.fp).scope()
     }
 
     #[inline]
@@ -1095,6 +1114,7 @@ impl VM {
         return_value_address: *mut Value,
     ) {
         let bytecode_function = closure.function_ptr();
+        let scope = closure.scope();
 
         // Push arguments
         let argc_to_push = self.push_call_arguments(bytecode_function, args_rev_iter, argc);
@@ -1111,6 +1131,9 @@ impl VM {
         // Push the constant table
         let constant_table = unsafe { std::mem::transmute(bytecode_function.constant_table_ptr()) };
         self.push(constant_table);
+
+        // Push the current scope
+        self.push(scope.as_ptr() as StackSlotValue);
 
         // Push the address of the return value register
         self.push(return_value_address as StackSlotValue);
@@ -1879,9 +1902,10 @@ impl VM {
         let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
+        let scope = self.scope().to_handle();
 
         // Allocates
-        let closure = Closure::new(self.cx, func);
+        let closure = Closure::new(self.cx, func, scope);
 
         self.write_register(dest, Value::object(closure.get_().cast()));
     }
@@ -2152,6 +2176,67 @@ impl VM {
     }
 
     #[inline]
+    fn execute_push_lexical_scope<W: Width>(&mut self, instr: &PushLexicalScopeInstruction<W>) {
+        let scope = self.scope().to_handle();
+        let scope_names = self
+            .get_constant(instr.scope_names_index())
+            .to_handle(self.cx)
+            .cast::<ScopeNames>();
+
+        // Allocates
+        let lexical_scope = Scope::new_lexical(self.cx, scope, scope_names).get_();
+
+        // Write the new scope to the stack
+        *StackFrame::for_fp(self.fp).scope_mut() = lexical_scope;
+    }
+
+    #[inline]
+    fn execute_pop_scope<W: Width>(&mut self, _: &PopScopeInstruction<W>) {
+        let parent_scope = self.scope().parent_ptr();
+
+        // Write the new scope to the stack
+        *StackFrame::for_fp(self.fp).scope_mut() = parent_scope;
+    }
+
+    #[inline]
+    fn scope_at_depth(&self, parent_depth: usize) -> HeapPtr<Scope> {
+        let mut scope = self.scope();
+        for _ in 0..parent_depth {
+            scope = scope.parent_ptr();
+        }
+
+        scope
+    }
+
+    #[inline]
+    fn execute_load_from_scope<W: Width>(&mut self, instr: &LoadFromScopeInstruction<W>) {
+        let scope_index = instr.scope_index().value().to_usize();
+        let parent_depth = instr.parent_depth().value().to_usize();
+        let dest = instr.dest();
+
+        // Find the scope at the given parent depth
+        let scope = self.scope_at_depth(parent_depth);
+
+        // Extract the value at the given index
+        let value = scope.get_slot(scope_index);
+
+        self.write_register(dest, value);
+    }
+
+    #[inline]
+    fn execute_store_to_scope<W: Width>(&mut self, instr: &StoreToScopeInstruction<W>) {
+        let scope_index = instr.scope_index().value().to_usize();
+        let parent_depth = instr.parent_depth().value().to_usize();
+        let value = self.read_register(instr.value());
+
+        // Find the scope at the given parent depth
+        let mut scope = self.scope_at_depth(parent_depth);
+
+        // Store the value in the scope at the given index
+        scope.set_slot(scope_index, value);
+    }
+
+    #[inline]
     fn execute_rest_parameter<W: Width>(&mut self, instr: &RestParameterInstruction<W>) {
         let dest = instr.dest();
 
@@ -2294,6 +2379,7 @@ impl VM {
 
             visitor.visit_pointer(stack_frame.closure_mut());
             visitor.visit_pointer(stack_frame.constant_table_mut());
+            visitor.visit_pointer(stack_frame.scope_mut());
 
             // Move to the parent's stack frame
             if let Some(caller_stack_frame) = stack_frame.previous_frame() {

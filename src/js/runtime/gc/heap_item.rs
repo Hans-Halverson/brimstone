@@ -60,6 +60,7 @@ use crate::js::runtime::{
     realm::RealmTemplateMapField,
     regexp::compiled_regexp::CompiledRegExpObject,
     scope::Scope,
+    scope_names::ScopeNames,
     string_object::StringObject,
     string_value::StringValue,
     value::{AccessorValue, BigIntValue, SymbolValue},
@@ -148,6 +149,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().byte_size(),
             ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().byte_size(),
             ObjectKind::Scope => self.cast::<Scope>().byte_size(),
+            ObjectKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
             ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
             ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
@@ -273,6 +275,7 @@ impl HeapObject for HeapPtr<HeapItem> {
                 self.cast::<ExceptionHandlers>().visit_pointers(visitor)
             }
             ObjectKind::Scope => self.cast::<Scope>().visit_pointers(visitor),
+            ObjectKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
             ObjectKind::DeclarativeEnvironment => self
                 .cast::<DeclarativeEnvironment>()
                 .visit_pointers(visitor),

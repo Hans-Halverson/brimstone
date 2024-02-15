@@ -26,22 +26,27 @@ use super::{
     instruction::debug_format_instructions,
 };
 
-// A closure is a pair of a function and it's scope. Represents the instantiation of a function's
+// A closure is a pair of a function and its scope. Represents the instantiation of a function's
 // bytecode "template" in a particular scope, and is the callable object.
 extend_object! {
     pub struct Closure {
         function: HeapPtr<BytecodeFunction>,
-        // TODO: Add runtime scope
+        scope: HeapPtr<Scope>,
     }
 }
 
 impl Closure {
-    pub fn new(cx: Context, function: Handle<BytecodeFunction>) -> Handle<Closure> {
+    pub fn new(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+    ) -> Handle<Closure> {
         // TODO: Handle different function prototypes
         let mut object =
             object_create::<Closure>(cx, ObjectKind::Closure, Intrinsic::FunctionPrototype);
 
         set_uninit!(object.function, function.get_());
+        set_uninit!(object.scope, scope.get_());
 
         let closure = object.to_handle();
         Self::init_common_properties(cx, closure, function);
@@ -52,11 +57,13 @@ impl Closure {
     pub fn new_builtin(
         cx: Context,
         function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
     ) -> Handle<Closure> {
         let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
 
         set_uninit!(object.function, function.get_());
+        set_uninit!(object.scope, scope.get_());
 
         // Does not need to the `name` and `length` properties as these will be set by caller
         object.to_handle()
@@ -65,6 +72,11 @@ impl Closure {
     #[inline]
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.function
+    }
+
+    #[inline]
+    pub fn scope(&self) -> Handle<Scope> {
+        self.scope.to_handle()
     }
 
     #[inline]

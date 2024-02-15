@@ -19,3 +19,14 @@ function startScopeTDZInOuter() {
     3;
   }
 }
+
+function captures() {
+  // For initializer in outer scope
+  for (const x = 1;;) {
+    // Body in separate inner scope
+    const y = 2;
+    function inner() {
+      return x + y;
+    }
+  }
+}

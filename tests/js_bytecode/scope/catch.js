@@ -9,4 +9,35 @@ function startScope() {
   }
 }
 
-startScope();
+function capturesWithCapturedParam() {
+  try {
+    1;
+  } catch (x) {
+    const y = 1;
+    function inner() {
+      return x + y;
+    }
+  }
+}
+
+function capturesNoParam() {
+  try {
+    1;
+  } catch {
+    const x = 1;
+    function inner() {
+      return x;
+    }
+  }
+}
+
+function capturesWithUncapturedParam() {
+  try {
+    1;
+  } catch (x) {
+    const y = 1 + x;
+    function inner() {
+      return y;
+    }
+  }
+}

@@ -363,7 +363,8 @@ fn execute_as_bytecode(
         }
     };
 
-    let closure = Closure::new(cx, bytecode_program);
+    let global_scope = cx.current_realm().global_scope();
+    let closure = Closure::new(cx, bytecode_program, global_scope);
 
     match cx.execute_bytecode(closure, &[]) {
         Ok(value) => Completion::normal(value),

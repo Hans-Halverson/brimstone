@@ -51,7 +51,8 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
         // Execute in the bytecode interpreter
         cx.execute_then_drop(|mut cx| {
-            let closure = Closure::new(cx, bytecode_program);
+            let global_scope = cx.current_realm().global_scope();
+            let closure = Closure::new(cx, bytecode_program, global_scope);
             if let Err(err) = cx.execute_bytecode(closure, &[]) {
                 let error_string = to_console_string(cx, err);
                 print_error_message_and_exit(&error_string);

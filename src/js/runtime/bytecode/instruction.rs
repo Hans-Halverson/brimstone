@@ -753,6 +753,33 @@ define_instructions!(
         [3] argc: UInt,
     }
 
+    /// Create a new lexical scope and push it to the stack, becoming the current scope. The old
+    /// current scope becomes the parent scope.
+    ///
+    /// The scope names to use are at the given index in the constant table.
+    PushLexicalScope (PushLexicalScopeInstruction, push_lexical_scope_instruction) {
+        [0] scope_names_index: ConstantIndex,
+    }
+
+    /// Pop a scope off the stack, replacing it with its parent scope.
+    PopScope (PopScopeInstruction, pop_scope_instruction) {}
+
+    /// Load the value at `scope_index` from a scope and store in dest. The scope is found at
+    /// `parent_depth` levels up the scope chain. A `parent_depth` of 0 refers to the current scope.
+    LoadFromScope (LoadFromScopeInstruction, load_from_scope_instruction) {
+        [0] dest: Register,
+        [1] scope_index: UInt,
+        [2] parent_depth: UInt,
+    }
+
+    /// Store the `value` into a scope at `scope_index`. The scope is found at `parent_depth`
+    /// levels up the scope chain. A `parent_depth` of 0 refers to the current scope.
+    StoreToScope (StoreToScopeInstruction, store_to_scope_instruction) {
+        [0] value: Register,
+        [1] scope_index: UInt,
+        [2] parent_depth: UInt,
+    }
+
     /// Throw an error.
     Throw(ThrowInstruction, throw_instruction) {
         [0] error: Register,

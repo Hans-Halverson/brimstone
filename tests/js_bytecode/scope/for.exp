@@ -4,13 +4,17 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
     0: [BytecodeFunction: startScopeNoTDZInOuter]
     1: [String: startScopeNoTDZInOuter]
     2: [BytecodeFunction: startScopeTDZInOuter]
     3: [String: startScopeTDZInOuter]
+    4: [BytecodeFunction: captures]
+    5: [String: captures]
 }
 
 [BytecodeFunction: startScopeNoTDZInOuter] {
@@ -75,4 +79,42 @@
   Constant Table:
     0: [String: x]
     1: [String: inner]
+}
+
+[BytecodeFunction: captures] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: LoadImmediate r1, 1
+    11: StoreToScope r1, 0, 0
+  .L0:
+    15: PushLexicalScope c1
+    17: LoadEmpty r1
+    19: StoreToScope r1, 0, 0
+    23: LoadImmediate r1, 2
+    26: StoreToScope r1, 0, 0
+    30: NewClosure r0, c2
+    33: PopScope 
+    34: Jump -19 (.L0)
+    36: PopScope 
+    37: LoadUndefined r1
+    39: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [BytecodeFunction: inner]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 0, 1
+     4: CheckTdz r0, c0
+     7: LoadFromScope r1, 0, 0
+    11: CheckTdz r1, c1
+    14: Add r0, r0, r1
+    18: Ret r0
+  Constant Table:
+    0: [String: x]
+    1: [String: y]
 }

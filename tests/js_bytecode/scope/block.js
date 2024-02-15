@@ -8,3 +8,12 @@ function startScope() {
     let y = y;
   }
 }
+
+function captures() {
+  {
+    const x = 1;
+    function foo() {
+      return x;
+    }
+  }
+}

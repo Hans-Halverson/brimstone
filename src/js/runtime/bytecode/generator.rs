@@ -1,7 +1,8 @@
 use std::{
     collections::{HashMap, VecDeque},
     error::Error,
-    fmt::{self},
+    fmt,
+    rc::Rc,
 };
 
 use crate::js::{
@@ -18,6 +19,7 @@ use crate::js::{
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
         scope::Scope,
+        scope_names::ScopeNames,
         value::BigIntValue,
         Context, Handle, Realm, Value,
     },
@@ -102,6 +104,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 generator.gen_toplevel(toplevel)?;
             }
 
+            // Scope end not needed since the script function returns
+
             // Implicitly return undefined at end of script function
             generator.gen_return_undefined()?;
 
@@ -123,7 +127,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         &mut self,
         pending_function: PatchablePendingFunction,
     ) -> EmitResult<()> {
-        let PatchablePendingFunction { func_node, parent_function, constant_index } =
+        let PatchablePendingFunction { func_node, parent_function, constant_index, scope } =
             pending_function;
 
         // Handle where the result BytecodeFunction is placed
@@ -135,6 +139,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.cx,
                 func_node,
                 &self.scope_tree,
+                scope,
                 self.global_scope,
             )?;
 
@@ -162,9 +167,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
         parent_function: Handle<BytecodeFunction>,
         pending_functions: PendingFunctions,
     ) {
-        for (func_node, constant_index) in pending_functions {
+        for (func_node, constant_index, scope) in pending_functions {
             self.pending_functions_queue
-                .push_back(PatchablePendingFunction { func_node, parent_function, constant_index });
+                .push_back(PatchablePendingFunction {
+                    func_node,
+                    parent_function,
+                    constant_index,
+                    scope,
+                });
         }
     }
 }
@@ -173,8 +183,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
 pub struct BytecodeFunctionGenerator<'a> {
     pub writer: BytecodeWriter,
     cx: Context,
-    _scope_tree: Option<&'a ScopeTree>,
+    scope_tree: &'a ScopeTree,
     global_scope: Handle<Scope>,
+
+    /// A chain of VM scopes that the generator is currently inside. The first node is the innermost
+    /// scope.
+    scope: Rc<ScopeStackNode>,
 
     /// Optional name of the function, used for the name property.
     name: Option<Wtf8String>,
@@ -221,7 +235,8 @@ pub struct BytecodeFunctionGenerator<'a> {
 impl<'a> BytecodeFunctionGenerator<'a> {
     fn new(
         cx: Context,
-        scope_tree: Option<&'a ScopeTree>,
+        scope_tree: &'a ScopeTree,
+        scope: Rc<ScopeStackNode>,
         global_scope: Handle<Scope>,
         name: Option<Wtf8String>,
         num_parameters: u32,
@@ -232,8 +247,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Self {
             writer: BytecodeWriter::new(),
             cx,
-            _scope_tree: scope_tree,
+            scope_tree,
             global_scope,
+            scope,
             name,
             num_blocks: 0,
             block_offsets: HashMap::new(),
@@ -254,6 +270,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         pending_function: PendingFunctionNode,
         scope_tree: &'a ScopeTree,
+        scope: Rc<ScopeStackNode>,
         global_scope: Handle<Scope>,
     ) -> EmitResult<Self> {
         let is_constructor = pending_function.is_constructor();
@@ -289,7 +306,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         Ok(Self::new(
             cx,
-            Some(scope_tree),
+            scope_tree,
+            scope,
             global_scope,
             name,
             num_parameters as u32,
@@ -313,9 +331,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Err(EmitError::TooManyRegisters);
         }
 
+        // Create a dummy global scope stack node
+        let scope = Rc::new(ScopeStackNode { scope_id: 0, parent: None });
+
         Ok(Self::new(
             cx,
-            Some(scope_tree),
+            scope_tree,
+            scope,
             global_scope,
             Some(Wtf8String::from_str("<global>")),
             0,
@@ -645,7 +667,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .constant_table_builder
             .add_heap_object(Handle::dangling())?;
         self.pending_functions_queue
-            .push((function, constant_index));
+            .push((function, constant_index, self.scope.clone()));
 
         Ok(constant_index)
     }
@@ -659,7 +681,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Entire function parameters and body are in their own scope.
         // TODO: When there are default parameters more scopes are potentially needed, particularly
         // in the case of a direct eval in a default parameter.
-        self.gen_scope_start(func.scope.as_ref())?;
+        let func_scope = func.scope.as_ref();
+        self.gen_scope_start(func_scope)?;
 
         // Generate function parameters including destructuring and default value evaluation
         for (i, param) in func.params.iter().enumerate() {
@@ -691,6 +714,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::FunctionBody::Block(block_body) => {
                 let body_completion = self.gen_statement_list(&block_body.body)?;
 
+                // Scope end not needed since the function immediately returns
+
                 // If the body continues, meaning there was no return statement (or throw, break,
                 // etc.) then implicitly return undefined.
                 if !body_completion.is_abrupt() {
@@ -699,6 +724,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::FunctionBody::Expression(expr_body) => {
                 let return_value_reg = self.gen_outer_expression(expr_body)?;
+
+                // Scope end not needed since the function immediately returns
+
                 self.writer.ret_instruction(return_value_reg);
                 self.register_allocator.release(return_value_reg);
             }
@@ -916,50 +944,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => {
-                if add_tdz_check {
-                    let name_constant_index = self.add_string_constant(&id.name)?;
-
-                    // Check if destination register is a fixed non-temporary. If so we must first
-                    // load to a temporary and perform the TDZ check, so that we guarantee that the
-                    // TDZ check occurs before the destination is written (which may be observable).
-                    if let ExprDest::Fixed(dest_reg) = dest {
-                        if !self.register_allocator.is_temporary_register(dest_reg) {
-                            let temporary_reg =
-                                self.gen_load_global_identifier(id, ExprDest::Any)?;
-                            self.writer
-                                .check_tdz_instruction(temporary_reg, name_constant_index);
-
-                            return self.gen_mov_reg_to_dest(temporary_reg, dest);
-                        }
-                    }
-
-                    // Otherwise load the value and then perform the TDZ check directly on the
-                    // loaded value.
-                    let value = self.gen_load_global_identifier(id, dest)?;
-                    self.writer
-                        .check_tdz_instruction(value, name_constant_index);
-
-                    return Ok(value);
-                }
-
-                // Without a TDZ check a simple load is performed
-                self.gen_load_global_identifier(id, dest)
+                self.gen_load_non_fixed_identifier(id, add_tdz_check, dest, |this, dest| {
+                    this.gen_load_global_identifier(id, dest)
+                })
             }
-            VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
+            // Scope variables must be loaded to a register from the scope at the specified index
+            VMLocation::Scope { scope_id, index } => {
+                self.gen_load_non_fixed_identifier(id, add_tdz_check, dest, |this, dest| {
+                    this.gen_load_scope_binding(scope_id, index, dest)
+                })
+            }
         }
-    }
-
-    fn gen_load_global_identifier(
-        &mut self,
-        id: &ast::Identifier,
-        dest: ExprDest,
-    ) -> EmitResult<GenRegister> {
-        let dest = self.allocate_destination(dest)?;
-        let constant_index = self.add_string_constant(&id.name)?;
-
-        self.writer.load_global_instruction(dest, constant_index);
-
-        Ok(dest)
     }
 
     /// Variables in arguments and registers can be encoded directly as register operands.
@@ -992,6 +987,86 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_mov_reg_to_dest(fixed_reg, dest)
     }
 
+    /// Variables in globals and scopes must be loaded from the global or scope, and optionally
+    /// perform the TDZ check on the loaded value.
+    fn gen_load_non_fixed_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        add_tdz_check: bool,
+        dest: ExprDest,
+        load_binding_fn: impl FnOnce(&mut Self, ExprDest) -> EmitResult<GenRegister>,
+    ) -> EmitResult<GenRegister> {
+        if add_tdz_check {
+            let name_constant_index = self.add_string_constant(&id.name)?;
+
+            // Check if destination register is a fixed non-temporary. If so we must first
+            // load to a temporary and perform the TDZ check, so that we guarantee that the
+            // TDZ check occurs before the destination is written (which may be observable).
+            if let ExprDest::Fixed(dest_reg) = dest {
+                if !self.register_allocator.is_temporary_register(dest_reg) {
+                    let temporary_reg = load_binding_fn(self, ExprDest::Any)?;
+                    self.writer
+                        .check_tdz_instruction(temporary_reg, name_constant_index);
+
+                    return self.gen_mov_reg_to_dest(temporary_reg, dest);
+                }
+            }
+
+            // Otherwise load the value and then perform the TDZ check directly on the
+            // loaded value.
+            let value = load_binding_fn(self, dest)?;
+            self.writer
+                .check_tdz_instruction(value, name_constant_index);
+
+            return Ok(value);
+        }
+
+        // Without a TDZ check a simple load is performed
+        load_binding_fn(self, dest)
+    }
+
+    fn gen_load_global_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+        let constant_index = self.add_string_constant(&id.name)?;
+
+        self.writer.load_global_instruction(dest, constant_index);
+
+        Ok(dest)
+    }
+
+    fn find_scope_depth(&self, scope_id: usize) -> EmitResult<GenUInt> {
+        let mut scope_node = &self.scope;
+        let mut depth = 0;
+
+        while scope_node.scope_id != scope_id {
+            scope_node = scope_node.parent.as_ref().unwrap();
+            depth += 1;
+        }
+
+        GenUInt::try_from_unsigned(depth).ok_or(EmitError::TooManyScopes)
+    }
+
+    fn gen_load_scope_binding(
+        &mut self,
+        scope_id: usize,
+        scope_index: usize,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let parent_depth = self.find_scope_depth(scope_id)?;
+        let scope_index =
+            GenUInt::try_from_unsigned(scope_index).ok_or(EmitError::IndexTooLarge)?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .load_from_scope_instruction(dest, scope_index, parent_depth);
+
+        Ok(dest)
+    }
+
     fn gen_store_identifier(&mut self, id: &ast::Identifier, value: GenRegister) -> EmitResult<()> {
         if id.scope.is_none() {
             // TODO: Generate dynamic lookup from current scope if in eval or with
@@ -1013,7 +1088,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             // Globals must be stored with name appearing in the constant table
             VMLocation::Global => self.gen_store_global_identifier(&id.name, value)?,
-            VMLocation::Scope { .. } => unimplemented!("bytecode for storing scope variables"),
+            // Scope variables must be stored in the scope at the specified index
+            VMLocation::Scope { scope_id, index } => {
+                self.gen_store_scope_binding(scope_id, index, value)?
+            }
         }
 
         Ok(())
@@ -1022,6 +1100,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_store_global_identifier(&mut self, name: &str, value: GenRegister) -> EmitResult<()> {
         let constant_index = self.add_string_constant(name)?;
         self.writer.store_global_instruction(value, constant_index);
+
+        Ok(())
+    }
+
+    fn gen_store_scope_binding(
+        &mut self,
+        scope_id: usize,
+        scope_index: usize,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        let parent_depth = self.find_scope_depth(scope_id)?;
+        let scope_index =
+            GenUInt::try_from_unsigned(scope_index).ok_or(EmitError::IndexTooLarge)?;
+
+        self.writer
+            .store_to_scope_instruction(value, scope_index, parent_depth);
 
         Ok(())
     }
@@ -1042,9 +1136,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Make sure to load to a new temporary if necessary.
             VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),
             VMLocation::LocalRegister(index) => ExprDest::Fixed(Register::local(index)),
-            // Global variables can be stored from any register
-            VMLocation::Global => ExprDest::Any,
-            VMLocation::Scope { .. } => unimplemented!("bytecode for loading scope variables"),
+            // Global and scope variables can be stored from any register
+            VMLocation::Global | VMLocation::Scope { .. } => ExprDest::Any,
         }
     }
 
@@ -3051,11 +3144,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<StmtCompletion> {
         // Block body forms a new scope
-        self.gen_scope_start(stmt.scope.as_ref())?;
-        self.gen_statement_list(&stmt.body)
+        let block_scope = stmt.scope.as_ref();
+        self.gen_scope_start(block_scope)?;
+
+        let stmt_completion = self.gen_statement_list(&stmt.body)?;
+
+        // End of block scope
+        if !stmt_completion.is_abrupt() {
+            self.gen_scope_end(block_scope);
+        }
+
+        Ok(stmt_completion)
     }
 
     fn gen_scope_start(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+        // Push a new scope onto the scope stack if necessary
+        self.push_lexical_scope(scope)?;
+
         // Set all bindings that need a TDZ check to empty
         for (name, binding) in scope.iter_bindings() {
             if binding.kind().has_tdz() && binding.needs_tdz_check() {
@@ -3077,8 +3182,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.gen_store_global_identifier(name, temporary_reg)?;
                         self.register_allocator.release(temporary_reg)
                     }
-                    VMLocation::Scope { .. } => {
-                        unimplemented!("bytecode for storing scope variables")
+                    // Bindings stored in scopes must first load empty to a temporary register
+                    VMLocation::Scope { scope_id, index } => {
+                        let empty_reg = self.register_allocator.allocate()?;
+                        self.writer.load_empty_instruction(empty_reg);
+                        self.gen_store_scope_binding(scope_id, index, empty_reg)?;
+                        self.register_allocator.release(empty_reg);
                     }
                 }
             }
@@ -3092,6 +3201,46 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(())
+    }
+
+    /// Push a new scope onto the scope stack if necessary
+    fn push_lexical_scope(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+        if let Some(vm_scope_id) = scope.vm_scope_id() {
+            let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
+
+            // Build a ScopeNames table containing the names of all bindings in the scope
+            let names = vm_node
+                .bindings()
+                .iter()
+                .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
+                .collect::<Vec<_>>();
+
+            // Store ScopeNames table in the constant table
+            let scope_names = ScopeNames::new(self.cx, &names);
+            let scope_names_index = self
+                .constant_table_builder
+                .add_heap_object(scope_names.cast())?;
+
+            // Push the new scope onto the stack, making it the current scope
+            self.writer
+                .push_lexical_scope_instruction(ConstantIndex::new(scope_names_index));
+
+            self.scope =
+                Rc::new(ScopeStackNode { scope_id: vm_scope_id, parent: Some(self.scope.clone()) });
+        }
+
+        Ok(())
+    }
+
+    fn gen_scope_end(&mut self, scope: &AstScopeNode) {
+        self.pop_scope(scope)
+    }
+
+    fn pop_scope(&mut self, scope: &AstScopeNode) {
+        if scope.vm_scope_id().is_some() {
+            self.writer.pop_scope_instruction();
+            self.scope = self.scope.parent.clone().unwrap();
+        }
     }
 
     fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {
@@ -3180,7 +3329,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let discriminant = self.gen_outer_expression(&stmt.discriminant)?;
 
         // Start the switch body which forms a new scope
-        self.gen_scope_start(stmt.scope.as_ref())?;
+        let switch_body_scope = stmt.scope.as_ref();
+        self.gen_scope_start(switch_body_scope)?;
 
         // Create and jump to the case block ids which will be generated later
         let mut case_block_ids = Vec::with_capacity(stmt.cases.len());
@@ -3235,8 +3385,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.start_block(join_block);
-
         self.pop_jump_statement_target();
+
+        // End of the switch body scope
+        self.gen_scope_end(switch_body_scope);
 
         // Switch statements always complete normally since there may be a break
         Ok(StmtCompletion::Normal)
@@ -3255,7 +3407,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let join_block = jump_targets.break_block;
 
         // Entire for statement forms a new scope
-        self.gen_scope_start(stmt.scope.as_ref())?;
+        let for_scope = stmt.scope.as_ref();
+        self.gen_scope_start(for_scope)?;
 
         // Evaluate the init expression once before loop starts
         match stmt.init.as_deref() {
@@ -3295,6 +3448,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(join_block);
         self.pop_jump_statement_target();
 
+        // End of the for statement's scope
+        self.gen_scope_end(for_scope);
+
         // Normal completion since there is always the test false path that skips the loop entirely
         Ok(StmtCompletion::Normal)
     }
@@ -3311,7 +3467,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let join_block = jump_targets.break_block;
 
         // Entire for-in statement forms a new scope
-        self.gen_scope_start(stmt.scope.as_ref())?;
+        let for_scope = stmt.scope.as_ref();
+        self.gen_scope_start(for_scope)?;
 
         // Entire for-in statement is skipped if right hand side is nullish
         let object = self.gen_outer_expression(&stmt.right)?;
@@ -3343,6 +3500,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(iterator);
 
         self.start_block(join_block);
+        self.pop_jump_statement_target();
+
+        // End of the for-in statement's scope
+        self.gen_scope_end(for_scope);
 
         // Normal completion since the loop could always be avoided entirely
         Ok(StmtCompletion::Normal)
@@ -3459,7 +3620,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let catch_handler_start = self.writer.current_offset();
 
             // Catch scope starts before the parameter is evaluated and potentially destructured
-            self.gen_scope_start(catch_clause.body.scope.as_ref())?;
+            let catch_scope = catch_clause.body.scope.as_ref();
+            self.gen_scope_start(catch_scope)?;
 
             // If there is a catch parameter, mark the register in the handler
             if let Some(param) = catch_clause.param.as_deref() {
@@ -3467,11 +3629,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let id = param.to_id();
 
                     match id.get_binding().vm_location().unwrap() {
+                        // Catch parameters stored in registers tell the handler to place the error
+                        // directly in the register.
                         VMLocation::LocalRegister(index) => {
                             body_handler.error_register = Some(Register::local(index));
                         }
-                        VMLocation::Scope { .. } => {
-                            unimplemented!("bytecode for captured catch parameters")
+                        // Catch parameters stored in VM scopes tell the handler to place the error
+                        // in a temporary register, the store it to the scope.
+                        VMLocation::Scope { scope_id, index } => {
+                            let error_reg = self.register_allocator.allocate()?;
+                            self.gen_store_scope_binding(scope_id, index, error_reg)?;
+                            self.register_allocator.release(error_reg);
+
+                            body_handler.error_register = Some(error_reg);
                         }
                         _ => unreachable!("catch parameters must be in a register or VM scope"),
                     }
@@ -3679,6 +3849,8 @@ pub enum EmitError {
     TooManyFunctionParameters,
     TooManyCallArguments,
     TooManyRegisters,
+    TooManyScopes,
+    IndexTooLarge,
 }
 
 impl Error for EmitError {}
@@ -3690,6 +3862,8 @@ impl fmt::Display for EmitError {
             EmitError::TooManyFunctionParameters => write!(f, "Too many function parameters"),
             EmitError::TooManyCallArguments => write!(f, "Too many call arguments"),
             EmitError::TooManyRegisters => write!(f, "Too many registers"),
+            EmitError::TooManyScopes => write!(f, "Too many scopes"),
+            EmitError::IndexTooLarge => write!(f, "Index too large"),
         }
     }
 }
@@ -3758,8 +3932,8 @@ impl PendingFunctionNode {
 }
 
 /// Collection of functions that still need to be generated, along with their index in the
-/// function's constant table.
-type PendingFunctions = Vec<(PendingFunctionNode, ConstantTableIndex)>;
+/// function's constant table and the scope they should be generated in.
+type PendingFunctions = Vec<(PendingFunctionNode, ConstantTableIndex, Rc<ScopeStackNode>)>;
 
 /// A function that still needs to be generated, along with the information needed to patch it's
 /// creation into the parent function.
@@ -3771,6 +3945,8 @@ struct PatchablePendingFunction {
     /// The index into the parent function's constant table that needs to be patched with the
     /// function once it is created.
     constant_index: ConstantTableIndex,
+    /// The scope that this function should be generated in
+    scope: Rc<ScopeStackNode>,
 }
 
 pub struct EmitFunctionResult {
@@ -3810,6 +3986,15 @@ struct CallReceiver {
     receiver: GenRegister,
     /// Whether the receiver is within an optional chain.
     is_chain: bool,
+}
+
+/// A node in the stack of scopes the generator is currently inside, including scopes of parent
+/// functions.
+struct ScopeStackNode {
+    /// The VM scope id of the scope.
+    scope_id: usize,
+    /// THe parent scope, or none if this is the global scope
+    parent: Option<Rc<ScopeStackNode>>,
 }
 
 /// A reference to a string that may be either wtf8 or utf8.

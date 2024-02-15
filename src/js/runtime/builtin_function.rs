@@ -192,19 +192,20 @@ impl BuiltinFunction {
         is_constructor: bool,
     ) -> Handle<Closure> {
         let realm = realm.unwrap_or_else(|| cx.current_realm());
+        let global_scope = realm.global_scope();
 
         let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
         let bytecode_function = BytecodeFunction::new_rust_runtime_function(
             cx,
             function_id,
-            realm.global_scope(),
+            global_scope,
             is_constructor,
         );
 
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
-        Closure::new_builtin(cx, bytecode_function, prototype)
+        Closure::new_builtin(cx, bytecode_function, global_scope, prototype)
     }
 
     /// Create the constructor function for an intrinsic.

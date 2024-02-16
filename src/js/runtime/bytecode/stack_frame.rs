@@ -167,13 +167,15 @@ impl StackFrame {
         unsafe { &mut *(self.fp.add(CLOSURE_SLOT_INDEX) as *mut HeapPtr<Closure>) }
     }
 
-    /// The number of arguments in this stack frame, not including the receiver.
+    /// The number of arguments in this stack frame, not including the receiver or undefined args
+    /// added due to underapplication.
     #[inline]
     pub fn argc(&self) -> usize {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
-    /// Slice over args portion of frame, not including the receiver.
+    /// Slice over args portion of frame, not including the receiver or undefined args added due to
+    /// underapplication.
     #[inline]
     pub fn args(&self) -> &[Value] {
         unsafe {
@@ -184,7 +186,7 @@ impl StackFrame {
     }
 
     /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
-    /// the first argument.
+    /// the first argument. Does not include undefined args added due to underapplication.
     #[inline]
     pub fn args_with_receiver_mut(&self) -> &mut [Value] {
         unsafe {

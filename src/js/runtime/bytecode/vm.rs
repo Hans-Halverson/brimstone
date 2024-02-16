@@ -615,7 +615,7 @@ impl VM {
     }
 
     #[inline]
-    fn get_argc(&self) -> usize {
+    fn argc(&self) -> usize {
         StackFrame::for_fp(self.fp).argc()
     }
 
@@ -1119,13 +1119,13 @@ impl VM {
         let scope = closure.scope();
 
         // Push arguments
-        let argc_to_push = self.push_call_arguments(bytecode_function, args_rev_iter, argc);
+        self.push_call_arguments(bytecode_function, args_rev_iter, argc);
 
         // Push the receiver if one is supplied, or the default receiver otherwise
         self.push(receiver.as_raw_bits() as StackSlotValue);
 
         // Push argc
-        self.push(argc_to_push);
+        self.push(argc);
 
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
@@ -1162,8 +1162,13 @@ impl VM {
     #[inline]
     fn pop_stack_frame(&mut self) {
         unsafe {
+            // Handle under/overapplication of arguments.
+            let num_formal_parameters = self.closure().function_ptr().num_parameters() as usize;
+            let argc = self.argc();
+            let num_arguments = argc.max(num_formal_parameters);
+
             self.pc = self.get_return_address();
-            self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + self.get_argc());
+            self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments);
             self.fp = *self.fp as *mut StackSlotValue;
         }
     }
@@ -1183,8 +1188,8 @@ impl VM {
         }
     }
 
-    /// Push call arguments onto the stack, returning the argc which the caller should push onto
-    /// the stack. Takes an iterator over the arguments in reverse order.
+    /// Push call arguments onto the stack, handling over/underapplication. Takes an iterator over
+    /// the arguments in reverse order.
     ///
     /// Does not push the receiver.
     #[inline]
@@ -1193,23 +1198,20 @@ impl VM {
         func: HeapPtr<BytecodeFunction>,
         args_rev_iter: I,
         argc: usize,
-    ) -> usize {
+    ) {
         let mut sp = self.sp;
 
-        // Handle under application of arguments, pushing undefined for missing arguments
+        // Handle under application of arguments, pushing undefined for missing arguments. This
+        // guarantees that the number of pushed arguments equals max(argc, func.num_parameters).
         let num_parameters = func.num_parameters() as usize;
-        let num_arguments = if argc < num_parameters {
+        if argc < num_parameters {
             for _ in argc..num_parameters {
                 unsafe {
                     sp = sp.sub(1);
                     *sp = Value::undefined().as_raw_bits() as StackSlotValue;
                 }
             }
-
-            num_parameters
-        } else {
-            argc
-        };
+        }
 
         // First push arguments onto the stack in reverse order
         for arg in args_rev_iter {
@@ -1220,8 +1222,6 @@ impl VM {
         }
 
         self.sp = sp;
-
-        num_arguments
     }
 
     /// Generate the receiver to be used given an optional explicit receiver value and the called
@@ -2263,16 +2263,19 @@ impl VM {
         // The arguments between the number of formal parameters and the actual argc supplied will
         // all be added to the rest array.
         let num_parameters = self.closure().function_ptr().num_parameters() as usize;
-        let stack_frame = StackFrame::for_fp(self.fp);
 
-        for (i, argument) in stack_frame.args()[num_parameters..].iter().enumerate() {
-            array_key.replace(PropertyKey::array_index(self.cx, i as u32));
-            value_handle.replace(*argument);
+        // No rest parameter needed if there was underapplication of arguments
+        if num_parameters <= self.argc() {
+            let stack_frame = StackFrame::for_fp(self.fp);
+            for (i, argument) in stack_frame.args()[num_parameters..].iter().enumerate() {
+                array_key.replace(PropertyKey::array_index(self.cx, i as u32));
+                value_handle.replace(*argument);
 
-            let array_property = Property::data(value_handle, true, true, true);
-            rest_array
-                .object()
-                .set_property(self.cx, array_key, array_property);
+                let array_property = Property::data(value_handle, true, true, true);
+                rest_array
+                    .object()
+                    .set_property(self.cx, array_key, array_property);
+            }
         }
 
         self.write_register(dest, rest_array.cast::<Value>().get());

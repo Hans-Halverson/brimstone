@@ -1462,7 +1462,7 @@ impl<'a> Parser<'a> {
                     /* id */ None,
                     params,
                     body,
-                    strict_flags | FunctionFlags::IS_ASYNC,
+                    strict_flags | FunctionFlags::IS_ARROW,
                     scope,
                 )))));
             }

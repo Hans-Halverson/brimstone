@@ -118,12 +118,25 @@ impl ScopeTree {
             self.get_ast_node(parent.unwrap()).enclosing_scope
         };
 
+        let mut extra_var_names = HashSet::new();
+
+        // Function body scopes must know the names of all parameter names in the parent function
+        // scope (to check for conflicts against lexical declarations).
+        if kind == ScopeNodeKind::FunctionBody {
+            let func_scope = self.get_ast_node(parent.unwrap());
+            // All bindings in function scope are gaurantueed to be function parameters if a
+            // function body scope is created.
+            for (name, _) in func_scope.iter_bindings() {
+                extra_var_names.insert(name.clone());
+            }
+        }
+
         AstScopeNode {
             id,
             parent,
             kind,
             bindings: IndexMap::new(),
-            child_var_names: HashSet::new(),
+            extra_var_names,
             num_bindings: 0,
             has_duplicates: false,
             force_vm_scope: false,
@@ -154,8 +167,8 @@ impl ScopeTree {
             return Err(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
         }
 
-        // Then check for conflicting child var scoped bindings
-        if node.child_var_names.contains(name) {
+        // Then check for other conflicting var scoped bindings, e.g. in child scopes
+        if node.extra_var_names.contains(name) {
             return Err(ParseError::NameRedeclaration(
                 name.to_owned(),
                 // Guaranteed to conflict with a `var` binding, as the other var scoped names -
@@ -175,7 +188,7 @@ impl ScopeTree {
             // Lexical bindings in a switch always need a TDZ check since it hard to analyze when
             // the check can be elided. (e.g. due to out of order default case, or definitions and
             // uses in different cases).
-            ScopeNodeKind::Block { is_switch: true } => {
+            ScopeNodeKind::Switch => {
                 needs_tdz_check = true;
             }
             _ => {}
@@ -221,7 +234,7 @@ impl ScopeTree {
             } else {
                 // Add var name to all scopes except for hoist target, so that later lexical
                 // declarations can check for name conflicts.
-                node.child_var_names.insert(name.to_owned());
+                node.extra_var_names.insert(name.to_owned());
             }
 
             node_id = node.parent.unwrap();
@@ -404,23 +417,22 @@ pub type ScopeNodeId = usize;
 pub enum ScopeNodeKind {
     Global,
     Function(FunctionId),
-    Block { is_switch: bool },
+    /// A function body scope only appears when the function has parameter expressions. In this case
+    /// the function body is the hoist target for all declarations in the body, keeping them
+    /// separate from the parameters.
+    FunctionBody,
+    Block,
+    Switch,
     With,
 }
 
 impl ScopeNodeKind {
-    pub fn block() -> ScopeNodeKind {
-        ScopeNodeKind::Block { is_switch: false }
-    }
-
-    pub fn switch() -> ScopeNodeKind {
-        ScopeNodeKind::Block { is_switch: true }
-    }
-
     fn is_hoist_target(&self) -> bool {
         match self {
-            ScopeNodeKind::Global | ScopeNodeKind::Function(_) => true,
-            ScopeNodeKind::Block { .. } | ScopeNodeKind::With => false,
+            ScopeNodeKind::Global | ScopeNodeKind::Function(_) | ScopeNodeKind::FunctionBody => {
+                true
+            }
+            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::With => false,
         }
     }
 }
@@ -434,8 +446,9 @@ pub struct AstScopeNode {
     /// since they reference the same binding (though may contain different BindingKinds).
     bindings: IndexMap<String, Binding>,
     /// All var declared names that are in scope at this node but not included in the bindings map.
-    /// This means the set of all var declared names in child scopes.
-    child_var_names: HashSet<String>,
+    /// - Includes the set of all var declared names in child scopes
+    /// - For function body scopes, includes the parameter names
+    extra_var_names: HashSet<String>,
     /// Total number of bindings added to map, including duplicates.
     num_bindings: usize,
     /// Whether at least one duplicate binding was added to map, replacing an earlier binding.

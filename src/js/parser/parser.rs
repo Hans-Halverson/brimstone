@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use bitflags::bitflags;
@@ -702,13 +703,16 @@ impl<'a> Parser<'a> {
         let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
-        let (block, strict_flags) = self.parse_function_block_body()?;
+        let param_flags = self.analyze_function_params(&params);
+
+        let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
         let body = p(FunctionBody::Block(block));
+
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
 
-        let mut flags = strict_flags;
+        let mut flags = param_flags | strict_flags;
         if is_async {
             flags |= FunctionFlags::IS_ASYNC;
         }
@@ -744,6 +748,8 @@ impl<'a> Parser<'a> {
         Ok(scope)
     }
 
+    /// Parse a list of function parameters, returning the function parameters themselves and
+    /// whether the list contains any parameter expressions.
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
         self.expect(Token::LeftParen)?;
         let params = self.parse_function_params_until_terminator(Token::RightParen)?;
@@ -790,9 +796,70 @@ impl<'a> Parser<'a> {
         self.parse_function_params_until_terminator(Token::Eof)
     }
 
+    /// Static analysis of parameters, returning the function flags that apply to the parameters.
+    fn analyze_function_params(&mut self, params: &[FunctionParam]) -> FunctionFlags {
+        let mut has_parameter_expressions = false;
+        let mut has_binding_patterns = false;
+        let mut has_rest_parameter = false;
+        let mut has_duplicate_parameters = false;
+
+        let mut parameter_names = HashSet::new();
+
+        for param in params {
+            if let FunctionParam::Rest { .. } = param {
+                has_rest_parameter = true;
+            }
+
+            param.iter_patterns(&mut |patt| match patt {
+                Pattern::Id(id) => {
+                    if parameter_names.contains(&id.name) {
+                        has_duplicate_parameters = true;
+                    } else {
+                        parameter_names.insert(&id.name);
+                    }
+                }
+                Pattern::Array(_) => {
+                    has_binding_patterns = true;
+                }
+                Pattern::Object(object_pattern) => {
+                    has_binding_patterns = true;
+
+                    let has_computed_property = object_pattern
+                        .properties
+                        .iter()
+                        .any(|prop| prop.is_computed);
+
+                    if has_computed_property {
+                        has_parameter_expressions = true;
+                    }
+                }
+                Pattern::Assign(_) => {
+                    has_parameter_expressions = true;
+                }
+                Pattern::Member(_) | Pattern::SuperMember(_) => {}
+            });
+        }
+
+        let mut flags = FunctionFlags::empty();
+        if has_parameter_expressions {
+            flags |= FunctionFlags::HAS_PARAMETER_EXPRESSIONS;
+        }
+        if !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter {
+            flags |= FunctionFlags::HAS_SIMPLE_PARAMETER_LIST;
+        }
+        if has_duplicate_parameters {
+            flags |= FunctionFlags::HAS_DUPLICATE_PARAMETERS;
+        }
+
+        flags
+    }
+
     /// Parse a function's block body, returning the body along with FunctionFlags indicating strict
     /// mode properties of the function.
-    fn parse_function_block_body(&mut self) -> ParseResult<(FunctionBlockBody, FunctionFlags)> {
+    fn parse_function_block_body(
+        &mut self,
+        param_flags: FunctionFlags,
+    ) -> ParseResult<(FunctionBlockBody, FunctionFlags)> {
         let start_pos = self.current_start_pos();
 
         // Save state before the first potential directive token is lexed
@@ -814,9 +881,20 @@ impl<'a> Parser<'a> {
         // Advance past left brace again
         self.advance()?;
 
+        // The function body only needs its own scope when the function has parameter expressions
+        let scope = if param_flags.contains(FunctionFlags::HAS_PARAMETER_EXPRESSIONS) {
+            Some(self.scope_builder.enter_scope(ScopeNodeKind::FunctionBody))
+        } else {
+            None
+        };
+
         let mut body = vec![];
         while self.token != Token::RightBrace {
             body.push(self.parse_statement_list_item(FunctionContext::TOPLEVEL)?)
+        }
+
+        if scope.is_some() {
+            self.scope_builder.exit_scope();
         }
 
         self.advance()?;
@@ -834,7 +912,7 @@ impl<'a> Parser<'a> {
             strict_flags |= FunctionFlags::HAS_USE_STRICT_DIRECTIVE;
         }
 
-        Ok((FunctionBlockBody { loc, body }, strict_flags))
+        Ok((FunctionBlockBody { loc, body, scope }, strict_flags))
     }
 
     fn parse_function_body_statements(
@@ -868,7 +946,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a block with a standard block scope.
     fn parse_block_default_scope(&mut self) -> ParseResult<Block> {
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
         let block = self.parse_block_custom_scope(scope)?;
         self.scope_builder.exit_scope();
 
@@ -923,7 +1001,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightParen)?;
 
         // Switch statements start a new block scope
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::switch());
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Switch);
 
         let mut cases = vec![];
         self.expect(Token::LeftBrace)?;
@@ -972,7 +1050,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         // For scope must encompass any variables declared in the initializer, as well as the body.
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
         // Optional await keyword signifies a for-await-of
         let await_loc = self.loc;
@@ -1213,7 +1291,7 @@ impl<'a> Parser<'a> {
         // Optional handler block
         let handler = if self.token == Token::Catch {
             // Set up block scope before catch parameter is parsed, so it is included in block scope
-            let scope = self.scope_builder.enter_scope(ScopeNodeKind::block());
+            let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
             let catch_start_pos = self.current_start_pos();
             self.advance()?;
@@ -1452,7 +1530,9 @@ impl<'a> Parser<'a> {
                 self.add_binding(&mut async_id, BindingKind::FunctionParameter)?;
 
                 let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
-                let (body, strict_flags) = self.parse_arrow_function_body()?;
+                let param_flags = self.analyze_function_params(&params);
+
+                let (body, strict_flags) = self.parse_arrow_function_body(param_flags)?;
                 let loc = self.mark_loc(start_pos);
 
                 self.scope_builder.exit_scope();
@@ -1462,7 +1542,7 @@ impl<'a> Parser<'a> {
                     /* id */ None,
                     params,
                     body,
-                    strict_flags | FunctionFlags::IS_ARROW,
+                    param_flags | strict_flags | FunctionFlags::IS_ARROW,
                     scope,
                 )))));
             }
@@ -1476,6 +1556,7 @@ impl<'a> Parser<'a> {
                 vec![FunctionParam::new_pattern(Pattern::Id(id))]
             }
         };
+        let param_flags = self.analyze_function_params(&params);
 
         if self.token == Token::Arrow {
             if self.lexer.is_new_line_before_current() {
@@ -1487,12 +1568,12 @@ impl<'a> Parser<'a> {
             self.expect(Token::Arrow)?;
         }
 
-        let (body, strict_flags) = self.parse_arrow_function_body()?;
+        let (body, strict_flags) = self.parse_arrow_function_body(param_flags)?;
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
 
-        let mut flags = strict_flags | FunctionFlags::IS_ARROW;
+        let mut flags = param_flags | strict_flags | FunctionFlags::IS_ARROW;
         if is_async {
             flags |= FunctionFlags::IS_ASYNC;
         }
@@ -1504,9 +1585,12 @@ impl<'a> Parser<'a> {
 
     /// Parse an arrow function's body, returning the body along with FunctionFlags indicating
     /// strict mode properties of the arrow function.
-    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, FunctionFlags)> {
+    fn parse_arrow_function_body(
+        &mut self,
+        param_flags: FunctionFlags,
+    ) -> ParseResult<(P<FunctionBody>, FunctionFlags)> {
         if self.token == Token::LeftBrace {
-            let (block, strict_flags) = self.parse_function_block_body()?;
+            let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
             Ok((p(FunctionBody::Block(block)), strict_flags))
         } else {
             // Arrow function expression body cannot have a "use strict" directive, so inherits
@@ -3124,7 +3208,9 @@ impl<'a> Parser<'a> {
         let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
-        let (block, strict_flags) = self.parse_function_block_body()?;
+        let param_flags = self.analyze_function_params(&params);
+
+        let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
@@ -3145,7 +3231,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
 
-        let mut flags = strict_flags;
+        let mut flags = param_flags | strict_flags;
         if is_async {
             flags |= FunctionFlags::IS_ASYNC;
         }
@@ -3252,7 +3338,11 @@ impl<'a> Parser<'a> {
                 // Static initializers are functions and are wrapped in a function scope, as vars
                 // cannot be hoisted out of the static initializer.
                 let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
-                let (block, _) = self.parse_function_block_body()?;
+
+                let params = vec![];
+                let param_flags = self.analyze_function_params(&params);
+                let (block, _) = self.parse_function_block_body(param_flags)?;
+
                 self.scope_builder.exit_scope();
 
                 let loc = self.mark_loc(start_pos);
@@ -3265,9 +3355,9 @@ impl<'a> Parser<'a> {
                     value: p(Function::new(
                         loc,
                         None,
-                        vec![],
+                        params,
                         p(FunctionBody::Block(block)),
-                        FunctionFlags::IS_STRICT_MODE,
+                        param_flags | FunctionFlags::IS_STRICT_MODE,
                         scope,
                     )),
                     kind: ClassMethodKind::StaticInitializer,

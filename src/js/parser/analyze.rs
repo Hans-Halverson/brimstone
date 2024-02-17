@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     js::{
@@ -297,6 +294,19 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 self.visit_rest_element(rest);
                 *has_assign_expr = self.exit_has_assign_expr_context();
             }
+        }
+    }
+
+    fn visit_function_block_body(&mut self, body: &mut FunctionBlockBody) {
+        // Body of function may have its own scope
+        if let Some(scope) = body.scope {
+            self.enter_scope(scope);
+        }
+
+        default_visit_function_block_body(self, body);
+
+        if body.scope.is_some() {
+            self.exit_scope();
         }
     }
 
@@ -840,61 +850,19 @@ impl Analyzer<'_> {
             param_index += 1;
         }
 
-        // Static analysis of parameters and other function properties once body has been visited
-        let mut has_parameter_expressions = false;
-        let mut has_binding_patterns = false;
-        let mut has_rest_parameter = false;
-        let mut has_duplicate_parameters = false;
+        // Arguments object is not needed if "arguments" is a bound name in the
+        // function parameters.
         let mut has_argument_parameter = false;
-
-        let mut parameter_names = HashSet::new();
-
         for param in &func.params {
-            if let FunctionParam::Rest { .. } = param {
-                has_rest_parameter = true;
-            }
-
             param.iter_patterns(&mut |patt| match patt {
                 Pattern::Id(id) => {
-                    if parameter_names.contains(&id.name) {
-                        has_duplicate_parameters = true;
-                    } else {
-                        parameter_names.insert(&id.name);
-                    }
-
-                    // Arguments object is not needed if "arguments" is a bound name in the
-                    // function parameters.
                     if id.name == "arguments" {
                         has_argument_parameter = true;
                     }
                 }
-                Pattern::Array(_) => {
-                    has_binding_patterns = true;
-                }
-                Pattern::Object(object_pattern) => {
-                    has_binding_patterns = true;
-
-                    let has_computed_property = object_pattern
-                        .properties
-                        .iter()
-                        .any(|prop| prop.is_computed);
-
-                    if has_computed_property {
-                        has_parameter_expressions = true;
-                    }
-                }
-                Pattern::Assign(_) => {
-                    has_parameter_expressions = true;
-                }
-                Pattern::Member(_) | Pattern::SuperMember(_) => {}
+                _ => {}
             });
         }
-
-        func.set_has_parameter_expressions(has_parameter_expressions);
-        func.set_has_simple_parameter_list(
-            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter,
-        );
-        func.set_has_duplicate_parameters(has_duplicate_parameters);
 
         // Functions with an explicit "use strict" in their body must have a simple parameter list
         if func.has_use_strict_directive() && !func.has_simple_parameter_list() {
@@ -902,7 +870,7 @@ impl Analyzer<'_> {
         }
 
         // Duplicate parameters are not allowed in certain contexts
-        if has_duplicate_parameters {
+        if func.has_duplicate_parameters() {
             let invalid_reason = if self.is_in_strict_mode_context() {
                 Some(InvalidDuplicateParametersReason::StrictMode)
             } else if is_arrow_function {

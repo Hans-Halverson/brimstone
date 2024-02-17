@@ -60,16 +60,16 @@
 [BytecodeFunction: capturedParameters] {
   Parameters: 3, Registers: 2
      0: PushLexicalScope c0
-     2: NewClosure r0, c1
-     5: StoreToScope a0, 0, 0
-     9: GetNamedProperty r1, a1, c2
-    13: StoreToScope r1, 1, 0
-    17: JumpNotUndefined a2, 6 (.L0)
-    20: LoadImmediate a2, 2
+     2: StoreToScope a0, 0, 0
+     6: GetNamedProperty r1, a1, c1
+    10: StoreToScope r1, 1, 0
+    14: JumpNotUndefined a2, 6 (.L0)
+    17: LoadImmediate a2, 2
   .L0:
-    23: StoreToScope a2, 2, 0
-    27: RestParameter r1
-    29: StoreToScope r1, 3, 0
+    20: StoreToScope a2, 2, 0
+    24: RestParameter r1
+    26: StoreToScope r1, 3, 0
+    30: NewClosure r0, c2
     33: LoadImmediate r1, 1
     36: StoreToScope r1, 0, 0
     40: LoadImmediate r1, 2
@@ -82,8 +82,8 @@
     63: Ret r1
   Constant Table:
     0: [ScopeNames]
-    1: [BytecodeFunction: inner]
-    2: [String: y]
+    1: [String: y]
+    2: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: inner] {

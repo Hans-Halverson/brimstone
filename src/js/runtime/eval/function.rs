@@ -5,13 +5,13 @@ use crate::{
         common::wtf_8::Wtf8String,
         parser::{
             analyze::analyze_function_for_function_constructor,
-            ast::{self},
+            ast,
             parser::{
                 parse_function_body_for_function_constructor,
                 parse_function_for_function_constructor,
                 parse_function_params_for_function_constructor,
             },
-            scope_tree::BindingKind,
+            scope_tree::{Binding, BindingKind},
             source::Source,
         },
         runtime::{
@@ -68,13 +68,13 @@ pub fn function_declaration_instantiation(
     let mut functions_to_initialize = vec![];
 
     // Visit functions in reverse order, if functions have the same name only the last is used.
-    for (name, binding) in func_node.scope.as_ref().iter_var_decls() {
+    iter_var_decls(func_node, |(name, binding)| {
         if let BindingKind::Function { func_node, .. } = binding.kind() {
             if function_names.insert(name) {
                 functions_to_initialize.push(func_node.as_ref());
             }
         }
-    }
+    });
 
     let is_strict = func_node.is_strict_mode();
 
@@ -212,13 +212,13 @@ pub fn function_declaration_instantiation(
     let mut var_env = if !func_node.has_parameter_expressions() {
         let mut instantiated_var_names = parameter_names;
 
-        for (name, _) in func_node.scope.as_ref().iter_var_decls() {
+        iter_var_decls(func_node, |(name, _)| {
             if instantiated_var_names.insert(name) {
                 let name_value = InternedStrings::get_str(cx, name);
                 must!(env.create_mutable_binding(cx, name_value, false));
                 must!(env.initialize_binding(cx, name_value, cx.undefined()));
             }
-        }
+        });
 
         env
     } else {
@@ -232,7 +232,7 @@ pub fn function_declaration_instantiation(
 
         let mut instantiated_var_names = HashSet::new();
 
-        for (name, _) in func_node.scope.as_ref().iter_var_decls() {
+        iter_var_decls(func_node, |(name, _)| {
             if instantiated_var_names.insert(name) {
                 let name_value = InternedStrings::get_str(cx, name);
 
@@ -247,7 +247,7 @@ pub fn function_declaration_instantiation(
 
                 must!(var_env.initialize_binding(cx, name_value, initial_value));
             }
-        }
+        });
 
         var_env
     };
@@ -264,14 +264,14 @@ pub fn function_declaration_instantiation(
     callee_context.set_lexical_env(lex_env);
 
     // Create bindings for lex decls in function body
-    for (name, binding) in func_node.scope.as_ref().iter_lex_decls() {
+    iter_lex_decls(func_node, |(name, binding)| {
         let name_value = InternedStrings::get_str(cx, name);
         if binding.is_const() {
             must!(lex_env.create_immutable_binding(cx, name_value, true));
         } else {
             must!(lex_env.create_mutable_binding(cx, name_value, false))
         }
-    }
+    });
 
     // Initialize toplevel function objects
     let private_env = callee_context.private_env();
@@ -282,6 +282,43 @@ pub fn function_declaration_instantiation(
     }
 
     Completion::empty(cx)
+}
+
+/// Call a function on all var decls in a function, including in the function body if it has a
+/// separate scope.
+fn iter_var_decls<'a>(
+    func_node: &'a ast::Function,
+    mut f: impl FnMut((&'a String, &'a Binding)) -> (),
+) {
+    for item in func_node.scope.as_ref().iter_var_decls() {
+        f(item);
+    }
+
+    match func_node.body.as_ref() {
+        ast::FunctionBody::Block(ast::FunctionBlockBody { scope: Some(scope), .. }) => {
+            for item in scope.as_ref().iter_var_decls() {
+                f(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Call a function on all lex decls in a function, including in the function body if it has a
+/// separate scope.
+fn iter_lex_decls(func_node: &ast::Function, mut f: impl FnMut((&String, &Binding)) -> ()) {
+    for item in func_node.scope.as_ref().iter_lex_decls() {
+        f(item);
+    }
+
+    match func_node.body.as_ref() {
+        ast::FunctionBody::Block(ast::FunctionBlockBody { scope: Some(scope), .. }) => {
+            for item in scope.as_ref().iter_lex_decls() {
+                f(item);
+            }
+        }
+        _ => {}
+    }
 }
 
 // 15.2.4 InstantiateOrdinaryFunctionObject

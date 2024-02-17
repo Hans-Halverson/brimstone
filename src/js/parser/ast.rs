@@ -262,7 +262,11 @@ impl Function {
             loc: EMPTY_LOC,
             id: None,
             params: vec![],
-            body: p(FunctionBody::Block(FunctionBlockBody { loc: EMPTY_LOC, body: vec![] })),
+            body: p(FunctionBody::Block(FunctionBlockBody {
+                loc: EMPTY_LOC,
+                body: vec![],
+                scope: None,
+            })),
             flags: FunctionFlags::empty(),
             scope: AstPtr::uninit(),
         }
@@ -315,28 +319,13 @@ impl Function {
             .contains(FunctionFlags::HAS_SIMPLE_PARAMETER_LIST)
     }
 
-    pub fn set_has_simple_parameter_list(&mut self, has_simple: bool) {
-        self.flags
-            .set(FunctionFlags::HAS_SIMPLE_PARAMETER_LIST, has_simple);
-    }
-
     pub fn has_parameter_expressions(&self) -> bool {
         self.flags
             .contains(FunctionFlags::HAS_PARAMETER_EXPRESSIONS)
     }
 
-    pub fn set_has_parameter_expressions(&mut self, has_expressions: bool) {
-        self.flags
-            .set(FunctionFlags::HAS_PARAMETER_EXPRESSIONS, has_expressions);
-    }
-
     pub fn has_duplicate_parameters(&self) -> bool {
         self.flags.contains(FunctionFlags::HAS_DUPLICATE_PARAMETERS)
-    }
-
-    pub fn set_has_duplicate_parameters(&mut self, has_duplicates: bool) {
-        self.flags
-            .set(FunctionFlags::HAS_DUPLICATE_PARAMETERS, has_duplicates);
     }
 
     pub fn is_arguments_object_needed(&self) -> bool {
@@ -417,6 +406,10 @@ pub enum FunctionBody {
 pub struct FunctionBlockBody {
     pub loc: Loc,
     pub body: Vec<Statement>,
+
+    /// Scope node for the function body, not including parameters. Only present if the function has
+    /// parameter expressions, otherwise only the function's scope node is needed.
+    pub scope: Option<AstPtr<AstScopeNode>>,
 }
 
 pub struct Class {

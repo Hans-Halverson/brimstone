@@ -725,6 +725,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
+                // Function body may be the start of a new scope
+                if let Some(body_scope) = block_body.scope {
+                    self.gen_scope_start(body_scope.as_ref())?;
+                }
+
                 let body_completion = self.gen_statement_list(&block_body.body)?;
 
                 // Scope end not needed since the function immediately returns

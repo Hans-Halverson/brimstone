@@ -321,7 +321,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             num_parameters as u32,
             num_local_registers as u32,
-            func.is_strict_mode,
+            func.is_strict_mode(),
             is_constructor,
         ))
     }
@@ -683,7 +683,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
-        if func.is_async || func.is_generator {
+        if func.is_async() || func.is_generator() {
             unimplemented!("bytecode for async and generator functions")
         }
 
@@ -694,7 +694,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_scope_start(func_scope)?;
 
         // Store the captured `this` right away if necessary
-        if !func.is_arrow {
+        if !func.is_arrow() {
             self.gen_store_captured_this(func_scope)?;
         }
 

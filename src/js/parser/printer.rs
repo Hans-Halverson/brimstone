@@ -219,11 +219,11 @@ impl<'a> Printer<'a> {
         self.property("id", func.id.as_ref(), Printer::print_optional_identifier);
         self.array_property("params", func.params.as_ref(), Printer::print_function_param);
         self.property("body", func.body.as_ref(), Printer::print_function_body);
-        self.property("async", func.is_async, Printer::print_bool);
-        self.property("generator", func.is_generator, Printer::print_bool);
+        self.property("async", func.is_async(), Printer::print_bool);
+        self.property("generator", func.is_generator(), Printer::print_bool);
         self.property(
             "has_use_strict_directive",
-            func.has_use_strict_directive,
+            func.has_use_strict_directive(),
             Printer::print_bool,
         );
         self.end_node();

@@ -75,7 +75,7 @@ pub fn eval_script(
             /* lexical_env */ Some(global_env_object),
             /* variable_env */ Some(global_env_object),
             /* private_env */ None,
-            parse_result.program.has_use_strict_directive,
+            parse_result.program.is_strict_mode,
         );
 
         cx.push_execution_context(script_ctx);

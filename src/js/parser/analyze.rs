@@ -367,7 +367,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_arrow_function(&mut self, func: &mut Function) {
         // Arrow functions do not provide an arguments object
-        func.is_arguments_object_needed = false;
+        func.set_is_arguments_object_needed(false);
 
         self.visit_function_common(
             func, /* is_arrow_function */ true, /* is_method */ false,
@@ -594,7 +594,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 if let Some(FunctionStackEntry { func: Some(func), .. }) =
                     self.enclosing_non_arrow_function_mut()
                 {
-                    func.as_mut().is_arguments_object_needed = true;
+                    func.as_mut().set_is_arguments_object_needed(true);
                 }
             }
             _ => {}
@@ -785,7 +785,7 @@ impl Analyzer<'_> {
         let saved_state = self.save_state();
 
         // Enter strict mode context if applicable
-        if func.is_strict_mode {
+        if func.is_strict_mode() {
             self.enter_strict_mode_context();
         }
 
@@ -890,13 +890,14 @@ impl Analyzer<'_> {
             });
         }
 
-        func.has_parameter_expressions = has_parameter_expressions;
-        func.has_simple_parameter_list =
-            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter;
-        func.has_duplicate_parameters = has_duplicate_parameters;
+        func.set_has_parameter_expressions(has_parameter_expressions);
+        func.set_has_simple_parameter_list(
+            !has_binding_patterns && !has_parameter_expressions && !has_rest_parameter,
+        );
+        func.set_has_duplicate_parameters(has_duplicate_parameters);
 
         // Functions with an explicit "use strict" in their body must have a simple parameter list
-        if func.has_use_strict_directive && !func.has_simple_parameter_list {
+        if func.has_use_strict_directive() && !func.has_simple_parameter_list() {
             self.emit_error(func.loc, ParseError::UseStrictFunctionNonSimpleParameterList);
         }
 
@@ -908,7 +909,7 @@ impl Analyzer<'_> {
                 Some(InvalidDuplicateParametersReason::ArrowFunction)
             } else if is_method {
                 Some(InvalidDuplicateParametersReason::Method)
-            } else if !func.has_simple_parameter_list {
+            } else if !func.has_simple_parameter_list() {
                 Some(InvalidDuplicateParametersReason::NonSimpleParameters)
             } else {
                 None
@@ -925,11 +926,11 @@ impl Analyzer<'_> {
 
         // Arguments object may have been set to needed based on analysis of function body
         let mut is_arguments_object_needed =
-            func.is_arguments_object_needed && !has_argument_parameter;
+            func.is_arguments_object_needed() && !has_argument_parameter;
 
         // Arguments object is not needed if "arguments" appears in the lexically declared names, or
         // as a function var declared name.
-        if is_arguments_object_needed && !func.has_parameter_expressions {
+        if is_arguments_object_needed && !func.has_parameter_expressions() {
             for (name, binding) in func.scope.as_ref().iter_bindings() {
                 let kind = binding.kind();
                 if kind.is_lexically_scoped() || kind.is_function() {
@@ -940,9 +941,9 @@ impl Analyzer<'_> {
             }
         }
 
-        func.is_arguments_object_needed = is_arguments_object_needed;
+        func.set_is_arguments_object_needed(is_arguments_object_needed);
 
-        if func.is_strict_mode {
+        if func.is_strict_mode() {
             self.exit_strict_mode_context();
         }
 
@@ -1060,7 +1061,7 @@ impl Analyzer<'_> {
         // Constructors may be simple methods, without being async, generator, getter, or setter.
         // Static constructors are allowed however.
         let is_bad_constructor = match method.kind {
-            ClassMethodKind::Constructor => method.value.is_async || method.value.is_generator,
+            ClassMethodKind::Constructor => method.value.is_async() || method.value.is_generator(),
             ClassMethodKind::Get | ClassMethodKind::Set if !method.is_static => {
                 key_name_bytes.map_or(false, |name| name == "constructor".as_bytes())
             }

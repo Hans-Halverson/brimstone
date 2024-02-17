@@ -76,13 +76,13 @@ pub fn function_declaration_instantiation(
         }
     }
 
-    let is_strict = func_node.is_strict_mode;
+    let is_strict = func_node.is_strict_mode();
 
     let mut callee_context = cx.current_execution_context();
 
     // A new environment is needed so that direct eval calls in parameter expressions are outside
     // the environment where parameters are declared.
-    let mut env = if is_strict || !func_node.has_parameter_expressions {
+    let mut env = if is_strict || !func_node.has_parameter_expressions() {
         callee_context.lexical_env()
     } else {
         let new_env = DeclarativeEnvironment::new(cx, Some(callee_context.lexical_env()));
@@ -101,7 +101,7 @@ pub fn function_declaration_instantiation(
             let already_declared = must!(env.has_binding(cx, name_value));
             if !already_declared {
                 must!(env.create_mutable_binding(cx, name_value, false));
-                if func_node.has_duplicate_parameters {
+                if func_node.has_duplicate_parameters() {
                     must!(env.initialize_binding(cx, name_value, cx.undefined()));
                 }
             }
@@ -111,8 +111,8 @@ pub fn function_declaration_instantiation(
     }
 
     // Set up arguments object if needed
-    if func_node.is_arguments_object_needed {
-        let arguments_object = if is_strict || !func_node.has_simple_parameter_list {
+    if func_node.is_arguments_object_needed() {
+        let arguments_object = if is_strict || !func_node.has_simple_parameter_list() {
             create_unmapped_arguments_object(cx, &arguments)
         } else {
             create_mapped_arguments_object(cx, func, &func_node.params, &arguments, env)
@@ -131,7 +131,7 @@ pub fn function_declaration_instantiation(
         parameter_names.insert("arguments");
     }
 
-    let binding_init_env = if func_node.has_duplicate_parameters {
+    let binding_init_env = if func_node.has_duplicate_parameters() {
         None
     } else {
         Some(env)
@@ -209,7 +209,7 @@ pub fn function_declaration_instantiation(
     }
 
     // Create bindings for var decls in function body
-    let mut var_env = if !func_node.has_parameter_expressions {
+    let mut var_env = if !func_node.has_parameter_expressions() {
         let mut instantiated_var_names = parameter_names;
 
         for (name, _) in func_node.scope.as_ref().iter_var_decls() {
@@ -312,7 +312,7 @@ pub fn instantiate_ordinary_function_expression(
     func_node: &ast::Function,
     name: Option<Handle<PropertyKey>>,
 ) -> Handle<Function> {
-    if func_node.is_async || func_node.is_generator {
+    if func_node.is_async() || func_node.is_generator() {
         unimplemented!("async and generator functions")
     }
 
@@ -419,7 +419,7 @@ pub fn method_definition_evaluation(
     property_kind: &ast::PropertyKind,
     is_enumerable: bool,
 ) -> EvalResult<()> {
-    if func_node.is_async || func_node.is_generator {
+    if func_node.is_async() || func_node.is_generator() {
         unimplemented!("async and generator functions")
     }
 
@@ -464,7 +464,7 @@ pub fn private_method_definition_evaluation(
     property_name: Handle<PropertyKey>,
     method_kind: ast::ClassMethodKind,
 ) -> Property {
-    if func_node.is_async || func_node.is_generator {
+    if func_node.is_async() || func_node.is_generator() {
         unimplemented!("async and generator functions")
     }
 

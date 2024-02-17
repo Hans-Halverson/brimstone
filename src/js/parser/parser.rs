@@ -397,20 +397,20 @@ impl<'a> Parser<'a> {
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
         // Toplevel declarations are only considered "toplevel" from the perspective of scoping
         // in scripts.
-        let function_flags = if self.program_kind == ProgramKind::Script {
+        let function_ctx_flags = if self.program_kind == ProgramKind::Script {
             FunctionContext::TOPLEVEL
         } else {
             FunctionContext::empty()
         };
 
-        let stmt = self.parse_statement_list_item(function_flags)?;
+        let stmt = self.parse_statement_list_item(function_ctx_flags)?;
         Ok(Toplevel::Statement(stmt))
     }
 
     /// Parse a StatementListItem. Specify the flags to be used for function declarations.
     fn parse_statement_list_item(
         &mut self,
-        function_flags: FunctionContext,
+        function_ctx_flags: FunctionContext,
     ) -> ParseResult<Statement> {
         match self.token {
             Token::Const => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
@@ -425,11 +425,11 @@ impl<'a> Parser<'a> {
             _ => {
                 if self.is_function_start()? {
                     return Ok(Statement::FuncDecl(
-                        self.parse_function_declaration(function_flags)?,
+                        self.parse_function_declaration(function_ctx_flags)?,
                     ));
                 }
 
-                self.parse_statement_with_function_context(function_flags)
+                self.parse_statement_with_function_context(function_ctx_flags)
             }
         }
     }
@@ -440,7 +440,7 @@ impl<'a> Parser<'a> {
 
     fn parse_statement_with_function_context(
         &mut self,
-        function_flags: FunctionContext,
+        function_ctx_flags: FunctionContext,
     ) -> ParseResult<Statement> {
         match self.token {
             Token::Var => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
@@ -492,12 +492,12 @@ impl<'a> Parser<'a> {
                         // Functions can be labeled items
                         let body = if self.is_function_start()? {
                             Statement::FuncDecl(self.parse_function_declaration(
-                                function_flags | FunctionContext::LABELED,
+                                function_ctx_flags | FunctionContext::LABELED,
                             )?)
                         } else {
                             // From the perspective of function declaration scoping, function
                             // declarations arbitrarily nested within labels are still toplevel.
-                            self.parse_statement_with_function_context(function_flags)?
+                            self.parse_statement_with_function_context(function_ctx_flags)?
                         };
 
                         let loc = self.mark_loc(start_pos);
@@ -626,15 +626,18 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn parse_function_declaration(&mut self, flags: FunctionContext) -> ParseResult<P<Function>> {
-        self.parse_function(flags | FunctionContext::DECLARATION)
+    fn parse_function_declaration(
+        &mut self,
+        ctx_flags: FunctionContext,
+    ) -> ParseResult<P<Function>> {
+        self.parse_function(ctx_flags | FunctionContext::DECLARATION)
     }
 
     fn parse_function_expression(&mut self) -> ParseResult<P<Function>> {
         self.parse_function(FunctionContext::empty())
     }
 
-    fn parse_function(&mut self, flags: FunctionContext) -> ParseResult<P<Function>> {
+    fn parse_function(&mut self, ctx_flags: FunctionContext) -> ParseResult<P<Function>> {
         let start_pos = self.current_start_pos();
 
         // Function can be prefixed by async keyword
@@ -651,7 +654,7 @@ impl<'a> Parser<'a> {
             self.advance()?
         }
 
-        let is_decl = flags.contains(FunctionContext::DECLARATION);
+        let is_decl = ctx_flags.contains(FunctionContext::DECLARATION);
 
         // Function node must be allocated on heap and then initialized later, so that a pointer to
         // the function node can be passed to the scope builder.
@@ -662,11 +665,12 @@ impl<'a> Parser<'a> {
         let mut id = None;
         if is_decl {
             // Name may be optional in the case of export declarations
-            if !flags.contains(FunctionContext::OPTIONAL_NAME) || self.token != Token::LeftParen {
+            if !ctx_flags.contains(FunctionContext::OPTIONAL_NAME) || self.token != Token::LeftParen
+            {
                 // Function is var scoped if it is toplevel, but if function has a label then it is
                 // only var scoped if it is non-async and non-generator.
-                let is_var_scoped = if flags.contains(FunctionContext::TOPLEVEL) {
-                    if flags.contains(FunctionContext::LABELED) {
+                let is_var_scoped = if ctx_flags.contains(FunctionContext::TOPLEVEL) {
+                    if ctx_flags.contains(FunctionContext::LABELED) {
                         !is_async && !is_generator
                     } else {
                         true
@@ -698,24 +702,21 @@ impl<'a> Parser<'a> {
         let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
-        let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
+        let (block, strict_flags) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
 
-        func.init(
-            loc,
-            id,
-            params,
-            body,
-            is_async,
-            is_generator,
-            /* is_arrow */ false,
-            is_strict_mode,
-            has_use_strict_directive,
-            scope,
-        );
+        let mut flags = strict_flags;
+        if is_async {
+            flags |= FunctionFlags::IS_ASYNC;
+        }
+        if is_generator {
+            flags |= FunctionFlags::IS_GENERATOR;
+        }
+
+        func.init(loc, id, params, body, flags, scope);
 
         self.allow_await = did_allow_await;
         self.allow_yield = did_allow_yield;
@@ -789,7 +790,9 @@ impl<'a> Parser<'a> {
         self.parse_function_params_until_terminator(Token::Eof)
     }
 
-    fn parse_function_block_body(&mut self) -> ParseResult<(FunctionBlockBody, bool, bool)> {
+    /// Parse a function's block body, returning the body along with FunctionFlags indicating strict
+    /// mode properties of the function.
+    fn parse_function_block_body(&mut self) -> ParseResult<(FunctionBlockBody, FunctionFlags)> {
         let start_pos = self.current_start_pos();
 
         // Save state before the first potential directive token is lexed
@@ -823,7 +826,15 @@ impl<'a> Parser<'a> {
         let is_strict_mode = self.in_strict_mode;
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok((FunctionBlockBody { loc, body }, has_use_strict_directive, is_strict_mode))
+        let mut strict_flags = FunctionFlags::empty();
+        if is_strict_mode {
+            strict_flags |= FunctionFlags::IS_STRICT_MODE;
+        }
+        if has_use_strict_directive {
+            strict_flags |= FunctionFlags::HAS_USE_STRICT_DIRECTIVE;
+        }
+
+        Ok((FunctionBlockBody { loc, body }, strict_flags))
     }
 
     fn parse_function_body_statements(
@@ -1441,8 +1452,7 @@ impl<'a> Parser<'a> {
                 self.add_binding(&mut async_id, BindingKind::FunctionParameter)?;
 
                 let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
-                let (body, has_use_strict_directive, is_strict_mode) =
-                    self.parse_arrow_function_body()?;
+                let (body, strict_flags) = self.parse_arrow_function_body()?;
                 let loc = self.mark_loc(start_pos);
 
                 self.scope_builder.exit_scope();
@@ -1452,11 +1462,7 @@ impl<'a> Parser<'a> {
                     /* id */ None,
                     params,
                     body,
-                    /* is_async */ false,
-                    /* is_generator */ false,
-                    /* is_arrow */ true,
-                    is_strict_mode,
-                    has_use_strict_directive,
+                    strict_flags | FunctionFlags::IS_ASYNC,
                     scope,
                 )))));
             }
@@ -1481,35 +1487,38 @@ impl<'a> Parser<'a> {
             self.expect(Token::Arrow)?;
         }
 
-        let (body, has_use_strict_directive, is_strict_mode) = self.parse_arrow_function_body()?;
+        let (body, strict_flags) = self.parse_arrow_function_body()?;
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
 
+        let mut flags = strict_flags | FunctionFlags::IS_ARROW;
+        if is_async {
+            flags |= FunctionFlags::IS_ASYNC;
+        }
+
         Ok(p(Expression::ArrowFunction(p(Function::new(
-            loc,
-            /* id */ None,
-            params,
-            body,
-            is_async,
-            /* is_generator */ false,
-            /* is_arrow */ true,
-            is_strict_mode,
-            has_use_strict_directive,
-            scope,
+            loc, /* id */ None, params, body, flags, scope,
         )))))
     }
 
-    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, bool, bool)> {
+    /// Parse an arrow function's body, returning the body along with FunctionFlags indicating
+    /// strict mode properties of the arrow function.
+    fn parse_arrow_function_body(&mut self) -> ParseResult<(P<FunctionBody>, FunctionFlags)> {
         if self.token == Token::LeftBrace {
-            let (block, has_use_strict_directive, is_strict_mode) =
-                self.parse_function_block_body()?;
-            Ok((p(FunctionBody::Block(block)), has_use_strict_directive, is_strict_mode))
+            let (block, strict_flags) = self.parse_function_block_body()?;
+            Ok((p(FunctionBody::Block(block)), strict_flags))
         } else {
+            // Arrow function expression body cannot have a "use strict" directive, so inherits
+            // strict mode from surrounding context.
+            let mut strict_flags = FunctionFlags::empty();
+            if self.in_strict_mode {
+                strict_flags |= FunctionFlags::IS_STRICT_MODE;
+            }
+
             Ok((
                 p(FunctionBody::Expression(wrap_outer(*self.parse_assignment_expression()?))),
-                false,
-                self.in_strict_mode,
+                strict_flags,
             ))
         }
     }
@@ -3115,7 +3124,7 @@ impl<'a> Parser<'a> {
         let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
 
         let params = self.parse_function_params()?;
-        let (block, has_use_strict_directive, is_strict_mode) = self.parse_function_block_body()?;
+        let (block, strict_flags) = self.parse_function_block_body()?;
         let body = p(FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
@@ -3136,6 +3145,14 @@ impl<'a> Parser<'a> {
             _ => {}
         }
 
+        let mut flags = strict_flags;
+        if is_async {
+            flags |= FunctionFlags::IS_ASYNC;
+        }
+        if is_generator {
+            flags |= FunctionFlags::IS_GENERATOR;
+        }
+
         let property = Property {
             loc,
             key,
@@ -3143,16 +3160,7 @@ impl<'a> Parser<'a> {
             is_method: true,
             kind,
             value: Some(p(Expression::Function(p(Function::new(
-                loc,
-                /* id */ None,
-                params,
-                body,
-                is_async,
-                is_generator,
-                /* is_arrow */ false,
-                is_strict_mode,
-                has_use_strict_directive,
-                scope,
+                loc, /* id */ None, params, body, flags, scope,
             ))))),
         };
 
@@ -3244,7 +3252,7 @@ impl<'a> Parser<'a> {
                 // Static initializers are functions and are wrapped in a function scope, as vars
                 // cannot be hoisted out of the static initializer.
                 let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
-                let (block, _, _) = self.parse_function_block_body()?;
+                let (block, _) = self.parse_function_block_body()?;
                 self.scope_builder.exit_scope();
 
                 let loc = self.mark_loc(start_pos);
@@ -3259,11 +3267,7 @@ impl<'a> Parser<'a> {
                         None,
                         vec![],
                         p(FunctionBody::Block(block)),
-                        /* is_async */ false,
-                        /* is_generator */ false,
-                        /* is_arrow */ false,
-                        /* is_strict_mode */ true,
-                        /* has_use_strict_directive */ false,
+                        FunctionFlags::IS_STRICT_MODE,
                         scope,
                     )),
                     kind: ClassMethodKind::StaticInitializer,

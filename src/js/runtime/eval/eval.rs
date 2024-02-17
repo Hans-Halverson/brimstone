@@ -111,7 +111,7 @@ pub fn perform_eval(
         return syntax_error_(cx, &error.to_string());
     }
 
-    let is_strict_eval = is_strict_caller || parse_result.program.has_use_strict_directive;
+    let is_strict_eval = is_strict_caller || parse_result.program.is_strict_mode;
 
     let (lex_env, var_env, private_env) = if is_direct {
         let lex_env = DeclarativeEnvironment::new(cx, Some(running_context.lexical_env()));

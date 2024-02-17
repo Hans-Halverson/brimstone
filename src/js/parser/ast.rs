@@ -5,6 +5,7 @@ use std::{
     rc::Rc,
 };
 
+use bitflags::bitflags;
 use num_bigint::BigInt;
 
 use crate::{
@@ -224,26 +225,31 @@ impl VariableDeclarator {
 /// Functions can be uniquely determined by their starting source position.
 pub type FunctionId = usize;
 
+bitflags! {
+    #[derive(Clone, Copy)]
+    pub struct FunctionFlags: u16 {
+        const IS_ASYNC = 1 << 0;
+        const IS_GENERATOR = 1 << 1;
+        const IS_ARROW = 1 << 2;
+        const HAS_SIMPLE_PARAMETER_LIST = 1 << 3;
+        const HAS_PARAMETER_EXPRESSIONS = 1 << 4;
+        const HAS_DUPLICATE_PARAMETERS = 1 << 5;
+        /// False only if we can statically prove that the arguments object is not needed. If true
+        /// true the arguments object may be needed.
+        const IS_ARGUMENTS_OBJECT_NEEDED = 1 << 6;
+        /// Whether the function is in strict mode, which could be inherited from surrounding context
+        const IS_STRICT_MODE = 1 << 7;
+        /// Whether the function has a "use strict" directive
+        const HAS_USE_STRICT_DIRECTIVE = 1 << 8;
+    }
+}
+
 pub struct Function {
     pub loc: Loc,
     pub id: Option<P<Identifier>>,
     pub params: Vec<FunctionParam>,
     pub body: P<FunctionBody>,
-    pub is_async: bool,
-    pub is_generator: bool,
-    pub is_arrow: bool,
-
-    pub has_simple_parameter_list: bool,
-    pub has_parameter_expressions: bool,
-    pub has_duplicate_parameters: bool,
-    // False only if we can statically prove that the arguments object is not needed. If true the
-    // arguments object may be needed.
-    pub is_arguments_object_needed: bool,
-
-    // Whether the function has a "use strict" directive
-    pub has_use_strict_directive: bool,
-    // Whether the function is in strict mode, which could be inherited from surrounding context
-    pub is_strict_mode: bool,
+    pub flags: FunctionFlags,
 
     /// Scope node for the function, containing function parameters and the body.
     pub scope: AstPtr<AstScopeNode>,
@@ -257,17 +263,8 @@ impl Function {
             id: None,
             params: vec![],
             body: p(FunctionBody::Block(FunctionBlockBody { loc: EMPTY_LOC, body: vec![] })),
-            is_async: false,
-            is_generator: false,
-            is_arrow: false,
-            is_strict_mode: false,
-            has_use_strict_directive: false,
+            flags: FunctionFlags::empty(),
             scope: AstPtr::uninit(),
-            // Initial values that will not be overwritten by `init`
-            has_simple_parameter_list: false,
-            has_parameter_expressions: false,
-            has_duplicate_parameters: false,
-            is_arguments_object_needed: false,
         }
     }
 
@@ -277,22 +274,14 @@ impl Function {
         id: Option<P<Identifier>>,
         params: Vec<FunctionParam>,
         body: P<FunctionBody>,
-        is_async: bool,
-        is_generator: bool,
-        is_arrow: bool,
-        is_strict_mode: bool,
-        has_use_strict_directive: bool,
+        flags: FunctionFlags,
         scope: AstPtr<AstScopeNode>,
     ) {
         self.loc = loc;
         self.id = id;
         self.params = params;
         self.body = body;
-        self.is_async = is_async;
-        self.is_generator = is_generator;
-        self.is_arrow = is_arrow;
-        self.is_strict_mode = is_strict_mode;
-        self.has_use_strict_directive = has_use_strict_directive;
+        self.flags = flags;
         self.scope = scope;
     }
 
@@ -301,27 +290,71 @@ impl Function {
         id: Option<P<Identifier>>,
         params: Vec<FunctionParam>,
         body: P<FunctionBody>,
-        is_async: bool,
-        is_generator: bool,
-        is_arrow: bool,
-        is_strict_mode: bool,
-        has_use_strict_directive: bool,
+        flags: FunctionFlags,
         scope: AstPtr<AstScopeNode>,
     ) -> Function {
         let mut func = Function::new_uninit();
-        func.init(
-            loc,
-            id,
-            params,
-            body,
-            is_async,
-            is_generator,
-            is_arrow,
-            is_strict_mode,
-            has_use_strict_directive,
-            scope,
-        );
+        func.init(loc, id, params, body, flags, scope);
         func
+    }
+
+    pub fn is_async(&self) -> bool {
+        self.flags.contains(FunctionFlags::IS_ASYNC)
+    }
+
+    pub fn is_generator(&self) -> bool {
+        self.flags.contains(FunctionFlags::IS_GENERATOR)
+    }
+
+    pub fn is_arrow(&self) -> bool {
+        self.flags.contains(FunctionFlags::IS_ARROW)
+    }
+
+    pub fn has_simple_parameter_list(&self) -> bool {
+        self.flags
+            .contains(FunctionFlags::HAS_SIMPLE_PARAMETER_LIST)
+    }
+
+    pub fn set_has_simple_parameter_list(&mut self, has_simple: bool) {
+        self.flags
+            .set(FunctionFlags::HAS_SIMPLE_PARAMETER_LIST, has_simple);
+    }
+
+    pub fn has_parameter_expressions(&self) -> bool {
+        self.flags
+            .contains(FunctionFlags::HAS_PARAMETER_EXPRESSIONS)
+    }
+
+    pub fn set_has_parameter_expressions(&mut self, has_expressions: bool) {
+        self.flags
+            .set(FunctionFlags::HAS_PARAMETER_EXPRESSIONS, has_expressions);
+    }
+
+    pub fn has_duplicate_parameters(&self) -> bool {
+        self.flags.contains(FunctionFlags::HAS_DUPLICATE_PARAMETERS)
+    }
+
+    pub fn set_has_duplicate_parameters(&mut self, has_duplicates: bool) {
+        self.flags
+            .set(FunctionFlags::HAS_DUPLICATE_PARAMETERS, has_duplicates);
+    }
+
+    pub fn is_arguments_object_needed(&self) -> bool {
+        self.flags
+            .contains(FunctionFlags::IS_ARGUMENTS_OBJECT_NEEDED)
+    }
+
+    pub fn set_is_arguments_object_needed(&mut self, is_needed: bool) {
+        self.flags
+            .set(FunctionFlags::IS_ARGUMENTS_OBJECT_NEEDED, is_needed);
+    }
+
+    pub fn is_strict_mode(&self) -> bool {
+        self.flags.contains(FunctionFlags::IS_STRICT_MODE)
+    }
+
+    pub fn has_use_strict_directive(&self) -> bool {
+        self.flags.contains(FunctionFlags::HAS_USE_STRICT_DIRECTIVE)
     }
 }
 

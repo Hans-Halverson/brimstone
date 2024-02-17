@@ -501,7 +501,7 @@ impl Handle<Function> {
         match &self.func_node {
             HeapFuncKind::Function(func_node, _) => {
                 let func_node = func_node.as_ref();
-                if func_node.is_async || func_node.is_generator {
+                if func_node.is_async() || func_node.is_generator() {
                     unimplemented!("async and generator functions")
                 }
 
@@ -593,7 +593,7 @@ pub fn ordinary_function_create(
     environment: DynEnvironment,
     private_environment: Option<Handle<PrivateEnvironment>>,
 ) -> Handle<Function> {
-    let is_strict = func_node.is_strict_mode;
+    let is_strict = func_node.is_strict_mode();
     let argument_count = expected_argument_count(func_node);
     let func_node = FuncKind::Function(AstPtr::from_ref(func_node), func_node.loc);
 
@@ -772,7 +772,7 @@ pub fn instantiate_function_object(
     env: DynEnvironment,
     private_env: Option<Handle<PrivateEnvironment>>,
 ) -> Handle<Function> {
-    if func_node.is_async || func_node.is_generator {
+    if func_node.is_async() || func_node.is_generator() {
         unimplemented!("async and generator functions")
     }
 

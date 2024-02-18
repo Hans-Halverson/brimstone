@@ -55,9 +55,6 @@ pub struct Analyzer<'a> {
 }
 
 struct FunctionStackEntry {
-    // Function is optional in case this is a synthetic function entry, e.g. representing analysis
-    // during eval code.
-    func: Option<AstPtr<Function>>,
     is_arrow_function: bool,
     _is_method: bool,
     is_derived_constructor: bool,
@@ -183,13 +180,6 @@ impl<'a> Analyzer<'a> {
     fn enclosing_non_arrow_function(&self) -> Option<&FunctionStackEntry> {
         self.function_stack
             .iter()
-            .rev()
-            .find(|func| !func.is_arrow_function)
-    }
-
-    fn enclosing_non_arrow_function_mut(&mut self) -> Option<&mut FunctionStackEntry> {
-        self.function_stack
-            .iter_mut()
             .rev()
             .find(|func| !func.is_arrow_function)
     }
@@ -376,9 +366,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_arrow_function(&mut self, func: &mut Function) {
-        // Arrow functions do not provide an arguments object
-        func.set_is_arguments_object_needed(false);
-
         self.visit_function_common(
             func, /* is_arrow_function */ true, /* is_method */ false,
             /*is_derived_constructor */ false, /* is_static_initializer */ false,
@@ -422,7 +409,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Must conservatively use VM scope locations for all visible bindings so that they can be
         // dynamcally looked up from within the with statement.
         self.scope_tree
-            .force_vm_scope_for_visible_bindings(self.current_scope_id());
+            .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
 
         // With statement bodies are in their own scope
         self.enter_scope(stmt.scope);
@@ -597,24 +584,11 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_identifier(&mut self, id: &mut Identifier) {
-        // Current function conservatively needs arguments object if its body contains the
-        // identifiers "arguments" or "eval".
-        match id.name.as_str() {
-            "arguments" | "eval" => {
-                if let Some(FunctionStackEntry { func: Some(func), .. }) =
-                    self.enclosing_non_arrow_function_mut()
-                {
-                    func.as_mut().set_is_arguments_object_needed(true);
-                }
-            }
-            _ => {}
-        }
-
         // If "eval" is ever encountered, conservatively force all visible bindings to have VM scope
         // locations instead of local registers so they can be dynamically looked up.
         if id.name.as_str() == "eval" {
             self.scope_tree
-                .force_vm_scope_for_visible_bindings(self.current_scope_id());
+                .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
         }
     }
 
@@ -776,7 +750,6 @@ impl Analyzer<'_> {
         is_static_initializer: bool,
     ) {
         self.function_stack.push(FunctionStackEntry {
-            func: Some(AstPtr::from_ref(func)),
             is_arrow_function,
             _is_method: is_method,
             is_derived_constructor,
@@ -839,7 +812,7 @@ impl Analyzer<'_> {
             };
 
             // If this is a top level id pattern then the binding's VM location is the argument
-            // directly by index.
+            // directly by index. This may be overriden later if captured.
             if let Some(id) = toplevel_id {
                 let mut scope = id.scope.unwrap();
                 let binding = scope.as_mut().get_binding_mut(&id.name);
@@ -848,20 +821,6 @@ impl Analyzer<'_> {
 
             self.visit_function_param(param);
             param_index += 1;
-        }
-
-        // Arguments object is not needed if "arguments" is a bound name in the
-        // function parameters.
-        let mut has_argument_parameter = false;
-        for param in &func.params {
-            param.iter_patterns(&mut |patt| match patt {
-                Pattern::Id(id) => {
-                    if id.name == "arguments" {
-                        has_argument_parameter = true;
-                    }
-                }
-                _ => {}
-            });
         }
 
         // Functions with an explicit "use strict" in their body must have a simple parameter list
@@ -890,26 +849,23 @@ impl Analyzer<'_> {
 
         // Visit function body
         self.visit_function_body(&mut func.body);
-        self.exit_scope();
 
-        // Arguments object may have been set to needed based on analysis of function body
-        let mut is_arguments_object_needed =
-            func.is_arguments_object_needed() && !has_argument_parameter;
+        // Check if the arguments object is needed. Arguments object is needed if the function has
+        // an "arguments" binding with the right kind, which may have been added due to an implicit
+        // use or potential dynamic lookup found during analysis.
+        if !is_arrow_function {
+            let arguments_binding_opt = func.scope.as_ref().get_binding_opt("arguments");
+            let is_arguments_object_needed = arguments_binding_opt
+                .map(|binding| binding.kind().is_valid_arguments_kind())
+                .unwrap_or(false);
 
-        // Arguments object is not needed if "arguments" appears in the lexically declared names, or
-        // as a function var declared name.
-        if is_arguments_object_needed && !func.has_parameter_expressions() {
-            for (name, binding) in func.scope.as_ref().iter_bindings() {
-                let kind = binding.kind();
-                if kind.is_lexically_scoped() || kind.is_function() {
-                    if name == "arguments" {
-                        is_arguments_object_needed = false;
-                    }
-                }
-            }
+            func.set_is_arguments_object_needed(is_arguments_object_needed);
         }
 
-        func.set_is_arguments_object_needed(is_arguments_object_needed);
+        // Only exit scope after visiting body and determining if arguments object is needed. We
+        // need to know whether the arguments object is needed before creating the corresponding
+        // VM scope node, as arguments may need to be added to VM scope for mapped arguments object.
+        self.exit_scope();
 
         if func.is_strict_mode() {
             self.exit_strict_mode_context();
@@ -1304,7 +1260,6 @@ pub fn analyze_for_eval(
     // If in function add a synthetic function entry
     if in_function {
         analyzer.function_stack.push(FunctionStackEntry {
-            func: None,
             is_arrow_function: false,
             _is_method: in_method,
             is_derived_constructor: in_derived_constructor,

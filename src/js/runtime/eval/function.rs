@@ -112,10 +112,10 @@ pub fn function_declaration_instantiation(
 
     // Set up arguments object if needed
     if func_node.is_arguments_object_needed() {
-        let arguments_object = if is_strict || !func_node.has_simple_parameter_list() {
-            create_unmapped_arguments_object(cx, &arguments)
-        } else {
+        let arguments_object = if func_node.needs_mapped_arguments_object() {
             create_mapped_arguments_object(cx, func, &func_node.params, &arguments, env)
+        } else {
+            create_unmapped_arguments_object(cx, &arguments)
         };
 
         let arguments_name_value = InternedStrings::get_str(cx, "arguments");

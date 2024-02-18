@@ -345,6 +345,14 @@ impl Function {
     pub fn has_use_strict_directive(&self) -> bool {
         self.flags.contains(FunctionFlags::HAS_USE_STRICT_DIRECTIVE)
     }
+
+    /// Whether this function needs a mapped arguments object. If false and this funciton needs
+    /// an arguments object, it uses an unmapped arguments object.
+    pub fn needs_mapped_arguments_object(&self) -> bool {
+        self.is_arguments_object_needed()
+            && !self.is_strict_mode()
+            && self.has_simple_parameter_list()
+    }
 }
 
 pub enum FunctionParam {

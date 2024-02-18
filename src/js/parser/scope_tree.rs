@@ -110,7 +110,7 @@ impl ScopeTree {
         kind: ScopeNodeKind,
         parent: Option<ScopeNodeId>,
     ) -> AstScopeNode {
-        let enclosing_scope = if let ScopeNodeKind::Global | ScopeNodeKind::Function(_) = kind {
+        let enclosing_scope = if let ScopeNodeKind::Global | ScopeNodeKind::Function { .. } = kind {
             // Global and function nodes are their own enclosing scope
             id
         } else {
@@ -139,7 +139,7 @@ impl ScopeTree {
             extra_var_names,
             num_bindings: 0,
             has_duplicates: false,
-            force_vm_scope: false,
+            is_dynamically_accessed: false,
             enclosing_scope,
             enclosed_scopes: vec![],
             num_local_registers: 0,
@@ -256,9 +256,22 @@ impl ScopeTree {
         let mut scope_id = use_scope_id;
         loop {
             let scope = self.get_ast_node(scope_id);
-            let mut is_capture = false;
+            let scope_kind = scope.kind;
+            let scope_parent = scope.parent;
 
-            if scope.bindings.contains_key(name) {
+            let mut found_def = scope.bindings.contains_key(name);
+
+            // Arguments object bindings are lazily added when we determine that one is needed.
+            // We know that one is needed if we are looking up "arguments" and it has not been
+            // resolved to a binding by the time we reach the function scope.
+            if !found_def && name == "arguments" && self.needs_implicit_arguments_object(scope_id) {
+                self.add_implicit_arguments_object(scope_id);
+                found_def = true;
+            }
+
+            if found_def {
+                let mut is_capture = false;
+
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
                 if self.lookup_enclosing_function(scope_id)
@@ -291,11 +304,11 @@ impl ScopeTree {
             // statically resolvable.
             //
             // Note that `this` bindings can still be searched for past `with` scopes.
-            if scope.kind == ScopeNodeKind::With && name != "this" {
+            if scope_kind == ScopeNodeKind::With && name != "this" {
                 return None;
             }
 
-            if let Some(parent_id) = scope.parent {
+            if let Some(parent_id) = scope_parent {
                 scope_id = parent_id;
             } else {
                 return None;
@@ -309,29 +322,51 @@ impl ScopeTree {
         let node = self.get_ast_node(scope_id);
         let enclosing_scope = self.get_ast_node(node.enclosing_scope);
 
-        if let ScopeNodeKind::Function(func_id) = enclosing_scope.kind {
+        if let ScopeNodeKind::Function { id: func_id, .. } = enclosing_scope.kind {
             Some(func_id)
         } else {
             None
         }
     }
 
-    /// Force all scopes at the provided AST scope and above to use scope VM scope locations instead
-    /// of local registers. e.g. taints the scope and all parent scopes for `eval` and `with`
-    /// statements.
-    pub fn force_vm_scope_for_visible_bindings(&mut self, scope_id: ScopeNodeId) {
+    /// Mark all scopes at the provided AST scope and above as being dynamically accessed, e.g. due
+    /// to the presence of `eval` or `with`.
+    pub fn mark_is_dynamically_accessed_for_visible_bindings(&mut self, scope_id: ScopeNodeId) {
         let mut scope_id = scope_id;
         loop {
             let scope = self.get_ast_node_mut(scope_id);
+            let scope_parent = scope.parent;
 
-            scope.force_vm_scope = true;
+            if !scope.is_dynamically_accessed {
+                scope.is_dynamically_accessed = true;
 
-            if let Some(parent_id) = scope.parent {
+                // Any function scope that may be dynamically accessed must have an arguments object
+                if self.needs_implicit_arguments_object(scope_id) {
+                    self.add_implicit_arguments_object(scope_id);
+                }
+            }
+
+            if let Some(parent_id) = scope_parent {
                 scope_id = parent_id;
             } else {
                 return;
             }
         }
+    }
+
+    fn needs_implicit_arguments_object(&mut self, scope_id: ScopeNodeId) -> bool {
+        let scope = self.get_ast_node(scope_id);
+        matches!(scope.kind, ScopeNodeKind::Function { is_arrow: false, .. })
+            && !scope.bindings.contains_key("arguments")
+    }
+
+    fn add_implicit_arguments_object(&mut self, scope_id: ScopeNodeId) {
+        self.get_ast_node_mut(scope_id).add_binding(
+            "arguments",
+            BindingKind::ImplicitArguments,
+            None,
+            false,
+        );
     }
 }
 
@@ -342,13 +377,21 @@ impl ScopeTree {
         let ast_node = self.get_ast_node_mut(ast_node_id);
         let enclosing_scope = ast_node.enclosing_scope;
 
-        // Collect all bindings that must appear in a VM scope node, meaning all captured bindings
-        // and all bindings in scope nodes that are forced to be VM scopes.
+        // Collect all bindings that must appear in a VM scope node
         let mut bindings = Vec::new();
         for (name, binding) in ast_node.bindings.iter_mut() {
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
-            if binding.is_captured || ast_node.force_vm_scope {
-                // Bindings that are captured by another scope must be placed in a VM scope node
+
+            let needs_vm_scope =
+                // All captured bindings must be placed in a VM scope
+                binding.is_captured ||
+                // We sometimes force bindings in VM scopes due to dynamic accesses.
+                // e.g. in the presence of `eval` or `with`
+                ast_node.is_dynamically_accessed;
+
+            if needs_vm_scope {
+                // Global bindings are always accessible so no need to place in VM scope. The only
+                // exception is the global `this` which must be accessed through a VM scope.
                 if !is_global || binding.is_implicit_this() {
                     // Mark the VM location for the binding
                     binding.set_vm_location(VMLocation::Scope {
@@ -416,7 +459,12 @@ pub type ScopeNodeId = usize;
 #[derive(Clone, Copy, PartialEq)]
 pub enum ScopeNodeKind {
     Global,
-    Function(FunctionId),
+    Function {
+        /// A unique identifier for the function. Currently the function's starting source position.
+        id: FunctionId,
+        /// Whether this is an arrow function
+        is_arrow: bool,
+    },
     /// A function body scope only appears when the function has parameter expressions. In this case
     /// the function body is the hoist target for all declarations in the body, keeping them
     /// separate from the parameters.
@@ -429,9 +477,9 @@ pub enum ScopeNodeKind {
 impl ScopeNodeKind {
     fn is_hoist_target(&self) -> bool {
         match self {
-            ScopeNodeKind::Global | ScopeNodeKind::Function(_) | ScopeNodeKind::FunctionBody => {
-                true
-            }
+            ScopeNodeKind::Global
+            | ScopeNodeKind::Function { .. }
+            | ScopeNodeKind::FunctionBody => true,
             ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::With => false,
         }
     }
@@ -453,9 +501,10 @@ pub struct AstScopeNode {
     num_bindings: usize,
     /// Whether at least one duplicate binding was added to map, replacing an earlier binding.
     has_duplicates: bool,
-    /// Whether all bindings in this scope must have a VM scope location instead of being in local
-    /// registers.
-    force_vm_scope: bool,
+    /// Whether this scope may be dynamically accessed (meaning there may be runtime lookups by
+    /// name, e.g. due to the presence of `eval` or `with`). This means all bindings in this scope
+    /// must be placed in a VM scope node so they can be accessed at runtime.
+    is_dynamically_accessed: bool,
     /// The most recent ancestor global or function AST scope node, meaning the node that this
     /// scope's locals will be placed in. For global and function nodes this points to itself.
     enclosing_scope: ScopeNodeId,
@@ -506,6 +555,10 @@ impl AstScopeNode {
 
     pub fn get_binding(&self, name: &str) -> &Binding {
         self.bindings.get(name).unwrap()
+    }
+
+    pub fn get_binding_opt(&self, name: &str) -> Option<&Binding> {
+        self.bindings.get(name)
     }
 
     pub fn get_binding_mut(&mut self, name: &str) -> &mut Binding {
@@ -574,15 +627,19 @@ pub enum BindingKind {
         /// Whether this is `this` in the global scope.
         is_global: bool,
     },
+    /// An implicit `arguments` binding introduced in a function. Note that any var or var function
+    /// is treated as an "explicit" `arguments` binding and will require an arguments object.
+    ImplicitArguments,
 }
 
 impl BindingKind {
-    /// Whether this is a LexicallyScopedDeclaration or a VarScopedDeclaration from the spec.
+    /// Whether this is a LexicallyScopedDeclaration from the spec.
     pub fn is_lexically_scoped(&self) -> bool {
         match self {
             BindingKind::Var
             | BindingKind::FunctionParameter
-            | BindingKind::ImplicitThis { .. } => false,
+            | BindingKind::ImplicitThis { .. }
+            | BindingKind::ImplicitArguments => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
@@ -610,6 +667,20 @@ impl BindingKind {
                 | BindingKind::Let { .. }
                 | BindingKind::Class
                 | BindingKind::CatchParameter { .. }
+        )
+    }
+
+    /// An binding with the name `arguments` requires that an arguments object be created if:
+    /// - It is an implicit `arguments` binding (i.e. a use of `arguments` which reaches a function
+    ///   when resolved to a binding).
+    /// - It is an explicit `arguments` binding (i.e. a var or var function declaration with the
+    ///   name `arguments`).
+    pub fn is_valid_arguments_kind(&self) -> bool {
+        matches!(
+            self,
+            BindingKind::Var
+                | BindingKind::Function { is_lexical: false, .. }
+                | BindingKind::ImplicitArguments
         )
     }
 }

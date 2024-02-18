@@ -735,7 +735,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<AstPtr<AstScopeNode>> {
         let scope = self
             .scope_builder
-            .enter_scope(ScopeNodeKind::Function(start_pos));
+            .enter_scope(ScopeNodeKind::Function { id: start_pos, is_arrow });
 
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.

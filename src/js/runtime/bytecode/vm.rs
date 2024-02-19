@@ -5,6 +5,7 @@ use crate::{
         abstract_operations::{
             copy_data_properties, create_data_property_or_throw, define_property_or_throw, set,
         },
+        arguments_object::create_unmapped_arguments_object,
         array_object::{array_create, ArrayObject},
         error::{reference_error_, type_error_},
         eval::expression::{
@@ -66,14 +67,14 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewObjectInstruction, NewRegExpInstruction, OpCode, PopScopeInstruction,
-        PushLexicalScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
-        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPropertyInstruction,
-        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        NewObjectInstruction, NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode,
+        PopScopeInstruction, PushLexicalScopeInstruction, RemInstruction, RestParameterInstruction,
+        RetInstruction, SetArrayPropertyInstruction, SetNamedPropertyInstruction,
+        SetPropertyInstruction, SetPrototypeOfInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
+        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -444,6 +445,12 @@ impl VM {
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::NewRegExp => {
                             dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
+                        }
+                        OpCode::NewUnmappedArguments => {
+                            dispatch!(
+                                NewUnmappedArgumentsInstruction,
+                                execute_new_unmapped_arguments
+                            )
                         }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
@@ -1947,6 +1954,26 @@ impl VM {
         self.write_register(dest, Value::object(regexp.get_().cast()));
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_new_unmapped_arguments<W: Width>(
+        &mut self,
+        instr: &NewUnmappedArgumentsInstruction<W>,
+    ) {
+        let dest = instr.dest();
+
+        // Place all arguments (up to argc) behind handles
+        let arguments = StackFrame::for_fp(self.fp)
+            .args()
+            .iter()
+            .map(|arg| arg.to_handle(self.cx))
+            .collect::<Vec<_>>();
+
+        // Allocates
+        let arguments_object = create_unmapped_arguments_object(self.cx, &arguments);
+
+        self.write_register(dest, arguments_object.get());
     }
 
     #[inline]

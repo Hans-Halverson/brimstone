@@ -10,7 +10,7 @@ use crate::js::{
     parser::{
         ast::{self, AstPtr},
         parser::ParseProgramResult,
-        scope_tree::{AstScopeNode, BindingKind, ScopeTree, VMLocation},
+        scope_tree::{AstScopeNode, Binding, BindingKind, ScopeTree, VMLocation},
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
@@ -688,14 +688,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // Entire function parameters and body are in their own scope.
-        // TODO: When there are default parameters more scopes are potentially needed, particularly
-        // in the case of a direct eval in a default parameter.
         let func_scope = func.scope.as_ref();
         self.gen_scope_start(func_scope)?;
 
         // Store the captured `this` right away if necessary
         if !func.is_arrow() {
             self.gen_store_captured_this(func_scope)?;
+        }
+
+        // Generate the arguments object if necessary
+        if func.is_arguments_object_needed() {
+            let arguments_binding = func_scope.get_binding("arguments");
+
+            if func.needs_mapped_arguments_object() {
+                // TODO: Bytecode for mapped arguments object
+            } else {
+                let arguments_object = self.register_allocator.allocate()?;
+                self.writer
+                    .new_unmapped_arguments_instruction(arguments_object);
+                self.gen_store_binding("arguemnts", arguments_binding, arguments_object)?;
+                self.register_allocator.release(arguments_object);
+            }
         }
 
         // Generate function parameters including destructuring, default value evaluation, and
@@ -1093,6 +1106,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let binding = id.get_binding();
 
+        self.gen_store_binding(&id.name, binding, value)
+    }
+
+    fn gen_store_binding(
+        &mut self,
+        name: &str,
+        binding: &Binding,
+        value: GenRegister,
+    ) -> EmitResult<()> {
         match binding.vm_location().unwrap() {
             // Variables in arguments and registers are be encoded directly as register operands,
             // so simply move to the correct register.
@@ -1105,7 +1127,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.write_mov_instruction(local_reg, value);
             }
             // Globals must be stored with name appearing in the constant table
-            VMLocation::Global => self.gen_store_global_identifier(&id.name, value)?,
+            VMLocation::Global => self.gen_store_global_identifier(name, value)?,
             // Scope variables must be stored in the scope at the specified index
             VMLocation::Scope { scope_id, index } => {
                 self.gen_store_scope_binding(scope_id, index, value)?

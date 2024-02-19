@@ -669,6 +669,13 @@ define_instructions!(
         [1] regexp_index: ConstantIndex,
     }
 
+    /// Create a new unmapped arguments object for the current function, and store in dest.
+    ///
+    /// Copies the current function's arguments (up to argc) to the new arguments object.
+    NewUnmappedArguments (NewUnmappedArgumentsInstruction, new_unmapped_arguments_instruction) {
+        [0] dest: Register,
+    }
+
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
     GetProperty (GetPropertyInstruction, get_property_instruction) {

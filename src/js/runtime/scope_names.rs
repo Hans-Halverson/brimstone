@@ -39,6 +39,10 @@ impl ScopeNames {
     pub fn len(&self) -> usize {
         self.names.len()
     }
+
+    pub fn get_slot_name(&self, index: usize) -> HeapPtr<FlatString> {
+        self.names.as_slice()[index]
+    }
 }
 
 impl HeapObject for HeapPtr<ScopeNames> {

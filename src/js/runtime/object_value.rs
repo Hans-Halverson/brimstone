@@ -321,7 +321,9 @@ impl ObjectValue {
 
     pub fn is_arguments_object(&self) -> bool {
         match self.descriptor_kind() {
-            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject => true,
+            ObjectKind::MappedArgumentsObject
+            | ObjectKind::LegacyMappedArgumentsObject
+            | ObjectKind::UnmappedArgumentsObject => true,
             _ => false,
         }
     }

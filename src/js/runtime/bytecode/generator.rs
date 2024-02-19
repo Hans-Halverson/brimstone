@@ -696,44 +696,60 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.gen_store_captured_this(func_scope)?;
         }
 
-        // Generate the arguments object if necessary
+        // Generate the arguments object if necessary. For mapped arguments object this also places
+        // the function's arguments into the function's scope.
         if func.is_arguments_object_needed() {
             let arguments_binding = func_scope.get_binding("arguments");
+            let arguments_dest = self.expr_dest_for_binding(arguments_binding);
+            let arguments_object = self.allocate_destination(arguments_dest)?;
 
             if func.needs_mapped_arguments_object() {
-                // TODO: Bytecode for mapped arguments object
+                // All arguments must be placed in the function's scope
+                for i in 0..func.params.len() {
+                    self.gen_store_scope_binding(self.scope.scope_id, i, Register::argument(i))?;
+                }
+
+                self.writer
+                    .new_mapped_arguments_instruction(arguments_object);
             } else {
-                let arguments_object = self.register_allocator.allocate()?;
                 self.writer
                     .new_unmapped_arguments_instruction(arguments_object);
-                self.gen_store_binding("arguemnts", arguments_binding, arguments_object)?;
-                self.register_allocator.release(arguments_object);
             }
+
+            self.gen_store_binding("arguemnts", arguments_binding, arguments_object)?;
+            self.register_allocator.release(arguments_object);
         }
 
         // Generate function parameters including destructuring, default value evaluation, and
         // captured parameters.
-        for (i, param) in func.params.iter().enumerate() {
-            // Each parameter is in its own "has assign expression" context
-            self.enter_has_assign_expr_context(param.has_assign_expr());
+        if !func.needs_mapped_arguments_object() {
+            for (i, param) in func.params.iter().enumerate() {
+                // Each parameter is in its own "has assign expression" context
+                self.enter_has_assign_expr_context(param.has_assign_expr());
 
-            match param {
-                // Emit pattern destructuring
-                ast::FunctionParam::Pattern { pattern, .. } => {
-                    let argument = Register::argument(i);
-                    self.gen_destructuring(pattern, argument, /* release_value */ true)?;
-                }
-                // Create the rest parameter then destructure
-                ast::FunctionParam::Rest { rest: param, .. } => {
-                    let rest_dest = self.expr_dest_for_destructuring_assignment(&param.argument);
-                    let rest = self.allocate_destination(rest_dest)?;
+                match param {
+                    // Emit pattern destructuring
+                    ast::FunctionParam::Pattern { pattern, .. } => {
+                        let argument = Register::argument(i);
+                        self.gen_destructuring(pattern, argument, /* release_value */ true)?;
+                    }
+                    // Create the rest parameter then destructure
+                    ast::FunctionParam::Rest { rest: param, .. } => {
+                        let rest_dest =
+                            self.expr_dest_for_destructuring_assignment(&param.argument);
+                        let rest = self.allocate_destination(rest_dest)?;
 
-                    self.writer.rest_parameter_instruction(rest);
-                    self.gen_destructuring(&param.argument, rest, /* release_value */ true)?;
+                        self.writer.rest_parameter_instruction(rest);
+                        self.gen_destructuring(
+                            &param.argument,
+                            rest,
+                            /* release_value */ true,
+                        )?;
+                    }
                 }
+
+                self.exit_has_assign_expr_context();
             }
-
-            self.exit_has_assign_expr_context();
         }
 
         match func.body.as_ref() {
@@ -1171,7 +1187,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return ExprDest::Any;
         }
 
-        match id.get_binding().vm_location().unwrap() {
+        self.expr_dest_for_binding(id.get_binding())
+    }
+
+    fn expr_dest_for_binding(&mut self, binding: &Binding) -> ExprDest {
+        match binding.vm_location().unwrap() {
             // Variables in arguments and registers can be encoded directly as register operands.
             // Make sure to load to a new temporary if necessary.
             VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),

@@ -1,6 +1,7 @@
 use crate::js::runtime::{
     arguments_object::{
-        ArgAccessorClosureEnvironment, MappedArgumentsObject, UnmappedArgumentsObject,
+        ArgAccessorClosureEnvironment, LegacyMappedArgumentsObject, MappedArgumentsObject,
+        UnmappedArgumentsObject,
     },
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
@@ -113,6 +114,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().byte_size(),
             ObjectKind::BoundFunctionObject => self.cast::<BoundFunctionObject>().byte_size(),
             ObjectKind::MappedArgumentsObject => self.cast::<MappedArgumentsObject>().byte_size(),
+            ObjectKind::LegacyMappedArgumentsObject => {
+                self.cast::<LegacyMappedArgumentsObject>().byte_size()
+            }
             ObjectKind::UnmappedArgumentsObject => {
                 self.cast::<UnmappedArgumentsObject>().byte_size()
             }
@@ -229,6 +233,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::MappedArgumentsObject => {
                 self.cast::<MappedArgumentsObject>().visit_pointers(visitor)
             }
+            ObjectKind::LegacyMappedArgumentsObject => self
+                .cast::<LegacyMappedArgumentsObject>()
+                .visit_pointers(visitor),
             ObjectKind::UnmappedArgumentsObject => self
                 .cast::<UnmappedArgumentsObject>()
                 .visit_pointers(visitor),

@@ -669,6 +669,11 @@ define_instructions!(
         [1] regexp_index: ConstantIndex,
     }
 
+    /// Create a new mapped arguments object for the current function, and store in dest.
+    NewMappedArguments (NewMappedArgumentsInstruction, new_mapped_arguments_instruction) {
+        [0] dest: Register,
+    }
+
     /// Create a new unmapped arguments object for the current function, and store in dest.
     ///
     /// Copies the current function's arguments (up to argc) to the new arguments object.

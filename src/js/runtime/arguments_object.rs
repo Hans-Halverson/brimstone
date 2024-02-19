@@ -3,12 +3,14 @@ use std::{collections::HashSet, mem::size_of};
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
-    extend_object,
+    extend_object, field_offset,
     js::{
-        parser::ast,
+        parser::{ast, scope_tree::SHADOWED_SCOPE_SLOT_NAME},
         runtime::{
-            builtin_function::BuiltinFunction, eval::pattern::id_string_value,
-            ordinary_object::object_create_with_optional_proto,
+            builtin_function::BuiltinFunction,
+            eval::pattern::id_string_value,
+            interned_strings::InternedStrings,
+            ordinary_object::{object_create_with_optional_proto, object_create_with_size},
         },
     },
     maybe, must, set_uninit,
@@ -18,6 +20,8 @@ use super::{
     abstract_operations::{
         create_data_property_or_throw, define_property_or_throw, has_own_property, set,
     },
+    bytecode::function::Closure,
+    collections::InlineArray,
     environment::environment::{DynEnvironment, HeapDynEnvironment},
     function::{get_argument, Function},
     gc::{Handle, HeapObject, HeapVisitor},
@@ -31,6 +35,7 @@ use super::{
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    scope::Scope,
     string_value::StringValue,
     type_utilities::same_object_value_handles,
     Context, EvalResult, HeapPtr, Value,
@@ -54,19 +59,22 @@ impl UnmappedArgumentsObject {
     }
 }
 
-// A mapped arguments exotic argument, as specified in:
+// A mapped arguments exotic argument used in the AST interpreter.
 // 10.4.4 Arguments Exotic Objects
 extend_object! {
-    pub struct MappedArgumentsObject {
+    pub struct LegacyMappedArgumentsObject {
         parameter_map: HeapPtr<ObjectValue>,
     }
 }
 
-impl MappedArgumentsObject {
-    pub fn new(cx: Context, parameter_map: Handle<ObjectValue>) -> Handle<MappedArgumentsObject> {
-        let mut object = object_create::<MappedArgumentsObject>(
+impl LegacyMappedArgumentsObject {
+    pub fn new(
+        cx: Context,
+        parameter_map: Handle<ObjectValue>,
+    ) -> Handle<LegacyMappedArgumentsObject> {
+        let mut object = object_create::<LegacyMappedArgumentsObject>(
             cx,
-            ObjectKind::MappedArgumentsObject,
+            ObjectKind::LegacyMappedArgumentsObject,
             Intrinsic::ObjectPrototype,
         );
 
@@ -81,7 +89,7 @@ impl MappedArgumentsObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Handle<MappedArgumentsObject> {
+impl VirtualObject for Handle<LegacyMappedArgumentsObject> {
     // 10.4.4.1 [[GetOwnProperty]]
     fn get_own_property(
         &self,
@@ -196,6 +204,234 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     }
 }
 
+// A mapped arguments exotic argument used in the bytecode VM. Contains a reference to the scope
+// where the arguments are stored so that they can be referenced directly.
+//
+// Only some parameters are mapped, and this can change dynamically due to user action. Keep an
+// inline array of booleans noting which parameters are mapped to the scope.
+//
+// 10.4.4 Arguments Exotic Objects
+extend_object! {
+    pub struct MappedArgumentsObject {
+        // Scope where the arguments are stored.
+        scope: HeapPtr<Scope>,
+        // Whether each parameter is mapped to the value in the scope.
+        mapped_parameters: InlineArray<bool>,
+    }
+}
+
+impl MappedArgumentsObject {
+    pub fn new(
+        cx: Context,
+        callee: Handle<Closure>,
+        arguments: &[Handle<Value>],
+        scope: Handle<Scope>,
+        num_parameters: usize,
+    ) -> Handle<MappedArgumentsObject> {
+        let size = Self::calculate_size_in_bytes(num_parameters);
+        let mut object = object_create_with_size::<MappedArgumentsObject>(
+            cx,
+            size,
+            ObjectKind::MappedArgumentsObject,
+            Intrinsic::ObjectPrototype,
+        );
+
+        set_uninit!(object.scope, scope.get_());
+
+        // An parameter is mapped if it has not been shadowed, which we know due to the special
+        // shadowed scope slot name.
+        let shadowed_name = InternedStrings::get_str(cx, SHADOWED_SCOPE_SLOT_NAME).get_();
+        let scope_names = scope.scope_names_ptr();
+
+        object.mapped_parameters.init_with_uninit(num_parameters);
+        for i in 0..num_parameters {
+            let is_mapped = !scope_names
+                .get_slot_name(i)
+                .ptr_eq(&shadowed_name.as_flat());
+            object.mapped_parameters.as_mut_slice()[i] = is_mapped;
+        }
+
+        let object = object.to_handle();
+
+        Self::init_properties(cx, object, callee, arguments);
+
+        object
+    }
+
+    fn init_properties(
+        cx: Context,
+        object: Handle<MappedArgumentsObject>,
+        callee: Handle<Closure>,
+        arguments: &[Handle<Value>],
+    ) {
+        // Property key is shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+
+        // Set indexed argument properties
+        for (i, argument) in arguments.iter().enumerate() {
+            index_key.replace(PropertyKey::array_index(cx, i as u32));
+            must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
+        }
+
+        // Set length property
+        let length_value = Value::from(arguments.len()).to_handle(cx);
+        let length_desc = PropertyDescriptor::data(length_value, true, false, true);
+        must!(define_property_or_throw(cx, object.into(), cx.names.length(), length_desc));
+
+        // Set @@iterator to Array.prototype.values
+        let iterator_key = cx.well_known_symbols.iterator();
+        let iterator_value = cx.get_intrinsic(Intrinsic::ArrayPrototypeValues);
+        let iterator_desc = PropertyDescriptor::data(iterator_value.into(), true, false, true);
+        must!(define_property_or_throw(cx, object.into(), iterator_key, iterator_desc));
+
+        // Set callee property to the enclosing function
+        let callee_desc = PropertyDescriptor::data(callee.into(), true, false, true);
+        must!(define_property_or_throw(cx, object.into(), cx.names.callee(), callee_desc));
+    }
+
+    const MAPPED_PARAMETERS_OFFSET: usize = field_offset!(MappedArgumentsObject, mapped_parameters);
+
+    fn calculate_size_in_bytes(len: usize) -> usize {
+        Self::MAPPED_PARAMETERS_OFFSET + InlineArray::<bool>::calculate_size_in_bytes(len)
+    }
+
+    /// If this key corresponds to the index of a mapped parameter, return the index in the scope
+    /// where that argument is stored.
+    #[inline]
+    fn get_mapped_scope_index_for_key(&self, key: Handle<PropertyKey>) -> Option<usize> {
+        if key.is_array_index() {
+            let key_index = key.as_array_index() as usize;
+            if key_index < self.mapped_parameters.len() {
+                if *self.mapped_parameters.get_unchecked(key_index) {
+                    return Some(key_index);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn unmap_argument(&mut self, index: usize) {
+        self.mapped_parameters.as_mut_slice()[index] = false;
+    }
+
+    fn get_mapped_argument(&self, cx: Context, index: usize) -> Handle<Value> {
+        self.scope.get_slot(index).to_handle(cx)
+    }
+
+    fn set_mapped_argument(&mut self, index: usize, value: Handle<Value>) {
+        self.scope.set_slot(index, value.get());
+    }
+}
+
+#[wrap_ordinary_object]
+impl VirtualObject for Handle<MappedArgumentsObject> {
+    // 10.4.4.1 [[GetOwnProperty]]
+    fn get_own_property(
+        &self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+    ) -> EvalResult<Option<PropertyDescriptor>> {
+        let mut desc = ordinary_get_own_property(cx, self.object(), key);
+        if let Some(desc) = &mut desc {
+            if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
+                desc.value = Some(self.get_mapped_argument(cx, scope_index));
+            }
+        } else {
+            return None.into();
+        }
+
+        desc.into()
+    }
+
+    // 10.4.4.2 [[DefineOwnProperty]]
+    fn define_own_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        desc: PropertyDescriptor,
+    ) -> EvalResult<bool> {
+        let scope_index = self.get_mapped_scope_index_for_key(key);
+        let mut new_arg_desc = desc.clone();
+
+        if let Some(scope_index) = scope_index {
+            if desc.is_data_descriptor() {
+                if let Some(false) = desc.is_writable {
+                    if desc.value.is_none() {
+                        new_arg_desc.value = Some(self.get_mapped_argument(cx, scope_index));
+                    }
+                }
+            }
+        }
+
+        if !must!(ordinary_define_own_property(cx, self.object(), key, new_arg_desc)) {
+            return false.into();
+        }
+
+        if let Some(scope_index) = scope_index {
+            if desc.is_accessor_descriptor() {
+                self.unmap_argument(scope_index);
+            } else {
+                if let Some(value) = desc.value {
+                    self.set_mapped_argument(scope_index, value);
+                }
+
+                if let Some(false) = desc.is_writable {
+                    self.unmap_argument(scope_index);
+                }
+            }
+        }
+
+        true.into()
+    }
+
+    // 10.4.4.3 [[Get]]
+    fn get(
+        &self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
+        if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
+            self.get_mapped_argument(cx, scope_index).into()
+        } else {
+            ordinary_get(cx, self.object(), key, receiver)
+        }
+    }
+
+    // 10.4.4.4 [[Set]]
+    fn set(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        value: Handle<Value>,
+        receiver: Handle<Value>,
+    ) -> EvalResult<bool> {
+        if receiver.is_object() && same_object_value_handles(self.object(), receiver.as_object()) {
+            if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
+                self.set_mapped_argument(scope_index, value);
+            }
+        }
+
+        ordinary_set(cx, self.object(), key, value, receiver)
+    }
+
+    // 10.4.4.5 [[Delete]]
+    fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
+        let scope_index = self.get_mapped_scope_index_for_key(key);
+
+        let result = maybe!(ordinary_delete(cx, self.object(), key));
+
+        if result {
+            if let Some(scope_index) = scope_index {
+                self.unmap_argument(scope_index);
+            }
+        }
+
+        result.into()
+    }
+}
+
 // 10.4.4.6 CreateUnmappedArgumentsObject
 pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]) -> Handle<Value> {
     let object = UnmappedArgumentsObject::new(cx).into();
@@ -240,7 +476,7 @@ pub fn create_mapped_arguments_object(
     let mut parameter_map =
         object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
             .to_handle();
-    let object = MappedArgumentsObject::new(cx, parameter_map);
+    let object = LegacyMappedArgumentsObject::new(cx, parameter_map);
 
     // Gather parameter names. All parameters are guaranteed to be simple identifiers in order for
     // a mapped arguments object to be created.
@@ -383,7 +619,18 @@ pub fn arg_setter(
 
 impl HeapObject for HeapPtr<MappedArgumentsObject> {
     fn byte_size(&self) -> usize {
-        size_of::<MappedArgumentsObject>()
+        MappedArgumentsObject::calculate_size_in_bytes(self.mapped_parameters.len())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer(&mut self.scope);
+    }
+}
+
+impl HeapObject for HeapPtr<LegacyMappedArgumentsObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<LegacyMappedArgumentsObject>()
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {

@@ -1,0 +1,47 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: bindingReferenced]
+    1: [String: bindingReferenced]
+    2: [BytecodeFunction: capturedByArrow]
+    3: [String: capturedByArrow]
+}
+
+[BytecodeFunction: bindingReferenced] {
+  Parameters: 0, Registers: 2
+     0: NewUnmappedArguments r0
+     2: LoadConstant r1, c0
+     5: LoadImmediate r1, 1
+     8: Add r1, r0, r1
+    12: LoadUndefined r1
+    14: Ret r1
+  Constant Table:
+    0: [String: use strict]
+}
+
+[BytecodeFunction: capturedByArrow] {
+  Parameters: 0, Registers: 1
+     0: PushLexicalScope c0
+     2: NewUnmappedArguments r0
+     4: StoreToScope r0, 0, 0
+     8: LoadConstant r0, c1
+    11: NewClosure r0, c2
+    14: LoadUndefined r0
+    16: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: use strict]
+    2: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: Ret r0
+}

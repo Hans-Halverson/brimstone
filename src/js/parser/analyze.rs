@@ -233,7 +233,14 @@ impl<'a> Analyzer<'a> {
     fn exit_scope(&mut self) {
         if let Some(exited_scope_node) = self.scope_stack.pop() {
             self.scope_tree
-                .finish_vm_scope_node(exited_scope_node.as_ref().id());
+                .finish_vm_scope_node(exited_scope_node.as_ref().id(), None);
+        }
+    }
+
+    fn exit_scope_with_mapped_arguments_object(&mut self, num_parameters: usize) {
+        if let Some(exited_scope_node) = self.scope_stack.pop() {
+            self.scope_tree
+                .finish_vm_scope_node(exited_scope_node.as_ref().id(), Some(num_parameters));
         }
     }
 
@@ -865,7 +872,11 @@ impl Analyzer<'_> {
         // Only exit scope after visiting body and determining if arguments object is needed. We
         // need to know whether the arguments object is needed before creating the corresponding
         // VM scope node, as arguments may need to be added to VM scope for mapped arguments object.
-        self.exit_scope();
+        if func.needs_mapped_arguments_object() {
+            self.exit_scope_with_mapped_arguments_object(func.params.len());
+        } else {
+            self.exit_scope();
+        }
 
         if func.is_strict_mode() {
             self.exit_strict_mode_context();

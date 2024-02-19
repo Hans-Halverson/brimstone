@@ -372,14 +372,58 @@ impl ScopeTree {
 
 /// Functions for constructing the VM scope tree.
 impl ScopeTree {
-    pub fn finish_vm_scope_node(&mut self, ast_node_id: ScopeNodeId) {
+    /// Complete an AST scope node and create a corresponding VM scope node if necessary.
+    ///
+    /// Optionally provide the number of arguments for a mapped arguments object if one needs to be
+    /// created.
+    pub fn finish_vm_scope_node(
+        &mut self,
+        ast_node_id: ScopeNodeId,
+        arguments_object_length: Option<usize>,
+    ) {
         let vm_node_id = self.vm_nodes.len();
         let ast_node = self.get_ast_node_mut(ast_node_id);
         let enclosing_scope = ast_node.enclosing_scope;
 
+        let mut bindings = vec![];
+
+        // A mapped arguments object requires that all arguments be placed in the VM scope node
+        // in order.
+        let has_mapped_arguments_object = arguments_object_length.is_some();
+        if has_mapped_arguments_object {
+            // Bindings start out with unresolvable "%private" for each argument name, which will be
+            // overriden by the actual binding name for accessible arguments. Some arguments cannot
+            // be accessed by name (since they are shadowed by another binding) and will remain
+            // unresolvable.
+            bindings = vec![SHADOWED_SCOPE_SLOT_NAME.to_owned(); arguments_object_length.unwrap()];
+
+            for (name, binding) in ast_node.bindings.iter_mut() {
+                if binding.kind() != &BindingKind::FunctionParameter {
+                    continue;
+                }
+
+                let arg_index = if let Some(VMLocation::Argument(arg_index)) = binding.vm_location {
+                    arg_index
+                } else {
+                    unreachable!(
+                        "function param bindings in simple params must have argument location"
+                    )
+                };
+
+                binding
+                    .set_vm_location(VMLocation::Scope { scope_id: vm_node_id, index: arg_index });
+
+                bindings[arg_index] = name.clone();
+            }
+        }
+
         // Collect all bindings that must appear in a VM scope node
-        let mut bindings = Vec::new();
         for (name, binding) in ast_node.bindings.iter_mut() {
+            // Function parameters for mapped arguments object have already been placed in the scope
+            if has_mapped_arguments_object && binding.kind() == &BindingKind::FunctionParameter {
+                continue;
+            }
+
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
 
             let needs_vm_scope =
@@ -761,3 +805,5 @@ impl VMScopeNode {
         &self.bindings
     }
 }
+
+pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";

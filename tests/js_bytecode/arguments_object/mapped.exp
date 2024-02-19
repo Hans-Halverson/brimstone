@@ -1,0 +1,84 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: noArguments]
+    1: [String: noArguments]
+    2: [BytecodeFunction: withArguments]
+    3: [String: withArguments]
+    4: [BytecodeFunction: withDuplicateArguments]
+    5: [String: withDuplicateArguments]
+    6: [BytecodeFunction: otherScopeBindings]
+    7: [String: otherScopeBindings]
+}
+
+[BytecodeFunction: noArguments] {
+  Parameters: 0, Registers: 2
+    0: NewMappedArguments r0
+    2: LoadUndefined r1
+    4: Ret r1
+}
+
+[BytecodeFunction: withArguments] {
+  Parameters: 3, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope a0, 0, 0
+     6: StoreToScope a1, 1, 0
+    10: StoreToScope a2, 2, 0
+    14: NewMappedArguments r0
+    16: LoadUndefined r1
+    18: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+}
+
+[BytecodeFunction: withDuplicateArguments] {
+  Parameters: 3, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope a0, 0, 0
+     6: StoreToScope a1, 1, 0
+    10: StoreToScope a2, 2, 0
+    14: NewMappedArguments r0
+    16: LoadUndefined r1
+    18: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+}
+
+[BytecodeFunction: otherScopeBindings] {
+  Parameters: 2, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 2, 0
+     6: StoreToScope a0, 0, 0
+    10: StoreToScope a1, 1, 0
+    14: NewMappedArguments r0
+    16: LoadImmediate r1, 1
+    19: StoreToScope r1, 3, 0
+    23: LoadImmediate r1, 2
+    26: StoreToScope r1, 4, 0
+    30: NewClosure r1, c1
+    33: LoadUndefined r1
+    35: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 3, 0
+     4: LoadFromScope r1, 4, 0
+     8: Add r0, r0, r1
+    12: LoadFromScope r1, 2, 0
+    16: Add r0, r0, r1
+    20: Ret r0
+}

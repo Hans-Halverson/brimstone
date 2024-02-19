@@ -3,12 +3,15 @@ use std::mem::size_of;
 use bitflags::bitflags;
 
 use crate::{
-    js::runtime::{bytecode::function::Closure, ordinary_object::OrdinaryObject, Value},
+    js::runtime::{
+        arguments_object::MappedArgumentsObject, bytecode::function::Closure,
+        ordinary_object::OrdinaryObject, Value,
+    },
     set_uninit,
 };
 
 use super::{
-    arguments_object::MappedArgumentsObject,
+    arguments_object::LegacyMappedArgumentsObject,
     array_object::ArrayObject,
     bound_function_object::BoundFunctionObject,
     builtin_function::BuiltinFunction,
@@ -73,6 +76,7 @@ pub enum ObjectKind {
     BoundFunctionObject,
 
     MappedArgumentsObject,
+    LegacyMappedArgumentsObject,
     UnmappedArgumentsObject,
 
     Int8Array,
@@ -284,6 +288,11 @@ impl BaseDescriptors {
         register_descriptor!(
             ObjectKind::MappedArgumentsObject,
             MappedArgumentsObject,
+            DescFlags::IS_OBJECT
+        );
+        register_descriptor!(
+            ObjectKind::LegacyMappedArgumentsObject,
+            LegacyMappedArgumentsObject,
             DescFlags::IS_OBJECT
         );
         ordinary_object_descriptor!(ObjectKind::UnmappedArgumentsObject);

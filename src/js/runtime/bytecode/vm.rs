@@ -5,7 +5,7 @@ use crate::{
         abstract_operations::{
             copy_data_properties, create_data_property_or_throw, define_property_or_throw, set,
         },
-        arguments_object::create_unmapped_arguments_object,
+        arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
         error::{reference_error_, type_error_},
         eval::expression::{
@@ -67,14 +67,14 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewObjectInstruction, NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode,
-        PopScopeInstruction, PushLexicalScopeInstruction, RemInstruction, RestParameterInstruction,
-        RetInstruction, SetArrayPropertyInstruction, SetNamedPropertyInstruction,
-        SetPropertyInstruction, SetPrototypeOfInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreGlobalInstruction,
-        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction,
+        NewMappedArgumentsInstruction, NewObjectInstruction, NewRegExpInstruction,
+        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushLexicalScopeInstruction,
+        RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -445,6 +445,9 @@ impl VM {
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::NewRegExp => {
                             dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
+                        }
+                        OpCode::NewMappedArguments => {
+                            dispatch!(NewMappedArgumentsInstruction, execute_new_mapped_arguments)
                         }
                         OpCode::NewUnmappedArguments => {
                             dispatch!(
@@ -1954,6 +1957,27 @@ impl VM {
         self.write_register(dest, Value::object(regexp.get_().cast()));
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_new_mapped_arguments<W: Width>(&mut self, instr: &NewMappedArgumentsInstruction<W>) {
+        let dest = instr.dest();
+
+        let closure = self.closure().to_handle();
+        let scope = self.scope().to_handle();
+        let num_parameters = closure.function_ptr().num_parameters() as usize;
+
+        let arguments = StackFrame::for_fp(self.fp)
+            .args()
+            .iter()
+            .map(|arg| arg.to_handle(self.cx))
+            .collect::<Vec<_>>();
+
+        // Allocates
+        let arguments_object =
+            MappedArgumentsObject::new(self.cx, closure, &arguments, scope, num_parameters);
+
+        self.write_register(dest, arguments_object.cast::<Value>().get());
     }
 
     #[inline]

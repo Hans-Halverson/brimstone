@@ -82,6 +82,11 @@ impl Scope {
     }
 
     #[inline]
+    pub fn scope_names_ptr(&self) -> HeapPtr<ScopeNames> {
+        self.scope_names
+    }
+
+    #[inline]
     pub fn get_slot(&self, index: usize) -> Value {
         self.slots.as_slice()[index]
     }

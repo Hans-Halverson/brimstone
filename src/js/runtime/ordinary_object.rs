@@ -586,6 +586,24 @@ where
     object
 }
 
+pub fn object_create_with_size<T>(
+    cx: Context,
+    size: usize,
+    descriptor_kind: ObjectKind,
+    intrinsic_proto: Intrinsic,
+) -> HeapPtr<T>
+where
+    HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
+{
+    let object = cx.alloc_uninit_with_size::<T>(size);
+
+    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let proto = cx.get_intrinsic_ptr(intrinsic_proto);
+    object_ordinary_init(cx, object.into(), descriptor, Some(proto));
+
+    object
+}
+
 pub fn object_create_with_proto<T>(
     cx: Context,
     descriptor_kind: ObjectKind,

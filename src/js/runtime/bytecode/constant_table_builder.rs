@@ -24,16 +24,27 @@ enum ConstantTableEntry {
 impl ConstantTableEntry {
     /// Convert this entry to a value that is stored in the constant table. Return the value that
     /// is stored, along with whether the entry represents an actual value (e.g. vs raw offset).
-    fn to_value(&self, cx: Context) -> (Handle<Value>, bool) {
+    fn to_value(&self, cx: Context) -> ToValueResult {
         match self {
-            ConstantTableEntry::String(string) => (string.cast(), true),
-            ConstantTableEntry::HeapObject { object, .. } => (object.cast(), true),
-            ConstantTableEntry::Double(double) => (double.to_handle(cx), true),
+            ConstantTableEntry::String(string) => ToValueResult::Value(string.cast()),
+            ConstantTableEntry::HeapObject { object, .. } => ToValueResult::Value(object.cast()),
+            ConstantTableEntry::Double(double) => ToValueResult::Value(double.to_handle(cx)),
             // Bytecode offsets are stored directly, not encoded as a value
             ConstantTableEntry::BytecodeOffset(offset) => {
-                (Value::from_raw_bits(*offset as u64).to_handle(cx), false)
+                ToValueResult::Raw(Value::from_raw_bits(*offset as u64))
             }
         }
+    }
+}
+
+enum ToValueResult {
+    Value(Handle<Value>),
+    Raw(Value),
+}
+
+impl ToValueResult {
+    fn is_value(&self) -> bool {
+        matches!(self, ToValueResult::Value(_))
     }
 }
 
@@ -327,18 +338,31 @@ impl ConstantTableBuilder {
         // Start uninitialized and fill in constants that we have allocated
         let mut constants = vec![Handle::dangling(); num_constants as usize];
         let mut metadata = vec![0; ConstantTable::calculate_metadata_size(num_constants as usize)];
+        let mut raw_values = vec![Value::undefined(); num_constants as usize];
 
-        for (constant, index) in &self.constants {
-            let (value, is_value) = constant.to_value(cx);
-            constants[*index as usize] = value;
-            Self::set_metadata(&mut metadata, *index as usize, is_value);
+        macro_rules! iter_constants {
+            ($iter:expr) => {{
+                for (constant, index) in $iter {
+                    let value_or_raw = constant.to_value(cx);
+                    let value = match value_or_raw {
+                        ToValueResult::Value(value) => value,
+                        // Raw values cannot be placed behind handles in heap blocks since the GC
+                        // expects valid values. Instead place in temporary vec and use a non-heap
+                        // handle.
+                        ToValueResult::Raw(raw_value) => {
+                            raw_values[*index as usize] = raw_value;
+                            Handle::<Value>::from_fixed_non_heap_ptr(&raw_values[*index as usize])
+                        }
+                    };
+
+                    constants[*index as usize] = value;
+                    Self::set_metadata(&mut metadata, *index as usize, value_or_raw.is_value());
+                }
+            }};
         }
 
-        for (constant, index) in &self.duplicates {
-            let (value, is_value) = constant.to_value(cx);
-            constants[*index as usize] = value;
-            Self::set_metadata(&mut metadata, *index as usize, is_value);
-        }
+        iter_constants!(&self.constants);
+        iter_constants!(&self.duplicates);
 
         // There may be holes in the array due to removed reservations or placeholders that will be
         // patched later. Fill them in with undefined.

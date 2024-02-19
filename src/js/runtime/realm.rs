@@ -141,7 +141,11 @@ impl Handle<Realm> {
 }
 
 // 9.6 InitializeHostDefinedRealm
-pub fn initialize_host_defined_realm(cx: Context, expose_gc: bool) -> Handle<Realm> {
+pub fn initialize_host_defined_realm(
+    cx: Context,
+    expose_gc: bool,
+    expose_test262: bool,
+) -> Handle<Realm> {
     HandleScope::new(cx, |mut cx| {
         let mut realm = Realm::new_uninit(cx);
         let exec_ctx = ExecutionContext::new(
@@ -153,7 +157,7 @@ pub fn initialize_host_defined_realm(cx: Context, expose_gc: bool) -> Handle<Rea
         cx.push_execution_context(exec_ctx);
 
         realm.initialize(cx);
-        must!(set_default_global_bindings(cx, realm, expose_gc));
+        must!(set_default_global_bindings(cx, realm, expose_gc, expose_test262));
 
         realm
     })
@@ -184,6 +188,7 @@ impl HeapObject for HeapPtr<Realm> {
         visitor.visit_pointer(&mut self.descriptor);
         visitor.visit_pointer(&mut self.global_env);
         visitor.visit_pointer(&mut self.global_object);
+        visitor.visit_pointer(&mut self.global_scope);
         visitor.visit_pointer(&mut self.template_map);
         self.intrinsics.visit_pointers(visitor);
     }

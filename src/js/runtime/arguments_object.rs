@@ -228,6 +228,8 @@ impl MappedArgumentsObject {
         scope: Handle<Scope>,
         num_parameters: usize,
     ) -> Handle<MappedArgumentsObject> {
+        let shadowed_name = InternedStrings::get_str(cx, SHADOWED_SCOPE_SLOT_NAME).as_flat();
+
         let size = Self::calculate_size_in_bytes(num_parameters);
         let mut object = object_create_with_size::<MappedArgumentsObject>(
             cx,
@@ -240,14 +242,11 @@ impl MappedArgumentsObject {
 
         // An parameter is mapped if it has not been shadowed, which we know due to the special
         // shadowed scope slot name.
-        let shadowed_name = InternedStrings::get_str(cx, SHADOWED_SCOPE_SLOT_NAME).get_();
         let scope_names = scope.scope_names_ptr();
 
         object.mapped_parameters.init_with_uninit(num_parameters);
         for i in 0..num_parameters {
-            let is_mapped = !scope_names
-                .get_slot_name(i)
-                .ptr_eq(&shadowed_name.as_flat());
+            let is_mapped = !scope_names.get_slot_name(i).ptr_eq(&shadowed_name.get_());
             object.mapped_parameters.as_mut_slice()[i] = is_mapped;
         }
 

@@ -129,6 +129,7 @@ impl HeapObject for HeapPtr<Closure> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
         visitor.visit_pointer(&mut self.function);
+        visitor.visit_pointer(&mut self.scope);
     }
 }
 
@@ -362,6 +363,7 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
 
         visitor.visit_pointer_opt(&mut self.constant_table);
         visitor.visit_pointer_opt(&mut self.exception_handlers);
+        visitor.visit_pointer(&mut self.global_scope);
         visitor.visit_pointer_opt(&mut self.name);
     }
 }

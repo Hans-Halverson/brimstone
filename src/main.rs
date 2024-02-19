@@ -26,7 +26,7 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     let (cx, realm) = js::runtime::Context::new(options.clone(), |cx| {
         // Allocate the realm's built-ins in the permanent heap
-        js::runtime::initialize_host_defined_realm(cx, args.expose_gc)
+        js::runtime::initialize_host_defined_realm(cx, args.expose_gc, args.expose_test262)
     });
 
     #[cfg(feature = "gc_stress_test")]

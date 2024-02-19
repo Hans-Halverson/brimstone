@@ -184,7 +184,9 @@ fn run_single_test(
     // Each test is executed in its own realm
     let (cx, realm) = Context::new(options, |cx| {
         // Allocate the realm's built-ins in the permanent heap
-        initialize_host_defined_realm(cx, false)
+        initialize_host_defined_realm(
+            cx, /* expose_gc */ false, /* expose_test262 */ true,
+        )
     });
 
     // Wrap in catch_unwind so that we can clean up the context in the event of a panic

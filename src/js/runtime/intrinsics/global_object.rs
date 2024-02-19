@@ -17,6 +17,7 @@ use crate::{
             property_descriptor::PropertyDescriptor,
             string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
             string_value::{FlatString, StringValue},
+            test_262_object::Test262Object,
             to_string,
             type_utilities::{to_int32, to_number},
             Context, EvalResult, Handle, Realm, Value,
@@ -32,6 +33,7 @@ pub fn set_default_global_bindings(
     cx: Context,
     realm: Handle<Realm>,
     expose_gc: bool,
+    expose_test262: bool,
 ) -> EvalResult<()> {
     HandleScope::new(cx, |cx| {
         macro_rules! value_prop {
@@ -150,6 +152,11 @@ pub fn set_default_global_bindings(
         if expose_gc {
             let gc_object = GcObject::new(cx, realm).into();
             value_prop!(cx.names.gc(), gc_object, true, false, true);
+        }
+
+        if expose_test262 {
+            let test_262_object = Test262Object::new(cx, realm);
+            Test262Object::install(cx, realm, test_262_object);
         }
 
         ().into()

@@ -24,6 +24,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_gc: bool,
 
+    /// Expose the test262 object
+    #[arg(long, default_value_t = false)]
+    pub expose_test262: bool,
+
     /// Use the bytecode interpreter
     #[arg(long, default_value_t = false)]
     pub bytecode: bool,

@@ -2436,7 +2436,7 @@ impl VM {
         // Walk the stack, visiting all pointers in each frame
         loop {
             // Visit all args and registers in stack frame
-            for arg in stack_frame.args_with_receiver_mut() {
+            for arg in stack_frame.all_args_with_receiver_mut() {
                 visitor.visit_value(arg);
             }
 

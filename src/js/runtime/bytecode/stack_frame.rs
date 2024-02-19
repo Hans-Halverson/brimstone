@@ -174,7 +174,8 @@ impl StackFrame {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
-    /// Slice over args portion of frame, not including the receiver or undefined args added due to
+    /// Slice over args portion of frame, not including the receiver. Only includes args passed from
+    /// the caller (aka of length argc), not including default args and undefined args added due to
     /// underapplication.
     #[inline]
     pub fn args(&self) -> &[Value] {
@@ -186,13 +187,17 @@ impl StackFrame {
     }
 
     /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
-    /// the first argument. Does not include undefined args added due to underapplication.
+    /// the first argument. Includes default args and undefined args added due to underapplication.
     #[inline]
-    pub fn args_with_receiver_mut(&self) -> &mut [Value] {
+    pub fn all_args_with_receiver_mut(&self) -> &mut [Value] {
         unsafe {
-            let argc_with_receiver = self.argc() + 1;
+            // Must round up to number of formal parameters to handle default args and
+            // underapplication.
+            let num_parameters = self.closure().function_ptr().num_parameters() as usize;
+            let num_args_with_receiver = num_parameters.max(self.argc()) + 1;
+
             let receiver_ptr = self.fp.add(RECEIVER_SLOT_INDEX) as *mut Value;
-            std::slice::from_raw_parts_mut(receiver_ptr, argc_with_receiver)
+            std::slice::from_raw_parts_mut(receiver_ptr, num_args_with_receiver)
         }
     }
 

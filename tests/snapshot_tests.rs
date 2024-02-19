@@ -34,7 +34,7 @@ fn print_ast(path: &str) -> GenericResult<String> {
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
     // Context is shared between all tests
     let options = Rc::new(Options::default());
-    let (cx, _) = Context::new(options, |cx| initialize_host_defined_realm(cx, false));
+    let (cx, _) = Context::new(options, |cx| initialize_host_defined_realm(cx, false, false));
 
     let bytecode_tests_dir = Path::new(file!()).parent().unwrap().join("js_bytecode");
     let result = run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, path));

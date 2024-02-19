@@ -464,7 +464,10 @@ impl ScopeTree {
                 binding.is_captured ||
                 // We sometimes force bindings in VM scopes due to dynamic accesses.
                 // e.g. in the presence of `eval` or `with`
-                ast_node.supports_dynamic_access;
+                //
+                // No need to place the global `this` in a VM scope unless it is captured.
+                (ast_node.supports_dynamic_access &&
+                    (name != "this" || ast_node.kind != ScopeNodeKind::Global));
 
             if needs_vm_scope {
                 // Global bindings are always accessible so no need to place in VM scope. The only
@@ -490,8 +493,9 @@ impl ScopeTree {
             }
         }
 
-        // Only if there are bindings to place in the scope do we need to create a VM scope node
-        if !bindings.is_empty() {
+        // Only if there are bindings to place in the scope do we need to create a VM scope node.
+        // With scope also always need a VM scope node for their target object.
+        if !bindings.is_empty() || ast_node.kind() == ScopeNodeKind::With {
             self.vm_nodes.push(VMScopeNode { bindings });
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }
@@ -604,6 +608,10 @@ const GLOBAL_SCOPE_ID: ScopeNodeId = 0;
 impl AstScopeNode {
     pub fn id(&self) -> ScopeNodeId {
         self.id
+    }
+
+    pub fn kind(&self) -> ScopeNodeKind {
+        self.kind
     }
 
     pub fn num_local_registers(&self) -> usize {

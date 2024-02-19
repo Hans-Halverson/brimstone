@@ -1,0 +1,30 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: basic]
+    1: [String: basic]
+}
+
+[BytecodeFunction: basic] {
+  Parameters: 1, Registers: 1
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 1, 0
+     6: StoreToScope a0, 0, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 2, 0
+    16: LoadImmediate r0, 1
+    19: LoadFromScope r0, 0, 0
+    23: PushWithScope r0, c1
+    26: LoadImmediate r0, 2
+    29: PopScope 
+    30: LoadImmediate r0, 3
+    33: LoadUndefined r0
+    35: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+}

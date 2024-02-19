@@ -10,7 +10,7 @@ use crate::js::{
     parser::{
         ast::{self, AstPtr, ResolvedScope},
         parser::ParseProgramResult,
-        scope_tree::{AstScopeNode, Binding, BindingKind, ScopeTree, VMLocation},
+        scope_tree::{AstScopeNode, Binding, BindingKind, ScopeNodeKind, ScopeTree, VMLocation},
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
@@ -855,7 +855,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             },
             ast::Statement::While(stmt) => self.gen_while_statement(stmt, None),
             ast::Statement::DoWhile(stmt) => self.gen_do_while_statement(stmt, None),
-            ast::Statement::With(_) => unimplemented!("bytecode for with statement"),
+            ast::Statement::With(stmt) => self.gen_with_statement(stmt),
             ast::Statement::Try(stmt) => self.gen_try_statement(stmt),
             ast::Statement::Throw(stmt) => self.gen_throw_statement(stmt),
             ast::Statement::Return(stmt) => self.gen_return_statement(stmt),
@@ -3272,8 +3272,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_scope_start(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
-        // Push a new scope onto the scope stack if necessary
-        self.push_lexical_scope(scope)?;
+        // Push a new scope onto the scope stack if necessary. With statements are handled
+        // separately.
+        if scope.kind() != ScopeNodeKind::With {
+            self.push_scope(scope, None)?;
+        }
 
         // Set all bindings that need a TDZ check to empty
         for (name, binding) in scope.iter_bindings() {
@@ -3317,8 +3320,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    /// Push a new scope onto the scope stack if necessary
-    fn push_lexical_scope(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+    /// Push a new scope onto the scope stack if necessary. Optionally pass an object to be used for
+    /// a with scope.
+    fn push_scope(
+        &mut self,
+        scope: &AstScopeNode,
+        with_object: Option<GenRegister>,
+    ) -> EmitResult<()> {
         if let Some(vm_scope_id) = scope.vm_scope_id() {
             let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
 
@@ -3346,8 +3354,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 };
 
             // Push the new scope onto the stack, making it the current scope
-            self.writer
-                .push_lexical_scope_instruction(scope_names_constant_index);
+            if let Some(with_object) = with_object {
+                self.writer
+                    .push_with_scope_instruction(with_object, scope_names_constant_index);
+            } else {
+                self.writer
+                    .push_lexical_scope_instruction(scope_names_constant_index);
+            }
 
             self.scope =
                 Rc::new(ScopeStackNode { scope_id: vm_scope_id, parent: Some(self.scope.clone()) });
@@ -3748,6 +3761,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Normal completion since even with an abnormal body there might be a continue statement
         // that proceeds past the loop.
         Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_with_statement(&mut self, stmt: &ast::WithStatement) -> EmitResult<StmtCompletion> {
+        let object = self.gen_outer_expression(&stmt.object)?;
+
+        let with_scope = stmt.scope.as_ref();
+
+        // Start with scope
+        self.push_scope(with_scope, Some(object))?;
+        self.register_allocator.release(object);
+        self.gen_scope_start(with_scope)?;
+
+        let body_completion = self.gen_statement(stmt.body.as_ref())?;
+
+        // End with scope
+        self.gen_scope_end(with_scope);
+
+        Ok(body_completion)
     }
 
     fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {

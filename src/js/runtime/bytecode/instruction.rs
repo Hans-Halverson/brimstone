@@ -787,6 +787,17 @@ define_instructions!(
         [0] scope_names_index: ConstantIndex,
     }
 
+    /// Create a new with scope for the given object and push it to the stack, becoming the current
+    /// scope. The old current scope becomes the parent scope.
+    ///
+    /// Any value may be passed as the object. It will be converted to an object with ToObject.
+    ///
+    /// The scope names to use are at the given index in the constant table.
+    PushWithScope (PushWithScopeInstruction, push_with_scope_instruction) {
+        [0] object: Register,
+        [1] scope_names_index: ConstantIndex,
+    }
+
     /// Pop a scope off the stack, replacing it with its parent scope.
     PopScope (PopScopeInstruction, pop_scope_instruction) {}
 

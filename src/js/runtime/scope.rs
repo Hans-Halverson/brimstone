@@ -9,12 +9,15 @@ use super::{
     object_value::ObjectValue,
     scope_names::ScopeNames,
     string_value::StringValue,
+    type_utilities::to_boolean,
     Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
 };
 
 #[repr(C)]
 pub struct Scope {
     descriptor: HeapPtr<ObjectDescriptor>,
+    /// The type of this scope
+    kind: ScopeKind,
     /// Parent scope, forming a chain of scopes up to the global scope.
     parent: Option<HeapPtr<Scope>>,
     /// Names of the slots in this scope.
@@ -23,6 +26,13 @@ pub struct Scope {
     object: Option<HeapPtr<ObjectValue>>,
     /// Inline array of slots for variables in this scope.
     slots: InlineArray<Value>,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+enum ScopeKind {
+    Global,
+    Lexical,
+    With,
 }
 
 impl Scope {
@@ -35,6 +45,7 @@ impl Scope {
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
+        set_uninit!(scope.kind, ScopeKind::Global);
         set_uninit!(scope.parent, None);
         set_uninit!(scope.scope_names, scope_names.get_());
         set_uninit!(scope.object, Some(global_object.get_()));
@@ -54,9 +65,31 @@ impl Scope {
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
+        set_uninit!(scope.kind, ScopeKind::Lexical);
         set_uninit!(scope.parent, Some(parent.get_()));
         set_uninit!(scope.scope_names, scope_names.get_());
         set_uninit!(scope.object, None);
+
+        scope.slots.init_with(num_slots, Value::undefined());
+
+        scope.to_handle()
+    }
+
+    pub fn new_with(
+        cx: Context,
+        parent: Handle<Scope>,
+        scope_names: Handle<ScopeNames>,
+        object: Handle<ObjectValue>,
+    ) -> Handle<Scope> {
+        let num_slots = scope_names.len();
+        let size = Self::calculate_size_in_bytes(num_slots);
+        let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
+
+        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
+        set_uninit!(scope.kind, ScopeKind::With);
+        set_uninit!(scope.parent, Some(parent.get_()));
+        set_uninit!(scope.scope_names, scope_names.get_());
+        set_uninit!(scope.object, Some(object.get_()));
 
         scope.slots.init_with(num_slots, Value::undefined());
 
@@ -146,7 +179,7 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(has_property(cx, object_handle, key)) {
+                if maybe!(self.has_object_binding(cx, object_handle, key)) {
                     let value = maybe!(get(cx, object_handle, key));
                     return Some(value).into();
                 }
@@ -190,7 +223,7 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(has_property(cx, object_handle, key)) {
+                if maybe!(self.has_object_binding(cx, object_handle, key)) {
                     return object_handle.set(cx, key, value, object_handle.into());
                 }
             }
@@ -202,6 +235,40 @@ impl Handle<Scope> {
                 return false.into();
             }
         }
+    }
+
+    /// For scopes with an object, return whether the key is a binding in the object.
+    ///
+    /// For with statements, we must ignore keys that are in object[Symbol.unscopables].
+    fn has_object_binding(
+        &self,
+        cx: Context,
+        object: Handle<ObjectValue>,
+        key: Handle<PropertyKey>,
+    ) -> EvalResult<bool> {
+        // Check if key appears in object
+        if !maybe!(has_property(cx, object, key)) {
+            return false.into();
+        }
+
+        if self.kind != ScopeKind::With {
+            return true.into();
+        }
+
+        // With statements must also ignore properties in @@unscopables
+        let unscopables_key = cx.well_known_symbols.unscopables();
+        let unscopables = maybe!(get(cx, object, unscopables_key));
+        if unscopables.is_object() {
+            let unscopables = unscopables.as_object();
+
+            let value = maybe!(get(cx, unscopables, key));
+            let blocked = to_boolean(value.get());
+            if blocked {
+                return false.into();
+            }
+        }
+
+        true.into()
     }
 }
 

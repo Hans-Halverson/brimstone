@@ -69,13 +69,13 @@ use super::{
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
         NewMappedArgumentsInstruction, NewObjectInstruction, NewRegExpInstruction,
         NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushLexicalScopeInstruction,
-        RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        PushWithScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
+        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPropertyInstruction,
+        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreDynamicInstruction, StoreGlobalInstruction,
+        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -506,6 +506,9 @@ impl VM {
                         }
                         OpCode::PushLexicalScope => {
                             dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
+                        }
+                        OpCode::PushWithScope => {
+                            dispatch_or_throw!(PushWithScopeInstruction, execute_push_with_scope)
                         }
                         OpCode::PopScope => dispatch!(PopScopeInstruction, execute_pop_scope),
                         OpCode::DupScope => dispatch!(DupScopeInstruction, execute_dup_scope),
@@ -2286,6 +2289,29 @@ impl VM {
 
         // Write the new scope to the stack
         *StackFrame::for_fp(self.fp).scope_mut() = lexical_scope;
+    }
+
+    #[inline]
+    fn execute_push_with_scope<W: Width>(
+        &mut self,
+        instr: &PushWithScopeInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+
+        let scope = self.scope().to_handle();
+        let scope_names = self
+            .get_constant(instr.scope_names_index())
+            .to_handle(self.cx)
+            .cast::<ScopeNames>();
+
+        // Allocates
+        let object = maybe!(to_object(self.cx, object));
+        let lexical_scope = Scope::new_with(self.cx, scope, scope_names, object).get_();
+
+        // Write the new scope to the stack
+        *StackFrame::for_fp(self.fp).scope_mut() = lexical_scope;
+
+        ().into()
     }
 
     #[inline]

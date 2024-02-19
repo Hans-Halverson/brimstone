@@ -416,7 +416,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Must conservatively use VM scope locations for all visible bindings so that they can be
         // dynamcally looked up from within the with statement.
         self.scope_tree
-            .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
+            .support_dynamic_access_in_visible_bindings(self.current_scope_id());
 
         // With statement bodies are in their own scope
         self.enter_scope(stmt.scope);
@@ -654,7 +654,13 @@ impl<'a> AstVisitor for Analyzer<'a> {
         match expr.callee.as_ref() {
             Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
                 self.scope_tree
-                    .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
+                    .support_dynamic_access_in_visible_bindings(self.current_scope_id());
+
+                // A sloppy direct eval could introduce vars into the outer scope
+                if !self.is_in_strict_mode_context() {
+                    self.scope_tree
+                        .mark_sloppy_direct_eval_in_scope(self.current_scope_id());
+                }
             }
             _ => {}
         }
@@ -681,7 +687,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         // Def patterns will already have scope node added, but use patterns will not. Resolve ids
         // in use patterns at this point.
-        if id.scope.is_none() {
+        if id.scope.is_unresolved() {
             self.resolve_identifier_use(id);
         }
 
@@ -826,8 +832,8 @@ impl Analyzer<'_> {
             // If this is a top level id pattern then the binding's VM location is the argument
             // directly by index. This may be overriden later if captured.
             if let Some(id) = toplevel_id {
-                let mut scope = id.scope.unwrap();
-                let binding = scope.as_mut().get_binding_mut(&id.name);
+                let scope = id.scope.unwrap_resolved_mut();
+                let binding = scope.get_binding_mut(&id.name);
                 binding.set_vm_location(VMLocation::Argument(param_index));
             }
 
@@ -1221,21 +1227,17 @@ impl Analyzer<'_> {
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        if let Some((def_scope, _)) = self.scope_tree.resolve_use(current_scope, &id.name, id.loc) {
-            id.scope = Some(def_scope);
-        }
+        let (def_scope, _) = self.scope_tree.resolve_use(current_scope, &id.name, id.loc);
+        id.scope = def_scope;
     }
 
     fn resolve_this_use(&mut self, this: &mut ThisExpression) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        let (def_scope, is_capture) = self
-            .scope_tree
-            .resolve_use(current_scope, "this", this.loc)
-            .unwrap();
+        let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, "this", this.loc);
 
         // Only set scope is this is a capture of a `this` binding
         if is_capture {
-            this.scope = Some(def_scope);
+            this.scope = Some(AstPtr::from_ref(def_scope.unwrap_resolved()));
         }
     }
 }

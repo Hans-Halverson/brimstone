@@ -37,6 +37,7 @@ function notNeededSinceUseCaught() {
 }
 
 function neededDueToDirectEval() {
+  "use strict";
   eval('');
 }
 

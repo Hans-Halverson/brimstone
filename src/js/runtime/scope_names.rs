@@ -43,6 +43,12 @@ impl ScopeNames {
     pub fn get_slot_name(&self, index: usize) -> HeapPtr<FlatString> {
         self.names.as_slice()[index]
     }
+
+    /// Look up a name, returning its index in the scope if present. The name must be an interned
+    /// string.
+    pub fn lookup_name(&self, name: HeapPtr<FlatString>) -> Option<usize> {
+        self.names.as_slice().iter().position(|n| n.ptr_eq(&name))
+    }
 }
 
 impl HeapObject for HeapPtr<ScopeNames> {

@@ -61,9 +61,9 @@ use super::{
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
-        LessThanOrEqualInstruction, LoadConstantInstruction, LoadEmptyInstruction,
-        LoadFalseInstruction, LoadFromScopeInstruction, LoadGlobalInstruction,
-        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LessThanOrEqualInstruction, LoadConstantInstruction, LoadDynamicInstruction,
+        LoadEmptyInstruction, LoadFalseInstruction, LoadFromScopeInstruction,
+        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
@@ -72,9 +72,10 @@ use super::{
         RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
         SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
         ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
+        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -303,6 +304,12 @@ impl VM {
                         }
                         OpCode::StoreGlobal => {
                             dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
+                        }
+                        OpCode::LoadDynamic => {
+                            dispatch_or_throw!(LoadDynamicInstruction, execute_load_dynamic)
+                        }
+                        OpCode::StoreDynamic => {
+                            dispatch_or_throw!(StoreDynamicInstruction, execute_store_dynamic)
                         }
                         OpCode::Call => dispatch_or_throw!(CallInstruction, execute_generic_call),
                         OpCode::CallWithReceiver => {
@@ -1391,7 +1398,6 @@ impl VM {
 
         let dest = instr.dest();
 
-        // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
             // May allocate, reuse name handle
             let key = PropertyKey::string(cx, name);
@@ -1416,7 +1422,6 @@ impl VM {
         let name = self.get_constant(instr.constant_index());
         let name = name.as_string().to_handle();
 
-        // TODO: Use global scope with new scope system
         HandleScope::new(self.cx, |cx| {
             // May allocate, reuse name handle
             let key = PropertyKey::string(cx, name);
@@ -1424,6 +1429,46 @@ impl VM {
 
             let global_object = self.closure().global_object();
             maybe!(set(cx, global_object, key, value, false));
+
+            ().into()
+        })
+    }
+
+    #[inline]
+    fn execute_load_dynamic<W: Width>(
+        &mut self,
+        instr: &LoadDynamicInstruction<W>,
+    ) -> EvalResult<()> {
+        let dest = instr.dest();
+
+        HandleScope::new(self.cx, |cx| {
+            let name = self.get_constant(instr.name_index());
+            let name = name.as_string().to_handle();
+
+            let scope = self.scope().to_handle();
+
+            if let Some(value) = maybe!(scope.lookup(cx, name)) {
+                self.write_register(dest, value.get());
+            }
+
+            ().into()
+        })
+    }
+
+    #[inline]
+    fn execute_store_dynamic<W: Width>(
+        &mut self,
+        instr: &StoreDynamicInstruction<W>,
+    ) -> EvalResult<()> {
+        HandleScope::new(self.cx, |cx| {
+            let value = self.read_register(instr.value()).to_handle(cx);
+
+            let name = self.get_constant(instr.name_index());
+            let name = name.as_string().to_handle();
+
+            let mut scope = self.scope().to_handle();
+
+            maybe!(scope.lookup_store(cx, name, value));
 
             ().into()
         })

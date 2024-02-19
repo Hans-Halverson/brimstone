@@ -1,7 +1,7 @@
 use std::{
     fmt::{self, Debug},
     hash,
-    ptr::NonNull,
+    ptr::{self, NonNull},
     rc::Rc,
 };
 
@@ -131,24 +131,84 @@ pub enum Toplevel {
 pub struct Identifier {
     pub loc: Loc,
     pub name: String,
-    /// Reference to the scope that contains the binding for this identifier. None if this
-    /// identifier could not be statically resolved.
+
+    /// Reference to the scope that contains the binding for this identifier, or tagged as
+    /// unresolved if the scope could not be statically determined.
     ///
     /// For defs this is set during parsing. For uses this is set during analysis.
-    pub scope: Option<AstPtr<AstScopeNode>>,
+    pub scope: TaggedResolvedScope,
 }
 
 impl Identifier {
     pub fn new(loc: Loc, name: String) -> Identifier {
-        Identifier { loc, name, scope: None }
+        Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
     pub fn get_binding(&self) -> &Binding {
-        self.scope
-            .as_ref()
-            .unwrap()
-            .as_ref()
-            .get_binding(&self.name)
+        self.scope.unwrap_resolved().get_binding(&self.name)
+    }
+}
+
+/// Reference to a scope node without lifetime constraints. Only valid to use while scope tree is
+/// still live.
+///
+/// Reference is represented as a tagged pointer, with tags indicating whether the scope was
+/// resolved and if it needs to be looked up dynamically or directly from global scope.
+#[derive(Clone, Copy)]
+pub struct TaggedResolvedScope {
+    ptr: *mut u8,
+}
+
+pub enum ResolvedScope {
+    /// Scope was not resolved, and name must be looked up in global scope.
+    UnresolvedGlobal,
+    /// Scope was not resolved, and name must be looked up dynamically in scope chain.
+    UnresolvedDynamic,
+    /// Scope was resolved to a specific scope node.
+    Resolved,
+}
+
+impl TaggedResolvedScope {
+    pub const fn unresolved_global() -> TaggedResolvedScope {
+        TaggedResolvedScope { ptr: ptr::null_mut() }
+    }
+
+    pub const fn unresolved_dynamic() -> TaggedResolvedScope {
+        TaggedResolvedScope { ptr: 1 as *mut u8 }
+    }
+
+    pub const fn resolved(scope: AstPtr<AstScopeNode>) -> TaggedResolvedScope {
+        TaggedResolvedScope { ptr: scope.ptr.as_ptr() as *mut u8 }
+    }
+
+    pub fn kind(&self) -> ResolvedScope {
+        if self.ptr.is_null() {
+            ResolvedScope::UnresolvedGlobal
+        } else if self.ptr as usize == 1 {
+            ResolvedScope::UnresolvedDynamic
+        } else {
+            ResolvedScope::Resolved
+        }
+    }
+
+    pub fn unwrap_resolved(&self) -> &AstScopeNode {
+        if self.is_unresolved() {
+            panic!("Expected resolved scope")
+        }
+
+        unsafe { &*(self.ptr as *mut AstScopeNode) }
+    }
+
+    pub fn unwrap_resolved_mut(&mut self) -> &mut AstScopeNode {
+        if self.is_unresolved() {
+            panic!("Expected resolved scope")
+        }
+
+        unsafe { &mut *(self.ptr as *mut AstScopeNode) }
+    }
+
+    pub fn is_unresolved(&self) -> bool {
+        matches!(self.kind(), ResolvedScope::UnresolvedGlobal | ResolvedScope::UnresolvedDynamic)
     }
 }
 

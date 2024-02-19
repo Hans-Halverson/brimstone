@@ -3,7 +3,7 @@ use std::{cell::Cell, collections::HashSet};
 use indexmap::IndexMap;
 
 use super::{
-    ast::{self, AstPtr, FunctionId},
+    ast::{self, AstPtr, FunctionId, TaggedResolvedScope},
     loc::{Loc, Pos},
     ParseError,
 };
@@ -131,6 +131,9 @@ impl ScopeTree {
             }
         }
 
+        // With scope nodes always have dynamic bindings
+        let supports_dynamic_bindings = kind == ScopeNodeKind::With;
+
         AstScopeNode {
             id,
             parent,
@@ -139,7 +142,8 @@ impl ScopeTree {
             extra_var_names,
             num_bindings: 0,
             has_duplicates: false,
-            is_dynamically_accessed: false,
+            supports_dynamic_access: false,
+            supports_dynamic_bindings,
             enclosing_scope,
             enclosed_scopes: vec![],
             num_local_registers: 0,
@@ -252,12 +256,12 @@ impl ScopeTree {
         use_scope_id: ScopeNodeId,
         name: &str,
         name_loc: Loc,
-    ) -> Option<(AstPtr<AstScopeNode>, bool)> {
+    ) -> (TaggedResolvedScope, bool) {
         let mut scope_id = use_scope_id;
         loop {
             let scope = self.get_ast_node(scope_id);
-            let scope_kind = scope.kind;
             let scope_parent = scope.parent;
+            let scope_supports_dynamic_bindings = scope.supports_dynamic_bindings;
 
             let mut found_def = scope.bindings.contains_key(name);
 
@@ -297,21 +301,23 @@ impl ScopeTree {
                     }
                 }
 
-                return Some((self.get_ast_node_ptr(scope_id), is_capture));
+                let resolved_scope = TaggedResolvedScope::resolved(self.get_ast_node_ptr(scope_id));
+
+                return (resolved_scope, is_capture);
             }
 
             // If we have not yet found the binding when exiting a with scope, the use is not
             // statically resolvable.
             //
-            // Note that `this` bindings can still be searched for past `with` scopes.
-            if scope_kind == ScopeNodeKind::With && name != "this" {
-                return None;
+            // Note that `this` bindings can still be searched for past dynamic scopes.
+            if scope_supports_dynamic_bindings && name != "this" {
+                return (TaggedResolvedScope::unresolved_dynamic(), false);
             }
 
             if let Some(parent_id) = scope_parent {
                 scope_id = parent_id;
             } else {
-                return None;
+                return (TaggedResolvedScope::unresolved_global(), false);
             }
         }
     }
@@ -331,14 +337,14 @@ impl ScopeTree {
 
     /// Mark all scopes at the provided AST scope and above as being dynamically accessed, e.g. due
     /// to the presence of `eval` or `with`.
-    pub fn mark_is_dynamically_accessed_for_visible_bindings(&mut self, scope_id: ScopeNodeId) {
+    pub fn support_dynamic_access_in_visible_bindings(&mut self, scope_id: ScopeNodeId) {
         let mut scope_id = scope_id;
         loop {
             let scope = self.get_ast_node_mut(scope_id);
             let scope_parent = scope.parent;
 
-            if !scope.is_dynamically_accessed {
-                scope.is_dynamically_accessed = true;
+            if !scope.supports_dynamic_access {
+                scope.supports_dynamic_access = true;
 
                 // Any function scope that may be dynamically accessed must have an arguments object
                 if self.needs_implicit_arguments_object(scope_id) {
@@ -350,6 +356,33 @@ impl ScopeTree {
                 scope_id = parent_id;
             } else {
                 return;
+            }
+        }
+    }
+
+    /// Handle the presence of a sloppy direct eval in a scope. This means the var hoist target of
+    /// the scope must support dynamic bindings, since the sloppy direct eval could introduce var
+    /// bindings into that hoist target scope.
+    pub fn mark_sloppy_direct_eval_in_scope(&mut self, scope_id: ScopeNodeId) {
+        let mut scope_id = scope_id;
+        loop {
+            let scope = self.get_ast_node_mut(scope_id);
+
+            match scope.kind {
+                // No need to mark the global scope as supporting dynamic bindings
+                ScopeNodeKind::Global => return,
+                // Function var scope must suport dynamic bindings
+                ScopeNodeKind::Function { .. } | ScopeNodeKind::FunctionBody => {
+                    scope.supports_dynamic_bindings = true;
+                    return;
+                }
+                _ => {
+                    if let Some(parent_id) = scope.parent {
+                        scope_id = parent_id;
+                    } else {
+                        panic!("could not find hoist target to mark as dynamic");
+                    }
+                }
             }
         }
     }
@@ -431,7 +464,7 @@ impl ScopeTree {
                 binding.is_captured ||
                 // We sometimes force bindings in VM scopes due to dynamic accesses.
                 // e.g. in the presence of `eval` or `with`
-                ast_node.is_dynamically_accessed;
+                ast_node.supports_dynamic_access;
 
             if needs_vm_scope {
                 // Global bindings are always accessible so no need to place in VM scope. The only
@@ -548,7 +581,10 @@ pub struct AstScopeNode {
     /// Whether this scope may be dynamically accessed (meaning there may be runtime lookups by
     /// name, e.g. due to the presence of `eval` or `with`). This means all bindings in this scope
     /// must be placed in a VM scope node so they can be accessed at runtime.
-    is_dynamically_accessed: bool,
+    supports_dynamic_access: bool,
+    /// Whether this scope may have bindings dynamically added to it at runtime, preventing static
+    /// analysis e.g. due to the presence of `eval` or `with`.
+    supports_dynamic_bindings: bool,
     /// The most recent ancestor global or function AST scope node, meaning the node that this
     /// scope's locals will be placed in. For global and function nodes this points to itself.
     enclosing_scope: ScopeNodeId,

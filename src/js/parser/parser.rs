@@ -252,7 +252,7 @@ impl<'a> Parser<'a> {
     fn add_binding(&mut self, id: &mut Identifier, kind: BindingKind) -> ParseResult<()> {
         match self.scope_builder.add_binding(&id.name, kind) {
             Ok(scope) => {
-                id.scope = Some(scope);
+                id.scope = TaggedResolvedScope::resolved(scope);
                 Ok(())
             }
             Err(error) => self.error(id.loc, error),
@@ -616,7 +616,7 @@ impl<'a> Parser<'a> {
 
     fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
         let _ = pattern.iter_bound_names(&mut |id| {
-            let binding = id.scope.as_ref().unwrap().as_ref().get_binding(&id.name);
+            let binding = id.scope.unwrap_resolved().get_binding(&id.name);
             match binding.kind() {
                 BindingKind::Const { init_pos }
                 | BindingKind::Let { init_pos }

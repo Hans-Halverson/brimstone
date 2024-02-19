@@ -1,12 +1,15 @@
-use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set_uninit};
 
 use super::{
+    abstract_operations::has_property,
     collections::InlineArray,
     gc::{HeapObject, HeapVisitor},
+    get,
     object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
     scope_names::ScopeNames,
-    Context, Handle, HeapPtr, Value,
+    string_value::StringValue,
+    Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
 };
 
 #[repr(C)]
@@ -113,6 +116,92 @@ impl Handle<Scope> {
         }
 
         new_scope
+    }
+
+    /// Dynamically look up a name in this scope, walking the scope chain until found. The name must
+    /// be an interned string.
+    #[inline]
+    pub fn lookup(
+        &self,
+        cx: Context,
+        name: Handle<StringValue>,
+    ) -> EvalResult<Option<Handle<Value>>> {
+        // Reuse handles while walking scope chain
+        let mut object_handle = Handle::<ObjectValue>::empty(cx);
+        let mut scope = Handle::<Scope>::empty(cx);
+        scope.replace(self.get_());
+
+        loop {
+            // First check inline slots using scope names table
+            let scope_names = scope.scope_names_ptr();
+            if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
+                let value = scope.get_slot(index).to_handle(cx);
+                return Some(value).into();
+            }
+
+            // Then check scope object if one exists
+            if let Some(object) = scope.object {
+                object_handle.replace(object);
+
+                // Name is an interned string (and cannot be a number) so is already a property key
+                let key = name.cast::<PropertyKey>();
+
+                if maybe!(has_property(cx, object_handle, key)) {
+                    let value = maybe!(get(cx, object_handle, key));
+                    return Some(value).into();
+                }
+            }
+
+            // Otherwise move to parent scope
+            if let Some(parent) = scope.parent.as_ref() {
+                scope.replace(*parent);
+            } else {
+                return None.into();
+            }
+        }
+    }
+
+    /// Dynamically store a name in this scope, walking the scope chain until found. Return whether
+    /// the name was found. The name must be an interned string.
+    #[inline]
+    pub fn lookup_store(
+        &mut self,
+        cx: Context,
+        name: Handle<StringValue>,
+        value: Handle<Value>,
+    ) -> EvalResult<bool> {
+        // Reuse handles while walking scope chain
+        let mut object_handle = Handle::<ObjectValue>::empty(cx);
+        let mut scope = Handle::<Scope>::empty(cx);
+        scope.replace(self.get_());
+
+        loop {
+            // First check inline slots using scope names table
+            let scope_names = scope.scope_names_ptr();
+            if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
+                scope.set_slot(index, value.get());
+                return true.into();
+            }
+
+            // Then check scope object if one exists
+            if let Some(object) = scope.object {
+                object_handle.replace(object);
+
+                // Name is an interned string (and cannot be a number) so is already a property key
+                let key = name.cast::<PropertyKey>();
+
+                if maybe!(has_property(cx, object_handle, key)) {
+                    return object_handle.set(cx, key, value, object_handle.into());
+                }
+            }
+
+            // Otherwise move to parent scope
+            if let Some(parent) = scope.parent.as_ref() {
+                scope.replace(*parent);
+            } else {
+                return false.into();
+            }
+        }
     }
 }
 

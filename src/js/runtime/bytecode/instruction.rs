@@ -276,6 +276,20 @@ define_instructions!(
         [1] constant_index: ConstantIndex,
     }
 
+    /// Load a variable with the given name into dest. Dynamically look up the variable by name in
+    /// the scope chain. The name is stored in the constant table.
+    LoadDynamic (LoadDynamicInstruction, load_dynamic_instruction) {
+        [0] dest: Register,
+        [1] name_index: ConstantIndex,
+    }
+
+    /// Store a value into a variable. Dynamically look up the variable by name in the scope chain.
+    /// The name is stored in the constant table.
+    StoreDynamic (StoreDynamicInstruction, store_dynamic_instruction) {
+        [0] value: Register,
+        [1] name_index: ConstantIndex,
+    }
+
     /// Call a function. Arguments are passed in contiguous sequence of registers starting at argv,
     /// of length argc. The receiver is undefined.
     Call (CallInstruction, call_instruction) {

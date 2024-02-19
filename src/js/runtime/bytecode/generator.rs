@@ -8,7 +8,7 @@ use std::{
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
-        ast::{self, AstPtr},
+        ast::{self, AstPtr, ResolvedScope},
         parser::ParseProgramResult,
         scope_tree::{AstScopeNode, Binding, BindingKind, ScopeTree, VMLocation},
     },
@@ -968,9 +968,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         id: &ast::Identifier,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        if id.scope.is_none() {
-            // TODO: Generate dynamic lookup from current scope if in eval or with
-            return self.gen_load_global_identifier(id, dest);
+        match id.scope.kind() {
+            ResolvedScope::UnresolvedGlobal => {
+                return self.gen_load_global_identifier(id, dest);
+            }
+            ResolvedScope::UnresolvedDynamic => {
+                return self.gen_load_dynamic_identifier(id, dest);
+            }
+            // Handled below
+            ResolvedScope::Resolved => {}
         }
 
         let binding = id.get_binding();
@@ -1114,15 +1120,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    fn gen_load_dynamic_identifier(
+        &mut self,
+        id: &ast::Identifier,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+        let constant_index = self.add_string_constant(&id.name)?;
+
+        self.writer.load_dynamic_instruction(dest, constant_index);
+
+        Ok(dest)
+    }
+
     fn gen_store_identifier(&mut self, id: &ast::Identifier, value: GenRegister) -> EmitResult<()> {
-        if id.scope.is_none() {
-            // TODO: Generate dynamic lookup from current scope if in eval or with
-            return self.gen_store_global_identifier(&id.name, value);
+        match id.scope.kind() {
+            ResolvedScope::UnresolvedGlobal => self.gen_store_global_identifier(&id.name, value),
+            ResolvedScope::UnresolvedDynamic => self.gen_store_dynamic_identifier(&id.name, value),
+            ResolvedScope::Resolved => {
+                let binding = id.get_binding();
+                self.gen_store_binding(&id.name, binding, value)
+            }
         }
-
-        let binding = id.get_binding();
-
-        self.gen_store_binding(&id.name, binding, value)
     }
 
     fn gen_store_binding(
@@ -1176,6 +1195,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn gen_store_dynamic_identifier(&mut self, name: &str, value: GenRegister) -> EmitResult<()> {
+        let constant_index = self.add_string_constant(name)?;
+        self.writer.store_dynamic_instruction(value, constant_index);
+
+        Ok(())
+    }
+
     /// Find the best expression destination in which to place the result of an expression that will
     /// be stored at the given identifier's location.
     ///
@@ -1183,7 +1209,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// unnecessary mov instruction.
     fn expr_dest_for_id(&mut self, id: &ast::Identifier) -> ExprDest {
         // Unresolved variables can be stored from any register
-        if id.scope.is_none() {
+        if id.scope.is_unresolved() {
             return ExprDest::Any;
         }
 

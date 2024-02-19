@@ -590,15 +590,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
         }
     }
 
-    fn visit_identifier(&mut self, id: &mut Identifier) {
-        // If "eval" is ever encountered, conservatively force all visible bindings to have VM scope
-        // locations instead of local registers so they can be dynamically looked up.
-        if id.name.as_str() == "eval" {
-            self.scope_tree
-                .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
-        }
-    }
-
     fn visit_object_pattern_property(&mut self, prop: &mut ObjectPatternProperty) {
         // Visit pattern for computed properties, but not id of named property
         if prop.is_computed {
@@ -655,6 +646,20 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_this_expression(&mut self, this: &mut ThisExpression) {
         self.resolve_this_use(this);
+    }
+
+    fn visit_call_expression(&mut self, expr: &mut CallExpression) {
+        // If a potential direct eval is ever seen, conservatively force all visible bindings to
+        // have VM scope locations instead of local registers so they can be dynamically looked up.
+        match expr.callee.as_ref() {
+            Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
+                self.scope_tree
+                    .mark_is_dynamically_accessed_for_visible_bindings(self.current_scope_id());
+            }
+            _ => {}
+        }
+
+        default_visit_call_expression(self, expr);
     }
 
     fn visit_identifier_expression(&mut self, id: &mut Identifier) {

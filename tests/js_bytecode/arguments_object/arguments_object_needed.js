@@ -35,3 +35,11 @@ function notNeededSinceUseCaught() {
     }
   }
 }
+
+function neededDueToDirectEval() {
+  eval('');
+}
+
+function notNeededDueToIndirectEval() {
+  eval?.('');
+}

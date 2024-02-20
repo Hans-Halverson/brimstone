@@ -84,6 +84,11 @@ impl Closure {
         self.function_ptr().global_scope_ptr().object()
     }
 
+    #[inline]
+    pub fn global_scope(&self) -> Handle<Scope> {
+        self.function_ptr().global_scope()
+    }
+
     /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
     /// this is a constructor.
     fn init_common_properties(
@@ -241,6 +246,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn global_scope_ptr(&self) -> HeapPtr<Scope> {
         self.global_scope
+    }
+
+    #[inline]
+    pub fn global_scope(&self) -> Handle<Scope> {
+        self.global_scope_ptr().to_handle()
     }
 
     #[inline]

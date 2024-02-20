@@ -1,0 +1,110 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadGlobal r0, c10
+    33: LoadConstant r1, c11
+    36: CallMaybeEval r0, r0, r1, 1
+    41: LoadUndefined r0
+    43: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: simple]
+    1: [String: simple]
+    2: [BytecodeFunction: parenthesizedEval]
+    3: [String: parenthesizedEval]
+    4: [BytecodeFunction: indirect]
+    5: [String: indirect]
+    6: [BytecodeFunction: noArgs]
+    7: [String: noArgs]
+    8: [BytecodeFunction: extraArgs]
+    9: [String: extraArgs]
+    10: [String: eval]
+    11: [String: test]
+}
+
+[BytecodeFunction: simple] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 1, 0
+    12: LoadDynamic r0, c1
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1
+    23: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: test]
+}
+
+[BytecodeFunction: parenthesizedEval] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 1, 0
+    12: LoadDynamic r0, c1
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1
+    23: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: test]
+}
+
+[BytecodeFunction: indirect] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r0, c0
+     3: JumpNullish r0, 13 (.L0)
+     6: LoadConstant r1, c1
+     9: Call r0, r0, r1, 1
+    14: Jump 4 (.L1)
+  .L0:
+    16: LoadUndefined r0
+  .L1:
+    18: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: test]
+}
+
+[BytecodeFunction: noArgs] {
+  Parameters: 0, Registers: 1
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 1, 0
+    12: LoadDynamic r0, c1
+    15: CallMaybeEval r0, r0, r0, 0
+    20: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+}
+
+[BytecodeFunction: extraArgs] {
+  Parameters: 0, Registers: 4
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 1, 0
+    12: LoadDynamic r0, c1
+    15: LoadImmediate r1, 1
+    18: LoadImmediate r2, 2
+    21: LoadImmediate r3, 3
+    24: CallMaybeEval r0, r0, r1, 3
+    29: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+}

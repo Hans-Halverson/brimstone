@@ -9,7 +9,7 @@ use crate::{
             builtin_function::BuiltinFunction,
             console::ConsoleObject,
             error::uri_error_,
-            eval::eval::perform_eval,
+            eval::eval::{perform_ast_eval, perform_bytecode_eval},
             function::get_argument,
             gc::HandleScope,
             gc_object::GcObject,
@@ -184,7 +184,12 @@ pub fn eval(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let code_arg = get_argument(cx, arguments, 0);
-    perform_eval(cx, code_arg, false, false)
+
+    if cx.options.bytecode {
+        perform_bytecode_eval(cx, code_arg, false, None)
+    } else {
+        perform_ast_eval(cx, code_arg, false, false)
+    }
 }
 
 // 19.2.2 isFinite

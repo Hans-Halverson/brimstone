@@ -1766,6 +1766,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
+        // Check if this might be a direct eval
+        let is_maybe_direct_eval = matches!(expr.callee.as_ref(), ast::Expression::Id(id) if id.name == "eval")
+            && !expr.is_optional;
+
         // Find the callee and this value to use for the call
         let (callee, this_value) =
             self.gen_callee_and_this_value(&expr.callee, optional_nullish_block)?;
@@ -1790,6 +1794,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(this_value) = this_value {
             self.writer
                 .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+        } else if is_maybe_direct_eval {
+            self.writer
+                .call_maybe_eval_instruction(dest, callee, argv, argc);
         } else {
             self.writer.call_instruction(dest, callee, argv, argc);
         }

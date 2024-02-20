@@ -2,10 +2,10 @@ use crate::js::runtime::Value;
 
 use super::{
     instruction::{
-        CallInstruction, CallWithReceiverInstruction, Instruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
-        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
-        JumpNullishConstantInstruction, JumpNullishInstruction,
+        CallInstruction, CallMaybeEvalInstruction, CallWithReceiverInstruction, Instruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpNotNullishConstantInstruction,
+        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
+        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction,
@@ -74,6 +74,33 @@ impl<W: Width> GenericCallInstruction<W> for CallWithReceiverInstruction<W> {
     #[inline]
     fn receiver(&self) -> Option<Register<W>> {
         Some(self.receiver())
+    }
+}
+
+impl<W: Width> GenericCallInstruction<W> for CallMaybeEvalInstruction<W> {
+    #[inline]
+    fn dest(&self) -> Register<W> {
+        self.dest()
+    }
+
+    #[inline]
+    fn function(&self) -> Register<W> {
+        self.function()
+    }
+
+    #[inline]
+    fn argc(&self) -> UInt<W> {
+        self.argc()
+    }
+
+    #[inline]
+    fn argv(&self) -> Register<W> {
+        self.argv()
+    }
+
+    #[inline]
+    fn receiver(&self) -> Option<Register<W>> {
+        None
     }
 }
 

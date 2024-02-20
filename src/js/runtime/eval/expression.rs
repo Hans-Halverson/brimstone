@@ -49,7 +49,7 @@ use crate::{
 
 use super::{
     class::eval_class_expression,
-    eval::perform_eval,
+    eval::perform_ast_eval,
     function::{
         instantiate_arrow_function_expression, instantiate_ordinary_function_expression,
         method_definition_evaluation,
@@ -469,7 +469,7 @@ fn eval_call_expression(cx: Context, expr: &ast::CallExpression) -> EvalResult<H
                     let eval_arg = arg_values[0];
                     let is_strict_caller = cx.current_execution_context_ptr().is_strict_mode();
 
-                    return perform_eval(cx, eval_arg, is_strict_caller, true);
+                    return perform_ast_eval(cx, eval_arg, is_strict_caller, true);
                 }
             }
 

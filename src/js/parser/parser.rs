@@ -2087,6 +2087,16 @@ impl<'a> Parser<'a> {
                 let arguments = self.parse_call_arguments()?;
                 let loc = self.mark_loc(start_pos);
 
+                // A potential sloppy direct eval needs to marked in the scope tree before analysis
+                match expr.as_ref() {
+                    Expression::Id(Identifier { name, .. }) if name == "eval" => {
+                        if !self.in_strict_mode {
+                            self.scope_builder.mark_sloppy_direct_eval();
+                        }
+                    }
+                    _ => {}
+                }
+
                 let call_expr = p(Expression::Call(CallExpression {
                     loc,
                     callee: expr,

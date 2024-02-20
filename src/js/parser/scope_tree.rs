@@ -360,11 +360,11 @@ impl ScopeTree {
         }
     }
 
-    /// Handle the presence of a sloppy direct eval in a scope. This means the var hoist target of
-    /// the scope must support dynamic bindings, since the sloppy direct eval could introduce var
-    /// bindings into that hoist target scope.
-    pub fn mark_sloppy_direct_eval_in_scope(&mut self, scope_id: ScopeNodeId) {
-        let mut scope_id = scope_id;
+    /// Handle the presence of a sloppy direct eval in the current scope. This means the var hoist
+    /// target of the current scope must support dynamic bindings, since the sloppy direct eval
+    /// could introduce var bindings into that hoist target scope.
+    pub fn mark_sloppy_direct_eval(&mut self) {
+        let mut scope_id = self.current_node_id;
         loop {
             let scope = self.get_ast_node_mut(scope_id);
 

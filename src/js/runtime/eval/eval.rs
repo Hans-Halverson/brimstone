@@ -7,12 +7,12 @@ use crate::{
     js::{
         parser::{
             analyze::{analyze_for_eval, PrivateNameUsage},
-            ast::{self},
-            parse_script_for_eval,
+            ast, parse_script_for_eval,
             scope_tree::BindingKind,
             source::Source,
         },
         runtime::{
+            bytecode::{function::Closure, generator::BytecodeProgramGenerator},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{DynEnvironment, Environment},
@@ -22,6 +22,7 @@ use crate::{
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
             interned_strings::InternedStrings,
+            scope::Scope,
             string_value::FlatString,
             Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
@@ -31,7 +32,77 @@ use crate::{
 
 use super::{pattern::id_string_value, statement::eval_toplevel_list};
 
-pub fn perform_eval(
+pub fn perform_bytecode_eval(
+    mut cx: Context,
+    code: Handle<Value>,
+    is_strict_caller: bool,
+    direct_scope: Option<Handle<Scope>>,
+) -> EvalResult<Handle<Value>> {
+    if !code.is_string() {
+        return code.into();
+    }
+    let code = code.as_string();
+
+    let is_direct = direct_scope.is_some();
+    if is_direct {
+        // TODO: Check if inside a function, method, derived constructor, and class field initializer
+    }
+
+    // TODO: Gather private names from surrounding context
+
+    // Parse source code
+    let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
+    let parse_result = parse_script_for_eval(&source, is_strict_caller);
+    let mut parse_result = match parse_result {
+        Ok(parse_result) => parse_result,
+        Err(error) => return syntax_error_(cx, &error.to_string()),
+    };
+
+    // Analyze source code
+    let analyze_result = analyze_for_eval(
+        &mut parse_result,
+        source,
+        /* private_names */ None,
+        /* in_function */ false,
+        /* in_method */ false,
+        /* in_derived_constructor */ false,
+        /* in_class_field_initializer */ false,
+    );
+    if let Err(errors) = analyze_result {
+        // TODO: Return an aggregate error with all syntax errors
+        // Choose an arbitrary syntax error to return
+        let error = &errors.errors[0];
+        return syntax_error_(cx, &error.to_string());
+    }
+
+    // Generate bytecode for the program
+    let realm = cx.current_realm();
+    let generate_result =
+        BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm);
+    let bytecode_function = match generate_result {
+        Ok(func) => func,
+        Err(error) => return syntax_error_(cx, &error.to_string()),
+    };
+
+    if cx.options.print_bytecode {
+        println!("{}", bytecode_function.debug_print_recursive(false));
+    }
+
+    // Eval function's parent scope is the global scope in an indirect eval
+    let eval_scope =
+        direct_scope.unwrap_or_else(|| cx.current_function().cast::<Closure>().global_scope());
+    let closure = Closure::new(cx, bytecode_function, eval_scope);
+
+    // Execute in the bytecode VM
+    let eval_result = cx.execute_bytecode(closure, &[]);
+
+    match eval_result {
+        Ok(value) => EvalResult::Ok(value),
+        Err(error) => EvalResult::Throw(error),
+    }
+}
+
+pub fn perform_ast_eval(
     mut cx: Context,
     code: Handle<Value>,
     is_strict_caller: bool,

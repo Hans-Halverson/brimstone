@@ -655,12 +655,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
             Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
                 self.scope_tree
                     .support_dynamic_access_in_visible_bindings(self.current_scope_id());
-
-                // A sloppy direct eval could introduce vars into the outer scope
-                if !self.is_in_strict_mode_context() {
-                    self.scope_tree
-                        .mark_sloppy_direct_eval_in_scope(self.current_scope_id());
-                }
             }
             _ => {}
         }

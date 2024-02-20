@@ -8,13 +8,16 @@ use crate::{
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
         error::{reference_error_, type_error_},
-        eval::expression::{
-            eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
-            eval_delete_property, eval_divide, eval_exponentiation, eval_greater_than,
-            eval_greater_than_or_equal, eval_in_expression, eval_instanceof_expression,
-            eval_less_than, eval_less_than_or_equal, eval_multiply, eval_negate, eval_remainder,
-            eval_shift_left, eval_shift_right_arithmetic, eval_shift_right_logical, eval_subtract,
-            eval_typeof,
+        eval::{
+            eval::perform_bytecode_eval,
+            expression::{
+                eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
+                eval_delete_property, eval_divide, eval_exponentiation, eval_greater_than,
+                eval_greater_than_or_equal, eval_in_expression, eval_instanceof_expression,
+                eval_less_than, eval_less_than_or_equal, eval_multiply, eval_negate,
+                eval_remainder, eval_shift_left, eval_shift_right_arithmetic,
+                eval_shift_right_logical, eval_subtract, eval_typeof,
+            },
         },
         for_in_iterator::ForInIterator,
         function::build_function_name,
@@ -33,8 +36,8 @@ use crate::{
         scope_names::ScopeNames,
         to_string,
         type_utilities::{
-            is_loosely_equal, is_strictly_equal, to_boolean, to_number, to_numeric, to_object,
-            to_property_key,
+            is_loosely_equal, is_strictly_equal, same_object_value, to_boolean, to_number,
+            to_numeric, to_object, to_property_key,
         },
         value::BigIntValue,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
@@ -48,16 +51,16 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
-        CopyDataPropertiesInstruction, DecInstruction, DefineNamedPropertyInstruction,
-        DefinePropertyFlags, DefinePropertyInstruction, DeletePropertyInstruction, DivInstruction,
-        DupScopeInstruction, ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction,
-        GetPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
-        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
-        JumpNullishConstantInstruction, JumpNullishInstruction,
+        CallMaybeEvalInstruction, CallWithReceiverInstruction, CheckTdzInstruction,
+        ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
+        DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
+        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, ExpInstruction,
+        ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
+        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
+        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
+        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -124,8 +127,7 @@ impl VM {
         vm
     }
 
-    /// Execute a function with the provided arguments. Starts a new execution of the VM,
-    /// initializing stack from scratch.
+    /// Execute a closure with the provided arguments.
     pub fn execute(
         &mut self,
         closure: Handle<Closure>,
@@ -314,6 +316,9 @@ impl VM {
                         OpCode::Call => dispatch_or_throw!(CallInstruction, execute_generic_call),
                         OpCode::CallWithReceiver => {
                             dispatch_or_throw!(CallWithReceiverInstruction, execute_generic_call)
+                        }
+                        OpCode::CallMaybeEval => {
+                            dispatch_or_throw!(CallMaybeEvalInstruction, execute_call_maybe_eval)
                         }
                         OpCode::Construct => {
                             dispatch_or_throw!(ConstructInstruction, execute_construct)
@@ -1346,6 +1351,45 @@ impl VM {
         self.pop_stack_frame();
 
         result
+    }
+
+    #[inline]
+    fn execute_call_maybe_eval<W: Width>(
+        &mut self,
+        instr: &CallMaybeEvalInstruction<W>,
+    ) -> EvalResult<()> {
+        let callee = self.read_register(instr.function());
+
+        // Check if the callee is the eval function, if so this is a direct eval
+        let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
+        if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
+            self.direct_eval(instr)
+        } else {
+            self.execute_generic_call(instr)
+        }
+    }
+
+    #[inline]
+    fn direct_eval<W: Width>(&mut self, instr: &CallMaybeEvalInstruction<W>) -> EvalResult<()> {
+        let argc = instr.argc().value().to_usize();
+        let dest = instr.dest();
+
+        if argc == 0 {
+            self.write_register(dest, Value::undefined());
+            return ().into();
+        }
+
+        // Only the first register is used
+        let arg = self.read_register_to_handle(instr.argv());
+
+        let is_strict_caller = self.closure().function_ptr().is_strict();
+        let scope = self.scope().to_handle();
+
+        // Allocates
+        let result = maybe!(perform_bytecode_eval(self.cx, arg, is_strict_caller, Some(scope)));
+        self.write_register(dest, result.get());
+
+        ().into()
     }
 
     #[inline]

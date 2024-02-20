@@ -309,6 +309,18 @@ define_instructions!(
         [4] argc: UInt,
     }
 
+    /// Call a function which may be a direct eval. If this is a direct eval then perform the direct
+    /// eval, otherwise identical to the call instruction.
+    ///
+    /// Arguments are passed in contiguous sequence of registers starting at argv, of length argc.
+    /// The receiver is undefined.
+    CallMaybeEval (CallMaybeEvalInstruction, call_maybe_eval_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] argv: Register,
+        [3] argc: UInt,
+    }
+
     /// Call a constructor. Arguments are passed in contiguous sequence of registers starting at
     /// argv, of length argc. The new target is passed in its own register.
     Construct (ConstructInstruction, construct_instruction) {

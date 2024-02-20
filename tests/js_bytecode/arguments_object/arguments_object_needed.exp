@@ -118,7 +118,7 @@
     12: LoadConstant r0, c1
     15: LoadGlobal r0, c2
     18: LoadConstant r1, c3
-    21: Call r0, r0, r1, 1
+    21: CallMaybeEval r0, r0, r1, 1
     26: LoadUndefined r0
     28: Ret r0
   Constant Table:

@@ -2,14 +2,15 @@ use brimstone::js::{
     common::options::Options,
     parser,
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, initialize_host_defined_realm, Context,
+        bytecode::{
+            function::{BytecodeFunction, Closure},
+            generator::BytecodeProgramGenerator,
+        },
+        initialize_host_defined_realm, Context, Handle,
     },
 };
 
-use std::cmp::min;
-use std::path::Path;
-use std::rc::Rc;
-use std::{env, error, fs};
+use std::{cmp::min, env, error, fs, path::Path, rc::Rc, sync::Mutex};
 
 type GenericResult<T> = Result<T, Box<dyn error::Error>>;
 
@@ -45,6 +46,22 @@ fn js_bytecode_snapshot_tests() -> GenericResult<()> {
 }
 
 fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
+    // Check if the test file should be run with dumped bytecode collected, e.g. for eval
+    let file = fs::read_to_string(path).unwrap();
+    if &file[0..11] == "// OPTIONS:" {
+        let args_line = file.lines().next().unwrap();
+        if args_line.contains("--run") {
+            return run_and_print_bytecode(path);
+        }
+    }
+
+    // Otherwise only need to generate bytecode
+    let bytecode_program = generate_bytecode(cx, path)?;
+
+    Ok(bytecode_program.debug_print_recursive(true))
+}
+
+fn generate_bytecode(cx: Context, path: &str) -> GenericResult<Handle<BytecodeFunction>> {
     let mut parse_result = parse_script_or_module(path)?;
     let source = parse_result.program.source.clone();
     parser::analyze::analyze(&mut parse_result, source)?;
@@ -55,7 +72,40 @@ fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
         cx.current_realm(),
     )?;
 
-    Ok(bytecode_program.debug_print_recursive(true))
+    Ok(bytecode_program)
+}
+
+fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
+    // Bytecode will be dumped to the internal dump buffer
+    let mut options = Options::default();
+    options.print_bytecode = true;
+    options.dump_buffer = Some(Mutex::new(String::new()));
+    let options = Rc::new(options);
+
+    // Create a fresh context to isolate tests since we are actually running code
+    let (cx, _) =
+        Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
+
+    // Generate program and prepend to dump buffer
+    let bytecode_program = generate_bytecode(cx, path)?;
+
+    let bytecode_string = bytecode_program.debug_print_recursive(true);
+    options
+        .dump_buffer()
+        .unwrap()
+        .push_str(&format!("{bytecode_string}\n"));
+
+    // Set up closure and execute bytecode. Can ignore return result since we only care about the
+    // dumped bytecode
+    let _ = cx.execute_then_drop(|mut cx| {
+        let global_scope = cx.current_realm().global_scope();
+        let closure = Closure::new(cx, bytecode_program, global_scope);
+        cx.execute_bytecode(closure, &[])
+    });
+
+    // Return a copy of the dump buffer
+    let dump_buffer = options.dump_buffer().unwrap();
+    Ok(dump_buffer.clone())
 }
 
 fn parse_script_or_module(path: &str) -> GenericResult<parser::parser::ParseProgramResult> {

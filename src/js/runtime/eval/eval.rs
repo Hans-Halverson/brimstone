@@ -78,14 +78,22 @@ pub fn perform_bytecode_eval(
     // Generate bytecode for the program
     let realm = cx.current_realm();
     let generate_result =
-        BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm);
+        BytecodeProgramGenerator::generate_from_eval_parse_result(cx, &parse_result, realm);
     let bytecode_function = match generate_result {
         Ok(func) => func,
         Err(error) => return syntax_error_(cx, &error.to_string()),
     };
 
+    // Print the bytecode if necessary, optionally to the internal dump buffer
     if cx.options.print_bytecode {
-        println!("{}", bytecode_function.debug_print_recursive(false));
+        let bytecode_string = bytecode_function.debug_print_recursive(false);
+
+        if let Some(mut dump_buffer) = cx.options.dump_buffer() {
+            dump_buffer.push_str(&bytecode_string);
+            dump_buffer.push_str("\n");
+        } else {
+            println!("{}", bytecode_function.debug_print_recursive(false));
+        }
     }
 
     // Eval function's parent scope is the global scope in an indirect eval

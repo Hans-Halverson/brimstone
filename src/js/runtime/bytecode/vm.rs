@@ -133,7 +133,7 @@ impl VM {
         closure: Handle<Closure>,
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
-        // Evaluate in the global scope
+        // Evaluate with the global object as the receiver
         let receiver = closure.global_object().into();
 
         // Evaluate the provided function

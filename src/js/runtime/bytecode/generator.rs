@@ -93,6 +93,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.cx,
                 program,
                 &self.scope_tree,
+                "<global>",
                 self.global_scope,
             )?;
 
@@ -112,6 +113,86 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
             // Implicitly return undefined at end of script function
             generator.gen_return_undefined()?;
+
+            let emit_result = generator.finish();
+
+            // Store the generated function into the parent handle scope so the enqueued references
+            // remain valid.
+            bytecode_function_handle.replace(emit_result.bytecode_function.get_());
+
+            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
+
+            Ok(())
+        })?;
+
+        Ok(bytecode_function_handle)
+    }
+
+    /// Generate the contents of an eval as a function. Return the function used to execute the eval.
+    pub fn generate_from_eval_parse_result(
+        cx: Context,
+        parse_result: &ParseProgramResult,
+        realm: Handle<Realm>,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        HandleScope::new(cx, |_| {
+            let mut generator =
+                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
+            generator.generate_eval(&parse_result.program)
+        })
+    }
+
+    fn generate_eval(
+        &mut self,
+        eval_program: &ast::Program,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        let program_function = self.gen_eval_function(eval_program)?;
+
+        while let Some(pending_function) = self.pending_functions_queue.pop_front() {
+            self.gen_enqueued_function(pending_function)?;
+        }
+
+        Ok(program_function)
+    }
+
+    fn gen_eval_function(
+        &mut self,
+        eval_program: &ast::Program,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        // Handle where the result BytecodeFunction is placed
+        let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
+
+        HandleScope::new(self.cx, |_| {
+            let mut generator = BytecodeFunctionGenerator::new_for_program(
+                self.cx,
+                eval_program,
+                &self.scope_tree,
+                "<eval>",
+                self.global_scope,
+            )?;
+
+            // Start the eval scope
+            let program_scope = eval_program.scope.as_ref();
+            generator.gen_scope_start(program_scope)?;
+
+            // Store the captured `this` right away if necessary
+            generator.gen_store_captured_this(program_scope)?;
+
+            // Allocate statement completion which is initially undefined
+            let statement_completion_dest = generator.register_allocator.allocate()?;
+            generator.set_statement_completion_dest(statement_completion_dest);
+
+            // Eval function consists of toplevel statements
+            for toplevel in &eval_program.toplevels {
+                generator.gen_toplevel(toplevel)?;
+            }
+
+            // Scope end not needed since the eval function returns
+
+            // Return the statement completion from eval
+            generator.writer.ret_instruction(statement_completion_dest);
+            generator
+                .register_allocator
+                .release(statement_completion_dest);
 
             let emit_result = generator.finish();
 
@@ -228,6 +309,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Whether this function is a constructor
     is_constructor: bool,
 
+    /// Register in which to place the completion value of each statement. Only need to generate
+    /// completion values when this is set.
+    statement_completion_dest: Option<GenRegister>,
+
     /// Whether the current expression context has an assignment expression, meaning that we must
     /// emit conservatively worse code to avoid assignment hazards.
     has_assign_expr: bool,
@@ -267,6 +352,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_parameters,
             is_strict,
             is_constructor,
+            statement_completion_dest: None,
             has_assign_expr: false,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
@@ -330,6 +416,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         program: &ast::Program,
         scope_tree: &'a ScopeTree,
+        name: &str,
         global_scope: Handle<Scope>,
     ) -> EmitResult<Self> {
         // Number of local registers was determined while creating the VM scope tree
@@ -348,7 +435,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             scope,
             global_scope,
-            Some(Wtf8String::from_str("<global>")),
+            Some(Wtf8String::from_str(name)),
             0,
             num_local_registers as u32,
             program.is_strict_mode,
@@ -362,6 +449,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn exit_has_assign_expr_context(&mut self) {
         self.has_assign_expr = false;
+    }
+
+    fn set_statement_completion_dest(&mut self, dest: GenRegister) {
+        self.statement_completion_dest = Some(dest);
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -3258,8 +3349,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         stmt: &ast::ExpressionStatement,
     ) -> EmitResult<StmtCompletion> {
-        let result = self.gen_outer_expression(&stmt.expr)?;
-        self.register_allocator.release(result);
+        // If a completion destination is provided, store expression value into it. Otherwise
+        // discard the expressions's value.
+        if let Some(completion_dest) = self.statement_completion_dest {
+            self.gen_outer_expression_with_dest(&stmt.expr, ExprDest::Fixed(completion_dest))?;
+        } else {
+            let result = self.gen_outer_expression(&stmt.expr)?;
+            self.register_allocator.release(result);
+        }
+
         Ok(StmtCompletion::Normal)
     }
 

@@ -1,3 +1,5 @@
+use std::sync::{Mutex, MutexGuard};
+
 use clap::Parser;
 
 /// Raw command line arguments.
@@ -43,6 +45,8 @@ pub struct Options {
     pub print_bytecode: bool,
     /// Print the bytecode for all RegExps to the console
     pub print_regexp_bytecode: bool,
+    /// Buffer to write all dumped output into instead of stdout
+    pub dump_buffer: Option<Mutex<String>>,
 }
 
 impl Options {
@@ -52,6 +56,15 @@ impl Options {
             bytecode: args.bytecode || args.print_bytecode,
             print_bytecode: args.print_bytecode,
             print_regexp_bytecode: args.print_regexp_bytecode,
+            dump_buffer: None,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn dump_buffer<'a>(&'a self) -> Option<MutexGuard<'a, String>> {
+        match self.dump_buffer.as_ref() {
+            Some(buffer) => Some(buffer.lock().unwrap()),
+            None => None,
         }
     }
 }
@@ -63,6 +76,7 @@ impl Default for Options {
             bytecode: false,
             print_bytecode: false,
             print_regexp_bytecode: false,
+            dump_buffer: None,
         }
     }
 }

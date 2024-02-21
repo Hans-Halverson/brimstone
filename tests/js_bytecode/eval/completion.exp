@@ -1,0 +1,65 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r0, c0
+     3: LoadConstant r1, c1
+     6: CallMaybeEval r0, r0, r1, 1
+    11: LoadGlobal r0, c0
+    14: LoadConstant r1, c2
+    17: CallMaybeEval r0, r0, r1, 1
+    22: LoadUndefined r0
+    24: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: 
+  "expression statement completions";
+  1 + 2;
+  a + b;
+  "foo";
+]
+    2: [String: 
+  "inner completions";
+  var a = 1;
+  if (a) {
+    1;
+  } else {
+    2;
+  }
+]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: 04 ff 00      LoadConstant r0, c0
+     3: 03 fe 01      LoadImmediate r1, 1
+     6: 03 fd 02      LoadImmediate r2, 2
+     9: 13 ff fe fd   Add r0, r1, r2
+    13: 0a fe 01      LoadGlobal r1, c1
+    16: 0a fd 02      LoadGlobal r2, c2
+    19: 13 ff fe fd   Add r0, r1, r2
+    23: 04 ff 03      LoadConstant r0, c3
+    26: 12 ff         Ret r0
+  Constant Table:
+    0: [String: expression statement completions]
+    1: [String: a]
+    2: [String: b]
+    3: [String: foo]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 04 ff 00   LoadConstant r0, c0
+     3: 03 fe 01   LoadImmediate r1, 1
+     6: 0b fe 01   StoreGlobal r1, c1
+     9: 0a fe 01   LoadGlobal r1, c1
+    12: 3b fe 08   JumpToBooleanFalse r1, 8 (.L0)
+    15: 03 ff 01   LoadImmediate r0, 1
+    18: 33 05      Jump 5 (.L1)
+  .L0:
+    20: 03 ff 02   LoadImmediate r0, 2
+  .L1:
+    23: 12 ff      Ret r0
+  Constant Table:
+    0: [String: inner completions]
+    1: [String: a]
+}
+

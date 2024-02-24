@@ -24,23 +24,31 @@ type AddBindingResult = Result<AstPtr<AstScopeNode>, ParseError>;
 
 /// Functions for constructing, mutating, and querying the AST scope tree.
 impl ScopeTree {
-    pub fn new_global() -> ScopeTree {
+    fn new_with_root(kind: ScopeNodeKind) -> ScopeTree {
         let mut scope_tree = ScopeTree {
             ast_nodes: vec![],
             vm_nodes: vec![],
-            current_node_id: GLOBAL_SCOPE_ID,
+            current_node_id: INITIAL_SCOPE_ID,
         };
 
-        let global_scope_node =
-            scope_tree.new_ast_scope_node(GLOBAL_SCOPE_ID, ScopeNodeKind::Global, None);
+        let global_scope_node = scope_tree.new_ast_scope_node(INITIAL_SCOPE_ID, kind, None);
         scope_tree.ast_nodes.push(Box::new(global_scope_node));
 
-        // All global scopes start with an implicit `this` binding
+        // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding("this", BindingKind::ImplicitThis { is_global: true })
+            .add_binding("this", BindingKind::ImplicitThis)
             .unwrap();
 
         scope_tree
+    }
+
+    pub fn new_global() -> ScopeTree {
+        Self::new_with_root(ScopeNodeKind::Global)
+    }
+
+    pub fn new_eval(is_direct: bool) -> ScopeTree {
+        // Start off without setting the strict flag. This flag will be right away during parsing.
+        Self::new_with_root(ScopeNodeKind::Eval { is_direct, is_strict: false })
     }
 
     pub fn finish_ast_scope_tree(mut self) -> ScopeTree {
@@ -88,6 +96,10 @@ impl ScopeTree {
         self.current_node_id = self.ast_nodes[self.current_node_id].parent.unwrap();
     }
 
+    pub fn current_scope(&self) -> AstPtr<AstScopeNode> {
+        AstPtr::from_ref(self.ast_nodes[self.current_node_id].as_ref())
+    }
+
     fn get_ast_node(&self, node_id: ScopeNodeId) -> &AstScopeNode {
         &self.ast_nodes[node_id]
     }
@@ -110,8 +122,11 @@ impl ScopeTree {
         kind: ScopeNodeKind,
         parent: Option<ScopeNodeId>,
     ) -> AstScopeNode {
-        let enclosing_scope = if let ScopeNodeKind::Global | ScopeNodeKind::Function { .. } = kind {
-            // Global and function nodes are their own enclosing scope
+        let enclosing_scope = if let ScopeNodeKind::Global
+        | ScopeNodeKind::Function { .. }
+        | ScopeNodeKind::Eval { .. } = kind
+        {
+            // Global, function, and eval nodes are their own enclosing scope
             id
         } else {
             // Otherwise inherit enclosing scope from parent scope
@@ -223,10 +238,16 @@ impl ScopeTree {
             if node.kind.is_hoist_target() {
                 // Only override existing binding if it is a new function declaration
                 if !node.bindings.contains_key(name) || kind.is_function() {
-                    // Var bindings in the global scope are immediately known to be global
                     let vm_location =
                         if node.kind == ScopeNodeKind::Global && !kind.is_implicit_this() {
+                            // Var bindings in the global scope are immediately known to be global
                             Some(VMLocation::Global)
+                        } else if matches!(node.kind, ScopeNodeKind::Eval { is_strict: false, .. })
+                            && !kind.is_implicit_this()
+                        {
+                            // Var bindings in a sloppy eval are dynamically added to their parent
+                            // var scope, and require a dynamic lookup at runtime.
+                            Some(VMLocation::EvalVar)
                         } else {
                             None
                         };
@@ -261,6 +282,9 @@ impl ScopeTree {
         loop {
             let scope = self.get_ast_node(scope_id);
             let scope_parent = scope.parent;
+            let scope_kind = scope.kind;
+            let is_sloppy_eval_scope =
+                matches!(scope_kind, ScopeNodeKind::Eval { is_strict: false, .. });
             let scope_supports_dynamic_bindings = scope.supports_dynamic_bindings;
 
             let mut found_def = scope.bindings.contains_key(name);
@@ -278,13 +302,15 @@ impl ScopeTree {
 
                 // If the use is in a different function than the definition, mark the
                 // binding as captured.
-                if self.lookup_enclosing_function(scope_id)
+                let binding = if self.lookup_enclosing_function(scope_id)
                     != self.lookup_enclosing_function(use_scope_id)
                 {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
                     let binding = bindings.get_mut(name).unwrap();
                     binding.is_captured = true;
                     is_capture = true;
+
+                    binding
                 } else {
                     let bindings = &mut self.get_ast_node_mut(scope_id).bindings;
                     let binding = bindings.get_mut(name).unwrap();
@@ -299,19 +325,37 @@ impl ScopeTree {
                             binding.needs_tdz_check = true;
                         }
                     }
+
+                    binding
+                };
+
+                // Var bindings in sloppy direct evals are added to the parent var scope, which
+                // requires a dynamic lookup at runtime.
+                if is_sloppy_eval_scope && !binding.kind().is_lexically_scoped() {
+                    return (TaggedResolvedScope::unresolved_dynamic(), false);
                 }
 
                 let resolved_scope = TaggedResolvedScope::resolved(self.get_ast_node_ptr(scope_id));
-
                 return (resolved_scope, is_capture);
             }
 
-            // If we have not yet found the binding when exiting a with scope, the use is not
-            // statically resolvable.
+            // If we have not yet found the binding when exiting a scope that may contain dynamic
+            // bindings, then the use is not statically resolvable.
             //
             // Note that `this` bindings can still be searched for past dynamic scopes.
             if scope_supports_dynamic_bindings && name != "this" {
                 return (TaggedResolvedScope::unresolved_dynamic(), false);
+            }
+
+            // If we have not yet found the binding when exiting an eval scope, then the use is not
+            // statically resolvable. Direct evals look up in their environment, while indirect
+            // evals are known to be in the global scope so they can look up globally.
+            if let ScopeNodeKind::Eval { is_direct, .. } = scope_kind {
+                if is_direct {
+                    return (TaggedResolvedScope::unresolved_dynamic(), false);
+                } else {
+                    return (TaggedResolvedScope::unresolved_global(), false);
+                }
             }
 
             if let Some(parent_id) = scope_parent {
@@ -323,7 +367,7 @@ impl ScopeTree {
     }
 
     /// Look up the enclosing scope and function id for an AST scope node (aka the most recent
-    /// function scope ancestor). If this is the global scope then return None.
+    /// function scope ancestor). If this is the global or eval scope then return None.
     fn lookup_enclosing_function(&self, scope_id: ScopeNodeId) -> Option<FunctionId> {
         let node = self.get_ast_node(scope_id);
         let enclosing_scope = self.get_ast_node(node.enclosing_scope);
@@ -371,9 +415,18 @@ impl ScopeTree {
             match scope.kind {
                 // No need to mark the global scope as supporting dynamic bindings
                 ScopeNodeKind::Global => return,
-                // Function var scope must suport dynamic bindings
+                // Functions must be marked to support dynamic bindings
                 ScopeNodeKind::Function { .. } | ScopeNodeKind::FunctionBody => {
                     scope.supports_dynamic_bindings = true;
+                    return;
+                }
+                // Only strict eval needs to support dynamic bindings. In sloppy eval bindings are
+                // added to the parent var scope.
+                ScopeNodeKind::Eval { is_strict, .. } => {
+                    if is_strict {
+                        scope.supports_dynamic_bindings = true;
+                    }
+
                     return;
                 }
                 _ => {
@@ -458,8 +511,9 @@ impl ScopeTree {
             }
 
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
+            let is_eval_var = matches!(binding.vm_location, Some(VMLocation::EvalVar));
 
-            let needs_vm_scope =
+            let needs_vm_scope = (
                 // All captured bindings must be placed in a VM scope
                 binding.is_captured ||
                 // We sometimes force bindings in VM scopes due to dynamic accesses.
@@ -467,7 +521,11 @@ impl ScopeTree {
                 //
                 // No need to place the global `this` in a VM scope unless it is captured.
                 (ast_node.supports_dynamic_access &&
-                    (name != "this" || ast_node.kind != ScopeNodeKind::Global));
+                    (name != "this" || ast_node.kind != ScopeNodeKind::Global))
+            ) && (
+                // Eval var bindings will already be placed in VM scope objects
+                !is_eval_var
+            );
 
             if needs_vm_scope {
                 // Global bindings are always accessible so no need to place in VM scope. The only
@@ -553,6 +611,14 @@ pub enum ScopeNodeKind {
     Block,
     Switch,
     With,
+    /// Scope created within an eval. Var bindings of a sloppy direct eval are added to the parent
+    /// var scope.
+    Eval {
+        /// Whether this is a direct or indirect eval.
+        is_direct: bool,
+        /// Whether the eval body is in strict mode.
+        is_strict: bool,
+    },
 }
 
 impl ScopeNodeKind {
@@ -560,7 +626,10 @@ impl ScopeNodeKind {
         match self {
             ScopeNodeKind::Global
             | ScopeNodeKind::Function { .. }
-            | ScopeNodeKind::FunctionBody => true,
+            | ScopeNodeKind::FunctionBody
+            // Sloppy eval will add var bindings to the parent var scope. However we still consider
+            // the eval scope to be a hoist target during analysis.
+            | ScopeNodeKind::Eval { .. } => true,
             ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::With => false,
         }
     }
@@ -589,8 +658,9 @@ pub struct AstScopeNode {
     /// Whether this scope may have bindings dynamically added to it at runtime, preventing static
     /// analysis e.g. due to the presence of `eval` or `with`.
     supports_dynamic_bindings: bool,
-    /// The most recent ancestor global or function AST scope node, meaning the node that this
-    /// scope's locals will be placed in. For global and function nodes this points to itself.
+    /// The most recent ancestor global, function, or eval AST scope node, meaning the node that
+    /// this scope's locals will be placed in. For global, function, and eval nodes this points to
+    /// itself.
     enclosing_scope: ScopeNodeId,
     /// The set of all descendant AST scope nodes that are enclosed by this AST scope node. Meaning
     /// the set of all scope nodes directly owned by each global and function node. Includes self.
@@ -603,7 +673,7 @@ pub struct AstScopeNode {
     vm_scope: Option<ScopeNodeId>,
 }
 
-const GLOBAL_SCOPE_ID: ScopeNodeId = 0;
+const INITIAL_SCOPE_ID: ScopeNodeId = 0;
 
 impl AstScopeNode {
     pub fn id(&self) -> ScopeNodeId {
@@ -612,6 +682,10 @@ impl AstScopeNode {
 
     pub fn kind(&self) -> ScopeNodeKind {
         self.kind
+    }
+
+    pub fn set_kind(&mut self, kind: ScopeNodeKind) {
+        self.kind = kind;
     }
 
     pub fn num_local_registers(&self) -> usize {
@@ -710,11 +784,8 @@ pub enum BindingKind {
         /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
-    /// An implicit `this` binding introduced in a function or global scope.
-    ImplicitThis {
-        /// Whether this is `this` in the global scope.
-        is_global: bool,
-    },
+    /// An implicit `this` binding introduced in a function or root scope.
+    ImplicitThis,
     /// An implicit `arguments` binding introduced in a function. Note that any var or var function
     /// is treated as an "explicit" `arguments` binding and will require an arguments object.
     ImplicitArguments,
@@ -726,7 +797,7 @@ impl BindingKind {
         match self {
             BindingKind::Var
             | BindingKind::FunctionParameter
-            | BindingKind::ImplicitThis { .. }
+            | BindingKind::ImplicitThis
             | BindingKind::ImplicitArguments => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
@@ -745,7 +816,7 @@ impl BindingKind {
     }
 
     pub fn is_implicit_this(&self) -> bool {
-        matches!(self, BindingKind::ImplicitThis { .. })
+        matches!(self, BindingKind::ImplicitThis)
     }
 
     pub fn has_tdz(&self) -> bool {
@@ -837,6 +908,9 @@ pub enum VMLocation {
     LocalRegister(usize),
     /// Captured binding with the given index in a VM scope.
     Scope { scope_id: usize, index: usize },
+    /// In sloppy evals vars are added to the parent var scope at runtime. This means they must be
+    /// dynamically looked up by name at runtime, and are defined via special instructions.
+    EvalVar,
 }
 
 pub struct VMScopeNode {

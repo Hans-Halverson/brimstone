@@ -1098,6 +1098,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     this.gen_load_scope_binding(scope_id, index, dest)
                 })
             }
+            // Eval variables must be loaded to a register from a scope chain lookup
+            VMLocation::EvalVar => self.gen_load_dynamic_identifier(id, dest),
         }
     }
 
@@ -1258,6 +1260,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             VMLocation::Scope { scope_id, index } => {
                 self.gen_store_scope_binding(scope_id, index, value)?
             }
+            // Eval vars are dynamically stored in parent scope at runtime, so they must be
+            // dynamically stored to.
+            VMLocation::EvalVar => self.gen_store_dynamic_identifier(name, value)?,
         }
 
         Ok(())
@@ -1313,8 +1318,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Make sure to load to a new temporary if necessary.
             VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),
             VMLocation::LocalRegister(index) => ExprDest::Fixed(Register::local(index)),
-            // Global and scope variables can be stored from any register
-            VMLocation::Global | VMLocation::Scope { .. } => ExprDest::Any,
+            // Other VM locations can be stored from any register
+            VMLocation::Global | VMLocation::Scope { .. } | VMLocation::EvalVar => ExprDest::Any,
         }
     }
 
@@ -3411,6 +3416,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.gen_store_scope_binding(scope_id, index, empty_reg)?;
                         self.register_allocator.release(empty_reg);
                     }
+                    VMLocation::EvalVar => unreachable!("only vars need TDZ checks"),
                 }
             }
         }

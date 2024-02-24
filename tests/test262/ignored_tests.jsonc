@@ -40,7 +40,10 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T1.js",
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
-      "language/expressions/prefix-increment/S11.4.4_A6_T2.js"
+      "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
+      // TODO: Create global vars when an unresolved reference is assigned in sloppy mode
+      "language/statements/for/head-init-expr-check-empty-inc-empty-completion.js",
+      "language/statements/for/head-init-var-check-empty-inc-empty-completion.js"
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow

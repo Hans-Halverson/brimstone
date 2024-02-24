@@ -1,0 +1,146 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+      0: LoadGlobal r0, c0
+      3: LoadConstant r1, c1
+      6: CallMaybeEval r0, r0, r1, 1
+     11: LoadGlobal r0, c0
+     14: LoadConstant r1, c2
+     17: CallMaybeEval r0, r0, r1, 1
+     22: LoadGlobal r0, c0
+     25: LoadConstant r1, c3
+     28: CallMaybeEval r0, r0, r1, 1
+     33: LoadGlobal r0, c0
+     36: LoadConstant r1, c4
+     39: CallMaybeEval r0, r0, r1, 1
+     44: LoadGlobal r0, c0
+     47: LoadConstant r1, c5
+     50: CallMaybeEval r0, r0, r1, 1
+     55: LoadGlobal r0, c0
+     58: JumpNullish r0, 13 (.L0)
+     61: LoadConstant r1, c1
+     64: Call r0, r0, r1, 1
+     69: Jump 4 (.L1)
+  .L0:
+     71: LoadUndefined r0
+  .L1:
+     73: LoadGlobal r0, c0
+     76: JumpNullish r0, 13 (.L2)
+     79: LoadConstant r1, c2
+     82: Call r0, r0, r1, 1
+     87: Jump 4 (.L3)
+  .L2:
+     89: LoadUndefined r0
+  .L3:
+     91: LoadGlobal r0, c0
+     94: JumpNullish r0, 13 (.L4)
+     97: LoadConstant r1, c3
+    100: Call r0, r0, r1, 1
+    105: Jump 4 (.L5)
+  .L4:
+    107: LoadUndefined r0
+  .L5:
+    109: LoadUndefined r0
+    111: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: x; x = 1]
+    2: [String: var x = 1; x;]
+    3: [String: 'use strict'; var x = 1; x;]
+    4: [String: let x = 1; const y = 2; x + y;]
+    5: [String: function varFunc() { return 1 }; { function lexFunc() { return 2 } }]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 0c ff 00   LoadDynamic r0, c0
+     3: 03 fe 01   LoadImmediate r1, 1
+     6: 0d fe 00   StoreDynamic r1, c0
+     9: 02 ff fe   Mov r0, r1
+    12: 12 ff      Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+    0: 03 fe 01   LoadImmediate r1, 1
+    3: 0d fe 00   StoreDynamic r1, c0
+    6: 0c ff 00   LoadDynamic r0, c0
+    9: 12 ff      Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+    0: 04 fe 00   LoadConstant r1, c0
+    3: 03 ff 01   LoadImmediate r0, 1
+    6: 02 fe ff   Mov r1, r0
+    9: 12 fe      Ret r1
+  Constant Table:
+    0: [String: use strict]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: 03 ff 01      LoadImmediate r0, 1
+     3: 03 fe 02      LoadImmediate r1, 2
+     6: 13 fd ff fe   Add r2, r0, r1
+    10: 12 fd         Ret r2
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+    0: 43 fe 00   NewClosure r1, c0
+    3: 0d fe 01   StoreDynamic r1, c1
+    6: 43 ff 02   NewClosure r0, c2
+    9: 12 fe      Ret r1
+  Constant Table:
+    0: [BytecodeFunction: varFunc]
+    1: [String: varFunc]
+    2: [BytecodeFunction: lexFunc]
+}
+
+[BytecodeFunction: varFunc] {
+  Parameters: 0, Registers: 1
+    0: 03 ff 01   LoadImmediate r0, 1
+    3: 12 ff      Ret r0
+}
+
+[BytecodeFunction: lexFunc] {
+  Parameters: 0, Registers: 1
+    0: 03 ff 02   LoadImmediate r0, 2
+    3: 12 ff      Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 0a ff 00   LoadGlobal r0, c0
+     3: 03 fe 01   LoadImmediate r1, 1
+     6: 0b fe 00   StoreGlobal r1, c0
+     9: 02 ff fe   Mov r0, r1
+    12: 12 ff      Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+    0: 03 fe 01   LoadImmediate r1, 1
+    3: 0d fe 00   StoreDynamic r1, c0
+    6: 0c ff 00   LoadDynamic r0, c0
+    9: 12 ff      Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+    0: 04 fe 00   LoadConstant r1, c0
+    3: 03 ff 01   LoadImmediate r0, 1
+    6: 02 fe ff   Mov r1, r0
+    9: 12 fe      Ret r1
+  Constant Table:
+    0: [String: use strict]
+}
+

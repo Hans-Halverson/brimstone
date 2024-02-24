@@ -52,7 +52,7 @@ pub fn perform_bytecode_eval(
 
     // Parse source code
     let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
-    let parse_result = parse_script_for_eval(&source, is_strict_caller);
+    let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_error_(cx, &error.to_string()),
@@ -167,7 +167,7 @@ pub fn perform_ast_eval(
 
     // Parse source code
     let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
-    let parse_result = parse_script_for_eval(&source, is_strict_caller);
+    let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_error_(cx, &error.to_string()),

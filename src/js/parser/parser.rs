@@ -303,6 +303,14 @@ impl<'a> Parser<'a> {
             self.set_in_strict_mode(true);
         }
 
+        // Mark the current eval scope as strict or sloppy, which must be known before parsing
+        let mut current_scope = self.scope_builder.current_scope();
+        if let ScopeNodeKind::Eval { is_direct, .. } = current_scope.as_ref().kind() {
+            current_scope
+                .as_mut()
+                .set_kind(ScopeNodeKind::Eval { is_direct, is_strict: self.in_strict_mode });
+        }
+
         // Re-prime the parser
         self.advance()?;
 
@@ -741,7 +749,7 @@ impl<'a> Parser<'a> {
         // when determining if it is captured by an arrow function.
         if !is_arrow {
             self.scope_builder
-                .add_binding("this", BindingKind::ImplicitThis { is_global: false })
+                .add_binding("this", BindingKind::ImplicitThis)
                 .unwrap();
         }
 
@@ -4273,11 +4281,12 @@ pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
 
 pub fn parse_script_for_eval(
     source: &Rc<Source>,
+    is_direct: bool,
     inherit_strict_mode: bool,
 ) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct));
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);

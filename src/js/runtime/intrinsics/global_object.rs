@@ -186,7 +186,7 @@ pub fn eval(
     let code_arg = get_argument(cx, arguments, 0);
 
     if cx.options.bytecode {
-        perform_bytecode_eval(cx, code_arg, false, None)
+        perform_bytecode_eval(cx, code_arg, /* is_strict_caller */ false, None)
     } else {
         perform_ast_eval(cx, code_arg, false, false)
     }

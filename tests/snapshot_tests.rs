@@ -78,6 +78,7 @@ fn generate_bytecode(cx: Context, path: &str) -> GenericResult<Handle<BytecodeFu
 fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     // Bytecode will be dumped to the internal dump buffer
     let mut options = Options::default();
+    options.bytecode = true;
     options.print_bytecode = true;
     options.dump_buffer = Some(Mutex::new(String::new()));
     let options = Rc::new(options);

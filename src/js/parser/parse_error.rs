@@ -191,7 +191,7 @@ impl fmt::Display for ParseError {
                     BindingKind::FunctionParameter => "function parameter",
                     BindingKind::Class => "class",
                     BindingKind::CatchParameter { .. } => "catch parameter",
-                    BindingKind::ImplicitThis { .. } => "`this`",
+                    BindingKind::ImplicitThis => "`this`",
                     BindingKind::ImplicitArguments => "`arguments`",
                 };
                 write!(f, "Redeclaration of {} {}", kind_string, name)

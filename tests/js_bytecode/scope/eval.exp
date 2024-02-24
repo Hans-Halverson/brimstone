@@ -1,0 +1,59 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 3
+     0: Mov r0, <scope>
+     3: LoadGlobal r1, c0
+     6: LoadConstant r2, c1
+     9: CallMaybeEval r1, r1, r2, 1
+    14: Jump 5 (.L0)
+    16: Mov <scope>, r0
+  .L0:
+    19: LoadGlobal r0, c0
+    22: LoadConstant r1, c2
+    25: CallMaybeEval r0, r0, r1, 1
+    30: LoadUndefined r0
+    32: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: x; const x = 1]
+    2: [String: const x = 1; function inner() { x }]
+  Exception Handlers:
+    3-14 -> 16
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 07 ff      LoadEmpty r0
+     2: 5b ff 00   CheckTdz r0, c0
+     5: 02 fe ff   Mov r1, r0
+     8: 03 ff 01   LoadImmediate r0, 1
+    11: 12 fe      Ret r1
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 53 00         PushLexicalScope c0
+     2: 07 ff         LoadEmpty r0
+     4: 58 ff 00 00   StoreToScope r0, 0, 0
+     8: 43 ff 01      NewClosure r0, c1
+    11: 0d ff 02      StoreDynamic r0, c2
+    14: 03 fe 01      LoadImmediate r1, 1
+    17: 58 fe 00 00   StoreToScope r1, 0, 0
+    21: 12 ff         Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: inner]
+    2: [String: inner]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: 57 ff 00 00   LoadFromScope r0, 0, 0
+    4: 5b ff 00      CheckTdz r0, c0
+    7: 05 ff         LoadUndefined r0
+    9: 12 ff         Ret r0
+  Constant Table:
+    0: [String: x]
+}
+

@@ -28,11 +28,8 @@
 [BytecodeFunction: strictForcesUnmapped] {
   Parameters: 0, Registers: 2
     0: NewUnmappedArguments r0
-    2: LoadConstant r1, c0
-    5: LoadUndefined r1
-    7: Ret r1
-  Constant Table:
-    0: [String: use strict]
+    2: LoadUndefined r1
+    4: Ret r1
 }
 
 [BytecodeFunction: defaultForcesUnmapped] {
@@ -66,9 +63,6 @@
 [BytecodeFunction: withArguments] {
   Parameters: 3, Registers: 2
     0: NewUnmappedArguments r0
-    2: LoadConstant r1, c0
-    5: LoadUndefined r1
-    7: Ret r1
-  Constant Table:
-    0: [String: use strict]
+    2: LoadUndefined r1
+    4: Ret r1
 }

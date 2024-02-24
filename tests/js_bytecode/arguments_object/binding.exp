@@ -16,13 +16,10 @@
 [BytecodeFunction: bindingReferenced] {
   Parameters: 0, Registers: 2
      0: NewUnmappedArguments r0
-     2: LoadConstant r1, c0
-     5: LoadImmediate r1, 1
-     8: Add r1, r0, r1
-    12: LoadUndefined r1
-    14: Ret r1
-  Constant Table:
-    0: [String: use strict]
+     2: LoadImmediate r1, 1
+     5: Add r1, r0, r1
+     9: LoadUndefined r1
+    11: Ret r1
 }
 
 [BytecodeFunction: capturedByArrow] {
@@ -30,14 +27,12 @@
      0: PushLexicalScope c0
      2: NewUnmappedArguments r0
      4: StoreToScope r0, 0, 0
-     8: LoadConstant r0, c1
-    11: NewClosure r0, c2
-    14: LoadUndefined r0
-    16: Ret r0
+     8: NewClosure r0, c1
+    11: LoadUndefined r0
+    13: Ret r0
   Constant Table:
     0: [ScopeNames]
-    1: [String: use strict]
-    2: [BytecodeFunction: <anonymous>]
+    1: [BytecodeFunction: <anonymous>]
 }
 
 [BytecodeFunction: <anonymous>] {

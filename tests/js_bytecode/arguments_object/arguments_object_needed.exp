@@ -115,17 +115,15 @@
      2: StoreToScope <this>, 0, 0
      6: NewUnmappedArguments r0
      8: StoreToScope r0, 1, 0
-    12: LoadConstant r0, c1
-    15: LoadGlobal r0, c2
-    18: LoadConstant r1, c3
-    21: CallMaybeEval r0, r0, r1, 1
-    26: LoadUndefined r0
-    28: Ret r0
+    12: LoadGlobal r0, c1
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1
+    23: LoadUndefined r0
+    25: Ret r0
   Constant Table:
     0: [ScopeNames]
-    1: [String: use strict]
-    2: [String: eval]
-    3: [String: ]
+    1: [String: eval]
+    2: [String: ]
 }
 
 [BytecodeFunction: notNeededDueToIndirectEval] {

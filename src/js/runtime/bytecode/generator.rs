@@ -104,8 +104,16 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Store the captured `this` right away if necessary
             generator.gen_store_captured_this(program_scope)?;
 
+            // Heuristic to ignore the use strict directive in common cases. Safe since there must
+            // be a directive prologue which can be ignored if there is a use strict directive.
+            let toplevels = if program.has_use_strict_directive {
+                &program.toplevels[1..]
+            } else {
+                &program.toplevels
+            };
+
             // Script function consists of toplevel statements
-            for toplevel in &program.toplevels {
+            for toplevel in toplevels {
                 generator.gen_toplevel(toplevel)?;
             }
 
@@ -177,12 +185,20 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Store the captured `this` right away if necessary
             generator.gen_store_captured_this(program_scope)?;
 
+            // Heuristic to ignore the use strict directive in common cases. Safe since there must
+            // be a directive prologue which can be ignored if there is a use strict directive.
+            let toplevels = if eval_program.has_use_strict_directive {
+                &eval_program.toplevels[1..]
+            } else {
+                &eval_program.toplevels
+            };
+
             // Allocate statement completion which is initially undefined
             let statement_completion_dest = generator.register_allocator.allocate()?;
             generator.set_statement_completion_dest(statement_completion_dest);
 
             // Eval function consists of toplevel statements
-            for toplevel in &eval_program.toplevels {
+            for toplevel in toplevels {
                 generator.gen_toplevel(toplevel)?;
             }
 
@@ -850,7 +866,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_scope_start(body_scope.as_ref())?;
                 }
 
-                let body_completion = self.gen_statement_list(&block_body.body)?;
+                // Heuristic to ignore the use strict directive in common cases. Safe since there
+                // be a directive prologue which can be ignored if there is a use strict directive.
+                let body = if func.has_use_strict_directive() {
+                    &block_body.body[1..]
+                } else {
+                    &block_body.body
+                };
+
+                let body_completion = self.gen_statement_list(body)?;
 
                 // Scope end not needed since the function immediately returns
 

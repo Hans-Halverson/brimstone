@@ -73,12 +73,9 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 04 fe 00   LoadConstant r1, c0
-    3: 03 ff 01   LoadImmediate r0, 1
-    6: 02 fe ff   Mov r1, r0
-    9: 12 fe      Ret r1
-  Constant Table:
-    0: [String: use strict]
+    0: 03 ff 01   LoadImmediate r0, 1
+    3: 02 fe ff   Mov r1, r0
+    6: 12 fe      Ret r1
 }
 
 [BytecodeFunction: <eval>] {
@@ -136,11 +133,8 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 04 fe 00   LoadConstant r1, c0
-    3: 03 ff 01   LoadImmediate r0, 1
-    6: 02 fe ff   Mov r1, r0
-    9: 12 fe      Ret r1
-  Constant Table:
-    0: [String: use strict]
+    0: 03 ff 01   LoadImmediate r0, 1
+    3: 02 fe ff   Mov r1, r0
+    6: 12 fe      Ret r1
 }
 

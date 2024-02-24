@@ -1,0 +1,30 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: LoadImmediate r0, 1
+     9: LoadGlobal r0, c2
+    12: LoadConstant r1, c3
+    15: CallMaybeEval r0, r0, r1, 1
+    20: LoadUndefined r0
+    22: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: func]
+    1: [String: func]
+    2: [String: eval]
+    3: [String: "use strict"; 3;]
+}
+
+[BytecodeFunction: func] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 2
+    3: LoadUndefined r0
+    5: Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: 03 ff 03   LoadImmediate r0, 3
+    3: 12 ff      Ret r0
+}
+

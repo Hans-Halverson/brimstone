@@ -4,13 +4,15 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: GlobalInit c4
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [BytecodeFunction: bindingReferenced]
     1: [String: bindingReferenced]
     2: [BytecodeFunction: capturedByArrow]
     3: [String: capturedByArrow]
+    4: [GlobalNames]
 }
 
 [BytecodeFunction: bindingReferenced] {

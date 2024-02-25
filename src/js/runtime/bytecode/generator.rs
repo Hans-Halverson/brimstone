@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     error::Error,
     fmt,
     rc::Rc,
@@ -16,6 +16,7 @@ use crate::js::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
         eval::expression::generate_template_object,
         gc::{Escapable, HandleScope},
+        global_names::GlobalNames,
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
         scope::Scope,
@@ -103,6 +104,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
             // Store the captured `this` right away if necessary
             generator.gen_store_captured_this(program_scope)?;
+
+            // Declare global variables and functions
+            generator.gen_global_init(program_scope)?;
 
             // Heuristic to ignore the use strict directive in common cases. Safe since there must
             // be a directive prologue which can be ignored if there is a use strict directive.
@@ -4211,6 +4215,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_instruction(target_continue_block)?;
 
         Ok(StmtCompletion::Abrupt)
+    }
+
+    fn gen_global_init(&mut self, global_scope: &AstScopeNode) -> EmitResult<()> {
+        // Collect all global variables and functions in scope
+        let mut global_vars = HashSet::new();
+        let mut global_funcs = HashSet::new();
+
+        for (name, binding) in global_scope.iter_var_decls() {
+            let name = InternedStrings::get_str(self.cx, name).as_flat();
+            if let BindingKind::Function { .. } = binding.kind() {
+                global_funcs.insert(name);
+            } else {
+                global_vars.insert(name);
+            }
+        }
+
+        // Generate a GlobalNames object which is used in the GlobalInit instruction
+        let global_names = GlobalNames::new(self.cx, global_vars, global_funcs);
+        let global_names_index = self
+            .constant_table_builder
+            .add_heap_object(global_names.cast())?;
+
+        self.writer
+            .global_init_instruction(ConstantIndex::new(global_names_index));
+
+        Ok(())
     }
 }
 

@@ -2,14 +2,16 @@
   Parameters: 0, Registers: 2
      0: NewClosure r0, c0
      3: StoreGlobal r0, c1
-     6: LoadGlobal r0, c1
-     9: LoadImmediate r1, 20
-    12: Call r0, r0, r1, 1
-    17: LoadUndefined r0
-    19: Ret r0
+     6: GlobalInit c2
+     8: LoadGlobal r0, c1
+    11: LoadImmediate r1, 20
+    14: Call r0, r0, r1, 1
+    19: LoadUndefined r0
+    21: Ret r0
   Constant Table:
     0: [BytecodeFunction: fib]
     1: [String: fib]
+    2: [GlobalNames]
 }
 
 [BytecodeFunction: fib] {

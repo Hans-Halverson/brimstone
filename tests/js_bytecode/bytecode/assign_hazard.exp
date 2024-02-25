@@ -18,8 +18,9 @@
     45: StoreGlobal r0, c15
     48: NewClosure r0, c16
     51: StoreGlobal r0, c17
-    54: LoadUndefined r0
-    56: Ret r0
+    54: GlobalInit c18
+    56: LoadUndefined r0
+    58: Ret r0
   Constant Table:
     0: [BytecodeFunction: simpleAssignHazard]
     1: [String: simpleAssignHazard]
@@ -39,6 +40,7 @@
     15: [String: toplevelAssignExpressions]
     16: [BytecodeFunction: nestedFunctionOrClass]
     17: [String: nestedFunctionOrClass]
+    18: [GlobalNames]
 }
 
 [BytecodeFunction: simpleAssignHazard] {

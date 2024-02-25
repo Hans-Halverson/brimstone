@@ -8,8 +8,9 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadUndefined r0
-    26: Ret r0
+    24: GlobalInit c8
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [BytecodeFunction: test1]
     1: [String: test1]
@@ -19,6 +20,7 @@
     5: [String: test3]
     6: [BytecodeFunction: test4]
     7: [String: test4]
+    8: [GlobalNames]
 }
 
 [BytecodeFunction: test1] {

@@ -8,10 +8,11 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadImmediate r0, 1
-    27: StoreGlobal r0, c8
-    30: LoadUndefined r0
-    32: Ret r0
+    24: GlobalInit c8
+    26: LoadImmediate r0, 1
+    29: StoreGlobal r0, c9
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [BytecodeFunction: logicalAnd]
     1: [String: logicalAnd]
@@ -21,7 +22,8 @@
     5: [String: nullishCoalesce]
     6: [BytecodeFunction: testAssignDest]
     7: [String: testAssignDest]
-    8: [String: global]
+    8: [GlobalNames]
+    9: [String: global]
 }
 
 [BytecodeFunction: logicalAnd] {

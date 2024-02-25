@@ -22,8 +22,9 @@
     57: StoreGlobal r0, c19
     60: NewClosure r0, c20
     63: StoreGlobal r0, c21
-    66: LoadUndefined r0
-    68: Ret r0
+    66: GlobalInit c22
+    68: LoadUndefined r0
+    70: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNoInitTestOrUpdate]
     1: [String: testNoInitTestOrUpdate]
@@ -47,6 +48,7 @@
     19: [String: testAbruptBody]
     20: [BytecodeFunction: testBreakAndContinue]
     21: [String: testBreakAndContinue]
+    22: [GlobalNames]
 }
 
 [BytecodeFunction: testNoInitTestOrUpdate] {

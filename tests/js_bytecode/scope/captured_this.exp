@@ -6,18 +6,20 @@
      8: NewClosure r0, c3
     11: StoreGlobal r0, c4
     14: StoreToScope <this>, 0, 0
-    18: StoreGlobal <this>, c5
-    21: NewClosure r0, c6
-    24: LoadUndefined r0
-    26: Ret r0
+    18: GlobalInit c5
+    20: StoreGlobal <this>, c6
+    23: NewClosure r0, c7
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: capturedFunctionThis]
     2: [String: capturedFunctionThis]
     3: [BytecodeFunction: noCapture]
     4: [String: noCapture]
-    5: [String: v1]
-    6: [BytecodeFunction: <anonymous>]
+    5: [GlobalNames]
+    6: [String: v1]
+    7: [BytecodeFunction: <anonymous>]
 }
 
 [BytecodeFunction: capturedFunctionThis] {

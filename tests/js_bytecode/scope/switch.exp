@@ -6,8 +6,9 @@
      9: StoreGlobal r0, c3
     12: NewClosure r0, c4
     15: StoreGlobal r0, c5
-    18: LoadUndefined r0
-    20: Ret r0
+    18: GlobalInit c6
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [BytecodeFunction: startScope]
     1: [String: startScope]
@@ -15,6 +16,7 @@
     3: [String: alwaysNeedTdzCheck]
     4: [BytecodeFunction: captures]
     5: [String: captures]
+    6: [GlobalNames]
 }
 
 [BytecodeFunction: startScope] {

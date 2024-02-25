@@ -4,13 +4,15 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: GlobalInit c4
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [BytecodeFunction: namedMethod]
     1: [String: namedMethod]
     2: [BytecodeFunction: computedMethod]
     3: [String: computedMethod]
+    4: [GlobalNames]
 }
 
 [BytecodeFunction: namedMethod] {

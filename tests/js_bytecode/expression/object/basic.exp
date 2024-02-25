@@ -16,10 +16,11 @@
     39: StoreGlobal r0, c13
     42: NewClosure r0, c14
     45: StoreGlobal r0, c15
-    48: LoadImmediate r0, 0
-    51: StoreGlobal r0, c16
-    54: LoadUndefined r0
-    56: Ret r0
+    48: GlobalInit c16
+    50: LoadImmediate r0, 0
+    53: StoreGlobal r0, c17
+    56: LoadUndefined r0
+    58: Ret r0
   Constant Table:
     0: [BytecodeFunction: emptyObject]
     1: [String: emptyObject]
@@ -37,7 +38,8 @@
     13: [String: proto]
     14: [BytecodeFunction: propertyNamesNotResolved]
     15: [String: propertyNamesNotResolved]
-    16: [String: global]
+    16: [GlobalNames]
+    17: [String: global]
 }
 
 [BytecodeFunction: emptyObject] {

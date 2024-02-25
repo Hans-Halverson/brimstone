@@ -10,8 +10,9 @@
     21: StoreGlobal r0, c7
     24: NewClosure r0, c8
     27: StoreGlobal r0, c9
-    30: LoadUndefined r0
-    32: Ret r0
+    30: GlobalInit c10
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [BytecodeFunction: strictForcesUnmapped]
     1: [String: strictForcesUnmapped]
@@ -23,6 +24,7 @@
     7: [String: restForcesUnmapped]
     8: [BytecodeFunction: withArguments]
     9: [String: withArguments]
+    10: [GlobalNames]
 }
 
 [BytecodeFunction: strictForcesUnmapped] {

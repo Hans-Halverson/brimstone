@@ -4,13 +4,15 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadUndefined r0
-    14: Ret r0
+    12: GlobalInit c4
+    14: LoadUndefined r0
+    16: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
     2: [BytecodeFunction: foo]
     3: [String: foo]
+    4: [GlobalNames]
 }
 
 [BytecodeFunction: use] {

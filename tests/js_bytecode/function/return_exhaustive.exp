@@ -12,8 +12,9 @@
     27: StoreGlobal r0, c9
     30: NewClosure r0, c10
     33: StoreGlobal r0, c11
-    36: LoadUndefined r0
-    38: Ret r0
+    36: GlobalInit c12
+    38: LoadUndefined r0
+    40: Ret r0
   Constant Table:
     0: [BytecodeFunction: testIfNoAlternate]
     1: [String: testIfNoAlternate]
@@ -27,6 +28,7 @@
     9: [String: testIfNestedOneNormalBranch]
     10: [BytecodeFunction: testIfNestedNoNormalBranches]
     11: [String: testIfNestedNoNormalBranches]
+    12: [GlobalNames]
 }
 
 [BytecodeFunction: testIfNoAlternate] {

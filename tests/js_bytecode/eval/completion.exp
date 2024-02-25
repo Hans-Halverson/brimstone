@@ -1,22 +1,24 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: LoadGlobal r0, c0
-     3: LoadConstant r1, c1
-     6: CallMaybeEval r0, r0, r1, 1
-    11: LoadGlobal r0, c0
-    14: LoadConstant r1, c2
-    17: CallMaybeEval r0, r0, r1, 1
-    22: LoadUndefined r0
-    24: Ret r0
+     0: GlobalInit c0
+     2: LoadGlobal r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1
+    13: LoadGlobal r0, c1
+    16: LoadConstant r1, c3
+    19: CallMaybeEval r0, r0, r1, 1
+    24: LoadUndefined r0
+    26: Ret r0
   Constant Table:
-    0: [String: eval]
-    1: [String: 
+    0: [GlobalNames]
+    1: [String: eval]
+    2: [String: 
   "expression statement completions";
   1 + 2;
   a + b;
   "foo";
 ]
-    2: [String: 
+    3: [String: 
   "inner completions";
   var a = 1;
   if (a) {

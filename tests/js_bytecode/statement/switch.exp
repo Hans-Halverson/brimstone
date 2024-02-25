@@ -16,8 +16,9 @@
     39: StoreGlobal r0, c13
     42: NewClosure r0, c14
     45: StoreGlobal r0, c15
-    48: LoadUndefined r0
-    50: Ret r0
+    48: GlobalInit c16
+    50: LoadUndefined r0
+    52: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -35,6 +36,7 @@
     13: [String: multipleCasesWithDefaultInMiddle]
     14: [BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough]
     15: [String: multipleCasesWithDefaultInMiddleFallthrough]
+    16: [GlobalNames]
 }
 
 [BytecodeFunction: empty] {

@@ -25,6 +25,7 @@ use crate::js::runtime::{
     execution_context::ExecutionContext,
     for_in_iterator::ForInIterator,
     function::{Function, FunctionFieldsArray, FunctionPrivateMethodsArray},
+    global_names::GlobalNames,
     interned_strings::{InternedStringsMapField, InternedStringsSetField},
     intrinsics::{
         array_buffer_constructor::{ArrayBufferDataField, ArrayBufferObject},
@@ -154,6 +155,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().byte_size(),
             ObjectKind::Scope => self.cast::<Scope>().byte_size(),
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
+            ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
             ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
@@ -283,6 +285,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::Scope => self.cast::<Scope>().visit_pointers(visitor),
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
+            ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::DeclarativeEnvironment => self
                 .cast::<DeclarativeEnvironment>()
                 .visit_pointers(visitor),

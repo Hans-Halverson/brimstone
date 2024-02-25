@@ -6,29 +6,31 @@
      7: StoreGlobal r1, c1
     10: NewClosure r1, c2
     13: StoreGlobal r1, c3
-    16: LoadImmediate r1, 1
-    19: StoreGlobal r1, c4
-    22: LoadImmediate r1, 2
-    25: StoreGlobal r1, c0
-    28: LoadImmediate r1, 3
-    31: StoreGlobal r1, c1
-    34: PushLexicalScope c5
-    36: LoadEmpty r1
-    38: StoreToScope r1, 0, 0
-    42: LoadImmediate r1, 1
-    45: StoreToScope r1, 0, 0
-    49: NewClosure r0, c6
-    52: PopScope 
-    53: LoadUndefined r1
-    55: Ret r1
+    16: GlobalInit c4
+    18: LoadImmediate r1, 1
+    21: StoreGlobal r1, c5
+    24: LoadImmediate r1, 2
+    27: StoreGlobal r1, c0
+    30: LoadImmediate r1, 3
+    33: StoreGlobal r1, c1
+    36: PushLexicalScope c6
+    38: LoadEmpty r1
+    40: StoreToScope r1, 0, 0
+    44: LoadImmediate r1, 1
+    47: StoreToScope r1, 0, 0
+    51: NewClosure r0, c7
+    54: PopScope 
+    55: LoadUndefined r1
+    57: Ret r1
   Constant Table:
     0: [String: c1]
     1: [String: l1]
     2: [BytecodeFunction: test1]
     3: [String: test1]
-    4: [String: x]
-    5: [ScopeNames]
-    6: [BytecodeFunction: inner]
+    4: [GlobalNames]
+    5: [String: x]
+    6: [ScopeNames]
+    7: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: test1] {

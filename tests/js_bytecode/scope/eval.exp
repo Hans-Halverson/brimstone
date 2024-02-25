@@ -1,23 +1,25 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
-     0: Mov r0, <scope>
-     3: LoadGlobal r1, c0
-     6: LoadConstant r2, c1
-     9: CallMaybeEval r1, r1, r2, 1
-    14: Jump 5 (.L0)
-    16: Mov <scope>, r0
+     0: GlobalInit c0
+     2: Mov r0, <scope>
+     5: LoadGlobal r1, c1
+     8: LoadConstant r2, c2
+    11: CallMaybeEval r1, r1, r2, 1
+    16: Jump 5 (.L0)
+    18: Mov <scope>, r0
   .L0:
-    19: LoadGlobal r0, c0
-    22: LoadConstant r1, c2
-    25: CallMaybeEval r0, r0, r1, 1
-    30: LoadUndefined r0
-    32: Ret r0
+    21: LoadGlobal r0, c1
+    24: LoadConstant r1, c3
+    27: CallMaybeEval r0, r0, r1, 1
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
-    0: [String: eval]
-    1: [String: x; const x = 1]
-    2: [String: const x = 1; function inner() { x }]
+    0: [GlobalNames]
+    1: [String: eval]
+    2: [String: x; const x = 1]
+    3: [String: const x = 1; function inner() { x }]
   Exception Handlers:
-    3-14 -> 16
+    5-16 -> 18
 }
 
 [BytecodeFunction: <eval>] {

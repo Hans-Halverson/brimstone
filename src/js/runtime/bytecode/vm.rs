@@ -23,6 +23,7 @@ use crate::{
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
+        global_names::{global_init, GlobalNames},
         intrinsics::{
             intrinsics::Intrinsic, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
@@ -56,11 +57,12 @@ use super::{
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeletePropertyInstruction, DivInstruction, DupScopeInstruction, ExpInstruction,
         ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, JumpConstantInstruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpInstruction, JumpNotNullishConstantInstruction,
-        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
-        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
+        GlobalInitInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
@@ -538,6 +540,9 @@ impl VM {
                         }
                         OpCode::ForInNext => {
                             dispatch_or_throw!(ForInNextInstruction, execute_for_in_next)
+                        }
+                        OpCode::GlobalInit => {
+                            dispatch_or_throw!(GlobalInitInstruction, execute_global_init)
                         }
                     }
                 };
@@ -2491,6 +2496,21 @@ impl VM {
         self.write_register(dest, result);
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_global_init<W: Width>(
+        &mut self,
+        instr: &GlobalInitInstruction<W>,
+    ) -> EvalResult<()> {
+        let global_names = self
+            .get_constant(instr.global_names_index())
+            .to_handle(self.cx);
+        let global_names = global_names.cast::<GlobalNames>();
+
+        let global_scope = self.scope().to_handle();
+
+        global_init(self.cx, global_scope, global_names)
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

@@ -7,6 +7,7 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         gc::{Handle, HeapObject, HeapVisitor},
+        global_names::{can_declare_global_function, can_declare_global_var},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -260,11 +261,7 @@ impl GlobalEnvironment {
         // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name).to_handle(cx);
-        if maybe!(has_own_property(cx, global_object, name_key)) {
-            return true.into();
-        }
-
-        is_extensible(cx, global_object)
+        can_declare_global_var(cx, global_object, name_key)
     }
 
     // 9.1.1.4.16 CanDeclareGlobalFunction
@@ -276,22 +273,7 @@ impl GlobalEnvironment {
         // GC safe since self is never referenced after this point
         let global_object = self.object_env.binding_object();
         let name_key = PropertyKey::string(cx, name).to_handle(cx);
-        let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
-
-        match existing_prop {
-            None => is_extensible(cx, global_object),
-            Some(existing_prop) => {
-                if existing_prop.is_configurable() {
-                    return true.into();
-                }
-
-                let result = existing_prop.is_data_descriptor()
-                    && existing_prop.is_writable()
-                    && existing_prop.is_enumerable();
-
-                result.into()
-            }
-        }
+        can_declare_global_function(cx, global_object, name_key)
     }
 }
 

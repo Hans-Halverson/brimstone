@@ -866,6 +866,12 @@ define_instructions!(
         [0] dest: Register,
         [1] iterator: Register,
     }
+
+    /// Initialize a global scope, declaring all names in a GlobalNames object stored in the
+    /// constant table. Must be called in the global scope.
+    GlobalInit(GlobalInitInstruction, global_init_instruction) {
+        [0] global_names_index: ConstantIndex,
+    }
 );
 
 bitflags! {

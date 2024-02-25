@@ -6,8 +6,9 @@
      9: StoreGlobal r0, c3
     12: NewClosure r0, c4
     15: StoreGlobal r0, c5
-    18: LoadUndefined r0
-    20: Ret r0
+    18: GlobalInit c6
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
     0: [BytecodeFunction: testAbruptBodyOnly]
     1: [String: testAbruptBodyOnly]
@@ -15,6 +16,7 @@
     3: [String: testAbruptCatchOnly]
     4: [BytecodeFunction: testAbruptCatchAndBody]
     5: [String: testAbruptCatchAndBody]
+    6: [GlobalNames]
 }
 
 [BytecodeFunction: testAbruptBodyOnly] {

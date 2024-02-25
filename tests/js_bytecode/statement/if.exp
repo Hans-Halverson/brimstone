@@ -12,8 +12,9 @@
     27: StoreGlobal r0, c9
     30: NewClosure r0, c10
     33: StoreGlobal r0, c11
-    36: LoadUndefined r0
-    38: Ret r0
+    36: GlobalInit c12
+    38: LoadUndefined r0
+    40: Ret r0
   Constant Table:
     0: [BytecodeFunction: testNoAlternate]
     1: [String: testNoAlternate]
@@ -27,6 +28,7 @@
     9: [String: testIfElseNoCatchAll]
     10: [BytecodeFunction: testIfNoToBoolean]
     11: [String: testIfNoToBoolean]
+    12: [GlobalNames]
 }
 
 [BytecodeFunction: testNoAlternate] {

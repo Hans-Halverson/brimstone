@@ -1,8 +1,10 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: NewRegExp r0, c0
-    3: LoadUndefined r0
-    5: Ret r0
+    0: GlobalInit c0
+    2: NewRegExp r0, c1
+    5: LoadUndefined r0
+    7: Ret r0
   Constant Table:
-    0: [CompiledRegExpObject: /asdf\(bar/]
+    0: [GlobalNames]
+    1: [CompiledRegExpObject: /asdf\(bar/]
 }

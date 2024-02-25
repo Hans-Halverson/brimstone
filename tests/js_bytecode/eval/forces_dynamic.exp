@@ -4,41 +4,43 @@
      2: StoreGlobal r0, c0
      5: NewClosure r0, c1
      8: StoreGlobal r0, c2
-    11: LoadImmediate r0, 1
-    14: StoreGlobal r0, c3
-    17: LoadImmediate r0, 2
-    20: StoreGlobal r0, c0
-    23: PushLexicalScope c4
-    25: LoadEmpty r0
-    27: StoreToScope r0, 0, 0
-    31: LoadImmediate r0, 3
-    34: StoreGlobal r0, c5
-    37: LoadImmediate r0, 4
-    40: StoreToScope r0, 0, 0
-    44: LoadGlobal r0, c5
-    47: LoadGlobal r0, c6
-    50: LoadFromScope r0, 0, 0
-    54: CheckTdz r0, c7
-    57: LoadGlobal r0, c8
-    60: LoadConstant r1, c9
-    63: CallMaybeEval r0, r0, r1, 1
-    68: PopScope 
-    69: LoadGlobal r0, c5
-    72: LoadGlobal r0, c7
-    75: LoadGlobal r0, c6
-    78: LoadUndefined r0
-    80: Ret r0
+    11: GlobalInit c3
+    13: LoadImmediate r0, 1
+    16: StoreGlobal r0, c4
+    19: LoadImmediate r0, 2
+    22: StoreGlobal r0, c0
+    25: PushLexicalScope c5
+    27: LoadEmpty r0
+    29: StoreToScope r0, 0, 0
+    33: LoadImmediate r0, 3
+    36: StoreGlobal r0, c6
+    39: LoadImmediate r0, 4
+    42: StoreToScope r0, 0, 0
+    46: LoadGlobal r0, c6
+    49: LoadGlobal r0, c7
+    52: LoadFromScope r0, 0, 0
+    56: CheckTdz r0, c8
+    59: LoadGlobal r0, c9
+    62: LoadConstant r1, c10
+    65: CallMaybeEval r0, r0, r1, 1
+    70: PopScope 
+    71: LoadGlobal r0, c6
+    74: LoadGlobal r0, c8
+    77: LoadGlobal r0, c7
+    80: LoadUndefined r0
+    82: Ret r0
   Constant Table:
     0: [String: globalConst1]
     1: [BytecodeFunction: forcesDynamicInScopeAndParents]
     2: [String: forcesDynamicInScopeAndParents]
-    3: [String: globalVar1]
-    4: [ScopeNames]
-    5: [String: globalVar2]
-    6: [String: unresolved]
-    7: [String: globalConst2]
-    8: [String: eval]
-    9: [String: test]
+    3: [GlobalNames]
+    4: [String: globalVar1]
+    5: [ScopeNames]
+    6: [String: globalVar2]
+    7: [String: unresolved]
+    8: [String: globalConst2]
+    9: [String: eval]
+    10: [String: test]
 }
 
 [BytecodeFunction: forcesDynamicInScopeAndParents] {

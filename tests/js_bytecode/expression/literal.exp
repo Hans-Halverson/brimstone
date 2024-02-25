@@ -1,18 +1,20 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: LoadNull r0
-     2: LoadTrue r0
-     4: LoadFalse r0
-     6: LoadConstant r0, c0
-     9: LoadConstant r0, c1
-    12: LoadConstant r0, c1
-    15: LoadConstant r0, c2
-    18: LoadConstant r0, c3
-    21: LoadUndefined r0
-    23: Ret r0
+     0: GlobalInit c0
+     2: LoadNull r0
+     4: LoadTrue r0
+     6: LoadFalse r0
+     8: LoadConstant r0, c1
+    11: LoadConstant r0, c2
+    14: LoadConstant r0, c2
+    17: LoadConstant r0, c3
+    20: LoadConstant r0, c4
+    23: LoadUndefined r0
+    25: Ret r0
   Constant Table:
-    0: [String: ]
-    1: [String: hello]
-    2: [BigInt: 1]
+    0: [GlobalNames]
+    1: [String: ]
+    2: [String: hello]
     3: [BigInt: 1]
+    4: [BigInt: 1]
 }

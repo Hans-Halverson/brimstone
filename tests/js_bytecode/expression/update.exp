@@ -20,10 +20,11 @@
     51: StoreGlobal r0, c17
     54: NewClosure r0, c18
     57: StoreGlobal r0, c19
-    60: LoadImmediate r0, 0
-    63: StoreGlobal r0, c20
-    66: LoadUndefined r0
-    68: Ret r0
+    60: GlobalInit c20
+    62: LoadImmediate r0, 0
+    65: StoreGlobal r0, c21
+    68: LoadUndefined r0
+    70: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -45,7 +46,8 @@
     17: [String: postfixMember]
     18: [BytecodeFunction: decrement]
     19: [String: decrement]
-    20: [String: global]
+    20: [GlobalNames]
+    21: [String: global]
 }
 
 [BytecodeFunction: use] {

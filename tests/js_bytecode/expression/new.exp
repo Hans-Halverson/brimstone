@@ -4,20 +4,22 @@
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
      9: StoreGlobal r0, c3
-    12: LoadGlobal r0, c1
-    15: Construct r0, r0, r0, r0, 0
-    21: LoadGlobal r0, c1
-    24: LoadImmediate r1, 1
-    27: LoadImmediate r2, 2
-    30: LoadImmediate r3, 3
-    33: Construct r0, r0, r0, r1, 3
-    39: LoadUndefined r0
-    41: Ret r0
+    12: GlobalInit c4
+    14: LoadGlobal r0, c1
+    17: Construct r0, r0, r0, r0, 0
+    23: LoadGlobal r0, c1
+    26: LoadImmediate r1, 1
+    29: LoadImmediate r2, 2
+    32: LoadImmediate r3, 3
+    35: Construct r0, r0, r0, r1, 3
+    41: LoadUndefined r0
+    43: Ret r0
   Constant Table:
     0: [BytecodeFunction: foo]
     1: [String: foo]
     2: [BytecodeFunction: bar]
     3: [String: bar]
+    4: [GlobalNames]
 }
 
 [BytecodeFunction: foo] {

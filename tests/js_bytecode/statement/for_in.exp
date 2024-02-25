@@ -12,8 +12,9 @@
     27: StoreGlobal r0, c9
     30: NewClosure r0, c10
     33: StoreGlobal r0, c11
-    36: LoadUndefined r0
-    38: Ret r0
+    36: GlobalInit c12
+    38: LoadUndefined r0
+    40: Ret r0
   Constant Table:
     0: [BytecodeFunction: basicVar]
     1: [String: basicVar]
@@ -27,6 +28,7 @@
     9: [String: lhsMember]
     10: [BytecodeFunction: lhsDestructuring]
     11: [String: lhsDestructuring]
+    12: [GlobalNames]
 }
 
 [BytecodeFunction: basicVar] {

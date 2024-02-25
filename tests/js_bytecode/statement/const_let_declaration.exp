@@ -32,35 +32,36 @@
      76: StoreGlobal r0, c18
      79: NewClosure r0, c19
      82: StoreGlobal r0, c20
-     85: LoadImmediate r0, 1
-     88: StoreGlobal r0, c0
-     91: LoadImmediate r0, 1
-     94: StoreGlobal r0, c1
-     97: LoadImmediate r0, 2
-    100: StoreGlobal r0, c2
-    103: LoadImmediate r0, 3
-    106: StoreGlobal r0, c3
-    109: LoadImmediate r0, 1
-    112: StoreGlobal r0, c4
-    115: LoadImmediate r0, 1
-    118: StoreGlobal r0, c5
-    121: LoadImmediate r0, 2
-    124: StoreGlobal r0, c6
-    127: LoadImmediate r0, 3
-    130: StoreGlobal r0, c7
-    133: LoadGlobal r0, c0
-    136: CheckTdz r0, c0
-    139: LoadGlobal r1, c4
-    142: CheckTdz r1, c4
-    145: Add r0, r0, r1
-    149: StoreGlobal r0, c8
-    152: LoadGlobal r0, c10
-    155: CheckTdz r0, c10
-    158: StoreGlobal r0, c9
-    161: LoadImmediate r0, 1
-    164: StoreGlobal r0, c10
-    167: LoadUndefined r0
-    169: Ret r0
+     85: GlobalInit c21
+     87: LoadImmediate r0, 1
+     90: StoreGlobal r0, c0
+     93: LoadImmediate r0, 1
+     96: StoreGlobal r0, c1
+     99: LoadImmediate r0, 2
+    102: StoreGlobal r0, c2
+    105: LoadImmediate r0, 3
+    108: StoreGlobal r0, c3
+    111: LoadImmediate r0, 1
+    114: StoreGlobal r0, c4
+    117: LoadImmediate r0, 1
+    120: StoreGlobal r0, c5
+    123: LoadImmediate r0, 2
+    126: StoreGlobal r0, c6
+    129: LoadImmediate r0, 3
+    132: StoreGlobal r0, c7
+    135: LoadGlobal r0, c0
+    138: CheckTdz r0, c0
+    141: LoadGlobal r1, c4
+    144: CheckTdz r1, c4
+    147: Add r0, r0, r1
+    151: StoreGlobal r0, c8
+    154: LoadGlobal r0, c10
+    157: CheckTdz r0, c10
+    160: StoreGlobal r0, c9
+    163: LoadImmediate r0, 1
+    166: StoreGlobal r0, c10
+    169: LoadUndefined r0
+    171: Ret r0
   Constant Table:
     0: [String: c1]
     1: [String: c2]
@@ -83,6 +84,7 @@
     18: [String: tdzUseInInitializer]
     19: [BytecodeFunction: letNoInitializer]
     20: [String: letNoInitializer]
+    21: [GlobalNames]
 }
 
 [BytecodeFunction: tdzGlobals] {

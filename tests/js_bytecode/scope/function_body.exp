@@ -10,8 +10,9 @@
     21: StoreGlobal r0, c7
     24: NewClosure r0, c8
     27: StoreGlobal r0, c9
-    30: LoadUndefined r0
-    32: Ret r0
+    30: GlobalInit c10
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [BytecodeFunction: sameNameNoCaptures]
     1: [String: sameNameNoCaptures]
@@ -23,6 +24,7 @@
     7: [String: sameNameBothCaptures]
     8: [BytecodeFunction: tdzAfterParams]
     9: [String: tdzAfterParams]
+    10: [GlobalNames]
 }
 
 [BytecodeFunction: sameNameNoCaptures] {

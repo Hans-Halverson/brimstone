@@ -19,6 +19,7 @@ pub mod for_in_iterator;
 pub mod function;
 pub mod gc;
 mod gc_object;
+pub mod global_names;
 mod interned_strings;
 pub mod intrinsics;
 mod iterator;

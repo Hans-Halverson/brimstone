@@ -20,14 +20,15 @@
     51: StoreGlobal r0, c17
     54: NewClosure r0, c18
     57: StoreGlobal r0, c19
-    60: LoadImmediate r0, 0
-    63: StoreGlobal r0, c20
-    66: LoadImmediate r0, 1
-    69: StoreGlobal r0, c21
-    72: LoadImmediate r0, 2
-    75: StoreGlobal r0, c22
-    78: LoadUndefined r0
-    80: Ret r0
+    60: GlobalInit c20
+    62: LoadImmediate r0, 0
+    65: StoreGlobal r0, c21
+    68: LoadImmediate r0, 1
+    71: StoreGlobal r0, c22
+    74: LoadImmediate r0, 2
+    77: StoreGlobal r0, c23
+    80: LoadUndefined r0
+    82: Ret r0
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
@@ -49,9 +50,10 @@
     17: [String: blockScopes]
     18: [BytecodeFunction: popBetweenBlocks]
     19: [String: popBetweenBlocks]
-    20: [String: globalVar1]
-    21: [String: globalConst1]
-    22: [String: globalLet1]
+    20: [GlobalNames]
+    21: [String: globalVar1]
+    22: [String: globalConst1]
+    23: [String: globalLet1]
 }
 
 [BytecodeFunction: basic] {

@@ -10,11 +10,12 @@
     21: StoreGlobal r0, c7
     24: NewClosure r0, c8
     27: StoreGlobal r0, c9
-    30: LoadGlobal r0, c10
-    33: LoadConstant r1, c11
-    36: CallMaybeEval r0, r0, r1, 1
-    41: LoadUndefined r0
-    43: Ret r0
+    30: GlobalInit c10
+    32: LoadGlobal r0, c11
+    35: LoadConstant r1, c12
+    38: CallMaybeEval r0, r0, r1, 1
+    43: LoadUndefined r0
+    45: Ret r0
   Constant Table:
     0: [BytecodeFunction: simple]
     1: [String: simple]
@@ -26,8 +27,9 @@
     7: [String: noArgs]
     8: [BytecodeFunction: extraArgs]
     9: [String: extraArgs]
-    10: [String: eval]
-    11: [String: test]
+    10: [GlobalNames]
+    11: [String: eval]
+    12: [String: test]
 }
 
 [BytecodeFunction: simple] {

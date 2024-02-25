@@ -174,6 +174,12 @@ impl StackFrame {
         unsafe { *self.fp.add(ARGC_SLOT_INDEX) }
     }
 
+    /// The receiver for the function call in this stack frame.
+    #[inline]
+    pub fn receiver(&self) -> Value {
+        unsafe { *(self.fp.add(RECEIVER_SLOT_INDEX) as *mut Value) }
+    }
+
     /// Slice over args portion of frame, not including the receiver. Only includes args passed from
     /// the caller (aka of length argc), not including default args and undefined args added due to
     /// underapplication.

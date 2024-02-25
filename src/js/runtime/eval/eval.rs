@@ -105,13 +105,17 @@ pub fn perform_bytecode_eval(
         direct_scope.unwrap_or_else(|| cx.current_function().cast::<Closure>().global_scope());
     let closure = Closure::new(cx, bytecode_function, eval_scope);
 
-    // Execute in the bytecode VM
-    let eval_result = cx.execute_bytecode(closure, &[]);
+    // Determine the receiver for the eval function call
+    let receiver: Handle<Value> = if is_direct {
+        // Direct evals inherit their receiver from the caller
+        cx.vm().receiver().to_handle(cx)
+    } else {
+        // For indiret evals receiver is the global object
+        closure.global_object().into()
+    };
 
-    match eval_result {
-        Ok(value) => EvalResult::Ok(value),
-        Err(error) => EvalResult::Throw(error),
-    }
+    // Execute the eval function's bytecode in the VM
+    cx.vm().call_from_rust(closure.into(), receiver, &[])
 }
 
 pub fn perform_ast_eval(

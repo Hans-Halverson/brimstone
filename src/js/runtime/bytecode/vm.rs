@@ -658,6 +658,11 @@ impl VM {
     }
 
     #[inline]
+    pub fn receiver(&self) -> Value {
+        StackFrame::for_fp(self.fp).receiver()
+    }
+
+    #[inline]
     fn register_address<W: Width>(&self, reg: Register<W>) -> *mut Value {
         self.fp_offset(reg.value().to_isize()) as *mut Value
     }

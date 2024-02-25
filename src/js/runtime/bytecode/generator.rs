@@ -1693,9 +1693,38 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UnaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let argument = self.gen_expression(&expr.argument)?;
+        // Unresolved identifiers must be treated as undefined
+        let argument = match expr.argument.as_ref() {
+            ast::Expression::Id(id) => match id.scope.kind() {
+                // Special instruction for unresolved global bindings
+                ResolvedScope::UnresolvedGlobal => {
+                    let argument = self.register_allocator.allocate()?;
+                    let constant_index = self.add_string_constant(&id.name)?;
+
+                    self.writer
+                        .load_global_or_unresolved_instruction(argument, constant_index);
+
+                    argument
+                }
+                ResolvedScope::UnresolvedDynamic => {
+                    // Special instruction for unresolved dynamic bindings
+                    let argument = self.register_allocator.allocate()?;
+                    let constant_index = self.add_string_constant(&id.name)?;
+
+                    self.writer
+                        .load_dynamic_or_unresolved_instruction(argument, constant_index);
+
+                    argument
+                }
+                // All resolved identifiers and other expressions are emitted normally
+                ResolvedScope::Resolved => self.gen_expression(&expr.argument)?,
+            },
+            _ => self.gen_expression(&expr.argument)?,
+        };
+
         self.register_allocator.release(argument);
 
+        // Perform typeof on the loaded argument
         let dest = self.allocate_destination(dest)?;
         self.writer.type_of_instruction(dest, argument);
 

@@ -1,14 +1,78 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
      0: GlobalInit c0
-     2: LoadImmediate r0, 1
-     5: TypeOf r0, r0
-     8: LoadConstant r0, c1
-    11: TypeOf r0, r0
-    14: TypeOf r0, r0
-    17: LoadUndefined r0
-    19: Ret r0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: LoadImmediate r0, 1
+    23: StoreGlobal r0, c7
+    26: LoadUndefined r0
+    28: Ret r0
   Constant Table:
     0: [GlobalNames]
-    1: [String: a]
+    1: [BytecodeFunction: basic]
+    2: [String: basic]
+    3: [BytecodeFunction: globalLookups]
+    4: [String: globalLookups]
+    5: [BytecodeFunction: dynamicLookups]
+    6: [String: dynamicLookups]
+    7: [String: x]
+}
+
+[BytecodeFunction: basic] {
+  Parameters: 0, Registers: 1
+     0: LoadImmediate r0, 1
+     3: TypeOf r0, r0
+     6: LoadConstant r0, c0
+     9: TypeOf r0, r0
+    12: TypeOf r0, r0
+    15: LoadUndefined r0
+    17: Ret r0
+  Constant Table:
+    0: [String: a]
+}
+
+[BytecodeFunction: globalLookups] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 2
+     3: LoadGlobal r1, c0
+     6: TypeOf r1, r1
+     9: TypeOf r1, r0
+    12: LoadGlobalOrUnresolved r1, c1
+    15: TypeOf r1, r1
+    18: LoadUndefined r1
+    20: Ret r1
+  Constant Table:
+    0: [String: x]
+    1: [String: z]
+}
+
+[BytecodeFunction: dynamicLookups] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 2, 0
+    12: LoadDynamic r0, c1
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1
+    23: LoadImmediate r0, 2
+    26: StoreToScope r0, 1, 0
+    30: LoadDynamicOrUnresolved r0, c3
+    33: TypeOf r0, r0
+    36: LoadFromScope r0, 1, 0
+    40: TypeOf r0, r0
+    43: LoadDynamicOrUnresolved r0, c4
+    46: TypeOf r0, r0
+    49: LoadUndefined r0
+    51: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [String: x]
+    4: [String: z]
 }

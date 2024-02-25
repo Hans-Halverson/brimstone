@@ -262,9 +262,16 @@ define_instructions!(
         [0] dest: Register,
     }
 
-    /// Load a global variable into a register. The global variable's name is stored in the constant
-    /// table.
+    /// Load a global variable into a register, erroring if the global does not exist. The global
+    /// variable's name is stored in the constant table.
     LoadGlobal (LoadGlobalInstruction, load_global_instruction) {
+        [0] dest: Register,
+        [1] constant_index: ConstantIndex,
+    }
+
+    /// Load a global variable into a register, loading undefined if the global does not exist. The
+    /// global variable's name is stored in the constant table.
+    LoadGlobalOrUnresolved (LoadGlobalOrUnresolvedInstruction, load_global_or_unresolved_instruction) {
         [0] dest: Register,
         [1] constant_index: ConstantIndex,
     }
@@ -276,9 +283,18 @@ define_instructions!(
         [1] constant_index: ConstantIndex,
     }
 
-    /// Load a variable with the given name into dest. Dynamically look up the variable by name in
-    /// the scope chain. The name is stored in the constant table.
+    /// Load a variable with the given name into dest, erroring if the name could not be resolved.
+    /// Dynamically look up the variable by name in the scope chain. The name is stored in the
+    /// constant table.
     LoadDynamic (LoadDynamicInstruction, load_dynamic_instruction) {
+        [0] dest: Register,
+        [1] name_index: ConstantIndex,
+    }
+
+    /// Load a variable with the given name into dest, loading undefiend if the name could not be
+    /// resolved. Dynamically look up the variable by name in the scope chain. The name is stored in
+    /// the constant table.
+    LoadDynamicOrUnresolved (LoadDynamicOrUnresolvedInstruction, load_dynamic_or_unresolved_instruction) {
         [0] dest: Register,
         [1] name_index: ConstantIndex,
     }

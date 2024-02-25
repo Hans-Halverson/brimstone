@@ -37,16 +37,16 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 60 00         EvalInit c0
+     0: 62 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 03 fe 01      LoadImmediate r1, 1
      8: 03 fd 02      LoadImmediate r2, 2
-    11: 13 ff fe fd   Add r0, r1, r2
-    15: 0c fe 02      LoadDynamic r1, c2
-    18: 0c fd 03      LoadDynamic r2, c3
-    21: 13 ff fe fd   Add r0, r1, r2
+    11: 15 ff fe fd   Add r0, r1, r2
+    15: 0d fe 02      LoadDynamic r1, c2
+    18: 0d fd 03      LoadDynamic r2, c3
+    21: 15 ff fe fd   Add r0, r1, r2
     25: 04 ff 04      LoadConstant r0, c4
-    28: 12 ff         Ret r0
+    28: 14 ff         Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: expression statement completions]
@@ -57,18 +57,18 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 60 00      EvalInit c0
+     0: 62 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
-     8: 0d fe 02   StoreDynamic r1, c2
-    11: 0c fe 02   LoadDynamic r1, c2
-    14: 3b fe 08   JumpToBooleanFalse r1, 8 (.L0)
+     8: 0f fe 02   StoreDynamic r1, c2
+    11: 0d fe 02   LoadDynamic r1, c2
+    14: 3d fe 08   JumpToBooleanFalse r1, 8 (.L0)
     17: 03 ff 01   LoadImmediate r0, 1
-    20: 33 05      Jump 5 (.L1)
+    20: 35 05      Jump 5 (.L1)
   .L0:
     22: 03 ff 02   LoadImmediate r0, 2
   .L1:
-    25: 12 ff      Ret r0
+    25: 14 ff      Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: inner completions]

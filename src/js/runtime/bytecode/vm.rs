@@ -69,8 +69,9 @@ use super::{
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadDynamicInstruction,
-        LoadEmptyInstruction, LoadFalseInstruction, LoadFromScopeInstruction,
-        LoadGlobalInstruction, LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
+        LoadDynamicOrUnresolvedInstruction, LoadEmptyInstruction, LoadFalseInstruction,
+        LoadFromScopeInstruction, LoadGlobalInstruction, LoadGlobalOrUnresolvedInstruction,
+        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
@@ -309,11 +310,23 @@ impl VM {
                         OpCode::LoadGlobal => {
                             dispatch_or_throw!(LoadGlobalInstruction, execute_load_global)
                         }
+                        OpCode::LoadGlobalOrUnresolved => {
+                            dispatch_or_throw!(
+                                LoadGlobalOrUnresolvedInstruction,
+                                execute_load_global_or_unresolved
+                            )
+                        }
                         OpCode::StoreGlobal => {
                             dispatch_or_throw!(StoreGlobalInstruction, execute_store_global)
                         }
                         OpCode::LoadDynamic => {
                             dispatch_or_throw!(LoadDynamicInstruction, execute_load_dynamic)
+                        }
+                        OpCode::LoadDynamicOrUnresolved => {
+                            dispatch_or_throw!(
+                                LoadDynamicOrUnresolvedInstruction,
+                                execute_load_dynamic_or_unresolved
+                            )
                         }
                         OpCode::StoreDynamic => {
                             dispatch_or_throw!(StoreDynamicInstruction, execute_store_dynamic)
@@ -1459,11 +1472,35 @@ impl VM {
         &mut self,
         instr: &LoadGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx, |cx| {
-            let name = self.get_constant(instr.constant_index());
-            let name = name.as_string().to_handle();
+        self.execute_generic_load_global(
+            instr.dest(),
+            instr.constant_index(),
+            /* error_on_unresolved */ true,
+        )
+    }
 
-            let dest = instr.dest();
+    #[inline]
+    fn execute_load_global_or_unresolved<W: Width>(
+        &mut self,
+        instr: &LoadGlobalOrUnresolvedInstruction<W>,
+    ) -> EvalResult<()> {
+        self.execute_generic_load_global(
+            instr.dest(),
+            instr.constant_index(),
+            /* error_on_unresolved */ false,
+        )
+    }
+
+    #[inline]
+    fn execute_generic_load_global<W: Width>(
+        &mut self,
+        dest: Register<W>,
+        name_constant_index: ConstantIndex<W>,
+        error_on_unresolved: bool,
+    ) -> EvalResult<()> {
+        HandleScope::new(self.cx, |cx| {
+            let name = self.get_constant(name_constant_index);
+            let name = name.as_string().to_handle();
 
             // May allocate, reuse name handle
             let name_key = PropertyKey::string(cx, name);
@@ -1471,9 +1508,15 @@ impl VM {
 
             let global_object = self.closure().global_object();
 
-            // Error if property is not found on the global object
             if !maybe!(has_property(cx, global_object, name_key)) {
-                return err_not_defined_(cx, name);
+                if error_on_unresolved {
+                    // Error if property is not found on the global object
+                    return err_not_defined_(cx, name);
+                } else {
+                    // If not erroring, return undefined for unresolved names
+                    self.write_register(dest, Value::undefined());
+                    return ().into();
+                }
             }
 
             // Get the property from the global object
@@ -1531,22 +1574,51 @@ impl VM {
         &mut self,
         instr: &LoadDynamicInstruction<W>,
     ) -> EvalResult<()> {
-        let dest = instr.dest();
+        self.execute_generic_load_dynamic(
+            instr.dest(),
+            instr.name_index(),
+            /* error_on_unresolved */ true,
+        )
+    }
 
+    #[inline]
+    fn execute_load_dynamic_or_unresolved<W: Width>(
+        &mut self,
+        instr: &LoadDynamicOrUnresolvedInstruction<W>,
+    ) -> EvalResult<()> {
+        self.execute_generic_load_dynamic(
+            instr.dest(),
+            instr.name_index(),
+            /* error_on_unresolved */ false,
+        )
+    }
+
+    #[inline]
+    fn execute_generic_load_dynamic<W: Width>(
+        &mut self,
+        dest: Register<W>,
+        name_constant_index: ConstantIndex<W>,
+        error_on_unresolved: bool,
+    ) -> EvalResult<()> {
         HandleScope::new(self.cx, |cx| {
-            let name = self.get_constant(instr.name_index());
+            let name = self.get_constant(name_constant_index);
             let name = name.as_string().to_handle();
 
             let scope = self.scope().to_handle();
 
             if let Some(value) = maybe!(scope.lookup(cx, name)) {
                 self.write_register(dest, value.get());
+                ().into()
             } else {
-                // Error if name could not be resolved
-                return err_not_defined_(cx, name);
+                if error_on_unresolved {
+                    // Error if name could not be resolved
+                    err_not_defined_(cx, name)
+                } else {
+                    // If not erroring, return undefined for unresolved names
+                    self.write_register(dest, Value::undefined());
+                    ().into()
+                }
             }
-
-            ().into()
         })
     }
 

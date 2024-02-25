@@ -1,38 +1,38 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: GlobalInit c14
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
     44: LoadUndefined r0
     46: Ret r0
   Constant Table:
-    0: [BytecodeFunction: emptySingleQuasi]
-    1: [String: emptySingleQuasi]
-    2: [BytecodeFunction: emptySingleExpression]
-    3: [String: emptySingleExpression]
-    4: [BytecodeFunction: emptyFollowedByExpression]
-    5: [String: emptyFollowedByExpression]
-    6: [BytecodeFunction: expressionFollowedByEmpty]
-    7: [String: expressionFollowedByEmpty]
-    8: [BytecodeFunction: expressionsAndEmptyLiterals]
-    9: [String: expressionsAndEmptyLiterals]
-    10: [BytecodeFunction: expressionsAndNonEmptyLiterals]
-    11: [String: expressionsAndNonEmptyLiterals]
-    12: [BytecodeFunction: fixedRegisterExpressions]
-    13: [String: fixedRegisterExpressions]
-    14: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: emptySingleQuasi]
+    2: [String: emptySingleQuasi]
+    3: [BytecodeFunction: emptySingleExpression]
+    4: [String: emptySingleExpression]
+    5: [BytecodeFunction: emptyFollowedByExpression]
+    6: [String: emptyFollowedByExpression]
+    7: [BytecodeFunction: expressionFollowedByEmpty]
+    8: [String: expressionFollowedByEmpty]
+    9: [BytecodeFunction: expressionsAndEmptyLiterals]
+    10: [String: expressionsAndEmptyLiterals]
+    11: [BytecodeFunction: expressionsAndNonEmptyLiterals]
+    12: [String: expressionsAndNonEmptyLiterals]
+    13: [BytecodeFunction: fixedRegisterExpressions]
+    14: [String: fixedRegisterExpressions]
 }
 
 [BytecodeFunction: emptySingleQuasi] {

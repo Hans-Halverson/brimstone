@@ -1,33 +1,33 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: GlobalInit c10
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
     32: LoadGlobal r0, c11
     35: LoadConstant r1, c12
     38: CallMaybeEval r0, r0, r1, 1
     43: LoadUndefined r0
     45: Ret r0
   Constant Table:
-    0: [BytecodeFunction: simple]
-    1: [String: simple]
-    2: [BytecodeFunction: parenthesizedEval]
-    3: [String: parenthesizedEval]
-    4: [BytecodeFunction: indirect]
-    5: [String: indirect]
-    6: [BytecodeFunction: noArgs]
-    7: [String: noArgs]
-    8: [BytecodeFunction: extraArgs]
-    9: [String: extraArgs]
-    10: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: simple]
+    2: [String: simple]
+    3: [BytecodeFunction: parenthesizedEval]
+    4: [String: parenthesizedEval]
+    5: [BytecodeFunction: indirect]
+    6: [String: indirect]
+    7: [BytecodeFunction: noArgs]
+    8: [String: noArgs]
+    9: [BytecodeFunction: extraArgs]
+    10: [String: extraArgs]
     11: [String: eval]
     12: [String: test]
 }

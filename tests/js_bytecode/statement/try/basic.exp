@@ -1,22 +1,22 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: GlobalInit c6
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
     20: LoadUndefined r0
     22: Ret r0
   Constant Table:
-    0: [BytecodeFunction: testCatchNoParameter]
-    1: [String: testCatchNoParameter]
-    2: [BytecodeFunction: testCatchWithParameter]
-    3: [String: testCatchWithParameter]
-    4: [BytecodeFunction: testCatchDestructuring]
-    5: [String: testCatchDestructuring]
-    6: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: testCatchNoParameter]
+    2: [String: testCatchNoParameter]
+    3: [BytecodeFunction: testCatchWithParameter]
+    4: [String: testCatchWithParameter]
+    5: [BytecodeFunction: testCatchDestructuring]
+    6: [String: testCatchDestructuring]
 }
 
 [BytecodeFunction: testCatchNoParameter] {

@@ -98,16 +98,17 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.global_scope,
             )?;
 
-            // Start the global scope
             let program_scope = program.scope.as_ref();
-            generator.gen_scope_start(program_scope)?;
-
-            // Store the captured `this` right away if necessary
-            generator.gen_store_captured_this(program_scope)?;
 
             // Declare global variables and functions
             let global_names = generator.gen_global_names(program_scope)?;
             generator.writer.global_init_instruction(global_names);
+
+            // Start the script's lexical scope
+            generator.gen_scope_start(program_scope)?;
+
+            // Store the captured `this` right away if necessary
+            generator.gen_store_captured_this(program_scope)?;
 
             // Heuristic to ignore the use strict directive in common cases. Safe since there must
             // be a directive prologue which can be ignored if there is a use strict directive.

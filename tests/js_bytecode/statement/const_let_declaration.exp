@@ -1,90 +1,90 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-      0: LoadEmpty r0
-      2: StoreGlobal r0, c0
-      5: LoadEmpty r0
-      7: StoreGlobal r0, c1
-     10: LoadEmpty r0
-     12: StoreGlobal r0, c2
-     15: LoadEmpty r0
-     17: StoreGlobal r0, c3
-     20: LoadEmpty r0
-     22: StoreGlobal r0, c4
-     25: LoadEmpty r0
-     27: StoreGlobal r0, c5
-     30: LoadEmpty r0
-     32: StoreGlobal r0, c6
-     35: LoadEmpty r0
-     37: StoreGlobal r0, c7
-     40: LoadEmpty r0
-     42: StoreGlobal r0, c8
-     45: LoadEmpty r0
-     47: StoreGlobal r0, c9
-     50: LoadEmpty r0
-     52: StoreGlobal r0, c10
-     55: NewClosure r0, c11
-     58: StoreGlobal r0, c12
-     61: NewClosure r0, c13
-     64: StoreGlobal r0, c14
-     67: NewClosure r0, c15
-     70: StoreGlobal r0, c16
-     73: NewClosure r0, c17
-     76: StoreGlobal r0, c18
-     79: NewClosure r0, c19
-     82: StoreGlobal r0, c20
-     85: GlobalInit c21
+      0: GlobalInit c0
+      2: LoadEmpty r0
+      4: StoreGlobal r0, c1
+      7: LoadEmpty r0
+      9: StoreGlobal r0, c2
+     12: LoadEmpty r0
+     14: StoreGlobal r0, c3
+     17: LoadEmpty r0
+     19: StoreGlobal r0, c4
+     22: LoadEmpty r0
+     24: StoreGlobal r0, c5
+     27: LoadEmpty r0
+     29: StoreGlobal r0, c6
+     32: LoadEmpty r0
+     34: StoreGlobal r0, c7
+     37: LoadEmpty r0
+     39: StoreGlobal r0, c8
+     42: LoadEmpty r0
+     44: StoreGlobal r0, c9
+     47: LoadEmpty r0
+     49: StoreGlobal r0, c10
+     52: LoadEmpty r0
+     54: StoreGlobal r0, c11
+     57: NewClosure r0, c12
+     60: StoreGlobal r0, c13
+     63: NewClosure r0, c14
+     66: StoreGlobal r0, c15
+     69: NewClosure r0, c16
+     72: StoreGlobal r0, c17
+     75: NewClosure r0, c18
+     78: StoreGlobal r0, c19
+     81: NewClosure r0, c20
+     84: StoreGlobal r0, c21
      87: LoadImmediate r0, 1
-     90: StoreGlobal r0, c0
+     90: StoreGlobal r0, c1
      93: LoadImmediate r0, 1
-     96: StoreGlobal r0, c1
+     96: StoreGlobal r0, c2
      99: LoadImmediate r0, 2
-    102: StoreGlobal r0, c2
+    102: StoreGlobal r0, c3
     105: LoadImmediate r0, 3
-    108: StoreGlobal r0, c3
+    108: StoreGlobal r0, c4
     111: LoadImmediate r0, 1
-    114: StoreGlobal r0, c4
+    114: StoreGlobal r0, c5
     117: LoadImmediate r0, 1
-    120: StoreGlobal r0, c5
+    120: StoreGlobal r0, c6
     123: LoadImmediate r0, 2
-    126: StoreGlobal r0, c6
+    126: StoreGlobal r0, c7
     129: LoadImmediate r0, 3
-    132: StoreGlobal r0, c7
-    135: LoadGlobal r0, c0
-    138: CheckTdz r0, c0
-    141: LoadGlobal r1, c4
-    144: CheckTdz r1, c4
+    132: StoreGlobal r0, c8
+    135: LoadGlobal r0, c1
+    138: CheckTdz r0, c1
+    141: LoadGlobal r1, c5
+    144: CheckTdz r1, c5
     147: Add r0, r0, r1
-    151: StoreGlobal r0, c8
-    154: LoadGlobal r0, c10
-    157: CheckTdz r0, c10
-    160: StoreGlobal r0, c9
+    151: StoreGlobal r0, c9
+    154: LoadGlobal r0, c11
+    157: CheckTdz r0, c11
+    160: StoreGlobal r0, c10
     163: LoadImmediate r0, 1
-    166: StoreGlobal r0, c10
+    166: StoreGlobal r0, c11
     169: LoadUndefined r0
     171: Ret r0
   Constant Table:
-    0: [String: c1]
-    1: [String: c2]
-    2: [String: y]
-    3: [String: z]
-    4: [String: l1]
-    5: [String: l2]
-    6: [String: l3]
-    7: [String: l4]
-    8: [String: c3]
-    9: [String: c5]
-    10: [String: c4]
-    11: [BytecodeFunction: tdzGlobals]
-    12: [String: tdzGlobals]
-    13: [BytecodeFunction: noTdzLocals]
-    14: [String: noTdzLocals]
-    15: [BytecodeFunction: tdzLocals]
-    16: [String: tdzLocals]
-    17: [BytecodeFunction: tdzUseInInitializer]
-    18: [String: tdzUseInInitializer]
-    19: [BytecodeFunction: letNoInitializer]
-    20: [String: letNoInitializer]
-    21: [GlobalNames]
+    0: [GlobalNames]
+    1: [String: c1]
+    2: [String: c2]
+    3: [String: y]
+    4: [String: z]
+    5: [String: l1]
+    6: [String: l2]
+    7: [String: l3]
+    8: [String: l4]
+    9: [String: c3]
+    10: [String: c5]
+    11: [String: c4]
+    12: [BytecodeFunction: tdzGlobals]
+    13: [String: tdzGlobals]
+    14: [BytecodeFunction: noTdzLocals]
+    15: [String: noTdzLocals]
+    16: [BytecodeFunction: tdzLocals]
+    17: [String: tdzLocals]
+    18: [BytecodeFunction: tdzUseInInitializer]
+    19: [String: tdzUseInInitializer]
+    20: [BytecodeFunction: letNoInitializer]
+    21: [String: letNoInitializer]
 }
 
 [BytecodeFunction: tdzGlobals] {

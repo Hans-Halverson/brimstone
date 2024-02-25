@@ -1,23 +1,23 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: PushLexicalScope c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: StoreToScope <this>, 0, 0
-    18: GlobalInit c5
+     0: GlobalInit c0
+     2: PushLexicalScope c1
+     4: NewClosure r0, c2
+     7: StoreGlobal r0, c3
+    10: NewClosure r0, c4
+    13: StoreGlobal r0, c5
+    16: StoreToScope <this>, 0, 0
     20: StoreGlobal <this>, c6
     23: NewClosure r0, c7
     26: LoadUndefined r0
     28: Ret r0
   Constant Table:
-    0: [ScopeNames]
-    1: [BytecodeFunction: capturedFunctionThis]
-    2: [String: capturedFunctionThis]
-    3: [BytecodeFunction: noCapture]
-    4: [String: noCapture]
-    5: [GlobalNames]
+    0: [GlobalNames]
+    1: [ScopeNames]
+    2: [BytecodeFunction: capturedFunctionThis]
+    3: [String: capturedFunctionThis]
+    4: [BytecodeFunction: noCapture]
+    5: [String: noCapture]
     6: [String: v1]
     7: [BytecodeFunction: <anonymous>]
 }

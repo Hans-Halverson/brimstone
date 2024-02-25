@@ -1,22 +1,22 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: GlobalInit c6
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
     20: LoadUndefined r0
     22: Ret r0
   Constant Table:
-    0: [BytecodeFunction: deleteMember]
-    1: [String: deleteMember]
-    2: [BytecodeFunction: deleteChainMember]
-    3: [String: deleteChainMember]
-    4: [BytecodeFunction: deleteOtherExpression]
-    5: [String: deleteOtherExpression]
-    6: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: deleteMember]
+    2: [String: deleteMember]
+    3: [BytecodeFunction: deleteChainMember]
+    4: [String: deleteChainMember]
+    5: [BytecodeFunction: deleteOtherExpression]
+    6: [String: deleteOtherExpression]
 }
 
 [BytecodeFunction: deleteMember] {

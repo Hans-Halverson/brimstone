@@ -1,30 +1,30 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: GlobalInit c10
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
     32: LoadUndefined r0
     34: Ret r0
   Constant Table:
-    0: [BytecodeFunction: sameNameNoCaptures]
-    1: [String: sameNameNoCaptures]
-    2: [BytecodeFunction: sameNameCaptureParamOnly]
-    3: [String: sameNameCaptureParamOnly]
-    4: [BytecodeFunction: sameNameCaptureBodyOnly]
-    5: [String: sameNameCaptureBodyOnly]
-    6: [BytecodeFunction: sameNameBothCaptures]
-    7: [String: sameNameBothCaptures]
-    8: [BytecodeFunction: tdzAfterParams]
-    9: [String: tdzAfterParams]
-    10: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: sameNameNoCaptures]
+    2: [String: sameNameNoCaptures]
+    3: [BytecodeFunction: sameNameCaptureParamOnly]
+    4: [String: sameNameCaptureParamOnly]
+    5: [BytecodeFunction: sameNameCaptureBodyOnly]
+    6: [String: sameNameCaptureBodyOnly]
+    7: [BytecodeFunction: sameNameBothCaptures]
+    8: [String: sameNameBothCaptures]
+    9: [BytecodeFunction: tdzAfterParams]
+    10: [String: tdzAfterParams]
 }
 
 [BytecodeFunction: sameNameNoCaptures] {

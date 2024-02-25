@@ -1,60 +1,60 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: NewClosure r0, c18
-    57: StoreGlobal r0, c19
-    60: NewClosure r0, c20
-    63: StoreGlobal r0, c21
-    66: NewClosure r0, c22
-    69: StoreGlobal r0, c23
-    72: GlobalInit c24
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: NewClosure r0, c15
+    47: StoreGlobal r0, c16
+    50: NewClosure r0, c17
+    53: StoreGlobal r0, c18
+    56: NewClosure r0, c19
+    59: StoreGlobal r0, c20
+    62: NewClosure r0, c21
+    65: StoreGlobal r0, c22
+    68: NewClosure r0, c23
+    71: StoreGlobal r0, c24
     74: LoadImmediate r0, 1
     77: StoreGlobal r0, c25
     80: LoadUndefined r0
     82: Ret r0
   Constant Table:
-    0: [BytecodeFunction: use]
-    1: [String: use]
-    2: [BytecodeFunction: testIdAssign]
-    3: [String: testIdAssign]
-    4: [BytecodeFunction: testIdAssignReturnValue]
-    5: [String: testIdAssignReturnValue]
-    6: [BytecodeFunction: testNamedMemberAssign]
-    7: [String: testNamedMemberAssign]
-    8: [BytecodeFunction: testComputedMemberAssign]
-    9: [String: testComputedMemberAssign]
-    10: [BytecodeFunction: named]
-    11: [String: named]
-    12: [BytecodeFunction: operatorIdAssign]
-    13: [String: operatorIdAssign]
-    14: [BytecodeFunction: operatorIdAssignReturnValue]
-    15: [String: operatorIdAssignReturnValue]
-    16: [BytecodeFunction: objectDestructuringAssign]
-    17: [String: objectDestructuringAssign]
-    18: [BytecodeFunction: operatorIdAllOperators]
-    19: [String: operatorIdAllOperators]
-    20: [BytecodeFunction: operatorMemberAssign]
-    21: [String: operatorMemberAssign]
-    22: [BytecodeFunction: operatorMemberAllOperators]
-    23: [String: operatorMemberAllOperators]
-    24: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: use]
+    2: [String: use]
+    3: [BytecodeFunction: testIdAssign]
+    4: [String: testIdAssign]
+    5: [BytecodeFunction: testIdAssignReturnValue]
+    6: [String: testIdAssignReturnValue]
+    7: [BytecodeFunction: testNamedMemberAssign]
+    8: [String: testNamedMemberAssign]
+    9: [BytecodeFunction: testComputedMemberAssign]
+    10: [String: testComputedMemberAssign]
+    11: [BytecodeFunction: named]
+    12: [String: named]
+    13: [BytecodeFunction: operatorIdAssign]
+    14: [String: operatorIdAssign]
+    15: [BytecodeFunction: operatorIdAssignReturnValue]
+    16: [String: operatorIdAssignReturnValue]
+    17: [BytecodeFunction: objectDestructuringAssign]
+    18: [String: objectDestructuringAssign]
+    19: [BytecodeFunction: operatorIdAllOperators]
+    20: [String: operatorIdAllOperators]
+    21: [BytecodeFunction: operatorMemberAssign]
+    22: [String: operatorMemberAssign]
+    23: [BytecodeFunction: operatorMemberAllOperators]
+    24: [String: operatorMemberAllOperators]
     25: [String: global]
 }
 

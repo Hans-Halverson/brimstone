@@ -1,28 +1,28 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: GlobalInit c8
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
     26: LoadImmediate r0, 1
     29: StoreGlobal r0, c9
     32: LoadUndefined r0
     34: Ret r0
   Constant Table:
-    0: [BytecodeFunction: logicalAnd]
-    1: [String: logicalAnd]
-    2: [BytecodeFunction: localOr]
-    3: [String: localOr]
-    4: [BytecodeFunction: nullishCoalesce]
-    5: [String: nullishCoalesce]
-    6: [BytecodeFunction: testAssignDest]
-    7: [String: testAssignDest]
-    8: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: logicalAnd]
+    2: [String: logicalAnd]
+    3: [BytecodeFunction: localOr]
+    4: [String: localOr]
+    5: [BytecodeFunction: nullishCoalesce]
+    6: [String: nullishCoalesce]
+    7: [BytecodeFunction: testAssignDest]
+    8: [String: testAssignDest]
     9: [String: global]
 }
 

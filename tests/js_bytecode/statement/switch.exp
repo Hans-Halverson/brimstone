@@ -1,42 +1,42 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: GlobalInit c16
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: NewClosure r0, c15
+    47: StoreGlobal r0, c16
     50: LoadUndefined r0
     52: Ret r0
   Constant Table:
-    0: [BytecodeFunction: empty]
-    1: [String: empty]
-    2: [BytecodeFunction: singleCaseWithFallthrough]
-    3: [String: singleCaseWithFallthrough]
-    4: [BytecodeFunction: singleCaseWithBreak]
-    5: [String: singleCaseWithBreak]
-    6: [BytecodeFunction: multipleCases]
-    7: [String: multipleCases]
-    8: [BytecodeFunction: singleDefaultCase]
-    9: [String: singleDefaultCase]
-    10: [BytecodeFunction: multipleCasesWithDefault]
-    11: [String: multipleCasesWithDefault]
-    12: [BytecodeFunction: multipleCasesWithDefaultInMiddle]
-    13: [String: multipleCasesWithDefaultInMiddle]
-    14: [BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough]
-    15: [String: multipleCasesWithDefaultInMiddleFallthrough]
-    16: [GlobalNames]
+    0: [GlobalNames]
+    1: [BytecodeFunction: empty]
+    2: [String: empty]
+    3: [BytecodeFunction: singleCaseWithFallthrough]
+    4: [String: singleCaseWithFallthrough]
+    5: [BytecodeFunction: singleCaseWithBreak]
+    6: [String: singleCaseWithBreak]
+    7: [BytecodeFunction: multipleCases]
+    8: [String: multipleCases]
+    9: [BytecodeFunction: singleDefaultCase]
+    10: [String: singleDefaultCase]
+    11: [BytecodeFunction: multipleCasesWithDefault]
+    12: [String: multipleCasesWithDefault]
+    13: [BytecodeFunction: multipleCasesWithDefaultInMiddle]
+    14: [String: multipleCasesWithDefaultInMiddle]
+    15: [BytecodeFunction: multipleCasesWithDefaultInMiddleFallthrough]
+    16: [String: multipleCasesWithDefaultInMiddleFallthrough]
 }
 
 [BytecodeFunction: empty] {

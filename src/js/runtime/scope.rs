@@ -3,6 +3,7 @@ use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set
 use super::{
     abstract_operations::has_property,
     collections::InlineArray,
+    error::type_error_,
     gc::{HeapObject, HeapVisitor},
     get,
     object_descriptor::ObjectDescriptor,
@@ -204,6 +205,7 @@ impl Handle<Scope> {
         cx: Context,
         name: Handle<StringValue>,
         value: Handle<Value>,
+        is_strict: bool,
     ) -> EvalResult<bool> {
         // Reuse handles while walking scope chain
         let mut object_handle = Handle::<ObjectValue>::empty(cx);
@@ -226,7 +228,13 @@ impl Handle<Scope> {
                 let key = name.cast::<PropertyKey>();
 
                 if maybe!(self.has_object_binding(cx, object_handle, key)) {
-                    return object_handle.set(cx, key, value, object_handle.into());
+                    let success = maybe!(object_handle.set(cx, key, value, object_handle.into()));
+                    if !success && is_strict {
+                        return type_error_(cx, &format!("Cannot set property {}", name));
+                    }
+
+                    // Name was found, even if the set failed
+                    return true.into();
                 }
             }
 

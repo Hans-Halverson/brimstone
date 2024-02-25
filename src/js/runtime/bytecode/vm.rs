@@ -3,11 +3,12 @@ use std::{collections::HashSet, ops::Deref};
 use crate::{
     js::runtime::{
         abstract_operations::{
-            copy_data_properties, create_data_property_or_throw, define_property_or_throw, set,
+            copy_data_properties, create_data_property_or_throw, define_property_or_throw,
+            has_property, set,
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
-        error::{reference_error_, type_error_},
+        error::{err_not_defined_, reference_error_, type_error_},
         eval::{
             eval::perform_bytecode_eval,
             expression::{
@@ -1458,18 +1459,25 @@ impl VM {
         &mut self,
         instr: &LoadGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        let name = self.get_constant(instr.constant_index());
-        let name = name.as_string().to_handle();
-
-        let dest = instr.dest();
-
         HandleScope::new(self.cx, |cx| {
+            let name = self.get_constant(instr.constant_index());
+            let name = name.as_string().to_handle();
+
+            let dest = instr.dest();
+
             // May allocate, reuse name handle
-            let key = PropertyKey::string(cx, name);
-            let key = name.replace_into(key);
+            let name_key = PropertyKey::string(cx, name);
+            let name_key = name.replace_into(name_key);
 
             let global_object = self.closure().global_object();
-            let value = maybe!(get(cx, global_object, key));
+
+            // Error if property is not found on the global object
+            if !maybe!(has_property(cx, global_object, name_key)) {
+                return err_not_defined_(cx, name);
+            }
+
+            // Get the property from the global object
+            let value = maybe!(get(cx, global_object, name_key));
 
             self.write_register(dest, value.get());
 
@@ -1482,18 +1490,37 @@ impl VM {
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-
-        let name = self.get_constant(instr.constant_index());
-        let name = name.as_string().to_handle();
-
         HandleScope::new(self.cx, |cx| {
-            // May allocate, reuse name handle
-            let key = PropertyKey::string(cx, name);
-            let key = name.replace_into(key);
+            let value = self.read_register_to_handle(instr.value());
 
-            let global_object = self.closure().global_object();
-            maybe!(set(cx, global_object, key, value, false));
+            let name = self.get_constant(instr.constant_index());
+            let name = name.as_string().to_handle();
+
+            // May allocate, reuse name handle
+            let name_key = PropertyKey::string(cx, name);
+            let name_key = name.replace_into(name_key);
+
+            let mut global_object = self.closure().global_object();
+
+            // Check if there is a global with the given name
+            if !maybe!(has_property(cx, global_object, name_key)) {
+                // If in strict mode, error on unresolved name
+                if self.closure().function_ptr().is_strict() {
+                    return err_not_defined_(cx, name);
+                }
+
+                // Otherwise in sloppy mode create a new global property
+                return set(cx, global_object, name_key, value, false);
+            }
+
+            // Set the property on the global object
+            let success = maybe!(global_object.set(cx, name_key, value, global_object.into()));
+
+            // If property set failed and in strict mode then error, otherwise silently ignore
+            // failure in sloppy mode.
+            if !success && self.closure().function_ptr().is_strict() {
+                return type_error_(cx, &format!("Cannot set property {}", name));
+            }
 
             ().into()
         })
@@ -1514,6 +1541,9 @@ impl VM {
 
             if let Some(value) = maybe!(scope.lookup(cx, name)) {
                 self.write_register(dest, value.get());
+            } else {
+                // Error if name could not be resolved
+                return err_not_defined_(cx, name);
             }
 
             ().into()
@@ -1532,8 +1562,24 @@ impl VM {
             let name = name.as_string().to_handle();
 
             let mut scope = self.scope().to_handle();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-            maybe!(scope.lookup_store(cx, name, value));
+            let found_name = maybe!(scope.lookup_store(cx, name, value, is_strict));
+
+            if !found_name {
+                if is_strict {
+                    // In strict mode names must be resolved otherwise error
+                    return err_not_defined_(cx, name);
+                } else {
+                    // Name is an interned string (and cannot be a number) so is already a property
+                    // key.
+                    let name_key = name.cast::<PropertyKey>();
+
+                    // If in sloppy mode, create a new property on the global object
+                    let mut global_object = self.closure().global_object();
+                    maybe!(global_object.set(cx, name_key, value, global_object.into()));
+                }
+            }
 
             ().into()
         })

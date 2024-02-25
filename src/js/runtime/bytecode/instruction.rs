@@ -799,6 +799,16 @@ define_instructions!(
         [0] scope_names_index: ConstantIndex,
     }
 
+    /// Create a new function scope and push it to the stack, becoming the current scope. The old
+    /// current scope becomes the parent scope.
+    ///
+    /// A function scope is treated as a var scope when looking up the containing var scope.
+    ///
+    /// The scope names to use are at the given index in the constant table.
+    PushFunctionScope (PushFunctionScopeInstruction, push_function_scope_instruction) {
+        [0] scope_names_index: ConstantIndex,
+    }
+
     /// Create a new with scope for the given object and push it to the stack, becoming the current
     /// scope. The old current scope becomes the parent scope.
     ///
@@ -870,6 +880,12 @@ define_instructions!(
     /// Initialize a global scope, declaring all names in a GlobalNames object stored in the
     /// constant table. Must be called in the global scope.
     GlobalInit(GlobalInitInstruction, global_init_instruction) {
+        [0] global_names_index: ConstantIndex,
+    }
+
+    /// Initialize a sloppy direct eval scope, declaring all names in a GlobalNames object stored in
+    /// the constant table. Must be called in the parent scope for the direct eval.
+    EvalInit(EvalInitInstruction, eval_init_instruction) {
         [0] global_names_index: ConstantIndex,
     }
 );

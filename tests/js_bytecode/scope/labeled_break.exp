@@ -137,7 +137,7 @@
 
 [BytecodeFunction: noCapturesInBreak] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
      8: LoadImmediate r1, 0

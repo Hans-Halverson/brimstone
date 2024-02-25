@@ -34,7 +34,7 @@
 
 [BytecodeFunction: simple] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: NewMappedArguments r0
      8: StoreToScope r0, 1, 0
@@ -50,7 +50,7 @@
 
 [BytecodeFunction: parenthesizedEval] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: NewMappedArguments r0
      8: StoreToScope r0, 1, 0
@@ -82,7 +82,7 @@
 
 [BytecodeFunction: noArgs] {
   Parameters: 0, Registers: 1
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: NewMappedArguments r0
      8: StoreToScope r0, 1, 0
@@ -96,7 +96,7 @@
 
 [BytecodeFunction: extraArgs] {
   Parameters: 0, Registers: 4
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: NewMappedArguments r0
      8: StoreToScope r0, 1, 0

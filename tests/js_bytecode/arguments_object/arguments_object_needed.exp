@@ -113,7 +113,7 @@
 
 [BytecodeFunction: neededDueToDirectEval] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
      6: NewUnmappedArguments r0
      8: StoreToScope r0, 1, 0

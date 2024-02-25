@@ -33,8 +33,9 @@ use crate::{
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
         regexp::compiled_regexp::CompiledRegExpObject,
-        scope::Scope,
+        scope::{Scope, ScopeKind},
         scope_names::ScopeNames,
+        string_value::FlatString,
         to_string,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, same_object_value, to_boolean, to_number,
@@ -55,8 +56,8 @@ use super::{
         CallMaybeEvalInstruction, CallWithReceiverInstruction, CheckTdzInstruction,
         ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, ExpInstruction,
-        ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, EvalInitInstruction,
+        ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
         GlobalInitInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
         InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
@@ -73,14 +74,15 @@ use super::{
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
         NewMappedArgumentsInstruction, NewObjectInstruction, NewRegExpInstruction,
-        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushLexicalScopeInstruction,
-        PushWithScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
-        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPropertyInstruction,
-        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreDynamicInstruction, StoreGlobalInstruction,
-        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction,
+        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
+        PushLexicalScopeInstruction, PushWithScopeInstruction, RemInstruction,
+        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -514,6 +516,9 @@ impl VM {
                         OpCode::PushLexicalScope => {
                             dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
                         }
+                        OpCode::PushFunctionScope => {
+                            dispatch!(PushFunctionScopeInstruction, execute_push_function_scope)
+                        }
                         OpCode::PushWithScope => {
                             dispatch_or_throw!(PushWithScopeInstruction, execute_push_with_scope)
                         }
@@ -543,6 +548,9 @@ impl VM {
                         }
                         OpCode::GlobalInit => {
                             dispatch_or_throw!(GlobalInitInstruction, execute_global_init)
+                        }
+                        OpCode::EvalInit => {
+                            dispatch_or_throw!(EvalInitInstruction, execute_eval_init)
                         }
                     }
                 };
@@ -2341,6 +2349,21 @@ impl VM {
     }
 
     #[inline]
+    fn execute_push_function_scope<W: Width>(&mut self, instr: &PushFunctionScopeInstruction<W>) {
+        let scope = self.scope().to_handle();
+        let scope_names = self
+            .get_constant(instr.scope_names_index())
+            .to_handle(self.cx)
+            .cast::<ScopeNames>();
+
+        // Allocates
+        let function_scope = Scope::new_function(self.cx, scope, scope_names).get_();
+
+        // Write the new scope to the stack
+        *StackFrame::for_fp(self.fp).scope_mut() = function_scope;
+    }
+
+    #[inline]
     fn execute_push_with_scope<W: Width>(
         &mut self,
         instr: &PushWithScopeInstruction<W>,
@@ -2510,7 +2533,60 @@ impl VM {
 
         let global_scope = self.scope().to_handle();
 
-        global_init(self.cx, global_scope, global_names)
+        global_init(self.cx, global_scope, global_names, /* can_delete */ false)
+    }
+
+    #[inline]
+    fn execute_eval_init<W: Width>(&mut self, instr: &EvalInitInstruction<W>) -> EvalResult<()> {
+        let global_names = self
+            .get_constant(instr.global_names_index())
+            .to_handle(self.cx);
+        let global_names = global_names.cast::<GlobalNames>();
+
+        // Find the enclosing var scope
+        let mut current_scope = self.scope().to_handle();
+        loop {
+            match current_scope.kind() {
+                // Is in the global scope, so must perform regular global init
+                ScopeKind::Global => {
+                    return global_init(
+                        self.cx,
+                        current_scope.to_handle(),
+                        global_names,
+                        /* can_delete */ true,
+                    );
+                }
+                // Is in a var scope (function or eval), so initialize var names to undefined in
+                // the scope's dynamic object.
+                ScopeKind::Function => {
+                    // Reuse handle across iterations
+                    let mut name_handle = Handle::<FlatString>::empty(self.cx);
+
+                    // Create the scope object if necessary
+                    let mut scope_object = current_scope.ensure_scope_object(self.cx);
+                    for i in 0..global_names.len() {
+                        let name = global_names.get(i);
+                        name_handle.replace(name);
+                        let name_key = name_handle.cast::<PropertyKey>();
+
+                        // Set the name to undefined if it does not exist
+                        if !maybe!(scope_object.has_property(self.cx, name_key)) {
+                            let desc = Property::data(self.cx.undefined(), true, true, true);
+                            scope_object.set_property(self.cx, name_key, desc);
+                        }
+                    }
+
+                    return ().into();
+                }
+                ScopeKind::With => {
+                    // TODO: Implement eval in with scope
+                    return ().into();
+                }
+                ScopeKind::Lexical => {
+                    current_scope.replace(current_scope.parent_ptr());
+                }
+            }
+        }
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

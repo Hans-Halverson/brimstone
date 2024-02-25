@@ -44,7 +44,7 @@
 
 [BytecodeFunction: sameNameCaptureParamOnly] {
   Parameters: 2, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: JumpNotUndefined a0, 6 (.L0)
      5: LoadImmediate a0, 1
   .L0:
@@ -76,7 +76,7 @@
      6: JumpNotUndefined a1, 6 (.L1)
      9: Mov a1, a0
   .L1:
-    12: PushLexicalScope c0
+    12: PushFunctionScope c0
     14: NewClosure r0, c1
     17: LoadImmediate r1, 2
     20: StoreToScope r1, 0, 0
@@ -95,7 +95,7 @@
 
 [BytecodeFunction: sameNameBothCaptures] {
   Parameters: 2, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: JumpNotUndefined a0, 6 (.L0)
      5: LoadImmediate a0, 1
   .L0:
@@ -103,7 +103,7 @@
     12: JumpNotUndefined a1, 6 (.L1)
     15: NewClosure a1, c1
   .L1:
-    18: PushLexicalScope c2
+    18: PushFunctionScope c2
     20: NewClosure r0, c3
     23: LoadImmediate r1, 2
     26: StoreToScope r1, 0, 0
@@ -133,7 +133,7 @@
      0: JumpNotUndefined a0, 6 (.L0)
      3: LoadImmediate a0, 1
   .L0:
-     6: PushLexicalScope c0
+     6: PushFunctionScope c0
      8: LoadEmpty r1
     10: StoreToScope r1, 0, 0
     14: NewClosure r0, c1

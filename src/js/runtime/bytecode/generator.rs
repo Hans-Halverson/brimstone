@@ -106,7 +106,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             generator.gen_store_captured_this(program_scope)?;
 
             // Declare global variables and functions
-            generator.gen_global_init(program_scope)?;
+            let global_names = generator.gen_global_names(program_scope)?;
+            generator.writer.global_init_instruction(global_names);
 
             // Heuristic to ignore the use strict directive in common cases. Safe since there must
             // be a directive prologue which can be ignored if there is a use strict directive.
@@ -145,19 +146,21 @@ impl<'a> BytecodeProgramGenerator<'a> {
         cx: Context,
         parse_result: &ParseProgramResult,
         realm: Handle<Realm>,
+        is_direct: bool,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
             let mut generator =
                 BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
-            generator.generate_eval(&parse_result.program)
+            generator.generate_eval(&parse_result.program, is_direct)
         })
     }
 
     fn generate_eval(
         &mut self,
         eval_program: &ast::Program,
+        is_direct: bool,
     ) -> EmitResult<Handle<BytecodeFunction>> {
-        let program_function = self.gen_eval_function(eval_program)?;
+        let program_function = self.gen_eval_function(eval_program, is_direct)?;
 
         while let Some(pending_function) = self.pending_functions_queue.pop_front() {
             self.gen_enqueued_function(pending_function)?;
@@ -169,6 +172,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     fn gen_eval_function(
         &mut self,
         eval_program: &ast::Program,
+        is_direct: bool,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         // Handle where the result BytecodeFunction is placed
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
@@ -182,8 +186,23 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.global_scope,
             )?;
 
-            // Start the eval scope
             let program_scope = eval_program.scope.as_ref();
+
+            // Sloppy direct eval must be initialized in the parent scope. Strict direct eval does
+            // not need initialization since its vars and functions will be in registers and scopes.
+            if is_direct && !eval_program.is_strict_mode {
+                let global_names = generator.gen_global_names(program_scope)?;
+                generator.writer.eval_init_instruction(global_names);
+            }
+
+            // Indirect eval is equivalent to a script - must init global variables and functions.
+            // Must be performed in the global scope, before the eval's scope is started.
+            if !is_direct && !eval_program.is_strict_mode {
+                let global_names = generator.gen_global_names(program_scope)?;
+                generator.writer.global_init_instruction(global_names);
+            }
+
+            // Start the eval scope
             generator.gen_scope_start(program_scope)?;
 
             // Store the captured `this` right away if necessary
@@ -3410,10 +3429,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_scope_start(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
-        // Push a new scope onto the scope stack if necessary. With statements are handled
-        // separately.
-        if scope.kind() != ScopeNodeKind::With {
-            self.push_scope(scope, None)?;
+        // Push a new scope onto the scope stack if necessary
+        match scope.kind() {
+            // Function scopes are considered var hoist targets
+            ScopeNodeKind::Function { .. }
+            | ScopeNodeKind::FunctionBody
+            // Strict eval forms a new var scope
+            | ScopeNodeKind::Eval { is_strict: true, .. }
+
+             => self.push_scope(scope, /* needs_function_scope */ true, None)?,
+            // With statements are handled separately
+            ScopeNodeKind::With => {}
+            // Otherwise this is a generic lexical scope
+            _ => self.push_scope(scope, /* needs_function_scope */ false, None)?,
         }
 
         // Set all bindings that need a TDZ check to empty
@@ -3464,6 +3492,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn push_scope(
         &mut self,
         scope: &AstScopeNode,
+        needs_function_scope: bool,
         with_object: Option<GenRegister>,
     ) -> EmitResult<()> {
         if let Some(vm_scope_id) = scope.vm_scope_id() {
@@ -3496,6 +3525,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if let Some(with_object) = with_object {
                 self.writer
                     .push_with_scope_instruction(with_object, scope_names_constant_index);
+            } else if needs_function_scope {
+                self.writer
+                    .push_function_scope_instruction(scope_names_constant_index);
             } else {
                 self.writer
                     .push_lexical_scope_instruction(scope_names_constant_index);
@@ -3908,7 +3940,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let with_scope = stmt.scope.as_ref();
 
         // Start with scope
-        self.push_scope(with_scope, Some(object))?;
+        self.push_scope(with_scope, /* needs_function_scope */ false, Some(object))?;
         self.register_allocator.release(object);
         self.gen_scope_start(with_scope)?;
 
@@ -4217,7 +4249,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Abrupt)
     }
 
-    fn gen_global_init(&mut self, global_scope: &AstScopeNode) -> EmitResult<()> {
+    fn gen_global_names(&mut self, global_scope: &AstScopeNode) -> EmitResult<GenConstantIndex> {
         // Collect all global variables and functions in scope
         let mut global_vars = HashSet::new();
         let mut global_funcs = HashSet::new();
@@ -4237,10 +4269,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .constant_table_builder
             .add_heap_object(global_names.cast())?;
 
-        self.writer
-            .global_init_instruction(ConstantIndex::new(global_names_index));
-
-        Ok(())
+        Ok(ConstantIndex::new(global_names_index))
     }
 }
 

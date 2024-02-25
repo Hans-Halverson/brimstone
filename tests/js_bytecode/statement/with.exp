@@ -13,7 +13,7 @@
 
 [BytecodeFunction: basic] {
   Parameters: 1, Registers: 1
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
      6: StoreToScope a0, 0, 0
     10: NewMappedArguments r0

@@ -7,3 +7,15 @@ try {
 
 // Captured
 eval(`const x = 1; function inner() { x }`);
+
+// Outer eval has lexical scope
+eval(`eval('')`);
+
+// Outer eval has function scope
+eval(`"use strict"; eval('')`)
+
+// // Outer eval has global scope, not explicitly pushed
+eval?.(`eval('')`);
+
+// // Outer eval has function scope
+eval?.(`"use strict"; eval('')`);

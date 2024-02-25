@@ -552,8 +552,9 @@ impl ScopeTree {
         }
 
         // Only if there are bindings to place in the scope do we need to create a VM scope node.
-        // With scope also always need a VM scope node for their target object.
-        if !bindings.is_empty() || ast_node.kind() == ScopeNodeKind::With {
+        // Any scopes that could contain dynamic bindings must also have a VM scope node to hold the
+        // dynamic object. This includes all with scopes.
+        if !bindings.is_empty() || ast_node.supports_dynamic_bindings {
             self.vm_nodes.push(VMScopeNode { bindings });
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }

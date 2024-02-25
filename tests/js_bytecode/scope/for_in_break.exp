@@ -158,7 +158,7 @@
 
 [BytecodeFunction: noForCaptureButInnerCaptureWithBreak] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewObject r1
      4: JumpNullish r1, 72 (.L3)
      7: NewForInIterator r1, r1
@@ -218,7 +218,7 @@
 
 [BytecodeFunction: noForCaptureOrInnerCaptureWithBreak] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewObject r1
      4: JumpNullish r1, 61 (.L3)
      7: NewForInIterator r1, r1

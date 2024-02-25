@@ -32,7 +32,7 @@
 
 [BytecodeFunction: withArguments] {
   Parameters: 3, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
      6: StoreToScope a1, 1, 0
     10: StoreToScope a2, 2, 0
@@ -45,7 +45,7 @@
 
 [BytecodeFunction: withDuplicateArguments] {
   Parameters: 3, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
      6: StoreToScope a1, 1, 0
     10: StoreToScope a2, 2, 0
@@ -58,7 +58,7 @@
 
 [BytecodeFunction: otherScopeBindings] {
   Parameters: 2, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 2, 0
      6: StoreToScope a0, 0, 0
     10: StoreToScope a1, 1, 0

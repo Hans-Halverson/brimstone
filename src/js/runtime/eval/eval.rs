@@ -77,8 +77,12 @@ pub fn perform_bytecode_eval(
 
     // Generate bytecode for the program
     let realm = cx.current_realm();
-    let generate_result =
-        BytecodeProgramGenerator::generate_from_eval_parse_result(cx, &parse_result, realm);
+    let generate_result = BytecodeProgramGenerator::generate_from_eval_parse_result(
+        cx,
+        &parse_result,
+        realm,
+        is_direct,
+    );
     let bytecode_function = match generate_result {
         Ok(func) => func,
         Err(error) => return syntax_error_(cx, &error.to_string()),

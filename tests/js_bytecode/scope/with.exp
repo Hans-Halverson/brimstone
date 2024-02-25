@@ -21,7 +21,7 @@
 
 [BytecodeFunction: startScope] {
   Parameters: 1, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
      6: StoreToScope a0, 0, 0
     10: NewMappedArguments r1
@@ -64,7 +64,7 @@
 
 [BytecodeFunction: dynamicAccessInChildren] {
   Parameters: 1, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
      6: StoreToScope a0, 0, 0
     10: NewMappedArguments r1
@@ -101,7 +101,7 @@
 
 [BytecodeFunction: forcesParentsToBeCaptured] {
   Parameters: 2, Registers: 1
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope <this>, 2, 0
      6: StoreToScope a0, 0, 0
     10: StoreToScope a1, 1, 0

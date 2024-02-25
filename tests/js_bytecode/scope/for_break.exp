@@ -146,7 +146,7 @@
 
 [BytecodeFunction: noForCaptureButInnerCaptureWithBreak] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadImmediate r1, 0
      5: StoreToScope r1, 0, 0
   .L0:
@@ -204,7 +204,7 @@
 
 [BytecodeFunction: noForCaptureOrInnerCaptureWithBreak] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadImmediate r1, 0
      5: StoreToScope r1, 0, 0
   .L0:

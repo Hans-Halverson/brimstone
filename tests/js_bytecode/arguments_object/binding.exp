@@ -26,7 +26,7 @@
 
 [BytecodeFunction: capturedByArrow] {
   Parameters: 0, Registers: 1
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewUnmappedArguments r0
      4: StoreToScope r0, 0, 0
      8: NewClosure r0, c1

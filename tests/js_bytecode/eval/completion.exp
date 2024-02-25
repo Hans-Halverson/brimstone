@@ -31,37 +31,41 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 04 ff 00      LoadConstant r0, c0
-     3: 03 fe 01      LoadImmediate r1, 1
-     6: 03 fd 02      LoadImmediate r2, 2
-     9: 13 ff fe fd   Add r0, r1, r2
-    13: 0c fe 01      LoadDynamic r1, c1
-    16: 0c fd 02      LoadDynamic r2, c2
-    19: 13 ff fe fd   Add r0, r1, r2
-    23: 04 ff 03      LoadConstant r0, c3
-    26: 12 ff         Ret r0
+     0: 60 00         EvalInit c0
+     2: 04 ff 01      LoadConstant r0, c1
+     5: 03 fe 01      LoadImmediate r1, 1
+     8: 03 fd 02      LoadImmediate r2, 2
+    11: 13 ff fe fd   Add r0, r1, r2
+    15: 0c fe 02      LoadDynamic r1, c2
+    18: 0c fd 03      LoadDynamic r2, c3
+    21: 13 ff fe fd   Add r0, r1, r2
+    25: 04 ff 04      LoadConstant r0, c4
+    28: 12 ff         Ret r0
   Constant Table:
-    0: [String: expression statement completions]
-    1: [String: a]
-    2: [String: b]
-    3: [String: foo]
+    0: [GlobalNames]
+    1: [String: expression statement completions]
+    2: [String: a]
+    3: [String: b]
+    4: [String: foo]
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 04 ff 00   LoadConstant r0, c0
-     3: 03 fe 01   LoadImmediate r1, 1
-     6: 0d fe 01   StoreDynamic r1, c1
-     9: 0c fe 01   LoadDynamic r1, c1
-    12: 3b fe 08   JumpToBooleanFalse r1, 8 (.L0)
-    15: 03 ff 01   LoadImmediate r0, 1
-    18: 33 05      Jump 5 (.L1)
+     0: 60 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 03 fe 01   LoadImmediate r1, 1
+     8: 0d fe 02   StoreDynamic r1, c2
+    11: 0c fe 02   LoadDynamic r1, c2
+    14: 3b fe 08   JumpToBooleanFalse r1, 8 (.L0)
+    17: 03 ff 01   LoadImmediate r0, 1
+    20: 33 05      Jump 5 (.L1)
   .L0:
-    20: 03 ff 02   LoadImmediate r0, 2
+    22: 03 ff 02   LoadImmediate r0, 2
   .L1:
-    23: 12 ff      Ret r0
+    25: 12 ff      Ret r0
   Constant Table:
-    0: [String: inner completions]
-    1: [String: a]
+    0: [GlobalNames]
+    1: [String: inner completions]
+    2: [String: a]
 }
 

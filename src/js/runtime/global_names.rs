@@ -55,6 +55,14 @@ impl GlobalNames {
         let names_offset = field_offset!(GlobalNames, names);
         names_offset + InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_names)
     }
+
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    pub fn get(&self, index: usize) -> HeapPtr<FlatString> {
+        self.names.as_slice()[index]
+    }
 }
 
 impl HeapObject for HeapPtr<GlobalNames> {
@@ -79,6 +87,7 @@ pub fn global_init(
     cx: Context,
     global_scope: Handle<Scope>,
     global_names: Handle<GlobalNames>,
+    can_delete: bool,
 ) -> EvalResult<()> {
     let global_object = global_scope.object();
 
@@ -118,19 +127,9 @@ pub fn global_init(
         let name_key = name_handle.cast::<PropertyKey>();
 
         if i < global_names.num_functions {
-            maybe!(create_global_function_binding(
-                cx,
-                global_object,
-                name_key,
-                /* can_delete */ false
-            ));
+            maybe!(create_global_function_binding(cx, global_object, name_key, can_delete,));
         } else {
-            maybe!(create_global_var_binding(
-                cx,
-                global_object,
-                name_key,
-                /* can_delete */ false
-            ));
+            maybe!(create_global_var_binding(cx, global_object, name_key, can_delete,));
         }
     }
 

@@ -58,7 +58,7 @@
 
 [BytecodeFunction: basic] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
@@ -79,7 +79,7 @@
 
 [BytecodeFunction: multipleCaptures] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
@@ -102,7 +102,7 @@
 
 [BytecodeFunction: capturedLexical] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
      8: LoadEmpty r1
@@ -141,7 +141,7 @@
 
 [BytecodeFunction: storingToCapture] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 1, 0
      8: NewClosure r0, c1
@@ -189,7 +189,7 @@
 
 [BytecodeFunction: inner1] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
@@ -226,7 +226,7 @@
 
 [BytecodeFunction: nestedScopes] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
@@ -239,7 +239,7 @@
 
 [BytecodeFunction: inner1] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 2
      8: StoreToScope r1, 0, 0
@@ -255,7 +255,7 @@
 
 [BytecodeFunction: inner2] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 3
      8: StoreToScope r1, 0, 0
@@ -285,7 +285,7 @@
 
 [BytecodeFunction: arrowFunctionsCapture] {
   Parameters: 0, Registers: 1
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadImmediate r0, 1
      5: StoreToScope r0, 0, 0
      9: NewClosure r0, c1
@@ -314,7 +314,7 @@
 
 [BytecodeFunction: capturedVarsHoisted] {
   Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: NewClosure r0, c1
      5: LoadImmediate r1, 1
      8: StoreToScope r1, 0, 0
@@ -345,7 +345,7 @@
 
 [BytecodeFunction: blockScopes] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadImmediate r1, 1
      5: StoreToScope r1, 0, 0
      9: PushLexicalScope c1

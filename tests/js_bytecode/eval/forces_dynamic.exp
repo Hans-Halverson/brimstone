@@ -45,7 +45,7 @@
 
 [BytecodeFunction: forcesDynamicInScopeAndParents] {
   Parameters: 1, Registers: 2
-      0: PushLexicalScope c0
+      0: PushFunctionScope c0
       2: LoadEmpty r0
       4: StoreToScope r0, 3, 0
       8: StoreToScope <this>, 1, 0

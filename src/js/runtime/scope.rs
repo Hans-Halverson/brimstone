@@ -7,6 +7,7 @@ use super::{
     get,
     object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
+    ordinary_object::ordinary_object_create,
     scope_names::ScopeNames,
     string_value::StringValue,
     type_utilities::to_boolean,
@@ -29,30 +30,42 @@ pub struct Scope {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum ScopeKind {
+pub enum ScopeKind {
     Global,
     Lexical,
+    /// A function scope is treated as a var scope when looking up the containing var scope.
+    Function,
     With,
 }
 
 impl Scope {
-    pub fn new_global(cx: Context, global_object: Handle<ObjectValue>) -> Handle<Scope> {
-        // Use an empty set of scope names
-        let scope_names = ScopeNames::new(cx, &[]);
-
+    #[inline]
+    fn new(
+        cx: Context,
+        kind: ScopeKind,
+        parent: Option<Handle<Scope>>,
+        scope_names: Handle<ScopeNames>,
+        object: Option<Handle<ObjectValue>>,
+    ) -> Handle<Scope> {
         let num_slots = scope_names.len();
         let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
-        set_uninit!(scope.kind, ScopeKind::Global);
-        set_uninit!(scope.parent, None);
+        set_uninit!(scope.kind, kind);
+        set_uninit!(scope.parent, parent.map(|p| p.get_()));
         set_uninit!(scope.scope_names, scope_names.get_());
-        set_uninit!(scope.object, Some(global_object.get_()));
+        set_uninit!(scope.object, object.map(|o| o.get_()));
 
         scope.slots.init_with(num_slots, Value::undefined());
 
         scope.to_handle()
+    }
+
+    pub fn new_global(cx: Context, global_object: Handle<ObjectValue>) -> Handle<Scope> {
+        // Use an empty set of scope names
+        let scope_names = ScopeNames::new(cx, &[]);
+        Self::new(cx, ScopeKind::Global, None, scope_names, Some(global_object))
     }
 
     pub fn new_lexical(
@@ -60,19 +73,15 @@ impl Scope {
         parent: Handle<Scope>,
         scope_names: Handle<ScopeNames>,
     ) -> Handle<Scope> {
-        let num_slots = scope_names.len();
-        let size = Self::calculate_size_in_bytes(num_slots);
-        let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
+        Self::new(cx, ScopeKind::Lexical, Some(parent), scope_names, None)
+    }
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
-        set_uninit!(scope.kind, ScopeKind::Lexical);
-        set_uninit!(scope.parent, Some(parent.get_()));
-        set_uninit!(scope.scope_names, scope_names.get_());
-        set_uninit!(scope.object, None);
-
-        scope.slots.init_with(num_slots, Value::undefined());
-
-        scope.to_handle()
+    pub fn new_function(
+        cx: Context,
+        parent: Handle<Scope>,
+        scope_names: Handle<ScopeNames>,
+    ) -> Handle<Scope> {
+        Self::new(cx, ScopeKind::Function, Some(parent), scope_names, None)
     }
 
     pub fn new_with(
@@ -81,25 +90,18 @@ impl Scope {
         scope_names: Handle<ScopeNames>,
         object: Handle<ObjectValue>,
     ) -> Handle<Scope> {
-        let num_slots = scope_names.len();
-        let size = Self::calculate_size_in_bytes(num_slots);
-        let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
-
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
-        set_uninit!(scope.kind, ScopeKind::With);
-        set_uninit!(scope.parent, Some(parent.get_()));
-        set_uninit!(scope.scope_names, scope_names.get_());
-        set_uninit!(scope.object, Some(object.get_()));
-
-        scope.slots.init_with(num_slots, Value::undefined());
-
-        scope.to_handle()
+        Self::new(cx, ScopeKind::With, Some(parent), scope_names, Some(object))
     }
 
     const SLOTS_OFFSET: usize = field_offset!(Scope, slots);
 
     fn calculate_size_in_bytes(num_slots: usize) -> usize {
         Self::SLOTS_OFFSET + InlineArray::<Value>::calculate_size_in_bytes(num_slots)
+    }
+
+    #[inline]
+    pub fn kind(&self) -> ScopeKind {
+        self.kind
     }
 
     #[inline]
@@ -269,6 +271,17 @@ impl Handle<Scope> {
         }
 
         true.into()
+    }
+
+    /// Return the object for this scope, creating it if necessary.
+    pub fn ensure_scope_object(&mut self, cx: Context) -> Handle<ObjectValue> {
+        if let Some(object) = self.object {
+            return object.to_handle();
+        }
+
+        let object = ordinary_object_create(cx);
+        self.object = Some(object.get_());
+        object
     }
 }
 

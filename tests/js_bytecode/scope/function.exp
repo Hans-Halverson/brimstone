@@ -37,7 +37,7 @@
 
 [BytecodeFunction: captures] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
      8: NewClosure r0, c1
@@ -61,7 +61,7 @@
 
 [BytecodeFunction: capturedParameters] {
   Parameters: 3, Registers: 2
-     0: PushLexicalScope c0
+     0: PushFunctionScope c0
      2: StoreToScope a0, 0, 0
      6: GetNamedProperty r1, a1, c1
     10: StoreToScope r1, 1, 0

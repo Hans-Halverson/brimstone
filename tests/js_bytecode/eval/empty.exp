@@ -1,0 +1,60 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: GlobalInit c0
+     2: LoadGlobal r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1
+    13: LoadGlobal r0, c1
+    16: LoadConstant r1, c3
+    19: CallMaybeEval r0, r0, r1, 1
+    24: LoadGlobal r0, c1
+    27: JumpNullish r0, 13 (.L0)
+    30: LoadConstant r1, c2
+    33: Call r0, r0, r1, 1
+    38: Jump 4 (.L1)
+  .L0:
+    40: LoadUndefined r0
+  .L1:
+    42: LoadGlobal r0, c1
+    45: JumpNullish r0, 13 (.L2)
+    48: LoadConstant r1, c3
+    51: Call r0, r0, r1, 1
+    56: Jump 4 (.L3)
+  .L2:
+    58: LoadUndefined r0
+  .L3:
+    60: LoadUndefined r0
+    62: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [String: "use strict";]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: 60 00   EvalInit c0
+    2: 12 ff   Ret r0
+  Constant Table:
+    0: [GlobalNames]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: 12 ff   Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: 5f 00   GlobalInit c0
+    2: 12 ff   Ret r0
+  Constant Table:
+    0: [GlobalNames]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: 12 ff   Ret r0
+}
+

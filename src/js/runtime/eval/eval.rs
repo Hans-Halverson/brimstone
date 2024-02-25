@@ -12,7 +12,10 @@ use crate::{
             source::Source,
         },
         runtime::{
-            bytecode::{function::Closure, generator::BytecodeProgramGenerator},
+            bytecode::{
+                function::{dump_bytecode_function, Closure},
+                generator::BytecodeProgramGenerator,
+            },
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{DynEnvironment, Environment},
@@ -90,14 +93,7 @@ pub fn perform_bytecode_eval(
 
     // Print the bytecode if necessary, optionally to the internal dump buffer
     if cx.options.print_bytecode {
-        let bytecode_string = bytecode_function.debug_print_recursive(false);
-
-        if let Some(mut dump_buffer) = cx.options.dump_buffer() {
-            dump_buffer.push_str(&bytecode_string);
-            dump_buffer.push_str("\n");
-        } else {
-            println!("{}", bytecode_function.debug_print_recursive(false));
-        }
+        dump_bytecode_function(cx, bytecode_function.get_());
     }
 
     // Eval function's parent scope is the global scope in an indirect eval

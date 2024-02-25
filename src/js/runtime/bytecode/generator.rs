@@ -9,7 +9,7 @@ use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
         ast::{self, AstPtr, ResolvedScope},
-        parser::ParseProgramResult,
+        parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{AstScopeNode, Binding, BindingKind, ScopeNodeKind, ScopeTree, VMLocation},
     },
     runtime::{
@@ -248,6 +248,53 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(bytecode_function_handle)
     }
 
+    pub fn generate_from_function_constructor_parse_result(
+        cx: Context,
+        parse_result: &ParseFunctionResult,
+        realm: Handle<Realm>,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        HandleScope::new(cx, |_| {
+            let mut generator =
+                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
+            generator.generate_function_constructor(&parse_result.function)
+        })
+    }
+
+    fn generate_function_constructor(
+        &mut self,
+        function: &ast::Function,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        // Create a dummy global scope stack node that will not conflict with any real scope id
+        let scope = Rc::new(ScopeStackNode { scope_id: usize::MAX, parent: None });
+
+        let is_constructor = !function.is_async() && !function.is_generator();
+
+        // Generate the dynamic function
+        let generator = BytecodeFunctionGenerator::new_for_function(
+            self.cx,
+            function,
+            &self.scope_tree,
+            scope,
+            self.global_scope,
+            None,
+            is_constructor,
+        )?;
+
+        let emit_result = generator.generate(function)?;
+
+        // Generate all pending functions that were discovered while emitting the original function
+        self.enqueue_pending_functions(
+            emit_result.bytecode_function,
+            emit_result.pending_functions,
+        );
+
+        while let Some(pending_function) = self.pending_functions_queue.pop_front() {
+            self.gen_enqueued_function(pending_function)?;
+        }
+
+        Ok(emit_result.bytecode_function)
+    }
+
     fn gen_enqueued_function(
         &mut self,
         pending_function: PatchablePendingFunction,
@@ -259,16 +306,23 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
 
         HandleScope::new(self.cx, |_| {
-            let ast_node = func_node.ast_ptr();
+            let func_ptr = func_node.ast_ptr();
+            let func = func_ptr.as_ref();
+
+            let is_constructor = func_node.is_constructor();
+            let default_name = func_node.default_name();
+
             let generator = BytecodeFunctionGenerator::new_for_function(
                 self.cx,
-                func_node,
+                func,
                 &self.scope_tree,
                 scope,
                 self.global_scope,
+                default_name,
+                is_constructor,
             )?;
 
-            let emit_result = generator.generate(ast_node.as_ref())?;
+            let emit_result = generator.generate(func)?;
 
             // Store the generated function into the parent handle scope so the enqueued references
             // remain valid.
@@ -403,15 +457,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn new_for_function(
         cx: Context,
-        pending_function: PendingFunctionNode,
+        func: &ast::Function,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
         global_scope: Handle<Scope>,
+        default_name: Option<Wtf8String>,
+        is_constructor: bool,
     ) -> EmitResult<Self> {
-        let is_constructor = pending_function.is_constructor();
-        let func_ptr = pending_function.ast_ptr();
-        let func = func_ptr.as_ref();
-
         // Number of arguments does not count the rest parameter
         let num_parameters = if let Some(ast::FunctionParam::Rest { .. }) = func.params.last() {
             func.params.len() - 1
@@ -432,12 +484,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Err(EmitError::TooManyRegisters);
         }
 
-        let anonymous_name = pending_function.name();
         let name = func
             .id
             .as_ref()
             .map(|id| Wtf8String::from_str(&id.name))
-            .or(anonymous_name);
+            .or(default_name);
 
         Ok(Self::new(
             cx,
@@ -4352,7 +4403,7 @@ impl PendingFunctionNode {
     }
 
     /// Named given to this unnamed function (an anonymous expression or arrow function)
-    fn name(self) -> Option<Wtf8String> {
+    fn default_name(self) -> Option<Wtf8String> {
         match self {
             PendingFunctionNode::Declaration(_) => None,
             PendingFunctionNode::Expression { name, .. }

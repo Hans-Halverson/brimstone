@@ -18,6 +18,10 @@ use crate::{
             abstract_operations::define_property_or_throw,
             arguments_object::{create_mapped_arguments_object, create_unmapped_arguments_object},
             array_object::array_create,
+            bytecode::{
+                function::{dump_bytecode_function, Closure},
+                generator::BytecodeProgramGenerator,
+            },
             completion::{Completion, EvalResult},
             environment::{
                 declarative_environment::DeclarativeEnvironment,
@@ -541,7 +545,7 @@ pub fn create_dynamic_function(
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
     args: &[Handle<Value>],
-) -> EvalResult<Handle<Function>> {
+) -> EvalResult<Handle<ObjectValue>> {
     let new_target = new_target.unwrap_or(constructor);
 
     let prefix = "function";
@@ -628,26 +632,53 @@ pub fn create_dynamic_function(
 
     // Create function object
     let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
-    let env = cx.current_realm_ptr().global_env();
 
-    let mut func = ordinary_function_create(
-        cx,
-        proto,
-        &parse_result.function,
-        false,
-        env.into_dyn_env(),
-        None,
-    );
-    set_function_name(cx, func.into(), cx.names.anonymous(), None);
-    func.set_source(&full_source);
+    if cx.options.bytecode {
+        // Generate bytecode for the function
+        let realm = cx.current_realm();
+        let generate_result =
+            BytecodeProgramGenerator::generate_from_function_constructor_parse_result(
+                cx,
+                &parse_result,
+                realm,
+            );
+        let bytecode_function = match generate_result {
+            Ok(func) => func,
+            Err(error) => return syntax_error_(cx, &error.to_string()),
+        };
 
-    if !is_async && !is_generator {
-        make_constructor(cx, func, None, None);
+        if cx.options.print_bytecode {
+            dump_bytecode_function(cx, bytecode_function.get_());
+        }
+
+        // Dynamic functions are always in the global scope
+        let closure = Closure::new(cx, bytecode_function, realm.global_scope());
+
+        let closure_object: Handle<ObjectValue> = closure.into();
+        closure_object.into()
+    } else {
+        let env = cx.current_realm_ptr().global_env();
+
+        let mut func = ordinary_function_create(
+            cx,
+            proto,
+            &parse_result.function,
+            false,
+            env.into_dyn_env(),
+            None,
+        );
+        set_function_name(cx, func.into(), cx.names.anonymous(), None);
+        func.set_source(&full_source);
+
+        if !is_async && !is_generator {
+            make_constructor(cx, func, None, None);
+        }
+
+        // TODO: Need better way to save ASTs and sources, following same pattern as eval for now
+        cx.function_constructor_asts
+            .push((parse_result, full_source));
+
+        let func_object: Handle<ObjectValue> = func.into();
+        func_object.into()
     }
-
-    // TODO: Need better way to save ASTs and sources, following same pattern as eval for now
-    cx.function_constructor_asts
-        .push((parse_result, full_source));
-
-    func.into()
 }

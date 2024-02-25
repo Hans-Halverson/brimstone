@@ -1,0 +1,57 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 4
+     0: GlobalInit c0
+     2: LoadImmediate r0, 1
+     5: StoreGlobal r0, c1
+     8: LoadImmediate r0, 2
+    11: StoreGlobal r0, c2
+    14: LoadGlobal r0, c3
+    17: Construct r0, r0, r0, r0, 0
+    23: LoadGlobal r0, c3
+    26: LoadConstant r1, c4
+    29: Construct r0, r0, r0, r1, 1
+    35: LoadGlobal r0, c3
+    38: LoadConstant r1, c5
+    41: LoadConstant r2, c1
+    44: LoadConstant r3, c6
+    47: Construct r0, r0, r0, r1, 3
+    53: LoadUndefined r0
+    55: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: y]
+    2: [String: z]
+    3: [String: Function]
+    4: [String: y + 1]
+    5: [String: x]
+    6: [String: x + y + z]
+}
+
+[BytecodeFunction: anonymous] {
+  Parameters: 0, Registers: 1
+    0: 05 ff   LoadUndefined r0
+    2: 12 ff   Ret r0
+}
+
+[BytecodeFunction: anonymous] {
+  Parameters: 0, Registers: 2
+     0: 0a ff 00      LoadGlobal r0, c0
+     3: 03 fe 01      LoadImmediate r1, 1
+     6: 13 ff ff fe   Add r0, r0, r1
+    10: 05 ff         LoadUndefined r0
+    12: 12 ff         Ret r0
+  Constant Table:
+    0: [String: y]
+}
+
+[BytecodeFunction: anonymous] {
+  Parameters: 2, Registers: 2
+     0: 13 ff 08 09   Add r0, a0, a1
+     4: 0a fe 00      LoadGlobal r1, c0
+     7: 13 ff ff fe   Add r0, r0, r1
+    11: 05 ff         LoadUndefined r0
+    13: 12 ff         Ret r0
+  Constant Table:
+    0: [String: z]
+}
+

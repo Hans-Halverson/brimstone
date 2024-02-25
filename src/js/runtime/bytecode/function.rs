@@ -330,6 +330,17 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
     }
 }
 
+pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
+    let bytecode_string = func.debug_print_recursive(false);
+
+    if let Some(mut dump_buffer) = cx.options.dump_buffer() {
+        dump_buffer.push_str(&bytecode_string);
+        dump_buffer.push_str("\n");
+    } else {
+        println!("{}", func.debug_print_recursive(false));
+    }
+}
+
 impl HeapPtr<BytecodeFunction> {
     /// Debug print this function and all its child functions.
     pub fn debug_print_recursive(&self, ignore_raw_bytes: bool) -> String {

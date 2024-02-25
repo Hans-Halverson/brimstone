@@ -1,47 +1,55 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
       0: GlobalInit c0
-      2: LoadGlobal r0, c1
-      5: LoadConstant r1, c2
-      8: CallMaybeEval r0, r0, r1, 1
-     13: LoadGlobal r0, c1
-     16: LoadConstant r1, c3
-     19: CallMaybeEval r0, r0, r1, 1
-     24: LoadGlobal r0, c1
-     27: LoadConstant r1, c4
-     30: CallMaybeEval r0, r0, r1, 1
-     35: LoadGlobal r0, c1
-     38: LoadConstant r1, c5
-     41: CallMaybeEval r0, r0, r1, 1
-     46: LoadGlobal r0, c1
-     49: LoadConstant r1, c6
-     52: CallMaybeEval r0, r0, r1, 1
-     57: LoadGlobal r0, c1
-     60: JumpNullish r0, 13 (.L0)
-     63: LoadConstant r1, c2
-     66: Call r0, r0, r1, 1
-     71: Jump 4 (.L1)
+      2: Mov r0, <scope>
+      5: LoadGlobal r1, c1
+      8: LoadConstant r2, c2
+     11: CallMaybeEval r1, r1, r2, 1
+     16: Jump 5 (.L0)
+     18: Mov <scope>, r0
   .L0:
-     73: LoadUndefined r0
+     21: LoadGlobal r0, c1
+     24: LoadConstant r1, c3
+     27: CallMaybeEval r0, r0, r1, 1
+     32: LoadGlobal r0, c1
+     35: LoadConstant r1, c4
+     38: CallMaybeEval r0, r0, r1, 1
+     43: LoadGlobal r0, c1
+     46: LoadConstant r1, c5
+     49: CallMaybeEval r0, r0, r1, 1
+     54: LoadGlobal r0, c1
+     57: LoadConstant r1, c6
+     60: CallMaybeEval r0, r0, r1, 1
+     65: Mov r0, <scope>
+     68: LoadGlobal r1, c1
+     71: JumpNullish r1, 13 (.L1)
+     74: LoadConstant r2, c2
+     77: Call r1, r1, r2, 1
+     82: Jump 4 (.L2)
   .L1:
-     75: LoadGlobal r0, c1
-     78: JumpNullish r0, 13 (.L2)
-     81: LoadConstant r1, c3
-     84: Call r0, r0, r1, 1
-     89: Jump 4 (.L3)
+     84: LoadUndefined r1
   .L2:
-     91: LoadUndefined r0
+     86: Jump 5 (.L3)
+     88: Mov <scope>, r0
   .L3:
-     93: LoadGlobal r0, c1
-     96: JumpNullish r0, 13 (.L4)
-     99: LoadConstant r1, c4
-    102: Call r0, r0, r1, 1
-    107: Jump 4 (.L5)
+     91: LoadGlobal r0, c1
+     94: JumpNullish r0, 13 (.L4)
+     97: LoadConstant r1, c3
+    100: Call r0, r0, r1, 1
+    105: Jump 4 (.L5)
   .L4:
-    109: LoadUndefined r0
+    107: LoadUndefined r0
   .L5:
-    111: LoadUndefined r0
-    113: Ret r0
+    109: LoadGlobal r0, c1
+    112: JumpNullish r0, 13 (.L6)
+    115: LoadConstant r1, c4
+    118: Call r0, r0, r1, 1
+    123: Jump 4 (.L7)
+  .L6:
+    125: LoadUndefined r0
+  .L7:
+    127: LoadUndefined r0
+    129: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: eval]
@@ -50,6 +58,9 @@
     4: [String: 'use strict'; var x = 1; x;]
     5: [String: let x = 1; const y = 2; x + y;]
     6: [String: function varFunc() { return 1 }; { function lexFunc() { return 2 } }]
+  Exception Handlers:
+    5-16 -> 18
+    68-86 -> 88
 }
 
 [BytecodeFunction: <eval>] {

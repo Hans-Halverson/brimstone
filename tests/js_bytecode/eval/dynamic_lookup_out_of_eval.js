@@ -1,7 +1,9 @@
 // OPTIONS: --run
 
 // Dynamic lookup for unresolved bindings out of eval
-eval(`x; x = 1`);
+try {
+  eval(`x; x = 1`);
+} catch {}
 
 // Dynamic lookup for var bindings since they are placed in parent scope
 eval(`var x = 1; x;`);
@@ -16,7 +18,9 @@ eval(`let x = 1; const y = 2; x + y;`);
 eval(`function varFunc() { return 1 }; { function lexFunc() { return 2 } }`);
 
 // Global lookup for unresolved bindings in indirect eval
-eval?.(`x; x = 1`);
+try {
+  eval?.(`x; x = 1`);
+} catch {}
 
 // Dynamic lookup for var bindings in indirect eval since they are placed in parent scope
 eval?.(`var x = 1; x;`);

@@ -1,14 +1,18 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: GlobalInit c0
-     2: LoadGlobal r0, c1
-     5: LoadConstant r1, c2
-     8: CallMaybeEval r0, r0, r1, 1
-    13: LoadGlobal r0, c1
-    16: LoadConstant r1, c3
-    19: CallMaybeEval r0, r0, r1, 1
-    24: LoadUndefined r0
-    26: Ret r0
+     2: Mov r0, <scope>
+     5: LoadGlobal r1, c1
+     8: LoadConstant r2, c2
+    11: CallMaybeEval r1, r1, r2, 1
+    16: Jump 5 (.L0)
+    18: Mov <scope>, r0
+  .L0:
+    21: LoadGlobal r0, c1
+    24: LoadConstant r1, c3
+    27: CallMaybeEval r0, r0, r1, 1
+    32: LoadUndefined r0
+    34: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: eval]
@@ -27,6 +31,8 @@
     2;
   }
 ]
+  Exception Handlers:
+    5-16 -> 18
 }
 
 [BytecodeFunction: <eval>] {

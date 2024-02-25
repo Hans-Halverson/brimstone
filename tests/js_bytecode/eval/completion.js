@@ -1,10 +1,12 @@
 // OPTIONS: --run
-eval(`
+try {
+  eval(`
   "expression statement completions";
   1 + 2;
   a + b;
   "foo";
 `)
+} catch {}
 
 eval(`
   "inner completions";

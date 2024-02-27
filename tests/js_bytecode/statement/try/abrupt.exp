@@ -7,8 +7,16 @@
     11: StoreGlobal r0, c4
     14: NewClosure r0, c5
     17: StoreGlobal r0, c6
-    20: LoadUndefined r0
-    22: Ret r0
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: testAbruptBodyOnly]
@@ -17,6 +25,14 @@
     4: [String: testAbruptCatchOnly]
     5: [BytecodeFunction: testAbruptCatchAndBody]
     6: [String: testAbruptCatchAndBody]
+    7: [BytecodeFunction: testAbruptFinallyInFinallyOnly]
+    8: [String: testAbruptFinallyInFinallyOnly]
+    9: [BytecodeFunction: testAbruptTryInFinallyOnly]
+    10: [String: testAbruptTryInFinallyOnly]
+    11: [BytecodeFunction: testAbruptCatchInCatchFinally]
+    12: [String: testAbruptCatchInCatchFinally]
+    13: [BytecodeFunction: testAbruptCatchAndFinally]
+    14: [String: testAbruptCatchAndFinally]
 }
 
 [BytecodeFunction: testAbruptBodyOnly] {
@@ -57,4 +73,80 @@
     12: Ret r1
   Exception Handlers:
     3-7 -> 7
+}
+
+[BytecodeFunction: testAbruptFinallyInFinallyOnly] {
+  Parameters: 0, Registers: 4
+     0: Mov r2, <scope>
+     3: LoadImmediate r3, 1
+     6: LoadImmediate r0, 1
+     9: Jump 5 (.L0)
+    11: LoadImmediate r0, 0
+  .L0:
+    14: Mov <scope>, r2
+    17: LoadImmediate r2, 2
+    20: Throw r2
+  Exception Handlers:
+    3-6 -> 11 (r1)
+}
+
+[BytecodeFunction: testAbruptTryInFinallyOnly] {
+  Parameters: 0, Registers: 4
+     0: Mov r2, <scope>
+     3: LoadImmediate r3, 1
+     6: Throw r3
+     8: LoadImmediate r0, 0
+    11: Mov <scope>, r2
+    14: LoadImmediate r2, 2
+    17: Throw r1
+    19: LoadUndefined r0
+    21: Ret r0
+  Exception Handlers:
+    3-8 -> 8 (r1)
+}
+
+[BytecodeFunction: testAbruptCatchInCatchFinally] {
+  Parameters: 0, Registers: 4
+     0: Mov r2, <scope>
+     3: LoadImmediate r3, 1
+     6: LoadImmediate r0, 1
+     9: Jump 13 (.L0)
+    11: Mov <scope>, r2
+    14: LoadImmediate r3, 2
+    17: Throw r3
+    19: LoadImmediate r0, 0
+  .L0:
+    22: Mov <scope>, r2
+    25: LoadImmediate r2, 3
+    28: LoadImmediate r2, 0
+    31: StrictEqual r2, r0, r2
+    35: JumpFalse r2, 5 (.L1)
+    38: Throw r1
+  .L1:
+    40: Jump 2 (.L2)
+  .L2:
+    42: LoadUndefined r0
+    44: Ret r0
+  Exception Handlers:
+    3-6 -> 11
+    11-19 -> 19 (r1)
+}
+
+[BytecodeFunction: testAbruptCatchAndFinally] {
+  Parameters: 0, Registers: 4
+     0: Mov r2, <scope>
+     3: LoadImmediate r3, 1
+     6: Throw r3
+     8: Mov <scope>, r2
+    11: LoadImmediate r3, 2
+    14: Throw r3
+    16: LoadImmediate r0, 0
+    19: Mov <scope>, r2
+    22: LoadImmediate r2, 3
+    25: Throw r1
+    27: LoadUndefined r0
+    29: Ret r0
+  Exception Handlers:
+    3-8 -> 8
+    8-16 -> 16 (r1)
 }

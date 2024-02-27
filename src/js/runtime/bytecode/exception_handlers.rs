@@ -28,7 +28,7 @@ pub struct ExceptionHandlerBuilder {
 }
 
 impl ExceptionHandlerBuilder {
-    /// Create a new excpetion handler with start and end offsets. The handler offset and register
+    /// Create a new exception handler with start and end offsets. The handler offset and register
     /// index will be filled in later.
     pub fn new(start: usize, end: usize) -> Self {
         Self { start, end, handler: 0, error_register: None }

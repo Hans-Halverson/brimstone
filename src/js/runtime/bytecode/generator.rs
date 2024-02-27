@@ -8,7 +8,7 @@ use std::{
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
-        ast::{self, AstPtr, ResolvedScope},
+        ast::{self, AstPtr, LabelId, ResolvedScope},
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{AstScopeNode, Binding, BindingKind, ScopeNodeKind, ScopeTree, VMLocation},
     },
@@ -229,7 +229,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Scope end not needed since the eval function returns
 
             // Return the statement completion from eval
-            generator.writer.ret_instruction(statement_completion_dest);
+            generator.gen_return(statement_completion_dest)?;
             generator
                 .register_allocator
                 .release(statement_completion_dest);
@@ -394,6 +394,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// The top of the stack is the innermost jump statement target.
     jump_statement_target_stack: Vec<JumpStatementTarget>,
 
+    /// Stack of finally scopes that the generator is currently inside. The top of the stack is the
+    /// innermost finally scope.
+    finally_scopes: Vec<FinallyScope>,
+
     /// Number of toplevel parameters to this function, not counting the rest parameter.
     num_parameters: u32,
 
@@ -443,6 +447,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
             jump_statement_target_stack: vec![],
+            finally_scopes: vec![],
             num_parameters,
             is_strict,
             is_constructor,
@@ -963,8 +968,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let return_value_reg = self.gen_outer_expression(expr_body)?;
 
                 // Scope end not needed since the function immediately returns
-
-                self.writer.ret_instruction(return_value_reg);
+                self.gen_return(return_value_reg)?;
                 self.register_allocator.release(return_value_reg);
             }
         }
@@ -4034,6 +4038,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+        if stmt.finalizer.is_none() {
+            self.gen_try_catch(stmt)
+        } else {
+            self.gen_try_finally(stmt)
+        }
+    }
+
+    fn gen_try_catch(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
         // Save the scope when entering the try statement so it can be restored when leaving
         let saved_scope = self.register_allocator.allocate()?;
         self.write_mov_instruction(saved_scope, Register::scope());
@@ -4044,128 +4056,326 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let body_completion = self.gen_block_statement(&stmt.block)?;
         let body_handler_end = self.writer.current_offset();
 
-        let join_block = self.new_block();
-        let catch_block = stmt.handler.as_ref().map(|_| self.new_block());
-        let finally_block = stmt.finalizer.as_ref().map(|_| self.new_block());
-
-        // Body continues to finalizer if one exists, otherwise it continues to the join block.
-        // Only need to write a jump if catch is present, otherwise will directly continue to
-        // finally block.
-        if !body_completion.is_abrupt() && catch_block.is_some() {
-            let after_body_block = finally_block.unwrap_or(join_block);
-            self.write_jump_instruction(after_body_block)?;
-        }
-
         let mut body_handler = ExceptionHandlerBuilder::new(body_handler_start, body_handler_end);
-        let mut catch_handler = None;
-        let mut result_completion = body_completion;
+
+        let join_block = self.new_block();
+
+        // Body continues to the join block
+        if !body_completion.is_abrupt() {
+            self.write_jump_instruction(join_block)?;
+        }
 
         // Emit the catch clause
-        if let Some(catch_clause) = &stmt.handler {
-            body_handler.handler = self.writer.current_offset();
+        let (catch_completion, _) =
+            self.gen_catch_clause(stmt.handler.as_ref().unwrap(), saved_scope, &mut body_handler)?;
 
-            // Emit the catch clause in its own block, with bounds saved for a finally handler
-            self.start_block(catch_block.unwrap());
-            let catch_handler_start = self.writer.current_offset();
-
-            // Restore the scope from before the try statement
-            self.write_mov_instruction(Register::scope(), saved_scope);
-
-            // Catch scope starts before the parameter is evaluated and potentially destructured
-            let catch_scope = catch_clause.body.scope.as_ref();
-            self.gen_scope_start(catch_scope)?;
-
-            // If there is a catch parameter, mark the register in the handler
-            if let Some(param) = catch_clause.param.as_deref() {
-                if param.is_id() {
-                    let id = param.to_id();
-
-                    match id.get_binding().vm_location().unwrap() {
-                        // Catch parameters stored in registers tell the handler to place the error
-                        // directly in the register.
-                        VMLocation::LocalRegister(index) => {
-                            body_handler.error_register = Some(Register::local(index));
-                        }
-                        // Catch parameters stored in VM scopes tell the handler to place the error
-                        // in a temporary register, the store it to the scope.
-                        VMLocation::Scope { scope_id, index } => {
-                            let error_reg = self.register_allocator.allocate()?;
-                            self.gen_store_scope_binding(scope_id, index, error_reg)?;
-                            self.register_allocator.release(error_reg);
-
-                            body_handler.error_register = Some(error_reg);
-                        }
-                        _ => unreachable!("catch parameters must be in a register or VM scope"),
-                    }
-                } else {
-                    // Otherwise destructure catch parameter. Destructuring is in its own "has
-                    // assignment expression" context.
-                    self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
-
-                    let error_temp = self.register_allocator.allocate()?;
-                    self.gen_destructuring(param, error_temp, /* release_value */ true)?;
-                    body_handler.error_register = Some(error_temp);
-
-                    self.exit_has_assign_expr_context();
-                }
-            }
-
-            // No need to write a jump from catch to next block after body, since either the finally
-            // or join block will be emitted directly after the catch.
-            let catch_completion = self.gen_statement_list(&catch_clause.body.body)?;
-            let catch_handler_end = self.writer.current_offset();
-
-            // If there is a finally block then the catch block must be wrapped in an exception
-            // handler.
-            if stmt.finalizer.is_some() {
-                let handler = ExceptionHandlerBuilder::new(catch_handler_start, catch_handler_end);
-                catch_handler = Some(handler)
-            } else {
-                // Without a finally block, result completion is abrupt if both body and catch
-                // blocks have an abrupt completion.
-                result_completion = result_completion.combine(catch_completion);
-            }
-        }
-
-        // Emit the finally block
-        if let Some(finally) = &stmt.finalizer {
-            // The finally block is the target handler for either the body or the catch block if
-            // one is present.
-            if let Some(catch_handler) = &mut catch_handler {
-                catch_handler.handler = self.writer.current_offset();
-            } else {
-                body_handler.handler = self.writer.current_offset();
-            }
-
-            // Emit the finally block's body. No need to write a jump from finally to join block
-            // since it immediately follows.
-            self.start_block(finally_block.unwrap());
-
-            // Restore the scope from before the try statement
-            self.write_mov_instruction(Register::scope(), saved_scope);
-
-            let finally_completion = self.gen_block_statement(finally)?;
-
-            // Finally completion used as result completion since all paths go through finally block
-            result_completion = finally_completion;
-        }
-
-        if stmt.finalizer.is_some() {
-            // TODO: Finally blocks must allow multiple entry points and successors, as they may
-            // be visited from the try body, catch body, or any abrupt completions of either.
-            unimplemented!("bytecode for finally blocks");
-        }
-
-        // Save the exception handlers
+        // Save the exception handler
         self.exception_handler_builder.add(body_handler);
-        if let Some(catch_handler) = catch_handler {
-            self.exception_handler_builder.add(catch_handler);
-        }
 
         self.register_allocator.release(saved_scope);
 
         self.start_block(join_block);
-        Ok(result_completion)
+
+        // Result completion is abrupt if both body and catch blocks have an abrupt completion.
+        Ok(body_completion.combine(catch_completion))
+    }
+
+    fn gen_catch_clause(
+        &mut self,
+        catch_clause: &ast::CatchClause,
+        scope_to_restore: GenRegister,
+        body_handler: &mut ExceptionHandlerBuilder,
+    ) -> EmitResult<(StmtCompletion, ExceptionHandlerBuilder)> {
+        body_handler.handler = self.writer.current_offset();
+
+        // Emit the catch clause in its own block, with bounds saved for a finally handler
+        let catch_block = self.new_block();
+        self.start_block(catch_block);
+        let catch_handler_start = self.writer.current_offset();
+
+        // Restore the scope from before the try statement
+        self.write_mov_instruction(Register::scope(), scope_to_restore);
+
+        // Catch scope starts before the parameter is evaluated and potentially destructured
+        let catch_scope = catch_clause.body.scope.as_ref();
+        self.gen_scope_start(catch_scope)?;
+
+        // If there is a catch parameter, mark the register in the handler
+        if let Some(param) = catch_clause.param.as_deref() {
+            if param.is_id() {
+                let id = param.to_id();
+
+                match id.get_binding().vm_location().unwrap() {
+                    // Catch parameters stored in registers tell the handler to place the error
+                    // directly in the register.
+                    VMLocation::LocalRegister(index) => {
+                        body_handler.error_register = Some(Register::local(index));
+                    }
+                    // Catch parameters stored in VM scopes tell the handler to place the error
+                    // in a temporary register, the store it to the scope.
+                    VMLocation::Scope { scope_id, index } => {
+                        let error_reg = self.register_allocator.allocate()?;
+                        self.gen_store_scope_binding(scope_id, index, error_reg)?;
+                        self.register_allocator.release(error_reg);
+
+                        body_handler.error_register = Some(error_reg);
+                    }
+                    _ => unreachable!("catch parameters must be in a register or VM scope"),
+                }
+            } else {
+                // Otherwise destructure catch parameter. Destructuring is in its own "has
+                // assignment expression" context.
+                self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
+
+                let error_temp = self.register_allocator.allocate()?;
+                self.gen_destructuring(param, error_temp, /* release_value */ true)?;
+                body_handler.error_register = Some(error_temp);
+
+                self.exit_has_assign_expr_context();
+            }
+        }
+
+        // No need to write a jump from catch to next block after body, since either the finally
+        // or join block will be emitted directly after the catch.
+        let catch_completion = self.gen_statement_list(&catch_clause.body.body)?;
+        let catch_handler_end = self.writer.current_offset();
+
+        let catch_handler = ExceptionHandlerBuilder::new(catch_handler_start, catch_handler_end);
+
+        Ok((catch_completion, catch_handler))
+    }
+
+    fn gen_try_finally(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+        // Shared discriminant and result register used to communicate the branch that was taken
+        // along with the return or throw result.
+        let discriminant = self.register_allocator.allocate()?;
+        let result = self.register_allocator.allocate()?;
+
+        let finally_block = self.new_block();
+        let join_block = self.new_block();
+
+        // Both the try body and catch clause are in a new finally scope, meaning any abrupt
+        // completions will be tracked (i.e. returns, breaks, and continues).
+        let finally_scope = FinallyScope::new(discriminant, result, finally_block);
+        self.push_finally_scope(finally_scope);
+
+        // Save the scope when entering the try statement so it can be restored when leaving
+        let saved_scope = self.register_allocator.allocate()?;
+        self.write_mov_instruction(saved_scope, Register::scope());
+
+        // Generate the body of the try statement, marking the range of instructions that should
+        // be covered by the body handler.
+        let body_handler_start = self.writer.current_offset();
+        let body_completion = self.gen_block_statement(&stmt.block)?;
+        let body_handler_end = self.writer.current_offset();
+
+        let mut body_handler = ExceptionHandlerBuilder::new(body_handler_start, body_handler_end);
+
+        // Body continues to the finally block, setting the disciminant to mark incoming branch
+        if !body_completion.is_abrupt() {
+            let normal_branch_id = self.current_finally_scope().unwrap().add_normal_branch();
+            self.gen_load_finally_branch_id(normal_branch_id, discriminant)?;
+            self.write_jump_instruction(finally_block)?;
+        }
+
+        // If there is a catch clause, generate it then continue to the finally block.
+        if let Some(catch_clause) = stmt.handler.as_ref() {
+            // Generate catch clause body
+            let (catch_completion, mut catch_handler) =
+                self.gen_catch_clause(catch_clause, saved_scope, &mut body_handler)?;
+
+            // Catch clause continues normally to finally block
+            if !catch_completion.is_abrupt() {
+                let normal_branch_id = self.current_finally_scope().unwrap().add_normal_branch();
+                self.gen_load_finally_branch_id(normal_branch_id, discriminant)?;
+                self.write_jump_instruction(finally_block)?;
+            }
+
+            // Catch handler catches exceptions, continues to finally, then rethrows
+            catch_handler.error_register = Some(result);
+            catch_handler.handler = self.writer.current_offset();
+
+            // Mark the incoming throw branch and continue directly to finally block
+            let throw_branch_id = self.current_finally_scope().unwrap().throw_branch();
+            self.gen_load_finally_branch_id(throw_branch_id, discriminant)?;
+
+            // Save exception handlers
+            self.exception_handler_builder.add(body_handler);
+            self.exception_handler_builder.add(catch_handler);
+        } else {
+            // If there is no catch, body execption handler should continue to the finally block,
+            // setting the descriptor to mark the incoming branch.
+
+            // Error is placed in the result register
+            body_handler.error_register = Some(result);
+            body_handler.handler = self.writer.current_offset();
+
+            // Mark the incoming throw branch and continue directly to finally block
+            let throw_branch_id = self.current_finally_scope().unwrap().throw_branch();
+            self.gen_load_finally_branch_id(throw_branch_id, discriminant)?;
+
+            // Save exception handlers
+            self.exception_handler_builder.add(body_handler);
+        }
+
+        let finally_scope = self.pop_finally_scope();
+
+        // Emit the finally block
+        self.start_block(finally_block);
+
+        // Restore the scope from before the try statement
+        self.write_mov_instruction(Register::scope(), saved_scope);
+        self.register_allocator.release(saved_scope);
+
+        // Then emit the body of the finally block
+        let finalizer_completion = self.gen_block_statement(stmt.finalizer.as_ref().unwrap())?;
+
+        // Emit the footer of the finally block, which checks the discriminant to determine the
+        // incoming branch that was taken.
+        if !finalizer_completion.is_abrupt() {
+            self.gen_finally_footer(&finally_scope, discriminant, result, join_block)?;
+        }
+
+        self.register_allocator.release(result);
+        self.register_allocator.release(discriminant);
+
+        self.start_block(join_block);
+
+        // Finalizer is always run, so if it has an abrupt completion then the entire try statement
+        // has an abrupt completion. If normal, there always may be a normal branch.
+        Ok(finalizer_completion)
+    }
+
+    fn gen_finally_footer(
+        &mut self,
+        finally_scope: &FinallyScope,
+        discriminant: GenRegister,
+        result: GenRegister,
+        join_block: BlockId,
+    ) -> EmitResult<()> {
+        let test_value = self.register_allocator.allocate()?;
+
+        // All branches blocks but the first will be jumped to (control falls through to the first
+        // block after the finally body).
+        let mut finally_branch_blocks = vec![0];
+        for _ in 0..finally_scope.num_branches - 1 {
+            finally_branch_blocks.push(self.new_block());
+        }
+
+        let mut i = 0;
+
+        // Add throw branch. Error was placed in the result register.
+        self.gen_finally_discriminant_check(
+            i,
+            finally_scope.throw_branch,
+            &mut finally_branch_blocks,
+            discriminant,
+            test_value,
+        )?;
+        self.writer.throw_instruction(result);
+        i += 1;
+
+        // Add normal branch if present, continues to join block.
+        if let Some(normal_branch_id) = finally_scope.normal_branch {
+            self.gen_finally_discriminant_check(
+                i,
+                normal_branch_id,
+                &mut finally_branch_blocks,
+                discriminant,
+                test_value,
+            )?;
+            self.write_jump_instruction(join_block)?;
+            i += 1;
+        }
+
+        // Add return branch if present. Return value was placed in the result register.
+        if let Some(return_branch_id) = finally_scope.return_branch {
+            self.gen_finally_discriminant_check(
+                i,
+                return_branch_id,
+                &mut finally_branch_blocks,
+                discriminant,
+                test_value,
+            )?;
+            self.gen_return(result)?;
+            i += 1;
+        }
+
+        // Add break blocks if present. Context to restore was placed in the result register.
+        for (break_block_id, break_branch_id) in finally_scope.break_branches.iter() {
+            self.gen_finally_discriminant_check(
+                i,
+                *break_branch_id,
+                &mut finally_branch_blocks,
+                discriminant,
+                test_value,
+            )?;
+            self.write_mov_instruction(Register::scope(), result);
+            self.write_jump_instruction(*break_block_id)?;
+            i += 1;
+        }
+
+        // Add continue blocks if present. Context to restore was placed in the result register.
+        for (continue_block_id, continue_branch_id) in finally_scope.continue_branches.iter() {
+            self.gen_finally_discriminant_check(
+                i,
+                *continue_branch_id,
+                &mut finally_branch_blocks,
+                discriminant,
+                test_value,
+            )?;
+            self.write_mov_instruction(Register::scope(), result);
+            self.write_jump_instruction(*continue_block_id)?;
+            i += 1;
+        }
+
+        self.register_allocator.release(test_value);
+
+        Ok(())
+    }
+
+    fn gen_load_finally_branch_id(
+        &mut self,
+        finally_branch_id: FinallyBranchId,
+        dest: GenRegister,
+    ) -> EmitResult<()> {
+        let test_imm =
+            SInt::try_from_signed(finally_branch_id as isize).ok_or(EmitError::IntegerTooLarge)?;
+        self.writer.load_immediate_instruction(dest, test_imm);
+
+        Ok(())
+    }
+
+    fn gen_finally_discriminant_check(
+        &mut self,
+        i: usize,
+        finally_branch_id: FinallyBranchId,
+        finally_branch_blocks: &mut [BlockId],
+        discriminant: GenRegister,
+        test_value: GenRegister,
+    ) -> EmitResult<()> {
+        // All branches but the first are jumped to (first is fallen through to)
+        if i != 0 {
+            self.start_block(finally_branch_blocks[i]);
+        }
+
+        // No test needed for final branch
+        if i == finally_branch_blocks.len() - 1 {
+            return Ok(());
+        }
+
+        // Check if the discriminant matches the branch id
+        self.gen_load_finally_branch_id(finally_branch_id, test_value)?;
+        self.writer
+            .strict_equal_instruction(test_value, discriminant, test_value);
+
+        // Jump to the next branch if the discriminant does not match
+        let next_branch_block = finally_branch_blocks[i + 1];
+        self.write_jump_false_instruction(test_value, next_branch_block)?;
+
+        // Continue to the case where the discriminant matches
+
+        Ok(())
     }
 
     fn gen_throw_statement(&mut self, stmt: &ast::ThrowStatement) -> EmitResult<StmtCompletion> {
@@ -4183,16 +4393,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         let return_arg = self.gen_outer_expression(stmt.argument.as_ref().unwrap())?;
-        self.writer.ret_instruction(return_arg);
+        self.gen_return(return_arg)?;
         self.register_allocator.release(return_arg);
 
         Ok(StmtCompletion::Abrupt)
     }
 
+    /// Return a value from the current function.
+    ///
+    /// May not emit a return instruction directly, e.g. if return is within a finally scope.
+    fn gen_return(&mut self, return_arg: GenRegister) -> EmitResult<()> {
+        // If not in a finally scope we can return directly
+        if self.finally_scopes.is_empty() {
+            self.writer.ret_instruction(return_arg);
+        } else {
+            // If in a finally scope we must mark the finally as having a return branch
+            let finally_scope = self.current_finally_scope().unwrap();
+            let return_branch_id = finally_scope.add_return_branch();
+            let discriminant_register = finally_scope.discriminant_register;
+            let result_register = finally_scope.result_register;
+            let finally_block = finally_scope.finally_block;
+
+            // Then jump to the finally block with return value in the shared result register,
+            // marking that we should follow the return branch after the finally completes.
+            self.gen_load_finally_branch_id(return_branch_id, discriminant_register)?;
+            self.write_mov_instruction(result_register, return_arg);
+            self.write_jump_instruction(finally_block)?;
+        }
+
+        Ok(())
+    }
+
     fn gen_return_undefined(&mut self) -> EmitResult<()> {
         let return_arg = self.register_allocator.allocate()?;
         self.writer.load_undefined_instruction(return_arg);
-        self.writer.ret_instruction(return_arg);
+        self.gen_return(return_arg)?;
         self.register_allocator.release(return_arg);
 
         Ok(())
@@ -4282,16 +4517,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Lookup the innermost jump statement target, or the target that matches the label id if one
     /// is provided.
-    fn lookup_jump_statement_target(&self, label: Option<&ast::Label>) -> &JumpStatementTarget {
-        if let Some(label) = label {
+    fn lookup_jump_statement_target(&self, label_id: Option<LabelId>) -> &JumpStatementTarget {
+        if let Some(label_id) = label_id {
             self.jump_statement_target_stack
                 .iter()
                 .rev()
-                .find(|target| target.label_id == Some(label.id))
+                .find(|target| target.label_id == Some(label_id))
                 .unwrap()
         } else {
             self.jump_statement_target_stack.last().unwrap()
         }
+    }
+
+    fn push_finally_scope(&mut self, finally_scope: FinallyScope) {
+        self.finally_scopes.push(finally_scope);
+    }
+
+    fn pop_finally_scope(&mut self) -> FinallyScope {
+        self.finally_scopes.pop().unwrap()
+    }
+
+    fn current_finally_scope(&mut self) -> Option<&mut FinallyScope> {
+        self.finally_scopes.last_mut()
     }
 
     /// Pop scopes until the current scope equals the provided scope.
@@ -4306,7 +4553,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_break_statement(&mut self, stmt: &ast::BreakStatement) -> EmitResult<StmtCompletion> {
-        let target = self.lookup_jump_statement_target(stmt.label.as_ref());
+        let target = self.lookup_jump_statement_target(stmt.label.as_ref().map(|l| l.id));
         let target_scope_id = target.break_scope_id;
         let target_break_block = target.break_block;
 
@@ -4320,7 +4567,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         stmt: &ast::ContinueStatement,
     ) -> EmitResult<StmtCompletion> {
-        let target = self.lookup_jump_statement_target(stmt.label.as_ref());
+        let target = self.lookup_jump_statement_target(stmt.label.as_ref().map(|l| l.id));
         let target_scope_id = target.continue_scope_id;
         let target_continue_block = target.continue_block;
 
@@ -4362,6 +4609,7 @@ pub enum EmitError {
     TooManyRegisters,
     TooManyScopes,
     IndexTooLarge,
+    IntegerTooLarge,
 }
 
 impl Error for EmitError {}
@@ -4375,6 +4623,7 @@ impl fmt::Display for EmitError {
             EmitError::TooManyRegisters => write!(f, "Too many registers"),
             EmitError::TooManyScopes => write!(f, "Too many scopes"),
             EmitError::IndexTooLarge => write!(f, "Index too large"),
+            EmitError::IntegerTooLarge => write!(f, "Integer too large"),
         }
     }
 }
@@ -4510,6 +4759,113 @@ struct ScopeStackNode {
     scope_id: usize,
     /// THe parent scope, or none if this is the global scope
     parent: Option<Rc<ScopeStackNode>>,
+}
+
+/// Identifier for a branch that led to a finally block.
+type FinallyBranchId = u32;
+
+/// A finally scope tracks all abnormal completions that occur within it, since those branches must
+/// all be threaded through the same finally block. Branches are distinguished with a branch id.
+struct FinallyScope {
+    /// Register in which to place an integer indicating the branch to take
+    discriminant_register: GenRegister,
+    /// Register in which to place the return value or exception
+    result_register: GenRegister,
+    /// Start of the finally block
+    finally_block: BlockId,
+    /// The branch to take if an exception is thrown. Throw branch always exists.
+    throw_branch: FinallyBranchId,
+    /// Normal branch is the normal exit of the target block, which must continue to the finally
+    /// block before proceeding normally. Set if the target block has a normal exit.
+    normal_branch: Option<FinallyBranchId>,
+    /// Set if the target block has a return statement, which must first continue to the finally
+    /// block before performing the return.
+    return_branch: Option<FinallyBranchId>,
+    /// All break statements in the target block, along with their target block id.
+    break_branches: Vec<(BlockId, FinallyBranchId)>,
+    /// All continue statements in the target block, along with their target block id.
+    continue_branches: Vec<(BlockId, FinallyBranchId)>,
+    /// Total number of branches that must be threaded through the finally block.
+    num_branches: FinallyBranchId,
+}
+
+impl FinallyScope {
+    fn new(
+        discriminant_register: GenRegister,
+        result_register: GenRegister,
+        finally_block: BlockId,
+    ) -> Self {
+        FinallyScope {
+            discriminant_register,
+            result_register,
+            finally_block,
+            throw_branch: 0,
+            normal_branch: None,
+            return_branch: None,
+            break_branches: Vec::new(),
+            continue_branches: Vec::new(),
+            num_branches: 1,
+        }
+    }
+
+    fn next_branch_id(&mut self) -> FinallyBranchId {
+        let id = self.num_branches;
+        self.num_branches += 1;
+        id
+    }
+
+    fn throw_branch(&self) -> FinallyBranchId {
+        self.throw_branch
+    }
+
+    fn add_normal_branch(&mut self) -> FinallyBranchId {
+        if let Some(normal_branch) = self.normal_branch {
+            normal_branch
+        } else {
+            let next_branch_id = self.next_branch_id();
+            self.normal_branch = Some(next_branch_id);
+            next_branch_id
+        }
+    }
+
+    fn add_return_branch(&mut self) -> FinallyBranchId {
+        if let Some(return_branch) = self.return_branch {
+            return_branch
+        } else {
+            let next_branch_id = self.next_branch_id();
+            self.return_branch = Some(next_branch_id);
+            next_branch_id
+        }
+    }
+
+    fn add_break_branch(&mut self, break_block_id: BlockId) -> FinallyBranchId {
+        if let Some((_, branch_id)) = self
+            .break_branches
+            .iter()
+            .find(|(block_id, _)| break_block_id == *block_id)
+        {
+            *branch_id
+        } else {
+            let next_branch_id = self.next_branch_id();
+            self.break_branches.push((break_block_id, next_branch_id));
+            next_branch_id
+        }
+    }
+
+    fn add_continue_branch(&mut self, continue_block_id: BlockId) -> FinallyBranchId {
+        if let Some((_, branch_id)) = self
+            .break_branches
+            .iter()
+            .find(|(block_id, _)| continue_block_id == *block_id)
+        {
+            *branch_id
+        } else {
+            let next_branch_id = self.next_branch_id();
+            self.break_branches
+                .push((continue_block_id, next_branch_id));
+            next_branch_id
+        }
+    }
 }
 
 /// A reference to a string that may be either wtf8 or utf8.

@@ -2728,26 +2728,40 @@ impl VM {
         // Find the offset of the instruction in the instruction stream
         let instr_offset = unsafe { instr_addr.offset_from(func.bytecode().as_ptr()) as usize };
 
+        // Find the innermost matching exception handler
+        let mut innermost_matching_handler = None;
         for handler in func.exception_handlers_ptr().unwrap().iter() {
             // The saved return address points to the start of the next instruction, so treat the
             // handler bounds as (exclusive, inclusive].
             if handler.start() < instr_offset && instr_offset <= handler.end() {
-                // Find the absolute address of the start of the handler block and start executing
-                // instructions from this address.
-                let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
-                self.pc = handler_addr;
+                let handler_width = handler.end() - handler.start();
 
-                // Unwind the stack to the frame that contains the exception handler
-                self.fp = stack_frame.fp();
-                self.sp = stack_frame.sp();
-
-                // Write the error into the appropriate register in the new stack frame
-                if let Some(error_register) = handler.error_register() {
-                    self.write_register(error_register, error_value);
+                // Use the innermost handler (aka the one with the smallest width)
+                if !matches!(
+                    innermost_matching_handler,
+                    Some ((_, min_width)) if min_width < handler_width,
+                ) {
+                    innermost_matching_handler = Some((handler, handler_width));
                 }
-
-                return true;
             }
+        }
+
+        if let Some((handler, _)) = innermost_matching_handler {
+            // Find the absolute address of the start of the handler block and start executing
+            // instructions from this address.
+            let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
+            self.pc = handler_addr;
+
+            // Unwind the stack to the frame that contains the exception handler
+            self.fp = stack_frame.fp();
+            self.sp = stack_frame.sp();
+
+            // Write the error into the appropriate register in the new stack frame
+            if let Some(error_register) = handler.error_register() {
+                self.write_register(error_register, error_value);
+            }
+
+            return true;
         }
 
         false

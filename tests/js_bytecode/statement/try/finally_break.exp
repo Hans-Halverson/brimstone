@@ -1,0 +1,371 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [BytecodeFunction: breakInTry]
+    2: [String: breakInTry]
+    3: [BytecodeFunction: breakInCatch]
+    4: [String: breakInCatch]
+    5: [BytecodeFunction: breakInTryAndCatch]
+    6: [String: breakInTryAndCatch]
+    7: [BytecodeFunction: singleFinallyBreak]
+    8: [String: singleFinallyBreak]
+    9: [BytecodeFunction: unwindsBreak]
+    10: [String: unwindsBreak]
+    11: [BytecodeFunction: breakDoesNotLeaveFinally]
+    12: [String: breakDoesNotLeaveFinally]
+    13: [BytecodeFunction: leavesNested]
+    14: [String: leavesNested]
+}
+
+[BytecodeFunction: breakInTry] {
+  Parameters: 1, Registers: 3
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 59 (.L6)
+     5: Mov r2, <scope>
+     8: JumpToBooleanFalse a0, 8 (.L1)
+    11: LoadImmediate r0, 1
+    14: Jump 10 (.L2)
+  .L1:
+    16: LoadImmediate r0, 2
+    19: Jump 5 (.L2)
+    21: LoadImmediate r0, 0
+  .L2:
+    24: Mov <scope>, r2
+    27: LoadImmediate r2, 1
+    30: LoadImmediate r2, 0
+    33: StrictEqual r2, r0, r2
+    37: JumpFalse r2, 5 (.L3)
+    40: Throw r1
+  .L3:
+    42: LoadImmediate r2, 2
+    45: StrictEqual r2, r0, r2
+    49: JumpFalse r2, 5 (.L4)
+    52: Jump 4 (.L5)
+  .L4:
+    54: Jump 7 (.L6)
+  .L5:
+    56: LoadImmediate r0, 2
+    59: Jump -59 (.L0)
+  .L6:
+    61: LoadUndefined r0
+    63: Ret r0
+  Exception Handlers:
+    8-16 -> 21 (r1)
+}
+
+[BytecodeFunction: breakInCatch] {
+  Parameters: 1, Registers: 4
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 70 (.L6)
+     5: Mov r2, <scope>
+     8: LoadImmediate r3, 1
+    11: LoadImmediate r0, 1
+    14: Jump 21 (.L2)
+    16: Mov <scope>, r2
+    19: JumpToBooleanFalse a0, 8 (.L1)
+    22: LoadImmediate r0, 2
+    25: Jump 10 (.L2)
+  .L1:
+    27: LoadImmediate r0, 1
+    30: Jump 5 (.L2)
+    32: LoadImmediate r0, 0
+  .L2:
+    35: Mov <scope>, r2
+    38: LoadImmediate r2, 2
+    41: LoadImmediate r2, 0
+    44: StrictEqual r2, r0, r2
+    48: JumpFalse r2, 5 (.L3)
+    51: Throw r1
+  .L3:
+    53: LoadImmediate r2, 1
+    56: StrictEqual r2, r0, r2
+    60: JumpFalse r2, 5 (.L4)
+    63: Jump 4 (.L5)
+  .L4:
+    65: Jump 7 (.L6)
+  .L5:
+    67: LoadImmediate r0, 3
+    70: Jump -70 (.L0)
+  .L6:
+    72: LoadUndefined r0
+    74: Ret r0
+  Exception Handlers:
+    8-11 -> 16
+    16-27 -> 32 (r1)
+}
+
+[BytecodeFunction: breakInTryAndCatch] {
+  Parameters: 2, Registers: 3
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 75 (.L7)
+     5: Mov r2, <scope>
+     8: JumpToBooleanFalse a0, 8 (.L1)
+    11: LoadImmediate r0, 1
+    14: Jump 26 (.L3)
+  .L1:
+    16: LoadImmediate r0, 2
+    19: Jump 21 (.L3)
+    21: Mov <scope>, r2
+    24: JumpToBooleanFalse a1, 8 (.L2)
+    27: LoadImmediate r0, 1
+    30: Jump 10 (.L3)
+  .L2:
+    32: LoadImmediate r0, 2
+    35: Jump 5 (.L3)
+    37: LoadImmediate r0, 0
+  .L3:
+    40: Mov <scope>, r2
+    43: LoadImmediate r2, 1
+    46: LoadImmediate r2, 0
+    49: StrictEqual r2, r0, r2
+    53: JumpFalse r2, 5 (.L4)
+    56: Throw r1
+  .L4:
+    58: LoadImmediate r2, 2
+    61: StrictEqual r2, r0, r2
+    65: JumpFalse r2, 5 (.L5)
+    68: Jump 4 (.L6)
+  .L5:
+    70: Jump 7 (.L7)
+  .L6:
+    72: LoadImmediate r0, 4
+    75: Jump -75 (.L0)
+  .L7:
+    77: LoadUndefined r0
+    79: Ret r0
+  Exception Handlers:
+    8-16 -> 21
+    21-32 -> 37 (r1)
+}
+
+[BytecodeFunction: singleFinallyBreak] {
+  Parameters: 1, Registers: 4
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 55 (.L5)
+     5: Mov r2, <scope>
+     8: LoadImmediate r3, 1
+    11: LoadImmediate r0, 1
+    14: Jump 16 (.L1)
+    16: Mov <scope>, r2
+    19: LoadImmediate r3, 2
+    22: LoadImmediate r0, 1
+    25: Jump 5 (.L1)
+    27: LoadImmediate r0, 0
+  .L1:
+    30: Mov <scope>, r2
+    33: JumpToBooleanFalse a0, 5 (.L2)
+    36: Jump 21 (.L5)
+  .L2:
+    38: LoadImmediate r2, 0
+    41: StrictEqual r2, r0, r2
+    45: JumpFalse r2, 5 (.L3)
+    48: Throw r1
+  .L3:
+    50: Jump 2 (.L4)
+  .L4:
+    52: LoadImmediate r0, 5
+    55: Jump -55 (.L0)
+  .L5:
+    57: LoadUndefined r0
+    59: Ret r0
+  Exception Handlers:
+    8-11 -> 16
+    16-22 -> 27 (r1)
+}
+
+[BytecodeFunction: unwindsBreak] {
+  Parameters: 1, Registers: 5
+  .L0:
+      0: LoadTrue r1
+      2: JumpFalse r1, 112 (.L6)
+      5: PushLexicalScope c0
+      7: LoadEmpty r1
+      9: StoreToScope r1, 0, 0
+     13: LoadImmediate r1, 1
+     16: StoreToScope r1, 0, 0
+     20: PushLexicalScope c1
+     22: LoadEmpty r1
+     24: StoreToScope r1, 0, 0
+     28: LoadImmediate r1, 2
+     31: StoreToScope r1, 0, 0
+     35: Mov r3, <scope>
+     38: PushLexicalScope c2
+     40: LoadEmpty r4
+     42: StoreToScope r4, 0, 0
+     46: LoadImmediate r4, 3
+     49: StoreToScope r4, 0, 0
+     53: NewClosure r0, c3
+     56: JumpToBooleanFalse a0, 8 (.L1)
+     59: LoadImmediate r1, 1
+     62: Jump 11 (.L2)
+  .L1:
+     64: PopScope 
+     65: LoadImmediate r1, 2
+     68: Jump 5 (.L2)
+     70: LoadImmediate r1, 0
+  .L2:
+     73: Mov <scope>, r3
+     76: LoadImmediate r3, 4
+     79: LoadImmediate r3, 0
+     82: StrictEqual r3, r1, r3
+     86: JumpFalse r3, 5 (.L3)
+     89: Throw r2
+  .L3:
+     91: LoadImmediate r3, 2
+     94: StrictEqual r3, r1, r3
+     98: JumpFalse r3, 5 (.L4)
+    101: Jump 6 (.L5)
+  .L4:
+    103: PopScope 
+    104: PopScope 
+    105: Jump 9 (.L6)
+  .L5:
+    107: PopScope 
+    108: LoadImmediate r1, 5
+    111: PopScope 
+    112: Jump -112 (.L0)
+  .L6:
+    114: LoadUndefined r1
+    116: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [ScopeNames]
+    3: [BytecodeFunction: inner]
+  Exception Handlers:
+    38-65 -> 70 (r2)
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 0, 2
+     4: CheckTdz r0, c0
+     7: LoadFromScope r1, 0, 1
+    11: CheckTdz r1, c1
+    14: Add r0, r0, r1
+    18: LoadFromScope r1, 0, 0
+    22: CheckTdz r1, c2
+    25: Add r0, r0, r1
+    29: Ret r0
+  Constant Table:
+    0: [String: s1]
+    1: [String: s2]
+    2: [String: s3]
+}
+
+[BytecodeFunction: breakDoesNotLeaveFinally] {
+  Parameters: 1, Registers: 4
+     0: Mov r2, <scope>
+  .L0:
+     3: LoadTrue r3
+     5: JumpFalse r3, 13 (.L2)
+     8: JumpToBooleanFalse a0, 5 (.L1)
+    11: Jump 7 (.L2)
+  .L1:
+    13: LoadImmediate r3, 1
+    16: Jump -13 (.L0)
+  .L2:
+    18: LoadImmediate r0, 1
+    21: Jump 5 (.L3)
+    23: LoadImmediate r0, 0
+  .L3:
+    26: Mov <scope>, r2
+    29: LoadImmediate r2, 2
+    32: LoadImmediate r2, 0
+    35: StrictEqual r2, r0, r2
+    39: JumpFalse r2, 5 (.L4)
+    42: Throw r1
+  .L4:
+    44: Jump 2 (.L5)
+  .L5:
+    46: LoadUndefined r0
+    48: Ret r0
+  Exception Handlers:
+    3-18 -> 23 (r1)
+}
+
+[BytecodeFunction: leavesNested] {
+  Parameters: 1, Registers: 6
+  .L0:
+      0: LoadTrue r0
+      2: JumpFalse r0, 115 (.L12)
+      5: Mov r2, <scope>
+  .L1:
+      8: LoadTrue r3
+     10: JumpFalse r3, 62 (.L7)
+     13: Mov r5, <scope>
+     16: JumpToBooleanFalse a0, 8 (.L2)
+     19: LoadImmediate r3, 1
+     22: Jump 10 (.L3)
+  .L2:
+     24: LoadImmediate r3, 2
+     27: Jump 5 (.L3)
+     29: LoadImmediate r3, 0
+  .L3:
+     32: Mov <scope>, r5
+     35: LoadImmediate r5, 1
+     38: LoadImmediate r5, 0
+     41: StrictEqual r5, r3, r5
+     45: JumpFalse r5, 5 (.L4)
+     48: Throw r4
+  .L4:
+     50: LoadImmediate r5, 2
+     53: StrictEqual r5, r3, r5
+     57: JumpFalse r5, 5 (.L5)
+     60: Jump 7 (.L6)
+  .L5:
+     62: LoadImmediate r0, 1
+     65: Jump 15 (.L8)
+  .L6:
+     67: LoadImmediate r3, 2
+     70: Jump -62 (.L1)
+  .L7:
+     72: LoadImmediate r0, 2
+     75: Jump 5 (.L8)
+     77: LoadImmediate r0, 0
+  .L8:
+     80: Mov <scope>, r2
+     83: LoadImmediate r2, 3
+     86: LoadImmediate r2, 0
+     89: StrictEqual r2, r0, r2
+     93: JumpFalse r2, 5 (.L9)
+     96: Throw r1
+  .L9:
+     98: LoadImmediate r2, 2
+    101: StrictEqual r2, r0, r2
+    105: JumpFalse r2, 5 (.L10)
+    108: Jump 4 (.L11)
+  .L10:
+    110: Jump 7 (.L12)
+  .L11:
+    112: LoadImmediate r0, 4
+    115: Jump -115 (.L0)
+  .L12:
+    117: LoadUndefined r0
+    119: Ret r0
+  Exception Handlers:
+    16-24 -> 29 (r4)
+    8-72 -> 77 (r1)
+}

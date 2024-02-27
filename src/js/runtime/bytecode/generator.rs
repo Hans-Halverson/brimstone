@@ -4156,7 +4156,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Both the try body and catch clause are in a new finally scope, meaning any abrupt
         // completions will be tracked (i.e. returns, breaks, and continues).
-        let finally_scope = FinallyScope::new(discriminant, result, finally_block);
+        let jump_target_depth = self.jump_statement_target_stack.len();
+        let finally_scope =
+            FinallyScope::new(discriminant, result, finally_block, jump_target_depth);
         self.push_finally_scope(finally_scope);
 
         // Save the scope when entering the try statement so it can be restored when leaving
@@ -4301,31 +4303,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             i += 1;
         }
 
-        // Add break blocks if present. Context to restore was placed in the result register.
-        for (break_block_id, break_branch_id) in finally_scope.break_branches.iter() {
+        // Add break and continue blocks if present. Context to restore was placed in the result
+        // register.
+        for target in finally_scope.jump_target_branches.iter() {
             self.gen_finally_discriminant_check(
                 i,
-                *break_branch_id,
+                target.branch_id,
                 &mut finally_branch_blocks,
                 discriminant,
                 test_value,
             )?;
-            self.write_mov_instruction(Register::scope(), result);
-            self.write_jump_instruction(*break_block_id)?;
-            i += 1;
-        }
-
-        // Add continue blocks if present. Context to restore was placed in the result register.
-        for (continue_block_id, continue_branch_id) in finally_scope.continue_branches.iter() {
-            self.gen_finally_discriminant_check(
-                i,
-                *continue_branch_id,
-                &mut finally_branch_blocks,
-                discriminant,
-                test_value,
-            )?;
-            self.write_mov_instruction(Register::scope(), result);
-            self.write_jump_instruction(*continue_block_id)?;
+            self.gen_jump_target(target.block_id, target.scope_id, target.jump_target_depth)?;
             i += 1;
         }
 
@@ -4424,6 +4412,44 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    /// Break or continue to the given label (or to the innermost loop if no label is provided).
+    ///
+    /// May not emit a break instruction directly, e.g. if break/continue is within a finally scope.
+    fn gen_jump_target(
+        &mut self,
+        target_block_id: BlockId,
+        target_scope_id: usize,
+        jump_target_depth: usize,
+    ) -> EmitResult<()> {
+        // Check if we are breaking/continuing outside of the finally scope
+        if let Some(finally_scope) = self.finally_scopes.last_mut() {
+            if jump_target_depth <= finally_scope.jump_target_depth {
+                // Jump to the finally block, marking that we should follow the break/continue
+                // branch after the finally completes.
+                let finally_scope = self.current_finally_scope().unwrap();
+                let branch_id = finally_scope.add_jump_target_branch(
+                    target_block_id,
+                    target_scope_id,
+                    jump_target_depth,
+                );
+                let discriminant_register = finally_scope.discriminant_register;
+                let finally_block = finally_scope.finally_block;
+
+                self.gen_load_finally_branch_id(branch_id, discriminant_register)?;
+                self.write_jump_instruction(finally_block)?;
+
+                return Ok(());
+            }
+        }
+
+        // Otherwise should perform a regular break/continue - jump to the target block, unwinding
+        // the stack.
+        self.unwind_scope_chain_to_scope(target_scope_id)?;
+        self.write_jump_instruction(target_block_id)?;
+
+        Ok(())
+    }
+
     fn gen_return_undefined(&mut self) -> EmitResult<()> {
         let return_arg = self.register_allocator.allocate()?;
         self.writer.load_undefined_instruction(return_arg);
@@ -4517,15 +4543,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Lookup the innermost jump statement target, or the target that matches the label id if one
     /// is provided.
-    fn lookup_jump_statement_target(&self, label_id: Option<LabelId>) -> &JumpStatementTarget {
+    ///
+    /// Also returns the "jump target depth" of the matching jump target, aka one more than its
+    /// index in the jump statement target stack.
+    fn lookup_jump_statement_target(
+        &self,
+        label_id: Option<LabelId>,
+    ) -> (usize, &JumpStatementTarget) {
         if let Some(label_id) = label_id {
             self.jump_statement_target_stack
                 .iter()
+                .enumerate()
                 .rev()
-                .find(|target| target.label_id == Some(label_id))
+                .find(|(_, target)| target.label_id == Some(label_id))
+                .map(|(i, target)| (i, target))
                 .unwrap()
         } else {
-            self.jump_statement_target_stack.last().unwrap()
+            let last_jump_target = self.jump_statement_target_stack.last().unwrap();
+            let last_depth = self.jump_statement_target_stack.len();
+            (last_depth, last_jump_target)
         }
     }
 
@@ -4553,12 +4589,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_break_statement(&mut self, stmt: &ast::BreakStatement) -> EmitResult<StmtCompletion> {
-        let target = self.lookup_jump_statement_target(stmt.label.as_ref().map(|l| l.id));
-        let target_scope_id = target.break_scope_id;
-        let target_break_block = target.break_block;
+        let label_id = stmt.label.as_ref().map(|l| l.id);
+        let (jump_target_depth, target) = self.lookup_jump_statement_target(label_id);
 
-        self.unwind_scope_chain_to_scope(target_scope_id)?;
-        self.write_jump_instruction(target_break_block)?;
+        self.gen_jump_target(target.break_block, target.break_scope_id, jump_target_depth)?;
 
         Ok(StmtCompletion::Abrupt)
     }
@@ -4567,12 +4601,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         stmt: &ast::ContinueStatement,
     ) -> EmitResult<StmtCompletion> {
-        let target = self.lookup_jump_statement_target(stmt.label.as_ref().map(|l| l.id));
-        let target_scope_id = target.continue_scope_id;
-        let target_continue_block = target.continue_block;
+        let label_id = stmt.label.as_ref().map(|l| l.id);
+        let (jump_target_depth, target) = self.lookup_jump_statement_target(label_id);
 
-        self.unwind_scope_chain_to_scope(target_scope_id)?;
-        self.write_jump_instruction(target_continue_block)?;
+        self.gen_jump_target(target.continue_block, target.continue_scope_id, jump_target_depth)?;
 
         Ok(StmtCompletion::Abrupt)
     }
@@ -4773,6 +4805,9 @@ struct FinallyScope {
     result_register: GenRegister,
     /// Start of the finally block
     finally_block: BlockId,
+    /// Number of jump statement targets on stack at the start of this finally scope. The jump
+    /// statement target at this index - 1 is the first jump statement target outside the finally.
+    jump_target_depth: usize,
     /// The branch to take if an exception is thrown. Throw branch always exists.
     throw_branch: FinallyBranchId,
     /// Normal branch is the normal exit of the target block, which must continue to the finally
@@ -4781,12 +4816,22 @@ struct FinallyScope {
     /// Set if the target block has a return statement, which must first continue to the finally
     /// block before performing the return.
     return_branch: Option<FinallyBranchId>,
-    /// All break statements in the target block, along with their target block id.
-    break_branches: Vec<(BlockId, FinallyBranchId)>,
-    /// All continue statements in the target block, along with their target block id.
-    continue_branches: Vec<(BlockId, FinallyBranchId)>,
+    /// All break and continue statements in the target block, which muts first continue to the
+    /// finally block before performing the break or continue.
+    jump_target_branches: Vec<JumpTargetBranch>,
     /// Total number of branches that must be threaded through the finally block.
     num_branches: FinallyBranchId,
+}
+
+struct JumpTargetBranch {
+    /// The unique id of the branch.
+    branch_id: FinallyBranchId,
+    /// The block id that the branch jumps to.
+    block_id: BlockId,
+    /// The scope id that the branch jumps to.
+    scope_id: usize,
+    /// The depth of the jump target stack for the target.
+    jump_target_depth: usize,
 }
 
 impl FinallyScope {
@@ -4794,16 +4839,17 @@ impl FinallyScope {
         discriminant_register: GenRegister,
         result_register: GenRegister,
         finally_block: BlockId,
+        jump_target_depth: usize,
     ) -> Self {
         FinallyScope {
             discriminant_register,
             result_register,
             finally_block,
+            jump_target_depth,
             throw_branch: 0,
             normal_branch: None,
             return_branch: None,
-            break_branches: Vec::new(),
-            continue_branches: Vec::new(),
+            jump_target_branches: Vec::new(),
             num_branches: 1,
         }
     }
@@ -4838,31 +4884,26 @@ impl FinallyScope {
         }
     }
 
-    fn add_break_branch(&mut self, break_block_id: BlockId) -> FinallyBranchId {
-        if let Some((_, branch_id)) = self
-            .break_branches
+    fn add_jump_target_branch(
+        &mut self,
+        target_block_id: BlockId,
+        target_scope_id: usize,
+        jump_target_depth: usize,
+    ) -> FinallyBranchId {
+        if let Some(target_branch) = self
+            .jump_target_branches
             .iter()
-            .find(|(block_id, _)| break_block_id == *block_id)
+            .find(|branch| target_block_id == branch.block_id)
         {
-            *branch_id
+            target_branch.branch_id
         } else {
             let next_branch_id = self.next_branch_id();
-            self.break_branches.push((break_block_id, next_branch_id));
-            next_branch_id
-        }
-    }
-
-    fn add_continue_branch(&mut self, continue_block_id: BlockId) -> FinallyBranchId {
-        if let Some((_, branch_id)) = self
-            .break_branches
-            .iter()
-            .find(|(block_id, _)| continue_block_id == *block_id)
-        {
-            *branch_id
-        } else {
-            let next_branch_id = self.next_branch_id();
-            self.break_branches
-                .push((continue_block_id, next_branch_id));
+            self.jump_target_branches.push(JumpTargetBranch {
+                branch_id: next_branch_id,
+                block_id: target_block_id,
+                scope_id: target_scope_id,
+                jump_target_depth,
+            });
             next_branch_id
         }
     }

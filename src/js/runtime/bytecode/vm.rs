@@ -3,8 +3,8 @@ use std::{collections::HashSet, ops::Deref};
 use crate::{
     js::runtime::{
         abstract_operations::{
-            copy_data_properties, create_data_property_or_throw, define_property_or_throw,
-            has_property, set,
+            call, call_object, copy_data_properties, create_data_property_or_throw,
+            define_property_or_throw, get_method, has_property, set,
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
@@ -29,6 +29,7 @@ use crate::{
             intrinsics::Intrinsic, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
         },
+        iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
@@ -58,9 +59,10 @@ use super::{
         ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeletePropertyInstruction, DivInstruction, DupScopeInstruction, EvalInitInstruction,
-        ExpInstruction, ForInNextInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GlobalInitInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction, JumpConstantInstruction,
+        ExpInstruction, ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
+        GetPropertyInstruction, GlobalInitInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
@@ -565,6 +567,15 @@ impl VM {
                         }
                         OpCode::EvalInit => {
                             dispatch_or_throw!(EvalInitInstruction, execute_eval_init)
+                        }
+                        OpCode::GetIterator => {
+                            dispatch_or_throw!(GetIteratorInstruction, execute_get_iterator)
+                        }
+                        OpCode::IteratorNext => {
+                            dispatch_or_throw!(IteratorNextInstruction, execute_iterator_next)
+                        }
+                        OpCode::IteratorClose => {
+                            dispatch_or_throw!(IteratorCloseInstruction, execute_iterator_close)
                         }
                     }
                 };
@@ -2710,6 +2721,81 @@ impl VM {
                 }
             }
         }
+    }
+
+    #[inline]
+    fn execute_get_iterator<W: Width>(
+        &mut self,
+        instr: &GetIteratorInstruction<W>,
+    ) -> EvalResult<()> {
+        let iterable = self.read_register_to_handle(instr.iterable());
+        let iterator_dest = instr.iterator();
+        let next_method_dest = instr.next_method();
+
+        // May allocate
+        let iterator_result = maybe!(get_iterator(self.cx, iterable, IteratorHint::Sync, None));
+
+        self.write_register(iterator_dest, iterator_result.iterator.get_().into());
+        self.write_register(next_method_dest, iterator_result.next_method.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_iterator_next<W: Width>(
+        &mut self,
+        instr: &IteratorNextInstruction<W>,
+    ) -> EvalResult<()> {
+        let next_method = self.read_register_to_handle(instr.next_method());
+        let iterator = self.read_register_to_handle(instr.iterator());
+        let value_dest = instr.value();
+        let is_done_dest = instr.is_done();
+
+        // Call the iterator's next method. May allocate.
+        let iterator_result = maybe!(call(self.cx, next_method, iterator, &[]));
+
+        // Iterator's function must return an object, otherwise error
+        if !iterator_result.is_object() {
+            return type_error_(self.cx, "iterator's next method must return an object");
+        }
+        let iterator_result = iterator_result.as_object();
+
+        // Check if the iterator is done
+        let is_done = maybe!(iterator_complete(self.cx, iterator_result));
+
+        if is_done {
+            // If done then no need to write value register as it will be ignored
+            self.write_register(is_done_dest, Value::bool(true));
+        } else {
+            // If not done then extract the value and write it to the value register
+            let value = maybe!(iterator_value(self.cx, iterator_result));
+
+            self.write_register(is_done_dest, Value::bool(false));
+            self.write_register(value_dest, value.get());
+        }
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_iterator_close<W: Width>(
+        &mut self,
+        instr: &IteratorCloseInstruction<W>,
+    ) -> EvalResult<()> {
+        let iterator = self.read_register_to_handle(instr.iterator());
+        let return_method = maybe!(get_method(self.cx, iterator, self.cx.names.return_()));
+
+        // Check if there is a return method and call it
+        if let Some(return_method) = return_method {
+            let return_result = maybe!(call_object(self.cx, return_method, iterator, &[]));
+
+            // Return method must return an object otherwise error
+            if !return_result.is_object() {
+                return type_error_(self.cx, "iterator's return method must return an object");
+            }
+        }
+
+        ().into()
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

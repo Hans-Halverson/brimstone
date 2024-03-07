@@ -904,6 +904,23 @@ define_instructions!(
     EvalInit(EvalInitInstruction, eval_init_instruction) {
         [0] global_names_index: ConstantIndex,
     }
+
+    GetIterator(GetIteratorInstruction, get_iterator_instruction) {
+        [0] iterator: Register,
+        [1] next_method: Register,
+        [2] iterable: Register,
+    }
+
+    IteratorNext(IteratorNextInstruction, iterator_next_instruction) {
+        [0] value: Register,
+        [1] is_done: Register,
+        [2] iterator: Register,
+        [3] next_method: Register,
+    }
+
+    IteratorClose(IteratorCloseInstruction, iterator_close_instruction) {
+        [0] iterator: Register,
+    }
 );
 
 bitflags! {

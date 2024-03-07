@@ -1,0 +1,188 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: LoadUndefined r0
+    28: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [BytecodeFunction: startScope]
+    2: [String: startScope]
+    3: [BytecodeFunction: captures]
+    4: [String: captures]
+    5: [BytecodeFunction: captureRhsInTdz]
+    6: [String: captureRhsInTdz]
+    7: [BytecodeFunction: noCaptureRhsInTdz]
+    8: [String: noCaptureRhsInTdz]
+}
+
+[BytecodeFunction: startScope] {
+  Parameters: 0, Registers: 8
+     0: NewArray r4
+     2: GetIterator r2, r3, r4
+  .L0:
+     6: IteratorNext r4, r5, r2, r3
+    11: JumpTrue r5, 35 (.L2)
+    14: Mov r0, r4
+    17: Mov r6, <scope>
+    20: LoadEmpty r1
+    22: CheckTdz r1, c0
+    25: Add r7, r0, r1
+    29: LoadImmediate r1, 0
+    32: Jump 12 (.L1)
+    34: LoadImmediate r4, 0
+    37: Mov <scope>, r6
+    40: IteratorClose r2
+    42: Throw r5
+  .L1:
+    44: Jump -38 (.L0)
+  .L2:
+    46: LoadUndefined r2
+    48: Ret r2
+  Constant Table:
+    0: [String: inner]
+  Exception Handlers:
+    14-32 -> 34 (r5)
+    40-42 -> 42
+}
+
+[BytecodeFunction: captures] {
+  Parameters: 0, Registers: 7
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: NewArray r3
+    10: GetIterator r1, r2, r3
+    14: PopScope 
+  .L0:
+    15: PushLexicalScope c0
+    17: LoadEmpty r3
+    19: StoreToScope r3, 0, 0
+    23: IteratorNext r3, r4, r1, r2
+    28: JumpTrue r4, 44 (.L2)
+    31: StoreToScope r3, 0, 0
+    35: Mov r5, <scope>
+    38: PushLexicalScope c1
+    40: LoadEmpty r6
+    42: StoreToScope r6, 0, 0
+    46: LoadImmediate r6, 2
+    49: StoreToScope r6, 0, 0
+    53: NewClosure r0, c2
+    56: PopScope 
+    57: Jump 12 (.L1)
+    59: LoadImmediate r3, 0
+    62: Mov <scope>, r5
+    65: IteratorClose r1
+    67: Throw r4
+  .L1:
+    69: PopScope 
+    70: Jump -55 (.L0)
+  .L2:
+    72: PopScope 
+    73: LoadUndefined r1
+    75: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [BytecodeFunction: inner]
+  Exception Handlers:
+    31-57 -> 59 (r4)
+    65-67 -> 67
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 0, 1
+     4: CheckTdz r0, c0
+     7: LoadFromScope r1, 0, 0
+    11: CheckTdz r1, c1
+    14: Add r0, r0, r1
+    18: Ret r0
+  Constant Table:
+    0: [String: x]
+    1: [String: y]
+}
+
+[BytecodeFunction: captureRhsInTdz] {
+  Parameters: 0, Registers: 6
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: LoadFromScope r3, 0, 0
+    12: CheckTdz r3, c1
+    15: GetIterator r1, r2, r3
+    19: PopScope 
+  .L0:
+    20: PushLexicalScope c0
+    22: LoadEmpty r3
+    24: StoreToScope r3, 0, 0
+    28: IteratorNext r3, r4, r1, r2
+    33: JumpTrue r4, 28 (.L2)
+    36: StoreToScope r3, 0, 0
+    40: Mov r5, <scope>
+    43: NewClosure r0, c2
+    46: Jump 12 (.L1)
+    48: LoadImmediate r3, 0
+    51: Mov <scope>, r5
+    54: IteratorClose r1
+    56: Throw r4
+  .L1:
+    58: PopScope 
+    59: Jump -39 (.L0)
+  .L2:
+    61: PopScope 
+    62: LoadUndefined r1
+    64: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: x]
+    2: [BytecodeFunction: inner]
+  Exception Handlers:
+    36-46 -> 48 (r4)
+    54-56 -> 56
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: noCaptureRhsInTdz] {
+  Parameters: 0, Registers: 7
+     0: LoadEmpty r0
+     2: CheckTdz r0, c0
+     5: GetIterator r1, r2, r0
+  .L0:
+     9: LoadEmpty r0
+    11: IteratorNext r3, r4, r1, r2
+    16: JumpTrue r4, 26 (.L2)
+    19: Mov r0, r3
+    22: Mov r5, <scope>
+    25: LoadImmediate r6, 1
+    28: Jump 12 (.L1)
+    30: LoadImmediate r3, 0
+    33: Mov <scope>, r5
+    36: IteratorClose r1
+    38: Throw r4
+  .L1:
+    40: Jump -31 (.L0)
+  .L2:
+    42: LoadUndefined r1
+    44: Ret r1
+  Constant Table:
+    0: [String: x]
+  Exception Handlers:
+    19-28 -> 30 (r4)
+    36-38 -> 38
+}

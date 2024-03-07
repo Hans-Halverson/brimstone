@@ -14,7 +14,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::get_prototype_from_constructor,
         property_key::PropertyKey,
-        type_utilities::{is_array, is_callable, is_constructor, to_object, to_uint32},
+        type_utilities::{is_array, is_callable, is_constructor_value, to_object, to_uint32},
         Completion, Context, EvalResult, Handle, Realm, Value,
     },
     maybe, must,
@@ -130,7 +130,7 @@ impl ArrayConstructor {
         // If an iterator was supplied use it to create array
         let iterator = maybe!(get_method(cx, items_arg, cx.well_known_symbols.iterator()));
         if let Some(iterator) = iterator {
-            let array = if is_constructor(this_value) {
+            let array = if is_constructor_value(cx, this_value) {
                 maybe!(construct(cx, this_value.as_object(), &[], None))
             } else {
                 must!(array_create(cx, 0, None)).into()
@@ -186,7 +186,7 @@ impl ArrayConstructor {
         let length = maybe!(length_of_array_like(cx, array_like));
         let length_value = Value::from(length).to_handle(cx);
 
-        let array = if is_constructor(this_value) {
+        let array = if is_constructor_value(cx, this_value) {
             maybe!(construct(cx, this_value.as_object(), &[length_value], None))
         } else {
             maybe!(array_create(cx, length, None)).into()
@@ -238,7 +238,7 @@ impl ArrayConstructor {
         let length = arguments.len();
         let length_value = Value::from(length).to_handle(cx);
 
-        let array = if is_constructor(this_value) {
+        let array = if is_constructor_value(cx, this_value) {
             maybe!(construct(cx, this_value.as_object(), &[length_value], None))
         } else {
             maybe!(array_create(cx, length as u64, None)).into()

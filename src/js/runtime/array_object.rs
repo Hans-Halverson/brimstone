@@ -19,7 +19,7 @@ use super::{
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
-    type_utilities::{is_constructor, same_object_value, to_number, to_uint32},
+    type_utilities::{is_constructor_value, same_object_value, to_number, to_uint32},
     Context, EvalResult, Handle, HeapPtr, Value,
 };
 
@@ -146,7 +146,7 @@ pub fn array_species_create(
     }
 
     let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
-    if is_constructor(constructor) {
+    if is_constructor_value(cx, constructor) {
         let this_realm_ptr = cx.current_realm_ptr();
         let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
 
@@ -174,7 +174,7 @@ pub fn array_species_create(
         return array_object.into();
     }
 
-    if !is_constructor(constructor) {
+    if !is_constructor_value(cx, constructor) {
         return type_error_(cx, "expected array constructor");
     }
 

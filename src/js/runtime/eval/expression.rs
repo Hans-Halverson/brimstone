@@ -35,10 +35,10 @@ use crate::{
             reference::{Reference, ReferenceBase},
             string_value::StringValue,
             type_utilities::{
-                is_callable, is_constructor, is_less_than, is_loosely_equal, is_strictly_equal,
-                number_to_string, same_object_value, to_boolean, to_int32, to_number, to_numeric,
-                to_object, to_primitive, to_property_key, to_string, to_uint32,
-                ToPrimitivePreferredType,
+                is_callable, is_constructor_value, is_less_than, is_loosely_equal,
+                is_strictly_equal, number_to_string, same_object_value, to_boolean, to_int32,
+                to_number, to_numeric, to_object, to_primitive, to_property_key, to_string,
+                to_uint32, ToPrimitivePreferredType,
             },
             value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
             Context, Handle,
@@ -411,7 +411,7 @@ fn eval_new_expression(cx: Context, expr: &ast::NewExpression) -> EvalResult<Han
     let constructor = maybe!(eval_expression(cx, &expr.callee));
     let arg_values = maybe!(eval_argument_list(cx, &expr.arguments));
 
-    if !is_constructor(constructor) {
+    if !is_constructor_value(cx, constructor) {
         return type_error_(cx, "value is not a constructor");
     }
 

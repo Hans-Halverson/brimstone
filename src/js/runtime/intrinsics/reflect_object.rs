@@ -9,7 +9,7 @@ use crate::{
         property::Property,
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         realm::Realm,
-        type_utilities::{is_callable, is_constructor, to_property_key},
+        type_utilities::{is_callable, is_constructor_value, to_property_key},
         Context, Handle, Value,
     },
     maybe,
@@ -90,7 +90,7 @@ impl ReflectObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
-        if !is_constructor(target) {
+        if !is_constructor_value(cx, target) {
             return type_error_(cx, "value is not a constructor");
         }
 
@@ -98,7 +98,7 @@ impl ReflectObject {
 
         let new_target = if arguments.len() >= 3 {
             let new_target = get_argument(cx, arguments, 2);
-            if !is_constructor(new_target) {
+            if !is_constructor_value(cx, new_target) {
                 return type_error_(cx, "value is not a constructor");
             }
 

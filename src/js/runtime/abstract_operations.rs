@@ -17,8 +17,8 @@ use super::{
     property_key::PropertyKey,
     realm::Realm,
     type_utilities::{
-        is_callable, is_callable_object, is_constructor, same_object_value_handles, to_length,
-        to_object,
+        is_callable, is_callable_object, is_constructor_value, same_object_value_handles,
+        to_length, to_object,
     },
     Context, Value,
 };
@@ -424,7 +424,7 @@ pub fn species_constructor(
         return cx.get_intrinsic(default_constructor).into();
     }
 
-    if is_constructor(species) {
+    if is_constructor_value(cx, species) {
         return species.as_object().into();
     }
 

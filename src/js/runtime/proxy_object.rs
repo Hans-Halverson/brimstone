@@ -17,7 +17,7 @@ use super::{
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
     type_utilities::{
-        is_callable_object, is_constructor_object, same_opt_object_value_handles, same_value,
+        is_callable_object, is_constructor_object_value, same_opt_object_value_handles, same_value,
         to_boolean,
     },
     Context, EvalResult, Realm, Value,
@@ -752,7 +752,7 @@ pub fn proxy_create(
     let handler_object = handler.as_object();
 
     let is_callable = is_callable_object(target_object);
-    let is_constructor = is_constructor_object(target_object);
+    let is_constructor = is_constructor_object_value(cx, target_object);
 
     let proxy = ProxyObject::new(cx, target_object, handler_object, is_callable, is_constructor);
 

@@ -9,7 +9,7 @@ use crate::{
         intrinsics::typed_array_prototype::typed_array_create_object,
         iterator::iter_iterator_method_values,
         object_value::ObjectValue,
-        type_utilities::{is_callable, is_constructor, to_object},
+        type_utilities::{is_callable, is_constructor_value, to_object},
         value::Value,
         Context, Handle, PropertyKey, Realm,
     },
@@ -65,7 +65,7 @@ impl TypedArrayConstructor {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if !is_constructor(this_value) {
+        if !is_constructor_value(cx, this_value) {
             return type_error_(cx, "TypedArray.from must be called on constructor");
         }
 
@@ -166,7 +166,7 @@ impl TypedArrayConstructor {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if !is_constructor(this_value) {
+        if !is_constructor_value(cx, this_value) {
             return type_error_(cx, "TypedArray.of must be called on constructor");
         }
 

@@ -294,6 +294,10 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::BuiltinFunction
     }
 
+    pub fn is_closure(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::Closure
+    }
+
     pub fn is_map_object(&self) -> bool {
         self.descriptor_kind() == ObjectKind::MapObject
     }

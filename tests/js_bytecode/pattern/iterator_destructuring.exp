@@ -17,8 +17,14 @@
     41: StoreGlobal r0, c14
     44: NewClosure r0, c15
     47: StoreGlobal r0, c16
-    50: LoadUndefined r0
-    52: Ret r0
+    50: NewClosure r0, c17
+    53: StoreGlobal r0, c18
+    56: NewClosure r0, c19
+    59: StoreGlobal r0, c20
+    62: NewClosure r0, c21
+    65: StoreGlobal r0, c22
+    68: LoadUndefined r0
+    70: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: empty]
@@ -37,6 +43,12 @@
     14: [String: mixedHolesAndValues2]
     15: [BytecodeFunction: destructuring]
     16: [String: destructuring]
+    17: [BytecodeFunction: onlyRest]
+    18: [String: onlyRest]
+    19: [BytecodeFunction: valuesAndRest]
+    20: [String: valuesAndRest]
+    21: [BytecodeFunction: restDestructuring]
+    22: [String: restDestructuring]
 }
 
 [BytecodeFunction: empty] {
@@ -269,4 +281,126 @@
     14-23 -> 47 (r4)
     36-40 -> 47 (r4)
     49-51 -> 53 (r5)
+}
+
+[BytecodeFunction: onlyRest] {
+  Parameters: 1, Registers: 7
+     0: GetIterator r1, r2, a0
+     4: NewArray r5
+     6: LoadImmediate r6, 0
+  .L0:
+     9: IteratorNext r3, r4, r1, r2
+    14: JumpTrue r4, 11 (.L1)
+    17: SetArrayProperty r5, r6, r3
+    21: Inc r6
+    23: Jump -14 (.L0)
+  .L1:
+    25: Mov r0, r5
+    28: JumpTrue r4, 26 (.L5)
+    31: LoadTrue r2
+    33: Jump 4 (.L2)
+    35: LoadFalse r2
+  .L2:
+    37: IteratorClose r1
+    39: Jump 10 (.L4)
+    41: JumpTrue r2, 6 (.L3)
+    44: Mov r4, r3
+  .L3:
+    47: Throw r4
+  .L4:
+    49: JumpTrue r2, 5 (.L5)
+    52: Throw r3
+  .L5:
+    54: LoadUndefined r1
+    56: Ret r1
+  Exception Handlers:
+    25-28 -> 35 (r3)
+    37-39 -> 41 (r4)
+}
+
+[BytecodeFunction: valuesAndRest] {
+  Parameters: 1, Registers: 9
+     0: GetIterator r3, r4, a0
+     4: IteratorNext r5, r6, r3, r4
+     9: JumpFalse r6, 5 (.L0)
+    12: LoadUndefined r5
+  .L0:
+    14: Mov r0, r5
+    17: JumpTrue r6, 11 (.L1)
+    20: IteratorNext r5, r6, r3, r4
+    25: JumpFalse r6, 5 (.L2)
+  .L1:
+    28: LoadUndefined r5
+  .L2:
+    30: Mov r1, r5
+    33: NewArray r7
+    35: LoadImmediate r8, 0
+    38: JumpTrue r6, 19 (.L4)
+  .L3:
+    41: IteratorNext r5, r6, r3, r4
+    46: JumpTrue r6, 11 (.L4)
+    49: SetArrayProperty r7, r8, r5
+    53: Inc r8
+    55: Jump -14 (.L3)
+  .L4:
+    57: Mov r2, r7
+    60: JumpTrue r6, 26 (.L8)
+    63: LoadTrue r4
+    65: Jump 4 (.L5)
+    67: LoadFalse r4
+  .L5:
+    69: IteratorClose r3
+    71: Jump 10 (.L7)
+    73: JumpTrue r4, 6 (.L6)
+    76: Mov r6, r5
+  .L6:
+    79: Throw r6
+  .L7:
+    81: JumpTrue r4, 5 (.L8)
+    84: Throw r5
+  .L8:
+    86: LoadUndefined r3
+    88: Ret r3
+  Exception Handlers:
+    14-17 -> 67 (r5)
+    30-33 -> 67 (r5)
+    57-60 -> 67 (r5)
+    69-71 -> 73 (r6)
+}
+
+[BytecodeFunction: restDestructuring] {
+  Parameters: 1, Registers: 7
+     0: GetIterator r1, r2, a0
+     4: NewArray r5
+     6: LoadImmediate r6, 0
+  .L0:
+     9: IteratorNext r3, r4, r1, r2
+    14: JumpTrue r4, 11 (.L1)
+    17: SetArrayProperty r5, r6, r3
+    21: Inc r6
+    23: Jump -14 (.L0)
+  .L1:
+    25: GetNamedProperty r0, r5, c0
+    29: JumpTrue r4, 26 (.L5)
+    32: LoadTrue r2
+    34: Jump 4 (.L2)
+    36: LoadFalse r2
+  .L2:
+    38: IteratorClose r1
+    40: Jump 10 (.L4)
+    42: JumpTrue r2, 6 (.L3)
+    45: Mov r4, r3
+  .L3:
+    48: Throw r4
+  .L4:
+    50: JumpTrue r2, 5 (.L5)
+    53: Throw r3
+  .L5:
+    55: LoadUndefined r1
+    57: Ret r1
+  Constant Table:
+    0: [String: b]
+  Exception Handlers:
+    25-29 -> 36 (r3)
+    38-40 -> 42 (r4)
 }

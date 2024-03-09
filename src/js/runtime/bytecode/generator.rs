@@ -3409,8 +3409,49 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Call `next` on iterator for each element of the array pttern
         for (i, element) in array_pattern.elements.iter().enumerate() {
-            if let ast::ArrayPatternElement::Rest(_) = element {
-                unimplemented!("rest element in array destructuring")
+            // Rest element creates a new array with remaining values until iterator is done
+            if let ast::ArrayPatternElement::Rest(rest) = element {
+                let array = self.register_allocator.allocate()?;
+                self.writer.new_array_instruction(array);
+
+                let index = self.register_allocator.allocate()?;
+                self.writer.load_immediate_instruction(index, SInt::new(0));
+
+                let iteration_start_block = self.new_block();
+                let is_done_block = self.new_block();
+
+                // Skip entire loop if iterator is already done
+                if i != 0 {
+                    self.write_jump_true_instruction(is_done, is_done_block)?;
+                }
+
+                // Each iteration only starts if we are not done. Each iteration calls `next` and
+                // then checks if iterator is done.
+                self.start_block(iteration_start_block);
+                self.writer
+                    .iterator_next_instruction(value, is_done, iterator, next_method);
+                self.write_jump_true_instruction(is_done, is_done_block)?;
+
+                // If not done, store value to next index in array and start next iteration
+                self.writer
+                    .set_array_property_instruction(array, index, value);
+                self.writer.inc_instruction(index);
+                self.write_jump_instruction(iteration_start_block)?;
+
+                self.register_allocator.release(index);
+
+                // When done, store iterator to pattern via destructuring
+                self.start_block(is_done_block);
+
+                let (exception_handler, _) = self.gen_in_exception_handler(|this| {
+                    this.gen_destructuring(&rest.argument, array, /* release_value */ true)
+                })?;
+
+                if exception_handler.start != exception_handler.end {
+                    exception_handlers.push(exception_handler);
+                }
+
+                continue;
             }
 
             let is_done_block = self.new_block();

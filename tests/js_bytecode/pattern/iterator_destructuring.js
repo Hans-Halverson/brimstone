@@ -29,3 +29,15 @@ function mixedHolesAndValues2(p) {
 function destructuring(p) {
   var [a = 1, {b}] = p;
 }
+
+function onlyRest(p) {
+  var [...a] = p;
+}
+
+function valuesAndRest(p) {
+  var [a, b, ...c] = p;
+}
+
+function restDestructuring(p) {
+  var [...{b}] = p;
+}

@@ -2288,8 +2288,42 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.writer.inc_instruction(index);
                     }
                 }
-                ast::ArrayElement::Spread(_) => {
-                    unimplemented!("bytecode for array spread elements")
+                ast::ArrayElement::Spread(spread_element) => {
+                    // Evaluate the spread argument and get its iterator
+                    let iterable = self.gen_expression(&spread_element.argument)?;
+
+                    let iterator = self.register_allocator.allocate()?;
+                    let next_method = self.register_allocator.allocate()?;
+                    self.writer
+                        .get_iterator_instruction(iterator, next_method, iterable);
+
+                    let value = self.register_allocator.allocate()?;
+                    let is_done = self.register_allocator.allocate()?;
+
+                    let iteration_start_block = self.new_block();
+                    let done_block = self.new_block();
+
+                    // Each iteration starts by calling `next` and checking if we are done
+                    self.start_block(iteration_start_block);
+                    self.writer
+                        .iterator_next_instruction(value, is_done, iterator, next_method);
+                    self.write_jump_true_instruction(is_done, done_block)?;
+
+                    // If we are not done then write append value to array
+                    self.writer
+                        .set_array_property_instruction(array, index, value);
+                    self.writer.inc_instruction(index);
+
+                    // Proceed to next iteration
+                    self.write_jump_instruction(iteration_start_block)?;
+
+                    self.start_block(done_block);
+
+                    self.register_allocator.release(is_done);
+                    self.register_allocator.release(value);
+                    self.register_allocator.release(next_method);
+                    self.register_allocator.release(iterator);
+                    self.register_allocator.release(iterable);
                 }
             }
         }

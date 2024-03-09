@@ -11,8 +11,12 @@
     23: StoreGlobal r0, c8
     26: NewClosure r0, c9
     29: StoreGlobal r0, c10
-    32: LoadUndefined r0
-    34: Ret r0
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: testEmptyArray]
@@ -25,6 +29,10 @@
     8: [String: testArrayWithHolesAndElements]
     9: [BytecodeFunction: testArrayWithOnlyHoles]
     10: [String: testArrayWithOnlyHoles]
+    11: [BytecodeFunction: onlySpread]
+    12: [String: onlySpread]
+    13: [BytecodeFunction: multipleSpreads]
+    14: [String: multipleSpreads]
 }
 
 [BytecodeFunction: testEmptyArray] {
@@ -97,4 +105,53 @@
     21: LoadEmpty r2
     23: SetArrayProperty r0, r1, r2
     27: Ret r0
+}
+
+[BytecodeFunction: onlySpread] {
+  Parameters: 1, Registers: 6
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: GetIterator r2, r3, a0
+  .L0:
+     9: IteratorNext r4, r5, r2, r3
+    14: JumpTrue r5, 11 (.L1)
+    17: SetArrayProperty r0, r1, r4
+    21: Inc r1
+    23: Jump -14 (.L0)
+  .L1:
+    25: Ret r0
+}
+
+[BytecodeFunction: multipleSpreads] {
+  Parameters: 3, Registers: 6
+     0: NewArray r0
+     2: LoadImmediate r1, 0
+     5: GetIterator r2, r3, a0
+  .L0:
+     9: IteratorNext r4, r5, r2, r3
+    14: JumpTrue r5, 11 (.L1)
+    17: SetArrayProperty r0, r1, r4
+    21: Inc r1
+    23: Jump -14 (.L0)
+  .L1:
+    25: GetIterator r2, r3, a1
+  .L2:
+    29: IteratorNext r4, r5, r2, r3
+    34: JumpTrue r5, 11 (.L3)
+    37: SetArrayProperty r0, r1, r4
+    41: Inc r1
+    43: Jump -14 (.L2)
+  .L3:
+    45: LoadImmediate r2, 1
+    48: SetArrayProperty r0, r1, r2
+    52: Inc r1
+    54: GetIterator r2, r3, a2
+  .L4:
+    58: IteratorNext r4, r5, r2, r3
+    63: JumpTrue r5, 11 (.L5)
+    66: SetArrayProperty r0, r1, r4
+    70: Inc r1
+    72: Jump -14 (.L4)
+  .L5:
+    74: Ret r0
 }

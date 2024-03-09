@@ -17,3 +17,11 @@ function testArrayWithHolesAndElements() {
 function testArrayWithOnlyHoles() {
   return [, , , ];
 }
+
+function onlySpread(p) {
+  return [...p];
+}
+
+function multipleSpreads(p1, p2, p3) {
+  return [...p1, ...p2, 1, ...p3];
+}

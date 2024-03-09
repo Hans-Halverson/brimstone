@@ -905,12 +905,16 @@ define_instructions!(
         [0] global_names_index: ConstantIndex,
     }
 
+    /// Get the iterator for a given iterable, storing the iterator and its next method in
+    /// registers.
     GetIterator(GetIteratorInstruction, get_iterator_instruction) {
         [0] iterator: Register,
         [1] next_method: Register,
         [2] iterable: Register,
     }
 
+    /// Call the `next` method on an iterator, storing the returned value and boolean `is_done` flag
+    /// in registers.
     IteratorNext(IteratorNextInstruction, iterator_next_instruction) {
         [0] value: Register,
         [1] is_done: Register,
@@ -918,6 +922,7 @@ define_instructions!(
         [3] next_method: Register,
     }
 
+    /// Close an iterator, calling its `return` method if it exists.
     IteratorClose(IteratorCloseInstruction, iterator_close_instruction) {
         [0] iterator: Register,
     }

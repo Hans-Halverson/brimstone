@@ -3252,7 +3252,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Pattern::Object(object) => {
                 self.gen_object_destructuring(object, value, release_value)
             }
-            ast::Pattern::Array(_) => unimplemented!("bytecode for array destructuring"),
+            ast::Pattern::Array(array) => {
+                self.gen_iterator_destructuring(array, value, release_value)
+            }
             ast::Pattern::Member(member) => self.gen_member_pattern(member, value, release_value),
             ast::Pattern::SuperMember(_) => {
                 unimplemented!("bytecode for super member destructuring")
@@ -3382,6 +3384,152 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         if release_value {
             self.register_allocator.release(object_value);
+        }
+
+        Ok(())
+    }
+
+    fn gen_iterator_destructuring(
+        &mut self,
+        array_pattern: &ast::ArrayPattern,
+        iterable: GenRegister,
+        release_value: bool,
+    ) -> EmitResult<()> {
+        let iterator = self.register_allocator.allocate()?;
+        let next_method = self.register_allocator.allocate()?;
+
+        let value = self.register_allocator.allocate()?;
+        let is_done = self.register_allocator.allocate()?;
+
+        let join_block = self.new_block();
+        let mut exception_handlers = vec![];
+
+        self.writer
+            .get_iterator_instruction(iterator, next_method, iterable);
+
+        // Call `next` on iterator for each element of the array pttern
+        for (i, element) in array_pattern.elements.iter().enumerate() {
+            if let ast::ArrayPatternElement::Rest(_) = element {
+                unimplemented!("rest element in array destructuring")
+            }
+
+            let is_done_block = self.new_block();
+
+            // If iterator is already done then continue to done block instead of calling `next`
+            if i != 0 {
+                self.write_jump_true_instruction(is_done, is_done_block)?;
+            }
+
+            // Call `next` method, and if done then continue to done block
+            self.writer
+                .iterator_next_instruction(value, is_done, iterator, next_method);
+
+            // Patterns will be destructured so value from iterator can be assigned
+            if let ast::ArrayPatternElement::Pattern(pattern) = element {
+                let iteration_destructure_block = self.new_block();
+                self.write_jump_false_instruction(is_done, iteration_destructure_block)?;
+
+                // If iterator is done then use undefined as value
+                self.start_block(is_done_block);
+                self.writer.load_undefined_instruction(value);
+
+                // Destructure the value from the iterator, or undefined if iterator is done
+                self.start_block(iteration_destructure_block);
+                let (exception_handler, _) = self.gen_in_exception_handler(|this| {
+                    this.gen_destructuring(pattern, value, /* release_value */ false)
+                })?;
+
+                if exception_handler.start != exception_handler.end {
+                    exception_handlers.push(exception_handler);
+                }
+            } else if let ast::ArrayPatternElement::Hole = element {
+                // Holes ignore value so continue to next iteration
+                self.start_block(is_done_block);
+            }
+        }
+
+        // If done we can continue, otherwise we must first close the iterator
+        if !array_pattern.elements.is_empty() {
+            self.write_jump_true_instruction(is_done, join_block)?;
+        }
+
+        self.register_allocator.release(is_done);
+        self.register_allocator.release(value);
+        self.register_allocator.release(next_method);
+
+        // We must close the iterator in a finally it was not done
+        if exception_handlers.is_empty() {
+            // If there were no exception handlers needed then we can close the iterator without
+            // wrapping in an exception handler, since if closing throws that exception does not
+            // need to be swallowed.
+            self.writer.iterator_close_instruction(iterator);
+        } else {
+            // Otherwise we need a form of finally with a discriminant that tracks if we are coming
+            // from a normal completion or throw (true for normal, false for throw).
+            let discriminant = self.register_allocator.allocate()?;
+
+            let close_block = self.new_block();
+
+            // Write true when coming from the normal completion
+            self.writer.load_true_instruction(discriminant);
+            self.write_jump_instruction(close_block)?;
+
+            // Start exception handler for exceptions thrown during iteration. All exception
+            // handlers point to the same block, which sets discriminant then continues to close.
+            let error = self.register_allocator.allocate()?;
+            for mut handler in exception_handlers {
+                handler.handler = self.writer.current_offset();
+                handler.error_register = Some(error);
+                self.exception_handler_builder.add(handler);
+            }
+            self.writer.load_false_instruction(discriminant);
+
+            // Catch exceptions when closing the iterator.
+            self.start_block(close_block);
+            let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
+                Ok(this.writer.iterator_close_instruction(iterator))
+            })?;
+
+            let finally_footer_block = self.new_block();
+            self.write_jump_instruction(finally_footer_block)?;
+
+            // Close exception handler.
+            let close_error = self.register_allocator.allocate()?;
+            close_handler.handler = self.writer.current_offset();
+            close_handler.error_register = Some(close_error);
+            self.exception_handler_builder.add(close_handler);
+
+            // If the iterating did not throw then continue to throwing error from close
+            let close_handler_rethrow_block = self.new_block();
+            self.write_jump_true_instruction(discriminant, close_handler_rethrow_block)?;
+
+            // Otherwise iterating did throw, we rethrow it by overwriting the close error
+            self.write_mov_instruction(close_error, error);
+
+            // Then throw either the original close error or the error from iterating
+            self.start_block(close_handler_rethrow_block);
+            self.writer.throw_instruction(close_error);
+
+            // Emit the finally footer, checking discriminant to see if we came from a normal
+            // completion or a throw.
+            self.start_block(finally_footer_block);
+
+            // If we came from a normal completion then continue normally to join block
+            self.write_jump_true_instruction(discriminant, join_block)?;
+
+            // Otherwise we threw, so rethrow that error
+            self.writer.throw_instruction(error);
+
+            self.register_allocator.release(close_error);
+            self.register_allocator.release(error);
+            self.register_allocator.release(discriminant);
+        }
+
+        self.start_block(join_block);
+
+        self.register_allocator.release(iterator);
+        if release_value {
+            self.register_allocator.release(iterable);
         }
 
         Ok(())

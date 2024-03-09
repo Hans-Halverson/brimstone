@@ -65,7 +65,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 62 00      EvalInit c0
+     0: 63 00      EvalInit c0
      2: 0d ff 01   LoadDynamic r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
      8: 0f fe 01   StoreDynamic r1, c1
@@ -78,7 +78,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 62 00      EvalInit c0
+     0: 63 00      EvalInit c0
      2: 03 fe 01   LoadImmediate r1, 1
      5: 0f fe 01   StoreDynamic r1, c1
      8: 0d ff 01   LoadDynamic r0, c1
@@ -97,7 +97,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 62 00         EvalInit c0
+     0: 63 00         EvalInit c0
      2: 03 ff 01      LoadImmediate r0, 1
      5: 03 fe 02      LoadImmediate r1, 2
      8: 15 fd ff fe   Add r2, r0, r1
@@ -108,10 +108,10 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 62 00      EvalInit c0
-     2: 45 fd 01   NewClosure r2, c1
+     0: 63 00      EvalInit c0
+     2: 46 fd 01   NewClosure r2, c1
      5: 0f fd 02   StoreDynamic r2, c2
-     8: 45 ff 03   NewClosure r0, c3
+     8: 46 ff 03   NewClosure r0, c3
     11: 14 fe      Ret r1
   Constant Table:
     0: [GlobalNames]
@@ -134,7 +134,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 61 00      GlobalInit c0
+     0: 62 00      GlobalInit c0
      2: 0a ff 01   LoadGlobal r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
      8: 0c fe 01   StoreGlobal r1, c1
@@ -147,7 +147,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 61 00      GlobalInit c0
+     0: 62 00      GlobalInit c0
      2: 03 fe 01   LoadImmediate r1, 1
      5: 0f fe 01   StoreDynamic r1, c1
      8: 0d ff 01   LoadDynamic r0, c1

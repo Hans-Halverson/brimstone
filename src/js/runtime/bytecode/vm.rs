@@ -85,8 +85,8 @@ use super::{
         ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
         StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
         StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallInstruction, GenericJumpBooleanConstantInstruction,
@@ -413,6 +413,9 @@ impl VM {
                         }
                         OpCode::ToPropertyKey => {
                             dispatch_or_throw!(ToPropertyKeyInstruction, execute_to_property_key)
+                        }
+                        OpCode::ToObject => {
+                            dispatch_or_throw!(ToObjectInstruction, execute_to_object)
                         }
                         OpCode::Jump => self.execute_jump(get_instr!(JumpInstruction)),
                         OpCode::JumpConstant => {
@@ -2143,6 +2146,19 @@ impl VM {
         let result = maybe!(to_property_key(self.cx, value));
 
         self.write_register(dest, result.cast::<Value>().get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_to_object<W: Width>(&mut self, instr: &ToObjectInstruction<W>) -> EvalResult<()> {
+        let value = self.read_register_to_handle(instr.value());
+        let dest = instr.dest();
+
+        // May allocate
+        let result = maybe!(to_object(self.cx, value));
+
+        self.write_register(dest, result.get_().into());
 
         ().into()
     }

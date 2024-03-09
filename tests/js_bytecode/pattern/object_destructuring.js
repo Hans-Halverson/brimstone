@@ -3,6 +3,10 @@ function shorthand(x) {
   var { b, c, d } = x;
 }
 
+function empty(x) {
+  var {} = x;
+}
+
 function propertyAliases(x) {
   var { a: b } = x;
   var { b: c, d: e, f: g } = x;

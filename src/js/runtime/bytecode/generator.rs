@@ -3416,6 +3416,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        // Even if there are no properties we must still error if value is not an object. In this
+        // case perform a ToObject (but discard the result) to error if necessary.
+        if pattern.properties.is_empty() {
+            let scratch = self.register_allocator.allocate()?;
+            self.writer.to_object_instruction(scratch, object_value);
+            self.register_allocator.release(scratch);
+        }
+
         if release_value {
             self.register_allocator.release(object_value);
         }

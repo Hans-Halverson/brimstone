@@ -158,16 +158,16 @@
     12: JumpTrue r1, 15 (.L0)
     15: LoadImmediate r1, 5
     18: StrictEqual r1, r0, r1
-    22: JumpTrue r1, 10 (.L1)
-    25: Jump 12 (.L2)
+    22: JumpTrue r1, 15 (.L2)
+    25: Jump 7 (.L1)
   .L0:
     27: LoadImmediate r0, 3
     30: Jump 12 (.L3)
   .L1:
-    32: LoadImmediate r0, 6
+    32: LoadImmediate r0, 4
     35: Jump 7 (.L3)
   .L2:
-    37: LoadImmediate r0, 4
+    37: LoadImmediate r0, 6
     40: Jump 2 (.L3)
   .L3:
     42: LoadImmediate r0, 7
@@ -184,14 +184,14 @@
     12: JumpTrue r1, 15 (.L0)
     15: LoadImmediate r1, 5
     18: StrictEqual r1, r0, r1
-    22: JumpTrue r1, 8 (.L1)
-    25: Jump 8 (.L2)
+    22: JumpTrue r1, 11 (.L2)
+    25: Jump 5 (.L1)
   .L0:
     27: LoadImmediate r0, 3
   .L1:
-    30: LoadImmediate r0, 6
+    30: LoadImmediate r0, 4
   .L2:
-    33: LoadImmediate r0, 4
+    33: LoadImmediate r0, 6
     36: LoadImmediate r0, 7
     39: LoadUndefined r0
     41: Ret r0

@@ -3987,20 +3987,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Write the case block bodies in order
         for (case, case_block_id) in stmt.cases.iter().zip(&case_block_ids) {
-            if case.test.is_none() {
-                continue;
-            }
-
             self.start_block(*case_block_id);
             self.gen_statement_list(&case.body)?;
 
             // Intentionally fall through to the next case body
-        }
-
-        // Finish with the default case body
-        if default_case_index != stmt.cases.len() {
-            self.start_block(case_block_ids[default_case_index]);
-            self.gen_statement_list(&stmt.cases[default_case_index].body)?;
         }
 
         self.start_block(join_block);

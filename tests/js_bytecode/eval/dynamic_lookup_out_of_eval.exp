@@ -107,10 +107,10 @@
 }
 
 [BytecodeFunction: <eval>] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: 62 00      EvalInit c0
-     2: 45 fe 01   NewClosure r1, c1
-     5: 0f fe 02   StoreDynamic r1, c2
+     2: 45 fd 01   NewClosure r2, c1
+     5: 0f fd 02   StoreDynamic r2, c2
      8: 45 ff 03   NewClosure r0, c3
     11: 14 fe      Ret r1
   Constant Table:

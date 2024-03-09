@@ -63,10 +63,10 @@
   Parameters: 0, Registers: 2
      0: 62 00         EvalInit c0
      2: 55 01         PushLexicalScope c1
-     4: 07 ff         LoadEmpty r0
-     6: 5b ff 00 00   StoreToScope r0, 0, 0
-    10: 45 ff 02      NewClosure r0, c2
-    13: 0f ff 03      StoreDynamic r0, c3
+     4: 07 fe         LoadEmpty r1
+     6: 5b fe 00 00   StoreToScope r1, 0, 0
+    10: 45 fe 02      NewClosure r1, c2
+    13: 0f fe 03      StoreDynamic r1, c3
     16: 03 fe 01      LoadImmediate r1, 1
     19: 5b fe 00 00   StoreToScope r1, 0, 0
     23: 14 ff         Ret r0

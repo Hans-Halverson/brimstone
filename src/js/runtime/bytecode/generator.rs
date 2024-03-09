@@ -187,6 +187,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.global_scope,
             )?;
 
+            // Allocate statement completion which is initially undefined
+            let statement_completion_dest = generator.register_allocator.allocate()?;
+            generator.set_statement_completion_dest(statement_completion_dest);
+
             let program_scope = eval_program.scope.as_ref();
 
             // Sloppy direct eval must be initialized in the parent scope. Strict direct eval does
@@ -216,10 +220,6 @@ impl<'a> BytecodeProgramGenerator<'a> {
             } else {
                 &eval_program.toplevels
             };
-
-            // Allocate statement completion which is initially undefined
-            let statement_completion_dest = generator.register_allocator.allocate()?;
-            generator.set_statement_completion_dest(statement_completion_dest);
 
             // Eval function consists of toplevel statements
             for toplevel in toplevels {
@@ -3875,7 +3875,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
+    /// Many statements complete to undefined by default if no other value is found.
+    fn gen_undefined_completion_if_necessary(&mut self) {
+        if let Some(completion_dest) = self.statement_completion_dest {
+            self.writer.load_undefined_instruction(completion_dest);
+        }
+    }
+
     fn gen_if_statement(&mut self, stmt: &ast::IfStatement) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let condition = self.gen_outer_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
@@ -3942,6 +3951,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_switch_statement(&mut self, stmt: &ast::SwitchStatement) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let jump_targets = self.push_jump_statement_target(None, false);
         let join_block = jump_targets.break_block;
 
@@ -4008,6 +4019,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::ForStatement,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
@@ -4091,6 +4104,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if stmt.is_await {
             unimplemented!("bytecode for for-await-of statement")
         }
+
+        self.gen_undefined_completion_if_necessary();
 
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
@@ -4193,7 +4208,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // Emit the footer of the finally block, which checks the discriminant to determine the
             // incoming branch that was taken.
-            self.gen_end_finally_block(&finally_scope, StmtCompletion::Normal)?;
+            self.gen_end_finally_block(&finally_scope, StmtCompletion::Normal, None)?;
         }
 
         // Finally end this iteration's scope and start a new iteration
@@ -4262,6 +4277,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::ForEachStatement,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
@@ -4348,6 +4365,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::WhileStatement,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
@@ -4380,6 +4399,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::DoWhileStatement,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let jump_targets =
             jump_targets.unwrap_or_else(|| self.push_jump_statement_target(None, true));
 
@@ -4407,6 +4428,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_with_statement(&mut self, stmt: &ast::WithStatement) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         let object = self.gen_outer_expression(&stmt.object)?;
 
         let with_scope = stmt.scope.as_ref();
@@ -4433,6 +4456,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_try_catch(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+        self.gen_undefined_completion_if_necessary();
+
         // Save the scope when entering the try statement so it can be restored when leaving
         let saved_scope = self.register_allocator.allocate()?;
         self.write_mov_instruction(saved_scope, Register::scope());
@@ -4614,16 +4639,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ///
     /// This includes writing the finally footer if necessary, and releasing all remaining registers
     /// held throughout the finally scope.
+    ///
+    /// Optionally takes a completion that is restored when taking the normal path.
     fn gen_end_finally_block(
         &mut self,
         finally_scope: &FinallyScope,
         finally_block_completion: StmtCompletion,
+        saved_normal_completion: Option<GenRegister>,
     ) -> EmitResult<()> {
         // Emit the footer of the finally block, which checks the discriminant to determine the
         // incoming branch that was taken.
         if !finally_block_completion.is_abrupt() {
-            self.gen_finally_footer(finally_scope)?;
+            self.gen_finally_footer(finally_scope, saved_normal_completion)?;
         }
+
+        saved_normal_completion.map(|reg| self.register_allocator.release(reg));
 
         self.register_allocator
             .release(finally_scope.result_register);
@@ -4646,6 +4676,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let finally_block = finally_scope.finally_block;
 
         // Generate the body of the try statement inside an exception handler
+        self.gen_undefined_completion_if_necessary();
         let (body_handler, body_completion) =
             self.gen_in_exception_handler(|this| this.gen_block_statement(&stmt.block))?;
 
@@ -4682,12 +4713,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Start the finally block
         self.gen_start_finally_block(&finally_scope);
 
+        // If statement completions are being calculated we must save the completion from the body
+        // and catch paths and potentially restore it after the finally block.
+        let saved_body_catch_completion =
+            if let Some(completion_dest) = self.statement_completion_dest {
+                let reg = self.register_allocator.allocate()?;
+                self.write_mov_instruction(reg, completion_dest);
+                Some(reg)
+            } else {
+                None
+            };
+
         // Then emit the body of the finally block
+        self.gen_undefined_completion_if_necessary();
         let finalizer_completion = self.gen_block_statement(stmt.finalizer.as_ref().unwrap())?;
 
         // Emit the footer of the finally block, which checks the discriminant to determine the
         // incoming branch that was taken.
-        self.gen_end_finally_block(&finally_scope, finalizer_completion)?;
+        self.gen_end_finally_block(
+            &finally_scope,
+            finalizer_completion,
+            saved_body_catch_completion,
+        )?;
 
         self.start_block(join_block);
 
@@ -4696,7 +4743,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(finalizer_completion)
     }
 
-    fn gen_finally_footer(&mut self, finally_scope: &FinallyScope) -> EmitResult<()> {
+    fn gen_finally_footer(
+        &mut self,
+        finally_scope: &FinallyScope,
+        saved_normal_completion: Option<GenRegister>,
+    ) -> EmitResult<()> {
         let discriminant = finally_scope.discriminant_register;
         let result = finally_scope.result_register;
 
@@ -4731,6 +4782,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 discriminant,
                 test_value,
             )?;
+
+            // If calculating completions, restore the completion on the normal path
+            if let Some(saved_normal_completion) = saved_normal_completion {
+                self.write_mov_instruction(
+                    self.statement_completion_dest.unwrap(),
+                    saved_normal_completion,
+                );
+            }
+
             self.write_jump_instruction(finally_scope.normal_join_block)?;
             i += 1;
         }

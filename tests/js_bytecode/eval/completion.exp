@@ -1,18 +1,51 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
-     0: GlobalInit c0
-     2: Mov r0, <scope>
-     5: LoadGlobal r1, c1
-     8: LoadConstant r2, c2
-    11: CallMaybeEval r1, r1, r2, 1
-    16: Jump 5 (.L0)
-    18: Mov <scope>, r0
+      0: GlobalInit c0
+      2: Mov r0, <scope>
+      5: LoadGlobal r1, c1
+      8: LoadConstant r2, c2
+     11: CallMaybeEval r1, r1, r2, 1
+     16: Jump 5 (.L0)
+     18: Mov <scope>, r0
   .L0:
-    21: LoadGlobal r0, c1
-    24: LoadConstant r1, c3
-    27: CallMaybeEval r0, r0, r1, 1
-    32: LoadUndefined r0
-    34: Ret r0
+     21: LoadGlobal r0, c1
+     24: LoadConstant r1, c3
+     27: CallMaybeEval r0, r0, r1, 1
+     32: LoadGlobal r0, c1
+     35: LoadConstant r1, c4
+     38: CallMaybeEval r0, r0, r1, 1
+     43: LoadGlobal r0, c1
+     46: LoadConstant r1, c5
+     49: CallMaybeEval r0, r0, r1, 1
+     54: LoadGlobal r0, c1
+     57: LoadConstant r1, c6
+     60: CallMaybeEval r0, r0, r1, 1
+     65: LoadGlobal r0, c1
+     68: LoadConstant r1, c7
+     71: CallMaybeEval r0, r0, r1, 1
+     76: LoadGlobal r0, c1
+     79: LoadConstant r1, c8
+     82: CallMaybeEval r0, r0, r1, 1
+     87: LoadGlobal r0, c1
+     90: LoadConstant r1, c9
+     93: CallMaybeEval r0, r0, r1, 1
+     98: LoadGlobal r0, c1
+    101: LoadConstant r1, c10
+    104: CallMaybeEval r0, r0, r1, 1
+    109: LoadGlobal r0, c1
+    112: LoadConstant r1, c11
+    115: CallMaybeEval r0, r0, r1, 1
+    120: LoadGlobal r0, c1
+    123: LoadConstant r1, c12
+    126: CallMaybeEval r0, r0, r1, 1
+    131: LoadGlobal r0, c1
+    134: LoadConstant r1, c13
+    137: CallMaybeEval r0, r0, r1, 1
+    142: LoadGlobal r0, c1
+    145: LoadConstant r1, c14
+    148: CallMaybeEval r0, r0, r1, 1
+    153: LoadUndefined r0
+    155: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: eval]
@@ -30,6 +63,52 @@
   } else {
     2;
   }
+]
+    4: [String: 
+  "if completion";
+  if (true) {
+    1
+  }
+]
+    5: [String: 
+  "switch completion";
+  switch (true) {}
+]
+    6: [String: 
+  "while completion";
+  while (false) { 1; }
+]
+    7: [String: 
+  "do-while completion";
+  do { 1; } while (false);
+]
+    8: [String: 
+  "with completion";
+  with ({}) { 1; }
+]
+    9: [String: 
+  "for completion";
+  for (; false; ) { 1; }
+]
+    10: [String: 
+  "for-in completion";
+  for (var x in {}) { 1; }
+]
+    11: [String: 
+  "for-of completion";
+  for (var x of []) { 1; }
+]
+    12: [String: 
+  "try-catch completion";
+  try { 1; } catch { 2; }
+]
+    13: [String: 
+  "try-finally completion";
+  try { 1; } finally { 2; }
+]
+    14: [String: 
+  "try-catch-finally completion";
+  try { 1; } catch { 2; } finally { 3; }
 ]
   Exception Handlers:
     5-16 -> 18
@@ -61,17 +140,254 @@
      2: 04 ff 01   LoadConstant r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
      8: 0f fe 02   StoreDynamic r1, c2
-    11: 0d fe 02   LoadDynamic r1, c2
-    14: 3d fe 08   JumpToBooleanFalse r1, 8 (.L0)
-    17: 03 ff 01   LoadImmediate r0, 1
-    20: 35 05      Jump 5 (.L1)
+    11: 05 ff      LoadUndefined r0
+    13: 0d fe 02   LoadDynamic r1, c2
+    16: 3d fe 08   JumpToBooleanFalse r1, 8 (.L0)
+    19: 03 ff 01   LoadImmediate r0, 1
+    22: 35 05      Jump 5 (.L1)
   .L0:
-    22: 03 ff 02   LoadImmediate r0, 2
+    24: 03 ff 02   LoadImmediate r0, 2
   .L1:
-    25: 14 ff      Ret r0
+    27: 14 ff      Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [String: inner completions]
     2: [String: a]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+     7: 08 fe      LoadTrue r1
+     9: 3b fe 06   JumpFalse r1, 6 (.L0)
+    12: 03 ff 01   LoadImmediate r0, 1
+  .L0:
+    15: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: if completion]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+     7: 08 fe      LoadTrue r1
+     9: 35 02      Jump 2 (.L0)
+  .L0:
+    11: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: switch completion]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+  .L0:
+     7: 09 fe      LoadFalse r1
+     9: 3b fe 08   JumpFalse r1, 8 (.L1)
+    12: 03 ff 01   LoadImmediate r0, 1
+    15: 35 f8      Jump -8 (.L0)
+  .L1:
+    17: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: while completion]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+  .L0:
+     7: 03 ff 01   LoadImmediate r0, 1
+    10: 09 fe      LoadFalse r1
+    12: 37 fe fb   JumpTrue r1, -5 (.L0)
+    15: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: do-while completion]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00         EvalInit c0
+     2: 55 01         PushLexicalScope c1
+     4: 5b 07 00 00   StoreToScope <this>, 0, 0
+     8: 04 ff 02      LoadConstant r0, c2
+    11: 05 ff         LoadUndefined r0
+    13: 46 fe         NewObject r1
+    15: 57 fe 03      PushWithScope r1, c3
+    18: 03 ff 01      LoadImmediate r0, 1
+    21: 58            PopScope 
+    22: 14 ff         Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [ScopeNames]
+    2: [String: with completion]
+    3: [ScopeNames]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+  .L0:
+     7: 09 fe      LoadFalse r1
+     9: 3b fe 08   JumpFalse r1, 8 (.L1)
+    12: 03 ff 01   LoadImmediate r0, 1
+    15: 35 f8      Jump -8 (.L0)
+  .L1:
+    17: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: for completion]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+     7: 46 fe      NewObject r1
+     9: 41 fe 14   JumpNullish r1, 20 (.L1)
+    12: 5f fe fe   NewForInIterator r1, r1
+  .L0:
+    15: 60 fd fe   ForInNext r2, r1
+    18: 41 fd 0b   JumpNullish r2, 11 (.L1)
+    21: 0f fd 02   StoreDynamic r2, c2
+    24: 03 ff 01   LoadImmediate r0, 1
+    27: 35 f4      Jump -12 (.L0)
+  .L1:
+    29: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: for-in completion]
+    2: [String: x]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 6
+     0: 62 00            EvalInit c0
+     2: 04 ff 01         LoadConstant r0, c1
+     5: 05 ff            LoadUndefined r0
+     7: 47 fc            NewArray r3
+     9: 63 fe fd fc      GetIterator r1, r2, r3
+  .L0:
+    13: 64 fc fb fe fd   IteratorNext r3, r4, r1, r2
+    18: 37 fb 1a         JumpTrue r4, 26 (.L2)
+    21: 0f fc 02         StoreDynamic r3, c2
+    24: 02 fa 03         Mov r5, <scope>
+    27: 03 ff 01         LoadImmediate r0, 1
+    30: 35 0c            Jump 12 (.L1)
+    32: 03 fc 00         LoadImmediate r3, 0
+    35: 02 03 fa         Mov <scope>, r5
+    38: 65 fe            IteratorClose r1
+    40: 5c fb            Throw r4
+  .L1:
+    42: 35 e3            Jump -29 (.L0)
+  .L2:
+    44: 14 ff            Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: for-of completion]
+    2: [String: x]
+  Exception Handlers:
+    21-30 -> 32 (r4)
+    38-40 -> 40
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 62 00      EvalInit c0
+     2: 04 ff 01   LoadConstant r0, c1
+     5: 05 ff      LoadUndefined r0
+     7: 02 fe 03   Mov r1, <scope>
+    10: 03 ff 01   LoadImmediate r0, 1
+    13: 35 08      Jump 8 (.L0)
+    15: 02 03 fe   Mov <scope>, r1
+    18: 03 ff 02   LoadImmediate r0, 2
+  .L0:
+    21: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: try-catch completion]
+  Exception Handlers:
+    10-13 -> 15
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 5
+     0: 62 00         EvalInit c0
+     2: 04 ff 01      LoadConstant r0, c1
+     5: 02 fc 03      Mov r3, <scope>
+     8: 05 ff         LoadUndefined r0
+    10: 03 ff 01      LoadImmediate r0, 1
+    13: 03 fe 01      LoadImmediate r1, 1
+    16: 35 05         Jump 5 (.L0)
+    18: 03 fe 00      LoadImmediate r1, 0
+  .L0:
+    21: 02 03 fc      Mov <scope>, r3
+    24: 02 fc ff      Mov r3, r0
+    27: 05 ff         LoadUndefined r0
+    29: 03 ff 02      LoadImmediate r0, 2
+    32: 03 fb 00      LoadImmediate r4, 0
+    35: 23 fb fe fb   StrictEqual r4, r1, r4
+    39: 3b fb 05      JumpFalse r4, 5 (.L1)
+    42: 5c fd         Throw r2
+  .L1:
+    44: 02 ff fc      Mov r0, r3
+    47: 35 02         Jump 2 (.L2)
+  .L2:
+    49: 14 ff         Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: try-finally completion]
+  Exception Handlers:
+    10-13 -> 18 (r2)
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 5
+     0: 62 00         EvalInit c0
+     2: 04 ff 01      LoadConstant r0, c1
+     5: 02 fc 03      Mov r3, <scope>
+     8: 05 ff         LoadUndefined r0
+    10: 03 ff 01      LoadImmediate r0, 1
+    13: 03 fe 01      LoadImmediate r1, 1
+    16: 35 10         Jump 16 (.L0)
+    18: 02 03 fc      Mov <scope>, r3
+    21: 03 ff 02      LoadImmediate r0, 2
+    24: 03 fe 01      LoadImmediate r1, 1
+    27: 35 05         Jump 5 (.L0)
+    29: 03 fe 00      LoadImmediate r1, 0
+  .L0:
+    32: 02 03 fc      Mov <scope>, r3
+    35: 02 fc ff      Mov r3, r0
+    38: 05 ff         LoadUndefined r0
+    40: 03 ff 03      LoadImmediate r0, 3
+    43: 03 fb 00      LoadImmediate r4, 0
+    46: 23 fb fe fb   StrictEqual r4, r1, r4
+    50: 3b fb 05      JumpFalse r4, 5 (.L1)
+    53: 5c fd         Throw r2
+  .L1:
+    55: 02 ff fc      Mov r0, r3
+    58: 35 02         Jump 2 (.L2)
+  .L2:
+    60: 14 ff         Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: try-catch-finally completion]
+  Exception Handlers:
+    10-13 -> 18
+    18-24 -> 29 (r2)
 }
 

@@ -116,7 +116,7 @@ impl DatePrototype {
             Self::to_primitive,
             1,
             cx.names.symbol_to_primitive(),
-            Some(realm),
+            realm,
             None,
             None,
         )

@@ -59,7 +59,7 @@ impl BigIntConstructor {
             Self::construct,
             1,
             cx.names.bigint(),
-            Some(realm),
+            realm,
             None,
         );
 

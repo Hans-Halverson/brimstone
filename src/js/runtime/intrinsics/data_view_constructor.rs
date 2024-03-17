@@ -85,7 +85,7 @@ impl DataViewConstructor {
             Self::construct,
             1,
             cx.names.data_view(),
-            Some(realm),
+            realm,
             None,
         );
 

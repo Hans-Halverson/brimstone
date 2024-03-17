@@ -87,7 +87,7 @@ impl BooleanConstructor {
             Self::construct,
             1,
             cx.names.boolean(),
-            Some(realm),
+            realm,
             None,
         );
 

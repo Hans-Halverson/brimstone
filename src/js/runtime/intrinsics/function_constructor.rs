@@ -19,7 +19,7 @@ impl FunctionConstructor {
             Self::construct,
             1,
             cx.names.function(),
-            Some(realm),
+            realm,
             None,
         );
 

@@ -522,11 +522,11 @@ pub fn create_mapped_arguments_object(
             ArgAccessorClosureEnvironment::new(cx, parameter_name.as_string(), env);
 
         let mut getter =
-            BuiltinFunction::intrinsic_closure(cx, arg_getter, 0, cx.names.empty_string());
+            BuiltinFunction::legacy_intrinsic_closure(cx, arg_getter, 0, cx.names.empty_string());
         getter.set_closure_environment(arg_accessor_environment);
 
         let mut setter =
-            BuiltinFunction::intrinsic_closure(cx, arg_setter, 1, cx.names.empty_string());
+            BuiltinFunction::legacy_intrinsic_closure(cx, arg_setter, 1, cx.names.empty_string());
         setter.set_closure_environment(arg_accessor_environment);
 
         let desc =

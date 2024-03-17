@@ -47,16 +47,9 @@ impl TypedArrayPrototype {
         // Constructor property is added once TypedArrayConstructor has been created
 
         // Create values function as it is referenced by multiple properties
-        let values_function = BuiltinFunction::create(
-            cx,
-            Self::values,
-            0,
-            cx.names.values(),
-            Some(realm),
-            None,
-            None,
-        )
-        .into();
+        let values_function =
+            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None, None)
+                .into();
 
         object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
         object.intrinsic_getter(cx, cx.names.buffer(), Self::buffer, realm);

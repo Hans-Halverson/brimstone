@@ -19,7 +19,6 @@ use crate::js::{
         global_names::GlobalNames,
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
-        scope::Scope,
         scope_names::ScopeNames,
         value::BigIntValue,
         Context, Handle, Realm, Value,
@@ -41,7 +40,7 @@ use super::{
 pub struct BytecodeProgramGenerator<'a> {
     cx: Context,
     scope_tree: &'a ScopeTree,
-    global_scope: Handle<Scope>,
+    realm: Handle<Realm>,
 
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
@@ -49,11 +48,11 @@ pub struct BytecodeProgramGenerator<'a> {
 }
 
 impl<'a> BytecodeProgramGenerator<'a> {
-    pub fn new(cx: Context, scope_tree: &'a ScopeTree, global_scope: Handle<Scope>) -> Self {
+    pub fn new(cx: Context, scope_tree: &'a ScopeTree, realm: Handle<Realm>) -> Self {
         Self {
             cx,
             scope_tree,
-            global_scope,
+            realm,
             pending_functions_queue: VecDeque::new(),
         }
     }
@@ -66,8 +65,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator =
-                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
+            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
             generator.generate_program(&parse_result.program)
         })
     }
@@ -95,7 +93,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 program,
                 &self.scope_tree,
                 "<global>",
-                self.global_scope,
+                self.realm,
             )?;
 
             let program_scope = program.scope.as_ref();
@@ -150,8 +148,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         is_direct: bool,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator =
-                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
+            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
             generator.generate_eval(&parse_result.program, is_direct)
         })
     }
@@ -184,7 +181,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 eval_program,
                 &self.scope_tree,
                 "<eval>",
-                self.global_scope,
+                self.realm,
             )?;
 
             // Allocate statement completion which is initially undefined
@@ -254,8 +251,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator =
-                BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm.global_scope());
+            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
             generator.generate_function_constructor(&parse_result.function)
         })
     }
@@ -275,7 +271,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             function,
             &self.scope_tree,
             scope,
-            self.global_scope,
+            self.realm,
             None,
             is_constructor,
         )?;
@@ -317,7 +313,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 func,
                 &self.scope_tree,
                 scope,
-                self.global_scope,
+                self.realm,
                 default_name,
                 is_constructor,
             )?;
@@ -363,7 +359,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     pub writer: BytecodeWriter,
     cx: Context,
     scope_tree: &'a ScopeTree,
-    global_scope: Handle<Scope>,
+    realm: Handle<Realm>,
 
     /// A chain of VM scopes that the generator is currently inside. The first node is the innermost
     /// scope.
@@ -428,7 +424,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
-        global_scope: Handle<Scope>,
+        realm: Handle<Realm>,
         name: Option<Wtf8String>,
         num_parameters: u32,
         num_local_registers: u32,
@@ -439,7 +435,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             writer: BytecodeWriter::new(),
             cx,
             scope_tree,
-            global_scope,
+            realm,
             scope,
             scope_names_cache: HashMap::new(),
             name,
@@ -465,7 +461,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         func: &ast::Function,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
-        global_scope: Handle<Scope>,
+        realm: Handle<Realm>,
         default_name: Option<Wtf8String>,
         is_constructor: bool,
     ) -> EmitResult<Self> {
@@ -499,7 +495,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             cx,
             scope_tree,
             scope,
-            global_scope,
+            realm,
             name,
             num_parameters as u32,
             num_local_registers as u32,
@@ -513,7 +509,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         program: &ast::Program,
         scope_tree: &'a ScopeTree,
         name: &str,
-        global_scope: Handle<Scope>,
+        realm: Handle<Realm>,
     ) -> EmitResult<Self> {
         // Number of local registers was determined while creating the VM scope tree
         let num_local_registers = program.scope.as_ref().num_local_registers();
@@ -530,7 +526,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             cx,
             scope_tree,
             scope,
-            global_scope,
+            realm,
             Some(Wtf8String::from_str(name)),
             0,
             num_local_registers as u32,
@@ -998,7 +994,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             bytecode,
             constant_table,
             exception_handlers,
-            self.global_scope,
+            self.realm,
             num_registers,
             self.num_parameters,
             self.is_strict,
@@ -2044,7 +2040,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut arg_regs = Vec::with_capacity(expr.quasi.expressions.len() + 1);
 
         // Template objects are generated eagerly and stored in constant table
-        let template_object = generate_template_object(self.cx, &expr.quasi);
+        let template_object = generate_template_object(self.cx, self.realm, &expr.quasi);
         let template_object_index = self
             .constant_table_builder
             .add_heap_object(template_object.cast())?;

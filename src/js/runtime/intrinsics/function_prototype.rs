@@ -88,7 +88,7 @@ impl Handle<FunctionPrototype> {
             FunctionPrototype::has_instance,
             1,
             cx.well_known_symbols.has_instance(),
-            Some(realm),
+            realm,
             None,
             None,
         )

@@ -266,7 +266,7 @@ fn run_single_test(
             if test.mode == TestMode::Module {
                 unimplemented!("module evaluation")
             } else {
-                execute_as_bytecode(cx, &ast_and_source.0)
+                execute_as_bytecode(cx, realm, &ast_and_source.0)
             }
         } else {
             if test.mode == TestMode::Module {
@@ -331,7 +331,7 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
     let eval_result = if cx.options.bytecode {
-        execute_as_bytecode(cx, &ast_and_source.0)
+        execute_as_bytecode(cx, realm, &ast_and_source.0)
     } else {
         eval_script(cx, Rc::new(ast_and_source.0), realm)
     };
@@ -350,13 +350,11 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
 
 fn execute_as_bytecode(
     mut cx: Context,
+    realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
 ) -> Completion {
-    let generate_result = BytecodeProgramGenerator::generate_from_program_parse_result(
-        cx,
-        parse_result,
-        cx.current_realm(),
-    );
+    let generate_result =
+        BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
     let bytecode_program = match generate_result {
         Ok(bytecode_program) => bytecode_program,
         Err(err) => {
@@ -365,8 +363,7 @@ fn execute_as_bytecode(
         }
     };
 
-    let global_scope = cx.current_realm().global_scope();
-    let closure = Closure::new(cx, bytecode_program, global_scope);
+    let closure = Closure::new_global(cx, bytecode_program, realm);
 
     match cx.execute_bytecode(closure, &[]) {
         Ok(value) => Completion::normal(value),

@@ -31,16 +31,9 @@ impl MapPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Create values function as it is referenced by multiple properties
-        let entries_function = BuiltinFunction::create(
-            cx,
-            Self::entries,
-            0,
-            cx.names.entries(),
-            Some(realm),
-            None,
-            None,
-        )
-        .into();
+        let entries_function =
+            BuiltinFunction::create(cx, Self::entries, 0, cx.names.entries(), realm, None, None)
+                .into();
 
         // Constructor property is added once MapConstructor has been created
         object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm);

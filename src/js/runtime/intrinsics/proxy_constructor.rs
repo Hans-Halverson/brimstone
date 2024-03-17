@@ -28,7 +28,7 @@ impl ProxyConstructor {
             Self::construct,
             2,
             cx.names.proxy(),
-            Some(realm),
+            realm,
             None,
         );
 
@@ -68,7 +68,7 @@ impl ProxyConstructor {
         let revoke_environment = RevokeProxyClosureEnvironment::new(cx, Some(proxy));
 
         let mut revoker =
-            BuiltinFunction::intrinsic_closure(cx, revoke, 0, cx.names.empty_string());
+            BuiltinFunction::legacy_intrinsic_closure(cx, revoke, 0, cx.names.empty_string());
         revoker.set_closure_environment(revoke_environment);
 
         let result = ordinary_object_create(cx);

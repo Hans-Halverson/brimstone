@@ -55,7 +55,7 @@ impl SymbolConstructor {
             Self::construct,
             0,
             cx.names.symbol(),
-            Some(realm),
+            realm,
             None,
         );
 

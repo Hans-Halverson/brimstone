@@ -11,7 +11,7 @@ use crate::{
                 define_property_or_throw, get_method, has_property, initialize_instance_elements,
                 ordinary_has_instance, private_get, set_integrity_level, IntegrityLevel,
             },
-            array_object::array_create,
+            array_object::{array_create, array_create_in_realm},
             completion::EvalResult,
             environment::environment::Environment,
             error::{range_error_, reference_error_, type_error_},
@@ -41,7 +41,7 @@ use crate::{
                 to_uint32, ToPrimitivePreferredType,
             },
             value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-            Context, Handle,
+            Context, Handle, Realm,
         },
     },
     maybe, must,
@@ -768,7 +768,7 @@ fn get_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<Object
         return template_object;
     }
 
-    let template_object = generate_template_object(cx, lit);
+    let template_object = generate_template_object(cx, realm, lit);
 
     realm.add_template_object(cx, AstPtr::from_ref(lit), template_object);
 
@@ -776,11 +776,16 @@ fn get_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<Object
 }
 
 // 13.2.8.3 GetTemplateObject
-pub fn generate_template_object(cx: Context, lit: &ast::TemplateLiteral) -> Handle<ObjectValue> {
+pub fn generate_template_object(
+    cx: Context,
+    realm: Handle<Realm>,
+    lit: &ast::TemplateLiteral,
+) -> Handle<ObjectValue> {
     let num_strings = lit.quasis.len();
     let template_object: Handle<ObjectValue> =
-        must!(array_create(cx, num_strings as u64, None)).into();
-    let raw_object: Handle<ObjectValue> = must!(array_create(cx, num_strings as u64, None)).into();
+        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).into();
+    let raw_object: Handle<ObjectValue> =
+        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).into();
 
     // Property key is shared between iterations
     let mut index_key = PropertyKey::uninit().to_handle(cx);

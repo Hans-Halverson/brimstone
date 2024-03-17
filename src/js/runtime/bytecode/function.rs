@@ -16,7 +16,7 @@ use crate::{
         ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
         scope::Scope,
         string_value::StringValue,
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
     must, set_uninit,
 };
@@ -54,6 +54,24 @@ impl Closure {
         closure
     }
 
+    pub fn new_global(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        realm: Handle<Realm>,
+    ) -> Handle<Closure> {
+        let scope = realm.global_scope();
+        let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
+        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, proto);
+
+        set_uninit!(object.function, function.get_());
+        set_uninit!(object.scope, scope.get_());
+
+        let closure = object.to_handle();
+        Self::init_common_properties(cx, closure, function);
+
+        closure
+    }
+
     pub fn new_builtin(
         cx: Context,
         function: Handle<BytecodeFunction>,
@@ -81,12 +99,7 @@ impl Closure {
 
     #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
-        self.function_ptr().global_scope_ptr().object()
-    }
-
-    #[inline]
-    pub fn global_scope(&self) -> Handle<Scope> {
-        self.function_ptr().global_scope()
+        self.function_ptr().realm_ptr().global_object()
     }
 
     /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
@@ -148,8 +161,8 @@ pub struct BytecodeFunction {
     constant_table: Option<HeapPtr<ConstantTable>>,
     /// Exception handlers in this function.
     exception_handlers: Option<HeapPtr<ExceptionHandlers>>,
-    /// The global scope this function was defined in (aka the realm).
-    global_scope: HeapPtr<Scope>,
+    /// The realm this function was defined in.
+    realm: HeapPtr<Realm>,
     /// Number of local registers (and temporaries) needed by the function.
     num_registers: u32,
     /// Number of parameters to the function, not counting the rest parameter.
@@ -173,7 +186,7 @@ impl BytecodeFunction {
         bytecode: Vec<u8>,
         constant_table: Option<Handle<ConstantTable>>,
         exception_handlers: Option<Handle<ExceptionHandlers>>,
-        global_scope: Handle<Scope>,
+        realm: Handle<Realm>,
         num_registers: u32,
         num_parameters: u32,
         is_strict: bool,
@@ -186,7 +199,7 @@ impl BytecodeFunction {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| c.get_()));
         set_uninit!(object.exception_handlers, exception_handlers.map(|h| h.get_()));
-        set_uninit!(object.global_scope, global_scope.get_());
+        set_uninit!(object.realm, realm.get_());
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.is_strict, is_strict);
@@ -201,7 +214,7 @@ impl BytecodeFunction {
     pub fn new_rust_runtime_function(
         cx: Context,
         function_id: RustRuntimeFunctionId,
-        global_scope: Handle<Scope>,
+        realm: Handle<Realm>,
         is_constructor: bool,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(0);
@@ -210,7 +223,7 @@ impl BytecodeFunction {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
-        set_uninit!(object.global_scope, global_scope.get_());
+        set_uninit!(object.realm, realm.get_());
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.is_strict, true);
@@ -244,13 +257,8 @@ impl BytecodeFunction {
     }
 
     #[inline]
-    pub fn global_scope_ptr(&self) -> HeapPtr<Scope> {
-        self.global_scope
-    }
-
-    #[inline]
-    pub fn global_scope(&self) -> Handle<Scope> {
-        self.global_scope_ptr().to_handle()
+    pub fn realm_ptr(&self) -> HeapPtr<Realm> {
+        self.realm
     }
 
     #[inline]
@@ -384,7 +392,7 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
 
         visitor.visit_pointer_opt(&mut self.constant_table);
         visitor.visit_pointer_opt(&mut self.exception_handlers);
-        visitor.visit_pointer(&mut self.global_scope);
+        visitor.visit_pointer(&mut self.realm);
         visitor.visit_pointer_opt(&mut self.name);
     }
 }

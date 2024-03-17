@@ -19,7 +19,7 @@ impl FinalizationRegistryConstructor {
             Self::construct,
             1,
             cx.names.finalization_registry(),
-            Some(realm),
+            realm,
             None,
         );
 

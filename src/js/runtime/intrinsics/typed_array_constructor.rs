@@ -28,7 +28,7 @@ impl TypedArrayConstructor {
             Self::construct,
             0,
             cx.names.typed_array(),
-            Some(realm),
+            realm,
             None,
         );
 
@@ -513,7 +513,7 @@ macro_rules! create_typed_array_constructor {
                     Self::construct,
                     3,
                     cx.names.$rust_name(),
-                    Some(realm),
+                    realm,
                     Some(prototype),
                 );
 

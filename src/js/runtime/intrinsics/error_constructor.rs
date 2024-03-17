@@ -50,7 +50,7 @@ impl ErrorConstructor {
             Self::construct,
             1,
             cx.names.error(),
-            Some(realm),
+            realm,
             None,
         );
 

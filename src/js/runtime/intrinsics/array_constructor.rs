@@ -32,7 +32,7 @@ impl ArrayConstructor {
             Self::construct,
             1,
             cx.names.array(),
-            Some(realm),
+            realm,
             None,
         );
 

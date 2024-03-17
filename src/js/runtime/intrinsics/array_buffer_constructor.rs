@@ -102,7 +102,7 @@ impl ArrayBufferConstructor {
             Self::construct,
             1,
             cx.names.array_buffer(),
-            Some(realm),
+            realm,
             None,
         );
 

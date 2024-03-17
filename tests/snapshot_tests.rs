@@ -6,7 +6,7 @@ use brimstone::js::{
             function::{BytecodeFunction, Closure},
             generator::BytecodeProgramGenerator,
         },
-        initialize_host_defined_realm, Context, Handle,
+        initialize_host_defined_realm, Context, Handle, Realm,
     },
 };
 
@@ -35,17 +35,18 @@ fn print_ast(path: &str) -> GenericResult<String> {
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
     // Context is shared between all tests
     let options = Rc::new(Options::default());
-    let (cx, _) = Context::new(options, |cx| initialize_host_defined_realm(cx, false, false));
+    let (cx, realm) = Context::new(options, |cx| initialize_host_defined_realm(cx, false, false));
 
     let bytecode_tests_dir = Path::new(file!()).parent().unwrap().join("js_bytecode");
-    let result = run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, path));
+    let result =
+        run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, realm, path));
 
     cx.drop();
 
     result
 }
 
-fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
+fn print_bytecode(cx: Context, realm: Handle<Realm>, path: &str) -> GenericResult<String> {
     // Check if the test file should be run with dumped bytecode collected, e.g. for eval
     let file = fs::read_to_string(path).unwrap();
     if &file[0..11] == "// OPTIONS:" {
@@ -56,12 +57,16 @@ fn print_bytecode(cx: Context, path: &str) -> GenericResult<String> {
     }
 
     // Otherwise only need to generate bytecode
-    let bytecode_program = generate_bytecode(cx, path)?;
+    let bytecode_program = generate_bytecode(cx, realm, path)?;
 
     Ok(bytecode_program.debug_print_recursive(true))
 }
 
-fn generate_bytecode(cx: Context, path: &str) -> GenericResult<Handle<BytecodeFunction>> {
+fn generate_bytecode(
+    cx: Context,
+    realm: Handle<Realm>,
+    path: &str,
+) -> GenericResult<Handle<BytecodeFunction>> {
     let mut parse_result = parse_script_or_module(path)?;
     let source = parse_result.program.source.clone();
     parser::analyze::analyze(&mut parse_result, source)?;
@@ -69,7 +74,7 @@ fn generate_bytecode(cx: Context, path: &str) -> GenericResult<Handle<BytecodeFu
     let bytecode_program = BytecodeProgramGenerator::generate_from_program_parse_result(
         cx,
         &Rc::new(parse_result),
-        cx.current_realm(),
+        realm,
     )?;
 
     Ok(bytecode_program)
@@ -84,11 +89,11 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     let options = Rc::new(options);
 
     // Create a fresh context to isolate tests since we are actually running code
-    let (cx, _) =
+    let (cx, realm) =
         Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
 
     // Generate program and prepend to dump buffer
-    let bytecode_program = generate_bytecode(cx, path)?;
+    let bytecode_program = generate_bytecode(cx, realm, path)?;
 
     let bytecode_string = bytecode_program.debug_print_recursive(true);
     options
@@ -99,8 +104,7 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     // Set up closure and execute bytecode. Can ignore return result since we only care about the
     // dumped bytecode
     let _ = cx.execute_then_drop(|mut cx| {
-        let global_scope = cx.current_realm().global_scope();
-        let closure = Closure::new(cx, bytecode_program, global_scope);
+        let closure = Closure::new_global(cx, bytecode_program, realm);
         cx.execute_bytecode(closure, &[])
     });
 

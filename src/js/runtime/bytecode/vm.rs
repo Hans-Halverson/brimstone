@@ -1317,7 +1317,7 @@ impl VM {
             Value::undefined()
         } else {
             // Global object is used
-            function.global_scope_ptr().object_ptr().into()
+            function.realm_ptr().global_object_ptr().into()
         }
     }
 
@@ -1348,7 +1348,7 @@ impl VM {
             receiver
         } else if receiver.is_nullish() {
             // Global object is used if receiver is nullish
-            function.global_scope_ptr().object_ptr().into()
+            function.realm_ptr().global_object_ptr().into()
         } else {
             let receiver = receiver.to_handle(self.cx);
             let receiver_object = maybe!(to_object(self.cx, receiver));

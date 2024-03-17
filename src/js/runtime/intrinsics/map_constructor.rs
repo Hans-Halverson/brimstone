@@ -29,7 +29,7 @@ impl MapConstructor {
             Self::construct,
             0,
             cx.names.map(),
-            Some(realm),
+            realm,
             None,
         );
 

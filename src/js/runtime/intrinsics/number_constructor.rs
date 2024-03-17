@@ -90,7 +90,7 @@ impl NumberConstructor {
             Self::construct,
             1,
             cx.names.number(),
-            Some(realm),
+            realm,
             None,
         );
 

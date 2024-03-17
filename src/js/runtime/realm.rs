@@ -68,8 +68,13 @@ impl Realm {
     }
 
     #[inline]
+    pub fn global_object_ptr(&self) -> HeapPtr<ObjectValue> {
+        self.global_object
+    }
+
+    #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
-        self.global_object.to_handle()
+        self.global_object_ptr().to_handle()
     }
 
     #[inline]

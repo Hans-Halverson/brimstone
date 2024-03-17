@@ -20,7 +20,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::{is_constructor_value, same_object_value, to_number, to_uint32},
-    Context, EvalResult, Handle, HeapPtr, Value,
+    Context, EvalResult, Handle, HeapPtr, Realm, Value,
 };
 
 // 10.4.2 Array Exotic Objects
@@ -119,11 +119,21 @@ pub fn array_create(
     length: u64,
     proto: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ArrayObject>> {
+    let realm = cx.current_realm();
+    array_create_in_realm(cx, realm, length, proto)
+}
+
+pub fn array_create_in_realm(
+    cx: Context,
+    realm: Handle<Realm>,
+    length: u64,
+    proto: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<ArrayObject>> {
     if length > (u32::MAX as u64) {
         return range_error_(cx, "array length out of range");
     }
 
-    let proto = proto.unwrap_or_else(|| cx.get_intrinsic(Intrinsic::ArrayPrototype));
+    let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
 
     let mut array_object = ArrayObject::new(cx, proto);
 

@@ -37,7 +37,7 @@ impl ObjectConstructor {
             Self::construct,
             1,
             cx.names.object(),
-            Some(realm),
+            realm,
             None,
         );
 

@@ -97,8 +97,7 @@ pub fn perform_bytecode_eval(
     }
 
     // Eval function's parent scope is the global scope in an indirect eval
-    let eval_scope =
-        direct_scope.unwrap_or_else(|| cx.current_function().cast::<Closure>().global_scope());
+    let eval_scope = direct_scope.unwrap_or_else(|| cx.current_realm().global_scope());
     let closure = Closure::new(cx, bytecode_function, eval_scope);
 
     // Determine the receiver for the eval function call

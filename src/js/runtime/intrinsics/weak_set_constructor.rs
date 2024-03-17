@@ -26,7 +26,7 @@ impl WeakSetConstructor {
             Self::construct,
             0,
             cx.names.weak_set(),
-            Some(realm),
+            realm,
             None,
         );
 

@@ -216,23 +216,34 @@ impl Context {
         self.current_execution_context_ptr().to_handle()
     }
 
+    #[inline]
     pub fn current_realm_ptr(&self) -> HeapPtr<Realm> {
-        self.current_execution_context_ptr().realm_ptr()
+        if self.options.bytecode {
+            self.vm
+                .as_ref()
+                .unwrap()
+                .closure()
+                .function_ptr()
+                .realm_ptr()
+        } else {
+            self.current_execution_context_ptr().realm_ptr()
+        }
     }
 
+    #[inline]
     pub fn current_realm(&self) -> Handle<Realm> {
-        self.current_execution_context_ptr().realm()
+        self.current_realm_ptr().to_handle()
     }
 
     /// Return an intrinsic for the current realm.
+    #[inline]
     pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
-        self.current_execution_context_ptr()
-            .get_intrinsic_ptr(intrinsic)
+        self.current_realm().get_intrinsic_ptr(intrinsic)
     }
 
+    #[inline]
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
-        self.current_execution_context_ptr()
-            .get_intrinsic(intrinsic)
+        self.current_realm().get_intrinsic(intrinsic)
     }
 
     pub fn current_function(&mut self) -> Handle<ObjectValue> {

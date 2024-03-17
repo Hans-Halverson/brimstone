@@ -140,7 +140,7 @@ impl RegExpConstructor {
             Self::construct,
             2,
             cx.names.regexp(),
-            Some(realm),
+            realm,
             None,
         );
 

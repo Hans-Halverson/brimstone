@@ -67,7 +67,7 @@ macro_rules! create_native_error {
                     Self::construct,
                     1,
                     cx.names.$rust_name(),
-                    Some(realm),
+                    realm,
                     Some(error_constructor),
                 );
 

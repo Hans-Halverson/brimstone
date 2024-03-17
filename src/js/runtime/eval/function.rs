@@ -652,7 +652,7 @@ pub fn create_dynamic_function(
         }
 
         // Dynamic functions are always in the global scope
-        let closure = Closure::new(cx, bytecode_function, realm.global_scope());
+        let closure = Closure::new_global(cx, bytecode_function, realm);
 
         let closure_object: Handle<ObjectValue> = closure.into();
         closure_object.into()

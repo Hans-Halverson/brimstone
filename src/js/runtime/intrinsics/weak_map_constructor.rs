@@ -28,7 +28,7 @@ impl WeakMapConstructor {
             Self::construct,
             0,
             cx.names.weak_map(),
-            Some(realm),
+            realm,
             None,
         );
 

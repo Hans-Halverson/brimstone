@@ -51,7 +51,7 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         length: u32,
         name: Handle<PropertyKey>,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
     ) -> Handle<ObjectValue> {
@@ -84,7 +84,7 @@ impl BuiltinFunction {
     pub fn create_builtin_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> Handle<ObjectValue> {
@@ -114,7 +114,7 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         length: u32,
         name: Handle<PropertyKey>,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
     ) -> Handle<BuiltinFunction> {
@@ -134,7 +134,7 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         length: u32,
         name: Handle<PropertyKey>,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
         is_constructor: bool,
@@ -165,10 +165,9 @@ impl BuiltinFunction {
     fn create_builtin_legacy_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<BuiltinFunction> {
-        let realm = realm.unwrap_or_else(|| cx.current_realm());
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
@@ -187,25 +186,18 @@ impl BuiltinFunction {
     fn create_builtin_bytecode_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> Handle<Closure> {
-        let realm = realm.unwrap_or_else(|| cx.current_realm());
-        let global_scope = realm.global_scope();
-
         let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
-        let bytecode_function = BytecodeFunction::new_rust_runtime_function(
-            cx,
-            function_id,
-            global_scope,
-            is_constructor,
-        );
+        let bytecode_function =
+            BytecodeFunction::new_rust_runtime_function(cx, function_id, realm, is_constructor);
 
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
-        Closure::new_builtin(cx, bytecode_function, global_scope, prototype)
+        Closure::new_builtin(cx, bytecode_function, realm.global_scope(), prototype)
     }
 
     /// Create the constructor function for an intrinsic.
@@ -214,7 +206,7 @@ impl BuiltinFunction {
         builtin_func: BuiltinFunctionPtr,
         length: u32,
         name: Handle<PropertyKey>,
-        realm: Option<Handle<Realm>>,
+        realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<ObjectValue> {
         if cx.options.bytecode {
@@ -247,7 +239,7 @@ impl BuiltinFunction {
 
     /// Intrinsic closures are builtins that use a rust closure environment. Can not yet be emitted
     /// as bytecode.
-    pub fn intrinsic_closure(
+    pub fn legacy_intrinsic_closure(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
         length: u32,
@@ -257,7 +249,8 @@ impl BuiltinFunction {
             unimplemented!("Intrinsic closures can not yet be emitted as bytecode");
         }
 
-        Self::create_builtin_legacy_function(cx, builtin_func, length, name, None, None, None)
+        let realm = cx.current_realm();
+        Self::create_builtin_legacy_function(cx, builtin_func, length, name, realm, None, None)
     }
 
     fn realm(&self) -> Handle<Realm> {

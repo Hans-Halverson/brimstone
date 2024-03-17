@@ -31,7 +31,7 @@ impl StringConstructor {
             Self::construct,
             1,
             cx.names.string(),
-            Some(realm),
+            realm,
             None,
         );
 

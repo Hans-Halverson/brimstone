@@ -35,7 +35,7 @@ impl DateConstructor {
             Self::construct,
             7,
             cx.names.date(),
-            Some(realm),
+            realm,
             None,
         );
 

@@ -21,7 +21,7 @@ impl SetConstructor {
             Self::construct,
             0,
             cx.names.set(),
-            Some(realm),
+            realm,
             None,
         );
 

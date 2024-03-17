@@ -52,7 +52,7 @@ impl AggregateErrorConstructor {
             Self::construct,
             2,
             cx.names.aggregate_error(),
-            Some(realm),
+            realm,
             Some(error_constructor),
         );
 

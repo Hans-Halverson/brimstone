@@ -54,16 +54,9 @@ pub fn set_default_global_bindings(
 
         macro_rules! func_prop {
             ($str_name:expr, $func_name:expr, $length:expr) => {{
-                let func_object = BuiltinFunction::create(
-                    cx,
-                    $func_name,
-                    $length,
-                    $str_name,
-                    Some(realm),
-                    None,
-                    None,
-                )
-                .into();
+                let func_object =
+                    BuiltinFunction::create(cx, $func_name, $length, $str_name, realm, None, None)
+                        .into();
                 value_prop!($str_name, func_object, true, false, true);
             }};
         }
@@ -164,16 +157,15 @@ pub fn set_default_global_bindings(
 }
 
 pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, eval, 1, cx.names.eval(), Some(realm), None, None).into()
+    BuiltinFunction::create(cx, eval, 1, cx.names.eval(), realm, None, None).into()
 }
 
 pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), Some(realm), None, None)
-        .into()
+    BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), realm, None, None).into()
 }
 
 pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), Some(realm), None, None).into()
+    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), realm, None, None).into()
 }
 
 // 19.2.1 eval

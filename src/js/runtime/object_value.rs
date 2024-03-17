@@ -491,7 +491,7 @@ impl Handle<ObjectValue> {
         func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
     ) {
-        let getter = BuiltinFunction::create(cx, func, 0, name, Some(realm), None, Some("get"));
+        let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
         let accessor_value = AccessorValue::new(cx, Some(getter.into()), None);
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
@@ -504,8 +504,8 @@ impl Handle<ObjectValue> {
         setter: BuiltinFunctionPtr,
         realm: Handle<Realm>,
     ) {
-        let getter = BuiltinFunction::create(cx, getter, 0, name, Some(realm), None, Some("get"));
-        let setter = BuiltinFunction::create(cx, setter, 1, name, Some(realm), None, Some("set"));
+        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
+        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, None, Some("set"));
         let accessor_value = AccessorValue::new(cx, Some(getter.into()), Some(setter.into()));
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
@@ -518,7 +518,7 @@ impl Handle<ObjectValue> {
         length: u32,
         realm: Handle<Realm>,
     ) {
-        let func = BuiltinFunction::create(cx, func, length, name, Some(realm), None, None).into();
+        let func = BuiltinFunction::create(cx, func, length, name, realm, None, None).into();
         self.intrinsic_data_prop(cx, name, func);
     }
 

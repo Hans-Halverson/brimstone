@@ -75,7 +75,7 @@ impl WeakRefConstructor {
             Self::construct,
             1,
             cx.names.weak_ref(),
-            Some(realm),
+            realm,
             None,
         );
 

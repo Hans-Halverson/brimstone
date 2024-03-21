@@ -668,15 +668,22 @@ pub struct TryStatement {
 pub struct CatchClause {
     pub loc: Loc,
     pub param: Option<P<Pattern>>,
-    /// Body scope node contains the catch clause parameter binding.
     pub body: P<Block>,
     /// Whether the parameter is a pattern with an assignment expression.
     pub param_has_assign_expr: bool,
+
+    /// Block scope node that contains the catch clause parameter binding and body.
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 impl CatchClause {
-    pub fn new(loc: Loc, param: Option<P<Pattern>>, body: P<Block>) -> CatchClause {
-        CatchClause { loc, param, body, param_has_assign_expr: false }
+    pub fn new(
+        loc: Loc,
+        param: Option<P<Pattern>>,
+        body: P<Block>,
+        scope: AstPtr<AstScopeNode>,
+    ) -> CatchClause {
+        CatchClause { loc, param, body, param_has_assign_expr: false, scope }
     }
 }
 

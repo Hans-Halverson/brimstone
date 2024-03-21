@@ -487,7 +487,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_catch_clause(&mut self, catch: &mut CatchClause) {
         // Catch scope includes the catch parameter
-        self.enter_scope(catch.body.scope);
+        self.enter_scope(catch.scope);
 
         // Param is in its own "has assignment expression" context
         if let Some(param) = &mut catch.param {
@@ -496,9 +496,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
             catch.param_has_assign_expr = self.exit_has_assign_expr_context();
         }
 
-        // Visit statements in catch body instead of calling visit_block since we have already
-        // entered the catch scope.
-        default_visit_block(self, &mut catch.body);
+        self.visit_block(&mut catch.body);
 
         self.exit_scope();
     }

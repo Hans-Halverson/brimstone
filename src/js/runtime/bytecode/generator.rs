@@ -4638,7 +4638,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_mov_instruction(Register::scope(), scope_to_restore);
 
         // Catch scope starts before the parameter is evaluated and potentially destructured
-        let catch_scope = catch_clause.body.scope.as_ref();
+        let catch_scope = catch_clause.scope.as_ref();
         self.gen_scope_start(catch_scope)?;
 
         // If there is a catch parameter, mark the register in the handler
@@ -4677,7 +4677,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // No need to write a jump from catch to next block after body, since either the finally
         // or join block will be emitted directly after the catch.
-        let catch_completion = self.gen_statement_list(&catch_clause.body.body)?;
+        let catch_completion = self.gen_block_statement(&catch_clause.body)?;
         let catch_handler_end = self.writer.current_offset();
 
         let catch_handler = ExceptionHandlerBuilder::new(catch_handler_start, catch_handler_end);

@@ -453,7 +453,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<Statement> {
         match self.token {
             Token::Var => Ok(Statement::VarDecl(self.parse_variable_declaration(false)?)),
-            Token::LeftBrace => Ok(Statement::Block(self.parse_block_default_scope()?)),
+            Token::LeftBrace => Ok(Statement::Block(self.parse_block()?)),
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
             Token::For => self.parse_any_for_statement(),
@@ -952,25 +952,18 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Parse a block with a standard block scope.
-    fn parse_block_default_scope(&mut self) -> ParseResult<Block> {
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
-        let block = self.parse_block_custom_scope(scope)?;
-        self.scope_builder.exit_scope();
-
-        Ok(block)
-    }
-
-    /// Parse a block but do not perform scope management. Instead use the scope node provided to
-    /// the function, and let caller handle scope management.
-    fn parse_block_custom_scope(&mut self, scope: AstPtr<AstScopeNode>) -> ParseResult<Block> {
+    fn parse_block(&mut self) -> ParseResult<Block> {
         let start_pos = self.current_start_pos();
         self.advance()?;
+
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
         let mut body = vec![];
         while self.token != Token::RightBrace {
             body.push(self.parse_statement_list_item(FunctionContext::empty())?)
         }
+
+        self.scope_builder.exit_scope();
 
         self.advance()?;
         let loc = self.mark_loc(start_pos);
@@ -1294,7 +1287,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let block = p(self.parse_block_default_scope()?);
+        let block = p(self.parse_block()?);
 
         // Optional handler block
         let handler = if self.token == Token::Catch {
@@ -1322,19 +1315,19 @@ impl<'a> Parser<'a> {
                 Some(p(param))
             };
 
-            let body = p(self.parse_block_custom_scope(scope)?);
+            let body = p(self.parse_block()?);
             let loc = self.mark_loc(catch_start_pos);
 
             self.scope_builder.exit_scope();
 
-            Some(p(CatchClause::new(loc, param, body)))
+            Some(p(CatchClause::new(loc, param, body, scope)))
         } else {
             None
         };
 
         let finalizer = if self.token == Token::Finally {
             self.advance()?;
-            Some(p(self.parse_block_default_scope()?))
+            Some(p(self.parse_block()?))
         } else {
             None
         };

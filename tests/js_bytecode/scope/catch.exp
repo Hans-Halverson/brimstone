@@ -30,14 +30,14 @@
      6: Jump 38 (.L1)
      8: Mov <scope>, r3
     11: LoadEmpty r1
-    13: LoadEmpty r2
-    15: GetNamedProperty r5, r4, c0
-    19: JumpNotUndefined r5, 9 (.L0)
-    22: CheckTdz r1, c1
-    25: Mov r5, r1
+    13: GetNamedProperty r5, r4, c0
+    17: JumpNotUndefined r5, 9 (.L0)
+    20: CheckTdz r1, c1
+    23: Mov r5, r1
   .L0:
-    28: Mov r0, r5
-    31: GetNamedProperty r1, r4, c1
+    26: Mov r0, r5
+    29: GetNamedProperty r1, r4, c1
+    33: LoadEmpty r2
     35: LoadImmediate r4, 2
     38: CheckTdz r2, c2
     41: LoadImmediate r2, 1
@@ -56,32 +56,35 @@
   Parameters: 0, Registers: 4
      0: Mov r1, <scope>
      3: LoadImmediate r2, 1
-     6: Jump 33 (.L0)
+     6: Jump 36 (.L0)
      8: Mov <scope>, r1
     11: PushLexicalScope c0
     13: LoadEmpty r3
     15: StoreToScope r3, 0, 0
-    19: LoadEmpty r3
-    21: StoreToScope r3, 1, 0
-    25: StoreToScope r2, 0, 0
-    29: LoadImmediate r2, 1
-    32: StoreToScope r2, 1, 0
-    36: NewClosure r0, c1
+    19: StoreToScope r2, 0, 0
+    23: PushLexicalScope c1
+    25: LoadEmpty r2
+    27: StoreToScope r2, 0, 0
+    31: LoadImmediate r2, 1
+    34: StoreToScope r2, 0, 0
+    38: NewClosure r0, c2
+    41: PopScope 
   .L0:
-    39: LoadUndefined r1
-    41: Ret r1
+    42: LoadUndefined r1
+    44: Ret r1
   Constant Table:
     0: [ScopeNames]
-    1: [BytecodeFunction: inner]
+    1: [ScopeNames]
+    2: [BytecodeFunction: inner]
   Exception Handlers:
     3-6 -> 8 (r2)
 }
 
 [BytecodeFunction: inner] {
   Parameters: 0, Registers: 2
-     0: LoadFromScope r0, 0, 0
+     0: LoadFromScope r0, 0, 1
      4: CheckTdz r0, c0
-     7: LoadFromScope r1, 1, 0
+     7: LoadFromScope r1, 0, 0
     11: CheckTdz r1, c1
     14: Add r0, r0, r1
     18: Ret r0
@@ -94,7 +97,7 @@
   Parameters: 0, Registers: 3
      0: Mov r1, <scope>
      3: LoadImmediate r2, 1
-     6: Jump 23 (.L0)
+     6: Jump 24 (.L0)
      8: Mov <scope>, r1
     11: PushLexicalScope c0
     13: LoadEmpty r2
@@ -102,9 +105,10 @@
     19: LoadImmediate r2, 1
     22: StoreToScope r2, 0, 0
     26: NewClosure r0, c1
+    29: PopScope 
   .L0:
-    29: LoadUndefined r1
-    31: Ret r1
+    30: LoadUndefined r1
+    32: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -125,7 +129,7 @@
   Parameters: 0, Registers: 4
      0: Mov r2, <scope>
      3: LoadImmediate r3, 1
-     6: Jump 27 (.L0)
+     6: Jump 28 (.L0)
      8: Mov <scope>, r2
     11: PushLexicalScope c0
     13: LoadEmpty r3
@@ -134,9 +138,10 @@
     22: Add r3, r3, r0
     26: StoreToScope r3, 0, 0
     30: NewClosure r1, c1
+    33: PopScope 
   .L0:
-    33: LoadUndefined r2
-    35: Ret r2
+    34: LoadUndefined r2
+    36: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]

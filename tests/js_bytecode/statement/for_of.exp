@@ -13,8 +13,10 @@
     29: StoreGlobal r0, c10
     32: NewClosure r0, c11
     35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: basicVar]
@@ -29,6 +31,8 @@
     10: [String: lhsMember]
     11: [BytecodeFunction: lhsDestructuring]
     12: [String: lhsDestructuring]
+    13: [BytecodeFunction: lhsTdz]
+    14: [String: lhsTdz]
 }
 
 [BytecodeFunction: basicVar] {
@@ -305,4 +309,87 @@
     52-54 -> 54
     75-102 -> 104 (r6)
     110-112 -> 112
+}
+
+[BytecodeFunction: lhsTdz] {
+  Parameters: 0, Registers: 7
+      0: PushFunctionScope c0
+      2: LoadEmpty r2
+      4: StoreToScope r2, 0, 0
+      8: PushLexicalScope c1
+     10: LoadEmpty r2
+     12: StoreToScope r2, 0, 0
+     16: NewArray r4
+     18: GetIterator r2, r3, r4
+     22: PopScope 
+  .L0:
+     23: PushLexicalScope c1
+     25: LoadEmpty r4
+     27: StoreToScope r4, 0, 0
+     31: IteratorNext r4, r5, r2, r3
+     36: JumpTrue r5, 28 (.L2)
+     39: StoreToScope r4, 0, 0
+     43: Mov r6, <scope>
+     46: NewClosure r1, c2
+     49: Jump 12 (.L1)
+     51: LoadImmediate r4, 0
+     54: Mov <scope>, r6
+     57: IteratorClose r2
+     59: Throw r5
+  .L1:
+     61: PopScope 
+     62: Jump -39 (.L0)
+  .L2:
+     64: PopScope 
+     65: LoadImmediate r2, 1
+     68: StoreToScope r2, 0, 0
+     72: NewArray r4
+     74: GetIterator r2, r3, r4
+  .L3:
+     78: IteratorNext r4, r5, r2, r3
+     83: JumpTrue r5, 34 (.L5)
+     86: LoadFromScope r5, 0, 0
+     90: CheckTdz r5, c3
+     93: StoreToScope r4, 0, 0
+     97: Mov r6, <scope>
+    100: NewClosure r0, c4
+    103: Jump 12 (.L4)
+    105: LoadImmediate r4, 0
+    108: Mov <scope>, r6
+    111: IteratorClose r2
+    113: Throw r5
+  .L4:
+    115: Jump -37 (.L3)
+  .L5:
+    117: LoadUndefined r2
+    119: Ret r2
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [BytecodeFunction: inner]
+    3: [String: y]
+    4: [BytecodeFunction: inner]
+  Exception Handlers:
+    39-49 -> 51 (r5)
+    57-59 -> 59
+    86-103 -> 105 (r5)
+    111-113 -> 113
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: y]
 }

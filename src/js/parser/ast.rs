@@ -624,6 +624,10 @@ impl ForEachInit {
         }
     }
 
+    pub fn is_decl(&self) -> bool {
+        matches!(self, ForEachInit::VarDecl(_))
+    }
+
     pub fn has_assign_expr(&self) -> bool {
         match self {
             ForEachInit::Pattern { has_assign_expr, .. } => *has_assign_expr,

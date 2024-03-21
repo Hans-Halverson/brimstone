@@ -96,7 +96,7 @@
     20: CheckTdz r1, c1
     23: LoadImmediate r2, 10
     26: LessThan r1, r1, r2
-    30: JumpFalse r1, 43 (.L1)
+    30: JumpFalse r1, 50 (.L1)
     33: PushLexicalScope c2
     35: LoadEmpty r1
     37: StoreToScope r1, 0, 0
@@ -109,12 +109,14 @@
     57: CheckTdz r1, c1
     60: LoadImmediate r2, 1
     63: Add r1, r1, r2
-    67: StoreToScope r1, 0, 0
-    71: Jump -55 (.L0)
+    67: LoadFromScope r2, 0, 0
+    71: CheckTdz r2, c1
+    74: StoreToScope r1, 0, 0
+    78: Jump -62 (.L0)
   .L1:
-    73: PopScope 
-    74: LoadUndefined r1
-    76: Ret r1
+    80: PopScope 
+    81: LoadUndefined r1
+    83: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: x]

@@ -13,8 +13,10 @@
     29: StoreGlobal r0, c10
     32: NewClosure r0, c11
     35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: basicVar]
@@ -29,6 +31,8 @@
     10: [String: lhsMember]
     11: [BytecodeFunction: lhsDestructuring]
     12: [String: lhsDestructuring]
+    13: [BytecodeFunction: lhsTdz]
+    14: [String: lhsTdz]
 }
 
 [BytecodeFunction: basicVar] {
@@ -190,4 +194,70 @@
     0: [String: a]
     1: [String: b]
     2: [String: d]
+}
+
+[BytecodeFunction: lhsTdz] {
+  Parameters: 0, Registers: 5
+     0: PushFunctionScope c0
+     2: LoadEmpty r2
+     4: StoreToScope r2, 0, 0
+     8: PushLexicalScope c1
+    10: LoadEmpty r2
+    12: StoreToScope r2, 0, 0
+    16: NewObject r2
+    18: JumpNullish r2, 31 (.L1)
+    21: NewForInIterator r2, r2
+    24: PopScope 
+  .L0:
+    25: PushLexicalScope c1
+    27: LoadEmpty r3
+    29: StoreToScope r3, 0, 0
+    33: ForInNext r3, r2
+    36: JumpNullish r3, 13 (.L1)
+    39: StoreToScope r3, 0, 0
+    43: NewClosure r1, c2
+    46: PopScope 
+    47: Jump -22 (.L0)
+  .L1:
+    49: PopScope 
+    50: LoadImmediate r2, 1
+    53: StoreToScope r2, 0, 0
+    57: NewObject r2
+    59: JumpNullish r2, 28 (.L3)
+    62: NewForInIterator r2, r2
+  .L2:
+    65: ForInNext r3, r2
+    68: JumpNullish r3, 19 (.L3)
+    71: LoadFromScope r4, 0, 0
+    75: CheckTdz r4, c3
+    78: StoreToScope r3, 0, 0
+    82: NewClosure r0, c4
+    85: Jump -20 (.L2)
+  .L3:
+    87: LoadUndefined r2
+    89: Ret r2
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [BytecodeFunction: inner]
+    3: [String: y]
+    4: [BytecodeFunction: inner]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: y]
 }

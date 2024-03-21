@@ -66,3 +66,16 @@ function lhsDestructuring(param) {
   }
   5;
 }
+
+function lhsTdz() {
+  // No TDZ check due to declaration
+  for (let x of []) {
+    function inner() { return x; }
+  }
+
+  // TDZ check needed due to assignment
+  let y = 1;
+  for (y of []) {
+    function inner() { return y; }
+  }
+}

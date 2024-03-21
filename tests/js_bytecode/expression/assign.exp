@@ -25,10 +25,12 @@
     65: StoreGlobal r0, c22
     68: NewClosure r0, c23
     71: StoreGlobal r0, c24
-    74: LoadImmediate r0, 1
-    77: StoreGlobal r0, c25
-    80: LoadUndefined r0
-    82: Ret r0
+    74: NewClosure r0, c25
+    77: StoreGlobal r0, c26
+    80: LoadImmediate r0, 1
+    83: StoreGlobal r0, c27
+    86: LoadUndefined r0
+    88: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: use]
@@ -55,7 +57,9 @@
     22: [String: operatorMemberAssign]
     23: [BytecodeFunction: operatorMemberAllOperators]
     24: [String: operatorMemberAllOperators]
-    25: [String: global]
+    25: [BytecodeFunction: tdzCheck]
+    26: [String: tdzCheck]
+    27: [String: global]
 }
 
 [BytecodeFunction: use] {
@@ -414,4 +418,39 @@
     182: Ret r0
   Constant Table:
     0: [String: foo]
+}
+
+[BytecodeFunction: tdzCheck] {
+  Parameters: 0, Registers: 4
+     0: PushFunctionScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: NewClosure r0, c1
+    11: LoadImmediate r1, 0
+    14: StoreToScope r1, 0, 0
+    18: LoadImmediate r1, 1
+    21: LoadFromScope r2, 0, 0
+    25: CheckTdz r2, c2
+    28: StoreToScope r1, 0, 0
+    32: LoadImmediate r1, 2
+    35: GetNamedProperty r2, r1, c2
+    39: LoadFromScope r3, 0, 0
+    43: CheckTdz r3, c2
+    46: StoreToScope r2, 0, 0
+    50: LoadUndefined r1
+    52: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: inner]
+    2: [String: x]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [String: x]
 }

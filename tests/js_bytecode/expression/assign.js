@@ -128,3 +128,12 @@ function operatorMemberAllOperators(x) {
   x.foo >>= 11;
   x.foo >>>= 12;
 }
+
+function tdzCheck() {
+  let x = 0;
+  function inner() { x }
+
+  // Needs TDZ check
+  x = 1;
+  ({x} = 2);
+}

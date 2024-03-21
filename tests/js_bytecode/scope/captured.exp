@@ -157,13 +157,17 @@
 }
 
 [BytecodeFunction: inner] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: LoadImmediate r0, 3
      3: StoreToScope r0, 0, 0
      7: LoadImmediate r0, 4
-    10: StoreToScope r0, 1, 0
-    14: LoadUndefined r0
-    16: Ret r0
+    10: LoadFromScope r1, 1, 0
+    14: CheckTdz r1, c0
+    17: StoreToScope r0, 1, 0
+    21: LoadUndefined r0
+    23: Ret r0
+  Constant Table:
+    0: [String: l1]
 }
 
 [BytecodeFunction: capturedGlobal] {

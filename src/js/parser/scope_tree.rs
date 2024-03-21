@@ -179,21 +179,8 @@ impl ScopeTree {
     fn add_lexically_scoped_binding(&mut self, name: &str, kind: BindingKind) -> AddBindingResult {
         let node = self.get_ast_node_mut(self.current_node_id);
 
-        // Error if there is already any binding with this name in the current scope, which is
-        // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
-        // declared in this scope.
-        if let Some(binding) = node.bindings.get(name) {
-            return Err(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
-        }
-
-        // Then check for other conflicting var scoped bindings, e.g. in child scopes
-        if node.extra_var_names.contains(name) {
-            return Err(ParseError::NameRedeclaration(
-                name.to_owned(),
-                // Guaranteed to conflict with a `var` binding, as the other var scoped names -
-                // var scoped functions and function parameters - cannot appear in child scopes.
-                BindingKind::Var,
-            ));
+        if let Some(err) = node.error_if_lexical_name_already_declared(name) {
+            return Err(err);
         }
 
         // Lexical bindings in a switch always need a TDZ check since it hard to analyze when
@@ -756,6 +743,28 @@ impl AstScopeNode {
                 | BindingKind::Function { is_lexical: true, .. } => true,
                 _ => false,
             })
+    }
+
+    /// Error if the provided lexical name is already declared in this scope.
+    pub fn error_if_lexical_name_already_declared(&self, name: &str) -> Option<ParseError> {
+        // Error if there is already any binding with this name in the current scope, which is
+        // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
+        // declared in this scope.
+        if let Some(binding) = self.bindings.get(name) {
+            return Some(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
+        }
+
+        // Then check for other conflicting var scoped bindings, e.g. in child scopes
+        if self.extra_var_names.contains(name) {
+            return Some(ParseError::NameRedeclaration(
+                name.to_owned(),
+                // Guaranteed to conflict with a `var` binding, as the other var scoped names -
+                // var scoped functions and function parameters - cannot appear in child scopes.
+                BindingKind::Var,
+            ));
+        }
+
+        None
     }
 }
 

@@ -499,6 +499,14 @@ impl<'a> AstVisitor for Analyzer<'a> {
         self.visit_block(&mut catch.body);
 
         self.exit_scope();
+
+        // Error if any catch parameter bindings conflict with bindings in the body of the catch
+        let catch_body_scope = catch.body.scope.as_ref();
+        for (name, _) in catch.scope.as_ref().iter_bindings() {
+            if let Some(err) = catch_body_scope.error_if_lexical_name_already_declared(name) {
+                self.emit_error(catch.loc, err);
+            }
+        }
     }
 
     fn visit_block(&mut self, block: &mut Block) {

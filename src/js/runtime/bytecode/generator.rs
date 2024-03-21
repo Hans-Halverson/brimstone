@@ -897,7 +897,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             self.gen_store_binding(
-                "arguemnts",
+                "arguments",
                 arguments_binding,
                 arguments_object,
                 /* add_tdz_check */ false,
@@ -4600,6 +4600,33 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope_to_restore: GenRegister,
         mut body_handler: ExceptionHandlerBuilder,
     ) -> EmitResult<(StmtCompletion, ExceptionHandlerBuilder)> {
+        enum Param<'a> {
+            LocalRegister { index: usize },
+            Scope { scope_id: ScopeNodeId, index: usize, error_reg: GenRegister },
+            Destructuring { param: &'a ast::Pattern, error_reg: GenRegister },
+            None,
+        }
+
+        // Determine the type of catch parameter, and if a temporary register is needed then
+        // allocate it immediately so that it cannot be clobbered before use e.g. by destructuring.
+        let param = if let Some(param) = catch_clause.param.as_deref() {
+            if param.is_id() {
+                match param.to_id().get_binding().vm_location().unwrap() {
+                    VMLocation::LocalRegister(index) => Param::LocalRegister { index },
+                    VMLocation::Scope { scope_id, index } => {
+                        let error_reg = self.register_allocator.allocate()?;
+                        Param::Scope { scope_id, index, error_reg }
+                    }
+                    _ => unreachable!("catch parameters must be in a register or VM scope"),
+                }
+            } else {
+                let error_reg = self.register_allocator.allocate()?;
+                Param::Destructuring { param, error_reg }
+            }
+        } else {
+            Param::None
+        };
+
         body_handler.handler = self.writer.current_offset();
 
         // Emit the catch clause in its own block, with bounds saved for a finally handler
@@ -4615,42 +4642,34 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_scope_start(catch_scope)?;
 
         // If there is a catch parameter, mark the register in the handler
-        if let Some(param) = catch_clause.param.as_deref() {
-            if param.is_id() {
-                let id = param.to_id();
+        match param {
+            // Catch parameters stored in registers tell the handler to place the error directly in
+            // the register.
+            Param::LocalRegister { index } => {
+                body_handler.error_register = Some(Register::local(index));
+            }
+            // Catch parameters stored in VM scopes tell the handler to place the error in a
+            // temporary register, then store it to the scope.
+            Param::Scope { scope_id, index, error_reg } => {
+                self.gen_store_scope_binding(scope_id, index, error_reg)?;
+                self.register_allocator.release(error_reg);
 
-                match id.get_binding().vm_location().unwrap() {
-                    // Catch parameters stored in registers tell the handler to place the error
-                    // directly in the register.
-                    VMLocation::LocalRegister(index) => {
-                        body_handler.error_register = Some(Register::local(index));
-                    }
-                    // Catch parameters stored in VM scopes tell the handler to place the error
-                    // in a temporary register, the store it to the scope.
-                    VMLocation::Scope { scope_id, index } => {
-                        let error_reg = self.register_allocator.allocate()?;
-                        self.gen_store_scope_binding(scope_id, index, error_reg)?;
-                        self.register_allocator.release(error_reg);
-
-                        body_handler.error_register = Some(error_reg);
-                    }
-                    _ => unreachable!("catch parameters must be in a register or VM scope"),
-                }
-            } else {
-                // Otherwise destructure catch parameter. Destructuring is in its own "has
-                // assignment expression" context.
-                self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
-
+                body_handler.error_register = Some(error_reg);
+            }
+            // Otherwise destructure catch parameter. Destructuring is in its own "has assignment
+            // expression" context.
+            Param::Destructuring { param, error_reg } => {
                 // Storing at declaration does not need a TDZ check
-                let error_temp = self.register_allocator.allocate()?;
+                self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
                 self.gen_destructuring(
-                    param, error_temp, /* release_value */ true,
+                    param, error_reg, /* release_value */ true,
                     /* needs_tdz_check */ false,
                 )?;
-                body_handler.error_register = Some(error_temp);
-
                 self.exit_has_assign_expr_context();
+
+                body_handler.error_register = Some(error_reg);
             }
+            Param::None => {}
         }
 
         // Save try body's exception handler now that it is complete

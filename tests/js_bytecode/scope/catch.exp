@@ -53,16 +53,16 @@
 }
 
 [BytecodeFunction: capturesWithCapturedParam] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: Mov r1, <scope>
      3: LoadImmediate r2, 1
      6: Jump 33 (.L0)
      8: Mov <scope>, r1
     11: PushLexicalScope c0
-    13: LoadEmpty r2
-    15: StoreToScope r2, 0, 0
-    19: LoadEmpty r2
-    21: StoreToScope r2, 1, 0
+    13: LoadEmpty r3
+    15: StoreToScope r3, 0, 0
+    19: LoadEmpty r3
+    21: StoreToScope r3, 1, 0
     25: StoreToScope r2, 0, 0
     29: LoadImmediate r2, 1
     32: StoreToScope r2, 1, 0

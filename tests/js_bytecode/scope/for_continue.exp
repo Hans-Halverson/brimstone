@@ -30,40 +30,41 @@
      4: StoreToScope r1, 0, 0
      8: LoadImmediate r1, 0
     11: StoreToScope r1, 0, 0
+    15: DupScope 
   .L0:
-    15: LoadTrue r1
-    17: JumpFalse r1, 60 (.L4)
-    20: PushLexicalScope c1
-    22: LoadEmpty r1
-    24: StoreToScope r1, 0, 0
-    28: LoadImmediate r1, 1
-    31: StoreToScope r1, 0, 0
-    35: LoadImmediate r1, 2
-    38: JumpToBooleanFalse r1, 6 (.L1)
-    41: PopScope 
-    42: Jump 32 (.L3)
+    16: LoadTrue r1
+    18: JumpFalse r1, 60 (.L4)
+    21: PushLexicalScope c1
+    23: LoadEmpty r1
+    25: StoreToScope r1, 0, 0
+    29: LoadImmediate r1, 1
+    32: StoreToScope r1, 0, 0
+    36: LoadImmediate r1, 2
+    39: JumpToBooleanFalse r1, 6 (.L1)
+    42: PopScope 
+    43: Jump 32 (.L3)
   .L1:
-    44: PushLexicalScope c2
-    46: LoadEmpty r1
-    48: StoreToScope r1, 0, 0
-    52: LoadImmediate r1, 3
-    55: StoreToScope r1, 0, 0
-    59: LoadImmediate r1, 4
-    62: JumpToBooleanFalse r1, 7 (.L2)
-    65: PopScope 
+    45: PushLexicalScope c2
+    47: LoadEmpty r1
+    49: StoreToScope r1, 0, 0
+    53: LoadImmediate r1, 3
+    56: StoreToScope r1, 0, 0
+    60: LoadImmediate r1, 4
+    63: JumpToBooleanFalse r1, 7 (.L2)
     66: PopScope 
-    67: Jump 7 (.L3)
+    67: PopScope 
+    68: Jump 7 (.L3)
   .L2:
-    69: NewClosure r0, c3
-    72: PopScope 
+    70: NewClosure r0, c3
     73: PopScope 
+    74: PopScope 
   .L3:
-    74: DupScope 
-    75: Jump -60 (.L0)
+    75: DupScope 
+    76: Jump -60 (.L0)
   .L4:
-    77: PopScope 
-    78: LoadUndefined r1
-    80: Ret r1
+    78: PopScope 
+    79: LoadUndefined r1
+    81: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -95,32 +96,33 @@
      4: StoreToScope r1, 0, 0
      8: LoadImmediate r1, 0
     11: StoreToScope r1, 0, 0
+    15: DupScope 
   .L0:
-    15: LoadTrue r1
-    17: JumpFalse r1, 42 (.L4)
-    20: LoadImmediate r1, 2
-    23: JumpToBooleanFalse r1, 5 (.L1)
-    26: Jump 30 (.L3)
+    16: LoadTrue r1
+    18: JumpFalse r1, 42 (.L4)
+    21: LoadImmediate r1, 2
+    24: JumpToBooleanFalse r1, 5 (.L1)
+    27: Jump 30 (.L3)
   .L1:
-    28: PushLexicalScope c1
-    30: LoadEmpty r1
-    32: StoreToScope r1, 0, 0
-    36: LoadImmediate r1, 3
-    39: StoreToScope r1, 0, 0
-    43: LoadImmediate r1, 4
-    46: JumpToBooleanFalse r1, 6 (.L2)
-    49: PopScope 
-    50: Jump 6 (.L3)
+    29: PushLexicalScope c1
+    31: LoadEmpty r1
+    33: StoreToScope r1, 0, 0
+    37: LoadImmediate r1, 3
+    40: StoreToScope r1, 0, 0
+    44: LoadImmediate r1, 4
+    47: JumpToBooleanFalse r1, 6 (.L2)
+    50: PopScope 
+    51: Jump 6 (.L3)
   .L2:
-    52: NewClosure r0, c2
-    55: PopScope 
+    53: NewClosure r0, c2
+    56: PopScope 
   .L3:
-    56: DupScope 
-    57: Jump -42 (.L0)
+    57: DupScope 
+    58: Jump -42 (.L0)
   .L4:
-    59: PopScope 
-    60: LoadUndefined r1
-    62: Ret r1
+    60: PopScope 
+    61: LoadUndefined r1
+    63: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

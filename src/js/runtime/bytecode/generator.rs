@@ -4078,6 +4078,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             None => {}
         }
 
+        // For init is performed in its own scope, separate from the scope of the first iteration.
+        // This can be satisfied by duplicating the scope so that iterations cannot modify the init
+        // scope (which can be observed if init scope is captured).
+        if for_scope.vm_scope_id().is_some() {
+            self.writer.dup_scope_instruction();
+        }
+
         self.start_block(loop_start_block);
 
         // Evaluate the test expression and either continue to body or break out of loop

@@ -1522,21 +1522,26 @@ impl VM {
 
             let global_object = self.closure().global_object();
 
-            if !maybe!(has_property(cx, global_object, name_key)) {
-                if error_on_unresolved {
-                    // Error if property is not found on the global object
-                    return err_not_defined_(cx, name);
-                } else {
-                    // If not erroring, return undefined for unresolved names
-                    self.write_register(dest, Value::undefined());
-                    return ().into();
-                }
-            }
+            let value = if maybe!(has_property(cx, global_object, name_key)) {
+                // Get the property from the global object
+                maybe!(get(cx, global_object, name_key)).get()
+            } else if let Some(value) = self
+                .closure()
+                .realm()
+                .get_lexical_name(name.as_flat().get_())
+            {
+                // Otherwise might be a lexical name in one of realm's global scopes
+                value
+            } else if error_on_unresolved {
+                // Error if property is not found on the global object
+                return err_not_defined_(cx, name);
+            } else {
+                // If not erroring, return undefined for unresolved names
+                self.write_register(dest, Value::undefined());
+                return ().into();
+            };
 
-            // Get the property from the global object
-            let value = maybe!(get(cx, global_object, name_key));
-
-            self.write_register(dest, value.get());
+            self.write_register(dest, value);
 
             ().into()
         })
@@ -1559,19 +1564,24 @@ impl VM {
 
             let mut global_object = self.closure().global_object();
 
-            // Check if there is a global with the given name
-            if !maybe!(has_property(cx, global_object, name_key)) {
-                // If in strict mode, error on unresolved name
-                if self.closure().function_ptr().is_strict() {
-                    return err_not_defined_(cx, name);
-                }
-
+            let success = if maybe!(has_property(cx, global_object, name_key)) {
+                // Check if there is a global var with the given name then set the property on the
+                // global object.
+                maybe!(global_object.set(cx, name_key, value, global_object.into()))
+            } else if self
+                .closure()
+                .realm()
+                .set_lexical_name(name.as_flat().get_(), value.get())
+            {
+                // Set the global lexical binding with the given name if it exists
+                true
+            } else if self.closure().function_ptr().is_strict() {
+                // Otherwise if in strict mode, error on unresolved name
+                return err_not_defined_(cx, name);
+            } else {
                 // Otherwise in sloppy mode create a new global property
                 return set(cx, global_object, name_key, value, false);
-            }
-
-            // Set the property on the global object
-            let success = maybe!(global_object.set(cx, name_key, value, global_object.into()));
+            };
 
             // If property set failed and in strict mode then error, otherwise silently ignore
             // failure in sloppy mode.

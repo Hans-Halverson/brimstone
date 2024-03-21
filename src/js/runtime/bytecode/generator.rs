@@ -10,7 +10,9 @@ use crate::js::{
     parser::{
         ast::{self, AstPtr, LabelId, ResolvedScope},
         parser::{ParseFunctionResult, ParseProgramResult},
-        scope_tree::{AstScopeNode, Binding, BindingKind, ScopeNodeKind, ScopeTree, VMLocation},
+        scope_tree::{
+            AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
+        },
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
@@ -19,6 +21,7 @@ use crate::js::{
         global_names::GlobalNames,
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
+        scope::Scope,
         scope_names::ScopeNames,
         value::BigIntValue,
         Context, Handle, Realm, Value,
@@ -28,6 +31,7 @@ use crate::js::{
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
+    function::Closure,
     instruction::{DecodeInfo, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
@@ -63,14 +67,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
         cx: Context,
         parse_result: &ParseProgramResult,
         realm: Handle<Realm>,
-    ) -> EmitResult<Handle<BytecodeFunction>> {
+    ) -> EmitResult<Handle<Closure>> {
         HandleScope::new(cx, |_| {
             let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
             generator.generate_program(&parse_result.program)
         })
     }
 
-    fn generate_program(&mut self, program: &ast::Program) -> EmitResult<Handle<BytecodeFunction>> {
+    fn generate_program(&mut self, program: &ast::Program) -> EmitResult<Handle<Closure>> {
         let program_function = self.gen_script_function(program)?;
 
         while let Some(pending_function) = self.pending_functions_queue.pop_front() {
@@ -80,10 +84,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(program_function)
     }
 
-    fn gen_script_function(
-        &mut self,
-        program: &ast::Program,
-    ) -> EmitResult<Handle<BytecodeFunction>> {
+    fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<Handle<Closure>> {
         // Handle where the result BytecodeFunction is placed
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
 
@@ -102,11 +103,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let global_names = generator.gen_global_names(program_scope)?;
             generator.writer.global_init_instruction(global_names);
 
-            // Start the script's lexical scope
-            generator.gen_scope_start(program_scope)?;
-
-            // Store the captured `this` right away if necessary
-            generator.gen_store_captured_this(program_scope)?;
+            // Create the script's global scope
+            let global_scope = generator.gen_global_scope(program_scope)?;
 
             // Heuristic to ignore the use strict directive in common cases. Safe since there must
             // be a directive prologue which can be ignored if there is a use strict directive.
@@ -127,17 +125,16 @@ impl<'a> BytecodeProgramGenerator<'a> {
             generator.gen_return_undefined()?;
 
             let emit_result = generator.finish();
+            let bytecode_function = emit_result.bytecode_function;
 
             // Store the generated function into the parent handle scope so the enqueued references
             // remain valid.
-            bytecode_function_handle.replace(emit_result.bytecode_function.get_());
+            bytecode_function_handle.replace(bytecode_function.get_());
 
             self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
 
-            Ok(())
-        })?;
-
-        Ok(bytecode_function_handle)
+            Ok(Closure::new_in_realm(self.cx, bytecode_function, global_scope, self.realm))
+        })
     }
 
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
@@ -3747,13 +3744,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ScopeNodeKind::Function { .. }
             | ScopeNodeKind::FunctionBody
             // Strict eval forms a new var scope
-            | ScopeNodeKind::Eval { is_strict: true, .. }
-
-             => self.push_scope(scope, /* needs_function_scope */ true, None)?,
-            // With statements are handled separately
-            ScopeNodeKind::With => {}
+            | ScopeNodeKind::Eval { is_strict: true, .. } => {
+                self.push_scope(scope, /* needs_function_scope */ true, None)?
+            }
+            // Global and with scopes are handled separately
+            ScopeNodeKind::Global
+            | ScopeNodeKind::With => {}
             // Otherwise this is a generic lexical scope
-            _ => self.push_scope(scope, /* needs_function_scope */ false, None)?,
+            ScopeNodeKind::Block
+            | ScopeNodeKind::Switch
+            | ScopeNodeKind::Eval { is_strict: false, .. } => {
+                self.push_scope(scope, /* needs_function_scope */ false, None)?
+            }
         }
 
         // Set all bindings that need a TDZ check to empty
@@ -3789,7 +3791,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        // Generate var scoped function declarations, hoisted to the top of the scope
+        self.gen_var_scoped_functions(scope)?;
+
+        Ok(())
+    }
+
+    /// Generate var scoped function declarations, hoisted to the top of the scope
+    fn gen_var_scoped_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
         for (_, binding) in scope.iter_bindings() {
             if let BindingKind::Function { is_lexical: false, func_node } = binding.kind() {
                 self.gen_function_declaration_impl(func_node.as_ref())?;
@@ -3845,11 +3853,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     .push_lexical_scope_instruction(scope_names_constant_index);
             }
 
-            self.scope =
-                Rc::new(ScopeStackNode { scope_id: vm_scope_id, parent: Some(self.scope.clone()) });
+            self.push_scope_stack_node(vm_scope_id);
         }
 
         Ok(())
+    }
+
+    fn push_scope_stack_node(&mut self, vm_scope_id: ScopeNodeId) {
+        self.scope =
+            Rc::new(ScopeStackNode { scope_id: vm_scope_id, parent: Some(self.scope.clone()) });
     }
 
     fn gen_scope_end(&mut self, scope: &AstScopeNode) {
@@ -3864,6 +3876,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.scope = self.scope.parent.clone().unwrap();
             }
         }
+    }
+
+    fn gen_global_scope(&mut self, scope: &AstScopeNode) -> EmitResult<Handle<Scope>> {
+        // VM scope node is guaranteed to exist, since at minimum the realm is always stored
+        let vm_scope_id = scope.vm_scope_id().unwrap();
+        let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
+        self.push_scope_stack_node(vm_scope_id);
+
+        self.gen_var_scoped_functions(scope)?;
+
+        Ok(self.realm.new_global_scope(self.cx, vm_node.bindings()))
     }
 
     fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {

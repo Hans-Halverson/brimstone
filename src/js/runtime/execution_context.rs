@@ -128,11 +128,6 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
-        self.realm.get_intrinsic_ptr(intrinsic)
-    }
-
-    #[inline]
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
         self.realm.get_intrinsic(intrinsic)
     }

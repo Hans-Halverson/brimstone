@@ -196,24 +196,19 @@ impl ScopeTree {
             ));
         }
 
-        let mut vm_location = None;
-        let mut needs_tdz_check = false;
+        // Lexical bindings in a switch always need a TDZ check since it hard to analyze when
+        // the check can be elided. (e.g. due to out of order default case, or definitions and
+        // uses in different cases).
+        let needs_tdz_check = node.kind == ScopeNodeKind::Switch;
 
-        match node.kind {
-            // Lexical bindings in the global scope are immediately known to be global
-            ScopeNodeKind::Global => {
-                vm_location = Some(VMLocation::Global);
-            }
-            // Lexical bindings in a switch always need a TDZ check since it hard to analyze when
-            // the check can be elided. (e.g. due to out of order default case, or definitions and
-            // uses in different cases).
-            ScopeNodeKind::Switch => {
-                needs_tdz_check = true;
-            }
-            _ => {}
+        node.add_binding(name, kind, None, needs_tdz_check);
+
+        // Lexically scoped bindings in the global scope must be placed in a VM scope node so that
+        // they can be accessed by different scripts. We can force this by marking them as captured.
+        if node.kind == ScopeNodeKind::Global {
+            let binding = node.bindings.get_mut(name).unwrap();
+            binding.is_captured = true;
         }
-
-        node.add_binding(name, kind, vm_location, needs_tdz_check);
 
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
@@ -472,11 +467,15 @@ impl ScopeTree {
         let enclosing_scope = ast_node.enclosing_scope;
 
         let mut bindings = vec![];
-
-        // A mapped arguments object requires that all arguments be placed in the VM scope node
-        // in order.
         let has_mapped_arguments_object = arguments_object_length.is_some();
-        if has_mapped_arguments_object {
+
+        // The first slot in a global scope always contains the realm
+        if ast_node.kind() == ScopeNodeKind::Global {
+            bindings.push(REALM_SCOPE_SLOT_NAME.to_owned());
+        } else if has_mapped_arguments_object {
+            // A mapped arguments object requires that all arguments be placed in the VM scope node
+            // in order.
+
             // Bindings start out with unresolvable "%private" for each argument name, which will be
             // overriden by the actual binding name for accessible arguments. Some arguments cannot
             // be accessed by name (since they are shadowed by another binding) and will remain
@@ -901,7 +900,7 @@ impl Binding {
 
 #[derive(Clone, Copy)]
 pub enum VMLocation {
-    /// Binding is in the global scope.
+    /// Var binding in the global scope.
     Global,
     /// Argument with the given index in the current function.
     Argument(usize),
@@ -926,3 +925,4 @@ impl VMScopeNode {
 }
 
 pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
+pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";

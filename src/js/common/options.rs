@@ -34,7 +34,8 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub bytecode: bool,
 
-    pub file: String,
+    #[arg(required = true)]
+    pub files: Vec<String>,
 }
 
 /// Options passed throughout the program.

@@ -20,11 +20,9 @@ use brimstone::js::{
     self,
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
-        bytecode::{function::Closure, generator::BytecodeProgramGenerator},
-        eval_module, eval_script, get, initialize_host_defined_realm,
-        test_262_object::Test262Object,
-        to_console_string, to_string, Completion, CompletionKind, Context, EvalResult, Handle,
-        Realm, Value,
+        bytecode::generator::BytecodeProgramGenerator, eval_module, eval_script, get,
+        initialize_host_defined_realm, test_262_object::Test262Object, to_console_string,
+        to_string, Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
     },
 };
 
@@ -355,17 +353,15 @@ fn execute_as_bytecode(
 ) -> Completion {
     let generate_result =
         BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
-    let bytecode_program = match generate_result {
-        Ok(bytecode_program) => bytecode_program,
+    let program_closure = match generate_result {
+        Ok(program_closure) => program_closure,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
             return Completion::throw(err_string.into());
         }
     };
 
-    let closure = Closure::new_global(cx, bytecode_program, realm);
-
-    match cx.execute_bytecode(closure, &[]) {
+    match cx.execute_bytecode(program_closure, &[]) {
         Ok(value) => Completion::normal(value),
         Err(error_value) => Completion::throw(error_value),
     }

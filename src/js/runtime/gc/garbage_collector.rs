@@ -114,7 +114,7 @@ impl GarbageCollector {
         cx.add_finalizer_callbacks(finalizer_callbacks);
 
         // In GC stress test mode, overwrite the old heap with 0x01 bytes to try to catch reads from
-        // pointesr to the old heap.
+        // pointers to the old heap.
         #[cfg(feature = "gc_stress_test")]
         {
             if cx.heap.gc_stress_test {

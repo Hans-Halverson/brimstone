@@ -54,12 +54,12 @@ impl Closure {
         closure
     }
 
-    pub fn new_global(
+    pub fn new_in_realm(
         cx: Context,
         function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
         realm: Handle<Realm>,
     ) -> Handle<Closure> {
-        let scope = realm.global_scope();
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
         let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, proto);
 
@@ -93,6 +93,11 @@ impl Closure {
     }
 
     #[inline]
+    pub fn function(&self) -> Handle<BytecodeFunction> {
+        self.function.to_handle()
+    }
+
+    #[inline]
     pub fn scope(&self) -> Handle<Scope> {
         self.scope.to_handle()
     }
@@ -100,6 +105,11 @@ impl Closure {
     #[inline]
     pub fn global_object(&self) -> Handle<ObjectValue> {
         self.function_ptr().realm_ptr().global_object()
+    }
+
+    #[inline]
+    pub fn realm(&self) -> Handle<Realm> {
+        self.function_ptr().realm()
     }
 
     /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
@@ -259,6 +269,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn realm_ptr(&self) -> HeapPtr<Realm> {
         self.realm
+    }
+
+    #[inline]
+    pub fn realm(&self) -> Handle<Realm> {
+        self.realm.to_handle()
     }
 
     #[inline]

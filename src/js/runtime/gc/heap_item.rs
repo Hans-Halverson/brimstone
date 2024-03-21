@@ -59,7 +59,7 @@ use crate::js::runtime::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
     proxy_object::ProxyObject,
-    realm::RealmTemplateMapField,
+    realm::{GlobalScopes, LexicalNamesMapField, RealmTemplateMapField},
     regexp::compiled_regexp::CompiledRegExpObject,
     scope::Scope,
     scope_names::ScopeNames,
@@ -193,6 +193,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::InternedStringsMap => InternedStringsMapField::byte_size(&self.cast()),
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
+            ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
             ObjectKind::ArrayBufferDataArray => ArrayBufferDataField::byte_size(&self.cast()),
             ObjectKind::FunctionFieldsArray => FunctionFieldsArray::byte_size(&self.cast()),
             ObjectKind::FunctionPrivateMethodsArray => {
@@ -201,6 +202,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
+            ObjectKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }
@@ -355,6 +357,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsSet => {
                 InternedStringsSetField::visit_pointers(self.cast_mut(), visitor)
             }
+            ObjectKind::LexicalNamesMap => {
+                LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
+            }
             ObjectKind::ArrayBufferDataArray => {
                 ArrayBufferDataField::visit_pointers(self.cast_mut(), visitor)
             }
@@ -367,6 +372,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()
                 .visit_pointers(visitor),
+            ObjectKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

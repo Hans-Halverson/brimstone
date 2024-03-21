@@ -78,7 +78,6 @@ use crate::{
         ordinary_object::object_create_with_proto,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        scope::Scope,
         Context, Handle, HeapPtr, Value,
     },
     must,
@@ -249,8 +248,9 @@ impl Intrinsics {
         );
         realm.set_global_object(global_object);
 
-        let global_scope = Scope::new_global(cx, realm.global_object());
-        realm.set_global_scope(global_scope);
+        // Now that global object has been created, create default global scope which will be used
+        // by all intrinsic closures.
+        realm.init_global_scope(cx);
 
         ObjectPrototype::initialize(cx, object_prototype, realm);
         function_prototype.initialize(cx, realm);

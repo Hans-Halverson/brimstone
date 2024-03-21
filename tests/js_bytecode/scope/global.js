@@ -1,6 +1,6 @@
 var x = 1;
 
-// Initialize const and let to empty at scope start
+// Const and let stored in global scope slots
 const c1 = 2;
 let l1 = 3;
 

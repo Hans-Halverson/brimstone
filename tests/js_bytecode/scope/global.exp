@@ -1,36 +1,30 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
      0: GlobalInit c0
-     2: LoadEmpty r1
-     4: StoreGlobal r1, c1
-     7: LoadEmpty r1
-     9: StoreGlobal r1, c2
-    12: NewClosure r1, c3
-    15: StoreGlobal r1, c4
-    18: LoadImmediate r1, 1
-    21: StoreGlobal r1, c5
-    24: LoadImmediate r1, 2
-    27: StoreGlobal r1, c1
-    30: LoadImmediate r1, 3
-    33: StoreGlobal r1, c2
-    36: PushLexicalScope c6
-    38: LoadEmpty r1
-    40: StoreToScope r1, 0, 0
-    44: LoadImmediate r1, 1
-    47: StoreToScope r1, 0, 0
-    51: NewClosure r0, c7
-    54: PopScope 
-    55: LoadUndefined r1
-    57: Ret r1
+     2: NewClosure r1, c1
+     5: StoreGlobal r1, c2
+     8: LoadImmediate r1, 1
+    11: StoreGlobal r1, c3
+    14: LoadImmediate r1, 2
+    17: StoreToScope r1, 1, 0
+    21: LoadImmediate r1, 3
+    24: StoreToScope r1, 2, 0
+    28: PushLexicalScope c4
+    30: LoadEmpty r1
+    32: StoreToScope r1, 0, 0
+    36: LoadImmediate r1, 1
+    39: StoreToScope r1, 0, 0
+    43: NewClosure r0, c5
+    46: PopScope 
+    47: LoadUndefined r1
+    49: Ret r1
   Constant Table:
     0: [GlobalNames]
-    1: [String: c1]
-    2: [String: l1]
-    3: [BytecodeFunction: test1]
-    4: [String: test1]
-    5: [String: x]
-    6: [ScopeNames]
-    7: [BytecodeFunction: inner]
+    1: [BytecodeFunction: test1]
+    2: [String: test1]
+    3: [String: x]
+    4: [ScopeNames]
+    5: [BytecodeFunction: inner]
 }
 
 [BytecodeFunction: test1] {

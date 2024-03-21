@@ -151,12 +151,14 @@ pub enum ObjectKind {
     GlobalSymbolRegistryMap,
     InternedStringsMap,
     InternedStringsSet,
+    LexicalNamesMap,
 
     // Arrays
     ArrayBufferDataArray,
     FunctionFieldsArray,
     FunctionPrivateMethodsArray,
     FinalizationRegistryCells,
+    GlobalScopes,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -375,12 +377,14 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
+        other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
 
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
         other_heap_object_descriptor!(ObjectKind::FunctionFieldsArray);
         other_heap_object_descriptor!(ObjectKind::FunctionPrivateMethodsArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
+        other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 
         BaseDescriptors { descriptors }
     }

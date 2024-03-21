@@ -12,7 +12,7 @@ use super::{
     scope_names::ScopeNames,
     string_value::StringValue,
     type_utilities::to_boolean,
-    Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+    Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
 };
 
 #[repr(C)]
@@ -63,9 +63,11 @@ impl Scope {
         scope.to_handle()
     }
 
-    pub fn new_global(cx: Context, global_object: Handle<ObjectValue>) -> Handle<Scope> {
-        // Use an empty set of scope names
-        let scope_names = ScopeNames::new(cx, &[]);
+    pub fn new_global(
+        cx: Context,
+        scope_names: Handle<ScopeNames>,
+        global_object: Handle<ObjectValue>,
+    ) -> Handle<Scope> {
         Self::new(cx, ScopeKind::Global, None, scope_names, Some(global_object))
     }
 
@@ -134,6 +136,15 @@ impl Scope {
     pub fn set_slot(&mut self, index: usize, value: Value) {
         self.slots.as_mut_slice()[index] = value;
     }
+
+    /// Return the realm stored in this global scope.
+    ///
+    /// Should only be called on global scopes.
+    #[inline]
+    fn global_scope_realm(&mut self) -> HeapPtr<Realm> {
+        debug_assert!(self.kind == ScopeKind::Global);
+        self.get_slot(0).as_pointer().cast::<Realm>()
+    }
 }
 
 impl Handle<Scope> {
@@ -192,7 +203,11 @@ impl Handle<Scope> {
             if let Some(parent) = scope.parent.as_ref() {
                 scope.replace(*parent);
             } else {
-                return None.into();
+                // Finally check for global lexical names
+                let realm = scope.global_scope_realm();
+                let value = realm.get_lexical_name(name.as_flat().get_());
+
+                return value.map(|v| v.to_handle(cx)).into();
             }
         }
     }
@@ -242,7 +257,11 @@ impl Handle<Scope> {
             if let Some(parent) = scope.parent.as_ref() {
                 scope.replace(*parent);
             } else {
-                return false.into();
+                // Otherwise check for a global lexical name
+                let mut realm = scope.global_scope_realm();
+                let success = realm.set_lexical_name(name.as_flat().get_(), value.get());
+
+                return success.into();
             }
         }
     }

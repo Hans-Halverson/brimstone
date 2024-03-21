@@ -2,10 +2,7 @@ use brimstone::js::{
     common::options::Options,
     parser,
     runtime::{
-        bytecode::{
-            function::{BytecodeFunction, Closure},
-            generator::BytecodeProgramGenerator,
-        },
+        bytecode::{function::Closure, generator::BytecodeProgramGenerator},
         initialize_host_defined_realm, Context, Handle, Realm,
     },
 };
@@ -57,27 +54,27 @@ fn print_bytecode(cx: Context, realm: Handle<Realm>, path: &str) -> GenericResul
     }
 
     // Otherwise only need to generate bytecode
-    let bytecode_program = generate_bytecode(cx, realm, path)?;
+    let program_closure = generate_bytecode(cx, realm, path)?;
 
-    Ok(bytecode_program.debug_print_recursive(true))
+    Ok(program_closure.function().debug_print_recursive(true))
 }
 
 fn generate_bytecode(
     cx: Context,
     realm: Handle<Realm>,
     path: &str,
-) -> GenericResult<Handle<BytecodeFunction>> {
+) -> GenericResult<Handle<Closure>> {
     let mut parse_result = parse_script_or_module(path)?;
     let source = parse_result.program.source.clone();
     parser::analyze::analyze(&mut parse_result, source)?;
 
-    let bytecode_program = BytecodeProgramGenerator::generate_from_program_parse_result(
+    let program_closure = BytecodeProgramGenerator::generate_from_program_parse_result(
         cx,
         &Rc::new(parse_result),
         realm,
     )?;
 
-    Ok(bytecode_program)
+    Ok(program_closure)
 }
 
 fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
@@ -93,20 +90,16 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
         Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
 
     // Generate program and prepend to dump buffer
-    let bytecode_program = generate_bytecode(cx, realm, path)?;
+    let program_closure = generate_bytecode(cx, realm, path)?;
 
-    let bytecode_string = bytecode_program.debug_print_recursive(true);
+    let bytecode_string = program_closure.function().debug_print_recursive(true);
     options
         .dump_buffer()
         .unwrap()
         .push_str(&format!("{bytecode_string}\n"));
 
-    // Set up closure and execute bytecode. Can ignore return result since we only care about the
-    // dumped bytecode
-    let _ = cx.execute_then_drop(|mut cx| {
-        let closure = Closure::new_global(cx, bytecode_program, realm);
-        cx.execute_bytecode(closure, &[])
-    });
+    // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
+    let _ = cx.execute_then_drop(|mut cx| cx.execute_bytecode(program_closure, &[]));
 
     // Return a copy of the dump buffer
     let dump_buffer = options.dump_buffer().unwrap();

@@ -197,7 +197,7 @@ impl BuiltinFunction {
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
 
-        Closure::new_builtin(cx, bytecode_function, realm.global_scope(), prototype)
+        Closure::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
     }
 
     /// Create the constructor function for an intrinsic.

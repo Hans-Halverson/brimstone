@@ -394,6 +394,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Number of toplevel parameters to this function, not counting the rest parameter.
     num_parameters: u32,
 
+    /// Value of the `length` property of this function. Equal to the number of toplevel parameters
+    /// before the first parameter with a default value or rest parameter.
+    function_length: u32,
+
     /// Whether this function is in strict mode.
     is_strict: bool,
 
@@ -424,6 +428,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         name: Option<Wtf8String>,
         num_parameters: u32,
+        function_length: u32,
         num_local_registers: u32,
         is_strict: bool,
         is_constructor: bool,
@@ -442,6 +447,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             jump_statement_target_stack: vec![],
             finally_scopes: vec![],
             num_parameters,
+            function_length,
             is_strict,
             is_constructor,
             statement_completion_dest: None,
@@ -462,12 +468,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         default_name: Option<Wtf8String>,
         is_constructor: bool,
     ) -> EmitResult<Self> {
-        // Number of arguments does not count the rest parameter
+        // Stored number of parameters does not count the rest parameter
         let num_parameters = if let Some(ast::FunctionParam::Rest { .. }) = func.params.last() {
             func.params.len() - 1
         } else {
             func.params.len()
         };
+
+        // Function length only counts parameters before the first default value or rest parameter
+        let mut function_length = 0;
+        for param in &func.params {
+            match param {
+                ast::FunctionParam::Rest { .. }
+                | ast::FunctionParam::Pattern { pattern: ast::Pattern::Assign(_), .. } => break,
+                _ => {}
+            }
+
+            function_length += 1;
+        }
 
         // Number of local registers was determined while creating the VM scope tree
         let num_local_registers = func.scope.as_ref().num_local_registers();
@@ -495,6 +513,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             realm,
             name,
             num_parameters as u32,
+            function_length as u32,
             num_local_registers as u32,
             func.is_strict_mode(),
             is_constructor,
@@ -525,7 +544,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope,
             realm,
             Some(Wtf8String::from_str(name)),
-            0,
+            /* num_parameters */ 0,
+            /* function_length */ 0,
             num_local_registers as u32,
             program.is_strict_mode,
             /* is_constructor */ false,
@@ -1003,6 +1023,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.realm,
             num_registers,
             self.num_parameters,
+            self.function_length,
             self.is_strict,
             self.is_constructor,
             name,

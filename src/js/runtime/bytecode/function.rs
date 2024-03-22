@@ -119,7 +119,7 @@ impl Closure {
         closure: Handle<Closure>,
         function: Handle<BytecodeFunction>,
     ) {
-        set_function_length(cx, closure.into(), function.num_parameters());
+        set_function_length(cx, closure.into(), function.function_length());
 
         // Default to the empty string if a name was not provided
         let name = if let Some(name) = function.name {
@@ -177,6 +177,8 @@ pub struct BytecodeFunction {
     num_registers: u32,
     /// Number of parameters to the function, not counting the rest parameter.
     num_parameters: u32,
+    /// Value of the `length` property
+    function_length: u32,
     /// Whether this function is in strict mode.
     is_strict: bool,
     /// Whether this function is a constructor
@@ -199,6 +201,7 @@ impl BytecodeFunction {
         realm: Handle<Realm>,
         num_registers: u32,
         num_parameters: u32,
+        function_length: u32,
         is_strict: bool,
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
@@ -212,6 +215,7 @@ impl BytecodeFunction {
         set_uninit!(object.realm, realm.get_());
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
+        set_uninit!(object.function_length, function_length);
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.name, name.map(|n| n.get_()));
@@ -236,6 +240,7 @@ impl BytecodeFunction {
         set_uninit!(object.realm, realm.get_());
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
+        set_uninit!(object.function_length, 0);
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.name, None);
@@ -279,6 +284,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn num_parameters(&self) -> u32 {
         self.num_parameters
+    }
+
+    #[inline]
+    pub fn function_length(&self) -> u32 {
+        self.function_length
     }
 
     #[inline]

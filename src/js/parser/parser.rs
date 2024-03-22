@@ -624,15 +624,20 @@ impl<'a> Parser<'a> {
 
     fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
         let _ = pattern.iter_bound_names(&mut |id| {
-            let binding = id.scope.unwrap_resolved().get_binding(&id.name);
-            match binding.kind() {
-                BindingKind::Const { init_pos }
-                | BindingKind::Let { init_pos }
-                | BindingKind::CatchParameter { init_pos } => init_pos.set(pos),
-                _ => {}
-            }
+            Self::set_id_binding_init_pos(id, pos);
             ().into()
         });
+    }
+
+    fn set_id_binding_init_pos(id: &Identifier, pos: Pos) {
+        let binding = id.scope.unwrap_resolved().get_binding(&id.name);
+        match binding.kind() {
+            BindingKind::Const { init_pos }
+            | BindingKind::Let { init_pos }
+            | BindingKind::CatchParameter { init_pos }
+            | BindingKind::FunctionParameter { init_pos } => init_pos.set(pos),
+            _ => {}
+        }
     }
 
     fn parse_function_declaration(
@@ -775,7 +780,9 @@ impl<'a> Parser<'a> {
 
         while self.token != terminator {
             if self.token == Token::Spread {
-                let rest_element = self.parse_rest_element(BindingKind::FunctionParameter)?;
+                let rest_element = self.parse_rest_element(BindingKind::new_function_parameter())?;
+                Self::set_binding_init_pos(&rest_element.argument, self.prev_loc.end);
+
                 params.push(FunctionParam::new_rest(rest_element));
 
                 // Trailing commas are not allowed after rest elements, nor are any other params
@@ -786,8 +793,10 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let pattern =
-                self.parse_pattern_including_assignment_pattern(BindingKind::FunctionParameter)?;
+            let pattern = self
+                .parse_pattern_including_assignment_pattern(BindingKind::new_function_parameter())?;
+            Self::set_binding_init_pos(&pattern, self.prev_loc.end);
+
             params.push(FunctionParam::new_pattern(pattern));
 
             if self.token == Token::Comma {
@@ -1528,7 +1537,8 @@ impl<'a> Parser<'a> {
                 self.advance()?;
 
                 let mut async_id = Identifier::new(async_loc, "async".to_owned());
-                self.add_binding(&mut async_id, BindingKind::FunctionParameter)?;
+                self.add_binding(&mut async_id, BindingKind::new_function_parameter())?;
+                Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
                 let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
                 let param_flags = self.analyze_function_params(&params);
@@ -1553,7 +1563,10 @@ impl<'a> Parser<'a> {
         let params = match self.token {
             Token::LeftParen => self.parse_function_params()?,
             _ => {
-                let id = self.parse_binding_identifier(Some(BindingKind::FunctionParameter))?;
+                let id =
+                    self.parse_binding_identifier(Some(BindingKind::new_function_parameter()))?;
+                Self::set_id_binding_init_pos(&id, self.prev_loc.end);
+
                 vec![FunctionParam::new_pattern(Pattern::Id(id))]
             }
         };

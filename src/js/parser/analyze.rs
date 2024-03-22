@@ -811,6 +811,10 @@ impl Analyzer<'_> {
         self.enter_scope(func.scope);
 
         // Visit and analyze function parameters
+        for param in &mut func.params {
+            self.visit_function_param(param);
+        }
+
         let mut param_index = 0;
         for param in &mut func.params {
             // Check if this is a top level id pattern, optionally with a default
@@ -834,10 +838,12 @@ impl Analyzer<'_> {
             if let Some(id) = toplevel_id {
                 let scope = id.scope.unwrap_resolved_mut();
                 let binding = scope.get_binding_mut(&id.name);
-                binding.set_vm_location(VMLocation::Argument(param_index));
+
+                if !binding.needs_tdz_check() {
+                    binding.set_vm_location(VMLocation::Argument(param_index));
+                }
             }
 
-            self.visit_function_param(param);
             param_index += 1;
         }
 

@@ -64,10 +64,10 @@
 
 [BytecodeFunction: inRegularParam] {
   Parameters: 2, Registers: 1
-     0: JumpNotUndefined a0, 13 (.L0)
-     3: Mov r0, a1
-     6: LoadImmediate a1, 2
-     9: Add a0, r0, a1
+     0: JumpNotUndefined a1, 13 (.L0)
+     3: Mov r0, a0
+     6: LoadImmediate a0, 2
+     9: Add a1, r0, a0
   .L0:
     13: LoadUndefined r0
     15: Ret r0

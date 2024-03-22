@@ -301,7 +301,8 @@ impl ScopeTree {
                     // end of the binding's initialization. If so we need to check for the TDZ.
                     if let BindingKind::Const { init_pos }
                     | BindingKind::Let { init_pos }
-                    | BindingKind::CatchParameter { init_pos } = binding.kind()
+                    | BindingKind::CatchParameter { init_pos }
+                    | BindingKind::FunctionParameter { init_pos } = binding.kind()
                     {
                         if name_loc.start < init_pos.get() {
                             binding.needs_tdz_check = true;
@@ -470,7 +471,7 @@ impl ScopeTree {
             bindings = vec![SHADOWED_SCOPE_SLOT_NAME.to_owned(); arguments_object_length.unwrap()];
 
             for (name, binding) in ast_node.bindings.iter_mut() {
-                if binding.kind() != &BindingKind::FunctionParameter {
+                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
                     continue;
                 }
 
@@ -492,7 +493,9 @@ impl ScopeTree {
         // Collect all bindings that must appear in a VM scope node
         for (name, binding) in ast_node.bindings.iter_mut() {
             // Function parameters for mapped arguments object have already been placed in the scope
-            if has_mapped_arguments_object && binding.kind() == &BindingKind::FunctionParameter {
+            if has_mapped_arguments_object
+                && matches!(binding.kind(), BindingKind::FunctionParameter { .. })
+            {
                 continue;
             }
 
@@ -526,9 +529,11 @@ impl ScopeTree {
                     bindings.push(name.clone());
                 }
 
-                // All bindings in VM scope nodes need a TDZ check as we do not analyze whether
+                // Lexical bindings in VM scope nodes need a TDZ check as we do not analyze whether
                 // they are guaranteed to be initialized before use.
-                binding.needs_tdz_check = true;
+                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
+                    binding.needs_tdz_check = true;
+                }
             }
 
             // All globals need a TDZ check as they could be captured by any function
@@ -787,7 +792,10 @@ pub enum BindingKind {
         /// Function AST node - needed for the tree walk interpreter.
         func_node: AstPtr<ast::Function>,
     },
-    FunctionParameter,
+    FunctionParameter {
+        /// The source position after which this parameter has been initialized, inclusive.
+        init_pos: Cell<Pos>,
+    },
     Class,
     CatchParameter {
         /// The source position after which this parameter has been initialized, inclusive.
@@ -801,11 +809,15 @@ pub enum BindingKind {
 }
 
 impl BindingKind {
+    pub fn new_function_parameter() -> BindingKind {
+        BindingKind::FunctionParameter { init_pos: Cell::new(0) }
+    }
+
     /// Whether this is a LexicallyScopedDeclaration from the spec.
     pub fn is_lexically_scoped(&self) -> bool {
         match self {
             BindingKind::Var
-            | BindingKind::FunctionParameter
+            | BindingKind::FunctionParameter { .. }
             | BindingKind::ImplicitThis
             | BindingKind::ImplicitArguments => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
@@ -828,13 +840,14 @@ impl BindingKind {
         matches!(self, BindingKind::ImplicitThis)
     }
 
-    pub fn has_tdz(&self) -> bool {
+    fn has_tdz(&self) -> bool {
         matches!(
             self,
             BindingKind::Const { .. }
                 | BindingKind::Let { .. }
                 | BindingKind::Class
                 | BindingKind::CatchParameter { .. }
+                | BindingKind::FunctionParameter { .. }
         )
     }
 
@@ -903,7 +916,7 @@ impl Binding {
     }
 
     pub fn needs_tdz_check(&self) -> bool {
-        self.needs_tdz_check
+        self.kind().has_tdz() && self.needs_tdz_check
     }
 }
 

@@ -8,7 +8,7 @@ function inOuterExpr(param) {
   if (param + (param = 2)) {}
 }
 
-function inRegularParam(p1 = (p2 + (p2 = 2)), p2) {}
+function inRegularParam(p2, p1 = (p2 + (p2 = 2))) {}
 
 function inRestParam(p1, ...{[p1 + (p1 = 2)]: rest }) {}
 

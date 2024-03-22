@@ -1186,7 +1186,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         // For bindings that could be accessed during their TDZ we must generate a TDZ check. Must
         // ensure that TDZ check occurs before writing to a non-temporary register.
-        let add_tdz_check = binding.kind().has_tdz() && binding.needs_tdz_check();
+        let add_tdz_check = binding.needs_tdz_check();
 
         match binding.vm_location().unwrap() {
             // Fixed registers may directly reference the register
@@ -1363,7 +1363,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         // If this binding may be stored during its TDZ we must first load the binding and perform
         // a TDZ check. Loaded value can be ignored since it is only used for TDZ check.
-        if needs_tdz_check && binding.kind().has_tdz() && binding.needs_tdz_check() {
+        if needs_tdz_check && binding.needs_tdz_check() {
             let value = self.gen_load_binding(name, binding, ExprDest::Any)?;
             self.register_allocator.release(value);
         }
@@ -3819,7 +3819,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Set all bindings that need a TDZ check to empty
         for (name, binding) in scope.iter_bindings() {
-            if binding.kind().has_tdz() && binding.needs_tdz_check() {
+            if binding.needs_tdz_check() {
                 match binding.vm_location().unwrap() {
                     // Bindings that are stored directly in registers can have undefined loaded
                     // directly to them.

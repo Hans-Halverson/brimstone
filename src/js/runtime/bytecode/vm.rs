@@ -8,7 +8,7 @@ use crate::{
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
-        error::{err_not_defined_, reference_error_, type_error_},
+        error::{err_assign_constant, err_not_defined_, reference_error_, type_error_},
         eval::{
             eval::perform_bytecode_eval,
             expression::{
@@ -58,13 +58,13 @@ use super::{
         CallMaybeEvalInstruction, CallWithReceiverInstruction, CheckTdzInstruction,
         ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, EvalInitInstruction,
-        ExpInstruction, ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
-        GetPropertyInstruction, GlobalInitInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, ErrorConstInstruction,
+        EvalInitInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
+        GetNamedPropertyInstruction, GetPropertyInstruction, GlobalInitInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
+        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -555,6 +555,9 @@ impl VM {
                         }
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
+                        }
+                        OpCode::ErrorConst => {
+                            dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
                         }
                         OpCode::NewForInIterator => {
                             dispatch_or_throw!(
@@ -1568,11 +1571,11 @@ impl VM {
                 // Check if there is a global var with the given name then set the property on the
                 // global object.
                 maybe!(global_object.set(cx, name_key, value, global_object.into()))
-            } else if self
-                .closure()
-                .realm()
-                .set_lexical_name(name.as_flat().get_(), value.get())
-            {
+            } else if maybe!(self.closure().realm().set_lexical_name(
+                self.cx,
+                name.as_flat().get_(),
+                value.get(),
+            )) {
                 // Set the global lexical binding with the given name if it exists
                 true
             } else if self.closure().function_ptr().is_strict() {
@@ -2647,6 +2650,19 @@ impl VM {
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
         reference_error_(self.cx, &format!("can't access `{}` before initialization", name))
+    }
+
+    #[inline]
+    fn execute_error_const<W: Width>(
+        &mut self,
+        instr: &ErrorConstInstruction<W>,
+    ) -> EvalResult<()> {
+        let name = self
+            .get_constant(instr.name_constant_index())
+            .as_string()
+            .as_flat();
+
+        err_assign_constant(self.cx, name)
     }
 
     #[inline]

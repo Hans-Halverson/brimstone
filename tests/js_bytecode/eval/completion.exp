@@ -116,7 +116,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 63 00         EvalInit c0
+     0: 64 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 03 fe 01      LoadImmediate r1, 1
      8: 03 fd 02      LoadImmediate r2, 2
@@ -136,7 +136,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
      8: 0f fe 02   StoreDynamic r1, c2
@@ -157,7 +157,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 08 fe      LoadTrue r1
@@ -172,7 +172,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 08 fe      LoadTrue r1
@@ -186,7 +186,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -203,7 +203,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -218,7 +218,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00         EvalInit c0
+     0: 64 00         EvalInit c0
      2: 56 01         PushLexicalScope c1
      4: 5c 07 00 00   StoreToScope <this>, 0, 0
      8: 04 ff 02      LoadConstant r0, c2
@@ -237,7 +237,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -254,14 +254,14 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 47 fe      NewObject r1
      9: 42 fe 14   JumpNullish r1, 20 (.L1)
-    12: 60 fe fe   NewForInIterator r1, r1
+    12: 61 fe fe   NewForInIterator r1, r1
   .L0:
-    15: 61 fd fe   ForInNext r2, r1
+    15: 62 fd fe   ForInNext r2, r1
     18: 42 fd 0b   JumpNullish r2, 11 (.L1)
     21: 0f fd 02   StoreDynamic r2, c2
     24: 03 ff 01   LoadImmediate r0, 1
@@ -276,13 +276,13 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 6
-     0: 63 00            EvalInit c0
+     0: 64 00            EvalInit c0
      2: 04 ff 01         LoadConstant r0, c1
      5: 05 ff            LoadUndefined r0
      7: 48 fc            NewArray r3
-     9: 64 fe fd fc      GetIterator r1, r2, r3
+     9: 65 fe fd fc      GetIterator r1, r2, r3
   .L0:
-    13: 65 fc fb fe fd   IteratorNext r3, r4, r1, r2
+    13: 66 fc fb fe fd   IteratorNext r3, r4, r1, r2
     18: 38 fb 1a         JumpTrue r4, 26 (.L2)
     21: 0f fc 02         StoreDynamic r3, c2
     24: 02 fa 03         Mov r5, <scope>
@@ -290,7 +290,7 @@
     30: 36 0c            Jump 12 (.L1)
     32: 03 fc 00         LoadImmediate r3, 0
     35: 02 03 fa         Mov <scope>, r5
-    38: 66 fe            IteratorClose r1
+    38: 67 fe            IteratorClose r1
     40: 5d fb            Throw r4
   .L1:
     42: 36 e3            Jump -29 (.L0)
@@ -307,7 +307,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 02 fe 03   Mov r1, <scope>
@@ -326,7 +326,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 5
-     0: 63 00         EvalInit c0
+     0: 64 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 02 fc 03      Mov r3, <scope>
      8: 05 ff         LoadUndefined r0
@@ -357,7 +357,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 5
-     0: 63 00         EvalInit c0
+     0: 64 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 02 fc 03      Mov r3, <scope>
      8: 05 ff         LoadUndefined r0

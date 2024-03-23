@@ -1,5 +1,5 @@
 function startScopeNoTDZInOuter() {
-  for (const x = 1; x < 10; x++) {
+  for (let x = 1; x < 10; x++) {
     x + inner;
     const inner = 0;
   }
@@ -11,7 +11,7 @@ function startScopeNoTDZInOuter() {
 }
 
 function startScopeTDZInOuter() {
-  for (const x = x; x < 10; x++) {
+  for (let x = x; x < 10; x++) {
     1;
     inner;
     2;
@@ -22,7 +22,7 @@ function startScopeTDZInOuter() {
 
 function captures() {
   // For initializer in outer scope
-  for (const x = 1; x < 10; x += 1) {
+  for (let x = 1; x < 10; x += 1) {
     // Body in separate inner scope
     const y = 2;
     function inner() {

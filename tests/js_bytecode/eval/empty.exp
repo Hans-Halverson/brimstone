@@ -34,7 +34,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 63 00   EvalInit c0
+    0: 64 00   EvalInit c0
     2: 14 ff   Ret r0
   Constant Table:
     0: [GlobalNames]
@@ -47,7 +47,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 62 00   GlobalInit c0
+    0: 63 00   GlobalInit c0
     2: 14 ff   Ret r0
   Constant Table:
     0: [GlobalNames]

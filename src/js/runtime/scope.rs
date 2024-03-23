@@ -3,7 +3,7 @@ use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set
 use super::{
     abstract_operations::has_property,
     collections::InlineArray,
-    error::type_error_,
+    error::{err_assign_constant, type_error_},
     gc::{HeapObject, HeapVisitor},
     get,
     object_descriptor::ObjectDescriptor,
@@ -231,6 +231,11 @@ impl Handle<Scope> {
             // First check inline slots using scope names table
             let scope_names = scope.scope_names_ptr();
             if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
+                // Check if storing to a constant
+                if scope_names.is_const(index) {
+                    return err_assign_constant(cx, name.as_flat().get_());
+                }
+
                 scope.set_slot(index, value.get());
                 return true.into();
             }
@@ -259,7 +264,8 @@ impl Handle<Scope> {
             } else {
                 // Otherwise check for a global lexical name
                 let mut realm = scope.global_scope_realm();
-                let success = realm.set_lexical_name(name.as_flat().get_(), value.get());
+                let success =
+                    maybe!(realm.set_lexical_name(cx, name.as_flat().get_(), value.get()));
 
                 return success.into();
             }

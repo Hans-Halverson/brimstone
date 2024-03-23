@@ -884,6 +884,11 @@ define_instructions!(
         [1] name_constant_index: ConstantIndex,
     }
 
+    /// Throw a TypeError for attempting to assign an already initialized const binding.
+    ErrorConst(ErrorConstInstruction, error_const_instruction) {
+        [0] name_constant_index: ConstantIndex,
+    }
+
     /// Create a new for-in iterator for the given object, storing in dest. Gathers all the iterable
     /// keys of the object and its prototype chain, storing them in the iterator. Expects that the
     /// object value is not nullish, all other values will be coerced with ToObject.

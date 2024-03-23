@@ -49,3 +49,12 @@ function letNoInitializer() {
   let x;
   x + 2;
 }
+
+function assigningConst() {
+  const c2 = 1;
+
+  c1 = 2;
+  c2 = 3;
+
+  c2++;
+}

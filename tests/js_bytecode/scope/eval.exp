@@ -48,7 +48,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00      EvalInit c0
+     0: 64 00      EvalInit c0
      2: 07 ff      LoadEmpty r0
      4: 5f ff 01   CheckTdz r0, c1
      7: 02 fe ff   Mov r1, r0
@@ -61,7 +61,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 63 00         EvalInit c0
+     0: 64 00         EvalInit c0
      2: 56 01         PushLexicalScope c1
      4: 07 fe         LoadEmpty r1
      6: 5c fe 00 00   StoreToScope r1, 0, 0
@@ -89,7 +89,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 63 00            EvalInit c0
+     0: 64 00            EvalInit c0
      2: 56 01            PushLexicalScope c1
      4: 5c 07 00 00      StoreToScope <this>, 0, 0
      8: 0d fe 02         LoadDynamic r1, c2
@@ -105,7 +105,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 63 00   EvalInit c0
+    0: 64 00   EvalInit c0
     2: 14 ff   Ret r0
   Constant Table:
     0: [GlobalNames]
@@ -132,7 +132,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 62 00            GlobalInit c0
+     0: 63 00            GlobalInit c0
      2: 56 01            PushLexicalScope c1
      4: 5c 07 00 00      StoreToScope <this>, 0, 0
      8: 0a fe 02         LoadGlobal r1, c2
@@ -148,7 +148,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 63 00   EvalInit c0
+    0: 64 00   EvalInit c0
     2: 14 ff   Ret r0
   Constant Table:
     0: [GlobalNames]

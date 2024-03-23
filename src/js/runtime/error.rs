@@ -1,8 +1,8 @@
 use super::{
     completion::{Completion, EvalResult},
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
-    string_value::StringValue,
-    Context, Handle, Value,
+    string_value::{FlatString, StringValue},
+    Context, Handle, HeapPtr, Value,
 };
 
 fn syntax_error_value(cx: Context, message: &str) -> Handle<Value> {
@@ -59,4 +59,8 @@ pub fn err_not_defined_<T>(cx: Context, name: Handle<StringValue>) -> EvalResult
 
 pub fn err_uninitialized_<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {
     reference_error_(cx, &format!("{} is not initialized", name))
+}
+
+pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {
+    type_error_(cx, &format!("can't assign constant `{}`", name))
 }

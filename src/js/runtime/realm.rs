@@ -13,6 +13,7 @@ use crate::{
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
     environment::global_environment::GlobalEnvironment,
+    error::err_assign_constant,
     execution_context::ExecutionContext,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     interned_strings::InternedStrings,
@@ -23,7 +24,7 @@ use super::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     scope::Scope,
-    scope_names::ScopeNames,
+    scope_names::{ScopeNameFlags, ScopeNames},
     string_value::FlatString,
     Context, EvalResult, Value,
 };
@@ -131,21 +132,30 @@ impl Realm {
         let location = self.lexical_names.get(&name)?;
 
         let global_scope = self.global_scopes.get(location.global_scope_index);
-        let value = global_scope.get_slot(location.slot_index);
+        let value = global_scope.get_slot(location.slot_index as usize);
 
         Some(value)
     }
 
     /// Try to set the value associated with a lexical name in the realms lexical names map.
     /// Return whether the lexical name was found and set.
-    pub fn set_lexical_name(&mut self, name: HeapPtr<FlatString>, value: Value) -> bool {
+    pub fn set_lexical_name(
+        &mut self,
+        cx: Context,
+        name: HeapPtr<FlatString>,
+        value: Value,
+    ) -> EvalResult<bool> {
         if let Some(location) = self.lexical_names.get(&name) {
-            let mut global_scope = self.global_scopes.get(location.global_scope_index);
-            global_scope.set_slot(location.slot_index, value);
+            if location.is_const() {
+                return err_assign_constant(cx, name);
+            }
 
-            true
+            let mut global_scope = self.global_scopes.get(location.global_scope_index);
+            global_scope.set_slot(location.slot_index as usize, value);
+
+            true.into()
         } else {
-            false
+            false.into()
         }
     }
 }
@@ -175,9 +185,11 @@ impl Handle<Realm> {
         cx: Context,
         name: Handle<FlatString>,
         global_scope_index: usize,
-        slot_index: usize,
+        slot_index: u32,
+        is_const: bool,
     ) {
-        let lexical_name_location = LexicalNameLocation::new(global_scope_index, slot_index);
+        let lexical_name_location =
+            LexicalNameLocation::new(global_scope_index, slot_index, is_const);
         self.lexical_names_field()
             .maybe_grow_for_insertion(cx)
             .insert_without_growing(name.get_(), lexical_name_location);
@@ -194,12 +206,17 @@ impl Handle<Realm> {
 
     /// Create a new global scope within this realm. Each script has its own global scope with its
     /// own set of lexical bindings, but all lexical bindings are accessible in the realm's map.
-    pub fn new_global_scope(&mut self, cx: Context, binding_names: &[String]) -> Handle<Scope> {
+    pub fn new_global_scope(
+        &mut self,
+        cx: Context,
+        binding_names: &[String],
+        binding_flags: &[ScopeNameFlags],
+    ) -> Handle<Scope> {
         let names = binding_names
             .iter()
             .map(|name| InternedStrings::get_str(cx, name).as_flat())
             .collect::<Vec<_>>();
-        let scope_names = ScopeNames::new(cx, &names);
+        let scope_names = ScopeNames::new(cx, &names, binding_flags);
 
         let global_object = self.global_object();
         let mut global_scope = Scope::new_global(cx, scope_names, global_object);
@@ -222,7 +239,8 @@ impl Handle<Realm> {
                 global_scope.set_slot(i, Value::empty());
 
                 // And add to map of all lexical names
-                self.add_lexical_name(cx, names[i], global_scope_index, i);
+                let is_const = binding_flags[i].contains(ScopeNameFlags::IS_CONST);
+                self.add_lexical_name(cx, names[i], global_scope_index, i as u32, is_const);
             }
         }
 
@@ -237,7 +255,7 @@ impl Handle<Realm> {
         self.lexical_names = LexicalNamesMap::new_initial(cx, ObjectKind::LexicalNamesMap);
 
         // All global scopes have the realm in their first slot
-        self.new_global_scope(cx, &[REALM_SCOPE_SLOT_NAME.to_owned()]);
+        self.new_global_scope(cx, &[REALM_SCOPE_SLOT_NAME.to_owned()], &[ScopeNameFlags::empty()]);
     }
 }
 
@@ -383,12 +401,18 @@ pub struct LexicalNameLocation {
     /// The index of the global scope in the global scopes array.
     global_scope_index: usize,
     /// The slot index of the lexical name in that global scope.
-    slot_index: usize,
+    slot_index: u32,
+    /// Whether this is a constant binding.
+    is_const: bool,
 }
 
 impl LexicalNameLocation {
-    pub fn new(global_scope_index: usize, slot_index: usize) -> Self {
-        Self { global_scope_index, slot_index }
+    pub fn new(global_scope_index: usize, slot_index: u32, is_const: bool) -> Self {
+        Self { global_scope_index, slot_index, is_const }
+    }
+
+    pub fn is_const(&self) -> bool {
+        self.is_const
     }
 }
 

@@ -5,6 +5,8 @@ use std::{
     rc::Rc,
 };
 
+use bitflags::bitflags;
+
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
@@ -22,7 +24,7 @@ use crate::js::{
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
         scope::Scope,
-        scope_names::ScopeNames,
+        scope_names::{ScopeNameFlags, ScopeNames},
         value::BigIntValue,
         Context, Handle, Realm, Value,
     },
@@ -920,7 +922,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 "arguments",
                 arguments_binding,
                 arguments_object,
-                /* add_tdz_check */ false,
+                StoreFlags::INITIALIZATION,
             )?;
             self.register_allocator.release(arguments_object);
         }
@@ -937,8 +939,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     ast::FunctionParam::Pattern { pattern, .. } => {
                         let argument = Register::argument(i);
                         self.gen_destructuring(
-                            pattern, argument, /* release_value */ true,
-                            /* needs_tdz_check */ false,
+                            pattern,
+                            argument,
+                            /* release_value */ true,
+                            StoreFlags::INITIALIZATION,
                         )?;
                     }
                     // Create the rest parameter then destructure
@@ -952,7 +956,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             &param.argument,
                             rest,
                             /* release_value */ true,
-                            /* needs_tdz_check */ false,
+                            StoreFlags::INITIALIZATION,
                         )?;
                     }
                 }
@@ -1363,14 +1367,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         id: &ast::Identifier,
         value: GenRegister,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
         match id.scope.kind() {
             ResolvedScope::UnresolvedGlobal => self.gen_store_global_identifier(&id.name, value),
             ResolvedScope::UnresolvedDynamic => self.gen_store_dynamic_identifier(&id.name, value),
             ResolvedScope::Resolved => {
                 let binding = id.get_binding();
-                self.gen_store_binding(&id.name, binding, value, needs_tdz_check)
+                self.gen_store_binding(&id.name, binding, value, flags)
             }
         }
     }
@@ -1380,11 +1384,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: &str,
         binding: &Binding,
         value: GenRegister,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
+        // Error if we are trying to reassign a const
+        if !flags.contains(StoreFlags::INITIALIZATION) && binding.is_const() {
+            let name_constant_index = self.add_string_constant(name)?;
+            self.writer.error_const_instruction(name_constant_index);
+        }
+
         // If this binding may be stored during its TDZ we must first load the binding and perform
         // a TDZ check. Loaded value can be ignored since it is only used for TDZ check.
-        if needs_tdz_check && binding.needs_tdz_check() {
+        if flags.contains(StoreFlags::NEEDS_TDZ_CHECK) && binding.needs_tdz_check() {
             let value = self.gen_load_binding(name, binding, ExprDest::Any)?;
             self.register_allocator.release(value);
         }
@@ -2774,7 +2784,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     stored_value
                 };
 
-                self.gen_store_identifier(id, stored_value, /* needs_tdz_check */ true)?;
+                self.gen_store_identifier(id, stored_value, StoreFlags::NEEDS_TDZ_CHECK)?;
 
                 if expr.operator.is_logical() {
                     self.start_block(join_block);
@@ -2880,7 +2890,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     pattern,
                     stored_value,
                     /* release_value */ false,
-                    /* needs_tdz_check */ true,
+                    StoreFlags::NEEDS_TDZ_CHECK,
                 )?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
@@ -3041,7 +3051,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     self.writer.to_numeric_instruction(dest, old_value);
                     self.write_inc_or_dec(expr.operator, dest);
-                    self.gen_store_identifier(id, dest, /* needs_tdz_check */ false)?;
+                    self.gen_store_identifier(id, dest, StoreFlags::empty())?;
 
                     Ok(dest)
                 } else {
@@ -3076,7 +3086,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // will not clobber the old value. Perform the inc/dec at the id's location.
                 self.write_inc_or_dec(expr.operator, old_value);
 
-                self.gen_store_identifier(id, old_value, /* needs_tdz_check */ false)?;
+                self.gen_store_identifier(id, old_value, StoreFlags::empty())?;
                 self.register_allocator.release(old_value);
 
                 Ok(dest)
@@ -3298,8 +3308,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Elide TDZ check when storing at declarations
                 let result = self.gen_destructuring(
-                    &decl.id, init_value, /* release_value */ true,
-                    /* needs_tdz_check */ false,
+                    &decl.id,
+                    init_value,
+                    /* release_value */ true,
+                    StoreFlags::INITIALIZATION,
                 )?;
                 self.exit_has_assign_expr_context();
 
@@ -3312,7 +3324,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Elide TDZ check when storing at declarations
                 self.writer.load_undefined_instruction(init_value);
-                self.gen_store_identifier(id, init_value, /* needs_tdz_check */ false)?;
+                self.gen_store_identifier(id, init_value, StoreFlags::INITIALIZATION)?;
                 self.register_allocator.release(init_value);
             }
         }
@@ -3325,11 +3337,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pattern: &ast::Pattern,
         value: GenRegister,
         release_value: bool,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
         match pattern {
             ast::Pattern::Id(id) => {
-                self.gen_store_identifier(id, value, needs_tdz_check)?;
+                self.gen_store_identifier(id, value, flags)?;
 
                 if release_value {
                     self.register_allocator.release(value);
@@ -3338,17 +3350,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Ok(())
             }
             ast::Pattern::Object(object) => {
-                self.gen_object_destructuring(object, value, release_value, needs_tdz_check)
+                self.gen_object_destructuring(object, value, release_value, flags)
             }
             ast::Pattern::Array(array) => {
-                self.gen_iterator_destructuring(array, value, release_value, needs_tdz_check)
+                self.gen_iterator_destructuring(array, value, release_value, flags)
             }
             ast::Pattern::Member(member) => self.gen_member_pattern(member, value, release_value),
             ast::Pattern::SuperMember(_) => {
                 unimplemented!("bytecode for super member destructuring")
             }
             ast::Pattern::Assign(assign) => {
-                self.gen_assignment_pattern(assign, value, release_value, needs_tdz_check)
+                self.gen_assignment_pattern(assign, value, release_value, flags)
             }
         }
     }
@@ -3358,7 +3370,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pattern: &ast::ObjectPattern,
         object_value: GenRegister,
         release_value: bool,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
         enum Property<'a> {
             Named(&'a ast::Identifier),
@@ -3437,7 +3449,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 &property.value,
                 property_value,
                 /* release_value */ true,
-                needs_tdz_check,
+                flags,
             )?;
         }
 
@@ -3469,7 +3481,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 rest_element_pattern,
                 rest_element,
                 /* release_value */ true,
-                needs_tdz_check,
+                flags,
             )?;
 
             for saved_key in saved_keys.into_iter().rev() {
@@ -3497,7 +3509,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         array_pattern: &ast::ArrayPattern,
         iterable: GenRegister,
         release_value: bool,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
         let iterator = self.register_allocator.allocate()?;
         let next_method = self.register_allocator.allocate()?;
@@ -3552,7 +3564,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         &rest.argument,
                         array,
                         /* release_value */ true,
-                        needs_tdz_check,
+                        flags,
                     )
                 })?;
 
@@ -3586,12 +3598,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Destructure the value from the iterator, or undefined if iterator is done
                 self.start_block(iteration_destructure_block);
                 let (exception_handler, _) = self.gen_in_exception_handler(|this| {
-                    this.gen_destructuring(
-                        pattern,
-                        value,
-                        /* release_value */ false,
-                        needs_tdz_check,
-                    )
+                    this.gen_destructuring(pattern, value, /* release_value */ false, flags)
                 })?;
 
                 if exception_handler.start != exception_handler.end {
@@ -3697,7 +3704,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pattern: &ast::AssignmentPattern,
         value: GenRegister,
         release_value: bool,
-        needs_tdz_check: bool,
+        flags: StoreFlags,
     ) -> EmitResult<()> {
         let join_block = self.new_block();
         self.write_jump_not_undefined_instruction(value, join_block)?;
@@ -3711,7 +3718,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.start_block(join_block);
 
-        self.gen_destructuring(&pattern.left, value, release_value, needs_tdz_check)
+        self.gen_destructuring(&pattern.left, value, release_value, flags)
     }
 
     fn gen_member_pattern(
@@ -3778,7 +3785,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // And store at the binding's location. Stores at declarations do not need a TDZ check.
         if let Some(id) = func_decl.id.as_ref() {
-            self.gen_store_identifier(id, closure_reg, /* needs_tdz_check */ false)?;
+            self.gen_store_identifier(id, closure_reg, StoreFlags::INITIALIZATION)?;
         }
 
         self.register_allocator.release(closure_reg);
@@ -3898,19 +3905,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(vm_scope_id) = scope.vm_scope_id() {
             let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
 
-            // Build a ScopeNames table containing the names of all bindings in the scope
-            let names = vm_node
-                .bindings()
-                .iter()
-                .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-                .collect::<Vec<_>>();
-
             // Store ScopeNames table in the constant table and cache
             let scope_names_constant_index =
                 if let Some(constant_index) = self.scope_names_cache.get(&vm_scope_id) {
                     *constant_index
                 } else {
-                    let scope_names = ScopeNames::new(self.cx, &names);
+                    // Build a ScopeNames table containing the names of all bindings in the scope
+                    let names = vm_node
+                        .bindings()
+                        .iter()
+                        .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
+                        .collect::<Vec<_>>();
+                    let flags = self.gen_scope_name_flags(scope);
+
+                    let scope_names = ScopeNames::new(self.cx, &names, &flags);
                     let scope_names_index = self
                         .constant_table_builder
                         .add_heap_object(scope_names.cast())?;
@@ -3966,7 +3974,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.gen_var_scoped_functions(scope)?;
 
-        Ok(self.realm.new_global_scope(self.cx, vm_node.bindings()))
+        let binding_names = vm_node.bindings();
+        let binding_flags = self.gen_scope_name_flags(scope);
+
+        Ok(self
+            .realm
+            .new_global_scope(self.cx, binding_names, &binding_flags))
+    }
+
+    /// Must only be called on AST scope node with a corresponding VM scope node.
+    fn gen_scope_name_flags(&self, scope: &AstScopeNode) -> Vec<ScopeNameFlags> {
+        let vm_scope_id = scope.vm_scope_id().unwrap();
+        let vm_scope = self.scope_tree.get_vm_node(vm_scope_id);
+
+        let mut all_flags = vec![];
+        for name in vm_scope.bindings() {
+            let is_const = scope
+                .get_binding_opt(name)
+                .map(|b| b.is_const())
+                .unwrap_or(false);
+            let flags = if is_const {
+                ScopeNameFlags::IS_CONST
+            } else {
+                ScopeNameFlags::empty()
+            };
+
+            all_flags.push(flags);
+        }
+
+        all_flags
     }
 
     fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {
@@ -4265,8 +4301,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         {
             // Generate the body of the for loop inside an exception handler
             let (body_handler, _) = self.gen_in_exception_handler(|this| {
-                // Storing at declarations does not need a TDZ check
-                let needs_tdz_check = !stmt.left.is_decl();
+                // Assigning to patterns needs a TDZ check
+                let store_flags = if stmt.left.is_decl() {
+                    StoreFlags::INITIALIZATION
+                } else {
+                    StoreFlags::NEEDS_TDZ_CHECK
+                };
 
                 // Loop body starts by storing this iteration's value to the pattern
                 this.enter_has_assign_expr_context(stmt.left.has_assign_expr());
@@ -4274,7 +4314,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     stmt.left.pattern(),
                     value,
                     /* release_value */ true,
-                    needs_tdz_check,
+                    store_flags,
                 )?;
                 this.exit_has_assign_expr_context();
 
@@ -4438,8 +4478,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // An undefined result from `next` means there are no more keys, jump out of the loop
         self.write_jump_nullish_instruction(next_result, loop_end_block)?;
 
-        // Storing at declarations do not need a TDZ check
-        let needs_tdz_check = !stmt.left.is_decl();
+        // Assigning to patterns needs a TDZ check
+        let store_flags = if stmt.left.is_decl() {
+            StoreFlags::INITIALIZATION
+        } else {
+            StoreFlags::NEEDS_TDZ_CHECK
+        };
 
         // Otherwise `next` returned a key, so store the key to the pattern
         self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
@@ -4447,7 +4491,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             stmt.left.pattern(),
             next_result,
             /* release_value */ true,
-            needs_tdz_check,
+            store_flags,
         )?;
         self.exit_has_assign_expr_context();
 
@@ -4683,8 +4727,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Storing at declaration does not need a TDZ check
                 self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
                 self.gen_destructuring(
-                    param, error_reg, /* release_value */ true,
-                    /* needs_tdz_check */ false,
+                    param,
+                    error_reg,
+                    /* release_value */ true,
+                    StoreFlags::INITIALIZATION,
                 )?;
                 self.exit_has_assign_expr_context();
 
@@ -5444,6 +5490,14 @@ struct CallReceiver {
     receiver: GenRegister,
     /// Whether the receiver is within an optional chain.
     is_chain: bool,
+}
+
+bitflags! {
+    #[derive(Clone, Copy)]
+    struct StoreFlags: u8 {
+        const INITIALIZATION = (1 << 0);
+        const NEEDS_TDZ_CHECK = (1 << 1);
+    }
 }
 
 /// A node in the stack of scopes the generator is currently inside, including scopes of parent

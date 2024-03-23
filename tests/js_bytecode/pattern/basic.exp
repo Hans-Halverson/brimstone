@@ -1,5 +1,5 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 5
+  Parameters: 0, Registers: 6
      0: GlobalInit c0
      2: NewClosure r0, c1
      5: StoreGlobal r0, c2
@@ -16,11 +16,12 @@
     40: ToPropertyKey r3, r3
     43: GetProperty r4, r0, r3
     47: StoreGlobal r4, c8
-    50: NewObject r4
-    52: CopyDataProperties r4, r0, r1, 3
-    57: StoreGlobal r4, c9
-    60: LoadUndefined r0
-    62: Ret r0
+    50: ToObject r5, r0
+    53: NewObject r4
+    55: CopyDataProperties r4, r0, r1, 3
+    60: StoreGlobal r4, c9
+    63: LoadUndefined r0
+    65: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: constants]
@@ -35,7 +36,7 @@
 }
 
 [BytecodeFunction: constants] {
-  Parameters: 0, Registers: 8
+  Parameters: 0, Registers: 9
      0: LoadImmediate r4, 1
      3: LoadConstant r5, c0
      6: GetNamedProperty r0, r4, c0
@@ -44,10 +45,11 @@
     17: LoadImmediate r7, 2
     20: ToPropertyKey r7, r7
     23: GetProperty r2, r4, r7
-    27: NewObject r3
-    29: CopyDataProperties r3, r4, r5, 3
-    34: LoadUndefined r4
-    36: Ret r4
+    27: ToObject r8, r4
+    30: NewObject r3
+    32: CopyDataProperties r3, r4, r5, 3
+    37: LoadUndefined r4
+    39: Ret r4
   Constant Table:
     0: [String: a]
     1: [String: z]

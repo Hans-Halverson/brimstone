@@ -195,27 +195,30 @@
 }
 
 [BytecodeFunction: rest] {
-  Parameters: 1, Registers: 8
-     0: NewObject r0
-     2: CopyDataProperties r0, a0, a0, 0
-     7: LoadConstant r5, c0
-    10: GetNamedProperty r0, a0, c0
-    14: LoadConstant r6, c1
-    17: GetNamedProperty r1, a0, c1
-    21: NewObject r2
-    23: CopyDataProperties r2, a0, r5, 2
-    28: LoadConstant r5, c0
-    31: GetNamedProperty r0, a0, c0
-    35: LoadImmediate r6, 1
-    38: ToPropertyKey r6, r6
-    41: GetProperty r1, a0, r6
-    45: LoadImmediate r7, 2
-    48: ToPropertyKey r7, r7
-    51: GetProperty r3, a0, r7
-    55: NewObject r4
-    57: CopyDataProperties r4, a0, r5, 3
-    62: LoadUndefined r5
-    64: Ret r5
+  Parameters: 1, Registers: 9
+     0: ToObject r5, a0
+     3: NewObject r0
+     5: CopyDataProperties r0, a0, a0, 0
+    10: LoadConstant r5, c0
+    13: GetNamedProperty r0, a0, c0
+    17: LoadConstant r6, c1
+    20: GetNamedProperty r1, a0, c1
+    24: ToObject r7, a0
+    27: NewObject r2
+    29: CopyDataProperties r2, a0, r5, 2
+    34: LoadConstant r5, c0
+    37: GetNamedProperty r0, a0, c0
+    41: LoadImmediate r6, 1
+    44: ToPropertyKey r6, r6
+    47: GetProperty r1, a0, r6
+    51: LoadImmediate r7, 2
+    54: ToPropertyKey r7, r7
+    57: GetProperty r3, a0, r7
+    61: ToObject r8, a0
+    64: NewObject r4
+    66: CopyDataProperties r4, a0, r5, 3
+    71: LoadUndefined r5
+    73: Ret r5
   Constant Table:
     0: [String: a]
     1: [String: b]

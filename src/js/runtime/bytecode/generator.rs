@@ -3496,6 +3496,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let argc =
                 GenUInt::try_from_unsigned(saved_keys.len()).ok_or(EmitError::TooManyRegisters)?;
 
+            // Perform a ToObject so that we error on nullish values beforce calling
+            // CopyDataProperties, which silently ignores nullish values.
+            let scratch = self.register_allocator.allocate()?;
+            self.writer.to_object_instruction(scratch, object_value);
+            self.register_allocator.release(scratch);
+
             // Create a new object and copy all data properties, except for the property keys saved
             // to the stack.
             self.writer.new_object_instruction(rest_element);

@@ -41,6 +41,13 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
+      // RHS of assignment evaluated before LHS
+      "language/expressions/assignment/S11.13.1_A7_T3.js",
+      "language/expressions/assignment/S11.13.1_A5*.js",
+      "language/expressions/assignment/S11.13.1_A6*.js",
+      // Incorrect keyed assignment destructuring order
+      "language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js",
+      "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
       // TODO: Create global vars when an unresolved reference is assigned in sloppy mode
       "language/statements/for/head-init-expr-check-empty-inc-empty-completion.js",
       "language/statements/for/head-init-var-check-empty-inc-empty-completion.js"

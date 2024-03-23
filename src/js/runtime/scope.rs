@@ -30,7 +30,7 @@ pub struct Scope {
     slots: InlineArray<Value>,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
     Lexical,
@@ -193,7 +193,7 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(self.has_object_binding(cx, object_handle, key)) {
+                if maybe!(scope.has_object_binding(cx, object_handle, key)) {
                     let value = maybe!(get(cx, object_handle, key));
                     return Some(value).into();
                 }
@@ -242,7 +242,7 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(self.has_object_binding(cx, object_handle, key)) {
+                if maybe!(scope.has_object_binding(cx, object_handle, key)) {
                     let success = maybe!(object_handle.set(cx, key, value, object_handle.into()));
                     if !success && is_strict {
                         return type_error_(cx, &format!("Cannot set property {}", name));

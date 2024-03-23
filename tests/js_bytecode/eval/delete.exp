@@ -1,0 +1,87 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: GlobalInit c0
+     2: LoadGlobal r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1
+    13: LoadGlobal r0, c1
+    16: JumpNullish r0, 13 (.L0)
+    19: LoadConstant r1, c3
+    22: Call r0, r0, r1, 1
+    27: Jump 4 (.L1)
+  .L0:
+    29: LoadUndefined r0
+  .L1:
+    31: LoadUndefined r0
+    33: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [String: eval]
+    2: [String: 
+  "sloppy direct eval";
+  var x = 1;
+  function f() {};
+
+  delete x;
+  delete f;
+]
+    3: [String: 
+  "sloppy indirect eval";
+  var x = 1;
+  function f() {};
+
+  delete x;
+  delete f;
+]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 65 00      EvalInit c0
+     2: 46 fe 01   NewClosure r1, c1
+     5: 0f fe 02   StoreDynamic r1, c2
+     8: 04 ff 03   LoadConstant r0, c3
+    11: 03 fe 01   LoadImmediate r1, 1
+    14: 0f fe 04   StoreDynamic r1, c4
+    17: 53 ff 04   DeleteBinding r0, c4
+    20: 53 ff 02   DeleteBinding r0, c2
+    23: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [BytecodeFunction: f]
+    2: [String: f]
+    3: [String: sloppy direct eval]
+    4: [String: x]
+}
+
+[BytecodeFunction: f] {
+  Parameters: 0, Registers: 1
+    0: 05 ff   LoadUndefined r0
+    2: 14 ff   Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 2
+     0: 64 00      GlobalInit c0
+     2: 46 fe 01   NewClosure r1, c1
+     5: 0f fe 02   StoreDynamic r1, c2
+     8: 04 ff 03   LoadConstant r0, c3
+    11: 03 fe 01   LoadImmediate r1, 1
+    14: 0f fe 04   StoreDynamic r1, c4
+    17: 53 ff 04   DeleteBinding r0, c4
+    20: 53 ff 02   DeleteBinding r0, c2
+    23: 14 ff      Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [BytecodeFunction: f]
+    2: [String: f]
+    3: [String: sloppy indirect eval]
+    4: [String: x]
+}
+
+[BytecodeFunction: f] {
+  Parameters: 0, Registers: 1
+    0: 05 ff   LoadUndefined r0
+    2: 14 ff   Ret r0
+}
+

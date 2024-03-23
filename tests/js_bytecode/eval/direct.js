@@ -1,4 +1,4 @@
-// In globale scope
+// In global scope
 eval('test');
 
 function simple() {

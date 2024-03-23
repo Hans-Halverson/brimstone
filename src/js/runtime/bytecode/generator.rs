@@ -1875,7 +1875,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok(dest)
             }
-            ast::Expression::Id(_) => unimplemented!("bytecode for deleting identifiers"),
+            ast::Expression::Id(id) => {
+                let dest = self.allocate_destination(dest)?;
+
+                // If scope was resolved we may statically know that the binding cannot be deleted
+                if id.scope.is_resolved() {
+                    let binding = id.get_binding();
+
+                    // Only var and function bindings in eval scopes can be deleted. Otherwise is a
+                    // no-op which returns false.
+                    let is_var_or_function =
+                        matches!(binding.kind(), BindingKind::Var | BindingKind::Function { .. });
+                    let in_eval_scope =
+                        matches!(id.scope.unwrap_resolved().kind(), ScopeNodeKind::Eval { .. });
+
+                    if !is_var_or_function || !in_eval_scope {
+                        self.writer.load_false_instruction(dest);
+                        return Ok(dest);
+                    }
+                }
+
+                let name_constant_index = self.add_string_constant(&id.name)?;
+                self.writer
+                    .delete_binding_instruction(dest, name_constant_index);
+
+                Ok(dest)
+            }
             ast::Expression::SuperMember(_) => {
                 unimplemented!("bytecode for deleting super member expressions")
             }

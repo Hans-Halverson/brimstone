@@ -787,6 +787,13 @@ define_instructions!(
         [2] key: Register,
     }
 
+    /// The `delete` operator when applied to an identifier. The name of the binding is stored in
+    /// the constant table, and the result according to the `delete` operator is placed in dest.
+    DeleteBinding (DeleteBindingInstruction, delete_binding_instruction) {
+        [0] dest: Register,
+        [1] name_constant_index: ConstantIndex,
+    }
+
     /// Set a property on an array literal to the given value.
     SetArrayProperty (SetArrayPropertyInstruction, set_array_property_instruction) {
         [0] array: Register,

@@ -7,8 +7,26 @@
     11: StoreGlobal r0, c4
     14: NewClosure r0, c5
     17: StoreGlobal r0, c6
-    20: LoadUndefined r0
-    22: Ret r0
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: NewClosure r0, c15
+    47: StoreGlobal r0, c16
+    50: NewClosure r0, c17
+    53: StoreGlobal r0, c18
+    56: NewClosure r0, c19
+    59: StoreGlobal r0, c20
+    62: NewClosure r0, c21
+    65: StoreGlobal r0, c22
+    68: LoadImmediate r0, 1
+    71: StoreGlobal r0, c23
+    74: LoadUndefined r0
+    76: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: deleteMember]
@@ -17,6 +35,23 @@
     4: [String: deleteChainMember]
     5: [BytecodeFunction: deleteOtherExpression]
     6: [String: deleteOtherExpression]
+    7: [BytecodeFunction: deleteIdVars]
+    8: [String: deleteIdVars]
+    9: [BytecodeFunction: deleteIdFunctions]
+    10: [String: deleteIdFunctions]
+    11: [BytecodeFunction: deleteIdLexical]
+    12: [String: deleteIdLexical]
+    13: [BytecodeFunction: deleteIdParams]
+    14: [String: deleteIdParams]
+    15: [BytecodeFunction: deleteIdArgments]
+    16: [String: deleteIdArgments]
+    17: [BytecodeFunction: deleteThis]
+    18: [String: deleteThis]
+    19: [BytecodeFunction: deleteUnresolvedGlobal]
+    20: [String: deleteUnresolvedGlobal]
+    21: [BytecodeFunction: deleteUnresolvedDynamic]
+    22: [String: deleteUnresolvedDynamic]
+    23: [String: globalVar]
 }
 
 [BytecodeFunction: deleteMember] {
@@ -79,4 +114,98 @@
     15: LoadTrue r0
     17: LoadUndefined r0
     19: Ret r0
+}
+
+[BytecodeFunction: deleteIdVars] {
+  Parameters: 1, Registers: 2
+    0: LoadImmediate r0, 1
+    3: LoadFalse r1
+    5: LoadFalse r1
+    7: LoadUndefined r1
+    9: Ret r1
+}
+
+[BytecodeFunction: deleteIdFunctions] {
+  Parameters: 0, Registers: 2
+    0: NewClosure r0, c0
+    3: LoadFalse r1
+    5: LoadFalse r1
+    7: LoadUndefined r1
+    9: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: inner]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: deleteIdLexical] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: LoadFalse r2
+     8: LoadFalse r2
+    10: LoadUndefined r2
+    12: Ret r2
+}
+
+[BytecodeFunction: deleteIdParams] {
+  Parameters: 1, Registers: 3
+     0: LoadFalse r1
+     2: Mov r1, <scope>
+     5: LoadImmediate r2, 1
+     8: Jump 7 (.L0)
+    10: Mov <scope>, r1
+    13: LoadFalse r2
+  .L0:
+    15: LoadUndefined r1
+    17: Ret r1
+  Exception Handlers:
+    5-8 -> 10 (r0)
+}
+
+[BytecodeFunction: deleteIdArgments] {
+  Parameters: 0, Registers: 2
+    0: NewMappedArguments r0
+    2: LoadFalse r1
+    4: LoadUndefined r1
+    6: Ret r1
+}
+
+[BytecodeFunction: deleteThis] {
+  Parameters: 0, Registers: 1
+    0: LoadTrue r0
+    2: LoadUndefined r0
+    4: Ret r0
+}
+
+[BytecodeFunction: deleteUnresolvedGlobal] {
+  Parameters: 0, Registers: 1
+    0: DeleteBinding r0, c0
+    3: LoadUndefined r0
+    5: Ret r0
+  Constant Table:
+    0: [String: unresolved]
+}
+
+[BytecodeFunction: deleteUnresolvedDynamic] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: NewMappedArguments r0
+     8: StoreToScope r0, 1, 0
+    12: LoadDynamic r0, c1
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1
+    23: DeleteBinding r0, c3
+    26: LoadUndefined r0
+    28: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [String: unresolved]
 }

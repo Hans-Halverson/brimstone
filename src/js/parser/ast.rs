@@ -207,6 +207,10 @@ impl TaggedResolvedScope {
         unsafe { &mut *(self.ptr as *mut AstScopeNode) }
     }
 
+    pub fn is_resolved(&self) -> bool {
+        matches!(self.kind(), ResolvedScope::Resolved)
+    }
+
     pub fn is_unresolved(&self) -> bool {
         matches!(self.kind(), ResolvedScope::UnresolvedGlobal | ResolvedScope::UnresolvedDynamic)
     }

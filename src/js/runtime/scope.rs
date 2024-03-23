@@ -1,7 +1,7 @@
 use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set_uninit};
 
 use super::{
-    abstract_operations::has_property,
+    abstract_operations::{has_own_property, has_property},
     collections::InlineArray,
     error::{err_assign_constant, type_error_},
     gc::{HeapObject, HeapVisitor},
@@ -268,6 +268,51 @@ impl Handle<Scope> {
                     maybe!(realm.set_lexical_name(cx, name.as_flat().get_(), value.get()));
 
                 return success.into();
+            }
+        }
+    }
+
+    /// Dynamically delete a binding in this scope, walking the scope chain until found. Return
+    /// false only when we failed to delete an own non-configurable property, otherwise return true.
+    ///
+    /// The name must be an interned string.
+    #[inline]
+    pub fn lookup_delete(&mut self, cx: Context, name: Handle<StringValue>) -> EvalResult<bool> {
+        // Reuse handles while walking scope chain
+        let mut object_handle = Handle::<ObjectValue>::empty(cx);
+        let mut scope = Handle::<Scope>::empty(cx);
+        scope.replace(self.get_());
+
+        loop {
+            // Properties can be deleted off scope objects. This can be either the global object,
+            // with target object, or vars added in a sloppy eval.
+            if let Some(object) = scope.object {
+                object_handle.replace(object);
+
+                // Name is an interned string (and cannot be a number) so is already a property key
+                let key = name.cast::<PropertyKey>();
+
+                // If the property is found, delete it
+                if maybe!(has_own_property(cx, object_handle, key)) {
+                    return object_handle.delete(cx, key).into();
+                }
+            }
+
+            // Any bindings stored in VM scope slots cannot be deleted. The only deletable bindings
+            // are vars and functions in eval scopes or dynamically created vars.
+            if scope
+                .scope_names_ptr()
+                .lookup_name(name.as_flat().get_())
+                .is_some()
+            {
+                return false.into();
+            }
+
+            // Move to parent scope
+            if let Some(parent) = scope.parent.as_ref() {
+                scope.replace(*parent);
+            } else {
+                return true.into();
             }
         }
     }

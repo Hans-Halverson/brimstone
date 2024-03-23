@@ -58,13 +58,14 @@ use super::{
         CallMaybeEvalInstruction, CallWithReceiverInstruction, CheckTdzInstruction,
         ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-        DeletePropertyInstruction, DivInstruction, DupScopeInstruction, ErrorConstInstruction,
-        EvalInitInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
-        GetNamedPropertyInstruction, GetPropertyInstruction, GlobalInitInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
-        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
+        ErrorConstInstruction, EvalInitInstruction, ExpInstruction, ForInNextInstruction,
+        GetIteratorInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
+        GlobalInitInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
+        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -519,6 +520,9 @@ impl VM {
                         }
                         OpCode::DeleteProperty => {
                             dispatch_or_throw!(DeletePropertyInstruction, execute_delete_property)
+                        }
+                        OpCode::DeleteBinding => {
+                            dispatch_or_throw!(DeleteBindingInstruction, execute_delete_binding)
                         }
                         OpCode::SetArrayProperty => {
                             dispatch!(SetArrayPropertyInstruction, execute_set_array_property)
@@ -2444,6 +2448,26 @@ impl VM {
         // May allocate
         let key = maybe!(to_property_key(self.cx, key));
         let delete_status = maybe!(eval_delete_property(self.cx, object, key, is_strict));
+
+        self.write_register(dest, Value::bool(delete_status));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_delete_binding<W: Width>(
+        &mut self,
+        instr: &DeleteBindingInstruction<W>,
+    ) -> EvalResult<()> {
+        let mut scope = self.scope().to_handle();
+        let name = self
+            .get_constant(instr.name_constant_index())
+            .to_handle(self.cx)
+            .as_string();
+        let dest = instr.dest();
+
+        // May allocate
+        let delete_status = maybe!(scope.lookup_delete(self.cx, name));
 
         self.write_register(dest, Value::bool(delete_status));
 

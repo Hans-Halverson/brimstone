@@ -13,7 +13,7 @@ use super::{
     ast_visitor::*,
     loc::Loc,
     parser::{ParseFunctionResult, ParseProgramResult},
-    scope_tree::{AstScopeNode, ScopeNodeId, ScopeTree},
+    scope_tree::{AstScopeNode, ScopeNodeId, ScopeTree, NEW_TARGET_BINDING_NAME},
     source::Source,
     LocalizedParseError, LocalizedParseErrors, ParseError,
 };
@@ -606,9 +606,19 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_meta_property(&mut self, expr: &mut MetaProperty) {
-        match expr.kind {
-            MetaPropertyKind::NewTarget => {
-                if !self.is_in_non_arrow_function() {
+        match &mut expr.kind {
+            // new.target is treated as a binding that is implicitly created on a parent function
+            // scope. Store the scope node of the function that contains this new.target expression.
+            MetaPropertyKind::NewTarget { scope } => {
+                if self.is_in_non_arrow_function() {
+                    let current_scope = self.scope_stack.last().unwrap().as_ref().id();
+                    let (def_scope, _) = self.scope_tree.resolve_use(
+                        current_scope,
+                        NEW_TARGET_BINDING_NAME,
+                        expr.loc,
+                    );
+                    *scope = AstPtr::from_ref(def_scope.unwrap_resolved())
+                } else {
                     self.emit_error(expr.loc, ParseError::NewTargetOutsideFunction);
                 }
             }
@@ -874,16 +884,19 @@ impl Analyzer<'_> {
         // Visit function body
         self.visit_function_body(&mut func.body);
 
-        // Check if the arguments object is needed. Arguments object is needed if the function has
-        // an "arguments" binding with the right kind, which may have been added due to an implicit
-        // use or potential dynamic lookup found during analysis.
+        // Check if the arguments object or new.target is needed. These may be needed if the
+        // function has an "arguments" or new.target binding with the right kind, which may have
+        // been added due to an implicit use or potential dynamic lookup found during analysis.
         if !is_arrow_function {
             let arguments_binding_opt = func.scope.as_ref().get_binding_opt("arguments");
             let is_arguments_object_needed = arguments_binding_opt
                 .map(|binding| binding.kind().is_valid_arguments_kind())
                 .unwrap_or(false);
-
             func.set_is_arguments_object_needed(is_arguments_object_needed);
+
+            if func.scope.as_ref().has_binding(NEW_TARGET_BINDING_NAME) {
+                func.set_is_new_target_object_needed(true);
+            }
         }
 
         // Only exit scope after visiting body and determining if arguments object is needed. We

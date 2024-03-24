@@ -271,11 +271,19 @@ impl ScopeTree {
 
             let mut found_def = scope.bindings.contains_key(name);
 
-            // Arguments object bindings are lazily added when we determine that one is needed.
-            // We know that one is needed if we are looking up "arguments" and it has not been
-            // resolved to a binding by the time we reach the function scope.
+            // Arguments object bindings and new.target bindings are lazily added when we determine
+            // that one is needed. We know that one is needed if we are looking up e.g. "arguments"
+            // and it has not been resolved to a binding by the time we reach the function scope.
             if !found_def && name == "arguments" && self.needs_implicit_arguments_object(scope_id) {
                 self.add_implicit_arguments_object(scope_id);
+                found_def = true;
+            }
+
+            if !found_def
+                && name == NEW_TARGET_BINDING_NAME
+                && self.needs_implicit_new_target(scope_id)
+            {
+                self.add_implicit_new_target(scope_id);
                 found_def = true;
             }
 
@@ -374,8 +382,15 @@ impl ScopeTree {
                 scope.supports_dynamic_access = true;
 
                 // Any function scope that may be dynamically accessed must have an arguments object
+                // and new.target since any binding could be looked up.
+                //
+                // IMPROVEMENT: new.target does not need to be added above `with` scopes
                 if self.needs_implicit_arguments_object(scope_id) {
                     self.add_implicit_arguments_object(scope_id);
+                }
+
+                if self.needs_implicit_new_target(scope_id) {
+                    self.add_implicit_new_target(scope_id);
                 }
             }
 
@@ -433,6 +448,21 @@ impl ScopeTree {
         self.get_ast_node_mut(scope_id).add_binding(
             "arguments",
             BindingKind::ImplicitArguments,
+            None,
+            false,
+        );
+    }
+
+    fn needs_implicit_new_target(&mut self, scope_id: ScopeNodeId) -> bool {
+        let scope = self.get_ast_node(scope_id);
+        matches!(scope.kind, ScopeNodeKind::Function { is_arrow: false, .. })
+            && !scope.bindings.contains_key(NEW_TARGET_BINDING_NAME)
+    }
+
+    fn add_implicit_new_target(&mut self, scope_id: ScopeNodeId) {
+        self.get_ast_node_mut(scope_id).add_binding(
+            NEW_TARGET_BINDING_NAME,
+            BindingKind::ImplicitNewTarget,
             None,
             false,
         );
@@ -707,6 +737,10 @@ impl AstScopeNode {
         self.num_bindings += 1;
     }
 
+    pub fn has_binding(&self, name: &str) -> bool {
+        self.bindings.contains_key(name)
+    }
+
     pub fn get_binding(&self, name: &str) -> &Binding {
         self.bindings.get(name).unwrap()
     }
@@ -806,6 +840,8 @@ pub enum BindingKind {
     /// An implicit `arguments` binding introduced in a function. Note that any var or var function
     /// is treated as an "explicit" `arguments` binding and will require an arguments object.
     ImplicitArguments,
+    /// new.target is treated as a binding.
+    ImplicitNewTarget,
 }
 
 impl BindingKind {
@@ -819,7 +855,8 @@ impl BindingKind {
             BindingKind::Var
             | BindingKind::FunctionParameter { .. }
             | BindingKind::ImplicitThis
-            | BindingKind::ImplicitArguments => false,
+            | BindingKind::ImplicitArguments
+            | BindingKind::ImplicitNewTarget => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
@@ -948,3 +985,4 @@ impl VMScopeNode {
 
 pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
 pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
+pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";

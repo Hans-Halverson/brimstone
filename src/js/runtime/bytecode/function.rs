@@ -183,6 +183,8 @@ pub struct BytecodeFunction {
     is_strict: bool,
     /// Whether this function is a constructor
     is_constructor: bool,
+    /// Index of the new.target register, if a new.target is needed.
+    new_target_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
     name: Option<HeapPtr<StringValue>>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
@@ -204,6 +206,7 @@ impl BytecodeFunction {
         function_length: u32,
         is_strict: bool,
         is_constructor: bool,
+        new_target_index: Option<u32>,
         name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
@@ -218,6 +221,7 @@ impl BytecodeFunction {
         set_uninit!(object.function_length, function_length);
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_vec(bytecode);
@@ -243,6 +247,7 @@ impl BytecodeFunction {
         set_uninit!(object.function_length, 0);
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.new_target_index, None);
         set_uninit!(object.name, None);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
         object.bytecode.init_from_vec(vec![]);
@@ -304,6 +309,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn is_constructor(&self) -> bool {
         self.is_constructor
+    }
+
+    #[inline]
+    pub fn new_target_index(&self) -> Option<u32> {
+        self.new_target_index
     }
 
     #[inline]

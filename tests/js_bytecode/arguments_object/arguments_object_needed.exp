@@ -115,13 +115,14 @@
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
-     6: NewUnmappedArguments r0
-     8: StoreToScope r0, 1, 0
-    12: LoadGlobal r0, c1
-    15: LoadConstant r1, c2
-    18: CallMaybeEval r0, r0, r1, 1
-    23: LoadUndefined r0
-    25: Ret r0
+     6: StoreToScope r0, 2, 0
+    10: NewUnmappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadGlobal r0, c1
+    19: LoadConstant r1, c2
+    22: CallMaybeEval r0, r0, r1, 1
+    27: LoadUndefined r0
+    29: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

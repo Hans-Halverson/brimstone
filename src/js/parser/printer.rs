@@ -931,7 +931,7 @@ impl<'a> Printer<'a> {
         self.start_node("MetaProperty", &expr.loc);
 
         match expr.kind {
-            MetaPropertyKind::NewTarget => {
+            MetaPropertyKind::NewTarget { .. } => {
                 self.property("meta", (&expr.loc, "new"), Printer::print_str_as_identifier);
                 self.property("property", (&expr.loc, "target"), Printer::print_str_as_identifier);
             }

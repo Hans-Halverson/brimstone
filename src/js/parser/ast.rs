@@ -301,10 +301,13 @@ bitflags! {
         /// False only if we can statically prove that the arguments object is not needed. If true
         /// true the arguments object may be needed.
         const IS_ARGUMENTS_OBJECT_NEEDED = 1 << 6;
+        /// False only if we can statically prove that new.target is not needed. If true new.target
+        /// must be created as it may be needed.
+        const IS_NEW_TARGET_NEEDED = 1 << 7;
         /// Whether the function is in strict mode, which could be inherited from surrounding context
-        const IS_STRICT_MODE = 1 << 7;
+        const IS_STRICT_MODE = 1 << 8;
         /// Whether the function has a "use strict" directive
-        const HAS_USE_STRICT_DIRECTIVE = 1 << 8;
+        const HAS_USE_STRICT_DIRECTIVE = 1 << 9;
     }
 }
 
@@ -400,6 +403,15 @@ impl Function {
     pub fn set_is_arguments_object_needed(&mut self, is_needed: bool) {
         self.flags
             .set(FunctionFlags::IS_ARGUMENTS_OBJECT_NEEDED, is_needed);
+    }
+
+    pub fn is_new_target_needed(&self) -> bool {
+        self.flags.contains(FunctionFlags::IS_NEW_TARGET_NEEDED)
+    }
+
+    pub fn set_is_new_target_object_needed(&mut self, is_needed: bool) {
+        self.flags
+            .set(FunctionFlags::IS_NEW_TARGET_NEEDED, is_needed);
     }
 
     pub fn is_strict_mode(&self) -> bool {
@@ -1084,9 +1096,21 @@ pub struct MetaProperty {
     pub kind: MetaPropertyKind,
 }
 
+impl MetaProperty {
+    pub fn new_target(loc: Loc) -> MetaProperty {
+        MetaProperty {
+            loc,
+            kind: MetaPropertyKind::NewTarget { scope: AstPtr::uninit() },
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum MetaPropertyKind {
-    NewTarget,
+    NewTarget {
+        /// Function scope for the function that corresponds to this new.target.
+        scope: AstPtr<AstScopeNode>,
+    },
     ImportMeta,
 }
 

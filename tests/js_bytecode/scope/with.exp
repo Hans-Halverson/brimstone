@@ -23,25 +23,26 @@
   Parameters: 1, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
-     6: StoreToScope a0, 0, 0
-    10: NewMappedArguments r1
-    12: StoreToScope r1, 2, 0
-    16: LoadFromScope r1, 0, 0
-    20: PushWithScope r1, c1
-    23: PushLexicalScope c2
-    25: LoadEmpty r1
-    27: StoreToScope r1, 0, 0
-    31: LoadEmpty r1
-    33: StoreToScope r1, 1, 0
-    37: LoadImmediate r1, 1
-    40: StoreToScope r1, 0, 0
-    44: LoadImmediate r1, 2
-    47: StoreToScope r1, 1, 0
-    51: NewClosure r0, c3
-    54: PopScope 
-    55: PopScope 
-    56: LoadUndefined r1
-    58: Ret r1
+     6: StoreToScope r1, 3, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r1
+    16: StoreToScope r1, 2, 0
+    20: LoadFromScope r1, 0, 0
+    24: PushWithScope r1, c1
+    27: PushLexicalScope c2
+    29: LoadEmpty r1
+    31: StoreToScope r1, 0, 0
+    35: LoadEmpty r1
+    37: StoreToScope r1, 1, 0
+    41: LoadImmediate r1, 1
+    44: StoreToScope r1, 0, 0
+    48: LoadImmediate r1, 2
+    51: StoreToScope r1, 1, 0
+    55: NewClosure r0, c3
+    58: PopScope 
+    59: PopScope 
+    60: LoadUndefined r1
+    62: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -66,32 +67,33 @@
   Parameters: 1, Registers: 3
      0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
-     6: StoreToScope a0, 0, 0
-    10: NewMappedArguments r1
-    12: StoreToScope r1, 3, 0
-    16: LoadImmediate r1, 1
-    19: StoreToScope r1, 2, 0
-    23: LoadFromScope r1, 0, 0
-    27: PushWithScope r1, c1
-    30: LoadDynamic r1, c2
-    33: LoadImmediate r2, 2
-    36: Add r1, r1, r2
-    40: LoadImmediate r1, 0
-    43: StoreDynamic r1, c2
-    46: LoadImmediate r0, 3
-    49: LoadImmediate r1, 4
-    52: Add r1, r0, r1
-    56: LoadDynamic r1, c3
-    59: LoadImmediate r2, 5
-    62: Add r1, r1, r2
-    66: LoadImmediate r1, 6
-    69: Add r1, r0, r1
-    73: LoadDynamic r1, c3
-    76: LoadImmediate r2, 7
-    79: Add r1, r1, r2
-    83: PopScope 
-    84: LoadUndefined r1
-    86: Ret r1
+     6: StoreToScope r1, 4, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r1
+    16: StoreToScope r1, 3, 0
+    20: LoadImmediate r1, 1
+    23: StoreToScope r1, 2, 0
+    27: LoadFromScope r1, 0, 0
+    31: PushWithScope r1, c1
+    34: LoadDynamic r1, c2
+    37: LoadImmediate r2, 2
+    40: Add r1, r1, r2
+    44: LoadImmediate r1, 0
+    47: StoreDynamic r1, c2
+    50: LoadImmediate r0, 3
+    53: LoadImmediate r1, 4
+    56: Add r1, r0, r1
+    60: LoadDynamic r1, c3
+    63: LoadImmediate r2, 5
+    66: Add r1, r1, r2
+    70: LoadImmediate r1, 6
+    73: Add r1, r0, r1
+    77: LoadDynamic r1, c3
+    80: LoadImmediate r2, 7
+    83: Add r1, r1, r2
+    87: PopScope 
+    88: LoadUndefined r1
+    90: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -103,18 +105,19 @@
   Parameters: 2, Registers: 1
      0: PushFunctionScope c0
      2: StoreToScope <this>, 2, 0
-     6: StoreToScope a0, 0, 0
-    10: StoreToScope a1, 1, 0
-    14: NewMappedArguments r0
-    16: StoreToScope r0, 4, 0
-    20: LoadImmediate r0, 1
-    23: StoreToScope r0, 3, 0
-    27: LoadFromScope r0, 4, 0
-    31: LoadFromScope r0, 0, 0
-    35: PushWithScope r0, c1
-    38: PopScope 
-    39: LoadUndefined r0
-    41: Ret r0
+     6: StoreToScope r0, 5, 0
+    10: StoreToScope a0, 0, 0
+    14: StoreToScope a1, 1, 0
+    18: NewMappedArguments r0
+    20: StoreToScope r0, 4, 0
+    24: LoadImmediate r0, 1
+    27: StoreToScope r0, 3, 0
+    31: LoadFromScope r0, 4, 0
+    35: LoadFromScope r0, 0, 0
+    39: PushWithScope r0, c1
+    42: PopScope 
+    43: LoadUndefined r0
+    45: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

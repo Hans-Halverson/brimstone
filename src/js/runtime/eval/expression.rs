@@ -99,7 +99,7 @@ pub fn eval_expression(cx: Context, expr: &ast::Expression) -> EvalResult<Handle
         ast::Expression::Template(lit) => eval_template_literal(cx, lit),
         ast::Expression::TaggedTemplate(expr) => eval_tagged_template_expression(cx, expr),
         ast::Expression::MetaProperty(expr) => match expr.kind {
-            ast::MetaPropertyKind::NewTarget => eval_new_target(cx),
+            ast::MetaPropertyKind::NewTarget { .. } => eval_new_target(cx),
             ast::MetaPropertyKind::ImportMeta => unimplemented!("import.meta"),
         },
         ast::Expression::Import(_) => unimplemented!("import expression"),

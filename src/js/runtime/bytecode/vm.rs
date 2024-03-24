@@ -914,6 +914,8 @@ impl VM {
                 return_value_address,
             );
 
+            // If a new.target is needed it is implicitly left as undefined
+
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
             if let Err(error_value) = self.dispatch_loop() {
@@ -976,6 +978,9 @@ impl VM {
                 /* return_to_rust_runtime */ true,
                 return_value_address,
             );
+
+            // Set the new target if one exists
+            self.set_new_target(function_ptr, new_target.get_());
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered. May allocate.
@@ -1084,6 +1089,8 @@ impl VM {
                 }
             }
 
+            // If a new.target is needed it is implicitly left as undefined
+
             // Continue in dispatch loop, executing the first instruction of the function
         }
 
@@ -1167,6 +1174,7 @@ impl VM {
         } else {
             // Otherwise this is a call to a JS function in the VM.
             let closure_handle = closure_ptr.to_handle();
+            let function_handle = function_ptr.to_handle();
 
             // TODO: Check if this cast is safe
             let new_target = self
@@ -1209,6 +1217,9 @@ impl VM {
                     );
                 }
             }
+
+            // Set the new target if one exists
+            self.set_new_target(function_handle.get_(), new_target.get_());
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
@@ -1329,6 +1340,18 @@ impl VM {
             self.pc = self.get_return_address();
             self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments);
             self.fp = *self.fp as *mut StackSlotValue;
+        }
+    }
+
+    #[inline]
+    fn set_new_target(
+        &mut self,
+        function: HeapPtr<BytecodeFunction>,
+        new_target: HeapPtr<ObjectValue>,
+    ) {
+        if let Some(index) = function.new_target_index() {
+            // Set the new.target register to the provided new target
+            self.write_register(Register::<ExtraWide>::local(index as usize), new_target.into());
         }
     }
 

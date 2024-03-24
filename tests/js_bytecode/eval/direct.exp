@@ -36,12 +36,13 @@
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
-     6: NewMappedArguments r0
-     8: StoreToScope r0, 1, 0
-    12: LoadDynamic r0, c1
-    15: LoadConstant r1, c2
-    18: CallMaybeEval r0, r0, r1, 1
-    23: Ret r0
+     6: StoreToScope r0, 2, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadDynamic r0, c1
+    19: LoadConstant r1, c2
+    22: CallMaybeEval r0, r0, r1, 1
+    27: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -52,12 +53,13 @@
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
-     6: NewMappedArguments r0
-     8: StoreToScope r0, 1, 0
-    12: LoadDynamic r0, c1
-    15: LoadConstant r1, c2
-    18: CallMaybeEval r0, r0, r1, 1
-    23: Ret r0
+     6: StoreToScope r0, 2, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadDynamic r0, c1
+    19: LoadConstant r1, c2
+    22: CallMaybeEval r0, r0, r1, 1
+    27: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -84,11 +86,12 @@
   Parameters: 0, Registers: 1
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
-     6: NewMappedArguments r0
-     8: StoreToScope r0, 1, 0
-    12: LoadDynamic r0, c1
-    15: CallMaybeEval r0, r0, r0, 0
-    20: Ret r0
+     6: StoreToScope r0, 2, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadDynamic r0, c1
+    19: CallMaybeEval r0, r0, r0, 0
+    24: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -98,14 +101,15 @@
   Parameters: 0, Registers: 4
      0: PushFunctionScope c0
      2: StoreToScope <this>, 0, 0
-     6: NewMappedArguments r0
-     8: StoreToScope r0, 1, 0
-    12: LoadDynamic r0, c1
-    15: LoadImmediate r1, 1
-    18: LoadImmediate r2, 2
-    21: LoadImmediate r3, 3
-    24: CallMaybeEval r0, r0, r1, 3
-    29: Ret r0
+     6: StoreToScope r0, 2, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadDynamic r0, c1
+    19: LoadImmediate r1, 1
+    22: LoadImmediate r2, 2
+    25: LoadImmediate r3, 3
+    28: CallMaybeEval r0, r0, r1, 3
+    33: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

@@ -14,6 +14,7 @@ use crate::js::{
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
+            NEW_TARGET_BINDING_NAME,
         },
     },
     runtime::{
@@ -406,6 +407,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Whether this function is a constructor
     is_constructor: bool,
 
+    /// Index of the reigster in which to place the new.target value for this function, if one is
+    /// needed.
+    new_target_index: Option<u32>,
+
     /// Register in which to place the completion value of each statement. Only need to generate
     /// completion values when this is set.
     statement_completion_dest: Option<GenRegister>,
@@ -452,6 +457,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             function_length,
             is_strict,
             is_constructor,
+            new_target_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
             constant_table_builder: ConstantTableBuilder::new(),
@@ -889,13 +895,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unimplemented!("bytecode for async and generator functions")
         }
 
-        // Entire function parameters and body are in their own scope.
         let func_scope = func.scope.as_ref();
+
+        // Set up the new.target if necessary
+        let new_target_to_store = if func.is_new_target_needed() {
+            let new_target_binding = func_scope.get_binding(NEW_TARGET_BINDING_NAME);
+            match new_target_binding.vm_location().unwrap() {
+                // Place new.target directly into the register
+                VMLocation::LocalRegister(index) => {
+                    self.new_target_index = Some(index as u32);
+                    None
+                }
+                VMLocation::Scope { scope_id, index } => {
+                    // Place new.target into a temporary register then store to the scope
+                    let new_target_register = self.register_allocator.allocate()?;
+                    self.new_target_index = Some(new_target_register.local_index() as u32);
+                    Some((scope_id, index, new_target_register))
+                }
+                _ => unreachable!("new.target binding location must be a register or scope slot"),
+            }
+        } else {
+            None
+        };
+
+        // Entire function parameters and body are in their own scope.
         self.gen_scope_start(func_scope)?;
 
         // Store the captured `this` right away if necessary
         if !func.is_arrow() {
             self.gen_store_captured_this(func_scope)?;
+        }
+
+        // Store the captured new.target if necessary
+        if let Some((scope_id, index, new_target_register)) = new_target_to_store {
+            self.gen_store_scope_binding(scope_id, index, new_target_register)?;
+            self.register_allocator.release(new_target_register);
         }
 
         // Generate the arguments object if necessary. For mapped arguments object this also places
@@ -1030,6 +1064,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.function_length,
             self.is_strict,
             self.is_constructor,
+            self.new_target_index,
             name,
         );
 
@@ -1143,8 +1178,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_tagged_template_expression(expr, dest)
             }
             ast::Expression::MetaProperty(meta_property) => match meta_property.kind {
-                ast::MetaPropertyKind::NewTarget => {
-                    unimplemented!("bytecode for new.target expression")
+                ast::MetaPropertyKind::NewTarget { scope } => {
+                    self.gen_new_target_expression(scope.as_ref(), dest)
                 }
                 ast::MetaPropertyKind::ImportMeta => {
                     unimplemented!("bytecode for import.meta expression")
@@ -3421,6 +3456,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         self.gen_mov_reg_to_dest(acc, dest)
+    }
+
+    fn gen_new_target_expression(
+        &mut self,
+        scope: &AstScopeNode,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let binding = scope.get_binding(NEW_TARGET_BINDING_NAME);
+        self.gen_load_binding(NEW_TARGET_BINDING_NAME, binding, dest)
     }
 
     fn gen_variable_declaration(

@@ -129,23 +129,24 @@
   Parameters: 1, Registers: 8
      0: PushFunctionScope c0
      2: StoreToScope <this>, 1, 0
-     6: StoreToScope a0, 0, 0
-    10: NewMappedArguments r0
-    12: StoreToScope r0, 2, 0
-    16: LoadDynamic r0, c1
-    19: NewArray r1
-    21: LoadImmediate r2, 0
-    24: LoadFromScope r3, 0, 0
-    28: GetIterator r4, r5, r3
+     6: StoreToScope r0, 3, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r0
+    16: StoreToScope r0, 2, 0
+    20: LoadDynamic r0, c1
+    23: NewArray r1
+    25: LoadImmediate r2, 0
+    28: LoadFromScope r3, 0, 0
+    32: GetIterator r4, r5, r3
   .L0:
-    32: IteratorNext r6, r7, r4, r5
-    37: JumpTrue r7, 11 (.L1)
-    40: SetArrayProperty r1, r2, r6
-    44: Inc r2
-    46: Jump -14 (.L0)
+    36: IteratorNext r6, r7, r4, r5
+    41: JumpTrue r7, 11 (.L1)
+    44: SetArrayProperty r1, r2, r6
+    48: Inc r2
+    50: Jump -14 (.L0)
   .L1:
-    48: CallMaybeEvalVarargs r0, r0, r1
-    52: Ret r0
+    52: CallMaybeEvalVarargs r0, r0, r1
+    56: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

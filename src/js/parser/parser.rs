@@ -2314,10 +2314,7 @@ impl<'a> Parser<'a> {
                     self.advance()?;
                     let loc = self.mark_loc(start_pos);
 
-                    Ok(p(Expression::MetaProperty(MetaProperty {
-                        loc,
-                        kind: MetaPropertyKind::NewTarget,
-                    })))
+                    Ok(p(Expression::MetaProperty(MetaProperty::new_target(loc))))
                 } else {
                     self.error(self.loc, ParseError::ExpectedNewTarget)
                 };

@@ -236,7 +236,7 @@ pub const SCOPE_SLOT_INDEX: usize = 3;
 
 const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 
-const CLOSURE_SLOT_INDEX: usize = 5;
+pub const CLOSURE_SLOT_INDEX: usize = 5;
 
 const ARGC_SLOT_INDEX: usize = 6;
 

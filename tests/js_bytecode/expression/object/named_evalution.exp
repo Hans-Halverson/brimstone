@@ -55,9 +55,10 @@
 }
 
 [BytecodeFunction: alreadyNamed] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 2
+    0: Mov r0, <closure>
+    3: LoadUndefined r1
+    5: Ret r1
 }
 
 [BytecodeFunction: stringKey] {
@@ -118,7 +119,8 @@
 }
 
 [BytecodeFunction: alreadyNamed] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+  Parameters: 0, Registers: 2
+    0: Mov r0, <closure>
+    3: LoadUndefined r1
+    5: Ret r1
 }

@@ -1,7 +1,9 @@
 use std::fmt;
 
 use super::{
-    stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX, SCOPE_SLOT_INDEX},
+    stack_frame::{
+        CLOSURE_SLOT_INDEX, FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX, SCOPE_SLOT_INDEX,
+    },
     width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum},
 };
 
@@ -170,6 +172,12 @@ impl<W: Width> Register<W> {
         Self::from_unsigned(W::UInt::from_usize(SCOPE_SLOT_INDEX))
     }
 
+    /// Construct a register referencing the closure.
+    #[inline]
+    pub fn closure() -> Self {
+        Self::from_unsigned(W::UInt::from_usize(CLOSURE_SLOT_INDEX))
+    }
+
     #[inline]
     pub fn is_argument(&self) -> bool {
         self.signed().to_isize() >= FIRST_ARGUMENT_SLOT_INDEX as isize
@@ -188,6 +196,11 @@ impl<W: Width> Register<W> {
     #[inline]
     pub fn is_scope(&self) -> bool {
         self.unsigned().to_usize() == SCOPE_SLOT_INDEX
+    }
+
+    #[inline]
+    pub fn is_closure(&self) -> bool {
+        self.unsigned().to_usize() == CLOSURE_SLOT_INDEX
     }
 
     #[inline]
@@ -236,6 +249,8 @@ impl<W: Width> fmt::Display for Register<W> {
             write!(f, "<this>")
         } else if self.is_scope() {
             write!(f, "<scope>")
+        } else if self.is_closure() {
+            write!(f, "<closure>")
         } else {
             unreachable!("Unknown register type")
         }

@@ -921,6 +921,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Entire function parameters and body are in their own scope.
         self.gen_scope_start(func_scope)?;
 
+        // Store the function itself in scope if this is a named function expression
+        if let Some(id) = func.id.as_ref() {
+            if func_scope.kind().is_function_expression() {
+                // Check that binding still has a function name kind. Otherwise this binding was
+                // overwritten and the function name does not need to be stored.
+                let binding = id.get_binding();
+                if binding.kind().is_function_expression_name() {
+                    self.gen_store_binding(
+                        &id.name,
+                        binding,
+                        Register::closure(),
+                        StoreFlags::INITIALIZATION,
+                    )?;
+                }
+            }
+        }
+
         // Store the captured `this` right away if necessary
         if !func.is_arrow() {
             self.gen_store_captured_this(func_scope)?;
@@ -4070,7 +4087,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Generate var scoped function declarations, hoisted to the top of the scope
     fn gen_var_scoped_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
         for (_, binding) in scope.iter_bindings() {
-            if let BindingKind::Function { is_lexical: false, func_node } = binding.kind() {
+            if let BindingKind::Function { is_lexical: false, is_expression: false, func_node } =
+                binding.kind()
+            {
                 self.gen_function_declaration_impl(func_node.as_ref())?;
             }
         }

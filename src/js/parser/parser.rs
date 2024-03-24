@@ -695,6 +695,7 @@ impl<'a> Parser<'a> {
 
                 let binding_kind = BindingKind::Function {
                     is_lexical: !is_var_scoped,
+                    is_expression: false,
                     func_node: AstPtr::from_ref(func.as_ref()),
                 };
 
@@ -713,7 +714,21 @@ impl<'a> Parser<'a> {
         }
 
         // Function scope node must contain the params and body, but not function name.
-        let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
+        let scope = self.enter_function_scope(
+            start_pos, /* is_arrow */ false, /* is_expression */ !is_decl,
+        )?;
+
+        // Named function expressions bind name within function scope
+        if !is_decl {
+            if let Some(id) = &mut id {
+                let binding_kind = BindingKind::Function {
+                    is_lexical: false,
+                    is_expression: true,
+                    func_node: AstPtr::from_ref(func.as_ref()),
+                };
+                self.add_binding(id.as_mut(), binding_kind)?;
+            }
+        }
 
         let params = self.parse_function_params()?;
         let param_flags = self.analyze_function_params(&params);
@@ -745,10 +760,13 @@ impl<'a> Parser<'a> {
         &mut self,
         start_pos: Pos,
         is_arrow: bool,
+        is_expression: bool,
     ) -> ParseResult<AstPtr<AstScopeNode>> {
-        let scope = self
-            .scope_builder
-            .enter_scope(ScopeNodeKind::Function { id: start_pos, is_arrow });
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Function {
+            id: start_pos,
+            is_arrow,
+            is_expression,
+        });
 
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.
@@ -1525,7 +1543,9 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
 
         // Function scope node must contain params and body
-        let scope = self.enter_function_scope(start_pos, /* is_arrow */ true)?;
+        let scope = self.enter_function_scope(
+            start_pos, /* is_arrow */ true, /* is_expression */ false,
+        )?;
 
         let is_async = self.token == Token::Async;
         if is_async {
@@ -3226,7 +3246,9 @@ impl<'a> Parser<'a> {
         let did_allow_yield = swap_and_save(&mut self.allow_yield, is_generator);
 
         // Function scope node must contain params and body
-        let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
+        let scope = self.enter_function_scope(
+            start_pos, /* is_arrow */ false, /* is_expression */ false,
+        )?;
 
         let params = self.parse_function_params()?;
         let param_flags = self.analyze_function_params(&params);
@@ -3358,7 +3380,9 @@ impl<'a> Parser<'a> {
             if self.token == Token::LeftBrace {
                 // Static initializers are functions and are wrapped in a function scope, as vars
                 // cannot be hoisted out of the static initializer.
-                let scope = self.enter_function_scope(start_pos, /* is_arrow */ false)?;
+                let scope = self.enter_function_scope(
+                    start_pos, /* is_arrow */ false, /* is_expression */ false,
+                )?;
 
                 let params = vec![];
                 let param_flags = self.analyze_function_params(&params);

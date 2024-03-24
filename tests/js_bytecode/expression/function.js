@@ -17,3 +17,22 @@ function named() {
   // Not named
   var z = function fnName() {};
 }
+
+function namedCaptured() {
+  var x = function inner() {
+    () => { return inner };
+    return inner;
+  }
+}
+
+function namedVarOverwrite() {
+  (function inner() {
+    var inner;
+  })
+}
+
+function namedLexOverwrite() {
+  (function inner() {
+    let inner;
+  })
+}

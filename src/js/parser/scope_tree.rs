@@ -218,8 +218,16 @@ impl ScopeTree {
             }
 
             if node.kind.is_hoist_target() {
-                // Only override existing binding if it is a new function declaration
-                if !node.bindings.contains_key(name) || kind.is_function() {
+                let existing_binding = node.bindings.get(name);
+                let can_overwrite =
+                    // Function declarations overwrite all other bindings
+                    kind.is_function()
+                    // Function expression names are implicitly added and can always be overwritten
+                    || existing_binding
+                        .map(|b| b.kind().is_function_expression_name())
+                        .unwrap_or(false);
+
+                if existing_binding.is_none() || can_overwrite {
                     let vm_location =
                         if node.kind == ScopeNodeKind::Global && !kind.is_implicit_this() {
                             // Var bindings in the global scope are immediately known to be global
@@ -625,6 +633,8 @@ pub enum ScopeNodeKind {
         id: FunctionId,
         /// Whether this is an arrow function
         is_arrow: bool,
+        /// Whether this is a function expression
+        is_expression: bool,
     },
     /// A function body scope only appears when the function has parameter expressions. In this case
     /// the function body is the hoist target for all declarations in the body, keeping them
@@ -654,6 +664,10 @@ impl ScopeNodeKind {
             | ScopeNodeKind::Eval { .. } => true,
             ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::With => false,
         }
+    }
+
+    pub fn is_function_expression(&self) -> bool {
+        matches!(self, ScopeNodeKind::Function { is_expression: true, .. })
     }
 }
 
@@ -790,7 +804,10 @@ impl AstScopeNode {
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
         if let Some(binding) = self.bindings.get(name) {
-            return Some(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
+            // Function expression name bindings can always be overriden
+            if !binding.kind().is_function_expression_name() {
+                return Some(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
+            }
         }
 
         // Then check for other conflicting var scoped bindings, e.g. in child scopes
@@ -823,6 +840,8 @@ pub enum BindingKind {
         /// Only is a VarScopedDeclaration if this is a toplevel function declaration within a
         /// script, function, or class static block.
         is_lexical: bool,
+        /// Whether this is the name of a function expression.
+        is_expression: bool,
         /// Function AST node - needed for the tree walk interpreter.
         func_node: AstPtr<ast::Function>,
     },
@@ -871,6 +890,10 @@ impl BindingKind {
 
     pub fn is_function(&self) -> bool {
         matches!(self, BindingKind::Function { .. })
+    }
+
+    pub fn is_function_expression_name(&self) -> bool {
+        matches!(self, BindingKind::Function { is_expression: true, .. })
     }
 
     pub fn is_implicit_this(&self) -> bool {

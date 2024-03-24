@@ -2086,7 +2086,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // Generate arguments into a contiguous argc + argv slice
-        let (argv, argc) = self.gen_call_arguments(&expr.arguments, callee)?;
+        let mut args = self.gen_call_arguments(&expr.arguments, callee)?;
+
+        // Allocate receiver register if necessary
+        if let CallArgs::Varargs { args, receiver } = &mut args {
+            if let Some(this_value) = this_value {
+                *receiver = this_value;
+            } else if !is_maybe_direct_eval {
+                *receiver = self.register_allocator.allocate()?;
+                self.register_allocator.release(*receiver);
+            };
+
+            self.register_allocator.release(*args);
+        }
 
         // Release all remaining call registers
         self.register_allocator.release(callee);
@@ -2098,13 +2110,40 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         if let Some(this_value) = this_value {
-            self.writer
-                .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+            match args {
+                CallArgs::Varargs { args, receiver } => {
+                    self.writer
+                        .call_varargs_instruction(dest, callee, receiver, args);
+                }
+                CallArgs::Normal { argv, argc } => {
+                    self.writer
+                        .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+                }
+            }
         } else if is_maybe_direct_eval {
-            self.writer
-                .call_maybe_eval_instruction(dest, callee, argv, argc);
+            match args {
+                CallArgs::Varargs { args, .. } => {
+                    self.writer
+                        .call_maybe_eval_varargs_instruction(dest, callee, args);
+                }
+                CallArgs::Normal { argv, argc } => {
+                    self.writer
+                        .call_maybe_eval_instruction(dest, callee, argv, argc);
+                }
+            }
         } else {
-            self.writer.call_instruction(dest, callee, argv, argc);
+            match args {
+                CallArgs::Varargs { args, receiver } => {
+                    // If the call is varargs without an explicit receiver, pass `undefined` as the
+                    // receiver.
+                    self.writer.load_undefined_instruction(receiver);
+                    self.writer
+                        .call_varargs_instruction(dest, callee, receiver, args);
+                }
+                CallArgs::Normal { argv, argc } => {
+                    self.writer.call_instruction(dest, callee, argv, argc);
+                }
+            }
         }
 
         Ok(dest)
@@ -2230,7 +2269,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Also takes a default argv register to use if there are no arguments.
     ///
     /// Releases all registers in the argv + argc slice before returning.
-    fn gen_call_arguments(
+    fn gen_stack_arguments(
         &mut self,
         arguments: &[ast::CallArgument],
         default_argv: GenRegister,
@@ -2244,7 +2283,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let arg_reg = self.gen_expression_with_dest(expr, ExprDest::NewTemporary)?;
                     arg_regs.push(arg_reg);
                 }
-                ast::CallArgument::Spread(_) => unimplemented!("bytecode for spread arguments"),
+                ast::CallArgument::Spread(_) => unreachable!("spread is handled by varargs"),
             }
         }
 
@@ -2286,23 +2325,75 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         true
     }
 
+    fn is_call_with_spread(&self, arguments: &[ast::CallArgument]) -> bool {
+        arguments
+            .iter()
+            .any(|arg| matches!(arg, ast::CallArgument::Spread(_)))
+    }
+
+    /// If there is a spread element then we must create an array that contains all arguments.
+    fn gen_call_varargs_array(
+        &mut self,
+        arguments: &[ast::CallArgument],
+    ) -> EmitResult<GenRegister> {
+        let array_elements = arguments
+            .iter()
+            .map(|arg| match arg {
+                ast::CallArgument::Expression(expr) => ArrayElement::Expression(expr),
+                ast::CallArgument::Spread(spread) => ArrayElement::Spread(spread),
+            })
+            .collect::<Vec<_>>();
+
+        self.gen_array_from_elements(&array_elements, ExprDest::NewTemporary)
+    }
+
+    fn gen_call_arguments(
+        &mut self,
+        arguments: &[ast::CallArgument],
+        default_argv: GenRegister,
+    ) -> EmitResult<CallArgs> {
+        if Self::is_call_with_spread(&self, arguments) {
+            // Any new expression with a spread generates a varargs call. This means all arguments
+            // are first placed into an array.
+            let args = self.gen_call_varargs_array(arguments)?;
+
+            // Set a dummy receiver that will be overwritten by the caller if needed
+            Ok(CallArgs::Varargs { args, receiver: GenRegister::this() })
+        } else {
+            // Generate arguments into a contiguous argc + argv slice on the VM stack
+            let (argv, argc) = self.gen_stack_arguments(arguments, default_argv)?;
+            Ok(CallArgs::Normal { argv, argc })
+        }
+    }
+
     fn gen_new_expresssion(
         &mut self,
         expr: &ast::NewExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let callee = self.gen_expression(&expr.callee)?;
-
-        // Generate arguments into a contiguous argc + argv slice
-        let (argv, argc) = self.gen_call_arguments(&expr.arguments, callee)?;
+        let args = self.gen_call_arguments(&expr.arguments, callee)?;
 
         // Release remaining call registers before allocating dest
+        if let CallArgs::Varargs { args, .. } = &args {
+            self.register_allocator.release(*args);
+        }
         self.register_allocator.release(callee);
         let dest = self.allocate_destination(dest)?;
 
-        // For new expressions, new.target is set to the callee
-        self.writer
-            .construct_instruction(dest, callee, callee, argv, argc);
+        // new.target is set to the callee
+        let new_target = callee;
+
+        match args {
+            CallArgs::Normal { argv, argc } => {
+                self.writer
+                    .construct_instruction(dest, callee, new_target, argv, argc);
+            }
+            CallArgs::Varargs { args, .. } => {
+                self.writer
+                    .construct_varargs_instruction(dest, callee, new_target, args);
+            }
+        }
 
         Ok(dest)
     }
@@ -2327,22 +2418,40 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ArrayExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let elements = expr
+            .elements
+            .iter()
+            .map(|element| match element {
+                ast::ArrayElement::Expression(expr) => ArrayElement::Expression(expr),
+                ast::ArrayElement::Spread(spread) => ArrayElement::Spread(spread),
+                ast::ArrayElement::Hole => ArrayElement::Hole,
+            })
+            .collect::<Vec<_>>();
+
+        self.gen_array_from_elements(&elements, dest)
+    }
+
+    fn gen_array_from_elements(
+        &mut self,
+        elements: &[ArrayElement],
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         let array = self.allocate_destination(dest)?;
         self.writer.new_array_instruction(array);
 
         // Fast path for empty arrays
-        if expr.elements.is_empty() {
+        if elements.is_empty() {
             return Ok(array);
         }
 
         // Keep an index register that is incremented for each element (if there is a next element)
-        let num_elements = expr.elements.len();
+        let num_elements = elements.len();
         let index = self.register_allocator.allocate()?;
         self.writer.load_immediate_instruction(index, SInt::new(0));
 
-        for (i, element) in expr.elements.iter().enumerate() {
+        for (i, element) in elements.iter().enumerate() {
             match element {
-                ast::ArrayElement::Expression(expr) => {
+                ArrayElement::Expression(expr) => {
                     let value = self.gen_expression(expr)?;
                     self.register_allocator.release(value);
 
@@ -2353,7 +2462,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.writer.inc_instruction(index);
                     }
                 }
-                ast::ArrayElement::Hole => {
+                ArrayElement::Hole => {
                     // Holes are represented as storing the empty value
                     let value = self.register_allocator.allocate()?;
                     self.writer.load_empty_instruction(value);
@@ -2366,7 +2475,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.writer.inc_instruction(index);
                     }
                 }
-                ast::ArrayElement::Spread(spread_element) => {
+                ArrayElement::Spread(spread_element) => {
                     // Evaluate the spread argument and get its iterator
                     let iterable = self.gen_expression(&spread_element.argument)?;
 
@@ -5668,6 +5777,17 @@ impl FinallyScope {
             next_branch_id
         }
     }
+}
+
+enum ArrayElement<'a> {
+    Expression(&'a ast::Expression),
+    Spread(&'a ast::SpreadElement),
+    Hole,
+}
+
+enum CallArgs {
+    Normal { argv: GenRegister, argc: GenUInt },
+    Varargs { args: GenRegister, receiver: GenRegister },
 }
 
 /// A reference to a string that may be either wtf8 or utf8.

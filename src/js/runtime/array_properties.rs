@@ -24,6 +24,11 @@ const SPARSE_ARRAY_THRESHOLD: u32 = 100;
 
 impl HeapPtr<ArrayProperties> {
     #[inline]
+    pub fn is_dense(&self) -> bool {
+        self.descriptor.kind() == ObjectKind::DenseArrayProperties
+    }
+
+    #[inline]
     pub fn as_dense(&self) -> HeapPtr<DenseArrayProperties> {
         self.cast()
     }
@@ -341,7 +346,7 @@ impl DenseArrayProperties {
     }
 
     #[inline]
-    fn len(&self) -> u32 {
+    pub fn len(&self) -> u32 {
         self.len
     }
 
@@ -353,6 +358,11 @@ impl DenseArrayProperties {
     #[inline]
     fn capacity(&self) -> u32 {
         self.array.len() as u32
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[Value] {
+        self.array.as_slice()
     }
 
     #[inline]

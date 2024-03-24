@@ -55,8 +55,9 @@ use super::{
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallMaybeEvalInstruction, CallWithReceiverInstruction, CheckTdzInstruction,
-        ConstructInstruction, CopyDataPropertiesInstruction, DecInstruction,
+        CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
+        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
+        ConstructVarargsInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, EvalInitInstruction, ExpInstruction, ForInNextInstruction,
@@ -90,11 +91,11 @@ use super::{
         ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
-        GenericCallInstruction, GenericJumpBooleanConstantInstruction,
-        GenericJumpBooleanInstruction, GenericJumpNullishConstantInstruction,
-        GenericJumpNullishInstruction, GenericJumpToBooleanConstantInstruction,
-        GenericJumpToBooleanInstruction, GenericJumpUndefinedConstantInstruction,
-        GenericJumpUndefinedInstruction,
+        GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
+        GenericJumpBooleanConstantInstruction, GenericJumpBooleanInstruction,
+        GenericJumpNullishConstantInstruction, GenericJumpNullishInstruction,
+        GenericJumpToBooleanConstantInstruction, GenericJumpToBooleanInstruction,
+        GenericJumpUndefinedConstantInstruction, GenericJumpUndefinedInstruction,
     },
     operand::{ConstantIndex, Register, SInt, UInt},
     stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
@@ -338,11 +339,26 @@ impl VM {
                         OpCode::CallWithReceiver => {
                             dispatch_or_throw!(CallWithReceiverInstruction, execute_generic_call)
                         }
+                        OpCode::CallVarargs => {
+                            dispatch_or_throw!(CallVarargsInstruction, execute_generic_call)
+                        }
                         OpCode::CallMaybeEval => {
                             dispatch_or_throw!(CallMaybeEvalInstruction, execute_call_maybe_eval)
                         }
+                        OpCode::CallMaybeEvalVarargs => {
+                            dispatch_or_throw!(
+                                CallMaybeEvalVarargsInstruction,
+                                execute_call_maybe_eval_varargs
+                            )
+                        }
                         OpCode::Construct => {
-                            dispatch_or_throw!(ConstructInstruction, execute_construct)
+                            dispatch_or_throw!(ConstructInstruction, execute_generic_construct)
+                        }
+                        OpCode::ConstructVarargs => {
+                            dispatch_or_throw!(
+                                ConstructVarargsInstruction,
+                                execute_generic_construct
+                            )
                         }
                         OpCode::Ret => execute_ret!(get_instr),
                         OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
@@ -986,8 +1002,13 @@ impl VM {
         let function_value = self.read_register(instr.function());
         let receiver = instr.receiver().map(|reg| self.read_register(reg));
 
-        // Find slice over the arguments, starting with last argument
-        let args_rev_slice = self.get_args_rev_slice(instr.argv(), instr.argc());
+        let args_slice = match instr.args() {
+            // Find slice over the arguments, starting with last argument
+            GenericCallArgs::Stack { argv, argc } => {
+                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
+            }
+            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
+        };
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
@@ -1010,8 +1031,19 @@ impl VM {
 
                 // All arguments must be placed behind handles before calling into Rust
                 let mut arguments = vec![];
-                for arg in args_rev_slice.iter().rev() {
-                    arguments.push(arg.to_handle(self.cx));
+
+                // Arguments should be iterated in order
+                match args_slice {
+                    ArgsSlice::Forward(slice) => {
+                        for arg in slice {
+                            arguments.push(arg.to_handle(self.cx));
+                        }
+                    }
+                    ArgsSlice::Reverse(slice) => {
+                        for arg in slice.iter().rev() {
+                            arguments.push(arg.to_handle(self.cx));
+                        }
+                    }
                 }
 
                 self.call_rust_runtime(closure_ptr, function_id, receiver_handle, &arguments, None)
@@ -1027,15 +1059,30 @@ impl VM {
             let receiver = maybe!(self.generate_receiver(receiver, function_ptr));
             let closure_ptr = closure_handle.get_();
 
-            // Set up the stack frame for the function call
-            self.push_stack_frame(
-                closure_ptr,
-                receiver,
-                args_rev_slice.iter(),
-                args_rev_slice.len(),
-                /* return_to_rust_runtime */ false,
-                return_value_address,
-            );
+            // Set up the stack frame for the function call. Iterator should be over args in reverse
+            // order.
+            match args_slice {
+                ArgsSlice::Forward(slice) => {
+                    self.push_stack_frame(
+                        closure_ptr,
+                        receiver.into(),
+                        slice.iter().rev(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ false,
+                        return_value_address,
+                    );
+                }
+                ArgsSlice::Reverse(slice) => {
+                    self.push_stack_frame(
+                        closure_ptr,
+                        receiver.into(),
+                        slice.iter(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ false,
+                        return_value_address,
+                    );
+                }
+            }
 
             // Continue in dispatch loop, executing the first instruction of the function
         }
@@ -1044,9 +1091,17 @@ impl VM {
     }
 
     #[inline]
-    fn execute_construct<W: Width>(&mut self, instr: &ConstructInstruction<W>) -> EvalResult<()> {
-        // Find slice over the arguments, starting with last argument
-        let args_rev_slice = self.get_args_rev_slice(instr.argv(), instr.argc());
+    fn execute_generic_construct<W: Width>(
+        &mut self,
+        instr: &impl GenericConstructInstruction<W>,
+    ) -> EvalResult<()> {
+        let args_slice = match instr.args() {
+            // Find slice over the arguments, starting with last argument
+            GenericCallArgs::Stack { argv, argc } => {
+                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
+            }
+            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
+        };
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
@@ -1077,8 +1132,19 @@ impl VM {
 
                 // All arguments must be placed behind handles before calling into Rust
                 let mut arguments = vec![];
-                for arg in args_rev_slice.iter().rev() {
-                    arguments.push(arg.to_handle(self.cx));
+
+                // Arguments should be iterated in order
+                match args_slice {
+                    ArgsSlice::Forward(slice) => {
+                        for arg in slice {
+                            arguments.push(arg.to_handle(self.cx));
+                        }
+                    }
+                    ArgsSlice::Reverse(slice) => {
+                        for arg in slice.iter().rev() {
+                            arguments.push(arg.to_handle(self.cx));
+                        }
+                    }
                 }
 
                 let return_value = maybe!(self.call_rust_runtime(
@@ -1119,15 +1185,30 @@ impl VM {
             let mut return_value = Value::undefined();
             let inner_call_return_value_address = (&mut return_value) as *mut Value;
 
-            // Set up the stack frame for the function call
-            self.push_stack_frame(
-                closure_ptr,
-                receiver.into(),
-                args_rev_slice.iter(),
-                args_rev_slice.len(),
-                /* return_to_rust_runtime */ true,
-                inner_call_return_value_address,
-            );
+            // Set up the stack frame for the function call. Iterator should be over args in reverse
+            // order.
+            match args_slice {
+                ArgsSlice::Forward(slice) => {
+                    self.push_stack_frame(
+                        closure_ptr,
+                        receiver.into(),
+                        slice.iter().rev(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ true,
+                        inner_call_return_value_address,
+                    );
+                }
+                ArgsSlice::Reverse(slice) => {
+                    self.push_stack_frame(
+                        closure_ptr,
+                        receiver.into(),
+                        slice.iter(),
+                        slice.len(),
+                        /* return_to_rust_runtime */ true,
+                        inner_call_return_value_address,
+                    );
+                }
+            }
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
@@ -1264,6 +1345,21 @@ impl VM {
         unsafe {
             std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
         }
+    }
+
+    /// Find slice over the arguments passed in the given array object.
+    #[inline]
+    fn get_varargs_slice<'a, 'b, W: Width>(&'a mut self, array: Register<W>) -> &'b [Value] {
+        // Return slice directly over the dense properties of the array
+        let array_properties = self.read_register(array).as_object().array_properties();
+
+        // Return slice over populated slice of array
+        debug_assert!(array_properties.is_dense());
+        let dense_properties = array_properties.as_dense();
+        let slice = &dense_properties.as_slice()[..(dense_properties.len() as usize)];
+
+        // Break the lifetime since slice is over a slice of the managed heap
+        unsafe { std::mem::transmute(slice) }
     }
 
     /// Push call arguments onto the stack, handling over/underapplication. Takes an iterator over
@@ -1416,25 +1512,53 @@ impl VM {
         // Check if the callee is the eval function, if so this is a direct eval
         let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
         if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
-            self.direct_eval(instr)
+            let argc = instr.argc().value().to_usize();
+            let dest = instr.dest();
+
+            // Return undefined if there are no arguments
+            if argc == 0 {
+                self.write_register(dest, Value::undefined());
+                return ().into();
+            }
+
+            // Only the first argument is passed to eval
+            let arg = self.read_register_to_handle(instr.argv());
+
+            self.direct_eval(arg, dest)
         } else {
             self.execute_generic_call(instr)
         }
     }
 
     #[inline]
-    fn direct_eval<W: Width>(&mut self, instr: &CallMaybeEvalInstruction<W>) -> EvalResult<()> {
-        let argc = instr.argc().value().to_usize();
-        let dest = instr.dest();
+    fn execute_call_maybe_eval_varargs<W: Width>(
+        &mut self,
+        instr: &CallMaybeEvalVarargsInstruction<W>,
+    ) -> EvalResult<()> {
+        let callee = self.read_register(instr.function());
 
-        if argc == 0 {
-            self.write_register(dest, Value::undefined());
-            return ().into();
+        // Check if the callee is the eval function, if so this is a direct eval
+        let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
+        if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
+            let dest = instr.dest();
+
+            // Extract the first argument from the array
+            let args_slice = self.get_varargs_slice(instr.args());
+            if args_slice.is_empty() {
+                self.write_register(instr.dest(), Value::undefined());
+                return ().into();
+            }
+
+            let arg = args_slice[0].to_handle(self.cx);
+
+            self.direct_eval(arg, dest)
+        } else {
+            self.execute_generic_call(instr)
         }
+    }
 
-        // Only the first register is used
-        let arg = self.read_register_to_handle(instr.argv());
-
+    #[inline]
+    fn direct_eval<W: Width>(&mut self, arg: Handle<Value>, dest: Register<W>) -> EvalResult<()> {
         let is_strict_caller = self.closure().function_ptr().is_strict();
         let scope = self.scope().to_handle();
 
@@ -2989,4 +3113,9 @@ impl VM {
         let new_instruction_address = unsafe { new_function_start.offset(offset) };
         set_instruction_address(new_instruction_address);
     }
+}
+
+enum ArgsSlice<'a> {
+    Forward(&'a [Value]),
+    Reverse(&'a [Value]),
 }

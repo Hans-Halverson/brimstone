@@ -325,6 +325,15 @@ define_instructions!(
         [4] argc: UInt,
     }
 
+    /// Call a function with a variable number of arguments, specifying the receiver to be used. All
+    /// other arguments are passed in an array.
+    CallVarargs (CallVarargsInstruction, call_varargs_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] receiver: Register,
+        [3] args: Register,
+    }
+
     /// Call a function which may be a direct eval. If this is a direct eval then perform the direct
     /// eval, otherwise identical to the call instruction.
     ///
@@ -337,6 +346,17 @@ define_instructions!(
         [3] argc: UInt,
     }
 
+    /// Call a function with variable number of arguments, where the function may be a direct eval.
+    /// If this is a direct eval then perform the direct eval, otherwise identical to the call
+    /// instruction.
+    ///
+    /// The receiver is undefined. All other arguments are passed in an array.
+    CallMaybeEvalVarargs (CallMaybeEvalVarargsInstruction, call_maybe_eval_varargs_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] args: Register,
+    }
+
     /// Call a constructor. Arguments are passed in contiguous sequence of registers starting at
     /// argv, of length argc. The new target is passed in its own register.
     Construct (ConstructInstruction, construct_instruction) {
@@ -345,6 +365,15 @@ define_instructions!(
         [2] new_target: Register,
         [3] argv: Register,
         [4] argc: UInt,
+    }
+
+    /// Call a constructor with a variable number of arguments, where arguments are passed in an
+    /// array. The new target is passed in its own register.
+    ConstructVarargs (ConstructVarargsInstruction, construct_varargs_instruction) {
+        [0] dest: Register,
+        [1] function: Register,
+        [2] new_target: Register,
+        [3] args: Register,
     }
 
     /// Return from a function, producing a value.

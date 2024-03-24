@@ -48,12 +48,12 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 65 00      EvalInit c0
+     0: 68 00      EvalInit c0
      2: 07 ff      LoadEmpty r0
-     4: 60 ff 01   CheckTdz r0, c1
+     4: 63 ff 01   CheckTdz r0, c1
      7: 02 fe ff   Mov r1, r0
     10: 03 ff 01   LoadImmediate r0, 1
-    13: 14 fe      Ret r1
+    13: 17 fe      Ret r1
   Constant Table:
     0: [GlobalNames]
     1: [String: x]
@@ -61,15 +61,15 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 65 00         EvalInit c0
-     2: 57 01         PushLexicalScope c1
+     0: 68 00         EvalInit c0
+     2: 5a 01         PushLexicalScope c1
      4: 07 fe         LoadEmpty r1
-     6: 5d fe 00 00   StoreToScope r1, 0, 0
-    10: 46 fe 02      NewClosure r1, c2
+     6: 60 fe 00 00   StoreToScope r1, 0, 0
+    10: 49 fe 02      NewClosure r1, c2
     13: 0f fe 03      StoreDynamic r1, c3
     16: 03 fe 01      LoadImmediate r1, 1
-    19: 5d fe 00 00   StoreToScope r1, 0, 0
-    23: 14 ff         Ret r0
+    19: 60 fe 00 00   StoreToScope r1, 0, 0
+    23: 17 ff         Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [ScopeNames]
@@ -79,23 +79,23 @@
 
 [BytecodeFunction: inner] {
   Parameters: 0, Registers: 1
-    0: 5c ff 00 00   LoadFromScope r0, 0, 0
-    4: 60 ff 00      CheckTdz r0, c0
+    0: 5f ff 00 00   LoadFromScope r0, 0, 0
+    4: 63 ff 00      CheckTdz r0, c0
     7: 05 ff         LoadUndefined r0
-    9: 14 ff         Ret r0
+    9: 17 ff         Ret r0
   Constant Table:
     0: [String: x]
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 65 00            EvalInit c0
-     2: 57 01            PushLexicalScope c1
-     4: 5d 07 00 00      StoreToScope <this>, 0, 0
+     0: 68 00            EvalInit c0
+     2: 5a 01            PushLexicalScope c1
+     4: 60 07 00 00      StoreToScope <this>, 0, 0
      8: 0d fe 02         LoadDynamic r1, c2
     11: 04 fd 03         LoadConstant r2, c3
-    14: 12 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
-    19: 14 ff            Ret r0
+    14: 13 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
+    19: 17 ff            Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [ScopeNames]
@@ -105,20 +105,20 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 65 00   EvalInit c0
-    2: 14 ff   Ret r0
+    0: 68 00   EvalInit c0
+    2: 17 ff   Ret r0
   Constant Table:
     0: [GlobalNames]
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 58 00            PushFunctionScope c0
-     2: 5d 07 00 00      StoreToScope <this>, 0, 0
+     0: 5b 00            PushFunctionScope c0
+     2: 60 07 00 00      StoreToScope <this>, 0, 0
      6: 0d fe 01         LoadDynamic r1, c1
      9: 04 fd 02         LoadConstant r2, c2
-    12: 12 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
-    17: 14 ff            Ret r0
+    12: 13 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
+    17: 17 ff            Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -127,18 +127,18 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 14 ff   Ret r0
+    0: 17 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 64 00            GlobalInit c0
-     2: 57 01            PushLexicalScope c1
-     4: 5d 07 00 00      StoreToScope <this>, 0, 0
+     0: 67 00            GlobalInit c0
+     2: 5a 01            PushLexicalScope c1
+     4: 60 07 00 00      StoreToScope <this>, 0, 0
      8: 0a fe 02         LoadGlobal r1, c2
     11: 04 fd 03         LoadConstant r2, c3
-    14: 12 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
-    19: 14 ff            Ret r0
+    14: 13 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
+    19: 17 ff            Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [ScopeNames]
@@ -148,20 +148,20 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 65 00   EvalInit c0
-    2: 14 ff   Ret r0
+    0: 68 00   EvalInit c0
+    2: 17 ff   Ret r0
   Constant Table:
     0: [GlobalNames]
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 58 00            PushFunctionScope c0
-     2: 5d 07 00 00      StoreToScope <this>, 0, 0
+     0: 5b 00            PushFunctionScope c0
+     2: 60 07 00 00      StoreToScope <this>, 0, 0
      6: 0a fe 01         LoadGlobal r1, c1
      9: 04 fd 02         LoadConstant r2, c2
-    12: 12 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
-    17: 14 ff            Ret r0
+    12: 13 ff fe fd 01   CallMaybeEval r0, r1, r2, 1
+    17: 17 ff            Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -170,6 +170,6 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 14 ff   Ret r0
+    0: 17 ff   Ret r0
 }
 

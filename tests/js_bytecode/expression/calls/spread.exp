@@ -1,0 +1,152 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: GlobalInit c0
+     2: NewClosure r0, c1
+     5: StoreGlobal r0, c2
+     8: NewClosure r0, c3
+    11: StoreGlobal r0, c4
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: LoadUndefined r0
+    34: Ret r0
+  Constant Table:
+    0: [GlobalNames]
+    1: [BytecodeFunction: simpleSpread]
+    2: [String: simpleSpread]
+    3: [BytecodeFunction: spreadWithArgs]
+    4: [String: spreadWithArgs]
+    5: [BytecodeFunction: complexSpread]
+    6: [String: complexSpread]
+    7: [BytecodeFunction: spreadWithReceiver]
+    8: [String: spreadWithReceiver]
+    9: [BytecodeFunction: maybeEvalSpread]
+    10: [String: maybeEvalSpread]
+}
+
+[BytecodeFunction: simpleSpread] {
+  Parameters: 1, Registers: 7
+     0: LoadGlobal r0, c0
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: GetIterator r3, r4, a0
+  .L0:
+    12: IteratorNext r5, r6, r3, r4
+    17: JumpTrue r6, 11 (.L1)
+    20: SetArrayProperty r1, r2, r5
+    24: Inc r2
+    26: Jump -14 (.L0)
+  .L1:
+    28: LoadUndefined r2
+    30: CallVarargs r0, r0, r2, r1
+    35: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: spreadWithArgs] {
+  Parameters: 1, Registers: 7
+     0: LoadGlobal r0, c0
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: LoadImmediate r3, 1
+    11: SetArrayProperty r1, r2, r3
+    15: Inc r2
+    17: GetIterator r3, r4, a0
+  .L0:
+    21: IteratorNext r5, r6, r3, r4
+    26: JumpTrue r6, 11 (.L1)
+    29: SetArrayProperty r1, r2, r5
+    33: Inc r2
+    35: Jump -14 (.L0)
+  .L1:
+    37: LoadUndefined r2
+    39: CallVarargs r0, r0, r2, r1
+    44: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: complexSpread] {
+  Parameters: 0, Registers: 8
+     0: LoadGlobal r0, c0
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: LoadImmediate r3, 1
+    11: SetArrayProperty r1, r2, r3
+    15: Inc r2
+    17: LoadImmediate r3, 2
+    20: GetIterator r4, r5, r3
+  .L0:
+    24: IteratorNext r6, r7, r4, r5
+    29: JumpTrue r7, 11 (.L1)
+    32: SetArrayProperty r1, r2, r6
+    36: Inc r2
+    38: Jump -14 (.L0)
+  .L1:
+    40: LoadImmediate r3, 3
+    43: SetArrayProperty r1, r2, r3
+    47: Inc r2
+    49: LoadImmediate r3, 4
+    52: GetIterator r4, r5, r3
+  .L2:
+    56: IteratorNext r6, r7, r4, r5
+    61: JumpTrue r7, 11 (.L3)
+    64: SetArrayProperty r1, r2, r6
+    68: Inc r2
+    70: Jump -14 (.L2)
+  .L3:
+    72: LoadUndefined r2
+    74: CallVarargs r0, r0, r2, r1
+    79: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: spreadWithReceiver] {
+  Parameters: 2, Registers: 7
+     0: GetNamedProperty r0, a0, c0
+     4: NewArray r1
+     6: LoadImmediate r2, 0
+     9: GetIterator r3, r4, a1
+  .L0:
+    13: IteratorNext r5, r6, r3, r4
+    18: JumpTrue r6, 11 (.L1)
+    21: SetArrayProperty r1, r2, r5
+    25: Inc r2
+    27: Jump -14 (.L0)
+  .L1:
+    29: CallVarargs r0, r0, a0, r1
+    34: Ret r0
+  Constant Table:
+    0: [String: f]
+}
+
+[BytecodeFunction: maybeEvalSpread] {
+  Parameters: 1, Registers: 8
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 1, 0
+     6: StoreToScope a0, 0, 0
+    10: NewMappedArguments r0
+    12: StoreToScope r0, 2, 0
+    16: LoadDynamic r0, c1
+    19: NewArray r1
+    21: LoadImmediate r2, 0
+    24: LoadFromScope r3, 0, 0
+    28: GetIterator r4, r5, r3
+  .L0:
+    32: IteratorNext r6, r7, r4, r5
+    37: JumpTrue r7, 11 (.L1)
+    40: SetArrayProperty r1, r2, r6
+    44: Inc r2
+    46: Jump -14 (.L0)
+  .L1:
+    48: CallMaybeEvalVarargs r0, r0, r1
+    52: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+}

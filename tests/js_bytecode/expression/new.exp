@@ -5,21 +5,29 @@
      5: StoreGlobal r0, c2
      8: NewClosure r0, c3
     11: StoreGlobal r0, c4
-    14: LoadGlobal r0, c2
-    17: Construct r0, r0, r0, r0, 0
-    23: LoadGlobal r0, c2
-    26: LoadImmediate r1, 1
-    29: LoadImmediate r2, 2
-    32: LoadImmediate r3, 3
-    35: Construct r0, r0, r0, r1, 3
-    41: LoadUndefined r0
-    43: Ret r0
+    14: NewClosure r0, c5
+    17: StoreGlobal r0, c6
+    20: NewClosure r0, c7
+    23: StoreGlobal r0, c8
+    26: LoadGlobal r0, c2
+    29: Construct r0, r0, r0, r0, 0
+    35: LoadGlobal r0, c2
+    38: LoadImmediate r1, 1
+    41: LoadImmediate r2, 2
+    44: LoadImmediate r3, 3
+    47: Construct r0, r0, r0, r1, 3
+    53: LoadUndefined r0
+    55: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: foo]
     2: [String: foo]
     3: [BytecodeFunction: bar]
     4: [String: bar]
+    5: [BytecodeFunction: spread]
+    6: [String: spread]
+    7: [BytecodeFunction: argAndSpread]
+    8: [String: argAndSpread]
 }
 
 [BytecodeFunction: foo] {
@@ -39,6 +47,47 @@
     21: Add r0, r0, r1
     25: LoadUndefined r0
     27: Ret r0
+  Constant Table:
+    0: [String: foo]
+}
+
+[BytecodeFunction: spread] {
+  Parameters: 1, Registers: 7
+     0: LoadGlobal r0, c0
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: GetIterator r3, r4, a0
+  .L0:
+    12: IteratorNext r5, r6, r3, r4
+    17: JumpTrue r6, 11 (.L1)
+    20: SetArrayProperty r1, r2, r5
+    24: Inc r2
+    26: Jump -14 (.L0)
+  .L1:
+    28: ConstructVarargs r0, r0, r0, r1
+    33: Ret r0
+  Constant Table:
+    0: [String: foo]
+}
+
+[BytecodeFunction: argAndSpread] {
+  Parameters: 1, Registers: 7
+     0: LoadGlobal r0, c0
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: LoadImmediate r3, 1
+    11: SetArrayProperty r1, r2, r3
+    15: Inc r2
+    17: GetIterator r3, r4, a0
+  .L0:
+    21: IteratorNext r5, r6, r3, r4
+    26: JumpTrue r6, 11 (.L1)
+    29: SetArrayProperty r1, r2, r5
+    33: Inc r2
+    35: Jump -14 (.L0)
+  .L1:
+    37: ConstructVarargs r0, r0, r0, r1
+    42: Ret r0
   Constant Table:
     0: [String: foo]
 }

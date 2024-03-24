@@ -12,3 +12,11 @@ function bar(x) {
   // Arguments are literals, registers, and globals
   2 + new foo(1, x, foo);
 }
+
+function spread(p) {
+  return new foo(...p)
+}
+
+function argAndSpread(p) {
+  return new foo(1, ...p)
+}

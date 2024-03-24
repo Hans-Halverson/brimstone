@@ -2,10 +2,12 @@ use crate::js::runtime::Value;
 
 use super::{
     instruction::{
-        CallInstruction, CallMaybeEvalInstruction, CallWithReceiverInstruction, Instruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpNotNullishConstantInstruction,
-        JumpNotNullishInstruction, JumpNotUndefinedConstantInstruction,
-        JumpNotUndefinedInstruction, JumpNullishConstantInstruction, JumpNullishInstruction,
+        CallInstruction, CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction,
+        CallVarargsInstruction, CallWithReceiverInstruction, ConstructInstruction,
+        ConstructVarargsInstruction, Instruction, JumpFalseConstantInstruction,
+        JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
+        JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
         JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
         JumpTrueConstantInstruction, JumpTrueInstruction,
@@ -14,12 +16,16 @@ use super::{
     width::Width,
 };
 
-/// Generic trait for call instructions, such as CallInstruction and CallWithReceiverInstruction.
+pub enum GenericCallArgs<W: Width> {
+    Stack { argv: Register<W>, argc: UInt<W> },
+    Varargs { array: Register<W> },
+}
+
+/// Generic trait for call instructions, such as Call and CallWithReceiver.
 pub trait GenericCallInstruction<W: Width>: Instruction {
     fn dest(&self) -> Register<W>;
     fn function(&self) -> Register<W>;
-    fn argc(&self) -> UInt<W>;
-    fn argv(&self) -> Register<W>;
+    fn args(&self) -> GenericCallArgs<W>;
     fn receiver(&self) -> Option<Register<W>>;
 }
 
@@ -35,13 +41,8 @@ impl<W: Width> GenericCallInstruction<W> for CallInstruction<W> {
     }
 
     #[inline]
-    fn argc(&self) -> UInt<W> {
-        self.argc()
-    }
-
-    #[inline]
-    fn argv(&self) -> Register<W> {
-        self.argv()
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Stack { argv: self.argv(), argc: self.argc() }
     }
 
     #[inline]
@@ -62,13 +63,30 @@ impl<W: Width> GenericCallInstruction<W> for CallWithReceiverInstruction<W> {
     }
 
     #[inline]
-    fn argc(&self) -> UInt<W> {
-        self.argc()
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Stack { argv: self.argv(), argc: self.argc() }
     }
 
     #[inline]
-    fn argv(&self) -> Register<W> {
-        self.argv()
+    fn receiver(&self) -> Option<Register<W>> {
+        Some(self.receiver())
+    }
+}
+
+impl<W: Width> GenericCallInstruction<W> for CallVarargsInstruction<W> {
+    #[inline]
+    fn dest(&self) -> Register<W> {
+        self.dest()
+    }
+
+    #[inline]
+    fn function(&self) -> Register<W> {
+        self.function()
+    }
+
+    #[inline]
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Varargs { array: self.args() }
     }
 
     #[inline]
@@ -89,18 +107,87 @@ impl<W: Width> GenericCallInstruction<W> for CallMaybeEvalInstruction<W> {
     }
 
     #[inline]
-    fn argc(&self) -> UInt<W> {
-        self.argc()
-    }
-
-    #[inline]
-    fn argv(&self) -> Register<W> {
-        self.argv()
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Stack { argv: self.argv(), argc: self.argc() }
     }
 
     #[inline]
     fn receiver(&self) -> Option<Register<W>> {
         None
+    }
+}
+
+impl<W: Width> GenericCallInstruction<W> for CallMaybeEvalVarargsInstruction<W> {
+    #[inline]
+    fn dest(&self) -> Register<W> {
+        self.dest()
+    }
+
+    #[inline]
+    fn function(&self) -> Register<W> {
+        self.function()
+    }
+
+    #[inline]
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Varargs { array: self.args() }
+    }
+
+    #[inline]
+    fn receiver(&self) -> Option<Register<W>> {
+        None
+    }
+}
+
+/// Generic trait for construct instructions, such as Construct and ConstructVarargs.
+pub trait GenericConstructInstruction<W: Width>: Instruction {
+    fn dest(&self) -> Register<W>;
+    fn function(&self) -> Register<W>;
+    fn args(&self) -> GenericCallArgs<W>;
+    fn new_target(&self) -> Register<W>;
+}
+
+impl<W: Width> GenericConstructInstruction<W> for ConstructInstruction<W> {
+    #[inline]
+    fn dest(&self) -> Register<W> {
+        self.dest()
+    }
+
+    #[inline]
+    fn function(&self) -> Register<W> {
+        self.function()
+    }
+
+    #[inline]
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Stack { argv: self.argv(), argc: self.argc() }
+    }
+
+    #[inline]
+    fn new_target(&self) -> Register<W> {
+        self.new_target()
+    }
+}
+
+impl<W: Width> GenericConstructInstruction<W> for ConstructVarargsInstruction<W> {
+    #[inline]
+    fn dest(&self) -> Register<W> {
+        self.dest()
+    }
+
+    #[inline]
+    fn function(&self) -> Register<W> {
+        self.function()
+    }
+
+    #[inline]
+    fn args(&self) -> GenericCallArgs<W> {
+        GenericCallArgs::Varargs { array: self.args() }
+    }
+
+    #[inline]
+    fn new_target(&self) -> Register<W> {
+        self.new_target()
     }
 }
 

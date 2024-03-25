@@ -689,7 +689,7 @@ impl VM {
     }
 
     #[inline]
-    fn scope(&self) -> HeapPtr<Scope> {
+    pub fn scope(&self) -> HeapPtr<Scope> {
         StackFrame::for_fp(self.fp).scope()
     }
 

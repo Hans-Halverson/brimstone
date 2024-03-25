@@ -25,7 +25,7 @@ use crate::js::{
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
         scope::Scope,
-        scope_names::{ScopeNameFlags, ScopeNames},
+        scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         value::BigIntValue,
         Context, Handle, Realm, Value,
     },
@@ -205,7 +205,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             }
 
             // Start the eval scope
-            generator.gen_scope_start(program_scope)?;
+            generator.gen_scope_start(program_scope, None)?;
 
             // Store the captured `this` right away if necessary
             generator.gen_store_captured_this(program_scope)?;
@@ -918,8 +918,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             None
         };
 
+        // Mark the function scope if it is a scope only for function parameters, separate from the
+        // function body.
+        let mut func_scope_flags = None;
+        if let ast::FunctionBody::Block(body) = func.body.as_ref() {
+            if body.scope.is_some() {
+                func_scope_flags = Some(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE);
+            }
+        }
+
         // Entire function parameters and body are in their own scope.
-        self.gen_scope_start(func_scope)?;
+        self.gen_scope_start(func_scope, func_scope_flags)?;
 
         // Store the function itself in scope if this is a named function expression
         if let Some(id) = func.id.as_ref() {
@@ -1020,7 +1029,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::FunctionBody::Block(block_body) => {
                 // Function body may be the start of a new scope
                 if let Some(body_scope) = block_body.scope {
-                    self.gen_scope_start(body_scope.as_ref())?;
+                    self.gen_scope_start(body_scope.as_ref(), None)?;
                 }
 
                 // Heuristic to ignore the use strict directive in common cases. Safe since there
@@ -4013,7 +4022,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<StmtCompletion> {
         // Block body forms a new scope
         let block_scope = stmt.scope.as_ref();
-        self.gen_scope_start(block_scope)?;
+        self.gen_scope_start(block_scope, None)?;
 
         let stmt_completion = self.gen_statement_list(&stmt.body)?;
 
@@ -4025,7 +4034,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(stmt_completion)
     }
 
-    fn gen_scope_start(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+    fn gen_scope_start(
+        &mut self,
+        scope: &AstScopeNode,
+        flags: Option<ScopeFlags>,
+    ) -> EmitResult<()> {
+        let flags = flags.unwrap_or(ScopeFlags::empty());
+
         // Push a new scope onto the scope stack if necessary
         match scope.kind() {
             // Function scopes are considered var hoist targets
@@ -4033,7 +4048,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ScopeNodeKind::FunctionBody
             // Strict eval forms a new var scope
             | ScopeNodeKind::Eval { is_strict: true, .. } => {
-                self.push_scope(scope, /* needs_function_scope */ true, None)?
+                if let Some (vm_node_id) = scope.vm_scope_id() {
+                    let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
+                    self.writer.push_function_scope_instruction(scope_names_index);
+                    self.push_scope_stack_node(vm_node_id);
+                }
             }
             // Global and with scopes are handled separately
             ScopeNodeKind::Global
@@ -4042,7 +4061,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ScopeNodeKind::Block
             | ScopeNodeKind::Switch
             | ScopeNodeKind::Eval { is_strict: false, .. } => {
-                self.push_scope(scope, /* needs_function_scope */ false, None)?
+                if let Some (vm_node_id) = scope.vm_scope_id() {
+                    let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
+                    self.writer.push_lexical_scope_instruction(scope_names_index);
+                    self.push_scope_stack_node(vm_node_id);
+                }
             }
         }
 
@@ -4097,57 +4120,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    /// Push a new scope onto the scope stack if necessary. Optionally pass an object to be used for
-    /// a with scope.
-    fn push_scope(
+    fn gen_scope_names(
         &mut self,
         scope: &AstScopeNode,
-        needs_function_scope: bool,
-        with_object: Option<GenRegister>,
-    ) -> EmitResult<()> {
-        if let Some(vm_scope_id) = scope.vm_scope_id() {
-            let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
-
-            // Store ScopeNames table in the constant table and cache
-            let scope_names_constant_index =
-                if let Some(constant_index) = self.scope_names_cache.get(&vm_scope_id) {
-                    *constant_index
-                } else {
-                    // Build a ScopeNames table containing the names of all bindings in the scope
-                    let names = vm_node
-                        .bindings()
-                        .iter()
-                        .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-                        .collect::<Vec<_>>();
-                    let flags = self.gen_scope_name_flags(scope);
-
-                    let scope_names = ScopeNames::new(self.cx, &names, &flags);
-                    let scope_names_index = self
-                        .constant_table_builder
-                        .add_heap_object(scope_names.cast())?;
-
-                    let constant_index = ConstantIndex::new(scope_names_index);
-                    self.scope_names_cache.insert(vm_scope_id, constant_index);
-
-                    constant_index
-                };
-
-            // Push the new scope onto the stack, making it the current scope
-            if let Some(with_object) = with_object {
-                self.writer
-                    .push_with_scope_instruction(with_object, scope_names_constant_index);
-            } else if needs_function_scope {
-                self.writer
-                    .push_function_scope_instruction(scope_names_constant_index);
-            } else {
-                self.writer
-                    .push_lexical_scope_instruction(scope_names_constant_index);
-            }
-
-            self.push_scope_stack_node(vm_scope_id);
+        vm_scope_id: ScopeNodeId,
+        flags: ScopeFlags,
+    ) -> EmitResult<GenConstantIndex> {
+        // Check if scope was already created and cached
+        if let Some(constant_index) = self.scope_names_cache.get(&vm_scope_id) {
+            return Ok(*constant_index);
         }
 
-        Ok(())
+        let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
+        let names = vm_node
+            .bindings()
+            .iter()
+            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
+            .collect::<Vec<_>>();
+
+        let name_flags = self.gen_scope_name_flags(scope);
+        let scope_names = ScopeNames::new(self.cx, flags, &names, &name_flags);
+
+        let scope_names_index = self
+            .constant_table_builder
+            .add_heap_object(scope_names.cast())?;
+        let constant_index = ConstantIndex::new(scope_names_index);
+
+        // Cache the scope names for future use
+        self.scope_names_cache.insert(vm_scope_id, constant_index);
+
+        Ok(constant_index)
     }
 
     fn push_scope_stack_node(&mut self, vm_scope_id: ScopeNodeId) {
@@ -4192,15 +4194,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let mut all_flags = vec![];
         for name in vm_scope.bindings() {
-            let is_const = scope
-                .get_binding_opt(name)
-                .map(|b| b.is_const())
+            let mut flags = ScopeNameFlags::empty();
+            let binding = scope.get_binding_opt(name);
+
+            let is_const = binding.map(|b| b.is_const()).unwrap_or(false);
+            if is_const {
+                flags |= ScopeNameFlags::IS_CONST;
+            }
+
+            let is_lexical = binding
+                .map(|b| b.kind().is_lexically_scoped())
                 .unwrap_or(false);
-            let flags = if is_const {
-                ScopeNameFlags::IS_CONST
-            } else {
-                ScopeNameFlags::empty()
-            };
+            if is_lexical {
+                flags |= ScopeNameFlags::IS_LEXICAL;
+            }
+
+            let is_lexical = binding
+                .map(|b| b.kind().is_function_parameter())
+                .unwrap_or(false);
+            if is_lexical {
+                flags |= ScopeNameFlags::IS_FUNCTION_PARAMETER;
+            }
 
             all_flags.push(flags);
         }
@@ -4306,7 +4320,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start the switch body which forms a new scope
         let switch_body_scope = stmt.scope.as_ref();
-        self.gen_scope_start(switch_body_scope)?;
+        self.gen_scope_start(switch_body_scope, None)?;
 
         // Create and jump to the case block ids which will be generated later
         let mut case_block_ids = Vec::with_capacity(stmt.cases.len());
@@ -4379,7 +4393,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // since the only part of `gen_scope_start` that could be performed for a for statement
         // is setting up TDZ checks, which only needs to happen on init.
         let for_scope = stmt.scope.as_ref();
-        self.gen_scope_start(for_scope)?;
+        self.gen_scope_start(for_scope, None)?;
 
         // Continue statements should only unwind scope chain to for statement's scope, so it can
         // be duplicated for the next iteration.
@@ -4472,7 +4486,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // handle TDZ checks (since the right hand side is evaluated with left hand bindings in
         // scope but not yet initialized).
         let for_scope = stmt.scope.as_ref();
-        self.gen_scope_start(for_scope)?;
+        self.gen_scope_start(for_scope, None)?;
 
         let iterator = self.register_allocator.allocate()?;
         let next_method = self.register_allocator.allocate()?;
@@ -4488,7 +4502,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start of a single iteration, which is in the entire for-of statement's scope again
         self.start_block(iteration_start_block);
-        self.gen_scope_start(for_scope)?;
+        self.gen_scope_start(for_scope, None)?;
 
         // Iteration starts by calling IteratorNext to get the value and done flag
         let value = self.register_allocator.allocate()?;
@@ -4655,7 +4669,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // handle TDZ checks (since the right hand side is evaluated with left hand bindings in
         // scope but not yet initialized).
         let for_scope = stmt.scope.as_ref();
-        self.gen_scope_start(for_scope)?;
+        self.gen_scope_start(for_scope, None)?;
 
         // Entire for-in statement is skipped if right hand side is nullish
         let object = self.gen_outer_expression(&stmt.right)?;
@@ -4672,7 +4686,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start of a single iteration, which is in the entire for-in statement's scope again
         self.start_block(iteration_start_block);
-        self.gen_scope_start(for_scope)?;
+        self.gen_scope_start(for_scope, None)?;
 
         // Iteration starts by calling the for-in iterator's `next` method
         let next_result = self.gen_for_each_next_result_dest(stmt)?;
@@ -4812,9 +4826,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let with_scope = stmt.scope.as_ref();
 
         // Start with scope
-        self.push_scope(with_scope, /* needs_function_scope */ false, Some(object))?;
+        let vm_scope_id = with_scope.vm_scope_id().unwrap();
+        let scope_names_index =
+            self.gen_scope_names(with_scope, vm_scope_id, ScopeFlags::empty())?;
+        self.writer
+            .push_with_scope_instruction(object, scope_names_index);
+        self.push_scope_stack_node(vm_scope_id);
+
         self.register_allocator.release(object);
-        self.gen_scope_start(with_scope)?;
+        self.gen_scope_start(with_scope, None)?;
 
         let body_completion = self.gen_statement(stmt.body.as_ref())?;
 
@@ -4907,7 +4927,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Catch scope starts before the parameter is evaluated and potentially destructured
         let catch_scope = catch_clause.scope.as_ref();
-        self.gen_scope_start(catch_scope)?;
+        self.gen_scope_start(catch_scope, None)?;
 
         // If there is a catch parameter, mark the register in the handler
         match param {

@@ -108,6 +108,11 @@ impl Scope {
     }
 
     #[inline]
+    pub fn parent(&self) -> Option<HeapPtr<Scope>> {
+        self.parent
+    }
+
+    #[inline]
     pub fn object_ptr(&self) -> HeapPtr<ObjectValue> {
         self.object.unwrap()
     }
@@ -141,7 +146,7 @@ impl Scope {
     ///
     /// Should only be called on global scopes.
     #[inline]
-    fn global_scope_realm(&mut self) -> HeapPtr<Realm> {
+    pub fn global_scope_realm(&mut self) -> HeapPtr<Realm> {
         debug_assert!(self.kind == ScopeKind::Global);
         self.get_slot(0).as_pointer().cast::<Realm>()
     }

@@ -29,3 +29,7 @@ function tdzAfterParams(x = 1) {
     return y;
   }
 }
+
+function bodyScopeIfParamsHaveEval(x = eval('')) {
+  1;
+}

@@ -11,8 +11,10 @@
     23: StoreGlobal r0, c8
     26: NewClosure r0, c9
     29: StoreGlobal r0, c10
-    32: LoadUndefined r0
-    34: Ret r0
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: LoadUndefined r0
+    40: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: sameNameNoCaptures]
@@ -25,6 +27,8 @@
     8: [String: sameNameBothCaptures]
     9: [BytecodeFunction: tdzAfterParams]
     10: [String: tdzAfterParams]
+    11: [BytecodeFunction: bodyScopeIfParamsHaveEval]
+    12: [String: bodyScopeIfParamsHaveEval]
 }
 
 [BytecodeFunction: sameNameNoCaptures] {
@@ -153,4 +157,28 @@
     7: Ret r0
   Constant Table:
     0: [String: y]
+}
+
+[BytecodeFunction: bodyScopeIfParamsHaveEval] {
+  Parameters: 1, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 3, 0
+    10: NewUnmappedArguments r0
+    12: StoreToScope r0, 2, 0
+    16: JumpNotUndefined a0, 14 (.L0)
+    19: LoadDynamic r0, c1
+    22: LoadConstant r1, c2
+    25: CallMaybeEval a0, r0, r1, 1
+  .L0:
+    30: StoreToScope a0, 1, 0
+    34: PushFunctionScope c3
+    36: LoadImmediate r0, 1
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [ScopeNames]
 }

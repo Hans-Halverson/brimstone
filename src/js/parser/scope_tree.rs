@@ -159,6 +159,7 @@ impl ScopeTree {
             has_duplicates: false,
             supports_dynamic_access: false,
             supports_dynamic_bindings,
+            allow_empty_vm_node: false,
             enclosing_scope,
             enclosed_scopes: vec![],
             num_local_registers: 0,
@@ -583,7 +584,10 @@ impl ScopeTree {
         // Only if there are bindings to place in the scope do we need to create a VM scope node.
         // Any scopes that could contain dynamic bindings must also have a VM scope node to hold the
         // dynamic object. This includes all with scopes.
-        if !bindings.is_empty() || ast_node.supports_dynamic_bindings {
+        if !bindings.is_empty()
+            || ast_node.supports_dynamic_bindings
+            || ast_node.allow_empty_vm_node
+        {
             self.vm_nodes.push(VMScopeNode { bindings });
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }
@@ -694,6 +698,8 @@ pub struct AstScopeNode {
     /// Whether this scope may have bindings dynamically added to it at runtime, preventing static
     /// analysis e.g. due to the presence of `eval` or `with`.
     supports_dynamic_bindings: bool,
+    /// Whether to create a VM node when this AST scope node has no bindings.
+    allow_empty_vm_node: bool,
     /// The most recent ancestor global, function, or eval AST scope node, meaning the node that
     /// this scope's locals will be placed in. For global, function, and eval nodes this points to
     /// itself.
@@ -730,6 +736,14 @@ impl AstScopeNode {
 
     pub fn vm_scope_id(&self) -> Option<ScopeNodeId> {
         self.vm_scope
+    }
+
+    pub fn supports_dynamic_bindings(&self) -> bool {
+        self.supports_dynamic_bindings
+    }
+
+    pub fn set_allow_empty_vm_node(&mut self, value: bool) {
+        self.allow_empty_vm_node = value;
     }
 
     fn add_binding(
@@ -898,6 +912,10 @@ impl BindingKind {
 
     pub fn is_implicit_this(&self) -> bool {
         matches!(self, BindingKind::ImplicitThis)
+    }
+
+    pub fn is_function_parameter(&self) -> bool {
+        matches!(self, BindingKind::FunctionParameter { .. })
     }
 
     fn has_tdz(&self) -> bool {

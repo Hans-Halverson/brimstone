@@ -881,6 +881,18 @@ impl Analyzer<'_> {
             }
         }
 
+        // If there is a potential eval in the function params then the function body VM scope must
+        // always be created, even if empty. This is used to distinguish between evals that occur in
+        // the function body vs function params scope when checking for conflicts with parameter
+        // names.
+        if func.scope.as_ref().supports_dynamic_bindings() {
+            if let FunctionBody::Block(body) = func.body.as_mut() {
+                if let Some(mut scope) = body.scope {
+                    scope.as_mut().set_allow_empty_vm_node(true);
+                }
+            }
+        }
+
         // Visit function body
         self.visit_function_body(&mut func.body);
 

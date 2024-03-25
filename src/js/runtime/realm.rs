@@ -24,7 +24,7 @@ use super::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     scope::Scope,
-    scope_names::{ScopeNameFlags, ScopeNames},
+    scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
     string_value::FlatString,
     Context, EvalResult, Value,
 };
@@ -216,7 +216,7 @@ impl Handle<Realm> {
             .iter()
             .map(|name| InternedStrings::get_str(cx, name).as_flat())
             .collect::<Vec<_>>();
-        let scope_names = ScopeNames::new(cx, &names, binding_flags);
+        let scope_names = ScopeNames::new(cx, ScopeFlags::empty(), &names, binding_flags);
 
         let global_object = self.global_object();
         let mut global_scope = Scope::new_global(cx, scope_names, global_object);

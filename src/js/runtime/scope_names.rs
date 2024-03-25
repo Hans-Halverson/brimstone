@@ -13,29 +13,47 @@ use super::{
 #[repr(C)]
 pub struct ScopeNames {
     descriptor: HeapPtr<ObjectDescriptor>,
+    /// Flags for this scope overall.
+    flags: ScopeFlags,
     /// Inline array of names for the slots.
     names: InlineArray<HeapPtr<FlatString>>,
     /// Compressed flag data for each slot, with one byte per slot.
-    _flags: [u64; 1],
+    _name_flags: [u64; 1],
+}
+
+bitflags! {
+    #[derive(Clone, Copy)]
+    pub struct ScopeFlags: u8 {
+        /// Whether this is the scope that contains function params, separate from the function
+        /// body because the function params contains expressions.
+        const IS_FUNCTION_PARAMETERS_SCOPE = 0x1;
+    }
 }
 
 bitflags! {
     #[derive(Clone, Copy)]
     pub struct ScopeNameFlags: u8 {
+        /// Whether this is a const binding
         const IS_CONST = 0x1;
+        /// Whether this is a lexically scoped binding.
+        const IS_LEXICAL = 0x2;
+        /// Whether this is a function parameter binding.
+        const IS_FUNCTION_PARAMETER = 0x4;
     }
 }
 
 impl ScopeNames {
     pub fn new(
         cx: Context,
+        flags: ScopeFlags,
         names: &[Handle<FlatString>],
-        flags: &[ScopeNameFlags],
+        name_flags: &[ScopeNameFlags],
     ) -> Handle<ScopeNames> {
         let size = Self::calculate_size_in_bytes(names.len());
         let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size);
 
         set_uninit!(scope_names.descriptor, cx.base_descriptors.get(ObjectKind::ScopeNames));
+        set_uninit!(scope_names.flags, flags);
 
         // Copy names into inline names array
         scope_names.names.init_with_uninit(names.len());
@@ -43,10 +61,14 @@ impl ScopeNames {
             scope_names.names.set_unchecked(i, name.get_());
         }
 
-        // Copy flags into flags section
-        let flags_ptr = scope_names.get_flags_ptr() as *mut u8;
+        // Copy name flags into name flags section
+        let name_flags_ptr = scope_names.get_name_flags_ptr() as *mut u8;
         unsafe {
-            std::ptr::copy_nonoverlapping(flags.as_ptr().cast::<u8>(), flags_ptr, flags.len())
+            std::ptr::copy_nonoverlapping(
+                name_flags.as_ptr().cast::<u8>(),
+                name_flags_ptr,
+                name_flags.len(),
+            )
         };
 
         scope_names.to_handle()
@@ -55,25 +77,30 @@ impl ScopeNames {
     const NAMES_OFFSET: usize = field_offset!(ScopeNames, names);
 
     fn calculate_size_in_bytes(num_slots: usize) -> usize {
-        Self::flags_offset(num_slots) + Self::calculate_flags_size(num_slots)
+        Self::name_flags_offset(num_slots) + Self::calculate_name_flags_size(num_slots)
     }
 
-    fn flags_offset(num_slots: usize) -> usize {
+    fn name_flags_offset(num_slots: usize) -> usize {
         Self::NAMES_OFFSET + InlineArray::<StringValue>::calculate_size_in_bytes(num_slots)
     }
 
-    pub fn calculate_flags_size(num_slots: usize) -> usize {
+    pub fn calculate_name_flags_size(num_slots: usize) -> usize {
         // One byte per slot
         num_slots
     }
 
-    fn get_flags_ptr(&self) -> *const u8 {
+    fn get_name_flags_ptr(&self) -> *const u8 {
         let ptr = self as *const ScopeNames as *const u8;
-        unsafe { ptr.add(Self::flags_offset(self.len())) }
+        unsafe { ptr.add(Self::name_flags_offset(self.len())) }
     }
 
     pub fn len(&self) -> usize {
         self.names.len()
+    }
+
+    pub fn is_function_parameters_scope(&self) -> bool {
+        self.flags
+            .contains(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE)
     }
 
     pub fn get_slot_name(&self, index: usize) -> HeapPtr<FlatString> {
@@ -86,10 +113,31 @@ impl ScopeNames {
         self.names.as_slice().iter().position(|n| n.ptr_eq(&name))
     }
 
+    fn get_name_flags(&self, index: usize) -> ScopeNameFlags {
+        unsafe {
+            *self
+                .get_name_flags_ptr()
+                .add(index)
+                .cast::<ScopeNameFlags>()
+        }
+    }
+
     /// Return whether the binding at index is a const binding.
     pub fn is_const(&self, index: usize) -> bool {
-        let flags = unsafe { *self.get_flags_ptr().add(index).cast::<ScopeNameFlags>() };
-        flags.contains(ScopeNameFlags::IS_CONST)
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_CONST)
+    }
+
+    /// Return whether the binding at index is a lexical binding.
+    pub fn is_lexical(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_LEXICAL)
+    }
+
+    /// Return whether the binding at index is a function parameter binding.
+    pub fn is_function_parameter(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_FUNCTION_PARAMETER)
     }
 }
 

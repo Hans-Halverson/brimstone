@@ -25,9 +25,9 @@ use crate::{
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
             interned_strings::InternedStrings,
-            scope::Scope,
+            scope::{Scope, ScopeKind},
             string_value::FlatString,
-            Completion, CompletionKind, Context, EvalResult, Handle, Value,
+            Completion, CompletionKind, Context, EvalResult, Handle, HeapPtr, Value,
         },
     },
     maybe, must,
@@ -78,6 +78,18 @@ pub fn perform_bytecode_eval(
         return syntax_error_(cx, &error.to_string());
     }
 
+    // Check if any var scoped names in eval body conflict with lexical bindings in parent scopes.
+    if !parse_result.program.is_strict_mode {
+        let eval_scope = parse_result.program.scope.as_ref();
+        let eval_var_names = eval_scope
+            .iter_var_decls()
+            .map(|(name, _)| InternedStrings::get_str(cx, &name).as_flat())
+            .collect::<Vec<_>>();
+
+        let scope = cx.vm().scope();
+        maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, scope))
+    }
+
     // Generate bytecode for the program
     let realm = cx.current_realm();
     let generate_result = BytecodeProgramGenerator::generate_from_eval_parse_result(
@@ -111,6 +123,66 @@ pub fn perform_bytecode_eval(
 
     // Execute the eval function's bytecode in the VM
     cx.vm().call_from_rust(closure.into(), receiver, &[])
+}
+
+// Check if any names conflict with lexical bindings in parent scopes.
+fn check_eval_var_name_conflicts(
+    cx: Context,
+    eval_var_names: &[Handle<FlatString>],
+    mut scope: HeapPtr<Scope>,
+) -> EvalResult<()> {
+    // Special case for an eval in the function params scope
+    if scope.scope_names_ptr().is_function_parameters_scope() {
+        for name in eval_var_names {
+            if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
+                if scope.scope_names_ptr().is_function_parameter(index) {
+                    return error_name_already_declared(cx, *name);
+                }
+            }
+        }
+
+        return ().into();
+    }
+
+    // Otherwise walk scopes up to the parent var scope
+    loop {
+        // Name will conflict with a lexical binding in any parent scope
+        for name in eval_var_names {
+            if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
+                if scope.scope_names_ptr().is_lexical(index) {
+                    return error_name_already_declared(cx, *name);
+                }
+            }
+        }
+
+        // If in a global scope, check for lexical bindings in other global scopes
+        if scope.kind() == ScopeKind::Global {
+            let realm = scope.global_scope_realm();
+            for name in eval_var_names {
+                if realm.get_lexical_name(name.get_()).is_some() {
+                    return error_name_already_declared(cx, *name);
+                }
+            }
+        }
+
+        // Do not ascend past function scope
+        if scope.kind() == ScopeKind::Function {
+            break;
+        }
+
+        // Move to parent scope
+        if let Some(parent) = scope.parent().as_ref() {
+            scope = *parent;
+        } else {
+            break;
+        }
+    }
+
+    ().into()
+}
+
+fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
+    syntax_error_(cx, &format!("identifier '{}' has already been declared", name.get_()))
 }
 
 pub fn perform_ast_eval(

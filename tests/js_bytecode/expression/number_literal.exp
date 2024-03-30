@@ -1,29 +1,27 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-      0: GlobalInit c0
-      2: LoadImmediate r0, 0
-      5: LoadImmediate r0, 1
-      8: LoadImmediate r0, -1
-     11: LoadImmediate r0, 127
-     14: LoadImmediate r0, -128
-     17: LoadImmediate (Wide) r0, 128
-     24: LoadImmediate (Wide) r0, -129
-     30: LoadImmediate (Wide) r0, 32767
-     36: LoadImmediate (Wide) r0, -32768
-     42: LoadImmediate (ExtraWide) r0, 32768
+      0: LoadImmediate r0, 0
+      3: LoadImmediate r0, 1
+      6: LoadImmediate r0, -1
+      9: LoadImmediate r0, 127
+     12: LoadImmediate r0, -128
+     15: LoadImmediate (Wide) r0, 128
+     22: LoadImmediate (Wide) r0, -129
+     28: LoadImmediate (Wide) r0, 32767
+     34: LoadImmediate (Wide) r0, -32768
+     40: LoadImmediate (ExtraWide) r0, 32768
      52: LoadImmediate (ExtraWide) r0, -32769
      64: LoadImmediate (ExtraWide) r0, 2147483647
      76: LoadImmediate (ExtraWide) r0, -2147483648
-     88: LoadConstant r0, c1
-     91: LoadConstant r0, c2
-     94: LoadConstant r0, c3
-     97: LoadConstant r0, c4
+     88: LoadConstant r0, c0
+     91: LoadConstant r0, c1
+     94: LoadConstant r0, c2
+     97: LoadConstant r0, c3
     100: LoadUndefined r0
     102: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [double: 0.5]
-    2: [double: -0]
-    3: [double: 2147483648]
-    4: [double: -2147483649]
+    0: [double: 0.5]
+    1: [double: -0]
+    2: [double: 2147483648]
+    3: [double: -2147483649]
 }

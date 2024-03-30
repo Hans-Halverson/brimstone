@@ -1,50 +1,48 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: NewClosure r0, c17
-    53: StoreGlobal r0, c18
-    56: NewClosure r0, c19
-    59: StoreGlobal r0, c20
-    62: LoadUndefined r0
-    64: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: LoadUndefined r0
+    62: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: shorthand]
-    2: [String: shorthand]
-    3: [BytecodeFunction: empty]
-    4: [String: empty]
-    5: [BytecodeFunction: propertyAliases]
-    6: [String: propertyAliases]
-    7: [BytecodeFunction: nested]
-    8: [String: nested]
-    9: [BytecodeFunction: computed]
-    10: [String: computed]
-    11: [BytecodeFunction: defaultValue]
-    12: [String: defaultValue]
-    13: [BytecodeFunction: namedExpression]
-    14: [String: namedExpression]
-    15: [BytecodeFunction: rest]
-    16: [String: rest]
-    17: [BytecodeFunction: propertyNamesNotResolved]
-    18: [String: propertyNamesNotResolved]
-    19: [BytecodeFunction: tdzWithinDestructuring]
-    20: [String: tdzWithinDestructuring]
+    0: [BytecodeFunction: shorthand]
+    1: [String: shorthand]
+    2: [BytecodeFunction: empty]
+    3: [String: empty]
+    4: [BytecodeFunction: propertyAliases]
+    5: [String: propertyAliases]
+    6: [BytecodeFunction: nested]
+    7: [String: nested]
+    8: [BytecodeFunction: computed]
+    9: [String: computed]
+    10: [BytecodeFunction: defaultValue]
+    11: [String: defaultValue]
+    12: [BytecodeFunction: namedExpression]
+    13: [String: namedExpression]
+    14: [BytecodeFunction: rest]
+    15: [String: rest]
+    16: [BytecodeFunction: propertyNamesNotResolved]
+    17: [String: propertyNamesNotResolved]
+    18: [BytecodeFunction: tdzWithinDestructuring]
+    19: [String: tdzWithinDestructuring]
 }
 
 [BytecodeFunction: shorthand] {

@@ -1,57 +1,55 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: NewClosure r0, c17
-    53: StoreGlobal r0, c18
-    56: NewClosure r0, c19
-    59: StoreGlobal r0, c20
-    62: NewClosure r0, c21
-    65: StoreGlobal r0, c22
-    68: LoadImmediate r0, 1
-    71: StoreGlobal r0, c23
-    74: LoadUndefined r0
-    76: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: NewClosure r0, c20
+    63: StoreGlobal r0, c21
+    66: LoadImmediate r0, 1
+    69: StoreGlobal r0, c22
+    72: LoadUndefined r0
+    74: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: deleteMember]
-    2: [String: deleteMember]
-    3: [BytecodeFunction: deleteChainMember]
-    4: [String: deleteChainMember]
-    5: [BytecodeFunction: deleteOtherExpression]
-    6: [String: deleteOtherExpression]
-    7: [BytecodeFunction: deleteIdVars]
-    8: [String: deleteIdVars]
-    9: [BytecodeFunction: deleteIdFunctions]
-    10: [String: deleteIdFunctions]
-    11: [BytecodeFunction: deleteIdLexical]
-    12: [String: deleteIdLexical]
-    13: [BytecodeFunction: deleteIdParams]
-    14: [String: deleteIdParams]
-    15: [BytecodeFunction: deleteIdArgments]
-    16: [String: deleteIdArgments]
-    17: [BytecodeFunction: deleteThis]
-    18: [String: deleteThis]
-    19: [BytecodeFunction: deleteUnresolvedGlobal]
-    20: [String: deleteUnresolvedGlobal]
-    21: [BytecodeFunction: deleteUnresolvedDynamic]
-    22: [String: deleteUnresolvedDynamic]
-    23: [String: globalVar]
+    0: [BytecodeFunction: deleteMember]
+    1: [String: deleteMember]
+    2: [BytecodeFunction: deleteChainMember]
+    3: [String: deleteChainMember]
+    4: [BytecodeFunction: deleteOtherExpression]
+    5: [String: deleteOtherExpression]
+    6: [BytecodeFunction: deleteIdVars]
+    7: [String: deleteIdVars]
+    8: [BytecodeFunction: deleteIdFunctions]
+    9: [String: deleteIdFunctions]
+    10: [BytecodeFunction: deleteIdLexical]
+    11: [String: deleteIdLexical]
+    12: [BytecodeFunction: deleteIdParams]
+    13: [String: deleteIdParams]
+    14: [BytecodeFunction: deleteIdArgments]
+    15: [String: deleteIdArgments]
+    16: [BytecodeFunction: deleteThis]
+    17: [String: deleteThis]
+    18: [BytecodeFunction: deleteUnresolvedGlobal]
+    19: [String: deleteUnresolvedGlobal]
+    20: [BytecodeFunction: deleteUnresolvedDynamic]
+    21: [String: deleteUnresolvedDynamic]
+    22: [String: globalVar]
 }
 
 [BytecodeFunction: deleteMember] {

@@ -113,16 +113,6 @@ impl Scope {
     }
 
     #[inline]
-    pub fn object_ptr(&self) -> HeapPtr<ObjectValue> {
-        self.object.unwrap()
-    }
-
-    #[inline]
-    pub fn object(&self) -> Handle<ObjectValue> {
-        self.object_ptr().to_handle()
-    }
-
-    #[inline]
     pub fn parent_ptr(&self) -> HeapPtr<Scope> {
         self.parent.unwrap()
     }

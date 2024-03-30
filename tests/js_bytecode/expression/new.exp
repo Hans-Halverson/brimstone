@@ -1,33 +1,31 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: LoadGlobal r0, c2
-    29: Construct r0, r0, r0, r0, 0
-    35: LoadGlobal r0, c2
-    38: LoadImmediate r1, 1
-    41: LoadImmediate r2, 2
-    44: LoadImmediate r3, 3
-    47: Construct r0, r0, r0, r1, 3
-    53: LoadUndefined r0
-    55: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadGlobal r0, c1
+    27: Construct r0, r0, r0, r0, 0
+    33: LoadGlobal r0, c1
+    36: LoadImmediate r1, 1
+    39: LoadImmediate r2, 2
+    42: LoadImmediate r3, 3
+    45: Construct r0, r0, r0, r1, 3
+    51: LoadUndefined r0
+    53: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: foo]
-    2: [String: foo]
-    3: [BytecodeFunction: bar]
-    4: [String: bar]
-    5: [BytecodeFunction: spread]
-    6: [String: spread]
-    7: [BytecodeFunction: argAndSpread]
-    8: [String: argAndSpread]
+    0: [BytecodeFunction: foo]
+    1: [String: foo]
+    2: [BytecodeFunction: bar]
+    3: [String: bar]
+    4: [BytecodeFunction: spread]
+    5: [String: spread]
+    6: [BytecodeFunction: argAndSpread]
+    7: [String: argAndSpread]
 }
 
 [BytecodeFunction: foo] {

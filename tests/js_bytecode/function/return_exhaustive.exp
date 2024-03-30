@@ -1,34 +1,32 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: testIfNoAlternate]
-    2: [String: testIfNoAlternate]
-    3: [BytecodeFunction: TestIfNormalAlternate]
-    4: [String: TestIfNormalAlternate]
-    5: [BytecodeFunction: testIfNormalConseq]
-    6: [String: testIfNormalConseq]
-    7: [BytecodeFunction: testIfBothAbrupt]
-    8: [String: testIfBothAbrupt]
-    9: [BytecodeFunction: testIfNestedOneNormalBranch]
-    10: [String: testIfNestedOneNormalBranch]
-    11: [BytecodeFunction: testIfNestedNoNormalBranches]
-    12: [String: testIfNestedNoNormalBranches]
+    0: [BytecodeFunction: testIfNoAlternate]
+    1: [String: testIfNoAlternate]
+    2: [BytecodeFunction: TestIfNormalAlternate]
+    3: [String: TestIfNormalAlternate]
+    4: [BytecodeFunction: testIfNormalConseq]
+    5: [String: testIfNormalConseq]
+    6: [BytecodeFunction: testIfBothAbrupt]
+    7: [String: testIfBothAbrupt]
+    8: [BytecodeFunction: testIfNestedOneNormalBranch]
+    9: [String: testIfNestedOneNormalBranch]
+    10: [BytecodeFunction: testIfNestedNoNormalBranches]
+    11: [String: testIfNestedNoNormalBranches]
 }
 
 [BytecodeFunction: testIfNoAlternate] {

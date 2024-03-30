@@ -353,15 +353,15 @@ fn execute_as_bytecode(
 ) -> Completion {
     let generate_result =
         BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
-    let program_closure = match generate_result {
-        Ok(program_closure) => program_closure,
+    let bytecode_program = match generate_result {
+        Ok(bytecode_program) => bytecode_program,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
             return Completion::throw(err_string.into());
         }
     };
 
-    match cx.execute_bytecode(program_closure, &[]) {
+    match cx.execute_program(bytecode_program) {
         Ok(value) => Completion::normal(value),
         Err(error_value) => Completion::throw(error_value),
     }

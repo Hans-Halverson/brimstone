@@ -1,23 +1,21 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: GlobalInit c0
-     2: LoadGlobal r0, c1
-     5: LoadConstant r1, c2
-     8: CallMaybeEval r0, r0, r1, 1
-    13: LoadGlobal r0, c1
-    16: JumpNullish r0, 13 (.L0)
-    19: LoadConstant r1, c3
-    22: Call r0, r0, r1, 1
-    27: Jump 4 (.L1)
+     0: LoadGlobal r0, c0
+     3: LoadConstant r1, c1
+     6: CallMaybeEval r0, r0, r1, 1
+    11: LoadGlobal r0, c0
+    14: JumpNullish r0, 13 (.L0)
+    17: LoadConstant r1, c2
+    20: Call r0, r0, r1, 1
+    25: Jump 4 (.L1)
   .L0:
-    29: LoadUndefined r0
+    27: LoadUndefined r0
   .L1:
-    31: LoadUndefined r0
-    33: Ret r0
+    29: LoadUndefined r0
+    31: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [String: eval]
-    2: [String: 
+    0: [String: eval]
+    1: [String: 
   "sloppy direct eval";
   var x = 1;
   function f() {};
@@ -25,7 +23,7 @@
   delete x;
   delete f;
 ]
-    3: [String: 
+    2: [String: 
   "sloppy indirect eval";
   var x = 1;
   function f() {};
@@ -37,7 +35,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 49 fe 01   NewClosure r1, c1
      5: 0f fe 02   StoreDynamic r1, c2
      8: 04 ff 03   LoadConstant r0, c3
@@ -62,7 +60,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 67 00      GlobalInit c0
+     0: 67 00      EvalInit c0
      2: 49 fe 01   NewClosure r1, c1
      5: 0f fe 02   StoreDynamic r1, c2
      8: 04 ff 03   LoadConstant r0, c3

@@ -1,34 +1,32 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: singleTryReturn]
-    2: [String: singleTryReturn]
-    3: [BytecodeFunction: singleCatchReturn]
-    4: [String: singleCatchReturn]
-    5: [BytecodeFunction: singleFinallyReturn]
-    6: [String: singleFinallyReturn]
-    7: [BytecodeFunction: returnsInTryAndCatch]
-    8: [String: returnsInTryAndCatch]
-    9: [BytecodeFunction: multipleReturns]
-    10: [String: multipleReturns]
-    11: [BytecodeFunction: multipleFinallyScopes]
-    12: [String: multipleFinallyScopes]
+    0: [BytecodeFunction: singleTryReturn]
+    1: [String: singleTryReturn]
+    2: [BytecodeFunction: singleCatchReturn]
+    3: [String: singleCatchReturn]
+    4: [BytecodeFunction: singleFinallyReturn]
+    5: [String: singleFinallyReturn]
+    6: [BytecodeFunction: returnsInTryAndCatch]
+    7: [String: returnsInTryAndCatch]
+    8: [BytecodeFunction: multipleReturns]
+    9: [String: multipleReturns]
+    10: [BytecodeFunction: multipleFinallyScopes]
+    11: [String: multipleFinallyScopes]
 }
 
 [BytecodeFunction: singleTryReturn] {

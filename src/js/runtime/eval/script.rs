@@ -80,7 +80,8 @@ pub fn eval_script(
 
         cx.push_execution_context(script_ctx);
 
-        let mut result = global_declaration_instantiation(cx, &parse_result.program, global_env);
+        let mut result =
+            global_declaration_instantiation_legacy(cx, &parse_result.program, global_env);
 
         if result.is_normal() {
             result = eval_toplevel_list(cx, &parse_result.program.toplevels);
@@ -97,7 +98,7 @@ pub fn eval_script(
 }
 
 /// 16.1.7 GlobalDeclarationInstantiation
-fn global_declaration_instantiation(
+fn global_declaration_instantiation_legacy(
     cx: Context,
     script: &ast::Program,
     mut env: Handle<GlobalEnvironment>,

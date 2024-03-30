@@ -1,61 +1,59 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
-      0: GlobalInit c0
-      2: Mov r0, <scope>
-      5: LoadGlobal r1, c1
-      8: LoadConstant r2, c2
-     11: CallMaybeEval r1, r1, r2, 1
-     16: Jump 5 (.L0)
-     18: Mov <scope>, r0
+      0: Mov r0, <scope>
+      3: LoadGlobal r1, c0
+      6: LoadConstant r2, c1
+      9: CallMaybeEval r1, r1, r2, 1
+     14: Jump 5 (.L0)
+     16: Mov <scope>, r0
   .L0:
-     21: LoadGlobal r0, c1
-     24: LoadConstant r1, c3
-     27: CallMaybeEval r0, r0, r1, 1
-     32: LoadGlobal r0, c1
-     35: LoadConstant r1, c4
-     38: CallMaybeEval r0, r0, r1, 1
-     43: LoadGlobal r0, c1
-     46: LoadConstant r1, c5
-     49: CallMaybeEval r0, r0, r1, 1
-     54: LoadGlobal r0, c1
-     57: LoadConstant r1, c6
-     60: CallMaybeEval r0, r0, r1, 1
-     65: LoadGlobal r0, c1
-     68: LoadConstant r1, c7
-     71: CallMaybeEval r0, r0, r1, 1
-     76: LoadGlobal r0, c1
-     79: LoadConstant r1, c8
-     82: CallMaybeEval r0, r0, r1, 1
-     87: LoadGlobal r0, c1
-     90: LoadConstant r1, c9
-     93: CallMaybeEval r0, r0, r1, 1
-     98: LoadGlobal r0, c1
-    101: LoadConstant r1, c10
-    104: CallMaybeEval r0, r0, r1, 1
-    109: LoadGlobal r0, c1
-    112: LoadConstant r1, c11
-    115: CallMaybeEval r0, r0, r1, 1
-    120: LoadGlobal r0, c1
-    123: LoadConstant r1, c12
-    126: CallMaybeEval r0, r0, r1, 1
-    131: LoadGlobal r0, c1
-    134: LoadConstant r1, c13
-    137: CallMaybeEval r0, r0, r1, 1
-    142: LoadGlobal r0, c1
-    145: LoadConstant r1, c14
-    148: CallMaybeEval r0, r0, r1, 1
-    153: LoadUndefined r0
-    155: Ret r0
+     19: LoadGlobal r0, c0
+     22: LoadConstant r1, c2
+     25: CallMaybeEval r0, r0, r1, 1
+     30: LoadGlobal r0, c0
+     33: LoadConstant r1, c3
+     36: CallMaybeEval r0, r0, r1, 1
+     41: LoadGlobal r0, c0
+     44: LoadConstant r1, c4
+     47: CallMaybeEval r0, r0, r1, 1
+     52: LoadGlobal r0, c0
+     55: LoadConstant r1, c5
+     58: CallMaybeEval r0, r0, r1, 1
+     63: LoadGlobal r0, c0
+     66: LoadConstant r1, c6
+     69: CallMaybeEval r0, r0, r1, 1
+     74: LoadGlobal r0, c0
+     77: LoadConstant r1, c7
+     80: CallMaybeEval r0, r0, r1, 1
+     85: LoadGlobal r0, c0
+     88: LoadConstant r1, c8
+     91: CallMaybeEval r0, r0, r1, 1
+     96: LoadGlobal r0, c0
+     99: LoadConstant r1, c9
+    102: CallMaybeEval r0, r0, r1, 1
+    107: LoadGlobal r0, c0
+    110: LoadConstant r1, c10
+    113: CallMaybeEval r0, r0, r1, 1
+    118: LoadGlobal r0, c0
+    121: LoadConstant r1, c11
+    124: CallMaybeEval r0, r0, r1, 1
+    129: LoadGlobal r0, c0
+    132: LoadConstant r1, c12
+    135: CallMaybeEval r0, r0, r1, 1
+    140: LoadGlobal r0, c0
+    143: LoadConstant r1, c13
+    146: CallMaybeEval r0, r0, r1, 1
+    151: LoadUndefined r0
+    153: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [String: eval]
-    2: [String: 
+    0: [String: eval]
+    1: [String: 
   "expression statement completions";
   1 + 2;
   a + b;
   "foo";
 ]
-    3: [String: 
+    2: [String: 
   "inner completions";
   var a = 1;
   if (a) {
@@ -64,59 +62,59 @@
     2;
   }
 ]
-    4: [String: 
+    3: [String: 
   "if completion";
   if (true) {
     1
   }
 ]
-    5: [String: 
+    4: [String: 
   "switch completion";
   switch (true) {}
 ]
-    6: [String: 
+    5: [String: 
   "while completion";
   while (false) { 1; }
 ]
-    7: [String: 
+    6: [String: 
   "do-while completion";
   do { 1; } while (false);
 ]
-    8: [String: 
+    7: [String: 
   "with completion";
   with ({}) { 1; }
 ]
-    9: [String: 
+    8: [String: 
   "for completion";
   for (; false; ) { 1; }
 ]
-    10: [String: 
+    9: [String: 
   "for-in completion";
   for (var x in {}) { 1; }
 ]
-    11: [String: 
+    10: [String: 
   "for-of completion";
   for (var x of []) { 1; }
 ]
-    12: [String: 
+    11: [String: 
   "try-catch completion";
   try { 1; } catch { 2; }
 ]
-    13: [String: 
+    12: [String: 
   "try-finally completion";
   try { 1; } finally { 2; }
 ]
-    14: [String: 
+    13: [String: 
   "try-catch-finally completion";
   try { 1; } catch { 2; } finally { 3; }
 ]
   Exception Handlers:
-    5-16 -> 18
+    3-14 -> 16
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 68 00         EvalInit c0
+     0: 67 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 03 fe 01      LoadImmediate r1, 1
      8: 03 fd 02      LoadImmediate r2, 2
@@ -136,7 +134,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 03 fe 01   LoadImmediate r1, 1
      8: 0f fe 02   StoreDynamic r1, c2
@@ -157,7 +155,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 08 fe      LoadTrue r1
@@ -172,7 +170,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 08 fe      LoadTrue r1
@@ -186,7 +184,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -203,7 +201,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -218,7 +216,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00         EvalInit c0
+     0: 67 00         EvalInit c0
      2: 5a 01         PushLexicalScope c1
      4: 60 07 00 00   StoreToScope <this>, 0, 0
      8: 04 ff 02      LoadConstant r0, c2
@@ -237,7 +235,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
   .L0:
@@ -254,7 +252,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 4a fe      NewObject r1
@@ -276,13 +274,13 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 6
-     0: 68 00            EvalInit c0
+     0: 67 00            EvalInit c0
      2: 04 ff 01         LoadConstant r0, c1
      5: 05 ff            LoadUndefined r0
      7: 4b fc            NewArray r3
-     9: 69 fe fd fc      GetIterator r1, r2, r3
+     9: 68 fe fd fc      GetIterator r1, r2, r3
   .L0:
-    13: 6a fc fb fe fd   IteratorNext r3, r4, r1, r2
+    13: 69 fc fb fe fd   IteratorNext r3, r4, r1, r2
     18: 3b fb 1a         JumpTrue r4, 26 (.L2)
     21: 0f fc 02         StoreDynamic r3, c2
     24: 02 fa 03         Mov r5, <scope>
@@ -290,7 +288,7 @@
     30: 39 0c            Jump 12 (.L1)
     32: 03 fc 00         LoadImmediate r3, 0
     35: 02 03 fa         Mov <scope>, r5
-    38: 6b fe            IteratorClose r1
+    38: 6a fe            IteratorClose r1
     40: 61 fb            Throw r4
   .L1:
     42: 39 e3            Jump -29 (.L0)
@@ -307,7 +305,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 04 ff 01   LoadConstant r0, c1
      5: 05 ff      LoadUndefined r0
      7: 02 fe 03   Mov r1, <scope>
@@ -326,7 +324,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 5
-     0: 68 00         EvalInit c0
+     0: 67 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 02 fc 03      Mov r3, <scope>
      8: 05 ff         LoadUndefined r0
@@ -357,7 +355,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 5
-     0: 68 00         EvalInit c0
+     0: 67 00         EvalInit c0
      2: 04 ff 01      LoadConstant r0, c1
      5: 02 fc 03      Mov r3, <scope>
      8: 05 ff         LoadUndefined r0

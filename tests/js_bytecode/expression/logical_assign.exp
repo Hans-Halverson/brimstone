@@ -1,33 +1,31 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: LoadImmediate r0, 1
-    35: StoreGlobal r0, c11
-    38: LoadUndefined r0
-    40: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadImmediate r0, 1
+    33: StoreGlobal r0, c10
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: logicalAnd]
-    2: [String: logicalAnd]
-    3: [BytecodeFunction: localOr]
-    4: [String: localOr]
-    5: [BytecodeFunction: nullishCoalesce]
-    6: [String: nullishCoalesce]
-    7: [BytecodeFunction: testAssignDest]
-    8: [String: testAssignDest]
-    9: [BytecodeFunction: named]
-    10: [String: named]
-    11: [String: global]
+    0: [BytecodeFunction: logicalAnd]
+    1: [String: logicalAnd]
+    2: [BytecodeFunction: localOr]
+    3: [String: localOr]
+    4: [BytecodeFunction: nullishCoalesce]
+    5: [String: nullishCoalesce]
+    6: [BytecodeFunction: testAssignDest]
+    7: [String: testAssignDest]
+    8: [BytecodeFunction: named]
+    9: [String: named]
+    10: [String: global]
 }
 
 [BytecodeFunction: logicalAnd] {

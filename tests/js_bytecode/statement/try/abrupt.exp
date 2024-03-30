@@ -1,38 +1,36 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: LoadUndefined r0
-    46: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: testAbruptBodyOnly]
-    2: [String: testAbruptBodyOnly]
-    3: [BytecodeFunction: testAbruptCatchOnly]
-    4: [String: testAbruptCatchOnly]
-    5: [BytecodeFunction: testAbruptCatchAndBody]
-    6: [String: testAbruptCatchAndBody]
-    7: [BytecodeFunction: testAbruptFinallyInFinallyOnly]
-    8: [String: testAbruptFinallyInFinallyOnly]
-    9: [BytecodeFunction: testAbruptTryInFinallyOnly]
-    10: [String: testAbruptTryInFinallyOnly]
-    11: [BytecodeFunction: testAbruptCatchInCatchFinally]
-    12: [String: testAbruptCatchInCatchFinally]
-    13: [BytecodeFunction: testAbruptCatchAndFinally]
-    14: [String: testAbruptCatchAndFinally]
+    0: [BytecodeFunction: testAbruptBodyOnly]
+    1: [String: testAbruptBodyOnly]
+    2: [BytecodeFunction: testAbruptCatchOnly]
+    3: [String: testAbruptCatchOnly]
+    4: [BytecodeFunction: testAbruptCatchAndBody]
+    5: [String: testAbruptCatchAndBody]
+    6: [BytecodeFunction: testAbruptFinallyInFinallyOnly]
+    7: [String: testAbruptFinallyInFinallyOnly]
+    8: [BytecodeFunction: testAbruptTryInFinallyOnly]
+    9: [String: testAbruptTryInFinallyOnly]
+    10: [BytecodeFunction: testAbruptCatchInCatchFinally]
+    11: [String: testAbruptCatchInCatchFinally]
+    12: [BytecodeFunction: testAbruptCatchAndFinally]
+    13: [String: testAbruptCatchAndFinally]
 }
 
 [BytecodeFunction: testAbruptBodyOnly] {

@@ -1,22 +1,20 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: LoadUndefined r0
-    22: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: simpleBreak]
-    2: [String: simpleBreak]
-    3: [BytecodeFunction: nestedBreaks]
-    4: [String: nestedBreaks]
-    5: [BytecodeFunction: noCapturesInBreak]
-    6: [String: noCapturesInBreak]
+    0: [BytecodeFunction: simpleBreak]
+    1: [String: simpleBreak]
+    2: [BytecodeFunction: nestedBreaks]
+    3: [String: nestedBreaks]
+    4: [BytecodeFunction: noCapturesInBreak]
+    5: [String: noCapturesInBreak]
 }
 
 [BytecodeFunction: simpleBreak] {

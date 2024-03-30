@@ -93,11 +93,6 @@ impl Closure {
     }
 
     #[inline]
-    pub fn function(&self) -> Handle<BytecodeFunction> {
-        self.function.to_handle()
-    }
-
-    #[inline]
     pub fn scope(&self) -> Handle<Scope> {
         self.scope.to_handle()
     }

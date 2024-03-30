@@ -1,22 +1,20 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: StoreGlobal <this>, c5
-    17: NewClosure r0, c6
-    20: LoadUndefined r0
-    22: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: StoreGlobal <this>, c4
+    15: NewClosure r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: capturedFunctionThis]
-    2: [String: capturedFunctionThis]
-    3: [BytecodeFunction: noCapture]
-    4: [String: noCapture]
-    5: [String: v1]
-    6: [BytecodeFunction: <anonymous>]
+    0: [BytecodeFunction: capturedFunctionThis]
+    1: [String: capturedFunctionThis]
+    2: [BytecodeFunction: noCapture]
+    3: [String: noCapture]
+    4: [String: v1]
+    5: [BytecodeFunction: <anonymous>]
 }
 
 [BytecodeFunction: capturedFunctionThis] {

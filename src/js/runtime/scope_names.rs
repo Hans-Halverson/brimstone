@@ -105,6 +105,10 @@ impl ScopeNames {
             .contains(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE)
     }
 
+    pub fn name_ptrs(&self) -> &[HeapPtr<FlatString>] {
+        self.names.as_slice()
+    }
+
     pub fn get_slot_name(&self, index: usize) -> HeapPtr<FlatString> {
         self.names.as_slice()[index]
     }

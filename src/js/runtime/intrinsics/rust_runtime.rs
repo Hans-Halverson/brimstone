@@ -2,8 +2,9 @@ use std::{collections::HashMap, mem::size_of};
 
 use crate::{
     js::runtime::{
-        arguments_object, console::ConsoleObject, gc_object::GcObject, object_value::ObjectValue,
-        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
+        arguments_object, console::ConsoleObject, gc_object::GcObject, global_names,
+        object_value::ObjectValue, test_262_object::Test262Object, Context, EvalResult, Handle,
+        Value,
     },
     static_assert,
 };
@@ -288,6 +289,7 @@ rust_runtime_functions!(
     FunctionPrototype::call_intrinsic,
     FunctionPrototype::has_instance,
     FunctionPrototype::to_string,
+    global_names::global_declaration_instantiation_runtime,
     global_object::decode_uri,
     global_object::decode_uri_component,
     global_object::encode_uri,

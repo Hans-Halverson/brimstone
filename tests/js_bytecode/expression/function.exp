@@ -1,38 +1,36 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: LoadUndefined r0
-    46: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: basic]
-    2: [String: basic]
-    3: [BytecodeFunction: named]
-    4: [String: named]
-    5: [BytecodeFunction: namedCaptured]
-    6: [String: namedCaptured]
-    7: [BytecodeFunction: namedVarOverwrite]
-    8: [String: namedVarOverwrite]
-    9: [BytecodeFunction: namedLexOverwrite]
-    10: [String: namedLexOverwrite]
-    11: [BytecodeFunction: namedSloppyReassign]
-    12: [String: namedSloppyReassign]
-    13: [BytecodeFunction: namedStrictReassign]
-    14: [String: namedStrictReassign]
+    0: [BytecodeFunction: basic]
+    1: [String: basic]
+    2: [BytecodeFunction: named]
+    3: [String: named]
+    4: [BytecodeFunction: namedCaptured]
+    5: [String: namedCaptured]
+    6: [BytecodeFunction: namedVarOverwrite]
+    7: [String: namedVarOverwrite]
+    8: [BytecodeFunction: namedLexOverwrite]
+    9: [String: namedLexOverwrite]
+    10: [BytecodeFunction: namedSloppyReassign]
+    11: [String: namedSloppyReassign]
+    12: [BytecodeFunction: namedStrictReassign]
+    13: [String: namedStrictReassign]
 }
 
 [BytecodeFunction: basic] {

@@ -27,7 +27,7 @@ use crate::{
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
-        global_names::{global_init, GlobalNames},
+        global_names::{global_declaration_instantiation, GlobalNames},
         intrinsics::{
             intrinsics::Intrinsic, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
@@ -55,6 +55,7 @@ use crate::{
 use super::{
     constant_table::ConstantTable,
     function::{BytecodeFunction, Closure},
+    generator::BytecodeProgram,
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
@@ -65,11 +66,10 @@ use super::{
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, EvalInitInstruction, ExpInstruction, ForInNextInstruction,
         GetIteratorInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GlobalInitInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
-        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
+        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -153,6 +153,44 @@ impl VM {
         let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
 
         eval_result.to_rust_result()
+    }
+
+    /// Execute an entire bytecode program, first instantiation the global declarations then
+    /// running the script function.
+    pub fn execute_program(
+        &mut self,
+        bytecode_program: BytecodeProgram,
+    ) -> Result<Handle<Value>, Handle<Value>> {
+        let mut realm = bytecode_program.script_function.realm();
+        let global_names = bytecode_program.global_names;
+
+        // Call the GlobalDeclarationInstantiation function in the rust runtime
+        let init_closure = realm
+            .get_intrinsic_ptr(Intrinsic::GlobalDeclarationInstantiation)
+            .cast::<Closure>();
+        let init_function_id = init_closure
+            .function_ptr()
+            .rust_runtime_function_id()
+            .unwrap();
+
+        self.call_rust_runtime(
+            init_closure,
+            init_function_id,
+            realm.global_object().into(),
+            &[global_names.cast()],
+            None,
+        )
+        .to_rust_result()?;
+
+        // Then create global scope and add lexical names to realm, since GDI would have errored
+        // if there were any conflicts.
+        let global_scope = realm.new_global_scope(self.cx, global_names.scope_names().unwrap());
+
+        // Create program closure and execute in VM
+        let program_closure =
+            Closure::new_in_realm(self.cx, bytecode_program.script_function, global_scope, realm);
+
+        self.execute(program_closure, &[])
     }
 
     fn reset_stack(&mut self) {
@@ -590,9 +628,6 @@ impl VM {
                         }
                         OpCode::ForInNext => {
                             dispatch_or_throw!(ForInNextInstruction, execute_for_in_next)
-                        }
-                        OpCode::GlobalInit => {
-                            dispatch_or_throw!(GlobalInitInstruction, execute_global_init)
                         }
                         OpCode::EvalInit => {
                             dispatch_or_throw!(EvalInitInstruction, execute_eval_init)
@@ -1514,7 +1549,7 @@ impl VM {
             /* receiver */ Value::undefined(),
             /* arguments */ [].iter(),
             /* argc */ 0,
-            /* return_to_rust_runtiem */ true,
+            /* return_to_rust_runtime */ true,
             /* return value address */ std::ptr::null_mut(),
         );
 
@@ -2906,21 +2941,6 @@ impl VM {
     }
 
     #[inline]
-    fn execute_global_init<W: Width>(
-        &mut self,
-        instr: &GlobalInitInstruction<W>,
-    ) -> EvalResult<()> {
-        let global_names = self
-            .get_constant(instr.global_names_index())
-            .to_handle(self.cx);
-        let global_names = global_names.cast::<GlobalNames>();
-
-        let global_scope = self.scope().to_handle();
-
-        global_init(self.cx, global_scope, global_names, /* can_delete */ false)
-    }
-
-    #[inline]
     fn execute_eval_init<W: Width>(&mut self, instr: &EvalInitInstruction<W>) -> EvalResult<()> {
         let global_names = self
             .get_constant(instr.global_names_index())
@@ -2933,9 +2953,10 @@ impl VM {
             match current_scope.kind() {
                 // Is in the global scope, so must perform regular global init
                 ScopeKind::Global => {
-                    return global_init(
+                    let realm = self.closure().realm();
+                    return global_declaration_instantiation(
                         self.cx,
-                        current_scope.to_handle(),
+                        realm,
                         global_names,
                         /* can_delete */ true,
                     );

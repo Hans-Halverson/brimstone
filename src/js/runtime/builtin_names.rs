@@ -362,6 +362,7 @@ builtin_names!(
     (tan, "tan"),
     (tanh, "tanh"),
     (test, "test"),
+    (this, "this"),
     (to_date_string, "toDateString"),
     (to_exponential, "toExponential"),
     (to_fixed, "toFixed"),

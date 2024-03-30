@@ -1,43 +1,41 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: LoadImmediate r0, 1
-    11: StoreGlobal r0, c3
-    14: LoadImmediate r0, 2
-    17: StoreToScope r0, 1, 0
-    21: PushLexicalScope c4
-    23: LoadEmpty r0
-    25: StoreToScope r0, 0, 0
-    29: LoadImmediate r0, 3
-    32: StoreGlobal r0, c5
-    35: LoadImmediate r0, 4
-    38: StoreToScope r0, 0, 0
-    42: LoadGlobal r0, c5
-    45: LoadGlobal r0, c6
-    48: LoadFromScope r0, 0, 0
-    52: CheckTdz r0, c7
-    55: LoadGlobal r0, c8
-    58: LoadConstant r1, c9
-    61: CallMaybeEval r0, r0, r1, 1
-    66: PopScope 
-    67: LoadGlobal r0, c5
-    70: LoadGlobal r0, c7
-    73: LoadGlobal r0, c6
-    76: LoadUndefined r0
-    78: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: LoadImmediate r0, 1
+     9: StoreGlobal r0, c2
+    12: LoadImmediate r0, 2
+    15: StoreToScope r0, 1, 0
+    19: PushLexicalScope c3
+    21: LoadEmpty r0
+    23: StoreToScope r0, 0, 0
+    27: LoadImmediate r0, 3
+    30: StoreGlobal r0, c4
+    33: LoadImmediate r0, 4
+    36: StoreToScope r0, 0, 0
+    40: LoadGlobal r0, c4
+    43: LoadGlobal r0, c5
+    46: LoadFromScope r0, 0, 0
+    50: CheckTdz r0, c6
+    53: LoadGlobal r0, c7
+    56: LoadConstant r1, c8
+    59: CallMaybeEval r0, r0, r1, 1
+    64: PopScope 
+    65: LoadGlobal r0, c4
+    68: LoadGlobal r0, c6
+    71: LoadGlobal r0, c5
+    74: LoadUndefined r0
+    76: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: forcesDynamicInScopeAndParents]
-    2: [String: forcesDynamicInScopeAndParents]
-    3: [String: globalVar1]
-    4: [ScopeNames]
-    5: [String: globalVar2]
-    6: [String: unresolved]
-    7: [String: globalConst2]
-    8: [String: eval]
-    9: [String: test]
+    0: [BytecodeFunction: forcesDynamicInScopeAndParents]
+    1: [String: forcesDynamicInScopeAndParents]
+    2: [String: globalVar1]
+    3: [ScopeNames]
+    4: [String: globalVar2]
+    5: [String: unresolved]
+    6: [String: globalConst2]
+    7: [String: eval]
+    8: [String: test]
 }
 
 [BytecodeFunction: forcesDynamicInScopeAndParents] {

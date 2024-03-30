@@ -1,26 +1,24 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: LoadUndefined r0
-    28: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadUndefined r0
+    26: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: forCaptureAndInnerCaptureWithBreak]
-    2: [String: forCaptureAndInnerCaptureWithBreak]
-    3: [BytecodeFunction: forCaptureNoInnerCaptureWithBreak]
-    4: [String: forCaptureNoInnerCaptureWithBreak]
-    5: [BytecodeFunction: noForCaptureButInnerCaptureWithBreak]
-    6: [String: noForCaptureButInnerCaptureWithBreak]
-    7: [BytecodeFunction: noForCaptureOrInnerCaptureWithBreak]
-    8: [String: noForCaptureOrInnerCaptureWithBreak]
+    0: [BytecodeFunction: forCaptureAndInnerCaptureWithBreak]
+    1: [String: forCaptureAndInnerCaptureWithBreak]
+    2: [BytecodeFunction: forCaptureNoInnerCaptureWithBreak]
+    3: [String: forCaptureNoInnerCaptureWithBreak]
+    4: [BytecodeFunction: noForCaptureButInnerCaptureWithBreak]
+    5: [String: noForCaptureButInnerCaptureWithBreak]
+    6: [BytecodeFunction: noForCaptureOrInnerCaptureWithBreak]
+    7: [String: noForCaptureOrInnerCaptureWithBreak]
 }
 
 [BytecodeFunction: forCaptureAndInnerCaptureWithBreak] {

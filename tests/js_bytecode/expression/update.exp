@@ -1,53 +1,51 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: NewClosure r0, c17
-    53: StoreGlobal r0, c18
-    56: NewClosure r0, c19
-    59: StoreGlobal r0, c20
-    62: LoadImmediate r0, 0
-    65: StoreGlobal r0, c21
-    68: LoadUndefined r0
-    70: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: LoadImmediate r0, 0
+    63: StoreGlobal r0, c20
+    66: LoadUndefined r0
+    68: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: use]
-    2: [String: use]
-    3: [BytecodeFunction: prefixIdAnyDest]
-    4: [String: prefixIdAnyDest]
-    5: [BytecodeFunction: prefixIdFixedDest]
-    6: [String: prefixIdFixedDest]
-    7: [BytecodeFunction: prefixIdNewTemporaryDest]
-    8: [String: prefixIdNewTemporaryDest]
-    9: [BytecodeFunction: postfixIdAnyDest]
-    10: [String: postfixIdAnyDest]
-    11: [BytecodeFunction: postfixIdFixedDest]
-    12: [String: postfixIdFixedDest]
-    13: [BytecodeFunction: postfixIdNewTemporaryDest]
-    14: [String: postfixIdNewTemporaryDest]
-    15: [BytecodeFunction: prefixMember]
-    16: [String: prefixMember]
-    17: [BytecodeFunction: postfixMember]
-    18: [String: postfixMember]
-    19: [BytecodeFunction: decrement]
-    20: [String: decrement]
-    21: [String: global]
+    0: [BytecodeFunction: use]
+    1: [String: use]
+    2: [BytecodeFunction: prefixIdAnyDest]
+    3: [String: prefixIdAnyDest]
+    4: [BytecodeFunction: prefixIdFixedDest]
+    5: [String: prefixIdFixedDest]
+    6: [BytecodeFunction: prefixIdNewTemporaryDest]
+    7: [String: prefixIdNewTemporaryDest]
+    8: [BytecodeFunction: postfixIdAnyDest]
+    9: [String: postfixIdAnyDest]
+    10: [BytecodeFunction: postfixIdFixedDest]
+    11: [String: postfixIdFixedDest]
+    12: [BytecodeFunction: postfixIdNewTemporaryDest]
+    13: [String: postfixIdNewTemporaryDest]
+    14: [BytecodeFunction: prefixMember]
+    15: [String: prefixMember]
+    16: [BytecodeFunction: postfixMember]
+    17: [String: postfixMember]
+    18: [BytecodeFunction: decrement]
+    19: [String: decrement]
+    20: [String: global]
 }
 
 [BytecodeFunction: use] {

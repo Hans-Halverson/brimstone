@@ -1,34 +1,32 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: basicTryFinally]
-    2: [String: basicTryFinally]
-    3: [BytecodeFunction: basicTryCatchNoParamFinally]
-    4: [String: basicTryCatchNoParamFinally]
-    5: [BytecodeFunction: basicTryCatchWithSimpleParamFinally]
-    6: [String: basicTryCatchWithSimpleParamFinally]
-    7: [BytecodeFunction: basicTryCatchWithComplexParamFinally]
-    8: [String: basicTryCatchWithComplexParamFinally]
-    9: [BytecodeFunction: nested]
-    10: [String: nested]
-    11: [BytecodeFunction: allBranches]
-    12: [String: allBranches]
+    0: [BytecodeFunction: basicTryFinally]
+    1: [String: basicTryFinally]
+    2: [BytecodeFunction: basicTryCatchNoParamFinally]
+    3: [String: basicTryCatchNoParamFinally]
+    4: [BytecodeFunction: basicTryCatchWithSimpleParamFinally]
+    5: [String: basicTryCatchWithSimpleParamFinally]
+    6: [BytecodeFunction: basicTryCatchWithComplexParamFinally]
+    7: [String: basicTryCatchWithComplexParamFinally]
+    8: [BytecodeFunction: nested]
+    9: [String: nested]
+    10: [BytecodeFunction: allBranches]
+    11: [String: allBranches]
 }
 
 [BytecodeFunction: basicTryFinally] {

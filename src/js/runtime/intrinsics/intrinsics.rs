@@ -7,6 +7,7 @@ use crate::{
         error::type_error_,
         gc::{HandleScope, HeapVisitor},
         get,
+        global_names::create_global_declaration_instantiation_intrinsic,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
             aggregate_error_prototype::AggregateErrorPrototype,
@@ -119,6 +120,7 @@ pub enum Intrinsic {
     Float64ArrayPrototype,
     FunctionConstructor,
     FunctionPrototype,
+    GlobalDeclarationInstantiation,
     Int8ArrayConstructor,
     Int8ArrayPrototype,
     Int16ArrayConstructor,
@@ -348,6 +350,10 @@ impl Intrinsics {
 
         // Builtin functions
         register_existing_intrinsic!(Eval, create_eval(cx, realm));
+        register_existing_intrinsic!(
+            GlobalDeclarationInstantiation,
+            create_global_declaration_instantiation_intrinsic(cx, realm)
+        );
 
         let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
         register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic);

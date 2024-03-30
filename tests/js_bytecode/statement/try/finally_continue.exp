@@ -1,38 +1,36 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: LoadUndefined r0
-    46: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: continueInTry]
-    2: [String: continueInTry]
-    3: [BytecodeFunction: continueInCatch]
-    4: [String: continueInCatch]
-    5: [BytecodeFunction: continueInTryAndCatch]
-    6: [String: continueInTryAndCatch]
-    7: [BytecodeFunction: singleFinallyContinue]
-    8: [String: singleFinallyContinue]
-    9: [BytecodeFunction: unwindsContinue]
-    10: [String: unwindsContinue]
-    11: [BytecodeFunction: continueDoesNotLeaveFinally]
-    12: [String: continueDoesNotLeaveFinally]
-    13: [BytecodeFunction: leavesNested]
-    14: [String: leavesNested]
+    0: [BytecodeFunction: continueInTry]
+    1: [String: continueInTry]
+    2: [BytecodeFunction: continueInCatch]
+    3: [String: continueInCatch]
+    4: [BytecodeFunction: continueInTryAndCatch]
+    5: [String: continueInTryAndCatch]
+    6: [BytecodeFunction: singleFinallyContinue]
+    7: [String: singleFinallyContinue]
+    8: [BytecodeFunction: unwindsContinue]
+    9: [String: unwindsContinue]
+    10: [BytecodeFunction: continueDoesNotLeaveFinally]
+    11: [String: continueDoesNotLeaveFinally]
+    12: [BytecodeFunction: leavesNested]
+    13: [String: leavesNested]
 }
 
 [BytecodeFunction: continueInTry] {

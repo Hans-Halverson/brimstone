@@ -1,42 +1,40 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: LoadUndefined r0
-    52: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: LoadUndefined r0
+    50: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: destructuring]
-    2: [String: destructuring]
-    3: [BytecodeFunction: defaultValues]
-    4: [String: defaultValues]
-    5: [BytecodeFunction: rest]
-    6: [String: rest]
-    7: [BytecodeFunction: restDestructuring]
-    8: [String: restDestructuring]
-    9: [BytecodeFunction: captured]
-    10: [String: captured]
-    11: [BytecodeFunction: tdz]
-    12: [String: tdz]
-    13: [BytecodeFunction: tdzCaptured]
-    14: [String: tdzCaptured]
-    15: [BytecodeFunction: shadowed]
-    16: [String: shadowed]
+    0: [BytecodeFunction: destructuring]
+    1: [String: destructuring]
+    2: [BytecodeFunction: defaultValues]
+    3: [String: defaultValues]
+    4: [BytecodeFunction: rest]
+    5: [String: rest]
+    6: [BytecodeFunction: restDestructuring]
+    7: [String: restDestructuring]
+    8: [BytecodeFunction: captured]
+    9: [String: captured]
+    10: [BytecodeFunction: tdz]
+    11: [String: tdz]
+    12: [BytecodeFunction: tdzCaptured]
+    13: [String: tdzCaptured]
+    14: [BytecodeFunction: shadowed]
+    15: [String: shadowed]
 }
 
 [BytecodeFunction: destructuring] {

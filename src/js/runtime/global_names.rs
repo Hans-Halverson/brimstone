@@ -8,13 +8,14 @@ use crate::{
 
 use super::{
     abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
+    builtin_function::BuiltinFunction,
     collections::InlineArray,
     gc::{HeapObject, HeapVisitor},
     object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
-    scope::Scope,
+    scope_names::ScopeNames,
     string_value::FlatString,
-    Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey,
+    Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
 };
 
 #[repr(C)]
@@ -22,6 +23,8 @@ pub struct GlobalNames {
     descriptor: HeapPtr<ObjectDescriptor>,
     /// Number of functions
     num_functions: usize,
+    /// Scopes names for this global scope, containing all lexical names.
+    scope_names: Option<HeapPtr<ScopeNames>>,
     /// Array of global names. The first `num_functions` are global var scoped functions, the rest
     /// are global vars. All names are interned strings.
     names: InlineArray<HeapPtr<FlatString>>,
@@ -32,6 +35,7 @@ impl GlobalNames {
         cx: Context,
         vars: HashSet<Handle<FlatString>>,
         funcs: HashSet<Handle<FlatString>>,
+        scope_names: Option<Handle<ScopeNames>>,
     ) -> Handle<GlobalNames> {
         let num_funcs = funcs.len();
         let num_names = vars.len() + num_funcs;
@@ -40,7 +44,8 @@ impl GlobalNames {
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size);
 
         set_uninit!(global_names.descriptor, cx.base_descriptors.get(ObjectKind::GlobalNames));
-        global_names.num_functions = 0;
+        set_uninit!(global_names.scope_names, scope_names.map(|s| s.get_()));
+        global_names.num_functions = funcs.len();
 
         // Place function names first in the names array
         global_names.names.init_with_uninit(num_names);
@@ -60,6 +65,10 @@ impl GlobalNames {
         self.names.len()
     }
 
+    pub fn scope_names(&self) -> Option<Handle<ScopeNames>> {
+        self.scope_names.map(|s| s.to_handle())
+    }
+
     pub fn get(&self, index: usize) -> HeapPtr<FlatString> {
         self.names.as_slice()[index]
     }
@@ -72,6 +81,7 @@ impl HeapObject for HeapPtr<GlobalNames> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.scope_names);
 
         for name in self.names.as_mut_slice() {
             visitor.visit_pointer(name);
@@ -79,17 +89,62 @@ impl HeapObject for HeapPtr<GlobalNames> {
     }
 }
 
+pub fn create_global_declaration_instantiation_intrinsic(
+    cx: Context,
+    realm: Handle<Realm>,
+) -> Handle<Value> {
+    BuiltinFunction::create(
+        cx,
+        global_declaration_instantiation_runtime,
+        1,
+        cx.names.empty_string(),
+        realm,
+        None,
+        None,
+    )
+    .into()
+}
+
+/// GlobalDeclarationInstantiation in the rust runtime, called from the script init function.
+pub fn global_declaration_instantiation_runtime(
+    cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let global_names = arguments.get(0).unwrap().cast::<GlobalNames>();
+    let realm = cx.current_realm();
+
+    maybe!(global_declaration_instantiation(
+        cx,
+        realm,
+        global_names,
+        /* can_delete */ false
+    ));
+
+    cx.undefined().into()
+}
+
 /// Initialize the global object with the provided var scoped names.
 ///
 /// This includes both vars and var-scoped functions. Both will be initialized as undefined here,
 /// and may be overwritten later when the corresponding declaration is evaluated.
-pub fn global_init(
+pub fn global_declaration_instantiation(
     cx: Context,
-    global_scope: Handle<Scope>,
+    realm: Handle<Realm>,
     global_names: Handle<GlobalNames>,
     can_delete: bool,
 ) -> EvalResult<()> {
-    let global_object = global_scope.object();
+    let global_object = realm.global_object();
+
+    // Check whether any lexical names conflict with existing global names
+    if let Some(scope_names) = global_names.scope_names() {
+        let mut lexical_names = vec![];
+        for name_ptr in scope_names.name_ptrs() {
+            lexical_names.push(name_ptr.to_handle());
+        }
+        maybe!(realm.can_declare_lexical_names(cx, &lexical_names));
+    }
 
     // Reuse handle between iterations
     let mut name_handle = Handle::<FlatString>::empty(cx);
@@ -127,13 +182,27 @@ pub fn global_init(
         let name_key = name_handle.cast::<PropertyKey>();
 
         if i < global_names.num_functions {
-            maybe!(create_global_function_binding(cx, global_object, name_key, can_delete,));
+            maybe!(create_global_function_binding(cx, global_object, name_key, can_delete));
         } else {
-            maybe!(create_global_var_binding(cx, global_object, name_key, can_delete,));
+            maybe!(create_global_var_binding(cx, global_object, name_key, can_delete));
         }
     }
 
     ().into()
+}
+
+// 9.1.1.4.14 HasRestrictedGlobalProperty
+pub fn has_restricted_global_property(
+    cx: Context,
+    global_object: Handle<ObjectValue>,
+    name_key: Handle<PropertyKey>,
+) -> EvalResult<bool> {
+    let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
+
+    match existing_prop {
+        None => false.into(),
+        Some(existing_prop) => (!existing_prop.is_configurable()).into(),
+    }
 }
 
 // 9.1.1.4.15 CanDeclareGlobalVar

@@ -940,12 +940,6 @@ define_instructions!(
         [1] iterator: Register,
     }
 
-    /// Initialize a global scope, declaring all names in a GlobalNames object stored in the
-    /// constant table. Must be called in the global scope.
-    GlobalInit(GlobalInitInstruction, global_init_instruction) {
-        [0] global_names_index: ConstantIndex,
-    }
-
     /// Initialize a sloppy direct eval scope, declaring all names in a GlobalNames object stored in
     /// the constant table. Must be called in the parent scope for the direct eval.
     EvalInit(EvalInitInstruction, eval_init_instruction) {

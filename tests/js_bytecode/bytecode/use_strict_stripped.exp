@@ -1,20 +1,18 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: LoadImmediate r0, 1
-    11: LoadGlobal r0, c3
-    14: LoadConstant r1, c4
-    17: CallMaybeEval r0, r0, r1, 1
-    22: LoadUndefined r0
-    24: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: LoadImmediate r0, 1
+     9: LoadGlobal r0, c2
+    12: LoadConstant r1, c3
+    15: CallMaybeEval r0, r0, r1, 1
+    20: LoadUndefined r0
+    22: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: func]
-    2: [String: func]
-    3: [String: eval]
-    4: [String: "use strict"; 3;]
+    0: [BytecodeFunction: func]
+    1: [String: func]
+    2: [String: eval]
+    3: [String: "use strict"; 3;]
 }
 
 [BytecodeFunction: func] {

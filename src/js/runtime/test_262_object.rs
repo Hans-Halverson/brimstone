@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use crate::{
-    js::parser::{analyze::analyze, parse_script, source::Source},
+    js::{
+        parser::{analyze::analyze, parse_script, source::Source},
+        runtime::bytecode::generator::BytecodeProgramGenerator,
+    },
     maybe,
 };
 
@@ -96,7 +99,7 @@ impl Test262Object {
     }
 
     pub fn eval_script(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
@@ -111,12 +114,12 @@ impl Test262Object {
             script_text.as_string().to_wtf8_string(),
         ));
         let parse_result = parse_script(&source);
-        let mut ast = match parse_result {
-            Ok(ast) => ast,
+        let mut parse_result = match parse_result {
+            Ok(parse_result) => parse_result,
             Err(error) => return syntax_error_(cx, &error.to_string()),
         };
 
-        let analyze_result = analyze(&mut ast, source);
+        let analyze_result = analyze(&mut parse_result, source);
         if let Err(errors) = analyze_result {
             // Choose an arbitrary syntax error to return
             let error = &errors.errors[0];
@@ -124,13 +127,31 @@ impl Test262Object {
         }
 
         let realm = cx.current_realm();
-        let completion = eval_script(cx, Rc::new(ast), realm);
 
-        match completion.kind() {
-            CompletionKind::Normal => EvalResult::Ok(completion.value()),
-            CompletionKind::Throw => EvalResult::Throw(completion.value()),
-            CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
-                panic!("unexpected abnormal completion")
+        if cx.options.bytecode {
+            let gen_result = BytecodeProgramGenerator::generate_from_program_parse_result(
+                cx,
+                &parse_result,
+                realm,
+            );
+            let bytecode_program = match gen_result {
+                Ok(bytecode_program) => bytecode_program,
+                Err(error) => return syntax_error_(cx, &error.to_string()),
+            };
+
+            return match cx.execute_program(bytecode_program) {
+                Ok(value) => EvalResult::Ok(value),
+                Err(error) => EvalResult::Throw(error),
+            };
+        } else {
+            let completion = eval_script(cx, Rc::new(parse_result), realm);
+
+            match completion.kind() {
+                CompletionKind::Normal => EvalResult::Ok(completion.value()),
+                CompletionKind::Throw => EvalResult::Throw(completion.value()),
+                CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
+                    panic!("unexpected abnormal completion")
+                }
             }
         }
     }

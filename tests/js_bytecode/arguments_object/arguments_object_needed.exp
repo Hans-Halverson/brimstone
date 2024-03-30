@@ -1,46 +1,44 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: NewClosure r0, c17
-    53: StoreGlobal r0, c18
-    56: LoadUndefined r0
-    58: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: notNeededDueToParameterName]
-    2: [String: notNeededDueToParameterName]
-    3: [BytecodeFunction: notNeededDueToLexicalName]
-    4: [String: notNeededDueToLexicalName]
-    5: [BytecodeFunction: notNeededDueToLexicalNameAndParameterExpressionsNoUse]
-    6: [String: notNeededDueToLexicalNameAndParameterExpressionsNoUse]
-    7: [BytecodeFunction: neededDueToLexicalNameAndParameterExpressionsWithUse]
-    8: [String: neededDueToLexicalNameAndParameterExpressionsWithUse]
-    9: [BytecodeFunction: neededWithVarName]
-    10: [String: neededWithVarName]
-    11: [BytecodeFunction: neededWithVarFunctionName]
-    12: [String: neededWithVarFunctionName]
-    13: [BytecodeFunction: notNeededSinceUseCaught]
-    14: [String: notNeededSinceUseCaught]
-    15: [BytecodeFunction: neededDueToDirectEval]
-    16: [String: neededDueToDirectEval]
-    17: [BytecodeFunction: notNeededDueToIndirectEval]
-    18: [String: notNeededDueToIndirectEval]
+    0: [BytecodeFunction: notNeededDueToParameterName]
+    1: [String: notNeededDueToParameterName]
+    2: [BytecodeFunction: notNeededDueToLexicalName]
+    3: [String: notNeededDueToLexicalName]
+    4: [BytecodeFunction: notNeededDueToLexicalNameAndParameterExpressionsNoUse]
+    5: [String: notNeededDueToLexicalNameAndParameterExpressionsNoUse]
+    6: [BytecodeFunction: neededDueToLexicalNameAndParameterExpressionsWithUse]
+    7: [String: neededDueToLexicalNameAndParameterExpressionsWithUse]
+    8: [BytecodeFunction: neededWithVarName]
+    9: [String: neededWithVarName]
+    10: [BytecodeFunction: neededWithVarFunctionName]
+    11: [String: neededWithVarFunctionName]
+    12: [BytecodeFunction: notNeededSinceUseCaught]
+    13: [String: notNeededSinceUseCaught]
+    14: [BytecodeFunction: neededDueToDirectEval]
+    15: [String: neededDueToDirectEval]
+    16: [BytecodeFunction: notNeededDueToIndirectEval]
+    17: [String: notNeededDueToIndirectEval]
 }
 
 [BytecodeFunction: notNeededDueToParameterName] {

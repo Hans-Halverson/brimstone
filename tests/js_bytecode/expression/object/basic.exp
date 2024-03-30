@@ -1,45 +1,43 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: LoadImmediate r0, 0
-    53: StoreGlobal r0, c17
-    56: LoadUndefined r0
-    58: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: LoadImmediate r0, 0
+    51: StoreGlobal r0, c16
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: emptyObject]
-    2: [String: emptyObject]
-    3: [BytecodeFunction: shorthandProperties]
-    4: [String: shorthandProperties]
-    5: [BytecodeFunction: initializedProperties]
-    6: [String: initializedProperties]
-    7: [BytecodeFunction: stringPropertyKeys]
-    8: [String: stringPropertyKeys]
-    9: [BytecodeFunction: computedPropertyKeys]
-    10: [String: computedPropertyKeys]
-    11: [BytecodeFunction: spread]
-    12: [String: spread]
-    13: [BytecodeFunction: proto]
-    14: [String: proto]
-    15: [BytecodeFunction: propertyNamesNotResolved]
-    16: [String: propertyNamesNotResolved]
-    17: [String: global]
+    0: [BytecodeFunction: emptyObject]
+    1: [String: emptyObject]
+    2: [BytecodeFunction: shorthandProperties]
+    3: [String: shorthandProperties]
+    4: [BytecodeFunction: initializedProperties]
+    5: [String: initializedProperties]
+    6: [BytecodeFunction: stringPropertyKeys]
+    7: [String: stringPropertyKeys]
+    8: [BytecodeFunction: computedPropertyKeys]
+    9: [String: computedPropertyKeys]
+    10: [BytecodeFunction: spread]
+    11: [String: spread]
+    12: [BytecodeFunction: proto]
+    13: [String: proto]
+    14: [BytecodeFunction: propertyNamesNotResolved]
+    15: [String: propertyNamesNotResolved]
+    16: [String: global]
 }
 
 [BytecodeFunction: emptyObject] {

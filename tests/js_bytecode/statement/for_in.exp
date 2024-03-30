@@ -1,38 +1,36 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: LoadUndefined r0
-    46: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: basicVar]
-    2: [String: basicVar]
-    3: [BytecodeFunction: basicConstLet]
-    4: [String: basicConstLet]
-    5: [BytecodeFunction: testBreakAndContinue]
-    6: [String: testBreakAndContinue]
-    7: [BytecodeFunction: lhsIdentifier]
-    8: [String: lhsIdentifier]
-    9: [BytecodeFunction: lhsMember]
-    10: [String: lhsMember]
-    11: [BytecodeFunction: lhsDestructuring]
-    12: [String: lhsDestructuring]
-    13: [BytecodeFunction: lhsTdz]
-    14: [String: lhsTdz]
+    0: [BytecodeFunction: basicVar]
+    1: [String: basicVar]
+    2: [BytecodeFunction: basicConstLet]
+    3: [String: basicConstLet]
+    4: [BytecodeFunction: testBreakAndContinue]
+    5: [String: testBreakAndContinue]
+    6: [BytecodeFunction: lhsIdentifier]
+    7: [String: lhsIdentifier]
+    8: [BytecodeFunction: lhsMember]
+    9: [String: lhsMember]
+    10: [BytecodeFunction: lhsDestructuring]
+    11: [String: lhsDestructuring]
+    12: [BytecodeFunction: lhsTdz]
+    13: [String: lhsTdz]
 }
 
 [BytecodeFunction: basicVar] {

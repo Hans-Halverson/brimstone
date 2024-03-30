@@ -1,34 +1,32 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: LoadUndefined r0
-    40: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: testNoAlternate]
-    2: [String: testNoAlternate]
-    3: [BytecodeFunction: testAlternate]
-    4: [String: testAlternate]
-    5: [BytecodeFunction: testNested]
-    6: [String: testNested]
-    7: [BytecodeFunction: testIfElse]
-    8: [String: testIfElse]
-    9: [BytecodeFunction: testIfElseNoCatchAll]
-    10: [String: testIfElseNoCatchAll]
-    11: [BytecodeFunction: testIfNoToBoolean]
-    12: [String: testIfNoToBoolean]
+    0: [BytecodeFunction: testNoAlternate]
+    1: [String: testNoAlternate]
+    2: [BytecodeFunction: testAlternate]
+    3: [String: testAlternate]
+    4: [BytecodeFunction: testNested]
+    5: [String: testNested]
+    6: [BytecodeFunction: testIfElse]
+    7: [String: testIfElse]
+    8: [BytecodeFunction: testIfElseNoCatchAll]
+    9: [String: testIfElseNoCatchAll]
+    10: [BytecodeFunction: testIfNoToBoolean]
+    11: [String: testIfNoToBoolean]
 }
 
 [BytecodeFunction: testNoAlternate] {

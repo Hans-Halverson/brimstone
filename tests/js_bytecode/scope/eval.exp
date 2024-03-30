@@ -1,54 +1,52 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 3
-     0: GlobalInit c0
-     2: Mov r0, <scope>
-     5: LoadGlobal r1, c1
-     8: LoadConstant r2, c2
-    11: CallMaybeEval r1, r1, r2, 1
-    16: Jump 5 (.L0)
-    18: Mov <scope>, r0
+     0: Mov r0, <scope>
+     3: LoadGlobal r1, c0
+     6: LoadConstant r2, c1
+     9: CallMaybeEval r1, r1, r2, 1
+    14: Jump 5 (.L0)
+    16: Mov <scope>, r0
   .L0:
-    21: LoadGlobal r0, c1
-    24: LoadConstant r1, c3
-    27: CallMaybeEval r0, r0, r1, 1
-    32: LoadGlobal r0, c1
-    35: LoadConstant r1, c4
-    38: CallMaybeEval r0, r0, r1, 1
-    43: LoadGlobal r0, c1
-    46: LoadConstant r1, c5
-    49: CallMaybeEval r0, r0, r1, 1
-    54: LoadGlobal r0, c1
-    57: JumpNullish r0, 13 (.L1)
-    60: LoadConstant r1, c4
-    63: Call r0, r0, r1, 1
-    68: Jump 4 (.L2)
+    19: LoadGlobal r0, c0
+    22: LoadConstant r1, c2
+    25: CallMaybeEval r0, r0, r1, 1
+    30: LoadGlobal r0, c0
+    33: LoadConstant r1, c3
+    36: CallMaybeEval r0, r0, r1, 1
+    41: LoadGlobal r0, c0
+    44: LoadConstant r1, c4
+    47: CallMaybeEval r0, r0, r1, 1
+    52: LoadGlobal r0, c0
+    55: JumpNullish r0, 13 (.L1)
+    58: LoadConstant r1, c3
+    61: Call r0, r0, r1, 1
+    66: Jump 4 (.L2)
   .L1:
-    70: LoadUndefined r0
+    68: LoadUndefined r0
   .L2:
-    72: LoadGlobal r0, c1
-    75: JumpNullish r0, 13 (.L3)
-    78: LoadConstant r1, c5
-    81: Call r0, r0, r1, 1
-    86: Jump 4 (.L4)
+    70: LoadGlobal r0, c0
+    73: JumpNullish r0, 13 (.L3)
+    76: LoadConstant r1, c4
+    79: Call r0, r0, r1, 1
+    84: Jump 4 (.L4)
   .L3:
-    88: LoadUndefined r0
+    86: LoadUndefined r0
   .L4:
-    90: LoadUndefined r0
-    92: Ret r0
+    88: LoadUndefined r0
+    90: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [String: eval]
-    2: [String: x; const x = 1]
-    3: [String: const x = 1; function inner() { x }]
-    4: [String: eval('')]
-    5: [String: "use strict"; eval('')]
+    0: [String: eval]
+    1: [String: x; const x = 1]
+    2: [String: const x = 1; function inner() { x }]
+    3: [String: eval('')]
+    4: [String: "use strict"; eval('')]
   Exception Handlers:
-    5-16 -> 18
+    3-14 -> 16
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00      EvalInit c0
+     0: 67 00      EvalInit c0
      2: 07 ff      LoadEmpty r0
      4: 63 ff 01   CheckTdz r0, c1
      7: 02 fe ff   Mov r1, r0
@@ -61,7 +59,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 68 00         EvalInit c0
+     0: 67 00         EvalInit c0
      2: 5a 01         PushLexicalScope c1
      4: 07 fe         LoadEmpty r1
      6: 60 fe 00 00   StoreToScope r1, 0, 0
@@ -89,7 +87,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 68 00            EvalInit c0
+     0: 67 00            EvalInit c0
      2: 5a 01            PushLexicalScope c1
      4: 60 07 00 00      StoreToScope <this>, 0, 0
      8: 0d fe 02         LoadDynamic r1, c2
@@ -105,7 +103,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 68 00   EvalInit c0
+    0: 67 00   EvalInit c0
     2: 17 ff   Ret r0
   Constant Table:
     0: [GlobalNames]
@@ -132,7 +130,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 67 00            GlobalInit c0
+     0: 67 00            EvalInit c0
      2: 5a 01            PushLexicalScope c1
      4: 60 07 00 00      StoreToScope <this>, 0, 0
      8: 0a fe 02         LoadGlobal r1, c2
@@ -148,7 +146,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 68 00   EvalInit c0
+    0: 67 00   EvalInit c0
     2: 17 ff   Ret r0
   Constant Table:
     0: [GlobalNames]

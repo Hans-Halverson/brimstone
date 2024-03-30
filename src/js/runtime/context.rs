@@ -17,7 +17,7 @@ use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
-    bytecode::{function::Closure, vm::VM},
+    bytecode::{generator::BytecodeProgram, vm::VM},
     collections::{BsHashMap, BsHashMapField},
     environment::{
         declarative_environment::DeclarativeEnvironment, environment::HeapDynEnvironment,
@@ -182,12 +182,11 @@ impl Context {
         self.vm.as_mut().unwrap()
     }
 
-    pub fn execute_bytecode(
+    pub fn execute_program(
         &mut self,
-        closure: Handle<Closure>,
-        arguments: &[Handle<Value>],
+        bytecode_program: BytecodeProgram,
     ) -> Result<Handle<Value>, Handle<Value>> {
-        self.vm().execute(closure, arguments)
+        self.vm().execute_program(bytecode_program)
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {

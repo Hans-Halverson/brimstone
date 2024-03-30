@@ -1,46 +1,44 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-     0: GlobalInit c0
-     2: NewClosure r0, c1
-     5: StoreGlobal r0, c2
-     8: NewClosure r0, c3
-    11: StoreGlobal r0, c4
-    14: NewClosure r0, c5
-    17: StoreGlobal r0, c6
-    20: NewClosure r0, c7
-    23: StoreGlobal r0, c8
-    26: NewClosure r0, c9
-    29: StoreGlobal r0, c10
-    32: NewClosure r0, c11
-    35: StoreGlobal r0, c12
-    38: NewClosure r0, c13
-    41: StoreGlobal r0, c14
-    44: NewClosure r0, c15
-    47: StoreGlobal r0, c16
-    50: NewClosure r0, c17
-    53: StoreGlobal r0, c18
-    56: LoadUndefined r0
-    58: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
-    0: [GlobalNames]
-    1: [BytecodeFunction: use]
-    2: [String: use]
-    3: [BytecodeFunction: logicalAndBoolean]
-    4: [String: logicalAndBoolean]
-    5: [BytecodeFunction: logicalAndNotBoolean]
-    6: [String: logicalAndNotBoolean]
-    7: [BytecodeFunction: logicalOrBoolean]
-    8: [String: logicalOrBoolean]
-    9: [BytecodeFunction: logicalOrNotBoolean]
-    10: [String: logicalOrNotBoolean]
-    11: [BytecodeFunction: nullishCoalesce]
-    12: [String: nullishCoalesce]
-    13: [BytecodeFunction: logicalAndWithTemporary]
-    14: [String: logicalAndWithTemporary]
-    15: [BytecodeFunction: localOrWithTemporary]
-    16: [String: localOrWithTemporary]
-    17: [BytecodeFunction: nullishCoalesceWithTemporary]
-    18: [String: nullishCoalesceWithTemporary]
+    0: [BytecodeFunction: use]
+    1: [String: use]
+    2: [BytecodeFunction: logicalAndBoolean]
+    3: [String: logicalAndBoolean]
+    4: [BytecodeFunction: logicalAndNotBoolean]
+    5: [String: logicalAndNotBoolean]
+    6: [BytecodeFunction: logicalOrBoolean]
+    7: [String: logicalOrBoolean]
+    8: [BytecodeFunction: logicalOrNotBoolean]
+    9: [String: logicalOrNotBoolean]
+    10: [BytecodeFunction: nullishCoalesce]
+    11: [String: nullishCoalesce]
+    12: [BytecodeFunction: logicalAndWithTemporary]
+    13: [String: logicalAndWithTemporary]
+    14: [BytecodeFunction: localOrWithTemporary]
+    15: [String: localOrWithTemporary]
+    16: [BytecodeFunction: nullishCoalesceWithTemporary]
+    17: [String: nullishCoalesceWithTemporary]
 }
 
 [BytecodeFunction: use] {

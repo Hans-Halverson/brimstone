@@ -928,7 +928,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // Entire function parameters and body are in their own scope.
-        self.gen_scope_start(func_scope, func_scope_flags)?;
+        self.gen_push_scope(func_scope, func_scope_flags)?;
+        self.gen_init_tdz_for_scope(func_scope)?;
 
         // Store the function itself in scope if this is a named function expression
         if let Some(id) = func.id.as_ref() {
@@ -1022,6 +1023,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.exit_has_assign_expr_context();
             }
         }
+
+        // Create closures for all var scoped functions in the function body. This must occur after
+        // creating arguments object, so that the a function named "arguments" will overwrite the
+        // arguments object.
+        self.gen_var_scoped_functions(func_scope)?;
 
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
@@ -4107,6 +4113,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: &AstScopeNode,
         flags: Option<ScopeFlags>,
     ) -> EmitResult<()> {
+        self.gen_push_scope(scope, flags)?;
+        self.gen_init_tdz_for_scope(scope)?;
+        self.gen_var_scoped_functions(scope)?;
+
+        Ok(())
+    }
+
+    /// Create and push a new scope onto the scope stack if necessary.
+    fn gen_push_scope(
+        &mut self,
+        scope: &AstScopeNode,
+        flags: Option<ScopeFlags>,
+    ) -> EmitResult<()> {
         let flags = flags.unwrap_or(ScopeFlags::empty());
 
         // Push a new scope onto the scope stack if necessary
@@ -4137,7 +4156,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        // Set all bindings that need a TDZ check to empty
+        Ok(())
+    }
+
+    /// Initialize the TDZ for a scope, setting all bindings in that scope that need a TDZ check
+    /// to empty.
+    fn gen_init_tdz_for_scope(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
         for (name, binding) in scope.iter_bindings() {
             if binding.needs_tdz_check() {
                 match binding.vm_location().unwrap() {
@@ -4169,8 +4193,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
         }
-
-        self.gen_var_scoped_functions(scope)?;
 
         Ok(())
     }

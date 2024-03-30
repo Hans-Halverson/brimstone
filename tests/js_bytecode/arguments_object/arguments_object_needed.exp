@@ -90,8 +90,8 @@
 
 [BytecodeFunction: neededWithVarFunctionName] {
   Parameters: 0, Registers: 2
-    0: NewClosure r0, c0
-    3: NewMappedArguments r0
+    0: NewMappedArguments r0
+    2: NewClosure r0, c0
     5: LoadUndefined r1
     7: Ret r1
   Constant Table:

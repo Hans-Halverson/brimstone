@@ -47,7 +47,7 @@
      0: NewObject r0
      2: LoadImmediate r1, 1
      5: NewClosure r2, c0
-     8: DefineProperty r0, r1, r2, 0
+     8: DefineProperty r0, r1, r2, 1
     13: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]

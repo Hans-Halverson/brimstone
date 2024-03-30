@@ -2685,7 +2685,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Determine method name from the property
                 let mut name = match &key {
                     Property::Named { name, .. } => Some(name.to_owned()),
-                    Property::Computed(_) => None,
+                    Property::Computed(_) => {
+                        flags |= DefinePropertyFlags::NEEDS_NAME;
+                        None
+                    }
                 };
 
                 // Handle getter or setter methods
@@ -2707,9 +2710,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         };
                         prefixed_name.push_wtf8_str(&known_name);
                         name = Some(prefixed_name);
-                    } else {
-                        flags |= DefinePropertyFlags::NEEDS_NAME;
-                    };
+                    }
 
                     // Always use a DefineProperty instruction with flags instead of a
                     // DefineNamedProperty instruction.

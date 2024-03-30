@@ -39,6 +39,8 @@ bitflags! {
         const IS_LEXICAL = 0x2;
         /// Whether this is a function parameter binding.
         const IS_FUNCTION_PARAMETER = 0x4;
+        /// Whether this if a function expression name binding.
+        const IS_FUNCTION_EXPRESSION_NAME = 0x8;
     }
 }
 
@@ -138,6 +140,12 @@ impl ScopeNames {
     pub fn is_function_parameter(&self, index: usize) -> bool {
         self.get_name_flags(index)
             .contains(ScopeNameFlags::IS_FUNCTION_PARAMETER)
+    }
+
+    /// Return whether the binding at index is a function expression name binding.
+    pub fn is_function_expression_name(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_FUNCTION_EXPRESSION_NAME)
     }
 }
 

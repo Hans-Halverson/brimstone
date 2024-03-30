@@ -241,6 +241,16 @@ impl Handle<Scope> {
                     return err_assign_constant(cx, name.as_flat().get_());
                 }
 
+                // Check if storing to a function expression name
+                if scope_names.is_function_expression_name(index) {
+                    // Error if reassigning in strict mode, otherwise is a no-op
+                    if is_strict {
+                        return err_assign_constant(cx, name.as_flat().get_());
+                    } else {
+                        return true.into();
+                    }
+                }
+
                 scope.set_slot(index, value.get());
                 return true.into();
             }

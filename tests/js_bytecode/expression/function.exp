@@ -11,8 +11,12 @@
     23: StoreGlobal r0, c8
     26: NewClosure r0, c9
     29: StoreGlobal r0, c10
-    32: LoadUndefined r0
-    34: Ret r0
+    32: NewClosure r0, c11
+    35: StoreGlobal r0, c12
+    38: NewClosure r0, c13
+    41: StoreGlobal r0, c14
+    44: LoadUndefined r0
+    46: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: basic]
@@ -25,6 +29,10 @@
     8: [String: namedVarOverwrite]
     9: [BytecodeFunction: namedLexOverwrite]
     10: [String: namedLexOverwrite]
+    11: [BytecodeFunction: namedSloppyReassign]
+    12: [String: namedSloppyReassign]
+    13: [BytecodeFunction: namedStrictReassign]
+    14: [String: namedStrictReassign]
 }
 
 [BytecodeFunction: basic] {
@@ -152,4 +160,122 @@
     0: LoadUndefined r0
     2: LoadUndefined r1
     4: Ret r1
+}
+
+[BytecodeFunction: namedSloppyReassign] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: NewClosure r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: inner]
+    1: [BytecodeFunction: innerCaptured]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 3
+     0: Mov r0, <closure>
+     3: LoadImmediate r1, 1
+     6: Mov r2, r0
+     9: ToNumeric r2, r2
+    12: Mov r1, r2
+    15: Inc r2
+    17: Mov r1, r0
+    20: ToNumeric r1, r1
+    23: Inc r1
+    25: LoadUndefined r1
+    27: Ret r1
+}
+
+[BytecodeFunction: innerCaptured] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <closure>, 0, 0
+     6: LoadImmediate r0, 1
+     9: LoadFromScope r1, 0, 0
+    13: ToNumeric r1, r1
+    16: Mov r0, r1
+    19: Inc r1
+    21: LoadFromScope r0, 0, 0
+    25: ToNumeric r0, r0
+    28: Inc r0
+    30: NewClosure r0, c1
+    33: LoadUndefined r0
+    35: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: Ret r0
+}
+
+[BytecodeFunction: namedStrictReassign] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: NewClosure r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: inner]
+    1: [BytecodeFunction: innerCaptured]
+}
+
+[BytecodeFunction: inner] {
+  Parameters: 0, Registers: 2
+     0: Mov r0, <closure>
+     3: LoadImmediate r1, 1
+     6: ErrorConst c0
+     8: Mov r0, r1
+    11: ErrorConst c0
+    13: ToNumeric r0, r0
+    16: Mov r1, r0
+    19: Inc r0
+    21: ErrorConst c0
+    23: ErrorConst c0
+    25: ToNumeric r0, r0
+    28: Inc r0
+    30: LoadUndefined r1
+    32: Ret r1
+  Constant Table:
+    0: [String: inner]
+}
+
+[BytecodeFunction: innerCaptured] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <closure>, 0, 0
+     6: LoadImmediate r0, 1
+     9: ErrorConst c1
+    11: StoreToScope r0, 0, 0
+    15: ErrorConst c1
+    17: LoadFromScope r1, 0, 0
+    21: ToNumeric r1, r1
+    24: Mov r0, r1
+    27: Inc r1
+    29: ErrorConst c1
+    31: StoreToScope r1, 0, 0
+    35: ErrorConst c1
+    37: LoadFromScope r0, 0, 0
+    41: ToNumeric r0, r0
+    44: Inc r0
+    46: ErrorConst c1
+    48: StoreToScope r0, 0, 0
+    52: NewClosure r0, c2
+    55: LoadUndefined r0
+    57: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: innerCaptured]
+    2: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: Ret r0
 }

@@ -1445,10 +1445,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         value: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
-        // Error if we are trying to reassign a const
-        if Self::is_const_reassignment(binding, flags) {
+        if self.is_const_reassignment(binding, flags) {
+            // Error if we are trying to reassign a const
             let name_constant_index = self.add_string_constant(name)?;
             self.writer.error_const_instruction(name_constant_index);
+        } else if self.is_noop_reassignment(binding, flags) {
+            // Ignore noop reassignments
+            return Ok(());
         }
 
         // If this binding may be stored during its TDZ we must first load the binding and perform
@@ -1542,15 +1545,33 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Reassigning to a const will error. Make sure to not treat the true fixed register as the
         // destination, otherwise a value may be stored directly to that fixed register before we
         // error, which is observable.
-        if Self::is_const_reassignment(binding, store_flags) {
+        //
+        // Similarly make sure that noop reassignmetn is not observable.
+        if self.is_const_reassignment(binding, store_flags)
+            || self.is_noop_reassignment(binding, store_flags)
+        {
             return ExprDest::Any;
         }
 
         ExprDest::Fixed(fixed_register)
     }
 
-    fn is_const_reassignment(binding: &Binding, store_flags: StoreFlags) -> bool {
-        !store_flags.contains(StoreFlags::INITIALIZATION) && binding.is_const()
+    fn is_const_reassignment(&self, binding: &Binding, store_flags: StoreFlags) -> bool {
+        if store_flags.contains(StoreFlags::INITIALIZATION) {
+            return false;
+        }
+
+        // Function expression names cannot be reassigned in strict mode
+        binding.is_const() || (binding.kind().is_function_expression_name() && self.is_strict)
+    }
+
+    fn is_noop_reassignment(&self, binding: &Binding, store_flags: StoreFlags) -> bool {
+        if store_flags.contains(StoreFlags::INITIALIZATION) {
+            return false;
+        }
+
+        // Reassigning function expression name is a no-op in sloppy mode
+        binding.kind().is_function_expression_name() && !self.is_strict
     }
 
     /// Find the best expression destination in which to place the result of a destructuring
@@ -3254,20 +3275,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let id = expr.argument.to_id();
             let store_flags = StoreFlags::empty();
 
-            // If we are reassigning a const then we should immediately throw an error. This should
-            // be done before calling ToNumeric or inc/dec since those operations may be performed
-            // directly on a local register, which would be observable.
+            let mut dest = dest;
+            let mut old_value_dest = ExprDest::Any;
+
             if let ResolvedScope::Resolved = id.scope.kind() {
                 let binding = id.get_binding();
-                if Self::is_const_reassignment(binding, store_flags) {
+
+                // If we are reassigning a const then we should immediately throw an error. This
+                // should be done before calling ToNumeric or inc/dec since those operations may be
+                // performeddirectly on a local register, which would be observable.
+                if self.is_const_reassignment(binding, store_flags) {
                     let name_constant_index = self.add_string_constant(&id.name)?;
                     self.writer.error_const_instruction(name_constant_index);
+                }
+
+                // Exclusively use temporary registers instead of potentially operating in place on
+                // local registers to avoid accidentally assigning local registers.
+                if self.is_noop_reassignment(binding, store_flags) {
+                    dest = ExprDest::NewTemporary;
+                    old_value_dest = ExprDest::NewTemporary;
                 }
             }
 
             if expr.is_prefix {
                 // Prefix operations return the modified value so we can perform operations in place
-                let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+                let old_value = self.gen_load_identifier(id, old_value_dest)?;
 
                 if self.register_allocator.is_temporary_register(old_value) {
                     // If the target value is in a temporary register then we can place the numeric
@@ -3293,7 +3325,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Postfix operations return the old value, so we must make sure it is saved and
                 // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
                 let dest = self.allocate_destination(dest)?;
-                let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
+                let old_value = self.gen_load_identifier(id, old_value_dest)?;
                 self.writer.to_numeric_instruction(old_value, old_value);
 
                 // If id is at a fixed register which matches the destination then writing the
@@ -3312,7 +3344,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Otherwise we are guaranteed that writing the modified value to the id's location
                 // will not clobber the old value. Perform the inc/dec at the id's location.
                 self.write_inc_or_dec(expr.operator, old_value);
-
                 self.gen_store_identifier(id, old_value, store_flags)?;
                 self.register_allocator.release(old_value);
 
@@ -4233,23 +4264,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let mut flags = ScopeNameFlags::empty();
             let binding = scope.get_binding_opt(name);
 
-            let is_const = binding.map(|b| b.is_const()).unwrap_or(false);
-            if is_const {
+            if binding.is_none() {
+                all_flags.push(flags);
+                continue;
+            }
+
+            let binding = binding.unwrap();
+
+            if binding.is_const() {
                 flags |= ScopeNameFlags::IS_CONST;
             }
 
-            let is_lexical = binding
-                .map(|b| b.kind().is_lexically_scoped())
-                .unwrap_or(false);
-            if is_lexical {
+            if binding.kind().is_lexically_scoped() {
                 flags |= ScopeNameFlags::IS_LEXICAL;
             }
 
-            let is_lexical = binding
-                .map(|b| b.kind().is_function_parameter())
-                .unwrap_or(false);
-            if is_lexical {
+            if binding.kind().is_function_parameter() {
                 flags |= ScopeNameFlags::IS_FUNCTION_PARAMETER;
+            }
+
+            if binding.kind().is_function_expression_name() {
+                flags |= ScopeNameFlags::IS_FUNCTION_EXPRESSION_NAME;
             }
 
             all_flags.push(flags);

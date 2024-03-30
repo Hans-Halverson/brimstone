@@ -8,7 +8,10 @@ use crate::{
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
-        error::{err_assign_constant, err_not_defined_, reference_error_, type_error_},
+        error::{
+            err_assign_constant, err_cannot_set_property, err_not_defined_, reference_error_,
+            type_error_,
+        },
         eval::{
             eval::perform_bytecode_eval,
             expression::{
@@ -1740,7 +1743,7 @@ impl VM {
             // If property set failed and in strict mode then error, otherwise silently ignore
             // failure in sloppy mode.
             if !success && self.closure().function_ptr().is_strict() {
-                return type_error_(cx, &format!("Cannot set property {}", name));
+                return err_cannot_set_property(cx, name);
             }
 
             ().into()
@@ -2427,12 +2430,20 @@ impl VM {
         let object = self.read_register_to_handle(instr.object());
         let key = self.read_register_to_handle(instr.key());
         let dest = instr.dest();
+        let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
-        let object = maybe!(to_object(self.cx, object));
+        let coerced_object = maybe!(to_object(self.cx, object));
 
-        let result = maybe!(get(self.cx, object, property_key));
+        // Result of ToObject is used as receiver in sloppy mode
+        let receiver = if is_strict {
+            object
+        } else {
+            coerced_object.into()
+        };
+
+        let result = maybe!(coerced_object.get(self.cx, property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -2447,14 +2458,22 @@ impl VM {
         let object = self.read_register_to_handle(instr.object());
         let key = self.read_register_to_handle(instr.key());
         let value = self.read_register_to_handle(instr.value());
-
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
-        let object = maybe!(to_object(self.cx, object));
+        let mut coerced_object = maybe!(to_object(self.cx, object));
 
-        set(self.cx, object, property_key, value, is_strict)
+        if is_strict {
+            let success = maybe!(coerced_object.set(self.cx, property_key, value, object));
+            if !success {
+                return err_cannot_set_property(self.cx, property_key);
+            }
+        } else {
+            maybe!(coerced_object.set(self.cx, property_key, value, coerced_object.into()));
+        }
+
+        ().into()
     }
 
     #[inline]
@@ -2525,13 +2544,22 @@ impl VM {
         let key = key.as_string().to_handle();
 
         let dest = instr.dest();
+        let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate, replace handle
         let property_key = PropertyKey::string(self.cx, key);
         let property_key = key.replace_into(property_key);
 
-        let object = maybe!(to_object(self.cx, object));
-        let result = maybe!(get(self.cx, object, property_key));
+        let coerced_object = maybe!(to_object(self.cx, object));
+
+        // Result of ToObject is used as receiver in sloppy mode
+        let receiver = if is_strict {
+            object
+        } else {
+            coerced_object.into()
+        };
+
+        let result = maybe!(coerced_object.get(self.cx, property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -2553,12 +2581,21 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let object = maybe!(to_object(self.cx, object));
+        let mut coerced_object = maybe!(to_object(self.cx, object));
 
         let property_key = PropertyKey::string(self.cx, key);
         let property_key = key.replace_into(property_key);
 
-        set(self.cx, object, property_key, value, is_strict)
+        if is_strict {
+            let success = maybe!(coerced_object.set(self.cx, property_key, value, object));
+            if !success {
+                return err_cannot_set_property(self.cx, property_key);
+            }
+        } else {
+            maybe!(coerced_object.set(self.cx, property_key, value, coerced_object.into()));
+        }
+
+        ().into()
     }
 
     #[inline]

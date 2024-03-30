@@ -64,3 +64,7 @@ pub fn err_uninitialized_<T>(cx: Context, name: Handle<StringValue>) -> EvalResu
 pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {
     type_error_(cx, &format!("can't assign constant `{}`", name))
 }
+
+pub fn err_cannot_set_property<T>(cx: Context, name: impl std::fmt::Display) -> EvalResult<T> {
+    type_error_(cx, &format!("can't set property {}", name))
+}

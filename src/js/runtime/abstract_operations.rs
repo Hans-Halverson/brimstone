@@ -7,7 +7,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     completion::EvalResult,
     environment::private_environment::PrivateName,
-    error::type_error_,
+    error::{err_cannot_set_property, type_error_},
     eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
     function::Function,
     gc::{Handle, HeapPtr},
@@ -58,7 +58,7 @@ pub fn set(
 ) -> EvalResult<()> {
     let success = maybe!(object.set(cx, key, value, object.into()));
     if !success && should_throw {
-        return type_error_(cx, &format!("Cannot set property {}", key));
+        return err_cannot_set_property(cx, key);
     }
 
     ().into()

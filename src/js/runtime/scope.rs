@@ -3,7 +3,7 @@ use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set
 use super::{
     abstract_operations::{has_own_property, has_property},
     collections::InlineArray,
-    error::{err_assign_constant, type_error_},
+    error::{err_assign_constant, err_cannot_set_property},
     gc::{HeapObject, HeapVisitor},
     get,
     object_descriptor::ObjectDescriptor,
@@ -265,7 +265,7 @@ impl Handle<Scope> {
                 if maybe!(scope.has_object_binding(cx, object_handle, key)) {
                     let success = maybe!(object_handle.set(cx, key, value, object_handle.into()));
                     if !success && is_strict {
-                        return type_error_(cx, &format!("Cannot set property {}", name));
+                        return err_cannot_set_property(cx, name);
                     }
 
                     // Name was found, even if the set failed

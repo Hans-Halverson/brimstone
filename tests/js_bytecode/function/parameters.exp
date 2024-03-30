@@ -15,8 +15,10 @@
     35: StoreGlobal r0, c12
     38: NewClosure r0, c13
     41: StoreGlobal r0, c14
-    44: LoadUndefined r0
-    46: Ret r0
+    44: NewClosure r0, c15
+    47: StoreGlobal r0, c16
+    50: LoadUndefined r0
+    52: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: destructuring]
@@ -33,6 +35,8 @@
     12: [String: tdz]
     13: [BytecodeFunction: tdzCaptured]
     14: [String: tdzCaptured]
+    15: [BytecodeFunction: shadowed]
+    16: [String: shadowed]
 }
 
 [BytecodeFunction: destructuring] {
@@ -169,4 +173,9 @@
     15: Ret r0
   Constant Table:
     0: [String: b]
+}
+
+[BytecodeFunction: shadowed] {
+  Parameters: 3, Registers: 0
+    0: Ret a2
 }

@@ -22,3 +22,7 @@ function tdzCaptured(a = b, b) {
     return a + b;
   }
 }
+
+function shadowed(x, x, x) {
+  return x;
+}

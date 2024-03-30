@@ -995,13 +995,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match param {
                     // Emit pattern destructuring
                     ast::FunctionParam::Pattern { pattern, .. } => {
-                        let argument = Register::argument(i);
-                        self.gen_destructuring(
-                            pattern,
-                            argument,
-                            /* release_value */ true,
-                            StoreFlags::INITIALIZATION,
-                        )?;
+                        // Check if this is a simple id pattern which is shadowed by a later
+                        // parameter. If so do not perform destructuring as this would overwrite the
+                        // later parameter.
+                        let mut is_shadowed = false;
+                        if let ast::Pattern::Id(id) = pattern {
+                            if let VMLocation::Argument(index) =
+                                id.get_binding().vm_location().unwrap()
+                            {
+                                is_shadowed = index != i;
+                            }
+                        }
+
+                        if !is_shadowed {
+                            let argument = Register::argument(i);
+                            self.gen_destructuring(
+                                pattern,
+                                argument,
+                                /* release_value */ true,
+                                StoreFlags::INITIALIZATION,
+                            )?;
+                        }
                     }
                     // Create the rest parameter then destructure
                     ast::FunctionParam::Rest { rest: param, .. } => {

@@ -2965,7 +2965,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // and classes) if it is a simple id assignment and id is not parenthesized.
                 let is_non_parenthesized_id_predicate = || {
                     id.loc.start == expr.loc.start
-                        && expr.operator == ast::AssignmentOperator::Equals
+                        && (expr.operator == ast::AssignmentOperator::Equals
+                            || expr.operator.is_logical())
                 };
 
                 let store_flags = StoreFlags::NEEDS_TDZ_CHECK;

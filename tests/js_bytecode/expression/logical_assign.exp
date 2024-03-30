@@ -9,10 +9,12 @@
     17: StoreGlobal r0, c6
     20: NewClosure r0, c7
     23: StoreGlobal r0, c8
-    26: LoadImmediate r0, 1
-    29: StoreGlobal r0, c9
-    32: LoadUndefined r0
-    34: Ret r0
+    26: NewClosure r0, c9
+    29: StoreGlobal r0, c10
+    32: LoadImmediate r0, 1
+    35: StoreGlobal r0, c11
+    38: LoadUndefined r0
+    40: Ret r0
   Constant Table:
     0: [GlobalNames]
     1: [BytecodeFunction: logicalAnd]
@@ -23,7 +25,9 @@
     6: [String: nullishCoalesce]
     7: [BytecodeFunction: testAssignDest]
     8: [String: testAssignDest]
-    9: [String: global]
+    9: [BytecodeFunction: named]
+    10: [String: named]
+    11: [String: global]
 }
 
 [BytecodeFunction: logicalAnd] {
@@ -147,4 +151,42 @@
     36: Ret r1
   Constant Table:
     0: [String: foo]
+}
+
+[BytecodeFunction: named] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: JumpToBooleanFalse r0, 6 (.L0)
+     6: NewClosure r0, c0
+  .L0:
+     9: JumpToBooleanTrue r0, 6 (.L1)
+    12: NewClosure r0, c1
+  .L1:
+    15: JumpNotNullish r0, 6 (.L2)
+    18: NewClosure r0, c2
+  .L2:
+    21: LoadUndefined r1
+    23: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: x]
+    1: [BytecodeFunction: x]
+    2: [BytecodeFunction: x]
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
 }

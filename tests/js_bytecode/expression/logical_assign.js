@@ -46,3 +46,12 @@ function testAssignDest(param) {
   local = param &&= 1;
   local.foo = param &&= 2;
 }
+
+function named() {
+  var x = 1;
+  
+  // Named
+  x &&= () => {};
+  x ||= () => {};
+  x ??= () => {};
+}

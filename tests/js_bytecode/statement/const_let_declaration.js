@@ -52,9 +52,18 @@ function letNoInitializer() {
 
 function assigningConst() {
   const c2 = 1;
-
   c1 = 2;
   c2 = 3;
+}
 
+function prefixUpdateConst() {
+  const c2 = 1;
+  ++c1;
+  ++c2;
+}
+
+function postfixUpdateConst() {
+  const c2 = 1;
+  c1++;
   c2++;
 }

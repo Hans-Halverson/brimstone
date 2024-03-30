@@ -961,8 +961,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Generate the arguments object if necessary. For mapped arguments object this also places
         // the function's arguments into the function's scope.
         if func.is_arguments_object_needed() {
+            let store_flags = StoreFlags::INITIALIZATION;
+
             let arguments_binding = func_scope.get_binding("arguments");
-            let arguments_dest = self.expr_dest_for_binding(arguments_binding);
+            let arguments_dest = self.expr_dest_for_binding(arguments_binding, store_flags);
             let arguments_object = self.allocate_destination(arguments_dest)?;
 
             if func.needs_mapped_arguments_object() {
@@ -978,12 +980,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     .new_unmapped_arguments_instruction(arguments_object);
             }
 
-            self.gen_store_binding(
-                "arguments",
-                arguments_binding,
-                arguments_object,
-                StoreFlags::INITIALIZATION,
-            )?;
+            self.gen_store_binding("arguments", arguments_binding, arguments_object, store_flags)?;
             self.register_allocator.release(arguments_object);
         }
 
@@ -1007,8 +1004,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                     // Create the rest parameter then destructure
                     ast::FunctionParam::Rest { rest: param, .. } => {
-                        let rest_dest =
-                            self.expr_dest_for_destructuring_assignment(&param.argument);
+                        let store_flags = StoreFlags::INITIALIZATION;
+                        let rest_dest = self
+                            .expr_dest_for_destructuring_assignment(&param.argument, store_flags);
                         let rest = self.allocate_destination(rest_dest)?;
 
                         self.writer.rest_parameter_instruction(rest);
@@ -1016,7 +1014,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             &param.argument,
                             rest,
                             /* release_value */ true,
-                            StoreFlags::INITIALIZATION,
+                            store_flags,
                         )?;
                     }
                 }
@@ -1448,7 +1446,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         flags: StoreFlags,
     ) -> EmitResult<()> {
         // Error if we are trying to reassign a const
-        if !flags.contains(StoreFlags::INITIALIZATION) && binding.is_const() {
+        if Self::is_const_reassignment(binding, flags) {
             let name_constant_index = self.add_string_constant(name)?;
             self.writer.error_const_instruction(name_constant_index);
         }
@@ -1520,24 +1518,39 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ///
     /// This allows expressions to be stored directly into their destination register, avoiding an
     /// unnecessary mov instruction.
-    fn expr_dest_for_id(&mut self, id: &ast::Identifier) -> ExprDest {
+    fn expr_dest_for_id(&mut self, id: &ast::Identifier, store_flags: StoreFlags) -> ExprDest {
         // Unresolved variables can be stored from any register
         if id.scope.is_unresolved() {
             return ExprDest::Any;
         }
 
-        self.expr_dest_for_binding(id.get_binding())
+        self.expr_dest_for_binding(id.get_binding(), store_flags)
     }
 
-    fn expr_dest_for_binding(&mut self, binding: &Binding) -> ExprDest {
-        match binding.vm_location().unwrap() {
+    fn expr_dest_for_binding(&mut self, binding: &Binding, store_flags: StoreFlags) -> ExprDest {
+        let fixed_register = match binding.vm_location().unwrap() {
             // Variables in arguments and registers can be encoded directly as register operands.
             // Make sure to load to a new temporary if necessary.
-            VMLocation::Argument(index) => ExprDest::Fixed(Register::argument(index)),
-            VMLocation::LocalRegister(index) => ExprDest::Fixed(Register::local(index)),
+            VMLocation::Argument(index) => Register::argument(index),
+            VMLocation::LocalRegister(index) => Register::local(index),
             // Other VM locations can be stored from any register
-            VMLocation::Global | VMLocation::Scope { .. } | VMLocation::EvalVar => ExprDest::Any,
+            VMLocation::Global | VMLocation::Scope { .. } | VMLocation::EvalVar => {
+                return ExprDest::Any
+            }
+        };
+
+        // Reassigning to a const will error. Make sure to not treat the true fixed register as the
+        // destination, otherwise a value may be stored directly to that fixed register before we
+        // error, which is observable.
+        if Self::is_const_reassignment(binding, store_flags) {
+            return ExprDest::Any;
         }
+
+        ExprDest::Fixed(fixed_register)
+    }
+
+    fn is_const_reassignment(binding: &Binding, store_flags: StoreFlags) -> bool {
+        !store_flags.contains(StoreFlags::INITIALIZATION) && binding.is_const()
     }
 
     /// Find the best expression destination in which to place the result of a destructuring
@@ -1545,13 +1558,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ///
     /// This allows destructuring assignments to store expressions directly into their destination
     /// register, avoiding unnecessary movs.
-    fn expr_dest_for_destructuring_assignment(&mut self, pattern: &ast::Pattern) -> ExprDest {
+    fn expr_dest_for_destructuring_assignment(
+        &mut self,
+        pattern: &ast::Pattern,
+        store_flags: StoreFlags,
+    ) -> ExprDest {
         match pattern {
-            ast::Pattern::Id(id) => self.expr_dest_for_id(id),
+            ast::Pattern::Id(id) => self.expr_dest_for_id(id, store_flags),
             ast::Pattern::Assign(assign) => {
                 // Make sure not to clobber the dest register if it is fixed, since there will be
                 // multiple assignments to the dest.
-                let dest = self.expr_dest_for_destructuring_assignment(&assign.left);
+                let dest = self.expr_dest_for_destructuring_assignment(&assign.left, store_flags);
                 self.gen_ensure_dest_is_temporary(dest)
             }
             // Other patterns are stored via instructions, not directly into a register, so any
@@ -2923,7 +2940,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         && expr.operator == ast::AssignmentOperator::Equals
                 };
 
-                let stored_value_dest = self.expr_dest_for_id(id);
+                let store_flags = StoreFlags::NEEDS_TDZ_CHECK;
+                let stored_value_dest = self.expr_dest_for_id(id, store_flags);
                 let mut join_block = 0;
 
                 let stored_value = if expr.operator == ast::AssignmentOperator::Equals {
@@ -2979,7 +2997,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     stored_value
                 };
 
-                self.gen_store_identifier(id, stored_value, StoreFlags::NEEDS_TDZ_CHECK)?;
+                self.gen_store_identifier(id, stored_value, store_flags)?;
 
                 if expr.operator.is_logical() {
                     self.start_block(join_block);
@@ -3078,14 +3096,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             // Destructuring assignment
             pattern @ (ast::Pattern::Object(_) | ast::Pattern::Array(_)) => {
-                let stored_value_dest = self.expr_dest_for_destructuring_assignment(pattern);
+                let store_flags = StoreFlags::NEEDS_TDZ_CHECK;
+                let stored_value_dest =
+                    self.expr_dest_for_destructuring_assignment(pattern, store_flags);
                 let stored_value = self.gen_expression_with_dest(&expr.right, stored_value_dest)?;
 
                 self.gen_destructuring(
                     pattern,
                     stored_value,
                     /* release_value */ false,
-                    StoreFlags::NEEDS_TDZ_CHECK,
+                    store_flags,
                 )?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
@@ -3232,6 +3252,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
+            let store_flags = StoreFlags::empty();
+
+            // If we are reassigning a const then we should immediately throw an error. This should
+            // be done before calling ToNumeric or inc/dec since those operations may be performed
+            // directly on a local register, which would be observable.
+            if let ResolvedScope::Resolved = id.scope.kind() {
+                let binding = id.get_binding();
+                if Self::is_const_reassignment(binding, store_flags) {
+                    let name_constant_index = self.add_string_constant(&id.name)?;
+                    self.writer.error_const_instruction(name_constant_index);
+                }
+            }
 
             if expr.is_prefix {
                 // Prefix operations return the modified value so we can perform operations in place
@@ -3246,7 +3278,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     self.writer.to_numeric_instruction(dest, old_value);
                     self.write_inc_or_dec(expr.operator, dest);
-                    self.gen_store_identifier(id, dest, StoreFlags::empty())?;
+                    self.gen_store_identifier(id, dest, store_flags)?;
 
                     Ok(dest)
                 } else {
@@ -3267,8 +3299,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // If id is at a fixed register which matches the destination then writing the
                 // modified value to the id's location would clobber the old value. But in this case
                 // the desired behavior is to not actually increment/decrement the value. We just
-                // need to perform tje in-place numeric conversion.
-                if let ExprDest::Fixed(fixed_id_reg) = self.expr_dest_for_id(id) {
+                // need to perform the in-place numeric conversion.
+                if let ExprDest::Fixed(fixed_id_reg) = self.expr_dest_for_id(id, store_flags) {
                     if fixed_id_reg == dest {
                         return Ok(dest);
                     }
@@ -3281,7 +3313,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // will not clobber the old value. Perform the inc/dec at the id's location.
                 self.write_inc_or_dec(expr.operator, old_value);
 
-                self.gen_store_identifier(id, old_value, StoreFlags::empty())?;
+                self.gen_store_identifier(id, old_value, store_flags)?;
                 self.register_allocator.release(old_value);
 
                 Ok(dest)
@@ -3499,7 +3531,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<StmtCompletion> {
         for decl in &var_decl.declarations {
             if let Some(init) = decl.init.as_deref() {
-                let init_value_dest = self.expr_dest_for_destructuring_assignment(&decl.id);
+                let store_flags = StoreFlags::INITIALIZATION;
+                let init_value_dest =
+                    self.expr_dest_for_destructuring_assignment(&decl.id, store_flags);
 
                 let init_value = if let ast::Pattern::Id(id) = decl.id.as_ref() {
                     self.gen_named_outer_expression(AnyStr::from_id(id), init, init_value_dest)?
@@ -3515,7 +3549,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     &decl.id,
                     init_value,
                     /* release_value */ true,
-                    StoreFlags::INITIALIZATION,
+                    store_flags,
                 )?;
                 self.exit_has_assign_expr_context();
 
@@ -3523,12 +3557,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             } else if var_decl.kind == ast::VarKind::Let {
                 // Let declarations without an initializer are initialized to undefined
                 let id = decl.id.to_id();
-                let init_value_dest = self.expr_dest_for_id(id);
+                let store_flags = StoreFlags::INITIALIZATION;
+                let init_value_dest = self.expr_dest_for_id(id, store_flags);
                 let init_value = self.allocate_destination(init_value_dest)?;
 
                 // Elide TDZ check when storing at declarations
                 self.writer.load_undefined_instruction(init_value);
-                self.gen_store_identifier(id, init_value, StoreFlags::INITIALIZATION)?;
+                self.gen_store_identifier(id, init_value, store_flags)?;
                 self.register_allocator.release(init_value);
             }
         }
@@ -3574,7 +3609,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         pattern: &ast::ObjectPattern,
         object_value: GenRegister,
         release_value: bool,
-        flags: StoreFlags,
+        store_flags: StoreFlags,
     ) -> EmitResult<()> {
         enum Property<'a> {
             Named(&'a ast::Identifier),
@@ -3592,7 +3627,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             // Emit property in the best dest register for the pattern
-            let dest = self.expr_dest_for_destructuring_assignment(&property.value);
+            let dest = self.expr_dest_for_destructuring_assignment(&property.value, store_flags);
 
             let key = match property.key.as_deref() {
                 // Shorthand properties must have an id pattern, optionally with a default value
@@ -3653,7 +3688,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 &property.value,
                 property_value,
                 /* release_value */ true,
-                flags,
+                store_flags,
             )?;
         }
 
@@ -3661,7 +3696,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if has_rest_element {
             let rest_element_pattern = pattern.properties.last().unwrap().value.as_ref();
             let rest_element_dest =
-                self.expr_dest_for_destructuring_assignment(rest_element_pattern);
+                self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
             let rest_element = self.allocate_destination(rest_element_dest)?;
 
             // Rest element references the saved property keys on the stack, so they can be excluded
@@ -3691,7 +3726,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 rest_element_pattern,
                 rest_element,
                 /* release_value */ true,
-                flags,
+                store_flags,
             )?;
 
             for saved_key in saved_keys.into_iter().rev() {
@@ -3983,8 +4018,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         )?;
 
         // Create a new closure, directly into binding location if possible
+        let store_flags = StoreFlags::INITIALIZATION;
         let closure_dest = if let Some(id) = func_decl.id.as_ref() {
-            self.expr_dest_for_id(id)
+            self.expr_dest_for_id(id, store_flags)
         } else {
             ExprDest::Any
         };
@@ -3995,7 +4031,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // And store at the binding's location. Stores at declarations do not need a TDZ check.
         if let Some(id) = func_decl.id.as_ref() {
-            self.gen_store_identifier(id, closure_reg, StoreFlags::INITIALIZATION)?;
+            self.gen_store_identifier(id, closure_reg, store_flags)?;
         }
 
         self.register_allocator.release(closure_reg);
@@ -4688,19 +4724,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(iteration_start_block);
         self.gen_scope_start(for_scope, None)?;
 
-        // Iteration starts by calling the for-in iterator's `next` method
-        let next_result = self.gen_for_each_next_result_dest(stmt)?;
-        self.writer.for_in_next_instruction(next_result, iterator);
-
-        // An undefined result from `next` means there are no more keys, jump out of the loop
-        self.write_jump_nullish_instruction(next_result, loop_end_block)?;
-
         // Assigning to patterns needs a TDZ check
         let store_flags = if stmt.left.is_decl() {
             StoreFlags::INITIALIZATION
         } else {
             StoreFlags::NEEDS_TDZ_CHECK
         };
+
+        // Iteration starts by calling the for-in iterator's `next` method
+        let next_result = self.gen_for_each_next_result_dest(stmt, store_flags)?;
+        self.writer.for_in_next_instruction(next_result, iterator);
+
+        // An undefined result from `next` means there are no more keys, jump out of the loop
+        self.write_jump_nullish_instruction(next_result, loop_end_block)?;
 
         // Otherwise `next` returned a key, so store the key to the pattern
         self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
@@ -4739,11 +4775,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_for_each_next_result_dest(
         &mut self,
         stmt: &ast::ForEachStatement,
+        store_flags: StoreFlags,
     ) -> EmitResult<GenRegister> {
         match stmt.left.pattern() {
             // If storing to an id we attempt to store directly
             ast::Pattern::Id(id) => {
-                let dest = self.expr_dest_for_id(id);
+                let dest = self.expr_dest_for_id(id, store_flags);
                 self.allocate_destination(dest)
             }
             // Otherwise we store to a temporary register

@@ -102,7 +102,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 5b 00            PushFunctionScope c0
+     0: 5a 00            PushLexicalScope c0
      2: 60 07 00 00      StoreToScope <this>, 0, 0
      6: 0d fe 01         LoadDynamic r1, c1
      9: 04 fd 02         LoadConstant r2, c2
@@ -140,7 +140,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 5b 00            PushFunctionScope c0
+     0: 5a 00            PushLexicalScope c0
      2: 60 07 00 00      StoreToScope <this>, 0, 0
      6: 0a fe 01         LoadGlobal r1, c1
      9: 04 fd 02         LoadConstant r2, c2

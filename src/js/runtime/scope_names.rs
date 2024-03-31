@@ -24,9 +24,13 @@ pub struct ScopeNames {
 bitflags! {
     #[derive(Clone, Copy)]
     pub struct ScopeFlags: u8 {
+        /// Whether this scope is a "var scope", meaning sloppy eval will create vars in this scope.
+        const IS_VAR_SCOPE = 0x1;
         /// Whether this is the scope that contains function params, separate from the function
         /// body because the function params contains expressions.
-        const IS_FUNCTION_PARAMETERS_SCOPE = 0x1;
+        const IS_FUNCTION_PARAMETERS_SCOPE = 0x2;
+        /// Whether this is a function scope for a function that is not an arrow function.
+        const IS_NON_ARROW_FUNCTION_SCOPE = 0x4;
     }
 }
 
@@ -100,9 +104,17 @@ impl ScopeNames {
         self.names.len()
     }
 
+    pub fn is_var_scope(&self) -> bool {
+        self.flags.contains(ScopeFlags::IS_VAR_SCOPE)
+    }
+
     pub fn is_function_parameters_scope(&self) -> bool {
         self.flags
             .contains(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE)
+    }
+
+    pub fn is_non_arrow_function_scope(&self) -> bool {
+        self.flags.contains(ScopeFlags::IS_NON_ARROW_FUNCTION_SCOPE)
     }
 
     pub fn name_ptrs(&self) -> &[HeapPtr<FlatString>] {

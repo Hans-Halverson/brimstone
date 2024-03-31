@@ -1100,7 +1100,7 @@ impl MetaProperty {
     pub fn new_target(loc: Loc) -> MetaProperty {
         MetaProperty {
             loc,
-            kind: MetaPropertyKind::NewTarget { scope: AstPtr::uninit() },
+            kind: MetaPropertyKind::NewTarget { scope: TaggedResolvedScope::unresolved_global() },
         }
     }
 }
@@ -1108,8 +1108,9 @@ impl MetaProperty {
 #[derive(Clone, Copy)]
 pub enum MetaPropertyKind {
     NewTarget {
-        /// Function scope for the function that corresponds to this new.target.
-        scope: AstPtr<AstScopeNode>,
+        /// Reference to the function scope that contains the binding for this new.target, or tagged
+        /// as unresolved dynamic if the scope could not be statically determined.
+        scope: TaggedResolvedScope,
     },
     ImportMeta,
 }

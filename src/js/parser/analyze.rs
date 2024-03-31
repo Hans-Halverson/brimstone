@@ -617,7 +617,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
                         NEW_TARGET_BINDING_NAME,
                         expr.loc,
                     );
-                    *scope = AstPtr::from_ref(def_scope.unwrap_resolved())
+                    *scope = def_scope;
                 } else {
                     self.emit_error(expr.loc, ParseError::NewTargetOutsideFunction);
                 }

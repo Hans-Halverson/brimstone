@@ -27,3 +27,6 @@ eval?.(`var x = 1; x;`);
 
 // No dynamic lookup for var bindings in strict indirect eval
 eval?.(`'use strict'; var x = 1; x;`);
+
+// Dynamic lookup of new.target
+(function() { eval('new.target') })();

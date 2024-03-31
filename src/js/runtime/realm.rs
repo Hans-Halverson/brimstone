@@ -282,7 +282,8 @@ impl Handle<Realm> {
         // All global scopes have the realm in their first slot
         let binding_names = &[InternedStrings::get_str(cx, REALM_SCOPE_SLOT_NAME).as_flat()];
         let binding_flags = &[ScopeNameFlags::empty()];
-        let scope_names = ScopeNames::new(cx, ScopeFlags::empty(), binding_names, binding_flags);
+        let scope_names =
+            ScopeNames::new(cx, ScopeFlags::IS_VAR_SCOPE, binding_names, binding_flags);
 
         self.new_global_scope(cx, scope_names);
     }

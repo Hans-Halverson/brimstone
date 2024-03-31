@@ -914,6 +914,10 @@ impl BindingKind {
         matches!(self, BindingKind::ImplicitThis)
     }
 
+    pub fn is_implicit_arguments(&self) -> bool {
+        matches!(self, BindingKind::ImplicitArguments)
+    }
+
     pub fn is_function_parameter(&self) -> bool {
         matches!(self, BindingKind::FunctionParameter { .. })
     }

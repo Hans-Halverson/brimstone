@@ -10,7 +10,7 @@ use bitflags::bitflags;
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
-        ast::{self, AstPtr, LabelId, ResolvedScope},
+        ast::{self, AstPtr, LabelId, ResolvedScope, TaggedResolvedScope},
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
@@ -911,17 +911,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             None
         };
 
+        let mut func_scope_flags = ScopeFlags::empty();
+
         // Mark the function scope if it is a scope only for function parameters, separate from the
         // function body.
-        let mut func_scope_flags = None;
         if let ast::FunctionBody::Block(body) = func.body.as_ref() {
             if body.scope.is_some() {
-                func_scope_flags = Some(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE);
+                func_scope_flags |= ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE;
             }
         }
 
+        // Mark the function scope for additional properties of the function
+        if !func.is_arrow() {
+            func_scope_flags |= ScopeFlags::IS_NON_ARROW_FUNCTION_SCOPE;
+        }
+
         // Entire function parameters and body are in their own scope.
-        self.gen_push_scope(func_scope, func_scope_flags)?;
+        self.gen_push_scope(func_scope, Some(func_scope_flags))?;
         self.gen_init_tdz_for_scope(func_scope)?;
 
         // Store the function itself in scope if this is a named function expression
@@ -1216,7 +1222,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Expression::MetaProperty(meta_property) => match meta_property.kind {
                 ast::MetaPropertyKind::NewTarget { scope } => {
-                    self.gen_new_target_expression(scope.as_ref(), dest)
+                    self.gen_new_target_expression(scope, dest)
                 }
                 ast::MetaPropertyKind::ImportMeta => {
                     unimplemented!("bytecode for import.meta expression")
@@ -1262,17 +1268,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         match id.scope.kind() {
-            ResolvedScope::UnresolvedGlobal => {
-                return self.gen_load_global_identifier(&id.name, dest);
-            }
-            ResolvedScope::UnresolvedDynamic => {
-                return self.gen_load_dynamic_identifier(&id.name, dest);
-            }
-            // Handled below
-            ResolvedScope::Resolved => {}
+            ResolvedScope::UnresolvedGlobal => self.gen_load_global_identifier(&id.name, dest),
+            ResolvedScope::UnresolvedDynamic => self.gen_load_dynamic_identifier(&id.name, dest),
+            ResolvedScope::Resolved => self.gen_load_binding(&id.name, id.get_binding(), dest),
         }
-
-        self.gen_load_binding(&id.name, id.get_binding(), dest)
     }
 
     fn gen_load_binding(
@@ -3564,11 +3563,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_new_target_expression(
         &mut self,
-        scope: &AstScopeNode,
+        scope: TaggedResolvedScope,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let binding = scope.get_binding(NEW_TARGET_BINDING_NAME);
-        self.gen_load_binding(NEW_TARGET_BINDING_NAME, binding, dest)
+        match scope.kind() {
+            ResolvedScope::UnresolvedGlobal => {
+                unreachable!("new.target cannot be resolved to UnresolvedGlobal")
+            }
+            ResolvedScope::UnresolvedDynamic => {
+                self.gen_load_dynamic_identifier(NEW_TARGET_BINDING_NAME, dest)
+            }
+            ResolvedScope::Resolved => {
+                let binding = scope.unwrap_resolved().get_binding(NEW_TARGET_BINDING_NAME);
+                self.gen_load_binding(NEW_TARGET_BINDING_NAME, binding, dest)
+            }
+        }
     }
 
     fn gen_variable_declaration(
@@ -4134,31 +4143,37 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: &AstScopeNode,
         flags: Option<ScopeFlags>,
     ) -> EmitResult<()> {
-        let flags = flags.unwrap_or(ScopeFlags::empty());
+        let mut flags = flags.unwrap_or(ScopeFlags::empty());
+
+        match scope.kind() {
+            ScopeNodeKind::Function { .. }
+            | ScopeNodeKind::FunctionBody
+            | ScopeNodeKind::Global
+            | ScopeNodeKind::Eval { is_strict: true, .. } => {
+                flags |= ScopeFlags::IS_VAR_SCOPE;
+            }
+            _ => {}
+        }
 
         // Push a new scope onto the scope stack if necessary
         match scope.kind() {
             // Function scopes are considered var hoist targets
-            ScopeNodeKind::Function { .. }
-            | ScopeNodeKind::FunctionBody
-            // Strict eval forms a new var scope
-            | ScopeNodeKind::Eval { is_strict: true, .. } => {
-                if let Some (vm_node_id) = scope.vm_scope_id() {
+            ScopeNodeKind::Function { .. } | ScopeNodeKind::FunctionBody => {
+                if let Some(vm_node_id) = scope.vm_scope_id() {
                     let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
-                    self.writer.push_function_scope_instruction(scope_names_index);
+                    self.writer
+                        .push_function_scope_instruction(scope_names_index);
                     self.push_scope_stack_node(vm_node_id);
                 }
             }
             // Global and with scopes are handled separately
-            ScopeNodeKind::Global
-            | ScopeNodeKind::With => {}
+            ScopeNodeKind::Global | ScopeNodeKind::With => {}
             // Otherwise this is a generic lexical scope
-            ScopeNodeKind::Block
-            | ScopeNodeKind::Switch
-            | ScopeNodeKind::Eval { is_strict: false, .. } => {
-                if let Some (vm_node_id) = scope.vm_scope_id() {
+            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Eval { .. } => {
+                if let Some(vm_node_id) = scope.vm_scope_id() {
                     let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
-                    self.writer.push_lexical_scope_instruction(scope_names_index);
+                    self.writer
+                        .push_lexical_scope_instruction(scope_names_index);
                     self.push_scope_stack_node(vm_node_id);
                 }
             }
@@ -4302,7 +4317,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 flags |= ScopeNameFlags::IS_LEXICAL;
             }
 
-            if binding.kind().is_function_parameter() {
+            // "arguments" is treated as a function parameter so that an `eval('var arguments')`
+            // within function parameters errors.
+            if binding.kind().is_function_parameter() || binding.kind().is_implicit_arguments() {
                 flags |= ScopeNameFlags::IS_FUNCTION_PARAMETER;
             }
 
@@ -5661,7 +5678,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .iter()
             .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
             .collect::<Vec<_>>();
-        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &binding_flags);
+        let scope_names =
+            ScopeNames::new(self.cx, ScopeFlags::IS_VAR_SCOPE, &names, &binding_flags);
 
         // Add all var and lex names to the GlobalNames object, which will be used later when
         // instantiating the global scope.

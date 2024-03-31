@@ -52,8 +52,25 @@ pub fn perform_bytecode_eval(
     let code = code.as_string();
 
     let is_direct = direct_scope.is_some();
+    let mut in_function = false;
+
+    // Walk scope chain, determining context that eval was called in
     if is_direct {
-        // TODO: Check if inside a function, method, derived constructor, and class field initializer
+        let mut scope = cx.vm().scope();
+        loop {
+            // Check if we are inside a function, meaning `new.target` can be used in the eval
+            if scope.scope_names_ptr().is_non_arrow_function_scope() {
+                in_function = true;
+            }
+
+            // TODO: Check if inside a method, derived constructor, and class field initializer
+
+            if let Some(parent_scope) = scope.parent() {
+                scope = parent_scope;
+            } else {
+                break;
+            }
+        }
     }
 
     // TODO: Gather private names from surrounding context
@@ -71,7 +88,7 @@ pub fn perform_bytecode_eval(
         &mut parse_result,
         source,
         /* private_names */ None,
-        /* in_function */ false,
+        in_function,
         /* in_method */ false,
         /* in_derived_constructor */ false,
         /* in_class_field_initializer */ false,
@@ -162,8 +179,8 @@ fn check_eval_var_name_conflicts(
             }
         }
 
-        // Do not ascend past function scope
-        if scope.kind() == ScopeKind::Function {
+        // Do not ascend past enclosing var scope
+        if scope.scope_names_ptr().is_var_scope() {
             break;
         }
 
@@ -205,11 +222,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 
     // Find the enclosing var scope
     let mut var_scope = scope.to_handle();
-    while var_scope.kind() != ScopeKind::Global && var_scope.kind() != ScopeKind::Function {
-        if scope.kind() == ScopeKind::Global || scope.kind() == ScopeKind::Function {
-            break;
-        }
-
+    while !var_scope.scope_names_ptr().is_var_scope() {
         var_scope.replace(var_scope.parent().unwrap());
     }
 

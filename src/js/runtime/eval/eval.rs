@@ -24,7 +24,12 @@ use crate::{
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
             function::{instantiate_function_object, ConstructorKind},
+            global_names::{
+                can_declare_global_function, can_declare_global_var,
+                create_global_function_binding, create_global_var_binding,
+            },
             interned_strings::InternedStrings,
+            property::Property,
             scope::{Scope, ScopeKind},
             string_value::FlatString,
             Completion, CompletionKind, Context, EvalResult, Handle, HeapPtr, Value,
@@ -78,16 +83,11 @@ pub fn perform_bytecode_eval(
         return syntax_error_(cx, &error.to_string());
     }
 
-    // Check if any var scoped names in eval body conflict with lexical bindings in parent scopes.
+    // Sloppy direct evals must perform EvalDeclarationInstantiation as var scoped bindings will
+    // be placed in the parent var scope. Strict direct evals do not need to call EDI as var scoped
+    // bindings are handled normally when setting up a call frame in the VM.
     if !parse_result.program.is_strict_mode {
-        let eval_scope = parse_result.program.scope.as_ref();
-        let eval_var_names = eval_scope
-            .iter_var_decls()
-            .map(|(name, _)| InternedStrings::get_str(cx, &name).as_flat())
-            .collect::<Vec<_>>();
-
-        let scope = cx.vm().scope();
-        maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, scope))
+        maybe!(eval_declaration_instantiation(cx, &parse_result.program));
     }
 
     // Generate bytecode for the program
@@ -113,7 +113,7 @@ pub fn perform_bytecode_eval(
         // Direct evals inherit their receiver from the caller
         cx.vm().receiver().to_handle(cx)
     } else {
-        // For indiret evals receiver is the global object
+        // For indirect evals receiver is the global object
         closure.global_object().into()
     };
 
@@ -125,11 +125,12 @@ pub fn perform_bytecode_eval(
 fn check_eval_var_name_conflicts(
     cx: Context,
     eval_var_names: &[Handle<FlatString>],
+    eval_func_names: &[Handle<FlatString>],
     mut scope: HeapPtr<Scope>,
 ) -> EvalResult<()> {
     // Special case for an eval in the function params scope
     if scope.scope_names_ptr().is_function_parameters_scope() {
-        for name in eval_var_names {
+        for name in eval_var_names.iter().chain(eval_func_names.iter()) {
             if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
                 if scope.scope_names_ptr().is_function_parameter(index) {
                     return error_name_already_declared(cx, *name);
@@ -143,7 +144,7 @@ fn check_eval_var_name_conflicts(
     // Otherwise walk scopes up to the parent var scope
     loop {
         // Name will conflict with a lexical binding in any parent scope
-        for name in eval_var_names {
+        for name in eval_var_names.iter().chain(eval_func_names.iter()) {
             if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
                 if scope.scope_names_ptr().is_lexical(index) {
                     return error_name_already_declared(cx, *name);
@@ -154,7 +155,7 @@ fn check_eval_var_name_conflicts(
         // If in a global scope, check for lexical bindings in other global scopes
         if scope.kind() == ScopeKind::Global {
             let realm = scope.global_scope_realm();
-            for name in eval_var_names {
+            for name in eval_var_names.iter().chain(eval_func_names.iter()) {
                 if realm.get_lexical_name(name.get_()).is_some() {
                     return error_name_already_declared(cx, *name);
                 }
@@ -171,6 +172,99 @@ fn check_eval_var_name_conflicts(
             scope = *parent;
         } else {
             break;
+        }
+    }
+
+    ().into()
+}
+
+// 19.2.1.3 EvalDeclarationInstantiation
+fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> EvalResult<()> {
+    let scope = cx.vm().scope();
+
+    // Find the function and var names in the eval scope
+    let mut eval_var_names = vec![];
+    let mut eval_func_names = vec![];
+    for (name, binding) in program.scope.as_ref().iter_var_decls() {
+        let name = InternedStrings::get_str(cx, &name).as_flat();
+        match binding.kind() {
+            BindingKind::Var => eval_var_names.push(name),
+            BindingKind::Function { .. } => eval_func_names.push(name),
+            _ => unreachable!(),
+        }
+    }
+
+    // Check if any var scoped names in eval body conflict with lexical bindings in parent scopes.
+    let eval_scope = program.scope.as_ref();
+    let eval_var_names = eval_scope
+        .iter_var_decls()
+        .map(|(name, _)| InternedStrings::get_str(cx, &name).as_flat())
+        .collect::<Vec<_>>();
+
+    maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names, scope));
+
+    // Find the enclosing var scope
+    let mut var_scope = scope.to_handle();
+    while var_scope.kind() != ScopeKind::Global && var_scope.kind() != ScopeKind::Function {
+        if scope.kind() == ScopeKind::Global || scope.kind() == ScopeKind::Function {
+            break;
+        }
+
+        var_scope.replace(var_scope.parent().unwrap());
+    }
+
+    let is_global_scope = var_scope.kind() == ScopeKind::Global;
+    let mut scope_object = var_scope.ensure_scope_object(cx);
+
+    // If in global scope, check if we can declare the var or function binding
+    if is_global_scope {
+        for func_name in &eval_func_names {
+            if !maybe!(can_declare_global_function(cx, scope_object, func_name.cast())) {
+                return type_error_(
+                    cx,
+                    &format!("cannot declare global function {}", func_name.get_()),
+                );
+            }
+        }
+
+        for var_name in &eval_var_names {
+            if !maybe!(can_declare_global_var(cx, scope_object, var_name.cast())) {
+                return type_error_(cx, &format!("cannot declare global var {}", var_name.get_()));
+            }
+        }
+    }
+
+    // Create and initialize bindings for all functions
+    for name in &eval_func_names {
+        if is_global_scope {
+            maybe!(create_global_function_binding(
+                cx,
+                scope_object,
+                name.cast(),
+                /* can_delete */ true
+            ));
+        } else {
+            // All functions initialized to undefined, overwriting existing if already declared
+            let desc = Property::data(cx.undefined(), true, true, true);
+            scope_object.set_property(cx, name.cast(), desc);
+        }
+    }
+
+    // Create and initialize bindings for all vars
+    for name in &eval_var_names {
+        if is_global_scope {
+            maybe!(create_global_var_binding(
+                cx,
+                scope_object,
+                name.cast(),
+                /* can_delete */ true
+            ));
+        } else {
+            // Vars only initialized to undefined if the do not have been declared yet
+            if !maybe!(scope_object.has_property(cx, name.cast())) {
+                let desc = Property::data(cx.undefined(), true, true, true);
+                scope_object.set_property(cx, name.cast(), desc);
+            }
         }
     }
 
@@ -291,7 +385,7 @@ pub fn perform_ast_eval(
 
     cx.push_execution_context(eval_context);
 
-    let result = eval_declaration_instantiation(
+    let result = eval_declaration_instantiation_legacy(
         cx,
         &parse_result.program,
         var_env,
@@ -327,7 +421,7 @@ pub fn perform_ast_eval(
 }
 
 // 19.2.1.3 EvalDeclarationInstantiation
-fn eval_declaration_instantiation(
+fn eval_declaration_instantiation_legacy(
     cx: Context,
     ast: &ast::Program,
     mut var_env: DynEnvironment,

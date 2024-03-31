@@ -24,7 +24,7 @@ pub struct GlobalNames {
     /// Number of functions
     num_functions: usize,
     /// Scopes names for this global scope, containing all lexical names.
-    scope_names: Option<HeapPtr<ScopeNames>>,
+    scope_names: HeapPtr<ScopeNames>,
     /// Array of global names. The first `num_functions` are global var scoped functions, the rest
     /// are global vars. All names are interned strings.
     names: InlineArray<HeapPtr<FlatString>>,
@@ -35,7 +35,7 @@ impl GlobalNames {
         cx: Context,
         vars: HashSet<Handle<FlatString>>,
         funcs: HashSet<Handle<FlatString>>,
-        scope_names: Option<Handle<ScopeNames>>,
+        scope_names: Handle<ScopeNames>,
     ) -> Handle<GlobalNames> {
         let num_funcs = funcs.len();
         let num_names = vars.len() + num_funcs;
@@ -44,7 +44,7 @@ impl GlobalNames {
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size);
 
         set_uninit!(global_names.descriptor, cx.base_descriptors.get(ObjectKind::GlobalNames));
-        set_uninit!(global_names.scope_names, scope_names.map(|s| s.get_()));
+        set_uninit!(global_names.scope_names, scope_names.get_());
         global_names.num_functions = funcs.len();
 
         // Place function names first in the names array
@@ -61,16 +61,8 @@ impl GlobalNames {
         names_offset + InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_names)
     }
 
-    pub fn len(&self) -> usize {
-        self.names.len()
-    }
-
-    pub fn scope_names(&self) -> Option<Handle<ScopeNames>> {
-        self.scope_names.map(|s| s.to_handle())
-    }
-
-    pub fn get(&self, index: usize) -> HeapPtr<FlatString> {
-        self.names.as_slice()[index]
+    pub fn scope_names(&self) -> Handle<ScopeNames> {
+        self.scope_names.to_handle()
     }
 }
 
@@ -81,7 +73,7 @@ impl HeapObject for HeapPtr<GlobalNames> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.scope_names);
+        visitor.visit_pointer(&mut self.scope_names);
 
         for name in self.names.as_mut_slice() {
             visitor.visit_pointer(name);
@@ -115,12 +107,7 @@ pub fn global_declaration_instantiation_runtime(
     let global_names = arguments.get(0).unwrap().cast::<GlobalNames>();
     let realm = cx.current_realm();
 
-    maybe!(global_declaration_instantiation(
-        cx,
-        realm,
-        global_names,
-        /* can_delete */ false
-    ));
+    maybe!(global_declaration_instantiation(cx, realm, global_names,));
 
     cx.undefined().into()
 }
@@ -129,22 +116,19 @@ pub fn global_declaration_instantiation_runtime(
 ///
 /// This includes both vars and var-scoped functions. Both will be initialized as undefined here,
 /// and may be overwritten later when the corresponding declaration is evaluated.
-pub fn global_declaration_instantiation(
+fn global_declaration_instantiation(
     cx: Context,
     realm: Handle<Realm>,
     global_names: Handle<GlobalNames>,
-    can_delete: bool,
 ) -> EvalResult<()> {
     let global_object = realm.global_object();
 
     // Check whether any lexical names conflict with existing global names
-    if let Some(scope_names) = global_names.scope_names() {
-        let mut lexical_names = vec![];
-        for name_ptr in scope_names.name_ptrs() {
-            lexical_names.push(name_ptr.to_handle());
-        }
-        maybe!(realm.can_declare_lexical_names(cx, &lexical_names));
+    let mut lexical_names = vec![];
+    for name_ptr in global_names.scope_names().name_ptrs() {
+        lexical_names.push(name_ptr.to_handle());
     }
+    maybe!(realm.can_declare_lexical_names(cx, &lexical_names));
 
     // Reuse handle between iterations
     let mut name_handle = Handle::<FlatString>::empty(cx);
@@ -182,9 +166,19 @@ pub fn global_declaration_instantiation(
         let name_key = name_handle.cast::<PropertyKey>();
 
         if i < global_names.num_functions {
-            maybe!(create_global_function_binding(cx, global_object, name_key, can_delete));
+            maybe!(create_global_function_binding(
+                cx,
+                global_object,
+                name_key,
+                /* can_delete */ false
+            ));
         } else {
-            maybe!(create_global_var_binding(cx, global_object, name_key, can_delete));
+            maybe!(create_global_var_binding(
+                cx,
+                global_object,
+                name_key,
+                /* can_delete */ false
+            ));
         }
     }
 
@@ -243,7 +237,7 @@ pub fn can_declare_global_function(
 }
 
 // 9.1.1.4.17 CreateGlobalVarBinding
-fn create_global_var_binding(
+pub fn create_global_var_binding(
     cx: Context,
     global_object: Handle<ObjectValue>,
     name_key: Handle<PropertyKey>,
@@ -264,7 +258,7 @@ fn create_global_var_binding(
 }
 
 // 9.1.1.4.18 CreateGlobalFunctionBinding
-fn create_global_function_binding(
+pub fn create_global_function_binding(
     cx: Context,
     global_object: Handle<ObjectValue>,
     name_key: Handle<PropertyKey>,

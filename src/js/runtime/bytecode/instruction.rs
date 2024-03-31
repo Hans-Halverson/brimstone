@@ -940,12 +940,6 @@ define_instructions!(
         [1] iterator: Register,
     }
 
-    /// Initialize a sloppy direct eval scope, declaring all names in a GlobalNames object stored in
-    /// the constant table. Must be called in the parent scope for the direct eval.
-    EvalInit(EvalInitInstruction, eval_init_instruction) {
-        [0] global_names_index: ConstantIndex,
-    }
-
     /// Get the iterator for a given iterable, storing the iterator and its next method in
     /// registers.
     GetIterator(GetIteratorInstruction, get_iterator_instruction) {

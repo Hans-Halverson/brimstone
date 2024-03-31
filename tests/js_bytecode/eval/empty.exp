@@ -32,10 +32,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 67 00   EvalInit c0
-    2: 17 ff   Ret r0
-  Constant Table:
-    0: [GlobalNames]
+    0: 17 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
@@ -45,10 +42,7 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 67 00   EvalInit c0
-    2: 17 ff   Ret r0
-  Constant Table:
-    0: [GlobalNames]
+    0: 17 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {

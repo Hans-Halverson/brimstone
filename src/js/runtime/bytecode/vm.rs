@@ -27,7 +27,6 @@ use crate::{
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
         get,
-        global_names::{global_declaration_instantiation, GlobalNames},
         intrinsics::{
             intrinsics::Intrinsic, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
@@ -38,9 +37,8 @@ use crate::{
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
         regexp::compiled_regexp::CompiledRegExpObject,
-        scope::{Scope, ScopeKind},
+        scope::Scope,
         scope_names::ScopeNames,
-        string_value::FlatString,
         to_string,
         type_utilities::{
             is_loosely_equal, is_strictly_equal, same_object_value, to_boolean, to_number,
@@ -64,12 +62,12 @@ use super::{
         ConstructVarargsInstruction, CopyDataPropertiesInstruction, DecInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
-        ErrorConstInstruction, EvalInitInstruction, ExpInstruction, ForInNextInstruction,
-        GetIteratorInstruction, GetNamedPropertyInstruction, GetPropertyInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
-        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        ErrorConstInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
+        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -184,7 +182,7 @@ impl VM {
 
         // Then create global scope and add lexical names to realm, since GDI would have errored
         // if there were any conflicts.
-        let global_scope = realm.new_global_scope(self.cx, global_names.scope_names().unwrap());
+        let global_scope = realm.new_global_scope(self.cx, global_names.scope_names());
 
         // Create program closure and execute in VM
         let program_closure =
@@ -628,9 +626,6 @@ impl VM {
                         }
                         OpCode::ForInNext => {
                             dispatch_or_throw!(ForInNextInstruction, execute_for_in_next)
-                        }
-                        OpCode::EvalInit => {
-                            dispatch_or_throw!(EvalInitInstruction, execute_eval_init)
                         }
                         OpCode::GetIterator => {
                             dispatch_or_throw!(GetIteratorInstruction, execute_get_iterator)
@@ -2938,60 +2933,6 @@ impl VM {
         self.write_register(dest, result);
 
         ().into()
-    }
-
-    #[inline]
-    fn execute_eval_init<W: Width>(&mut self, instr: &EvalInitInstruction<W>) -> EvalResult<()> {
-        let global_names = self
-            .get_constant(instr.global_names_index())
-            .to_handle(self.cx);
-        let global_names = global_names.cast::<GlobalNames>();
-
-        // Find the enclosing var scope
-        let mut current_scope = self.scope().to_handle();
-        loop {
-            match current_scope.kind() {
-                // Is in the global scope, so must perform regular global init
-                ScopeKind::Global => {
-                    let realm = self.closure().realm();
-                    return global_declaration_instantiation(
-                        self.cx,
-                        realm,
-                        global_names,
-                        /* can_delete */ true,
-                    );
-                }
-                // Is in a var scope (function or eval), so initialize var names to undefined in
-                // the scope's dynamic object.
-                ScopeKind::Function => {
-                    // Reuse handle across iterations
-                    let mut name_handle = Handle::<FlatString>::empty(self.cx);
-
-                    // Create the scope object if necessary
-                    let mut scope_object = current_scope.ensure_scope_object(self.cx);
-                    for i in 0..global_names.len() {
-                        let name = global_names.get(i);
-                        name_handle.replace(name);
-                        let name_key = name_handle.cast::<PropertyKey>();
-
-                        // Set the name to undefined if it does not exist
-                        if !maybe!(scope_object.has_property(self.cx, name_key)) {
-                            let desc = Property::data(self.cx.undefined(), true, true, true);
-                            scope_object.set_property(self.cx, name_key, desc);
-                        }
-                    }
-
-                    return ().into();
-                }
-                ScopeKind::With => {
-                    // TODO: Implement eval in with scope
-                    return ().into();
-                }
-                ScopeKind::Lexical => {
-                    current_scope.replace(current_scope.parent_ptr());
-                }
-            }
-        }
     }
 
     #[inline]

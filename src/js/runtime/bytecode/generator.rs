@@ -196,20 +196,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let statement_completion_dest = generator.register_allocator.allocate()?;
             generator.set_statement_completion_dest(statement_completion_dest);
 
-            let program_scope = eval_program.scope.as_ref();
-
-            // Sloppy eval may initialize vars and functions in the parent scope.
-            if !eval_program.is_strict_mode {
-                let global_names = generator.gen_global_names(program_scope)?;
-                let global_names_index = generator
-                    .constant_table_builder
-                    .add_heap_object(global_names.cast())?;
-                generator
-                    .writer
-                    .eval_init_instruction(ConstantIndex::new(global_names_index));
-            }
-
             // Start the eval scope
+            let program_scope = eval_program.scope.as_ref();
             generator.gen_scope_start(program_scope, None)?;
 
             // Store the captured `this` right away if necessary
@@ -5662,21 +5650,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // VM scope node is guaranteed to exist, since at minimum the realm is always stored.
-        let scope_names = if let Some(vm_scope_id) = global_scope.vm_scope_id() {
-            let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
+        let vm_scope_id = global_scope.vm_scope_id().unwrap();
+        let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
 
-            // Create a ScopeNames object containing all lexical names in scope.
-            let binding_names = vm_node.bindings();
-            let binding_flags = self.gen_scope_name_flags(global_scope);
+        // Create a ScopeNames object containing all lexical names in scope.
+        let binding_names = vm_node.bindings();
+        let binding_flags = self.gen_scope_name_flags(global_scope);
 
-            let names = binding_names
-                .iter()
-                .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-                .collect::<Vec<_>>();
-            Some(ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &binding_flags))
-        } else {
-            None
-        };
+        let names = binding_names
+            .iter()
+            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
+            .collect::<Vec<_>>();
+        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &binding_flags);
 
         // Add all var and lex names to the GlobalNames object, which will be used later when
         // instantiating the global scope.

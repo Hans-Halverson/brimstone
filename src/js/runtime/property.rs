@@ -203,6 +203,14 @@ impl HeapProperty {
         self.flags.contains(PropertyFlags::IS_CONFIGURABLE)
     }
 
+    pub fn is_private(&self) -> bool {
+        self.flags.intersects(
+            PropertyFlags::IS_PRIVATE_FIELD
+                | PropertyFlags::IS_PRIVATE_METHOD
+                | PropertyFlags::IS_PRIVATE_ACCESSOR,
+        )
+    }
+
     pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_value(&mut self.value);
     }

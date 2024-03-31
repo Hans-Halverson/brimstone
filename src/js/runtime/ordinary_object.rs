@@ -552,8 +552,9 @@ pub fn ordinary_own_string_symbol_property_keys(
     });
 
     // Safe since we do not allocate on managed heap during iteration
-    object.iter_named_property_keys_gc_unsafe(|property_key| {
-        if property_key.is_symbol() {
+    object.iter_named_properties_gc_unsafe(|property_key, property| {
+        // Make sure not to include private properties
+        if property_key.is_symbol() && !property.is_private() {
             keys.push(property_key.as_symbol().to_handle().into());
         }
     });

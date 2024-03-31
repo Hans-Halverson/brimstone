@@ -180,12 +180,21 @@ impl ObjectValue {
             .map(|property| Property::from_heap(cx, property))
     }
 
-    /// An iterator over the named property keys of this object is not GC safe. Caller must ensure
-    /// that a GC cannot occur while the iterator is in use.
+    /// An iterator over the named property keys of this object that is not GC safe. Caller must
+    /// ensure that a GC cannot occur while the iterator is in use.
     #[inline]
     pub fn iter_named_property_keys_gc_unsafe<F: FnMut(PropertyKey)>(&self, mut f: F) {
         for property_key in self.named_properties.keys_gc_unsafe() {
             f(property_key.clone());
+        }
+    }
+
+    /// An iterator over the named properties and their keys of this object that is not GC safe.
+    /// Caller must ensure that a GC cannot occur while the iterator is in use.
+    #[inline]
+    pub fn iter_named_properties_gc_unsafe<F: FnMut(PropertyKey, HeapProperty)>(&self, mut f: F) {
+        for (property_key, property) in self.named_properties.iter_gc_unsafe() {
+            f(property_key.clone(), property);
         }
     }
 }

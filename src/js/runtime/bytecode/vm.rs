@@ -1039,14 +1039,7 @@ impl VM {
     ) -> EvalResult<()> {
         let function_value = self.read_register(instr.function());
         let receiver = instr.receiver().map(|reg| self.read_register(reg));
-
-        let args_slice = match instr.args() {
-            // Find slice over the arguments, starting with last argument
-            GenericCallArgs::Stack { argv, argc } => {
-                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
-            }
-            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
-        };
+        let args = instr.args();
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
@@ -1071,7 +1064,7 @@ impl VM {
                 let mut arguments = vec![];
 
                 // Arguments should be iterated in order
-                match args_slice {
+                match self.get_args_slice(args) {
                     ArgsSlice::Forward(slice) => {
                         for arg in slice {
                             arguments.push(arg.to_handle(self.cx));
@@ -1099,7 +1092,7 @@ impl VM {
 
             // Set up the stack frame for the function call. Iterator should be over args in reverse
             // order.
-            match args_slice {
+            match self.get_args_slice(args) {
                 ArgsSlice::Forward(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
@@ -1135,13 +1128,7 @@ impl VM {
         &mut self,
         instr: &impl GenericConstructInstruction<W>,
     ) -> EvalResult<()> {
-        let args_slice = match instr.args() {
-            // Find slice over the arguments, starting with last argument
-            GenericCallArgs::Stack { argv, argc } => {
-                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
-            }
-            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
-        };
+        let args = instr.args();
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
@@ -1174,7 +1161,7 @@ impl VM {
                 let mut arguments = vec![];
 
                 // Arguments should be iterated in order
-                match args_slice {
+                match self.get_args_slice(args) {
                     ArgsSlice::Forward(slice) => {
                         for arg in slice {
                             arguments.push(arg.to_handle(self.cx));
@@ -1228,7 +1215,7 @@ impl VM {
 
             // Set up the stack frame for the function call. Iterator should be over args in reverse
             // order.
-            match args_slice {
+            match self.get_args_slice(args) {
                 ArgsSlice::Forward(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
@@ -1416,6 +1403,18 @@ impl VM {
 
         // Break the lifetime since slice is over a slice of the managed heap
         unsafe { std::mem::transmute(slice) }
+    }
+
+    /// Find slice over the argument vlaues given the generic call arguments.
+    #[inline]
+    fn get_args_slice<'a, 'b, W: Width>(&'a mut self, args: GenericCallArgs<W>) -> ArgsSlice<'b> {
+        match args {
+            // Find slice over the arguments, starting with last argument
+            GenericCallArgs::Stack { argv, argc } => {
+                ArgsSlice::Reverse(self.get_args_rev_slice(argv, argc))
+            }
+            GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
+        }
     }
 
     /// Push call arguments onto the stack, handling over/underapplication. Takes an iterator over

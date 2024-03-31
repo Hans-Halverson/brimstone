@@ -250,11 +250,14 @@ impl Handle<Realm> {
         let mut name_handle = Handle::<FlatString>::empty(cx);
 
         // Statically initialize global scope slots
-        for (i, name) in scope_names.name_ptrs().iter().enumerate() {
+        for i in 0..scope_names.len() {
             if i == 0 {
                 // The first global scope slot is always the realm
                 global_scope.set_slot(0, self.get_().cast::<ObjectValue>().into());
-            } else if name.ptr_eq(&cx.names.this.as_string().as_flat()) {
+            } else if scope_names
+                .get_slot_name(i)
+                .ptr_eq(&cx.names.this.as_string().as_flat())
+            {
                 // The global "this" binding is always the global object
                 global_scope.set_slot(i, global_object.get_().into());
             } else {
@@ -262,7 +265,7 @@ impl Handle<Realm> {
                 global_scope.set_slot(i, Value::empty());
 
                 // And add to map of all lexical names
-                name_handle.replace(*name);
+                name_handle.replace(scope_names.get_slot_name(i));
 
                 let is_const = scope_names.is_const(i);
                 self.add_lexical_name(cx, name_handle, global_scope_index, i as u32, is_const);

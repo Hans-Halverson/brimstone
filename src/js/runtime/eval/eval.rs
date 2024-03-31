@@ -32,7 +32,7 @@ use crate::{
             property::Property,
             scope::{Scope, ScopeKind},
             string_value::FlatString,
-            Completion, CompletionKind, Context, EvalResult, Handle, HeapPtr, Value,
+            Completion, CompletionKind, Context, EvalResult, Handle, Value,
         },
     },
     maybe, must,
@@ -140,11 +140,12 @@ pub fn perform_bytecode_eval(
 
 // Check if any names conflict with lexical bindings in parent scopes.
 fn check_eval_var_name_conflicts(
-    cx: Context,
+    mut cx: Context,
     eval_var_names: &[Handle<FlatString>],
     eval_func_names: &[Handle<FlatString>],
-    mut scope: HeapPtr<Scope>,
 ) -> EvalResult<()> {
+    let mut scope = cx.vm().scope().to_handle();
+
     // Special case for an eval in the function params scope
     if scope.scope_names_ptr().is_function_parameters_scope() {
         for name in eval_var_names.iter().chain(eval_func_names.iter()) {
@@ -186,7 +187,7 @@ fn check_eval_var_name_conflicts(
 
         // Move to parent scope
         if let Some(parent) = scope.parent().as_ref() {
-            scope = *parent;
+            scope.replace(*parent);
         } else {
             break;
         }
@@ -197,8 +198,6 @@ fn check_eval_var_name_conflicts(
 
 // 19.2.1.3 EvalDeclarationInstantiation
 fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> EvalResult<()> {
-    let scope = cx.vm().scope();
-
     // Find the function and var names in the eval scope
     let mut eval_var_names = vec![];
     let mut eval_func_names = vec![];
@@ -218,10 +217,10 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         .map(|(name, _)| InternedStrings::get_str(cx, &name).as_flat())
         .collect::<Vec<_>>();
 
-    maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names, scope));
+    maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names));
 
     // Find the enclosing var scope
-    let mut var_scope = scope.to_handle();
+    let mut var_scope = cx.vm().scope().to_handle();
     while !var_scope.scope_names_ptr().is_var_scope() {
         var_scope.replace(var_scope.parent().unwrap());
     }

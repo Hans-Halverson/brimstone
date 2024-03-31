@@ -148,11 +148,7 @@ impl ObjectValue {
     }
 
     // 7.3.27 PrivateElementFind
-    pub fn private_element_find(
-        &mut self,
-        cx: Context,
-        private_name: PrivateName,
-    ) -> Option<Property> {
+    pub fn private_element_find(&self, cx: Context, private_name: PrivateName) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
@@ -345,8 +341,8 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::Proxy
     }
 
-    pub fn is_bound_function(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::BoundFunctionObject
+    pub fn is_legacy_bound_function(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::LegacyBoundFunctionObject
     }
 
     pub fn is_object_prototype(&self) -> bool {

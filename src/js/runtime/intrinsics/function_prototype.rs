@@ -10,7 +10,7 @@ use crate::{
             abstract_operations::{
                 call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
             },
-            bound_function_object::BoundFunctionObject,
+            bound_function_object::{BoundFunctionObject, LegacyBoundFunctionObject},
             builtin_function::BuiltinFunction,
             completion::EvalResult,
             error::type_error_,
@@ -145,8 +145,11 @@ impl FunctionPrototype {
         };
         let num_bound_args = bound_args.len();
 
-        let bound_func: Handle<ObjectValue> =
-            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args)).into();
+        let bound_func: Handle<ObjectValue> = if cx.options.bytecode {
+            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args))
+        } else {
+            maybe!(LegacyBoundFunctionObject::new(cx, target, this_arg, bound_args)).into()
+        };
 
         let mut length = Some(0);
 

@@ -4,7 +4,7 @@ use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
     array_object::create_array_from_list,
-    bound_function_object::BoundFunctionObject,
+    bound_function_object::LegacyBoundFunctionObject,
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::{err_cannot_set_property, type_error_},
@@ -370,8 +370,8 @@ pub fn ordinary_has_instance(
 
     let func = func.as_object();
 
-    if func.is_bound_function() {
-        let bound_func = func.cast::<BoundFunctionObject>();
+    if func.is_legacy_bound_function() {
+        let bound_func = func.cast::<LegacyBoundFunctionObject>();
         return eval_instanceof_expression(cx, object, bound_func.bound_target_function().into());
     }
 
@@ -523,7 +523,7 @@ pub fn copy_data_properties(
 // 7.3.30 PrivateGet
 pub fn private_get(
     cx: Context,
-    mut object: Handle<ObjectValue>,
+    object: Handle<ObjectValue>,
     private_name: PrivateName,
 ) -> EvalResult<Handle<Value>> {
     let property = match object.private_element_find(cx, private_name) {

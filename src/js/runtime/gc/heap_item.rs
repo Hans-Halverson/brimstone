@@ -5,7 +5,7 @@ use crate::js::runtime::{
     },
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
-    bound_function_object::BoundFunctionObject,
+    bound_function_object::LegacyBoundFunctionObject,
     builtin_function::BuiltinFunction,
     bytecode::{
         constant_table::ConstantTable,
@@ -113,7 +113,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::Function => self.cast::<Function>().byte_size(),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().byte_size(),
-            ObjectKind::BoundFunctionObject => self.cast::<BoundFunctionObject>().byte_size(),
+            ObjectKind::LegacyBoundFunctionObject => {
+                self.cast::<LegacyBoundFunctionObject>().byte_size()
+            }
             ObjectKind::MappedArgumentsObject => self.cast::<MappedArgumentsObject>().byte_size(),
             ObjectKind::LegacyMappedArgumentsObject => {
                 self.cast::<LegacyMappedArgumentsObject>().byte_size()
@@ -231,9 +233,9 @@ impl HeapObject for HeapPtr<HeapItem> {
                 .visit_pointers(visitor),
             ObjectKind::Function => self.cast::<Function>().visit_pointers(visitor),
             ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().visit_pointers(visitor),
-            ObjectKind::BoundFunctionObject => {
-                self.cast::<BoundFunctionObject>().visit_pointers(visitor)
-            }
+            ObjectKind::LegacyBoundFunctionObject => self
+                .cast::<LegacyBoundFunctionObject>()
+                .visit_pointers(visitor),
             ObjectKind::MappedArgumentsObject => {
                 self.cast::<MappedArgumentsObject>().visit_pointers(visitor)
             }

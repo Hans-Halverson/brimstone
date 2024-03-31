@@ -454,5 +454,9 @@ builtin_symbols!(
     (split, "Symbol.split"),
     (to_primitive, "Symbol.toPrimitive"),
     (to_string_tag, "Symbol.toStringTag"),
-    (unscopables, "Symbol.unscopables")
+    (unscopables, "Symbol.unscopables"),
+    // Symbols used for private properties in the runtime
+    (private1, ""),
+    (private2, ""),
+    (private3, "")
 );

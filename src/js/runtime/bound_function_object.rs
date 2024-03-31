@@ -6,10 +6,14 @@ use crate::{
 };
 
 use super::{
-    abstract_operations::{call_object, construct},
+    abstract_operations::{call_object, construct, length_of_array_like},
+    array_object::{create_array_from_list, ArrayObject},
+    builtin_function::BuiltinFunction,
+    bytecode::function::Closure,
     collections::InlineArray,
     completion::EvalResult,
     gc::{HeapObject, HeapPtr, HeapVisitor},
+    get,
     object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
@@ -19,9 +23,163 @@ use super::{
     Context, Handle, Realm,
 };
 
+pub struct BoundFunctionObject;
+
+impl BoundFunctionObject {
+    pub fn new(
+        cx: Context,
+        target_function: Handle<ObjectValue>,
+        bound_this: Handle<Value>,
+        bound_arguments: Vec<Handle<Value>>,
+    ) -> EvalResult<Handle<ObjectValue>> {
+        let is_constructor;
+        let realm;
+        if target_function.is_closure() {
+            let function = target_function.cast::<Closure>().function_ptr();
+            is_constructor = target_function
+                .cast::<Closure>()
+                .function_ptr()
+                .is_constructor();
+            realm = function.realm();
+        } else {
+            is_constructor = false;
+            realm = cx.current_realm();
+        }
+
+        let prototype = maybe!(target_function.get_prototype_of(cx));
+        let bound_func = BuiltinFunction::create_builtin_function_without_properties(
+            cx,
+            BoundFunctionObject::call,
+            realm,
+            prototype,
+            is_constructor,
+        );
+
+        // Attach private fields, adding bound arguments to array object
+        Self::set_target_function(cx, bound_func, target_function);
+        Self::set_bound_this(cx, bound_func, bound_this);
+
+        let bound_args_array = create_array_from_list(cx, &bound_arguments);
+        Self::set_bound_arguments(cx, bound_func, bound_args_array);
+
+        bound_func.into()
+    }
+
+    fn get_target_function(
+        cx: Context,
+        bound_function: Handle<ObjectValue>,
+    ) -> Handle<ObjectValue> {
+        bound_function
+            .private_element_find(cx, cx.well_known_symbols.private1().cast())
+            .unwrap()
+            .value()
+            .cast::<ObjectValue>()
+    }
+
+    fn set_target_function(
+        cx: Context,
+        mut bound_function: Handle<ObjectValue>,
+        target: Handle<ObjectValue>,
+    ) {
+        bound_function.private_element_set(
+            cx,
+            cx.well_known_symbols.private1().cast(),
+            target.into(),
+        );
+    }
+
+    fn get_bound_this(cx: Context, bound_function: Handle<ObjectValue>) -> Handle<Value> {
+        bound_function
+            .private_element_find(cx, cx.well_known_symbols.private2().cast())
+            .unwrap()
+            .value()
+    }
+
+    fn set_bound_this(
+        cx: Context,
+        mut bound_function: Handle<ObjectValue>,
+        bound_this: Handle<Value>,
+    ) {
+        bound_function.private_element_set(cx, cx.well_known_symbols.private2().cast(), bound_this);
+    }
+
+    fn get_bound_arguments(
+        cx: Context,
+        bound_function: Handle<ObjectValue>,
+    ) -> Handle<ArrayObject> {
+        bound_function
+            .private_element_find(cx, cx.well_known_symbols.private3().cast())
+            .unwrap()
+            .value()
+            .cast::<ArrayObject>()
+    }
+
+    fn set_bound_arguments(
+        cx: Context,
+        mut bound_function: Handle<ObjectValue>,
+        arguments: Handle<ArrayObject>,
+    ) {
+        bound_function.private_element_set(
+            cx,
+            cx.well_known_symbols.private3().cast(),
+            arguments.into(),
+        );
+    }
+
+    /// Call the bound function from the rust runtime. This is called when the bound function has
+    /// been called (either normally or as a constructor).
+    ///
+    /// Combination of 10.4.1.1 [[Call]] and 10.4.1.2 [[Construct]]
+    pub fn call(
+        mut cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        new_target: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let bound_function = cx.current_function();
+
+        let bound_target_function = Self::get_target_function(cx, bound_function);
+        let bound_this = Self::get_bound_this(cx, bound_function);
+        let bound_arguments = Self::get_bound_arguments(cx, bound_function);
+
+        // Gather all arguments into a single array
+        let mut all_arguments = vec![];
+
+        // Shared between iterations
+        let mut index_key = PropertyKey::uninit().to_handle(cx);
+        let num_bound_arguments = maybe!(length_of_array_like(cx, bound_arguments.into()));
+
+        // OPTIMIZATION: Much room for optimization of bound arguments instead of using array and
+        // standard array accessors.
+        for i in 0..num_bound_arguments {
+            index_key.replace(PropertyKey::from_u64(cx, i));
+            let arg = maybe!(get(cx, bound_arguments.into(), index_key));
+            all_arguments.push(arg)
+        }
+
+        all_arguments.extend(arguments.iter());
+
+        // If there is a new_target this was called as a constructor
+        if let Some(new_target) = new_target {
+            let new_target = if same_object_value_handles(bound_function, new_target) {
+                bound_target_function
+            } else {
+                new_target
+            };
+
+            maybe!(construct(cx, bound_target_function, &all_arguments, Some(new_target))).into()
+        } else {
+            // Otherwise call bound target normally
+            call_object(cx, bound_target_function, bound_this, &all_arguments)
+        }
+    }
+}
+
 // 10.4.1 Bound Function Exotic Objects
+//
+// These are legacy bound function object used in the old interpreter.
 extend_object! {
-    pub struct BoundFunctionObject {
+    pub struct LegacyBoundFunctionObject {
         bound_target_function: HeapPtr<ObjectValue>,
         bound_this: Value,
         // Bound arguments stored inline within object
@@ -29,24 +187,27 @@ extend_object! {
     }
 }
 
-const BOUND_ARGUMENTS_BYTE_OFFSET: usize = field_offset!(BoundFunctionObject, bound_arguments);
+const BOUND_ARGUMENTS_BYTE_OFFSET: usize =
+    field_offset!(LegacyBoundFunctionObject, bound_arguments);
 
-impl BoundFunctionObject {
+impl LegacyBoundFunctionObject {
     // 10.4.1.3 BoundFunctionCreate
     pub fn new(
         cx: Context,
         target_function: Handle<ObjectValue>,
         bound_this: Handle<Value>,
         bound_arguments: Vec<Handle<Value>>,
-    ) -> EvalResult<Handle<BoundFunctionObject>> {
+    ) -> EvalResult<Handle<LegacyBoundFunctionObject>> {
         // May allocate, so call before allocating bound function object
         let proto = maybe!(target_function.get_prototype_of(cx));
 
         // Create with variable size since bound arguments are stored inline
         let byte_size = Self::calculate_size_in_bytes(bound_arguments.len());
-        let mut object = cx.alloc_uninit_with_size::<BoundFunctionObject>(byte_size);
+        let mut object = cx.alloc_uninit_with_size::<LegacyBoundFunctionObject>(byte_size);
 
-        let descriptor = cx.base_descriptors.get(ObjectKind::BoundFunctionObject);
+        let descriptor = cx
+            .base_descriptors
+            .get(ObjectKind::LegacyBoundFunctionObject);
         object_ordinary_init(cx, object.into(), descriptor, proto.map(|p| p.get_()));
 
         set_uninit!(object.bound_target_function, target_function.get_());
@@ -89,7 +250,7 @@ impl BoundFunctionObject {
 }
 
 #[wrap_ordinary_object]
-impl VirtualObject for Handle<BoundFunctionObject> {
+impl VirtualObject for Handle<LegacyBoundFunctionObject> {
     // 10.4.1.1 [[Call]]
     fn call(
         &self,
@@ -148,9 +309,9 @@ impl VirtualObject for Handle<BoundFunctionObject> {
     }
 }
 
-impl HeapObject for HeapPtr<BoundFunctionObject> {
+impl HeapObject for HeapPtr<LegacyBoundFunctionObject> {
     fn byte_size(&self) -> usize {
-        BoundFunctionObject::calculate_size_in_bytes(self.bound_arguments.len())
+        LegacyBoundFunctionObject::calculate_size_in_bytes(self.bound_arguments.len())
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {

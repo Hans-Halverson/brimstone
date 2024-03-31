@@ -13,7 +13,7 @@ use crate::{
 use super::{
     arguments_object::LegacyMappedArgumentsObject,
     array_object::ArrayObject,
-    bound_function_object::BoundFunctionObject,
+    bound_function_object::LegacyBoundFunctionObject,
     builtin_function::BuiltinFunction,
     function::Function,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
@@ -73,7 +73,7 @@ pub enum ObjectKind {
 
     Function,
     BuiltinFunction,
-    BoundFunctionObject,
+    LegacyBoundFunctionObject,
 
     MappedArgumentsObject,
     LegacyMappedArgumentsObject,
@@ -283,8 +283,8 @@ impl BaseDescriptors {
         register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);
         register_descriptor!(
-            ObjectKind::BoundFunctionObject,
-            BoundFunctionObject,
+            ObjectKind::LegacyBoundFunctionObject,
+            LegacyBoundFunctionObject,
             DescFlags::IS_OBJECT
         );
 

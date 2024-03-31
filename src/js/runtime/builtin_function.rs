@@ -210,7 +210,6 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<ObjectValue> {
         if cx.options.bytecode {
-            // TODO: Mark as a constructor
             Self::create_builtin_bytecode_function(
                 cx,
                 builtin_func,

@@ -59,93 +59,95 @@
 
 [BytecodeFunction: empty] {
   Parameters: 1, Registers: 4
-    0: GetIterator r0, r1, a0
+    0: GetIterator r0, r2, a0
     4: IteratorClose r0
     6: LoadUndefined r0
     8: Ret r0
 }
 
 [BytecodeFunction: single] {
-  Parameters: 1, Registers: 5
-     0: GetIterator r1, r2, a0
-     4: IteratorNext r3, r4, r1, r2
-     9: JumpFalse r4, 5 (.L0)
-    12: LoadUndefined r3
+  Parameters: 1, Registers: 6
+     0: GetIterator r1, r3, a0
+     4: IteratorNext r4, r2, r1, r3
+     9: JumpFalse r2, 5 (.L0)
+    12: LoadUndefined r4
   .L0:
-    14: Mov r0, r3
-    17: JumpTrue r4, 26 (.L4)
-    20: LoadTrue r2
+    14: Mov r0, r4
+    17: JumpTrue r2, 29 (.L4)
+    20: LoadTrue r3
     22: Jump 4 (.L1)
-    24: LoadFalse r2
+    24: LoadFalse r3
   .L1:
-    26: IteratorClose r1
-    28: Jump 10 (.L3)
-    30: JumpTrue r2, 6 (.L2)
-    33: Mov r4, r3
+    26: JumpTrue r2, 15 (.L3)
+    29: IteratorClose r1
+    31: Jump 10 (.L3)
+    33: JumpTrue r3, 6 (.L2)
+    36: Mov r5, r4
   .L2:
-    36: Throw r4
+    39: Throw r5
   .L3:
-    38: JumpTrue r2, 5 (.L4)
-    41: Throw r3
+    41: JumpTrue r3, 5 (.L4)
+    44: Throw r4
   .L4:
-    43: LoadUndefined r1
-    45: Ret r1
+    46: LoadUndefined r1
+    48: Ret r1
   Exception Handlers:
-    14-17 -> 24 (r3)
-    26-28 -> 30 (r4)
+    14-17 -> 24 (r4)
+    29-31 -> 33 (r5)
 }
 
 [BytecodeFunction: multiple] {
-  Parameters: 1, Registers: 7
-     0: GetIterator r3, r4, a0
-     4: IteratorNext r5, r6, r3, r4
-     9: JumpFalse r6, 5 (.L0)
-    12: LoadUndefined r5
+  Parameters: 1, Registers: 8
+     0: GetIterator r3, r5, a0
+     4: IteratorNext r6, r4, r3, r5
+     9: JumpFalse r4, 5 (.L0)
+    12: LoadUndefined r6
   .L0:
-    14: Mov r0, r5
-    17: JumpTrue r6, 11 (.L1)
-    20: IteratorNext r5, r6, r3, r4
-    25: JumpFalse r6, 5 (.L2)
+    14: Mov r0, r6
+    17: JumpTrue r4, 11 (.L1)
+    20: IteratorNext r6, r4, r3, r5
+    25: JumpFalse r4, 5 (.L2)
   .L1:
-    28: LoadUndefined r5
+    28: LoadUndefined r6
   .L2:
-    30: Mov r1, r5
-    33: JumpTrue r6, 11 (.L3)
-    36: IteratorNext r5, r6, r3, r4
-    41: JumpFalse r6, 5 (.L4)
+    30: Mov r1, r6
+    33: JumpTrue r4, 11 (.L3)
+    36: IteratorNext r6, r4, r3, r5
+    41: JumpFalse r4, 5 (.L4)
   .L3:
-    44: LoadUndefined r5
+    44: LoadUndefined r6
   .L4:
-    46: Mov r2, r5
-    49: JumpTrue r6, 26 (.L8)
-    52: LoadTrue r4
+    46: Mov r2, r6
+    49: JumpTrue r4, 29 (.L8)
+    52: LoadTrue r5
     54: Jump 4 (.L5)
-    56: LoadFalse r4
+    56: LoadFalse r5
   .L5:
-    58: IteratorClose r3
-    60: Jump 10 (.L7)
-    62: JumpTrue r4, 6 (.L6)
-    65: Mov r6, r5
+    58: JumpTrue r4, 15 (.L7)
+    61: IteratorClose r3
+    63: Jump 10 (.L7)
+    65: JumpTrue r5, 6 (.L6)
+    68: Mov r7, r6
   .L6:
-    68: Throw r6
+    71: Throw r7
   .L7:
-    70: JumpTrue r4, 5 (.L8)
-    73: Throw r5
+    73: JumpTrue r5, 5 (.L8)
+    76: Throw r6
   .L8:
-    75: LoadUndefined r3
-    77: Ret r3
+    78: LoadUndefined r3
+    80: Ret r3
   Exception Handlers:
-    14-17 -> 56 (r5)
-    30-33 -> 56 (r5)
-    46-49 -> 56 (r5)
-    58-60 -> 62 (r6)
+    14-17 -> 56 (r6)
+    30-33 -> 56 (r6)
+    46-49 -> 56 (r6)
+    61-63 -> 65 (r7)
 }
 
 [BytecodeFunction: singleHole] {
   Parameters: 1, Registers: 4
-     0: GetIterator r0, r1, a0
-     4: IteratorNext r2, r3, r0, r1
-     9: JumpTrue r3, 5 (.L0)
+     0: GetIterator r0, r2, a0
+     4: IteratorNext r3, r1, r0, r2
+     9: JumpTrue r1, 5 (.L0)
     12: IteratorClose r0
   .L0:
     14: LoadUndefined r0
@@ -154,15 +156,15 @@
 
 [BytecodeFunction: multipleHoles] {
   Parameters: 1, Registers: 4
-     0: GetIterator r0, r1, a0
-     4: IteratorNext r2, r3, r0, r1
-     9: JumpTrue r3, 8 (.L0)
-    12: IteratorNext r2, r3, r0, r1
+     0: GetIterator r0, r2, a0
+     4: IteratorNext r3, r1, r0, r2
+     9: JumpTrue r1, 8 (.L0)
+    12: IteratorNext r3, r1, r0, r2
   .L0:
-    17: JumpTrue r3, 8 (.L1)
-    20: IteratorNext r2, r3, r0, r1
+    17: JumpTrue r1, 8 (.L1)
+    20: IteratorNext r3, r1, r0, r2
   .L1:
-    25: JumpTrue r3, 5 (.L2)
+    25: JumpTrue r1, 5 (.L2)
     28: IteratorClose r0
   .L2:
     30: LoadUndefined r0
@@ -170,293 +172,300 @@
 }
 
 [BytecodeFunction: mixedHolesAndValues1] {
-  Parameters: 1, Registers: 6
-     0: GetIterator r2, r3, a0
-     4: IteratorNext r4, r5, r2, r3
-     9: JumpFalse r5, 5 (.L0)
-    12: LoadUndefined r4
+  Parameters: 1, Registers: 7
+     0: GetIterator r2, r4, a0
+     4: IteratorNext r5, r3, r2, r4
+     9: JumpFalse r3, 5 (.L0)
+    12: LoadUndefined r5
   .L0:
-    14: Mov r0, r4
-    17: JumpTrue r5, 8 (.L1)
-    20: IteratorNext r4, r5, r2, r3
+    14: Mov r0, r5
+    17: JumpTrue r3, 8 (.L1)
+    20: IteratorNext r5, r3, r2, r4
   .L1:
-    25: JumpTrue r5, 11 (.L2)
-    28: IteratorNext r4, r5, r2, r3
-    33: JumpFalse r5, 5 (.L3)
+    25: JumpTrue r3, 11 (.L2)
+    28: IteratorNext r5, r3, r2, r4
+    33: JumpFalse r3, 5 (.L3)
   .L2:
-    36: LoadUndefined r4
+    36: LoadUndefined r5
   .L3:
-    38: Mov r1, r4
-    41: JumpTrue r5, 26 (.L7)
-    44: LoadTrue r3
+    38: Mov r1, r5
+    41: JumpTrue r3, 29 (.L7)
+    44: LoadTrue r4
     46: Jump 4 (.L4)
-    48: LoadFalse r3
+    48: LoadFalse r4
   .L4:
-    50: IteratorClose r2
-    52: Jump 10 (.L6)
-    54: JumpTrue r3, 6 (.L5)
-    57: Mov r5, r4
+    50: JumpTrue r3, 15 (.L6)
+    53: IteratorClose r2
+    55: Jump 10 (.L6)
+    57: JumpTrue r4, 6 (.L5)
+    60: Mov r6, r5
   .L5:
-    60: Throw r5
+    63: Throw r6
   .L6:
-    62: JumpTrue r3, 5 (.L7)
-    65: Throw r4
+    65: JumpTrue r4, 5 (.L7)
+    68: Throw r5
   .L7:
-    67: LoadUndefined r2
-    69: Ret r2
+    70: LoadUndefined r2
+    72: Ret r2
   Exception Handlers:
-    14-17 -> 48 (r4)
-    38-41 -> 48 (r4)
-    50-52 -> 54 (r5)
+    14-17 -> 48 (r5)
+    38-41 -> 48 (r5)
+    53-55 -> 57 (r6)
 }
 
 [BytecodeFunction: mixedHolesAndValues2] {
-  Parameters: 1, Registers: 5
-     0: GetIterator r1, r2, a0
-     4: IteratorNext r3, r4, r1, r2
-     9: JumpTrue r4, 11 (.L0)
-    12: IteratorNext r3, r4, r1, r2
-    17: JumpFalse r4, 5 (.L1)
+  Parameters: 1, Registers: 6
+     0: GetIterator r1, r3, a0
+     4: IteratorNext r4, r2, r1, r3
+     9: JumpTrue r2, 11 (.L0)
+    12: IteratorNext r4, r2, r1, r3
+    17: JumpFalse r2, 5 (.L1)
   .L0:
-    20: LoadUndefined r3
+    20: LoadUndefined r4
   .L1:
-    22: Mov r0, r3
-    25: JumpTrue r4, 8 (.L2)
-    28: IteratorNext r3, r4, r1, r2
+    22: Mov r0, r4
+    25: JumpTrue r2, 8 (.L2)
+    28: IteratorNext r4, r2, r1, r3
   .L2:
-    33: JumpTrue r4, 26 (.L6)
-    36: LoadTrue r2
+    33: JumpTrue r2, 29 (.L6)
+    36: LoadTrue r3
     38: Jump 4 (.L3)
-    40: LoadFalse r2
+    40: LoadFalse r3
   .L3:
-    42: IteratorClose r1
-    44: Jump 10 (.L5)
-    46: JumpTrue r2, 6 (.L4)
-    49: Mov r4, r3
+    42: JumpTrue r2, 15 (.L5)
+    45: IteratorClose r1
+    47: Jump 10 (.L5)
+    49: JumpTrue r3, 6 (.L4)
+    52: Mov r5, r4
   .L4:
-    52: Throw r4
+    55: Throw r5
   .L5:
-    54: JumpTrue r2, 5 (.L6)
-    57: Throw r3
+    57: JumpTrue r3, 5 (.L6)
+    60: Throw r4
   .L6:
-    59: LoadUndefined r1
-    61: Ret r1
+    62: LoadUndefined r1
+    64: Ret r1
   Exception Handlers:
-    22-25 -> 40 (r3)
-    42-44 -> 46 (r4)
+    22-25 -> 40 (r4)
+    45-47 -> 49 (r5)
 }
 
 [BytecodeFunction: destructuring] {
-  Parameters: 1, Registers: 6
-     0: GetIterator r2, r3, a0
-     4: IteratorNext r4, r5, r2, r3
-     9: JumpFalse r5, 5 (.L0)
-    12: LoadUndefined r4
+  Parameters: 1, Registers: 7
+     0: GetIterator r2, r4, a0
+     4: IteratorNext r5, r3, r2, r4
+     9: JumpFalse r3, 5 (.L0)
+    12: LoadUndefined r5
   .L0:
-    14: JumpNotUndefined r4, 6 (.L1)
-    17: LoadImmediate r4, 1
+    14: JumpNotUndefined r5, 6 (.L1)
+    17: LoadImmediate r5, 1
   .L1:
-    20: Mov r0, r4
-    23: JumpTrue r5, 11 (.L2)
-    26: IteratorNext r4, r5, r2, r3
-    31: JumpFalse r5, 5 (.L3)
+    20: Mov r0, r5
+    23: JumpTrue r3, 11 (.L2)
+    26: IteratorNext r5, r3, r2, r4
+    31: JumpFalse r3, 5 (.L3)
   .L2:
-    34: LoadUndefined r4
+    34: LoadUndefined r5
   .L3:
-    36: GetNamedProperty r1, r4, c0
-    40: JumpTrue r5, 26 (.L7)
-    43: LoadTrue r3
+    36: GetNamedProperty r1, r5, c0
+    40: JumpTrue r3, 29 (.L7)
+    43: LoadTrue r4
     45: Jump 4 (.L4)
-    47: LoadFalse r3
+    47: LoadFalse r4
   .L4:
-    49: IteratorClose r2
-    51: Jump 10 (.L6)
-    53: JumpTrue r3, 6 (.L5)
-    56: Mov r5, r4
+    49: JumpTrue r3, 15 (.L6)
+    52: IteratorClose r2
+    54: Jump 10 (.L6)
+    56: JumpTrue r4, 6 (.L5)
+    59: Mov r6, r5
   .L5:
-    59: Throw r5
+    62: Throw r6
   .L6:
-    61: JumpTrue r3, 5 (.L7)
-    64: Throw r4
+    64: JumpTrue r4, 5 (.L7)
+    67: Throw r5
   .L7:
-    66: LoadUndefined r2
-    68: Ret r2
+    69: LoadUndefined r2
+    71: Ret r2
   Constant Table:
     0: [String: b]
   Exception Handlers:
-    14-23 -> 47 (r4)
-    36-40 -> 47 (r4)
-    49-51 -> 53 (r5)
+    14-23 -> 47 (r5)
+    36-40 -> 47 (r5)
+    52-54 -> 56 (r6)
 }
 
 [BytecodeFunction: onlyRest] {
   Parameters: 1, Registers: 7
-     0: GetIterator r1, r2, a0
+     0: GetIterator r1, r3, a0
      4: NewArray r5
      6: LoadImmediate r6, 0
   .L0:
-     9: IteratorNext r3, r4, r1, r2
-    14: JumpTrue r4, 11 (.L1)
-    17: SetArrayProperty r5, r6, r3
+     9: IteratorNext r4, r2, r1, r3
+    14: JumpTrue r2, 11 (.L1)
+    17: SetArrayProperty r5, r6, r4
     21: Inc r6
     23: Jump -14 (.L0)
   .L1:
     25: Mov r0, r5
-    28: JumpTrue r4, 26 (.L5)
-    31: LoadTrue r2
+    28: JumpTrue r2, 29 (.L5)
+    31: LoadTrue r3
     33: Jump 4 (.L2)
-    35: LoadFalse r2
+    35: LoadFalse r3
   .L2:
-    37: IteratorClose r1
-    39: Jump 10 (.L4)
-    41: JumpTrue r2, 6 (.L3)
-    44: Mov r4, r3
+    37: JumpTrue r2, 15 (.L4)
+    40: IteratorClose r1
+    42: Jump 10 (.L4)
+    44: JumpTrue r3, 6 (.L3)
+    47: Mov r5, r4
   .L3:
-    47: Throw r4
+    50: Throw r5
   .L4:
-    49: JumpTrue r2, 5 (.L5)
-    52: Throw r3
+    52: JumpTrue r3, 5 (.L5)
+    55: Throw r4
   .L5:
-    54: LoadUndefined r1
-    56: Ret r1
+    57: LoadUndefined r1
+    59: Ret r1
   Exception Handlers:
-    25-28 -> 35 (r3)
-    37-39 -> 41 (r4)
+    25-28 -> 35 (r4)
+    40-42 -> 44 (r5)
 }
 
 [BytecodeFunction: valuesAndRest] {
   Parameters: 1, Registers: 9
-     0: GetIterator r3, r4, a0
-     4: IteratorNext r5, r6, r3, r4
-     9: JumpFalse r6, 5 (.L0)
-    12: LoadUndefined r5
+     0: GetIterator r3, r5, a0
+     4: IteratorNext r6, r4, r3, r5
+     9: JumpFalse r4, 5 (.L0)
+    12: LoadUndefined r6
   .L0:
-    14: Mov r0, r5
-    17: JumpTrue r6, 11 (.L1)
-    20: IteratorNext r5, r6, r3, r4
-    25: JumpFalse r6, 5 (.L2)
+    14: Mov r0, r6
+    17: JumpTrue r4, 11 (.L1)
+    20: IteratorNext r6, r4, r3, r5
+    25: JumpFalse r4, 5 (.L2)
   .L1:
-    28: LoadUndefined r5
+    28: LoadUndefined r6
   .L2:
-    30: Mov r1, r5
+    30: Mov r1, r6
     33: NewArray r7
     35: LoadImmediate r8, 0
-    38: JumpTrue r6, 19 (.L4)
+    38: JumpTrue r4, 19 (.L4)
   .L3:
-    41: IteratorNext r5, r6, r3, r4
-    46: JumpTrue r6, 11 (.L4)
-    49: SetArrayProperty r7, r8, r5
+    41: IteratorNext r6, r4, r3, r5
+    46: JumpTrue r4, 11 (.L4)
+    49: SetArrayProperty r7, r8, r6
     53: Inc r8
     55: Jump -14 (.L3)
   .L4:
     57: Mov r2, r7
-    60: JumpTrue r6, 26 (.L8)
-    63: LoadTrue r4
+    60: JumpTrue r4, 29 (.L8)
+    63: LoadTrue r5
     65: Jump 4 (.L5)
-    67: LoadFalse r4
+    67: LoadFalse r5
   .L5:
-    69: IteratorClose r3
-    71: Jump 10 (.L7)
-    73: JumpTrue r4, 6 (.L6)
-    76: Mov r6, r5
+    69: JumpTrue r4, 15 (.L7)
+    72: IteratorClose r3
+    74: Jump 10 (.L7)
+    76: JumpTrue r5, 6 (.L6)
+    79: Mov r7, r6
   .L6:
-    79: Throw r6
+    82: Throw r7
   .L7:
-    81: JumpTrue r4, 5 (.L8)
-    84: Throw r5
+    84: JumpTrue r5, 5 (.L8)
+    87: Throw r6
   .L8:
-    86: LoadUndefined r3
-    88: Ret r3
+    89: LoadUndefined r3
+    91: Ret r3
   Exception Handlers:
-    14-17 -> 67 (r5)
-    30-33 -> 67 (r5)
-    57-60 -> 67 (r5)
-    69-71 -> 73 (r6)
+    14-17 -> 67 (r6)
+    30-33 -> 67 (r6)
+    57-60 -> 67 (r6)
+    72-74 -> 76 (r7)
 }
 
 [BytecodeFunction: restDestructuring] {
   Parameters: 1, Registers: 7
-     0: GetIterator r1, r2, a0
+     0: GetIterator r1, r3, a0
      4: NewArray r5
      6: LoadImmediate r6, 0
   .L0:
-     9: IteratorNext r3, r4, r1, r2
-    14: JumpTrue r4, 11 (.L1)
-    17: SetArrayProperty r5, r6, r3
+     9: IteratorNext r4, r2, r1, r3
+    14: JumpTrue r2, 11 (.L1)
+    17: SetArrayProperty r5, r6, r4
     21: Inc r6
     23: Jump -14 (.L0)
   .L1:
     25: GetNamedProperty r0, r5, c0
-    29: JumpTrue r4, 26 (.L5)
-    32: LoadTrue r2
+    29: JumpTrue r2, 29 (.L5)
+    32: LoadTrue r3
     34: Jump 4 (.L2)
-    36: LoadFalse r2
+    36: LoadFalse r3
   .L2:
-    38: IteratorClose r1
-    40: Jump 10 (.L4)
-    42: JumpTrue r2, 6 (.L3)
-    45: Mov r4, r3
+    38: JumpTrue r2, 15 (.L4)
+    41: IteratorClose r1
+    43: Jump 10 (.L4)
+    45: JumpTrue r3, 6 (.L3)
+    48: Mov r5, r4
   .L3:
-    48: Throw r4
+    51: Throw r5
   .L4:
-    50: JumpTrue r2, 5 (.L5)
-    53: Throw r3
+    53: JumpTrue r3, 5 (.L5)
+    56: Throw r4
   .L5:
-    55: LoadUndefined r1
-    57: Ret r1
+    58: LoadUndefined r1
+    60: Ret r1
   Constant Table:
     0: [String: b]
   Exception Handlers:
-    25-29 -> 36 (r3)
-    38-40 -> 42 (r4)
+    25-29 -> 36 (r4)
+    41-43 -> 45 (r5)
 }
 
 [BytecodeFunction: elementEvaluationOrder] {
   Parameters: 0, Registers: 7
      0: LoadGlobal r0, c0
      3: Call r0, r0, r0, 0
-     8: GetIterator r1, r2, r0
+     8: GetIterator r1, r3, r0
     12: LoadGlobal r5, c1
     15: Call r5, r5, r5, 0
     20: LoadGlobal r6, c2
     23: Call r6, r6, r6, 0
-    28: IteratorNext r3, r4, r1, r2
-    33: JumpFalse r4, 5 (.L0)
-    36: LoadUndefined r3
+    28: IteratorNext r4, r2, r1, r3
+    33: JumpFalse r2, 5 (.L0)
+    36: LoadUndefined r4
   .L0:
-    38: SetProperty r5, r6, r3
-    42: JumpTrue r4, 26 (.L4)
-    45: LoadTrue r2
+    38: SetProperty r5, r6, r4
+    42: JumpTrue r2, 29 (.L4)
+    45: LoadTrue r3
     47: Jump 4 (.L1)
-    49: LoadFalse r2
+    49: LoadFalse r3
   .L1:
-    51: IteratorClose r1
-    53: Jump 10 (.L3)
-    55: JumpTrue r2, 6 (.L2)
-    58: Mov r4, r3
+    51: JumpTrue r2, 15 (.L3)
+    54: IteratorClose r1
+    56: Jump 10 (.L3)
+    58: JumpTrue r3, 6 (.L2)
+    61: Mov r5, r4
   .L2:
-    61: Throw r4
+    64: Throw r5
   .L3:
-    63: JumpTrue r2, 5 (.L4)
-    66: Throw r3
+    66: JumpTrue r3, 5 (.L4)
+    69: Throw r4
   .L4:
-    68: LoadUndefined r0
-    70: Ret r0
+    71: LoadUndefined r0
+    73: Ret r0
   Constant Table:
     0: [String: c]
     1: [String: a]
     2: [String: b]
   Exception Handlers:
-    12-28 -> 49 (r3)
-    38-42 -> 49 (r3)
-    51-53 -> 55 (r4)
+    12-28 -> 49 (r4)
+    38-42 -> 49 (r4)
+    54-56 -> 58 (r5)
 }
 
 [BytecodeFunction: restEvaluationOrder] {
   Parameters: 0, Registers: 9
      0: LoadGlobal r0, c0
      3: Call r0, r0, r0, 0
-     8: GetIterator r1, r2, r0
+     8: GetIterator r1, r3, r0
     12: NewArray r5
     14: LoadGlobal r6, c1
     17: Call r6, r6, r6, 0
@@ -464,36 +473,37 @@
     25: Call r7, r7, r7, 0
     30: LoadImmediate r8, 0
   .L0:
-    33: IteratorNext r3, r4, r1, r2
-    38: JumpTrue r4, 11 (.L1)
-    41: SetArrayProperty r5, r8, r3
+    33: IteratorNext r4, r2, r1, r3
+    38: JumpTrue r2, 11 (.L1)
+    41: SetArrayProperty r5, r8, r4
     45: Inc r8
     47: Jump -14 (.L0)
   .L1:
     49: SetProperty r6, r7, r5
-    53: JumpTrue r4, 26 (.L5)
-    56: LoadTrue r2
+    53: JumpTrue r2, 29 (.L5)
+    56: LoadTrue r3
     58: Jump 4 (.L2)
-    60: LoadFalse r2
+    60: LoadFalse r3
   .L2:
-    62: IteratorClose r1
-    64: Jump 10 (.L4)
-    66: JumpTrue r2, 6 (.L3)
-    69: Mov r4, r3
+    62: JumpTrue r2, 15 (.L4)
+    65: IteratorClose r1
+    67: Jump 10 (.L4)
+    69: JumpTrue r3, 6 (.L3)
+    72: Mov r5, r4
   .L3:
-    72: Throw r4
+    75: Throw r5
   .L4:
-    74: JumpTrue r2, 5 (.L5)
-    77: Throw r3
+    77: JumpTrue r3, 5 (.L5)
+    80: Throw r4
   .L5:
-    79: LoadUndefined r0
-    81: Ret r0
+    82: LoadUndefined r0
+    84: Ret r0
   Constant Table:
     0: [String: c]
     1: [String: a]
     2: [String: b]
   Exception Handlers:
-    14-30 -> 60 (r3)
-    49-53 -> 60 (r3)
-    62-64 -> 66 (r4)
+    14-30 -> 60 (r4)
+    49-53 -> 60 (r4)
+    65-67 -> 69 (r5)
 }

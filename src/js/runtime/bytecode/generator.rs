@@ -3879,11 +3879,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         iterable: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
+        // Registers needed until end of finally block
         let iterator = self.register_allocator.allocate()?;
-        let next_method = self.register_allocator.allocate()?;
-
-        let value = self.register_allocator.allocate()?;
         let is_done = self.register_allocator.allocate()?;
+
+        // Registers only needed while iterating
+        let next_method = self.register_allocator.allocate()?;
+        let value = self.register_allocator.allocate()?;
 
         let join_block = self.new_block();
         let mut exception_handlers = vec![];
@@ -4004,7 +4006,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.write_jump_true_instruction(is_done, join_block)?;
         }
 
-        self.register_allocator.release(is_done);
         self.register_allocator.release(value);
         self.register_allocator.release(next_method);
 
@@ -4013,6 +4014,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // If there were no exception handlers needed then we can close the iterator without
             // wrapping in an exception handler, since if closing throws that exception does not
             // need to be swallowed.
+            //
+            // Iterator is only closed if we are not done, which is enforced by the JumpTrue above.
             self.writer.iterator_close_instruction(iterator);
         } else {
             // Otherwise we need a form of finally with a discriminant that tracks if we are coming
@@ -4035,13 +4038,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             self.writer.load_false_instruction(discriminant);
 
-            // Catch exceptions when closing the iterator.
+            let finally_footer_block = self.new_block();
+
+            // Catch exceptions when closing the iterator. Only call close if the iterator is not
+            // already done.
             self.start_block(close_block);
+            self.write_jump_true_instruction(is_done, finally_footer_block)?;
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
                 Ok(this.writer.iterator_close_instruction(iterator))
             })?;
 
-            let finally_footer_block = self.new_block();
             self.write_jump_instruction(finally_footer_block)?;
 
             // Close exception handler.
@@ -4078,6 +4084,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.start_block(join_block);
 
+        self.register_allocator.release(is_done);
         self.register_allocator.release(iterator);
 
         Ok(())

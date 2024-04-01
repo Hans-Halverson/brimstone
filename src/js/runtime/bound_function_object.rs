@@ -88,6 +88,16 @@ impl BoundFunctionObject {
         );
     }
 
+    /// If this function is a bound function, return the target function. Otherwise, return None.
+    pub fn get_target_if_bound_function(
+        cx: Context,
+        function: Handle<ObjectValue>,
+    ) -> Option<Handle<ObjectValue>> {
+        function
+            .private_element_find(cx, cx.well_known_symbols.private1().cast())
+            .map(|p| p.value().cast::<ObjectValue>())
+    }
+
     fn get_bound_this(cx: Context, bound_function: Handle<ObjectValue>) -> Handle<Value> {
         bound_function
             .private_element_find(cx, cx.well_known_symbols.private2().cast())

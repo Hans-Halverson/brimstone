@@ -4,7 +4,8 @@ use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
 
 use super::{
     array_object::create_array_from_list,
-    bound_function_object::LegacyBoundFunctionObject,
+    bound_function_object::{BoundFunctionObject, LegacyBoundFunctionObject},
+    bytecode::function::Closure,
     completion::EvalResult,
     environment::private_environment::PrivateName,
     error::{err_cannot_set_property, type_error_},
@@ -12,9 +13,11 @@ use super::{
     function::Function,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue,
+    object_descriptor::ObjectKind,
+    object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    proxy_object::ProxyObject,
     realm::Realm,
     type_utilities::{
         is_callable, is_callable_object, is_constructor_value, same_object_value_handles,
@@ -370,9 +373,19 @@ pub fn ordinary_has_instance(
 
     let func = func.as_object();
 
-    if func.is_legacy_bound_function() {
-        let bound_func = func.cast::<LegacyBoundFunctionObject>();
-        return eval_instanceof_expression(cx, object, bound_func.bound_target_function().into());
+    if cx.options.bytecode {
+        if let Some(target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func) {
+            return eval_instanceof_expression(cx, object, target_func.into());
+        }
+    } else {
+        if func.is_legacy_bound_function() {
+            let bound_func = func.cast::<LegacyBoundFunctionObject>();
+            return eval_instanceof_expression(
+                cx,
+                object,
+                bound_func.bound_target_function().into(),
+            );
+        }
     }
 
     if !object.is_object() {
@@ -482,7 +495,20 @@ pub fn enumerable_own_property_names(
 
 // 7.3.25 GetFunctionRealm
 pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<HeapPtr<Realm>> {
-    func.get_realm(cx)
+    if cx.options.bytecode {
+        let kind = func.descriptor().kind();
+
+        // Bound functions are also represented as closures with the correct realm set
+        if kind == ObjectKind::Closure {
+            func.cast::<Closure>().function_ptr().realm_ptr().into()
+        } else if kind == ObjectKind::Proxy {
+            func.cast::<ProxyObject>().get_realm(cx)
+        } else {
+            cx.current_realm_ptr().into()
+        }
+    } else {
+        func.get_realm(cx)
+    }
 }
 
 // 7.3.26 CopyDataProperties

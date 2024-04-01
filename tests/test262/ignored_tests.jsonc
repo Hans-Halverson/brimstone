@@ -41,35 +41,41 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
-      // Assignment and destructuring differences from spec
+      // Does not evaluate ToPropertyKey in LHS of member assignment before evaluating the RHS
       "language/expressions/assignment/S11.13.1_A7_T3.js",
+      // Does not evaluate ToPropertyKey in key of object destructuring before evaluating the RHS
+      "language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js",
+      "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
+      // Does not evaluate LHS of assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/assignment/S11.13.1_A5_T1.js",
       "language/expressions/assignment/S11.13.1_A5_T2.js",
       "language/expressions/assignment/S11.13.1_A5_T3.js",
       "language/expressions/assignment/S11.13.1_A6_T1.js",
       "language/expressions/assignment/S11.13.1_A6_T2.js",
       "language/expressions/assignment/S11.13.1_A6_T3.js",
-      "language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js",
-      "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
-      "language/expressions/postfix-decrement/S11.3.2_A5_T1.js",
-      "language/expressions/postfix-decrement/S11.3.2_A5_T2.js",
-      "language/expressions/postfix-decrement/S11.3.2_A5_T3.js",
-      "language/expressions/postfix-decrement/S11.3.2_A6_T3.js",
+      "language/identifier-resolution/assign-to-global-undefined.js",
+      // Does not evaluate LHS of compound assignment to reference before evaluating the RHS, when RHS can modify reference
+      "language/expressions/compound-assignment/S11.13.2_A5.*",
+      "language/expressions/compound-assignment/S11.13.2_A6.*",
+      // Does not evaluate update expression to reference before calling GetValue, when GetValue can modify reference
       "language/expressions/postfix-increment/S11.3.1_A5_T1.js",
       "language/expressions/postfix-increment/S11.3.1_A5_T2.js",
       "language/expressions/postfix-increment/S11.3.1_A5_T3.js",
-      "language/expressions/postfix-increment/S11.3.1_A6_T3.js",
+      "language/expressions/postfix-decrement/S11.3.2_A5_T1.js",
+      "language/expressions/postfix-decrement/S11.3.2_A5_T2.js",
+      "language/expressions/postfix-decrement/S11.3.2_A5_T3.js",
       "language/expressions/prefix-decrement/S11.4.5_A5_T1.js",
       "language/expressions/prefix-decrement/S11.4.5_A5_T2.js",
       "language/expressions/prefix-decrement/S11.4.5_A5_T3.js",
-      "language/expressions/prefix-decrement/S11.4.5_A6_T3.js",
       "language/expressions/prefix-increment/S11.4.4_A5_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A5_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A5_T3.js",
+      // Update member expressions call ToPropertyKey on key twice
+      "language/expressions/postfix-decrement/S11.3.2_A6_T3.js",
+      "language/expressions/postfix-increment/S11.3.1_A6_T3.js",
+      "language/expressions/prefix-decrement/S11.4.5_A6_T3.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T3.js",
-      // Compound assigments failing due to evaluating key twice
-      "language/expressions/compound-assignment/S11.13.2_A5.*",
-      "language/expressions/compound-assignment/S11.13.2_A6.*",
+      // Compound member assignment expressions call ToPropertyKey on key twice
       "language/expressions/compound-assignment/S11.13.2_A7.10_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.11_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.1_T4.js",
@@ -81,9 +87,8 @@
       "language/expressions/compound-assignment/S11.13.2_A7.7_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.8_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.9_T4.js",
-      // TODO: Create global vars when an unresolved reference is assigned in sloppy mode
-      "language/statements/for/head-init-expr-check-empty-inc-empty-completion.js",
-      "language/statements/for/head-init-var-check-empty-inc-empty-completion.js"
+      // Update expressions call GetValue on reference twice 
+      "language/statements/with/unscopables-inc-dec.js"
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow

@@ -53,3 +53,11 @@ function tdzWithinDestructuring() {
   // TDZ check needed
   const { a, [a]: b } = 1;
 }
+
+function propertyEvaluationOrder() {
+  ({ [a()]: b()[c()] } = d());
+}
+
+function restEvaluationOrder() {
+  ({ a, ...(b()[c()]) } = d());
+}

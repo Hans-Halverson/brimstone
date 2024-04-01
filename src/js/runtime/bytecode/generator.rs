@@ -1008,10 +1008,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                         if !is_shadowed {
                             let argument = Register::argument(i);
-                            self.gen_destructuring(
+                            self.gen_store_to_pattern(
                                 pattern,
                                 argument,
-                                /* release_value */ true,
                                 StoreFlags::INITIALIZATION,
                             )?;
                         }
@@ -1024,12 +1023,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         let rest = self.allocate_destination(rest_dest)?;
 
                         self.writer.rest_parameter_instruction(rest);
-                        self.gen_destructuring(
-                            &param.argument,
-                            rest,
-                            /* release_value */ true,
-                            store_flags,
-                        )?;
+                        self.gen_store_to_pattern(&param.argument, rest, store_flags)?;
+                        self.register_allocator.release(rest);
                     }
                 }
 
@@ -3141,12 +3136,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.expr_dest_for_destructuring_assignment(pattern, store_flags);
                 let stored_value = self.gen_expression_with_dest(&expr.right, stored_value_dest)?;
 
-                self.gen_destructuring(
-                    pattern,
-                    stored_value,
-                    /* release_value */ false,
-                    store_flags,
-                )?;
+                self.gen_store_to_pattern(pattern, stored_value, store_flags)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
             ast::Pattern::SuperMember(_) => {
@@ -3605,12 +3595,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.enter_has_assign_expr_context(decl.id_has_assign_expr);
 
                 // Elide TDZ check when storing at declarations
-                let result = self.gen_destructuring(
-                    &decl.id,
-                    init_value,
-                    /* release_value */ true,
-                    store_flags,
-                )?;
+                let result = self.gen_store_to_pattern(&decl.id, init_value, store_flags)?;
+                self.register_allocator.release(init_value);
+
                 self.exit_has_assign_expr_context();
 
                 result
@@ -3631,35 +3618,116 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_destructuring(
+    /// Store a value to a pattern, performing destructuring when necessary.
+    fn gen_store_to_pattern(
         &mut self,
         pattern: &ast::Pattern,
         value: GenRegister,
-        release_value: bool,
         flags: StoreFlags,
     ) -> EmitResult<()> {
+        let reference = self.gen_pattern_to_reference(pattern)?;
+        self.gen_store_to_reference(reference, value, flags)
+    }
+
+    /// Perform the first part of storing to a pattern - evaluating the pattern to a reference
+    /// that will later be actually stored to. This allows for behavior like evaluating a member
+    /// expression before evaluating the RHS.
+    /// 
+    /// Note that this differs from the spec in a few ways:
+    /// - ToPropertyKey is not yet called ahead of time on member expression keys here, and is
+    ///   instead called when storing to the reference.
+    /// - Identifier references are not resolved ahead of time, even though evaluating the RHS may
+    ///   change them.
+    fn gen_pattern_to_reference<'b>(
+        &mut self,
+        pattern: &'b ast::Pattern,
+    ) -> EmitResult<Reference<'b>> {
         match pattern {
-            ast::Pattern::Id(id) => {
-                self.gen_store_identifier(id, value, flags)?;
-
-                if release_value {
-                    self.register_allocator.release(value);
-                }
-
-                Ok(())
-            }
-            ast::Pattern::Object(object) => {
-                self.gen_object_destructuring(object, value, release_value, flags)
-            }
-            ast::Pattern::Array(array) => {
-                self.gen_iterator_destructuring(array, value, release_value, flags)
-            }
-            ast::Pattern::Member(member) => self.gen_member_pattern(member, value, release_value),
+            ast::Pattern::Id(id) => Ok(Reference::new(ReferenceKind::Id(id))),
+            ast::Pattern::Member(member) => self.gen_member_expression_to_reference(member),
             ast::Pattern::SuperMember(_) => {
                 unimplemented!("bytecode for super member destructuring")
             }
+            ast::Pattern::Object(object) => {
+                Ok(Reference::new(ReferenceKind::ObjectPattern(object)))
+            }
+            ast::Pattern::Array(array) => Ok(Reference::new(ReferenceKind::ArrayPattern(array))),
             ast::Pattern::Assign(assign) => {
-                self.gen_assignment_pattern(assign, value, release_value, flags)
+                let mut reference = self.gen_pattern_to_reference(&assign.left)?;
+                reference.init = Some(assign.right.as_ref());
+
+                Ok(reference)
+            }
+        }
+    }
+
+    fn gen_member_expression_to_reference<'b>(
+        &mut self,
+        member: &'b ast::MemberExpression,
+    ) -> EmitResult<Reference<'b>> {
+        let object = self.gen_expression(&member.object)?;
+
+        if member.is_private {
+            unimplemented!("bytecode for private member expressions");
+        }
+
+        if member.is_computed {
+            let property = self.gen_expression(&member.property)?;
+            Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
+        } else {
+            // Must be a named access
+            let name = member.property.to_id();
+            let property = self.add_string_constant(&name.name)?;
+            Ok(Reference::new(ReferenceKind::NamedProperty { object, property }))
+        }
+    }
+
+    fn gen_store_to_reference(
+        &mut self,
+        reference: Reference,
+        value: GenRegister,
+        flags: StoreFlags,
+    ) -> EmitResult<()> {
+        // Generate an assignment pattern, placing the right hand side in the `value` register if
+        // it would otherwise be undefined.
+        if let Some(init) = reference.init.as_deref() {
+            let join_block = self.new_block();
+            self.write_jump_not_undefined_instruction(value, join_block)?;
+
+            // Named evaluation is performed if the pattern is an id
+            if let ReferenceKind::Id(id) = &reference.kind {
+                self.gen_named_expression(AnyStr::from_id(id), init, ExprDest::Fixed(value))?;
+            } else {
+                self.gen_expression_with_dest(init, ExprDest::Fixed(value))?;
+            }
+
+            self.start_block(join_block);
+        }
+
+        match &reference.kind {
+            ReferenceKind::Id(id) => self.gen_store_identifier(id, value, flags),
+            ReferenceKind::NamedProperty { object, property } => {
+                self.writer
+                    .set_named_property_instruction(*object, *property, value);
+
+                self.register_allocator.release(*object);
+
+                Ok(())
+            }
+            ReferenceKind::ComputedProperty { object, property } => {
+                self.writer
+                    .set_property_instruction(*object, *property, value);
+
+                self.register_allocator.release(*property);
+                self.register_allocator.release(*object);
+
+                Ok(())
+            }
+            ReferenceKind::ObjectPattern(object) => {
+                self.gen_object_destructuring(object, value, flags)
+            }
+            ReferenceKind::ArrayPattern(array) => {
+                self.gen_iterator_destructuring(array, value, flags)
             }
         }
     }
@@ -3668,12 +3736,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         pattern: &ast::ObjectPattern,
         object_value: GenRegister,
-        release_value: bool,
         store_flags: StoreFlags,
     ) -> EmitResult<()> {
         enum Property<'a> {
             Named(&'a ast::Identifier),
-            Computed(&'a ast::Expression),
+            Computed(GenRegister),
         }
 
         // If there is a rest element all keys must be saved in a contiguous sequence of temporary
@@ -3693,7 +3760,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             // Emit property in the best dest register for the pattern
-            let dest = self.expr_dest_for_destructuring_assignment(&property.value, store_flags);
+            let property_value_dest =
+                self.expr_dest_for_destructuring_assignment(&property.value, store_flags);
+            let property_value = self.allocate_destination(property_value_dest)?;
 
             let key = match property.key.as_deref() {
                 // Shorthand properties must have an id pattern, optionally with a default value
@@ -3703,10 +3772,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     _ => unreachable!("invalid shorthand property pattern"),
                 },
                 Some(ast::Expression::Id(id)) if !property.is_computed => Property::Named(id),
-                Some(key) => Property::Computed(key),
+                Some(expr) => {
+                    let key = self.gen_expression(expr)?;
+                    Property::Computed(key)
+                }
             };
 
-            let property_value = match key {
+            // Evaluate to reference before evaluating property key
+            let reference = self.gen_pattern_to_reference(&property.value)?;
+
+            match &key {
                 Property::Named(id) => {
                     let name_constant_index = self.add_string_constant(&id.name)?;
 
@@ -3718,40 +3793,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
 
                     // Read named property from object
-                    let property_value = self.allocate_destination(dest)?;
                     self.writer.get_named_property_instruction(
                         property_value,
                         object_value,
                         name_constant_index,
                     );
-
-                    property_value
                 }
-                Property::Computed(expr) => {
-                    let key = self.gen_expression(expr)?;
-                    self.register_allocator.release(key);
-
+                Property::Computed(key) => {
                     // If there is a rest element then we must ensure key is a property key and save
                     // it in the reserved registers.
                     if has_rest_element {
-                        self.writer.to_property_key_instruction(saved_keys[i], key);
+                        self.writer.to_property_key_instruction(saved_keys[i], *key);
                     }
 
                     // Read computed property from object
-                    let property_value = self.allocate_destination(dest)?;
                     self.writer
-                        .get_property_instruction(property_value, object_value, key);
-
-                    property_value
+                        .get_property_instruction(property_value, object_value, *key);
                 }
-            };
+            }
 
-            self.gen_destructuring(
-                &property.value,
-                property_value,
-                /* release_value */ true,
-                store_flags,
-            )?;
+            self.gen_store_to_reference(reference, property_value, store_flags)?;
+
+            if let Property::Computed(key) = key {
+                self.register_allocator.release(key);
+            }
+
+            self.register_allocator.release(property_value);
         }
 
         // Emit the rest element if one was included
@@ -3760,6 +3827,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let rest_element_dest =
                 self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
             let rest_element = self.allocate_destination(rest_element_dest)?;
+
+            // Evaluate to reference before calling CopyDataProperties
+            let reference = self.gen_pattern_to_reference(rest_element_pattern)?;
 
             // Rest element references the saved property keys on the stack, so they can be excluded
             // Use an arbitrary value for argv
@@ -3784,12 +3854,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer
                 .copy_data_properties(rest_element, object_value, argv, argc);
 
-            self.gen_destructuring(
-                rest_element_pattern,
-                rest_element,
-                /* release_value */ true,
-                store_flags,
-            )?;
+            self.gen_store_to_reference(reference, rest_element, store_flags)?;
+            self.register_allocator.release(rest_element);
 
             for saved_key in saved_keys.into_iter().rev() {
                 self.register_allocator.release(saved_key);
@@ -3804,10 +3870,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(scratch);
         }
 
-        if release_value {
-            self.register_allocator.release(object_value);
-        }
-
         Ok(())
     }
 
@@ -3815,7 +3877,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         array_pattern: &ast::ArrayPattern,
         iterable: GenRegister,
-        release_value: bool,
         flags: StoreFlags,
     ) -> EmitResult<()> {
         let iterator = self.register_allocator.allocate()?;
@@ -3867,12 +3928,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.start_block(is_done_block);
 
                 let (exception_handler, _) = self.gen_in_exception_handler(|this| {
-                    this.gen_destructuring(
-                        &rest.argument,
-                        array,
-                        /* release_value */ true,
-                        flags,
-                    )
+                    this.gen_store_to_pattern(&rest.argument, array, flags)?;
+                    this.register_allocator.release(array);
+                    Ok(())
                 })?;
 
                 if exception_handler.start != exception_handler.end {
@@ -3905,7 +3963,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Destructure the value from the iterator, or undefined if iterator is done
                 self.start_block(iteration_destructure_block);
                 let (exception_handler, _) = self.gen_in_exception_handler(|this| {
-                    this.gen_destructuring(pattern, value, /* release_value */ false, flags)
+                    this.gen_store_to_pattern(pattern, value, flags)
                 })?;
 
                 if exception_handler.start != exception_handler.end {
@@ -3997,62 +4055,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(join_block);
 
         self.register_allocator.release(iterator);
-        if release_value {
-            self.register_allocator.release(iterable);
-        }
-
-        Ok(())
-    }
-
-    /// Generate an assignment pattern, placing the right hand side in the `value` register if it
-    /// would otherwise be undefined.
-    fn gen_assignment_pattern(
-        &mut self,
-        pattern: &ast::AssignmentPattern,
-        value: GenRegister,
-        release_value: bool,
-        flags: StoreFlags,
-    ) -> EmitResult<()> {
-        let join_block = self.new_block();
-        self.write_jump_not_undefined_instruction(value, join_block)?;
-
-        // Named evaluation is performed if the pattern is an id
-        if let ast::Pattern::Id(id) = pattern.left.as_ref() {
-            self.gen_named_expression(AnyStr::from_id(id), &pattern.right, ExprDest::Fixed(value))?;
-        } else {
-            self.gen_expression_with_dest(&pattern.right, ExprDest::Fixed(value))?;
-        }
-
-        self.start_block(join_block);
-
-        self.gen_destructuring(&pattern.left, value, release_value, flags)
-    }
-
-    fn gen_member_pattern(
-        &mut self,
-        member: &ast::MemberExpression,
-        value: GenRegister,
-        release_value: bool,
-    ) -> EmitResult<()> {
-        let object = self.gen_expression(&member.object)?;
-
-        // Store named property when possible, otherwise store generic property
-        if member.is_computed {
-            let key = self.gen_expression(&member.property)?;
-            self.writer.set_property_instruction(object, key, value);
-            self.register_allocator.release(key);
-        } else {
-            let name = member.property.to_id();
-            let name_constant_index = self.add_string_constant(&name.name)?;
-            self.writer
-                .set_named_property_instruction(object, name_constant_index, value);
-        }
-
-        self.register_allocator.release(object);
-
-        if release_value {
-            self.register_allocator.release(value);
-        }
 
         Ok(())
     }
@@ -4647,12 +4649,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Loop body starts by storing this iteration's value to the pattern
                 this.enter_has_assign_expr_context(stmt.left.has_assign_expr());
-                this.gen_destructuring(
-                    stmt.left.pattern(),
-                    value,
-                    /* release_value */ true,
-                    store_flags,
-                )?;
+                this.gen_store_to_pattern(stmt.left.pattern(), value, store_flags)?;
+                this.register_allocator.release(value);
                 this.exit_has_assign_expr_context();
 
                 // Set up the finally scope for the body
@@ -4824,12 +4822,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Otherwise `next` returned a key, so store the key to the pattern
         self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
-        self.gen_destructuring(
-            stmt.left.pattern(),
-            next_result,
-            /* release_value */ true,
-            store_flags,
-        )?;
+        self.gen_store_to_pattern(stmt.left.pattern(), next_result, store_flags)?;
+        self.register_allocator.release(next_result);
         self.exit_has_assign_expr_context();
 
         // Otherwise proceed to the body of the loop
@@ -5070,12 +5064,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Param::Destructuring { param, error_reg } => {
                 // Storing at declaration does not need a TDZ check
                 self.enter_has_assign_expr_context(catch_clause.param_has_assign_expr);
-                self.gen_destructuring(
-                    param,
-                    error_reg,
-                    /* release_value */ true,
-                    StoreFlags::INITIALIZATION,
-                )?;
+                self.gen_store_to_pattern(param, error_reg, StoreFlags::INITIALIZATION)?;
+                self.register_allocator.release(error_reg);
                 self.exit_has_assign_expr_context();
 
                 body_handler.error_register = Some(error_reg);
@@ -5818,6 +5808,25 @@ enum ExprDest {
     NewTemporary,
     /// Value must be placed in a specific register.
     Fixed(GenRegister),
+}
+
+struct Reference<'a> {
+    kind: ReferenceKind<'a>,
+    init: Option<&'a ast::Expression>,
+}
+
+impl<'a> Reference<'a> {
+    fn new(kind: ReferenceKind<'a>) -> Self {
+        Reference { kind, init: None }
+    }
+}
+
+enum ReferenceKind<'a> {
+    Id(&'a ast::Identifier),
+    NamedProperty { object: GenRegister, property: GenConstantIndex },
+    ComputedProperty { object: GenRegister, property: GenRegister },
+    ArrayPattern(&'a ast::ArrayPattern),
+    ObjectPattern(&'a ast::ObjectPattern),
 }
 
 pub enum JumpOperand {

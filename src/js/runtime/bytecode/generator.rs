@@ -3679,9 +3679,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // If there is a rest element all keys must be saved in a contiguous sequence of temporary
         // registers so they can be passed to the CopyDataProperties instruction.
         let has_rest_element = pattern.properties.last().map_or(false, |p| p.is_rest);
-        let mut saved_keys = vec![];
 
-        for property in &pattern.properties {
+        let mut saved_keys = vec![];
+        if has_rest_element {
+            for _ in 0..pattern.properties.len() - 1 {
+                saved_keys.push(self.register_allocator.allocate()?);
+            }
+        }
+
+        for (i, property) in pattern.properties.iter().enumerate() {
             if property.is_rest {
                 continue;
             }
@@ -3704,13 +3710,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Property::Named(id) => {
                     let name_constant_index = self.add_string_constant(&id.name)?;
 
-                    // If there is a rest element name must be stored in a temporary register. Can
+                    // If there is a rest element name must be saved in the reserved registers. Can
                     // load directly to the temporary register since name is already a property key.
                     if has_rest_element {
-                        let saved_key = self.register_allocator.allocate()?;
                         self.writer
-                            .load_constant_instruction(saved_key, name_constant_index);
-                        saved_keys.push(saved_key);
+                            .load_constant_instruction(saved_keys[i], name_constant_index);
                     }
 
                     // Read named property from object
@@ -3727,12 +3731,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let key = self.gen_expression(expr)?;
                     self.register_allocator.release(key);
 
-                    // If there is a rest element the we must ensure key is a property key and store
-                    // in a temporary register.
+                    // If there is a rest element then we must ensure key is a property key and save
+                    // it in the reserved registers.
                     if has_rest_element {
-                        let saved_key = self.register_allocator.allocate()?;
-                        self.writer.to_property_key_instruction(saved_key, key);
-                        saved_keys.push(saved_key);
+                        self.writer.to_property_key_instruction(saved_keys[i], key);
                     }
 
                     // Read computed property from object

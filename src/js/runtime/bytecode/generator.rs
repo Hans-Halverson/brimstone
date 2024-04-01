@@ -3632,7 +3632,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Perform the first part of storing to a pattern - evaluating the pattern to a reference
     /// that will later be actually stored to. This allows for behavior like evaluating a member
     /// expression before evaluating the RHS.
-    /// 
+    ///
     /// Note that this differs from the spec in a few ways:
     /// - ToPropertyKey is not yet called ahead of time on member expression keys here, and is
     ///   instead called when storing to the reference.
@@ -3898,6 +3898,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let array = self.register_allocator.allocate()?;
                 self.writer.new_array_instruction(array);
 
+                // Evaluate pattern to reference before gathering remaining items
+                let (exception_handler, reference) = self.gen_in_exception_handler(|this| {
+                    this.gen_pattern_to_reference(&rest.argument)
+                })?;
+
+                if exception_handler.start != exception_handler.end {
+                    exception_handlers.push(exception_handler);
+                }
+
                 let index = self.register_allocator.allocate()?;
                 self.writer.load_immediate_instruction(index, SInt::new(0));
 
@@ -3924,11 +3933,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.register_allocator.release(index);
 
-                // When done, store iterator to pattern via destructuring
+                // When done, store array to reference that was generated earlier
                 self.start_block(is_done_block);
 
                 let (exception_handler, _) = self.gen_in_exception_handler(|this| {
-                    this.gen_store_to_pattern(&rest.argument, array, flags)?;
+                    this.gen_store_to_reference(reference, array, flags)?;
                     this.register_allocator.release(array);
                     Ok(())
                 })?;
@@ -3939,6 +3948,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 continue;
             }
+
+            // Evaluate to reference before calling `next`
+            let reference = if let ast::ArrayPatternElement::Pattern(pattern) = element {
+                let (exception_handler, reference) =
+                    self.gen_in_exception_handler(|this| this.gen_pattern_to_reference(pattern))?;
+
+                if exception_handler.start != exception_handler.end {
+                    exception_handlers.push(exception_handler);
+                }
+
+                Some(reference)
+            } else {
+                // Otherwise must be a hole
+                None
+            };
 
             let is_done_block = self.new_block();
 
@@ -3952,7 +3976,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .iterator_next_instruction(value, is_done, iterator, next_method);
 
             // Patterns will be destructured so value from iterator can be assigned
-            if let ast::ArrayPatternElement::Pattern(pattern) = element {
+            if let Some(reference) = reference {
                 let iteration_destructure_block = self.new_block();
                 self.write_jump_false_instruction(is_done, iteration_destructure_block)?;
 
@@ -3963,13 +3987,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Destructure the value from the iterator, or undefined if iterator is done
                 self.start_block(iteration_destructure_block);
                 let (exception_handler, _) = self.gen_in_exception_handler(|this| {
-                    this.gen_store_to_pattern(pattern, value, flags)
+                    this.gen_store_to_reference(reference, value, flags)
                 })?;
 
                 if exception_handler.start != exception_handler.end {
                     exception_handlers.push(exception_handler);
                 }
-            } else if let ast::ArrayPatternElement::Hole = element {
+            } else {
                 // Holes ignore value so continue to next iteration
                 self.start_block(is_done_block);
             }
@@ -5088,7 +5112,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_in_exception_handler<R>(
         &mut self,
-        mut f: impl FnMut(&mut Self) -> EmitResult<R>,
+        f: impl FnOnce(&mut Self) -> EmitResult<R>,
     ) -> EmitResult<(ExceptionHandlerBuilder, R)> {
         // Mark the range of instructions around the callback
         let body_handler_start = self.writer.current_offset();

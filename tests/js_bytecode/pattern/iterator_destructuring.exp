@@ -22,8 +22,12 @@
     57: StoreGlobal r0, c19
     60: NewClosure r0, c20
     63: StoreGlobal r0, c21
-    66: LoadUndefined r0
-    68: Ret r0
+    66: NewClosure r0, c22
+    69: StoreGlobal r0, c23
+    72: NewClosure r0, c24
+    75: StoreGlobal r0, c25
+    78: LoadUndefined r0
+    80: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -47,6 +51,10 @@
     19: [String: valuesAndRest]
     20: [BytecodeFunction: restDestructuring]
     21: [String: restDestructuring]
+    22: [BytecodeFunction: elementEvaluationOrder]
+    23: [String: elementEvaluationOrder]
+    24: [BytecodeFunction: restEvaluationOrder]
+    25: [String: restEvaluationOrder]
 }
 
 [BytecodeFunction: empty] {
@@ -401,4 +409,91 @@
   Exception Handlers:
     25-29 -> 36 (r3)
     38-40 -> 42 (r4)
+}
+
+[BytecodeFunction: elementEvaluationOrder] {
+  Parameters: 0, Registers: 7
+     0: LoadGlobal r0, c0
+     3: Call r0, r0, r0, 0
+     8: GetIterator r1, r2, r0
+    12: LoadGlobal r5, c1
+    15: Call r5, r5, r5, 0
+    20: LoadGlobal r6, c2
+    23: Call r6, r6, r6, 0
+    28: IteratorNext r3, r4, r1, r2
+    33: JumpFalse r4, 5 (.L0)
+    36: LoadUndefined r3
+  .L0:
+    38: SetProperty r5, r6, r3
+    42: JumpTrue r4, 26 (.L4)
+    45: LoadTrue r2
+    47: Jump 4 (.L1)
+    49: LoadFalse r2
+  .L1:
+    51: IteratorClose r1
+    53: Jump 10 (.L3)
+    55: JumpTrue r2, 6 (.L2)
+    58: Mov r4, r3
+  .L2:
+    61: Throw r4
+  .L3:
+    63: JumpTrue r2, 5 (.L4)
+    66: Throw r3
+  .L4:
+    68: LoadUndefined r0
+    70: Ret r0
+  Constant Table:
+    0: [String: c]
+    1: [String: a]
+    2: [String: b]
+  Exception Handlers:
+    12-28 -> 49 (r3)
+    38-42 -> 49 (r3)
+    51-53 -> 55 (r4)
+}
+
+[BytecodeFunction: restEvaluationOrder] {
+  Parameters: 0, Registers: 9
+     0: LoadGlobal r0, c0
+     3: Call r0, r0, r0, 0
+     8: GetIterator r1, r2, r0
+    12: NewArray r5
+    14: LoadGlobal r6, c1
+    17: Call r6, r6, r6, 0
+    22: LoadGlobal r7, c2
+    25: Call r7, r7, r7, 0
+    30: LoadImmediate r8, 0
+  .L0:
+    33: IteratorNext r3, r4, r1, r2
+    38: JumpTrue r4, 11 (.L1)
+    41: SetArrayProperty r5, r8, r3
+    45: Inc r8
+    47: Jump -14 (.L0)
+  .L1:
+    49: SetProperty r6, r7, r5
+    53: JumpTrue r4, 26 (.L5)
+    56: LoadTrue r2
+    58: Jump 4 (.L2)
+    60: LoadFalse r2
+  .L2:
+    62: IteratorClose r1
+    64: Jump 10 (.L4)
+    66: JumpTrue r2, 6 (.L3)
+    69: Mov r4, r3
+  .L3:
+    72: Throw r4
+  .L4:
+    74: JumpTrue r2, 5 (.L5)
+    77: Throw r3
+  .L5:
+    79: LoadUndefined r0
+    81: Ret r0
+  Constant Table:
+    0: [String: c]
+    1: [String: a]
+    2: [String: b]
+  Exception Handlers:
+    14-30 -> 60 (r3)
+    49-53 -> 60 (r3)
+    62-64 -> 66 (r4)
 }

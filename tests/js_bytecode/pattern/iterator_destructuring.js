@@ -41,3 +41,11 @@ function valuesAndRest(p) {
 function restDestructuring(p) {
   var [...{b}] = p;
 }
+
+function elementEvaluationOrder() {
+  ([a()[b()]] = c());
+}
+
+function restEvaluationOrder() {
+  ([...a()[b()]] = c());
+}

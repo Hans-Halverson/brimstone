@@ -849,7 +849,10 @@ impl Analyzer<'_> {
                 let scope = id.scope.unwrap_resolved_mut();
                 let binding = scope.get_binding_mut(&id.name);
 
-                if !binding.needs_tdz_check() {
+                // Allow later arguments to overwrite earlier ones but do not overwrite a WithVar.
+                if !binding.needs_tdz_check()
+                    && !matches!(binding.vm_location(), Some(VMLocation::WithVar))
+                {
                     binding.set_vm_location(VMLocation::Argument(param_index));
                 }
             }

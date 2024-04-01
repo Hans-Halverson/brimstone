@@ -635,7 +635,7 @@ impl<'a> Parser<'a> {
             BindingKind::Const { init_pos }
             | BindingKind::Let { init_pos }
             | BindingKind::CatchParameter { init_pos }
-            | BindingKind::FunctionParameter { init_pos } => init_pos.set(pos),
+            | BindingKind::FunctionParameter { init_pos, .. } => init_pos.set(pos),
             _ => {}
         }
     }
@@ -795,10 +795,12 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<Vec<FunctionParam>> {
         // Read all function params until the terminator token
         let mut params = vec![];
+        let mut index = 0;
 
         while self.token != terminator {
             if self.token == Token::Spread {
-                let rest_element = self.parse_rest_element(BindingKind::new_function_parameter())?;
+                let rest_element =
+                    self.parse_rest_element(BindingKind::new_function_parameter(index))?;
                 Self::set_binding_init_pos(&rest_element.argument, self.prev_loc.end);
 
                 params.push(FunctionParam::new_rest(rest_element));
@@ -811,8 +813,9 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let pattern = self
-                .parse_pattern_including_assignment_pattern(BindingKind::new_function_parameter())?;
+            let pattern = self.parse_pattern_including_assignment_pattern(
+                BindingKind::new_function_parameter(index),
+            )?;
             Self::set_binding_init_pos(&pattern, self.prev_loc.end);
 
             params.push(FunctionParam::new_pattern(pattern));
@@ -822,6 +825,8 @@ impl<'a> Parser<'a> {
             } else {
                 break;
             }
+
+            index += 1;
         }
 
         Ok(params)
@@ -1557,7 +1562,7 @@ impl<'a> Parser<'a> {
                 self.advance()?;
 
                 let mut async_id = Identifier::new(async_loc, "async".to_owned());
-                self.add_binding(&mut async_id, BindingKind::new_function_parameter())?;
+                self.add_binding(&mut async_id, BindingKind::new_function_parameter(0))?;
                 Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
                 let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
@@ -1584,7 +1589,7 @@ impl<'a> Parser<'a> {
             Token::LeftParen => self.parse_function_params()?,
             _ => {
                 let id =
-                    self.parse_binding_identifier(Some(BindingKind::new_function_parameter()))?;
+                    self.parse_binding_identifier(Some(BindingKind::new_function_parameter(0)))?;
                 Self::set_id_binding_init_pos(&id, self.prev_loc.end);
 
                 vec![FunctionParam::new_pattern(Pattern::Id(id))]

@@ -204,6 +204,8 @@ impl ScopeTree {
     fn add_var_scoped_binding(&mut self, name: &str, kind: BindingKind) -> AddBindingResult {
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
         let mut node_id = self.current_node_id;
+        let mut in_with_statement = false;
+
         loop {
             let node = self.get_ast_node_mut(node_id);
 
@@ -218,6 +220,11 @@ impl ScopeTree {
                 }
             }
 
+            // Track if the var binding is within a with statement
+            if node.kind == ScopeNodeKind::With {
+                in_with_statement = true;
+            }
+
             if node.kind.is_hoist_target() {
                 let existing_binding = node.bindings.get(name);
                 let can_overwrite =
@@ -229,21 +236,30 @@ impl ScopeTree {
                         .unwrap_or(false);
 
                 if existing_binding.is_none() || can_overwrite {
-                    let vm_location =
-                        if node.kind == ScopeNodeKind::Global && !kind.is_implicit_this() {
-                            // Var bindings in the global scope are immediately known to be global
-                            Some(VMLocation::Global)
-                        } else if matches!(node.kind, ScopeNodeKind::Eval { is_strict: false, .. })
-                            && !kind.is_implicit_this()
-                        {
-                            // Var bindings in a sloppy eval are dynamically added to their parent
-                            // var scope, and require a dynamic lookup at runtime.
-                            Some(VMLocation::EvalVar)
-                        } else {
-                            None
-                        };
+                    let vm_location = if in_with_statement {
+                        // Var bindings in a with statement require a dynamic lookup at runtime as
+                        // they may reference a true var or a property of the with object.
+                        Some(VMLocation::WithVar)
+                    } else if node.kind == ScopeNodeKind::Global && !kind.is_implicit_this() {
+                        // Var bindings in the global scope are immediately known to be global
+                        Some(VMLocation::Global)
+                    } else if matches!(node.kind, ScopeNodeKind::Eval { is_strict: false, .. })
+                        && !kind.is_implicit_this()
+                    {
+                        // Var bindings in a sloppy eval are dynamically added to their parent
+                        // var scope, and require a dynamic lookup at runtime.
+                        Some(VMLocation::EvalVar)
+                    } else {
+                        None
+                    };
 
                     node.add_binding(name, kind, vm_location, /* needs_tdz_check */ false);
+                } else if existing_binding.is_some() && in_with_statement {
+                    // Should treat as a WithVar binding if any var binding is within a with
+                    node.bindings
+                        .get_mut(name)
+                        .unwrap()
+                        .set_vm_location(VMLocation::WithVar)
                 }
 
                 return Ok(self.get_ast_node_ptr(node_id));
@@ -319,7 +335,7 @@ impl ScopeTree {
                     if let BindingKind::Const { init_pos }
                     | BindingKind::Let { init_pos }
                     | BindingKind::CatchParameter { init_pos }
-                    | BindingKind::FunctionParameter { init_pos } = binding.kind()
+                    | BindingKind::FunctionParameter { init_pos, .. } = binding.kind()
                     {
                         if name_loc.start < init_pos.get() {
                             binding.needs_tdz_check = true;
@@ -510,20 +526,20 @@ impl ScopeTree {
             bindings = vec![SHADOWED_SCOPE_SLOT_NAME.to_owned(); arguments_object_length.unwrap()];
 
             for (name, binding) in ast_node.bindings.iter_mut() {
-                if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
-                    continue;
-                }
-
-                let arg_index = if let Some(VMLocation::Argument(arg_index)) = binding.vm_location {
-                    arg_index
+                let arg_index = if let BindingKind::FunctionParameter { index, .. } = binding.kind()
+                {
+                    *index as usize
                 } else {
-                    unreachable!(
-                        "function param bindings in simple params must have argument location"
-                    )
+                    continue;
                 };
 
-                binding
-                    .set_vm_location(VMLocation::Scope { scope_id: vm_node_id, index: arg_index });
+                // Do not overwrite a WithVar, which will be dynamically accessed
+                if !matches!(binding.vm_location(), Some(VMLocation::WithVar)) {
+                    binding.set_vm_location(VMLocation::Scope {
+                        scope_id: vm_node_id,
+                        index: arg_index,
+                    });
+                }
 
                 bindings[arg_index] = name.clone();
             }
@@ -540,6 +556,7 @@ impl ScopeTree {
 
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
             let is_eval_var = matches!(binding.vm_location, Some(VMLocation::EvalVar));
+            let is_with_var = matches!(binding.vm_location, Some(VMLocation::WithVar));
 
             let needs_vm_scope = (
                 // All captured bindings must be placed in a VM scope
@@ -551,8 +568,13 @@ impl ScopeTree {
                 (ast_node.supports_dynamic_access &&
                     (name != "this" || ast_node.kind != ScopeNodeKind::Global))
             ) && (
-                // Eval var bindings will already be placed in VM scope objects
+                // Eval var bindings will already be placed in VM scope objects during eval
+                // declaration instantiation.
                 !is_eval_var
+            ) && (
+                // With var bindings will be placed in VM scope objects due to dynamic loads and
+                // stores.
+                !is_with_var
             );
 
             if needs_vm_scope {
@@ -573,6 +595,12 @@ impl ScopeTree {
                 if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
                     binding.needs_tdz_check = true;
                 }
+            }
+
+            // With vars still need to be added to the VM scope (except in the global scope, where
+            // it will be added to the global object).
+            if is_with_var && ast_node.kind != ScopeNodeKind::Global {
+                bindings.push(name.clone());
             }
 
             // All globals need a TDZ check as they could be captured by any function
@@ -862,6 +890,8 @@ pub enum BindingKind {
     FunctionParameter {
         /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
+        /// Index of the parameter in the function's parameter list.
+        index: u32,
     },
     Class,
     CatchParameter {
@@ -878,8 +908,8 @@ pub enum BindingKind {
 }
 
 impl BindingKind {
-    pub fn new_function_parameter() -> BindingKind {
-        BindingKind::FunctionParameter { init_pos: Cell::new(0) }
+    pub fn new_function_parameter(index: u32) -> BindingKind {
+        BindingKind::FunctionParameter { init_pos: Cell::new(0), index }
     }
 
     /// Whether this is a LexicallyScopedDeclaration from the spec.
@@ -1015,6 +1045,9 @@ pub enum VMLocation {
     /// In sloppy evals vars are added to the parent var scope at runtime. This means they must be
     /// dynamically looked up by name at runtime, and are defined via special instructions.
     EvalVar,
+    /// Vars defined in a with statement must be dynamically loaded and stored since they may be a
+    /// normal var or they may be a property of the with object.
+    WithVar,
 }
 
 pub struct VMScopeNode {

@@ -1,12 +1,28 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 1
-    0: NewClosure r0, c0
-    3: StoreGlobal r0, c1
-    6: LoadUndefined r0
-    8: Ret r0
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadUndefined r0
+    32: Ret r0
   Constant Table:
     0: [BytecodeFunction: basic]
     1: [String: basic]
+    2: [BytecodeFunction: withVars]
+    3: [String: withVars]
+    4: [BytecodeFunction: withVarShadowsVar]
+    5: [String: withVarShadowsVar]
+    6: [BytecodeFunction: withVarShadowsArg]
+    7: [String: withVarShadowsArg]
+    8: [BytecodeFunction: withVarShadowsArguments]
+    9: [String: withVarShadowsArguments]
 }
 
 [BytecodeFunction: basic] {
@@ -28,4 +44,109 @@
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
+}
+
+[BytecodeFunction: withVars] {
+  Parameters: 1, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 1, 0
+     6: StoreToScope r0, 4, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r0
+    16: StoreToScope r0, 3, 0
+    20: LoadFromScope r0, 0, 0
+    24: PushWithScope r0, c1
+    27: LoadImmediate r0, 1
+    30: StoreDynamic r0, c2
+    33: LoadDynamic r0, c2
+    36: LoadImmediate r1, 2
+    39: Add r0, r0, r1
+    43: LoadImmediate r0, 3
+    46: StoreDynamic r0, c2
+    49: PopScope 
+    50: LoadDynamic r0, c2
+    53: LoadImmediate r1, 4
+    56: Add r0, r0, r1
+    60: LoadImmediate r0, 5
+    63: StoreDynamic r0, c2
+    66: LoadUndefined r0
+    68: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [String: y]
+}
+
+[BytecodeFunction: withVarShadowsVar] {
+  Parameters: 1, Registers: 1
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 1, 0
+     6: StoreToScope r0, 4, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r0
+    16: StoreToScope r0, 3, 0
+    20: LoadImmediate r0, 0
+    23: StoreDynamic r0, c1
+    26: LoadFromScope r0, 0, 0
+    30: PushWithScope r0, c2
+    33: LoadImmediate r0, 1
+    36: StoreDynamic r0, c1
+    39: LoadImmediate r0, 2
+    42: StoreDynamic r0, c1
+    45: PopScope 
+    46: LoadImmediate r0, 3
+    49: StoreDynamic r0, c1
+    52: LoadUndefined r0
+    54: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: y]
+    2: [ScopeNames]
+}
+
+[BytecodeFunction: withVarShadowsArg] {
+  Parameters: 2, Registers: 1
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 2, 0
+     6: StoreToScope r0, 4, 0
+    10: StoreToScope a0, 0, 0
+    14: StoreToScope a1, 1, 0
+    18: NewMappedArguments r0
+    20: StoreToScope r0, 3, 0
+    24: LoadFromScope r0, 0, 0
+    28: PushWithScope r0, c1
+    31: LoadImmediate r0, 1
+    34: StoreDynamic r0, c2
+    37: PopScope 
+    38: LoadImmediate r0, 2
+    41: StoreDynamic r0, c2
+    44: LoadUndefined r0
+    46: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [String: p]
+}
+
+[BytecodeFunction: withVarShadowsArguments] {
+  Parameters: 1, Registers: 1
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 1, 0
+     6: StoreToScope r0, 3, 0
+    10: StoreToScope a0, 0, 0
+    14: NewMappedArguments r0
+    16: StoreDynamic r0, c1
+    19: LoadFromScope r0, 0, 0
+    23: PushWithScope r0, c2
+    26: LoadImmediate r0, 1
+    29: StoreDynamic r0, c1
+    32: PopScope 
+    33: LoadImmediate r0, 2
+    36: StoreDynamic r0, c1
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: arguments]
+    2: [ScopeNames]
 }

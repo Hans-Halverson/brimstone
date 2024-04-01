@@ -1306,8 +1306,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     this.gen_load_scope_binding(scope_id, index, dest)
                 })
             }
-            // Eval variables must be loaded to a register from a scope chain lookup
-            VMLocation::EvalVar => self.gen_load_dynamic_identifier(name, dest),
+            // Eval or with variables must be loaded to a register from a scope chain lookup
+            VMLocation::EvalVar | VMLocation::WithVar => {
+                self.gen_load_dynamic_identifier(name, dest)
+            }
         }
     }
 
@@ -1490,9 +1492,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             VMLocation::Scope { scope_id, index } => {
                 self.gen_store_scope_binding(scope_id, index, value)?
             }
-            // Eval vars are dynamically stored in parent scope at runtime, so they must be
+            // Eval or with vars are dynamically stored in parent scope at runtime, so they must be
             // dynamically stored to.
-            VMLocation::EvalVar => self.gen_store_dynamic_identifier(name, value)?,
+            VMLocation::EvalVar | VMLocation::WithVar => {
+                self.gen_store_dynamic_identifier(name, value)?
+            }
         }
 
         Ok(())
@@ -1549,9 +1553,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             VMLocation::Argument(index) => Register::argument(index),
             VMLocation::LocalRegister(index) => Register::local(index),
             // Other VM locations can be stored from any register
-            VMLocation::Global | VMLocation::Scope { .. } | VMLocation::EvalVar => {
-                return ExprDest::Any
-            }
+            VMLocation::Global
+            | VMLocation::Scope { .. }
+            | VMLocation::EvalVar
+            | VMLocation::WithVar => return ExprDest::Any,
         };
 
         // Reassigning to a const will error. Make sure to not treat the true fixed register as the
@@ -4212,7 +4217,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.gen_store_scope_binding(scope_id, index, empty_reg)?;
                         self.register_allocator.release(empty_reg);
                     }
-                    VMLocation::EvalVar => unreachable!("only vars need TDZ checks"),
+                    VMLocation::EvalVar | VMLocation::WithVar => {
+                        unreachable!("vars do not need TDZ checks")
+                    }
                 }
             }
         }

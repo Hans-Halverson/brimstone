@@ -190,9 +190,8 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> Handle<Closure> {
-        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
         let bytecode_function =
-            BytecodeFunction::new_rust_runtime_function(cx, function_id, realm, is_constructor);
+            BytecodeFunction::new_rust_runtime_function(cx, builtin_func, realm, is_constructor);
 
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));

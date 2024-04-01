@@ -236,7 +236,7 @@ impl Intrinsics {
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
         // form dependency cycles, so first create uninitialized and then initialize later.
         let object_prototype = ObjectPrototype::new_uninit(cx);
-        let mut function_prototype = FunctionPrototype::new_uninit(cx);
+        let function_prototype = FunctionPrototype::new_uninit(cx);
 
         register_existing_intrinsic!(ObjectPrototype, object_prototype);
         register_existing_intrinsic!(FunctionPrototype, function_prototype);
@@ -255,7 +255,7 @@ impl Intrinsics {
         realm.init_global_scope(cx);
 
         ObjectPrototype::initialize(cx, object_prototype, realm);
-        function_prototype.initialize(cx, realm);
+        FunctionPrototype::initialize(cx, function_prototype, realm);
 
         // Normal intrinsic creation
         register_intrinsic!(ObjectConstructor, ObjectConstructor);

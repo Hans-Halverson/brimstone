@@ -6,6 +6,7 @@ use crate::{
     extend_object, field_offset,
     js::runtime::{
         abstract_operations::define_property_or_throw,
+        builtin_function::BuiltinFunctionPtr,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_function_name},
@@ -85,6 +86,15 @@ impl Closure {
 
         // Does not need to the `name` and `length` properties as these will be set by caller
         object.to_handle()
+    }
+
+    pub fn init_extra_fields(
+        &mut self,
+        function: HeapPtr<BytecodeFunction>,
+        scope: HeapPtr<Scope>,
+    ) {
+        set_uninit!(self.function, function);
+        set_uninit!(self.scope, scope);
     }
 
     #[inline]
@@ -226,10 +236,12 @@ impl BytecodeFunction {
 
     pub fn new_rust_runtime_function(
         cx: Context,
-        function_id: RustRuntimeFunctionId,
+        builtin_func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
         is_constructor: bool,
     ) -> Handle<BytecodeFunction> {
+        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
+
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
 

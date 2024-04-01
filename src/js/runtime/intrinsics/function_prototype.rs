@@ -12,6 +12,7 @@ use crate::{
             },
             bound_function_object::{BoundFunctionObject, LegacyBoundFunctionObject},
             builtin_function::BuiltinFunction,
+            bytecode::function::{BytecodeFunction, Closure},
             completion::EvalResult,
             error::type_error_,
             function::{
@@ -21,7 +22,7 @@ use crate::{
             get,
             object_descriptor::ObjectKind,
             object_value::{ObjectValue, VirtualObject},
-            ordinary_object::object_ordinary_init,
+            ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             realm::Realm,
@@ -40,52 +41,67 @@ extend_object! {
 }
 
 impl FunctionPrototype {
-    // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: Context) -> Handle<FunctionPrototype> {
-        let object = cx.alloc_uninit::<FunctionPrototype>();
-
+    /// Start out uninitialized and then initialize later to break dependency cycles.
+    pub fn new_uninit(cx: Context) -> Handle<ObjectValue> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
-        let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-        object_ordinary_init(cx, object.into(), descriptor, None);
+        if cx.options.bytecode {
+            let mut object =
+                object_create_with_optional_proto::<Closure>(cx, ObjectKind::Closure, None);
+            object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
-        object.to_handle()
+            object.to_handle().into()
+        } else {
+            let object = cx.alloc_uninit::<FunctionPrototype>();
+
+            let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
+            object_ordinary_init(cx, object.into(), descriptor, None);
+
+            object.to_handle().into()
+        }
     }
-}
 
-impl Handle<FunctionPrototype> {
-    // 20.2.3 Properties of the Function Prototype Object
-    pub fn initialize(&mut self, cx: Context, realm: Handle<Realm>) {
+    /// 20.2.3 Properties of the Function Prototype Object
+    pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
-        let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-        object_ordinary_init(cx, self.object().get_(), descriptor_ptr, Some(object_proto_ptr));
 
-        self.object().instrinsic_length_prop(cx, 0);
-        self.object().intrinsic_name_prop(cx, "");
+        let mut object = function_prototype.object();
 
-        self.object()
-            .intrinsic_func(cx, cx.names.apply(), FunctionPrototype::apply, 2, realm);
-        self.object()
-            .intrinsic_func(cx, cx.names.bind(), FunctionPrototype::bind, 1, realm);
-        self.object().intrinsic_func(
-            cx,
-            cx.names.call(),
-            FunctionPrototype::call_intrinsic,
-            1,
-            realm,
-        );
-        self.object().intrinsic_func(
-            cx,
-            cx.names.to_string(),
-            FunctionPrototype::to_string,
-            0,
-            realm,
-        );
+        // Initialize all fields of the prototype objec
+        if cx.options.bytecode {
+            let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
+            object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
+
+            // The prototype object is itself a function with special behavior, implemented as a
+            // builtin function.
+            let function = BytecodeFunction::new_rust_runtime_function(
+                cx,
+                Self::prototype_call,
+                realm,
+                /* is_constructor */ false,
+            );
+            let scope = realm.default_global_scope();
+
+            object
+                .cast::<Closure>()
+                .init_extra_fields(function.get_(), scope.get_());
+        } else {
+            let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
+            object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
+        }
+
+        object.instrinsic_length_prop(cx, 0);
+        object.intrinsic_name_prop(cx, "");
+
+        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 2, realm);
+        object.intrinsic_func(cx, cx.names.bind(), Self::bind, 1, realm);
+        object.intrinsic_func(cx, cx.names.call(), Self::call_intrinsic, 1, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
 
         // [Function.hasInstance] property
         let has_instance_func = BuiltinFunction::create(
             cx,
-            FunctionPrototype::has_instance,
+            Self::has_instance,
             1,
             cx.well_known_symbols.has_instance(),
             realm,
@@ -93,15 +109,13 @@ impl Handle<FunctionPrototype> {
             None,
         )
         .into();
-        self.object().intrinsic_frozen_property(
+        object.intrinsic_frozen_property(
             cx,
             cx.well_known_symbols.has_instance(),
             has_instance_func,
         );
     }
-}
 
-impl FunctionPrototype {
     // 20.2.3.1 Function.prototype.apply
     pub fn apply(
         cx: Context,
@@ -260,6 +274,19 @@ impl FunctionPrototype {
         let argument = get_argument(cx, arguments, 0);
         let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
         cx.bool(has_instance).into()
+    }
+
+    /// 20.2.3 Properties of the Function Prototype Object
+    ///
+    /// Runtime function which is called when the function prototype object is called. Accepts any
+    /// arguments and returns undefined when invoked.
+    pub fn prototype_call(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        cx.undefined().into()
     }
 }
 

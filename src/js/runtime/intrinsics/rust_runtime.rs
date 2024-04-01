@@ -289,6 +289,7 @@ rust_runtime_functions!(
     FunctionPrototype::bind,
     FunctionPrototype::call_intrinsic,
     FunctionPrototype::has_instance,
+    FunctionPrototype::prototype_call,
     FunctionPrototype::to_string,
     global_names::global_declaration_instantiation_runtime,
     global_object::decode_uri,

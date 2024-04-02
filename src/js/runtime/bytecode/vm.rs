@@ -33,9 +33,10 @@ use crate::{
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         object_descriptor::ObjectKind,
-        object_value::ObjectValue,
+        object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
+        proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
         scope::Scope,
         scope_names::ScopeNames,
@@ -911,8 +912,14 @@ impl VM {
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        // Check that the value is callable. Only allocates when throwing.
-        let closure_handle = maybe!(self.check_value_is_closure(function.get())).to_handle();
+        // Check whether the value is callable, potentially deferring to proxy.
+        let closure_handle = match self.check_value_is_callable(function.get()) {
+            CallableObject::Closure(closure) => closure.to_handle(),
+            CallableObject::Proxy(proxy) => {
+                return proxy.to_handle().call(self.cx, receiver, arguments)
+            }
+            CallableObject::None => return type_error_(self.cx, "value is not a function"),
+        };
 
         // Get the receiver to use. May allocate.
         let receiver =
@@ -969,8 +976,15 @@ impl VM {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        // Check that the value is callable. Only allocates when throwing.
-        let closure_handle = maybe!(self.check_value_is_constructor(function.get())).to_handle();
+        // Check whether the value is a constructor, potentially deferring to proxy.
+        let closure_handle = match self.check_value_is_constructor(function.get()) {
+            CallableObject::Closure(closure) => closure.to_handle(),
+            // Proxy constructors call directly into the rust runtime
+            CallableObject::Proxy(proxy) => {
+                return proxy.to_handle().construct(self.cx, arguments, new_target);
+            }
+            CallableObject::None => return type_error_(self.cx, "value is not a constructor"),
+        };
 
         // Create the receiver to use. Allocates.
         let receiver = maybe!(self.generate_constructor_receiver(new_target));
@@ -1044,8 +1058,21 @@ impl VM {
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
 
-        // Check that the value is callable. Only allocates when throwing.
-        let closure_ptr = maybe!(self.check_value_is_closure(function_value));
+        // Check whether the value is callable, potentially deferring to proxy.
+        let closure_ptr = match self.check_value_is_callable(function_value) {
+            CallableObject::Closure(closure) => closure,
+            // Proxy constructors call into the rust runtime
+            CallableObject::Proxy(proxy) => {
+                // Can default to undefined receiver, which will be eventually coerced by callee
+                let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx);
+                let arguments = self.prepare_rust_runtime_args(args);
+                let return_value = maybe!(proxy.to_handle().call(self.cx, receiver, &arguments));
+                unsafe { *return_value_address = return_value.get() };
+                return ().into();
+            }
+            CallableObject::None => return type_error_(self.cx, "value is not a function"),
+        };
+
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
@@ -1060,22 +1087,8 @@ impl VM {
                 let mut receiver_handle = closure_handle.cast::<Value>();
                 receiver_handle.replace(receiver);
 
-                // All arguments must be placed behind handles before calling into Rust
-                let mut arguments = vec![];
-
-                // Arguments should be iterated in order
-                match self.get_args_slice(args) {
-                    ArgsSlice::Forward(slice) => {
-                        for arg in slice {
-                            arguments.push(arg.to_handle(self.cx));
-                        }
-                    }
-                    ArgsSlice::Reverse(slice) => {
-                        for arg in slice.iter().rev() {
-                            arguments.push(arg.to_handle(self.cx));
-                        }
-                    }
-                }
+                // Prepare arguments for the runtime call
+                let arguments = self.prepare_rust_runtime_args(args);
 
                 self.call_rust_runtime(closure_ptr, function_id, receiver_handle, &arguments, None)
             }));
@@ -1128,26 +1141,41 @@ impl VM {
         &mut self,
         instr: &impl GenericConstructInstruction<W>,
     ) -> EvalResult<()> {
+        let function_value = self.read_register(instr.function());
         let args = instr.args();
 
         // Find address of the return value register
         let return_value_address = self.register_address(instr.dest());
 
-        // Check that the value is callable. Only allocates when throwing.
-        let function_value = self.read_register(instr.function());
-        let closure_ptr = maybe!(self.check_value_is_constructor(function_value)).to_handle();
+        // TODO: Check if this cast is safe
+        let new_target = self
+            .read_register(instr.new_target())
+            .to_handle(self.cx)
+            .cast();
+
+        // Check whether the value is a constructor, potentially deferring to proxy.
+        let closure_ptr = match self.check_value_is_constructor(function_value) {
+            CallableObject::Closure(closure) => closure,
+            // Proxy constructors call into the rust runtime
+            CallableObject::Proxy(proxy) => {
+                let proxy = proxy.to_handle();
+                let arguments = self.prepare_rust_runtime_args(args);
+                let return_value = maybe!(proxy.construct(self.cx, &arguments, new_target));
+
+                // Can directly return value as proxy constructor is guaranteed to return an object
+                unsafe { *return_value_address = return_value.get_().into() };
+
+                return ().into();
+            }
+            CallableObject::None => return type_error_(self.cx, "value is not a constructor"),
+        };
+
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx, |_| {
                 let closure_handle = closure_ptr.to_handle();
-
-                // TODO: Check if this cast is safe
-                let new_target = self
-                    .read_register(instr.new_target())
-                    .to_handle(self.cx)
-                    .cast();
 
                 // Create the receiver to use. Allocates.
                 let receiver = maybe!(self.generate_constructor_receiver(new_target));
@@ -1157,22 +1185,8 @@ impl VM {
                 let mut receiver_handle = closure_handle.cast::<ObjectValue>();
                 receiver_handle.replace(receiver);
 
-                // All arguments must be placed behind handles before calling into Rust
-                let mut arguments = vec![];
-
-                // Arguments should be iterated in order
-                match self.get_args_slice(args) {
-                    ArgsSlice::Forward(slice) => {
-                        for arg in slice {
-                            arguments.push(arg.to_handle(self.cx));
-                        }
-                    }
-                    ArgsSlice::Reverse(slice) => {
-                        for arg in slice.iter().rev() {
-                            arguments.push(arg.to_handle(self.cx));
-                        }
-                    }
-                }
+                // Prepare arguments for the runtime call
+                let arguments = self.prepare_rust_runtime_args(args);
 
                 let return_value = maybe!(self.call_rust_runtime(
                     closure_ptr,
@@ -1182,7 +1196,7 @@ impl VM {
                     Some(new_target)
                 ));
 
-                // Use the function's return value, otherwise fall back to the reciever
+                // Use the function's return value, otherwise fall back to the receiver
                 if return_value.is_object() {
                     return_value.as_object().into()
                 } else {
@@ -1195,12 +1209,6 @@ impl VM {
             // Otherwise this is a call to a JS function in the VM.
             let closure_handle = closure_ptr.to_handle();
             let function_handle = function_ptr.to_handle();
-
-            // TODO: Check if this cast is safe
-            let new_target = self
-                .read_register(instr.new_target())
-                .to_handle(self.cx)
-                .cast();
 
             // Create the receiver to use. Allocates.
             let receiver = maybe!(self.generate_constructor_receiver(new_target));
@@ -1247,7 +1255,7 @@ impl VM {
                 return EvalResult::Throw(error_value.to_handle(self.cx));
             }
 
-            // Use the function's return value, otherwise fall back to the reciever
+            // Use the function's return value, otherwise fall back to the receiver
             if return_value.is_object() {
                 return_value.as_object()
             } else {
@@ -1261,34 +1269,49 @@ impl VM {
         ().into()
     }
 
-    /// Check that a value is a closure (aka the only callable value), returning the inner
-    /// BytecodeFunction.
-    ///
-    /// Only allocates when throwing.
+    /// Check that a value is a callable (either a closure or proxy object), returning the
+    /// categorization of the callable object
     #[inline]
-    fn check_value_is_closure(&self, value: Value) -> EvalResult<HeapPtr<Closure>> {
-        if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
-            return type_error_(self.cx, "value is not a function");
+    fn check_value_is_callable(&self, value: Value) -> CallableObject {
+        if value.is_pointer() {
+            let kind = value.as_pointer().descriptor().kind();
+            if kind == ObjectKind::Closure {
+                // All closures all callable
+                return CallableObject::Closure(value.as_pointer().cast::<Closure>());
+            } else if kind == ObjectKind::Proxy {
+                // Check if proxy is callable, and if so return the attached closure
+                let proxy_object = value.as_pointer().cast::<ProxyObject>();
+                if proxy_object.is_callable_() {
+                    return CallableObject::Proxy(proxy_object);
+                }
+            }
         }
 
-        value.as_pointer().cast::<Closure>().into()
+        CallableObject::None
     }
 
-    /// Check that a value is a constructor, returning the inner BytecodeFunction.
-    ///
-    /// Only allocates when throwing.
+    /// Check that a value is a constructor (either a closure or proxy object), returning the
+    /// categorization of the callable object
     #[inline]
-    fn check_value_is_constructor(&self, value: Value) -> EvalResult<HeapPtr<Closure>> {
-        if !value.is_pointer() || value.as_pointer().descriptor().kind() != ObjectKind::Closure {
-            return type_error_(self.cx, "value is not a constructor");
+    fn check_value_is_constructor(&self, value: Value) -> CallableObject {
+        if value.is_pointer() {
+            let kind = value.as_pointer().descriptor().kind();
+            if kind == ObjectKind::Closure {
+                // Check if closure is a constructor
+                let closure = value.as_pointer().cast::<Closure>();
+                if closure.function_ptr().is_constructor() {
+                    return CallableObject::Closure(closure);
+                }
+            } else if kind == ObjectKind::Proxy {
+                // Check if proxy is a constructor
+                let proxy_object = value.as_pointer().cast::<ProxyObject>();
+                if proxy_object.is_constructor_() {
+                    return CallableObject::Proxy(proxy_object);
+                }
+            }
         }
 
-        let closure = value.as_pointer().cast::<Closure>();
-        if !closure.function_ptr().is_constructor() {
-            return type_error_(self.cx, "value is not a constructor");
-        }
-
-        closure.into()
+        CallableObject::None
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -1405,7 +1428,7 @@ impl VM {
         unsafe { std::mem::transmute(slice) }
     }
 
-    /// Find slice over the argument vlaues given the generic call arguments.
+    /// Find slice over the argument values given the generic call arguments.
     #[inline]
     fn get_args_slice<'a, 'b, W: Width>(&'a mut self, args: GenericCallArgs<W>) -> ArgsSlice<'b> {
         match args {
@@ -1415,6 +1438,31 @@ impl VM {
             }
             GenericCallArgs::Varargs { array } => ArgsSlice::Forward(self.get_varargs_slice(array)),
         }
+    }
+
+    /// Convert arguments to the form expected by the rust runtime - a vector of the arguments
+    /// behind handles in order.
+    fn prepare_rust_runtime_args<W: Width>(
+        &mut self,
+        args: GenericCallArgs<W>,
+    ) -> Vec<Handle<Value>> {
+        let mut arguments = vec![];
+
+        // Arguments should be iterated in order
+        match self.get_args_slice(args) {
+            ArgsSlice::Forward(slice) => {
+                for arg in slice {
+                    arguments.push(arg.to_handle(self.cx));
+                }
+            }
+            ArgsSlice::Reverse(slice) => {
+                for arg in slice.iter().rev() {
+                    arguments.push(arg.to_handle(self.cx));
+                }
+            }
+        }
+
+        arguments
     }
 
     /// Push call arguments onto the stack, handling over/underapplication. Takes an iterator over
@@ -3139,4 +3187,10 @@ impl VM {
 enum ArgsSlice<'a> {
     Forward(&'a [Value]),
     Reverse(&'a [Value]),
+}
+
+enum CallableObject {
+    Closure(HeapPtr<Closure>),
+    Proxy(HeapPtr<ProxyObject>),
+    None,
 }

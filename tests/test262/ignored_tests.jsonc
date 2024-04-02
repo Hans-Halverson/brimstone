@@ -54,6 +54,7 @@
       "language/expressions/assignment/S11.13.1_A6_T2.js",
       "language/expressions/assignment/S11.13.1_A6_T3.js",
       "language/identifier-resolution/assign-to-global-undefined.js",
+      "language/statements/variable/binding-resolution.js",
       // Does not evaluate LHS of compound assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/compound-assignment/S11.13.2_A5.*",
       "language/expressions/compound-assignment/S11.13.2_A6.*",

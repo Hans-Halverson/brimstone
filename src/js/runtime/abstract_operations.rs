@@ -14,7 +14,7 @@ use super::{
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
-    object_value::{ObjectValue, VirtualObject},
+    object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
@@ -502,7 +502,12 @@ pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<
         if kind == ObjectKind::Closure {
             func.cast::<Closure>().function_ptr().realm_ptr().into()
         } else if kind == ObjectKind::Proxy {
-            func.cast::<ProxyObject>().get_realm(cx)
+            let proxy_object = func.cast::<ProxyObject>();
+            if proxy_object.is_revoked() {
+                return type_error_(cx, "operation attempted on revoked proxy");
+            }
+
+            get_function_realm(cx, proxy_object.target().unwrap())
         } else {
             cx.current_realm_ptr().into()
         }

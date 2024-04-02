@@ -65,11 +65,23 @@ impl ProxyConstructor {
         let handler = get_argument(cx, arguments, 1);
         let proxy = maybe!(proxy_create(cx, target, handler));
 
-        let revoke_environment = RevokeProxyClosureEnvironment::new(cx, Some(proxy));
-
+        let realm = cx.current_realm();
         let mut revoker =
-            BuiltinFunction::legacy_intrinsic_closure(cx, revoke, 0, cx.names.empty_string());
-        revoker.set_closure_environment(revoke_environment);
+            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None, None);
+
+        // Attach the proxy to the revoker so it can be accessed when the revoker is called
+        if cx.options.bytecode {
+            revoker.private_element_set(
+                cx,
+                cx.well_known_symbols.revocable_proxy().cast(),
+                proxy.into(),
+            );
+        } else {
+            let revoke_environment = RevokeProxyClosureEnvironment::new(cx, Some(proxy));
+            revoker
+                .cast::<BuiltinFunction>()
+                .set_closure_environment(revoke_environment);
+        }
 
         let result = ordinary_object_create(cx);
 
@@ -80,23 +92,37 @@ impl ProxyConstructor {
     }
 }
 
-// The revoker abstract closure
 pub fn revoke(
-    cx: Context,
+    mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    let mut closure_environment_ptr =
-        cx.get_closure_environment_ptr::<RevokeProxyClosureEnvironment>();
-    let revocable_proxy_ptr = closure_environment_ptr.revocable_proxy_ptr();
+    if cx.options.bytecode {
+        // Find the proxy object attached to this closure via a private property
+        let mut revoke_function = cx.current_function();
+        let proxy_object_property = revoke_function
+            .private_element_find(cx, cx.well_known_symbols.revocable_proxy().cast());
 
-    if revocable_proxy_ptr.is_none() {
-        return cx.undefined().into();
+        // Revoke the proxy object and remove from closure
+        if let Some(proxy_object_property) = proxy_object_property {
+            revoke_function.remove_property(cx.well_known_symbols.revocable_proxy());
+
+            let mut proxy_object = proxy_object_property.value().cast::<ProxyObject>();
+            proxy_object.revoke();
+        }
+    } else {
+        let mut closure_environment_ptr =
+            cx.get_closure_environment_ptr::<RevokeProxyClosureEnvironment>();
+        let revocable_proxy_ptr = closure_environment_ptr.revocable_proxy_ptr();
+
+        if revocable_proxy_ptr.is_none() {
+            return cx.undefined().into();
+        }
+
+        closure_environment_ptr.revocable_proxy = None;
+        revocable_proxy_ptr.unwrap().revoke();
     }
-
-    closure_environment_ptr.revocable_proxy = None;
-    revocable_proxy_ptr.unwrap().revoke();
 
     cx.undefined().into()
 }

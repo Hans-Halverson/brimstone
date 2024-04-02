@@ -70,7 +70,7 @@ impl BoundFunctionObject {
         bound_function: Handle<ObjectValue>,
     ) -> Handle<ObjectValue> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.private1().cast())
+            .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
             .unwrap()
             .value()
             .cast::<ObjectValue>()
@@ -83,7 +83,7 @@ impl BoundFunctionObject {
     ) {
         bound_function.private_element_set(
             cx,
-            cx.well_known_symbols.private1().cast(),
+            cx.well_known_symbols.bound_target().cast(),
             target.into(),
         );
     }
@@ -94,13 +94,13 @@ impl BoundFunctionObject {
         function: Handle<ObjectValue>,
     ) -> Option<Handle<ObjectValue>> {
         function
-            .private_element_find(cx, cx.well_known_symbols.private1().cast())
+            .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
             .map(|p| p.value().cast::<ObjectValue>())
     }
 
     fn get_bound_this(cx: Context, bound_function: Handle<ObjectValue>) -> Handle<Value> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.private2().cast())
+            .private_element_find(cx, cx.well_known_symbols.bound_this().cast())
             .unwrap()
             .value()
     }
@@ -110,7 +110,11 @@ impl BoundFunctionObject {
         mut bound_function: Handle<ObjectValue>,
         bound_this: Handle<Value>,
     ) {
-        bound_function.private_element_set(cx, cx.well_known_symbols.private2().cast(), bound_this);
+        bound_function.private_element_set(
+            cx,
+            cx.well_known_symbols.bound_this().cast(),
+            bound_this,
+        );
     }
 
     fn get_bound_arguments(
@@ -118,7 +122,7 @@ impl BoundFunctionObject {
         bound_function: Handle<ObjectValue>,
     ) -> Handle<ArrayObject> {
         bound_function
-            .private_element_find(cx, cx.well_known_symbols.private3().cast())
+            .private_element_find(cx, cx.well_known_symbols.bound_arguments().cast())
             .unwrap()
             .value()
             .cast::<ArrayObject>()
@@ -131,7 +135,7 @@ impl BoundFunctionObject {
     ) {
         bound_function.private_element_set(
             cx,
-            cx.well_known_symbols.private3().cast(),
+            cx.well_known_symbols.bound_arguments().cast(),
             arguments.into(),
         );
     }

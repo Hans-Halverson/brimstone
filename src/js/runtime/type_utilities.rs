@@ -16,7 +16,7 @@ use super::{
     },
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
     object_descriptor::ObjectKind,
-    object_value::ObjectValue,
+    object_value::{ObjectValue, VirtualObject},
     property_key::PropertyKey,
     proxy_object::ProxyObject,
     string_object::StringObject,
@@ -814,7 +814,14 @@ pub fn is_constructor_value(cx: Context, value: Handle<Value>) -> bool {
 
 pub fn is_constructor_object_value(cx: Context, value: Handle<ObjectValue>) -> bool {
     if cx.options.bytecode {
-        value.is_closure() && value.cast::<Closure>().function_ptr().is_constructor()
+        let kind = value.descriptor().kind();
+        if kind == ObjectKind::Closure {
+            value.cast::<Closure>().function_ptr().is_constructor()
+        } else if kind == ObjectKind::Proxy {
+            value.cast::<ProxyObject>().is_constructor()
+        } else {
+            false
+        }
     } else {
         value.is_constructor()
     }

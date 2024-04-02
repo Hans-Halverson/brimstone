@@ -49,15 +49,27 @@ impl ProxyObject {
         set_uninit!(object.is_callable, is_callable);
         set_uninit!(object.is_constructor, is_constructor);
 
-        object.to_handle()
+        object.to_handle().into()
     }
 
+    #[inline]
     pub fn handler(&self) -> Option<Handle<ObjectValue>> {
         self.proxy_handler.map(|o| o.to_handle())
     }
 
+    #[inline]
     pub fn target(&self) -> Option<Handle<ObjectValue>> {
         self.proxy_target.map(|o| o.to_handle())
+    }
+
+    #[inline]
+    pub fn is_callable_(&self) -> bool {
+        self.is_callable
+    }
+
+    #[inline]
+    pub fn is_constructor_(&self) -> bool {
+        self.is_constructor
     }
 
     pub fn is_revoked(&self) -> bool {
@@ -567,11 +579,11 @@ impl VirtualObject for Handle<ProxyObject> {
     }
 
     fn is_callable(&self) -> bool {
-        self.is_callable
+        self.is_callable_()
     }
 
     fn is_constructor(&self) -> bool {
-        self.is_constructor
+        self.is_constructor_()
     }
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {

@@ -76,7 +76,7 @@ impl CompiledRegExpObject {
         set_uninit!(object.num_progress_points, num_progress_points);
         set_uninit!(object.num_loop_registers, num_loop_registers);
 
-        object.instructions.init_from_vec(instructions);
+        object.instructions.init_from_slice(&instructions);
 
         // Initialize capture group strings
         let capture_group_ptrs = capture_group_handles

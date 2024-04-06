@@ -31,7 +31,7 @@ impl<T> InlineArray<T> {
         }
     }
 
-    pub fn init_from_vec(&mut self, vec: Vec<T>)
+    pub fn init_from_slice(&mut self, vec: &[T])
     where
         T: Clone,
     {

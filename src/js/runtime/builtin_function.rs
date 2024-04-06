@@ -8,7 +8,7 @@ use super::{
     bytecode::function::BytecodeFunction,
     completion::EvalResult,
     execution_context::ExecutionContext,
-    function::{set_function_length, set_function_name},
+    function::{build_function_name, set_function_length, set_function_name},
     gc::{HandleScope, HeapObject, HeapPtr, HeapVisitor, IsHeapObject},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -92,6 +92,7 @@ impl BuiltinFunction {
             Self::create_builtin_bytecode_function_without_properties(
                 cx,
                 builtin_func,
+                /* name */ None,
                 realm,
                 prototype,
                 is_constructor,
@@ -142,6 +143,7 @@ impl BuiltinFunction {
         let func = Self::create_builtin_bytecode_function_without_properties(
             cx,
             builtin_func,
+            Some(name),
             realm,
             prototype,
             is_constructor,
@@ -186,12 +188,19 @@ impl BuiltinFunction {
     fn create_builtin_bytecode_function_without_properties(
         cx: Context,
         builtin_func: BuiltinFunctionPtr,
+        name: Option<Handle<PropertyKey>>,
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> Handle<Closure> {
-        let bytecode_function =
-            BytecodeFunction::new_rust_runtime_function(cx, builtin_func, realm, is_constructor);
+        let name = name.map(|name| build_function_name(cx, name, None));
+        let bytecode_function = BytecodeFunction::new_rust_runtime_function(
+            cx,
+            builtin_func,
+            realm,
+            is_constructor,
+            name,
+        );
 
         let prototype =
             prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));

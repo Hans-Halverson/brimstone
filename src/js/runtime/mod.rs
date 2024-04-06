@@ -37,6 +37,7 @@ mod reference;
 mod regexp;
 pub mod scope;
 pub mod scope_names;
+mod source_file;
 mod string_object;
 mod string_parsing;
 mod string_value;

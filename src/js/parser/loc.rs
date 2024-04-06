@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 /// Start and end positions are byte offsets in the source file.
 pub type Pos = usize;
 
@@ -6,6 +8,12 @@ pub type Pos = usize;
 pub struct Loc {
     pub start: Pos,
     pub end: Pos,
+}
+
+impl Loc {
+    pub fn to_range(&self) -> Range<Pos> {
+        self.start..self.end
+    }
 }
 
 pub const EMPTY_LOC: Loc = Loc { start: 0, end: 0 };

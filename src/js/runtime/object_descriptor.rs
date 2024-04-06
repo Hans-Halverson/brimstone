@@ -118,6 +118,7 @@ pub enum ObjectKind {
     BytecodeFunction,
     ConstantTable,
     ExceptionHandlers,
+    SourceFile,
 
     Scope,
     ScopeNames,
@@ -346,6 +347,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
         other_heap_object_descriptor!(ObjectKind::ConstantTable);
         other_heap_object_descriptor!(ObjectKind::ExceptionHandlers);
+        other_heap_object_descriptor!(ObjectKind::SourceFile);
 
         other_heap_object_descriptor!(ObjectKind::Scope);
         other_heap_object_descriptor!(ObjectKind::ScopeNames);

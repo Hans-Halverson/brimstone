@@ -1,23 +1,27 @@
-use std::mem::size_of;
+use std::{mem::size_of, ops::Range};
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object, field_offset,
-    js::runtime::{
-        abstract_operations::define_property_or_throw,
-        builtin_function::BuiltinFunctionPtr,
-        collections::InlineArray,
-        debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
-        function::{set_function_length, set_function_name},
-        gc::{HeapObject, HeapVisitor},
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
-        object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
-        scope::Scope,
-        string_value::StringValue,
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+    js::{
+        parser::loc::Pos,
+        runtime::{
+            abstract_operations::define_property_or_throw,
+            builtin_function::BuiltinFunctionPtr,
+            collections::InlineArray,
+            debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
+            function::{set_function_length, set_function_name},
+            gc::{HeapObject, HeapVisitor},
+            intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
+            object_descriptor::{ObjectDescriptor, ObjectKind},
+            object_value::{ObjectValue, VirtualObject},
+            ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
+            scope::Scope,
+            source_file::SourceFile,
+            string_value::StringValue,
+            Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+        },
     },
     must, set_uninit,
 };
@@ -100,6 +104,11 @@ impl Closure {
     #[inline]
     pub fn function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.function
+    }
+
+    #[inline]
+    pub fn function(&self) -> Handle<BytecodeFunction> {
+        self.function.to_handle()
     }
 
     #[inline]
@@ -192,6 +201,10 @@ pub struct BytecodeFunction {
     new_target_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
     name: Option<HeapPtr<StringValue>>,
+    /// Source file this function was defined in. None if there is no source file, like for builtins
+    source_file: Option<HeapPtr<SourceFile>>,
+    /// Start and end position of this function in the source file. Zero for builtins.
+    source_range: Range<Pos>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
     /// function has an empty bytecode array and default values for many other fields.
     rust_runtime_function_id: Option<RustRuntimeFunctionId>,
@@ -213,6 +226,8 @@ impl BytecodeFunction {
         is_constructor: bool,
         new_target_index: Option<u32>,
         name: Option<Handle<StringValue>>,
+        source_file: Option<Handle<SourceFile>>,
+        source_range: Range<Pos>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
@@ -228,8 +243,10 @@ impl BytecodeFunction {
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.name, name.map(|n| n.get_()));
+        set_uninit!(object.source_file, source_file.map(|f| f.get_()));
+        set_uninit!(object.source_range, source_range);
         set_uninit!(object.rust_runtime_function_id, None);
-        object.bytecode.init_from_vec(bytecode);
+        object.bytecode.init_from_slice(&bytecode);
 
         object.to_handle()
     }
@@ -239,6 +256,7 @@ impl BytecodeFunction {
         builtin_func: BuiltinFunctionPtr,
         realm: Handle<Realm>,
         is_constructor: bool,
+        name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
         let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
 
@@ -255,9 +273,11 @@ impl BytecodeFunction {
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
         set_uninit!(object.new_target_index, None);
-        set_uninit!(object.name, None);
+        set_uninit!(object.name, name.map(|n| n.get_()));
+        set_uninit!(object.source_file, None);
+        set_uninit!(object.source_range, 0..0);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
-        object.bytecode.init_from_vec(vec![]);
+        object.bytecode.init_from_slice(&[]);
 
         object.to_handle()
     }
@@ -321,6 +341,21 @@ impl BytecodeFunction {
     #[inline]
     pub fn new_target_index(&self) -> Option<u32> {
         self.new_target_index
+    }
+
+    #[inline]
+    pub fn name(&self) -> Option<Handle<StringValue>> {
+        self.name.map(|n| n.to_handle())
+    }
+
+    #[inline]
+    pub fn source_file_ptr(&self) -> Option<HeapPtr<SourceFile>> {
+        self.source_file
+    }
+
+    #[inline]
+    pub fn source_range(&self) -> Range<Pos> {
+        self.source_range.clone()
     }
 
     #[inline]
@@ -436,5 +471,6 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
         visitor.visit_pointer_opt(&mut self.exception_handlers);
         visitor.visit_pointer(&mut self.realm);
         visitor.visit_pointer_opt(&mut self.name);
+        visitor.visit_pointer_opt(&mut self.source_file);
     }
 }

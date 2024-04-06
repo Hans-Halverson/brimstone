@@ -4289,6 +4289,7 @@ pub struct ParseProgramResult {
 pub struct ParseFunctionResult {
     pub function: P<Function>,
     pub scope_tree: ScopeTree,
+    pub source: Rc<Source>,
 }
 
 pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
@@ -4381,5 +4382,5 @@ pub fn parse_function_for_function_constructor(
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;
     let scope_tree = parser.scope_builder.finish_ast_scope_tree();
 
-    Ok(ParseFunctionResult { function: func_node, scope_tree })
+    Ok(ParseFunctionResult { function: func_node, scope_tree, source: source.clone() })
 }

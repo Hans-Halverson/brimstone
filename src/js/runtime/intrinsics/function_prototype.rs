@@ -20,13 +20,14 @@ use crate::{
             },
             gc::{HeapObject, HeapVisitor},
             get,
+            interned_strings::InternedStrings,
             object_descriptor::ObjectKind,
             object_value::{ObjectValue, VirtualObject},
             ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
             property_descriptor::PropertyDescriptor,
             property_key::PropertyKey,
             realm::Realm,
-            string_value::FlatString,
+            string_value::{FlatString, StringValue},
             type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
             Context, Handle, HeapPtr, Value,
         },
@@ -79,6 +80,7 @@ impl FunctionPrototype {
                 Self::prototype_call,
                 realm,
                 /* is_constructor */ false,
+                /* name */ None,
             );
             let scope = realm.default_global_scope();
 
@@ -230,6 +232,41 @@ impl FunctionPrototype {
         }
 
         let this_object = this_value.as_object();
+        if this_object.is_closure() {
+            let function = this_object.cast::<Closure>().function();
+
+            // First check for if the closure is a bound function
+            if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {
+                return cx.alloc_string("function () { [native code] }").into();
+            }
+
+            // Builtin functions have special formatting using the function name
+            if function.rust_runtime_function_id().is_some() {
+                let mut string_parts = vec![InternedStrings::get_str(cx, "function ")];
+                if let Some(name) = function.name() {
+                    string_parts.push(name);
+                }
+                string_parts.push(InternedStrings::get_str(cx, "() { [native code] }"));
+
+                return StringValue::concat_all(cx, &string_parts).into();
+            }
+
+            // Non-builtin functions return their original slice of the source code
+            let source_range = function.source_range();
+            let source_file = function.source_file_ptr().unwrap();
+            let source_contents = source_file.contents_as_slice();
+
+            // Copy slice of source contents to string. Must first copy source contents out to
+            // vec since source file may be moved when allocating result string.
+            let source_slice = source_contents[source_range].to_vec();
+
+            let func_string = FlatString::from_wtf8(cx, &source_slice)
+                .as_string()
+                .to_handle();
+
+            return func_string.into();
+        }
+
         if this_object.is_function_object() {
             // If this is a function, return the original source code if it is available
             let this_function = this_object.cast::<Function>();

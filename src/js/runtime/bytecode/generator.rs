@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     error::Error,
     fmt,
+    ops::Range,
     rc::Rc,
 };
 
@@ -11,11 +12,13 @@ use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
         ast::{self, AstPtr, LabelId, ResolvedScope, TaggedResolvedScope},
+        loc::Pos,
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
             NEW_TARGET_BINDING_NAME,
         },
+        source::Source,
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
@@ -25,6 +28,7 @@ use crate::js::{
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        source_file::SourceFile,
         value::BigIntValue,
         Context, Handle, Realm, Value,
     },
@@ -47,6 +51,9 @@ pub struct BytecodeProgramGenerator<'a> {
     scope_tree: &'a ScopeTree,
     realm: Handle<Realm>,
 
+    /// Source file of the functions that are being generated.
+    source_file: Handle<SourceFile>,
+
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
     pending_functions_queue: VecDeque<PatchablePendingFunction>,
@@ -67,11 +74,19 @@ impl Escapable for BytecodeProgram {
 }
 
 impl<'a> BytecodeProgramGenerator<'a> {
-    pub fn new(cx: Context, scope_tree: &'a ScopeTree, realm: Handle<Realm>) -> Self {
+    pub fn new(
+        cx: Context,
+        scope_tree: &'a ScopeTree,
+        realm: Handle<Realm>,
+        source: Rc<Source>,
+    ) -> Self {
+        let source_file = SourceFile::new(cx, &source);
+
         Self {
             cx,
             scope_tree,
             realm,
+            source_file,
             pending_functions_queue: VecDeque::new(),
         }
     }
@@ -80,11 +95,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_program_parse_result(
         cx: Context,
-        parse_result: &ParseProgramResult,
+        parse_result: &'a ParseProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<BytecodeProgram> {
         HandleScope::new(cx, |_| {
-            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
+            let source = parse_result.program.source.clone();
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             generator.generate_program(&parse_result.program)
         })
     }
@@ -109,6 +125,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 program,
                 &self.scope_tree,
                 "<global>",
+                self.source_file,
                 self.realm,
             )?;
 
@@ -154,11 +171,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
     pub fn generate_from_eval_parse_result(
         cx: Context,
-        parse_result: &ParseProgramResult,
+        parse_result: &'a ParseProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
+            let mut generator =
+                Self::new(cx, &parse_result.scope_tree, realm, parse_result.program.source.clone());
             generator.generate_eval(&parse_result.program)
         })
     }
@@ -189,6 +207,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 eval_program,
                 &self.scope_tree,
                 "<eval>",
+                self.source_file,
                 self.realm,
             )?;
 
@@ -240,11 +259,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     pub fn generate_from_function_constructor_parse_result(
         cx: Context,
-        parse_result: &ParseFunctionResult,
+        parse_result: &'a ParseFunctionResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         HandleScope::new(cx, |_| {
-            let mut generator = BytecodeProgramGenerator::new(cx, &parse_result.scope_tree, realm);
+            let source = parse_result.source.clone();
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             generator.generate_function_constructor(&parse_result.function)
         })
     }
@@ -266,6 +286,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             scope,
             self.realm,
             None,
+            self.source_file,
             is_constructor,
         )?;
 
@@ -308,6 +329,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 scope,
                 self.realm,
                 default_name,
+                self.source_file,
                 is_constructor,
             )?;
 
@@ -364,6 +386,12 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Optional name of the function, used for the name property.
     name: Option<Wtf8String>,
+
+    /// Source file of the function that is being generated.
+    source_file: Handle<SourceFile>,
+
+    /// Start and end position of the function in the source code.
+    source_range: Range<Pos>,
 
     /// Number of blocks currently allocated in the function.
     num_blocks: usize,
@@ -427,6 +455,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
         name: Option<Wtf8String>,
+        source_file: Handle<SourceFile>,
+        source_range: Range<Pos>,
         num_parameters: u32,
         function_length: u32,
         num_local_registers: u32,
@@ -441,6 +471,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope,
             scope_names_cache: HashMap::new(),
             name,
+            source_file,
+            source_range,
             num_blocks: 0,
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
@@ -467,6 +499,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
         default_name: Option<Wtf8String>,
+        source_file: Handle<SourceFile>,
         is_constructor: bool,
     ) -> EmitResult<Self> {
         // Stored number of parameters does not count the rest parameter
@@ -513,6 +546,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope,
             realm,
             name,
+            source_file,
+            func.loc.to_range(),
             num_parameters as u32,
             function_length as u32,
             num_local_registers as u32,
@@ -526,6 +561,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         program: &ast::Program,
         scope_tree: &'a ScopeTree,
         name: &str,
+        source_file: Handle<SourceFile>,
         realm: Handle<Realm>,
     ) -> EmitResult<Self> {
         // Number of local registers was determined while creating the VM scope tree
@@ -545,6 +581,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope,
             realm,
             Some(Wtf8String::from_str(name)),
+            source_file,
+            program.loc.to_range(),
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers as u32,
@@ -1104,6 +1142,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.is_constructor,
             self.new_target_index,
             name,
+            Some(self.source_file),
+            self.source_range,
         );
 
         EmitFunctionResult {

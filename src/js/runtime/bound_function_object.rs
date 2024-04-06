@@ -103,6 +103,10 @@ impl BoundFunctionObject {
             .map(|p| p.value().cast::<ObjectValue>())
     }
 
+    pub fn is_bound_function(cx: Context, object: HeapPtr<ObjectValue>) -> bool {
+        object.has_private_element(cx.well_known_symbols.bound_target().cast())
+    }
+
     fn get_bound_this(cx: Context, bound_function: Handle<ObjectValue>) -> Handle<Value> {
         bound_function
             .private_element_find(cx, cx.well_known_symbols.bound_this().cast())

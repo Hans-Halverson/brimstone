@@ -114,7 +114,7 @@ impl ExceptionHandlers {
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::ExceptionHandlers));
         set_uninit!(object.width, width);
-        object.handlers.init_from_vec(handlers);
+        object.handlers.init_from_slice(&handlers);
 
         object.to_handle()
     }

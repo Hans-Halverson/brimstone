@@ -18,6 +18,7 @@ use super::{
     object_value::{ObjectValue, VirtualObject},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    proxy_object::ProxyObject,
     type_utilities::same_object_value_handles,
     value::Value,
     Context, Handle, Realm,
@@ -32,25 +33,29 @@ impl BoundFunctionObject {
         bound_this: Handle<Value>,
         bound_arguments: Vec<Handle<Value>>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        let is_constructor;
-        let realm;
-        if target_function.is_closure() {
-            let function = target_function.cast::<Closure>().function_ptr();
-            is_constructor = target_function
+        let prototype = maybe!(target_function.get_prototype_of(cx));
+
+        let is_constructor = if target_function.is_closure() {
+            target_function
                 .cast::<Closure>()
                 .function_ptr()
-                .is_constructor();
-            realm = function.realm();
+                .is_constructor()
+        } else if target_function.is_proxy() {
+            target_function.cast::<ProxyObject>().is_constructor_()
+        } else if let Some(target_function) =
+            BoundFunctionObject::get_target_if_bound_function(cx, target_function)
+        {
+            target_function.is_constructor()
         } else {
-            is_constructor = false;
-            realm = cx.current_realm();
-        }
+            false
+        };
 
-        let prototype = maybe!(target_function.get_prototype_of(cx));
         let bound_func = BuiltinFunction::create_builtin_function_without_properties(
             cx,
             BoundFunctionObject::call,
-            realm,
+            // Use realm of calling function. GetFunctionRealm ignores this function and instead
+            // uses realm of bound target function.
+            cx.current_realm(),
             prototype,
             is_constructor,
         );
@@ -88,12 +93,12 @@ impl BoundFunctionObject {
         );
     }
 
-    /// If this function is a bound function, return the target function. Otherwise, return None.
+    /// If this object is a bound function, return the target function. Otherwise, return None.
     pub fn get_target_if_bound_function(
         cx: Context,
-        function: Handle<ObjectValue>,
+        object: Handle<ObjectValue>,
     ) -> Option<Handle<ObjectValue>> {
-        function
+        object
             .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
             .map(|p| p.value().cast::<ObjectValue>())
     }

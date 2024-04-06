@@ -500,7 +500,13 @@ pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<
 
         // Bound functions are also represented as closures with the correct realm set
         if kind == ObjectKind::Closure {
-            func.cast::<Closure>().function_ptr().realm_ptr().into()
+            if let Some(bound_target_func) =
+                BoundFunctionObject::get_target_if_bound_function(cx, func)
+            {
+                get_function_realm(cx, bound_target_func)
+            } else {
+                func.cast::<Closure>().function_ptr().realm_ptr().into()
+            }
         } else if kind == ObjectKind::Proxy {
             let proxy_object = func.cast::<ProxyObject>();
             if proxy_object.is_revoked() {

@@ -22,6 +22,7 @@ use crate::js::{
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
+        class_names::{ClassNames, Method},
         eval::expression::generate_template_object,
         gc::{Escapable, HandleScope},
         global_names::GlobalNames,
@@ -1177,7 +1178,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Statement::FuncDecl(func_decl) => {
                 self.gen_function_declaration(func_decl.as_ref())
             }
-            ast::Statement::ClassDecl(_) => unimplemented!("bytecode for class declaration"),
+            ast::Statement::ClassDecl(class_decl) => self.gen_class_declaration(class_decl),
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
             ast::Statement::If(stmt) => self.gen_if_statement(stmt),
@@ -4174,6 +4175,171 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
+    fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
+        if class.super_class.is_some() {
+            unimplemented!("bytecode for class inheritance")
+        }
+
+        // Set up destination for the constructor, directly storing in binding location if possible
+        let store_flags = StoreFlags::INITIALIZATION;
+        let constructor_dest = if let Some(id) = class.id.as_ref() {
+            self.expr_dest_for_id(id, store_flags)
+        } else {
+            ExprDest::Any
+        };
+        let constructor_reg = self.allocate_destination(constructor_dest)?;
+
+        // Create the constructor's static BytecodeFunction
+        let constructor_index = if let Some(constructor_method) = class.constructor.as_ref() {
+            // Constructor has name of class, or "default" if class has no name
+            let name = if let Some(id) = class.id.as_ref() {
+                Wtf8String::from_str(&id.name)
+            } else {
+                Wtf8String::from_str("default")
+            };
+            self.enqueue_function_to_generate(PendingFunctionNode::Constructor {
+                node: AstPtr::from_ref(&constructor_method.as_ref().value),
+                name,
+            })?
+        } else {
+            unimplemented!("bytecode for class implicit constructor")
+        };
+
+        // Generate all methods, collecting method definitions into a ClassNames object which is
+        // used in the NewClass instruction.
+        let mut methods = vec![];
+        let mut new_class_arguments = vec![];
+
+        for element in &class.body {
+            if let ast::ClassElement::Method(method) = element {
+                if method.kind == ast::ClassMethodKind::Constructor {
+                    continue;
+                }
+
+                methods.push(self.gen_class_method(method, &mut new_class_arguments)?);
+            }
+        }
+
+        // ClassNames object is stored in the constant table
+        let class_names = ClassNames::new(self.cx, &methods);
+        let class_names_index = self
+            .constant_table_builder
+            .add_heap_object(class_names.cast())?;
+
+        // Pass first register to NewClass instruction. If no registers are needed then pass an
+        // arbitrary register as it will not be used (in this case the constructor register).
+        let first_argument_reg = if new_class_arguments.is_empty() {
+            constructor_reg
+        } else {
+            new_class_arguments[0]
+        };
+
+        // Create the class itself
+        self.writer.new_class_instruction(
+            constructor_reg,
+            ConstantIndex::new(class_names_index),
+            ConstantIndex::new(constructor_index),
+            first_argument_reg,
+        );
+
+        // Store constructor at the binding's location. Stores at declarations do not need a TDZ
+        // check.
+        if let Some(id) = class.id.as_ref() {
+            self.gen_store_identifier(id, constructor_reg, store_flags)?;
+        }
+
+        for argument in new_class_arguments.iter().rev() {
+            self.register_allocator.release(*argument);
+        }
+
+        self.register_allocator.release(constructor_reg);
+
+        Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_class_method(
+        &mut self,
+        method: &ast::ClassMethod,
+        new_class_arguments: &mut Vec<GenRegister>,
+    ) -> EmitResult<Method> {
+        if method.is_private {
+            unimplemented!("bytecode for private class methods")
+        }
+
+        enum Name<'a> {
+            Named(AnyStr<'a>),
+            Computed(GenRegister),
+        }
+
+        // Evaluate class element name
+        let key = if method.is_computed {
+            Name::Computed(self.gen_outer_expression(&method.key)?)
+        } else {
+            match &method.key.expr {
+                ast::Expression::Id(id) => Name::Named(AnyStr::from_id(id)),
+                ast::Expression::String(string) => Name::Named(AnyStr::Wtf8(&string.value)),
+                expr @ (ast::Expression::Number(_) | ast::Expression::BigInt(_)) => {
+                    Name::Computed(self.gen_expression(expr)?)
+                }
+                _ => unreachable!("invalid class element name"),
+            }
+        };
+
+        // Find the name that should be set of the method's closure
+        let closure_name = match key {
+            Name::Named(name) => {
+                // Add accessor prefix to the name if name is known
+                if method.kind == ast::ClassMethodKind::Get {
+                    let mut prefixed_name = Wtf8String::from_str("get ");
+                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    Some(prefixed_name)
+                } else if method.kind == ast::ClassMethodKind::Set {
+                    let mut prefixed_name = Wtf8String::from_str("set ");
+                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    Some(prefixed_name)
+                } else {
+                    Some(name.to_owned())
+                }
+            }
+            Name::Computed(name_register) => {
+                // If computed then name will be passed as an argument to the NewClass instruction.
+                // First convert to a property key.
+                self.writer
+                    .to_property_key_instruction(name_register, name_register);
+                new_class_arguments.push(name_register);
+
+                None
+            }
+        };
+
+        // Function node is added to the pending functions queue
+        let pending_node = PendingFunctionNode::Method {
+            node: AstPtr::from_ref(&method.value),
+            name: closure_name,
+        };
+        let method_constant_index = self.enqueue_function_to_generate(pending_node)?;
+
+        // Create the method and store as an argument to the NewClass instruction
+        let method_value = self.register_allocator.allocate()?;
+        new_class_arguments.push(method_value);
+
+        self.writer
+            .new_closure_instruction(method_value, ConstantIndex::new(method_constant_index));
+
+        let method_name = if let Name::Named(name) = key {
+            Some(InternedStrings::get_wtf8_str(self.cx, &name.to_owned()).as_flat())
+        } else {
+            None
+        };
+
+        Ok(Method {
+            name: method_name,
+            is_static: method.is_static,
+            is_getter: method.kind == ast::ClassMethodKind::Get,
+            is_setter: method.kind == ast::ClassMethodKind::Set,
+        })
+    }
+
     fn gen_expression_statement(
         &mut self,
         stmt: &ast::ExpressionStatement,
@@ -5817,6 +5983,7 @@ enum PendingFunctionNode {
     Expression { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
     Arrow { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
     Method { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
+    Constructor { node: AstPtr<ast::Function>, name: Wtf8String },
 }
 
 impl PendingFunctionNode {
@@ -5825,13 +5992,16 @@ impl PendingFunctionNode {
             PendingFunctionNode::Declaration(node)
             | PendingFunctionNode::Expression { node, .. }
             | PendingFunctionNode::Arrow { node, .. }
-            | PendingFunctionNode::Method { node, .. } => *node,
+            | PendingFunctionNode::Method { node, .. }
+            | PendingFunctionNode::Constructor { node, .. } => *node,
         }
     }
 
     fn is_constructor(&self) -> bool {
         match self {
-            PendingFunctionNode::Declaration(_) | PendingFunctionNode::Expression { .. } => true,
+            PendingFunctionNode::Declaration(_)
+            | PendingFunctionNode::Expression { .. }
+            | PendingFunctionNode::Constructor { .. } => true,
             PendingFunctionNode::Arrow { .. } | PendingFunctionNode::Method { .. } => false,
         }
     }
@@ -5843,6 +6013,7 @@ impl PendingFunctionNode {
             PendingFunctionNode::Expression { name, .. }
             | PendingFunctionNode::Arrow { name, .. }
             | PendingFunctionNode::Method { name, .. } => name,
+            PendingFunctionNode::Constructor { name, .. } => Some(name),
         }
     }
 }

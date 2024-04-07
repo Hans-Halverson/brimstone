@@ -12,6 +12,7 @@ use crate::js::runtime::{
         exception_handlers::ExceptionHandlers,
         function::{BytecodeFunction, Closure},
     },
+    class_names::ClassNames,
     context::GlobalSymbolRegistryField,
     environment::{
         declarative_environment::{DeclarativeEnvironment, DeclarativeEnvironmentBindingsMapField},
@@ -160,6 +161,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Scope => self.cast::<Scope>().byte_size(),
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
+            ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
             ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
             ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
@@ -293,6 +295,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Scope => self.cast::<Scope>().visit_pointers(visitor),
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
+            ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
             ObjectKind::DeclarativeEnvironment => self
                 .cast::<DeclarativeEnvironment>()
                 .visit_pointers(visitor),

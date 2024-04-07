@@ -468,7 +468,7 @@ pub fn method_definition_evaluation(
     if let ast::PropertyKind::Init = property_kind {
         let closure = define_method(cx, object, func_node, None);
         set_function_name(cx, closure.into(), property_key, None);
-        return define_method_property(cx, object, property_key, closure, is_enumerable);
+        return define_method_property(cx, object, property_key, closure.into(), is_enumerable);
     }
 
     // Otherwise is a getter or setter

@@ -758,6 +758,20 @@ define_instructions!(
         [0] dest: Register,
     }
 
+    /// Create a new class given the constructor, methods, and static class names object. The
+    /// resulting constructor is stored in dest.
+    ///
+    /// - The static class names object is at the given index in the constant table.
+    /// - The constructor's BytecodeFunction is at the given index in the constant table.
+    /// - The class's methods (and computed property keys) are passed in a contiguous sequence of
+    ///   registers starting at `methods`. The length of the sequence is in the class names object.
+    NewClass (NewClassInstruction, new_class_instruction) {
+        [0] dest: Register,
+        [1] class_names_index: ConstantIndex,
+        [2] constructor_function_index: ConstantIndex,
+        [3] methods: Register,
+    }
+
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
     GetProperty (GetPropertyInstruction, get_property_instruction) {

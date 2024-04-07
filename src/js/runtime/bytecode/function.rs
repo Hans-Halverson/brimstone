@@ -17,6 +17,7 @@ use crate::{
             object_descriptor::{ObjectDescriptor, ObjectKind},
             object_value::{ObjectValue, VirtualObject},
             ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
+            property::Property,
             scope::Scope,
             source_file::SourceFile,
             string_value::StringValue,
@@ -170,6 +171,19 @@ impl Closure {
             let desc = PropertyDescriptor::data(prototype.into(), true, false, false);
             must!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
         }
+    }
+}
+
+impl Handle<Closure> {
+    /// Set the function name for this closure if the function name was not set when the closure
+    /// was first created.
+    ///
+    /// Performs a raw set of the property, overwriting the previous value even though it was not
+    /// writable. This will preserve the order of the properties, as the function name was initially
+    /// added but defaulted to the empty string.
+    pub fn set_lazy_function_name(&mut self, cx: Context, name: Handle<StringValue>) {
+        let property = Property::data(name.into(), false, false, true);
+        self.object().set_property(cx, cx.names.name(), property);
     }
 }
 

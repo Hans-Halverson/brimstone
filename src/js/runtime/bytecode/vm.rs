@@ -8,6 +8,7 @@ use crate::{
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
+        class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined_, reference_error_,
             type_error_,
@@ -80,11 +81,11 @@ use super::{
         LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewArrayInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewMappedArgumentsInstruction, NewObjectInstruction, NewRegExpInstruction,
-        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
-        PushLexicalScopeInstruction, PushWithScopeInstruction, RemInstruction,
-        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
+        NewForInIteratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
+        NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
+        PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
+        RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
         SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
         ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
         StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
@@ -546,6 +547,9 @@ impl VM {
                                 NewUnmappedArgumentsInstruction,
                                 execute_new_unmapped_arguments
                             )
+                        }
+                        OpCode::NewClass => {
+                            dispatch_or_throw!(NewClassInstruction, execute_new_class)
                         }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
@@ -1405,8 +1409,17 @@ impl VM {
         argv: Register<W>,
         argc: UInt<W>,
     ) -> &'b [Value] {
+        self.get_reg_rev_slice(argv, argc.value().to_usize())
+    }
+
+    /// Find slice over a slice of registers given argv and argc, starting with last argument.
+    #[inline]
+    fn get_reg_rev_slice<'a, 'b, W: Width>(
+        &'a self,
+        argv: Register<W>,
+        argc: usize,
+    ) -> &'b [Value] {
         let argv = self.register_address(argv);
-        let argc = argc.value().to_usize();
 
         unsafe {
             std::slice::from_raw_parts(argv.sub(argc.saturating_sub(1)) as *const Value, argc)
@@ -2500,6 +2513,35 @@ impl VM {
     }
 
     #[inline]
+    fn execute_new_class<W: Width>(&mut self, instr: &NewClassInstruction<W>) -> EvalResult<()> {
+        let dest = instr.dest();
+
+        let class_names = self
+            .get_constant(instr.class_names_index())
+            .to_handle(self.cx)
+            .cast::<ClassNames>();
+        let constructor_function = self
+            .get_constant(instr.constructor_function_index())
+            .to_handle(self.cx)
+            .cast::<BytecodeFunction>();
+
+        let method_arguments = self
+            .get_reg_rev_slice(instr.methods(), class_names.num_arguments())
+            .iter()
+            .rev()
+            .map(|value| value.to_handle(self.cx))
+            .collect::<Vec<_>>();
+
+        // Allocates
+        let constructor =
+            maybe!(new_class(self.cx, class_names, constructor_function, &method_arguments));
+
+        self.write_register(dest, constructor.cast::<Value>().get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_get_property<W: Width>(
         &mut self,
         instr: &GetPropertyInstruction<W>,
@@ -2573,7 +2615,7 @@ impl VM {
             debug_assert!(
                 value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Closure
             );
-            let closure = value.cast::<Closure>();
+            let mut closure = value.cast::<Closure>();
 
             // Since we did not statically know the key we must perform "named evaluation" here, meaning
             // we set the function name to the key.
@@ -2587,14 +2629,7 @@ impl VM {
                 };
 
                 let name = build_function_name(self.cx, property_key, prefix);
-
-                // Perform a raw set of the property, overwriting the previous value even though it was
-                // not writable. This will preserve the order of the properties, as the function name
-                // was initially added but defaulted to the empty string.
-                let property = Property::data(name.into(), false, false, true);
-                closure
-                    .cast::<ObjectValue>()
-                    .set_property(self.cx, self.cx.names.name(), property);
+                closure.set_lazy_function_name(self.cx, name);
             }
 
             // Create special property descriptors for accessors

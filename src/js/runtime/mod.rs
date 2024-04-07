@@ -6,6 +6,7 @@ mod bound_function_object;
 mod builtin_function;
 mod builtin_names;
 pub mod bytecode;
+mod class_names;
 mod collections;
 pub mod completion;
 pub mod console;

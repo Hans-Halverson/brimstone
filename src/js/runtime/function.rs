@@ -683,7 +683,7 @@ pub fn define_method_property(
     cx: Context,
     home_object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
-    closure: Handle<Function>,
+    closure: Handle<ObjectValue>,
     is_enumerable: bool,
 ) -> EvalResult<()> {
     let desc = PropertyDescriptor::data(closure.into(), true, is_enumerable, true);

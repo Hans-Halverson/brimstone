@@ -123,6 +123,7 @@ pub enum ObjectKind {
     Scope,
     ScopeNames,
     GlobalNames,
+    ClassNames,
 
     DeclarativeEnvironment,
     FunctionEnvironment,
@@ -352,6 +353,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::Scope);
         other_heap_object_descriptor!(ObjectKind::ScopeNames);
         other_heap_object_descriptor!(ObjectKind::GlobalNames);
+        other_heap_object_descriptor!(ObjectKind::ClassNames);
 
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
         other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);

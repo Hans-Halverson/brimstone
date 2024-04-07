@@ -59,6 +59,23 @@ impl Closure {
         closure
     }
 
+    pub fn new_with_proto(
+        cx: Context,
+        function: Handle<BytecodeFunction>,
+        scope: Handle<Scope>,
+        prototype: Handle<ObjectValue>,
+    ) -> Handle<Closure> {
+        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
+
+        set_uninit!(object.function, function.get_());
+        set_uninit!(object.scope, scope.get_());
+
+        let closure = object.to_handle();
+        Self::init_common_properties(cx, closure, function);
+
+        closure
+    }
+
     pub fn new_in_realm(
         cx: Context,
         function: Handle<BytecodeFunction>,

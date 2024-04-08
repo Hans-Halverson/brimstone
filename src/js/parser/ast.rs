@@ -487,6 +487,15 @@ pub enum FunctionBody {
     Expression(OuterExpression),
 }
 
+impl FunctionBody {
+    pub fn unwrap_block(&self) -> &FunctionBlockBody {
+        match self {
+            FunctionBody::Block(block) => block,
+            _ => panic!("Expected block body"),
+        }
+    }
+}
+
 pub struct FunctionBlockBody {
     pub loc: Loc,
     pub body: Vec<Statement>,

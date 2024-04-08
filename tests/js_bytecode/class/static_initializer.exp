@@ -1,0 +1,62 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 4
+     0: NewClass r0, c1, c0, r0
+     5: LoadImmediate r1, 1
+     8: LoadImmediate r2, 2
+    11: Add r1, r1, r2
+    15: LoadImmediate r1, 3
+    18: LoadImmediate r2, 4
+    21: Add r1, r1, r2
+    25: StoreToScope r0, 1, 0
+    29: NewClosure r1, c3
+    32: NewClass r0, c4, c2, r1
+    37: LoadImmediate r2, 1
+    40: LoadImmediate r3, 2
+    43: Add r2, r2, r3
+    47: StoreToScope r0, 2, 0
+    51: NewClass r0, c6, c5, r0
+    56: LoadImmediate r1, 1
+    59: LoadImmediate r2, 2
+    62: Add r1, r1, r2
+    66: LoadImmediate r1, 3
+    69: LoadImmediate r2, 4
+    72: Add r1, r1, r2
+    76: LoadImmediate r1, 5
+    79: LoadImmediate r2, 6
+    82: Add r1, r1, r2
+    86: StoreToScope r0, 3, 0
+    90: LoadUndefined r0
+    92: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: OnlyStaticInitializer]
+    1: [ClassNames]
+    2: [BytecodeFunction: StaticInitializerAfterCreateClass]
+    3: [BytecodeFunction: method1]
+    4: [ClassNames]
+    5: [BytecodeFunction: MultipleStaticInitializers]
+    6: [ClassNames]
+}
+
+[BytecodeFunction: OnlyStaticInitializer] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: StaticInitializerAfterCreateClass] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: MultipleStaticInitializers] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

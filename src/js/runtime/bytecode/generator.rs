@@ -4255,11 +4255,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Generate all methods, collecting method definitions into a ClassNames object which is
         // used in the NewClass instruction.
         let mut methods = vec![];
+        let mut static_initializers = vec![];
         let mut new_class_arguments = vec![];
 
         for element in &class.body {
             if let ast::ClassElement::Method(method) = element {
+                // Constructor is already handled
                 if method.kind == ast::ClassMethodKind::Constructor {
+                    continue;
+                }
+
+                // Collect static initializers to be run after the class is created
+                if method.kind == ast::ClassMethodKind::StaticInitializer {
+                    static_initializers.push(method);
                     continue;
                 }
 
@@ -4288,6 +4296,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ConstantIndex::new(constructor_index),
             first_argument_reg,
         );
+
+        // Run the static initializers
+        for static_initializer in static_initializers {
+            let statements = &static_initializer.value.body.unwrap_block().body;
+            self.gen_statement_list(statements)?;
+        }
 
         // Store constructor at the binding's location. Stores at declarations do not need a TDZ
         // check.

@@ -1291,7 +1291,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::ArrowFunction(expr) => {
                 self.gen_arrow_function_expression(expr, None, dest)
             }
-            ast::Expression::Class(expr) => self.gen_class(expr, /* is_decl */ false),
+            ast::Expression::Class(expr) => self.gen_class_expression(expr, None, dest),
             ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
             ast::Expression::Yield(_) => unimplemented!("bytecode for yield expressions"),
             ast::Expression::SuperMember(_) => {
@@ -3482,6 +3482,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::ArrowFunction(func) => {
                 self.gen_arrow_function_expression(func, Some(name.to_owned()), dest)
             }
+            ast::Expression::Class(class) if class.id.is_none() => {
+                self.gen_class_expression(class, Some(name.to_owned()), dest)
+            }
             _ => self.gen_expression_with_dest(expr, dest),
         }
     }
@@ -3495,13 +3498,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Starts a "has assign expression" context
         self.enter_has_assign_expr_context(expr.has_assign_expr);
 
-        let may_need_name = match &expr.expr {
-            ast::Expression::Function(func) if func.id.is_none() => true,
-            ast::Expression::ArrowFunction(_) => true,
-            _ => false,
-        };
-
-        let result = if may_need_name {
+        let result = if Self::expression_needs_name(&expr.expr) {
             self.gen_named_expression(name, &expr.expr, dest)
         } else {
             self.gen_expression_with_dest(&expr.expr, dest)
@@ -4222,18 +4219,33 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
-        self.gen_class(class, /* is_decl */ true)?;
+        self.gen_class(class, /* is_decl */ true, None, ExprDest::Any)?;
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_class(&mut self, class: &ast::Class, is_decl: bool) -> EmitResult<GenRegister> {
+    fn gen_class_expression(
+        &mut self,
+        class: &ast::Class,
+        name: Option<Wtf8String>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        self.gen_class(class, /* is_decl */ false, name, dest)
+    }
+
+    fn gen_class(
+        &mut self,
+        class: &ast::Class,
+        is_decl: bool,
+        name: Option<Wtf8String>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         if class.super_class.is_some() {
             unimplemented!("bytecode for class inheritance")
         }
 
         // Set up destination for the constructor, directly storing in binding location if possible
         let store_flags = StoreFlags::INITIALIZATION;
-        let mut constructor_dest = ExprDest::Any;
+        let mut constructor_dest = dest;
 
         if let Some(id) = class.id.as_ref() {
             if is_decl {
@@ -4242,10 +4254,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
-        // Constructor has name of class, or "default" if class has no name
         let name = if let Some(id) = class.id.as_ref() {
+            // Constructor has name of class
             Wtf8String::from_str(&id.name)
+        } else if let Some(name) = name {
+            // Handle name passed from named evaluation
+            name
         } else {
+            // Otherwise name is "default" if class has no name
             Wtf8String::from_str("default")
         };
 
@@ -4345,10 +4361,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         if is_decl {
+            // Declaration result will not be used
             self.register_allocator.release(constructor_reg);
+            Ok(constructor_reg)
+        } else {
+            self.gen_mov_reg_to_dest(constructor_reg, dest)
         }
-
-        Ok(constructor_reg)
     }
 
     fn gen_class_method(

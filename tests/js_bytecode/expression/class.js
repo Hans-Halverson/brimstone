@@ -29,3 +29,12 @@ function nonEmptyNamed() {
     }
   };
 }
+
+function storeToParam(p) {
+  p = class C {};
+}
+
+function namedEvaluation() {
+  var x = class {};
+  var x = class C {};
+}

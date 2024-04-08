@@ -8,8 +8,12 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadUndefined r0
-    26: Ret r0
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: NewClosure r0, c10
+    33: StoreGlobal r0, c11
+    36: LoadUndefined r0
+    38: Ret r0
   Constant Table:
     0: [BytecodeFunction: emptyAnonymous]
     1: [String: emptyAnonymous]
@@ -19,6 +23,10 @@
     5: [String: nonEmptyAnonymous]
     6: [BytecodeFunction: nonEmptyNamed]
     7: [String: nonEmptyNamed]
+    8: [BytecodeFunction: storeToParam]
+    9: [String: storeToParam]
+    10: [BytecodeFunction: namedEvaluation]
+    11: [String: namedEvaluation]
 }
 
 [BytecodeFunction: emptyAnonymous] {
@@ -97,4 +105,45 @@
   Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
     3: Ret r0
+}
+
+[BytecodeFunction: storeToParam] {
+  Parameters: 1, Registers: 1
+    0: NewClass a0, c1, c0, a0
+    5: LoadUndefined r0
+    7: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: namedEvaluation] {
+  Parameters: 0, Registers: 2
+     0: NewClass r0, c1, c0, r0
+     5: NewClass r0, c3, c2, r0
+    10: LoadUndefined r1
+    12: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: x]
+    1: [ClassNames]
+    2: [BytecodeFunction: C]
+    3: [ClassNames]
+}
+
+[BytecodeFunction: x] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
 }

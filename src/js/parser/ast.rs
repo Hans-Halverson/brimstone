@@ -512,6 +512,9 @@ pub struct Class {
     pub body: Vec<ClassElement>,
 
     pub constructor: Option<AstPtr<ClassMethod>>,
+
+    /// Scope node for the class body
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 impl Class {
@@ -520,8 +523,9 @@ impl Class {
         id: Option<P<Identifier>>,
         super_class: Option<P<OuterExpression>>,
         body: Vec<ClassElement>,
+        scope: AstPtr<AstScopeNode>,
     ) -> Class {
-        Class { loc, id, super_class, body, constructor: None }
+        Class { loc, id, super_class, body, constructor: None, scope }
     }
 }
 

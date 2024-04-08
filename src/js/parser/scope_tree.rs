@@ -639,11 +639,15 @@ impl ScopeTree {
             std::mem::swap(&mut enclosed_scopes, &mut self.ast_nodes[i].enclosed_scopes);
 
             // All bindings without a location are placed in local registers in the enclosing scope.
-            // (Except for implicit this, which is either captured or loaded from the this slot).
+            //  - Except for implicit this, which is either captured or loaded from the this slot.
+            //  - Except for class name binding in body scope, which is always stored in scope
             for enclosed_scope in enclosed_scopes.iter().rev() {
                 let enclosed_scope = self.get_ast_node_mut(*enclosed_scope);
                 for (_, binding) in enclosed_scope.bindings.iter_mut() {
-                    if binding.vm_location.is_none() && !binding.is_implicit_this() {
+                    if binding.vm_location.is_none()
+                        && !binding.is_implicit_this()
+                        && !matches!(binding.kind(), BindingKind::Class { in_body_scope: true })
+                    {
                         binding.set_vm_location(VMLocation::LocalRegister(num_local_registers));
                         num_local_registers += 1;
                     }
@@ -834,7 +838,7 @@ impl AstScopeNode {
             .filter(|(_, binding)| match binding.kind {
                 BindingKind::Const { .. }
                 | BindingKind::Let { .. }
-                | BindingKind::Class
+                | BindingKind::Class { .. }
                 | BindingKind::Function { is_lexical: true, .. } => true,
                 _ => false,
             })
@@ -893,7 +897,11 @@ pub enum BindingKind {
         /// Index of the parameter in the function's parameter list.
         index: u32,
     },
-    Class,
+    Class {
+        /// Whether this is the class name binding inside the class body, as opposed to in the
+        /// surrounding scope.
+        in_body_scope: bool,
+    },
     CatchParameter {
         /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
@@ -923,7 +931,7 @@ impl BindingKind {
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
-            | BindingKind::Class
+            | BindingKind::Class { .. }
             | BindingKind::CatchParameter { .. } => true,
         }
     }
@@ -957,7 +965,7 @@ impl BindingKind {
             self,
             BindingKind::Const { .. }
                 | BindingKind::Let { .. }
-                | BindingKind::Class
+                | BindingKind::Class { .. }
                 | BindingKind::CatchParameter { .. }
                 | BindingKind::FunctionParameter { .. }
         )

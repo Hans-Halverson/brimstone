@@ -189,7 +189,7 @@ impl fmt::Display for ParseError {
                     BindingKind::Let { .. } => "let",
                     BindingKind::Function { .. } => "function",
                     BindingKind::FunctionParameter { .. } => "function parameter",
-                    BindingKind::Class => "class",
+                    BindingKind::Class { .. } => "class",
                     BindingKind::CatchParameter { .. } => "catch parameter",
                     BindingKind::ImplicitThis => "`this`",
                     BindingKind::ImplicitArguments => "`arguments`",

@@ -1,0 +1,194 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadUndefined r0
+    32: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: notCaptured]
+    1: [String: notCaptured]
+    2: [BytecodeFunction: capturedByMethod]
+    3: [String: capturedByMethod]
+    4: [BytecodeFunction: capturedByStaticInitializer]
+    5: [String: capturedByStaticInitializer]
+    6: [BytecodeFunction: classExpressionCaptured]
+    7: [String: classExpressionCaptured]
+    8: [BytecodeFunction: capturedByEval]
+    9: [String: capturedByEval]
+}
+
+[BytecodeFunction: notCaptured] {
+  Parameters: 0, Registers: 2
+     0: NewClosure r1, c1
+     3: NewClass r0, c2, c0, r1
+     8: LoadUndefined r1
+    10: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [BytecodeFunction: method]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: capturedByMethod] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c1
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: NewClosure r1, c2
+    11: NewClass r0, c3, c0, r1
+    16: StoreToScope r0, 0, 0
+    20: PopScope 
+    21: LoadUndefined r1
+    23: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [ScopeNames]
+    2: [BytecodeFunction: method]
+    3: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [String: C]
+}
+
+[BytecodeFunction: capturedByStaticInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c1
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: NewClass r0, c2, c0, r0
+    13: StoreToScope r0, 0, 0
+    17: LoadFromScope r1, 0, 0
+    21: CheckTdz r1, c3
+    24: PopScope 
+    25: LoadUndefined r1
+    27: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [ScopeNames]
+    2: [ClassNames]
+    3: [String: C]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: classExpressionCaptured] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c1
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: NewClosure r1, c2
+    11: NewClass r0, c3, c0, r1
+    16: StoreToScope r0, 0, 0
+    20: PopScope 
+    21: LoadUndefined r0
+    23: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [ScopeNames]
+    2: [BytecodeFunction: method]
+    3: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [String: C]
+}
+
+[BytecodeFunction: capturedByEval] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 1, 0
+     8: StoreToScope <this>, 0, 0
+    12: StoreToScope r0, 3, 0
+    16: NewMappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: PushLexicalScope c2
+    24: LoadEmpty r1
+    26: StoreToScope r1, 0, 0
+    30: NewClosure r1, c3
+    33: NewClass r0, c4, c1, r1
+    38: StoreToScope r0, 0, 0
+    42: PopScope 
+    43: StoreToScope r0, 1, 0
+    47: LoadUndefined r0
+    49: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: C]
+    2: [ScopeNames]
+    3: [BytecodeFunction: method]
+    4: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: NewUnmappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadGlobal r0, c1
+    19: LoadConstant r1, c2
+    22: CallMaybeEval r0, r0, r1, 1
+    27: LoadUndefined r0
+    29: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+}

@@ -3318,7 +3318,7 @@ impl<'a> Parser<'a> {
         {
             // Only introduce a binding for class declarations
             let binding_kind = if is_decl {
-                Some(BindingKind::Class)
+                Some(BindingKind::Class { in_body_scope: false })
             } else {
                 None
             };
@@ -3334,6 +3334,16 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+
+        // Body of the class it in its own scope
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+
+        // Always add class name to the body scope
+        if let Some(id) = id.as_ref() {
+            self.scope_builder
+                .add_binding(&id.name, BindingKind::Class { in_body_scope: true })
+                .unwrap();
+        }
 
         let mut body = vec![];
 
@@ -3351,10 +3361,12 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
+        self.scope_builder.exit_scope();
+
         // Restore to strict mode context from beforehand
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok(Class::new(loc, id, super_class, body))
+        Ok(Class::new(loc, id, super_class, body, scope))
     }
 
     fn parse_private_name(&mut self) -> ParseResult<Identifier> {

@@ -1291,7 +1291,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::ArrowFunction(expr) => {
                 self.gen_arrow_function_expression(expr, None, dest)
             }
-            ast::Expression::Class(_) => unimplemented!("bytecode for class expressions"),
+            ast::Expression::Class(expr) => self.gen_class(expr, /* is_decl */ false),
             ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
             ast::Expression::Yield(_) => unimplemented!("bytecode for yield expressions"),
             ast::Expression::SuperMember(_) => {
@@ -4222,17 +4222,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
+        self.gen_class(class, /* is_decl */ true)?;
+        Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_class(&mut self, class: &ast::Class, is_decl: bool) -> EmitResult<GenRegister> {
         if class.super_class.is_some() {
             unimplemented!("bytecode for class inheritance")
         }
 
         // Set up destination for the constructor, directly storing in binding location if possible
         let store_flags = StoreFlags::INITIALIZATION;
-        let constructor_dest = if let Some(id) = class.id.as_ref() {
-            self.expr_dest_for_id(id, store_flags)
-        } else {
-            ExprDest::Any
-        };
+        let mut constructor_dest = ExprDest::Any;
+
+        if let Some(id) = class.id.as_ref() {
+            if is_decl {
+                constructor_dest = self.expr_dest_for_id(id, store_flags);
+            }
+        }
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
         // Constructor has name of class, or "default" if class has no name
@@ -4251,6 +4258,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Create the constructor's static BytecodeFunction
         let constructor_index =
             self.enqueue_function_to_generate(PendingFunctionNode::Constructor { node, name })?;
+
+        // Start the body's scope
+        let body_scope = class.scope.as_ref();
+        self.gen_scope_start(body_scope, None)?;
 
         // Generate all methods, collecting method definitions into a ClassNames object which is
         // used in the NewClass instruction.
@@ -4297,25 +4308,47 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             first_argument_reg,
         );
 
+        // Initialize the class itself in scope body scope. Class is the only binding in the body
+        // scope.
+        if body_scope.vm_scope_id().is_some() {
+            let class_name = &class.id.as_ref().unwrap().name;
+            let binding = body_scope.get_binding(class_name);
+            self.gen_store_binding(
+                class_name,
+                binding,
+                constructor_reg,
+                StoreFlags::INITIALIZATION,
+            )?;
+        }
+
         // Run the static initializers
         for static_initializer in static_initializers {
             let statements = &static_initializer.value.body.unwrap_block().body;
             self.gen_statement_list(statements)?;
         }
 
+        // End the body scope after running static initializers. According to spec this should be
+        // before static initializers, but we want to keep the body's class name in scope. This is
+        // the only binding in the body scope so this has no other effects.
+        self.gen_scope_end(body_scope);
+
         // Store constructor at the binding's location. Stores at declarations do not need a TDZ
         // check.
         if let Some(id) = class.id.as_ref() {
-            self.gen_store_identifier(id, constructor_reg, store_flags)?;
+            if is_decl {
+                self.gen_store_identifier(id, constructor_reg, store_flags)?;
+            }
         }
 
         for argument in new_class_arguments.iter().rev() {
             self.register_allocator.release(*argument);
         }
 
-        self.register_allocator.release(constructor_reg);
+        if is_decl {
+            self.register_allocator.release(constructor_reg);
+        }
 
-        Ok(StmtCompletion::Normal)
+        Ok(constructor_reg)
     }
 
     fn gen_class_method(

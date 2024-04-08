@@ -737,6 +737,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Mark the constructor if it is found, erroring if multiple are found
         let mut constructor = None;
 
+        // Body is in its own scope
+        self.enter_scope(class.scope);
+
         for element in &mut class.body {
             match element {
                 ClassElement::Method(method) => {
@@ -755,6 +758,8 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 }
             }
         }
+
+        self.exit_scope();
 
         class.constructor = constructor;
 

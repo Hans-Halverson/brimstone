@@ -317,24 +317,39 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
 
         HandleScope::new(self.cx, |_| {
-            let func_ptr = func_node.ast_ptr();
-            let func = func_ptr.as_ref();
+            // Special handling if emitting a default constructor
+            let emit_result =
+                if let PendingFunctionNode::Constructor { node: None, name } = &func_node {
+                    let generator = BytecodeFunctionGenerator::new_for_default_constructor(
+                        self.cx,
+                        &self.scope_tree,
+                        scope,
+                        self.realm,
+                        &name,
+                        self.source_file,
+                    )?;
 
-            let is_constructor = func_node.is_constructor();
-            let default_name = func_node.default_name();
+                    generator.generate_default_constructor()?
+                } else {
+                    let func_ptr = func_node.ast_ptr();
+                    let func = func_ptr.as_ref();
 
-            let generator = BytecodeFunctionGenerator::new_for_function(
-                self.cx,
-                func,
-                &self.scope_tree,
-                scope,
-                self.realm,
-                default_name,
-                self.source_file,
-                is_constructor,
-            )?;
+                    let is_constructor = func_node.is_constructor();
+                    let default_name = func_node.default_name();
 
-            let emit_result = generator.generate(func)?;
+                    let generator = BytecodeFunctionGenerator::new_for_function(
+                        self.cx,
+                        func,
+                        &self.scope_tree,
+                        scope,
+                        self.realm,
+                        default_name,
+                        self.source_file,
+                        is_constructor,
+                    )?;
+
+                    generator.generate(func)?
+                };
 
             // Store the generated function into the parent handle scope so the enqueued references
             // remain valid.
@@ -589,6 +604,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_local_registers as u32,
             program.is_strict_mode,
             /* is_constructor */ false,
+        ))
+    }
+
+    fn new_for_default_constructor(
+        cx: Context,
+        scope_tree: &'a ScopeTree,
+        scope: Rc<ScopeStackNode>,
+        realm: Handle<Realm>,
+        name: &Wtf8String,
+        source_file: Handle<SourceFile>,
+    ) -> EmitResult<Self> {
+        Ok(Self::new(
+            cx,
+            scope_tree,
+            scope,
+            realm,
+            Some(name.clone()),
+            source_file,
+            0..0,
+            /* num_parameters */ 0,
+            /* function_length */ 0,
+            /* num_local_registers */ 0,
+            /* is_strict_mode */ true,
+            /* is_constructor */ true,
         ))
     }
 
@@ -1151,6 +1190,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             bytecode_function,
             pending_functions: self.pending_functions_queue,
         }
+    }
+
+    /// Generate the bytecode for a default constructor.
+    fn generate_default_constructor(mut self) -> EmitResult<EmitFunctionResult> {
+        // Base default constructor is equivalent to `constructor() {}`, so simply return undefined
+        self.gen_return_undefined()?;
+        Ok(self.finish())
     }
 
     fn gen_toplevel(&mut self, toplevel: &ast::Toplevel) -> EmitResult<()> {
@@ -4189,21 +4235,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
-        // Create the constructor's static BytecodeFunction
-        let constructor_index = if let Some(constructor_method) = class.constructor.as_ref() {
-            // Constructor has name of class, or "default" if class has no name
-            let name = if let Some(id) = class.id.as_ref() {
-                Wtf8String::from_str(&id.name)
-            } else {
-                Wtf8String::from_str("default")
-            };
-            self.enqueue_function_to_generate(PendingFunctionNode::Constructor {
-                node: AstPtr::from_ref(&constructor_method.as_ref().value),
-                name,
-            })?
+        // Constructor has name of class, or "default" if class has no name
+        let name = if let Some(id) = class.id.as_ref() {
+            Wtf8String::from_str(&id.name)
         } else {
-            unimplemented!("bytecode for class implicit constructor")
+            Wtf8String::from_str("default")
         };
+
+        // Constructor node is optional if this is a default constructor
+        let node = class
+            .constructor
+            .as_ref()
+            .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
+
+        // Create the constructor's static BytecodeFunction
+        let constructor_index =
+            self.enqueue_function_to_generate(PendingFunctionNode::Constructor { node, name })?;
 
         // Generate all methods, collecting method definitions into a ClassNames object which is
         // used in the NewClass instruction.
@@ -5983,7 +6030,7 @@ enum PendingFunctionNode {
     Expression { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
     Arrow { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
     Method { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
-    Constructor { node: AstPtr<ast::Function>, name: Wtf8String },
+    Constructor { node: Option<AstPtr<ast::Function>>, name: Wtf8String },
 }
 
 impl PendingFunctionNode {
@@ -5992,8 +6039,8 @@ impl PendingFunctionNode {
             PendingFunctionNode::Declaration(node)
             | PendingFunctionNode::Expression { node, .. }
             | PendingFunctionNode::Arrow { node, .. }
-            | PendingFunctionNode::Method { node, .. }
-            | PendingFunctionNode::Constructor { node, .. } => *node,
+            | PendingFunctionNode::Method { node, .. } => *node,
+            PendingFunctionNode::Constructor { node, .. } => node.unwrap(),
         }
     }
 
